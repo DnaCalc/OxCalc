@@ -13,10 +13,11 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
 - `docs/spec/core-engine/CORE_ENGINE_REALIZATION_ROADMAP.md`
 
-Rewrite-control artifacts for this reset:
-- `docs/spec/core-engine/SPEC_REWRITE_PLAN.md`
-- `docs/spec/core-engine/SPEC_REWRITE_DOCUMENT_MAP.md`
-- `docs/spec/core-engine/REWRITE_PROMOTION_LEDGER.md`
+## Archived Rewrite-Control Material
+The rewrite-control artifacts used to establish the canonical set are preserved for provenance under:
+- `docs/spec/core-engine/archive/rewrite-control-2026-03/`
+
+These files are historical planning and promotion-control artifacts, not active canonical guidance.
 
 ## Bootstrap Archive and Reference-Only Material
 The previous bootstrap set is preserved under:

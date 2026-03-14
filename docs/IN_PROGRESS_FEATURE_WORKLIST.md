@@ -3,7 +3,7 @@
 Canonical repo-level register of feature areas that are in-progress under workset completion doctrine.
 
 Status: active.
-Last updated: 2026-03-14.
+Last updated: 2026-03-15.
 
 ## Status Vocabulary
 
@@ -16,9 +16,9 @@ Last updated: 2026-03-14.
 ### IP-01: Core Rewrite and Canonicalization
 
 - **Status**: in-progress
-- **Current floor**: rewritten canonical core-engine spec set drafted; bootstrap set archived; repo integration still underway.
-- **Remaining gaps**: supersession treatment finalization, workset alignment, OxFml handoff packet drafting, follow-on tightening passes.
-- **Why still open**: rewrite has produced the canonical set but repo-level integration is not yet fully closed.
+- **Current floor**: rewritten canonical core-engine spec set drafted; bootstrap set archived; repo integration now includes first OxFml seam handoff and receiving-side acknowledgment tracking.
+- **Remaining gaps**: final integration tightening, follow-on seam alignment wording, workset closure discipline, and later replay-backed evidence.
+- **Why still open**: the canonical set is established, but realization and assurance closure are still outstanding.
 - **Canonical owner**: W001.
 
 ### IP-02: TreeCalc Structural State and Snapshot Kernel
@@ -47,10 +47,10 @@ Last updated: 2026-03-14.
 
 ### IP-05: OxFml Seam Hardening and Handoff Closure
 
-- **Status**: planned
-- **Current floor**: OxCalc-local seam requirements are drafted; no handoff packet filed yet.
-- **Remaining gaps**: shared-clause packet for accepted-result payloads, reject taxonomy/detail, fence consequences, runtime-derived reporting requirements.
-- **Why still open**: canonical shared seam changes require OxFml-side acknowledgment.
+- **Status**: in-progress
+- **Current floor**: OxCalc-local seam requirements are drafted; `HANDOFF-CALC-001` is filed, acknowledged by OxFml, and reflected in OxFml canonical seam updates.
+- **Remaining gaps**: OxCalc-side alignment to `AcceptedCandidateResult` terminology and typed reject consequences, replay artifacts for candidate-result versus publication boundaries, exhaustive runtime-derived effect taxonomy, and any narrower follow-on handoff if required.
+- **Why still open**: acknowledgment exists, but evidence and full downstream alignment are still partial.
 - **Canonical owner**: W005.
 
 ### IP-06: Core Formalization and Gate Binding

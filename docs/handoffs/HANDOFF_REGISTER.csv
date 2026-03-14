@@ -1,2 +1,2 @@
 handoff_id,direction,title,status,source_workset,target_workset,filed_date,acknowledged_date
-HANDOFF-CALC-001,outbound,Coordinator-Facing Seam Hardening for Accepted Results Reject Detail and Fence Consequences,filed,W005,OxFml-TBD,2026-03-15,
+HANDOFF-CALC-001,outbound,Coordinator-Facing Seam Hardening for Accepted Results Reject Detail and Fence Consequences,acknowledged,W005,OxFml-TBD,2026-03-15,2026-03-15

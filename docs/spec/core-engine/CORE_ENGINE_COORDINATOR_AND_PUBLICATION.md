@@ -5,7 +5,7 @@ This document defines the OxCalc coordinator, publication, and staged concurrenc
 
 Status:
 1. active rewrite baseline,
-2. intended canonical companion for commit/publication authority,
+2. intended canonical companion for commit and publication authority,
 3. TreeCalc-first in immediate realization scope,
 4. staged for later concurrent and async realization.
 
@@ -18,7 +18,7 @@ This document defines:
 6. core assurance targets for coordinator behavior.
 
 ## 2. Coordinator Mission
-The coordinator is the single authority that turns candidate runtime work into stable engine-visible consequences.
+The coordinator is the single authority that turns evaluator-produced candidate runtime work into stable engine-visible consequences.
 
 Its mission is to:
 1. govern snapshot and fence compatibility,
@@ -41,7 +41,7 @@ This is a correctness rule first and a coordination rule second.
 
 ## 4. Coordinator Responsibilities
 At the architecture level, the coordinator is responsible for:
-1. structural snapshot/fence awareness,
+1. structural snapshot and fence awareness,
 2. runtime work admission and compatibility checks,
 3. commit acceptance or rejection,
 4. publication of stable observer-visible state,
@@ -59,14 +59,14 @@ Any candidate work intended for publication must be checked against the relevant
 These boundaries may include:
 1. structural snapshot compatibility,
 2. token or artifact compatibility,
-3. profile/version compatibility,
-4. capability/fence compatibility,
+3. profile or version compatibility,
+4. capability or fence compatibility,
 5. publication-state compatibility.
 
 ### 5.2 Why Fences Matter
 Fences exist so that:
 1. work computed against stale assumptions is not silently published,
-2. replay can explain accept/reject outcomes,
+2. replay can explain accept or reject outcomes,
 3. staged concurrency does not weaken correctness,
 4. stable observer views remain coherent.
 
@@ -81,10 +81,12 @@ An accepted commit publishes one atomic stable bundle of consequences for the ac
 Atomic here means:
 1. the stable observer-visible consequences appear together,
 2. partially visible accepted publication is forbidden,
-3. publication is tied to a coherent snapshot/fence basis.
+3. publication is tied to a coherent snapshot and fence basis.
 
 ### 6.2 Publication Content
 The exact bundle schema is defined by seam and supporting documents, but at architecture level the coordinator publishes a coherent derived result package rather than disconnected mutable fragments.
+
+Where OxFml canonical seam language applies, that publication package is produced from an evaluator-side `AcceptedCandidateResult` that remains distinct from publication until coordinator acceptance.
 
 ### 6.3 Publication Ordering
 Publication ordering must be deterministic for the declared mode.
@@ -119,7 +121,7 @@ The coordinator must preserve stable observer-visible views.
 
 Readers and observers see:
 1. a coherent structural snapshot,
-2. a coherent published runtime view for that snapshot/fence basis,
+2. a coherent published runtime view for that snapshot and fence basis,
 3. status signaling that is valid for that view.
 
 ### 8.2 No Torn Publish Rule
@@ -142,7 +144,7 @@ Stage 1 is the sequential single-publisher baseline.
 ### 9.2 Required Properties
 Stage 1 must prove:
 1. the coordinator owns publication,
-2. deterministic accept/reject behavior,
+2. deterministic accept or reject behavior,
 3. stable observer-visible state,
 4. explicit fence discipline,
 5. replay-compatible rejection behavior,
@@ -160,7 +162,7 @@ Stage 2 introduces partitioned, concurrent, or asynchronous evaluator work behin
 ### 10.2 Invariants That Must Not Change
 Stage 2 must preserve:
 1. single publication authority,
-2. accept/reject fence discipline,
+2. accept or reject fence discipline,
 3. stable observer-visible state,
 4. deterministic replay obligations,
 5. no semantic drift from baseline truth.
@@ -178,7 +180,7 @@ The architecture allows ongoing work to exist without becoming stable publicatio
 This distinction is essential.
 
 In-flight work may:
-1. produce candidate results,
+1. produce an evaluator-side `AcceptedCandidateResult`,
 2. produce internal runtime state,
 3. wait on compatibility checks,
 4. be rejected.
@@ -192,8 +194,8 @@ In-flight work may not:
 The coordinator governs whether overlay-derived consequences matter to stable publication.
 
 This means:
-1. overlays may inform candidate results,
-2. overlays may influence accept/reject decisions,
+1. overlays may inform evaluator-produced candidate work,
+2. overlays may influence accept or reject decisions,
 3. overlays may be retained or evicted under coordinator-aware safety rules,
 4. overlay consequences reach stable observers only through coordinator-controlled publication.
 
@@ -202,8 +204,8 @@ The coordinator depends on OxFml evaluator work and seam discipline, but publica
 
 The coordinator therefore requires a seam that supports:
 1. explicit candidate-work boundaries,
-2. explicit compatibility/fence information,
-3. explicit accepted-result payload structure,
+2. explicit compatibility and fence information,
+3. explicit `AcceptedCandidateResult` payload structure,
 4. explicit reject-detail structure suitable for replay and diagnostics.
 
 Detailed ownership and handoff text belongs in the dedicated seam document.
@@ -218,7 +220,7 @@ The architecture locks only the high-level rule here:
 4. fallback or retry policy must be visible to assurance and evidence tooling where required.
 
 ## 15. Publication and Stabilization
-The coordinator governs when candidate work becomes stable published state.
+The coordinator governs when evaluator-produced candidate work becomes stable published state.
 
 The architecture distinguishes:
 1. structural truth,
@@ -239,7 +241,7 @@ Expected assurance consequences include:
 2. safety properties for no torn publication,
 3. safety properties for reject-is-no-publish,
 4. safety properties for pinned-reader stability,
-5. liveness/progress analysis for staged concurrent and async execution where applicable,
+5. liveness or progress analysis for staged concurrent and async execution where applicable,
 6. replay and pack obligations for contention and reject behavior.
 
 ## 17. Open Detailed Questions
@@ -256,6 +258,6 @@ These remain detailed follow-on questions within the now-locked architecture:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFml seam companion not yet drafted,
-  - exact reject-detail mapping not yet tied into handoff material,
+  - replay artifacts still needed for candidate-result versus publication behavior,
+  - exact reject-detail mapping still needs pack and trace binding,
   - roadmap still needs the stage-gate text that complements this document

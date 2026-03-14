@@ -14,39 +14,48 @@ Convert the OxCalc-local seam requirements into explicit shared-clause handoff m
 2. Reject-detail taxonomy and payload handoff.
 3. Fence-consequence handoff.
 4. Runtime-derived reporting handoff where needed.
+5. OxCalc-side receipt of OxFml acknowledgment.
 
 ### Out of scope
 1. Claiming shared seam closure without OxFml acknowledgment.
 2. Rewriting OxFml canonical seam docs directly in this repo.
+3. Claiming behavioral closure without replay evidence.
 
 ## Deliverables
-1. First OxFml handoff packet(s) and register entry.
+1. First OxFml handoff packet and register entry.
+2. OxCalc-side receipt note for OxFml acknowledgment and handback.
 
 ## Gate Model
 ### Entry gate
 - OxCalc-local seam requirements are explicit.
 
 ### Exit gate
-- Handoff packet(s) filed and registered with clear shared-clause requests and evidence references.
+- Handoff packet is filed and registered.
+- Receiving-repo acknowledgment is captured locally.
+- Remaining post-acknowledgment gaps are made explicit.
 
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
 | 2 | Pack expectations updated for affected packs? | no |
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
-| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | no |
+| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
 | 6 | All required tests pass? | no |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
-| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | no |
+| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
 | 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
-- open_lanes: handoff drafting, evidence binding, OxFml acknowledgment
-- claim_confidence: draft
+- open_lanes:
+  - no replay artifacts yet for candidate-result versus publication behavior
+  - exhaustive runtime-derived effect taxonomy remains open
+  - follow-on OxCalc alignment work still needed in realization and assurance items
+- claim_confidence: provisional
+- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

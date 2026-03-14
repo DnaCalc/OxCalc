@@ -25,7 +25,7 @@ Last updated: 2026-03-15.
 
 - **Status**: planned
 - **Current floor**: canonical architecture and state-kernel docs drafted; no exercised implementation.
-- **Remaining gaps**: stable-ID policy closure, immutable structural kernel realization, pinned-reader semantics, projection/facade realization.
+- **Remaining gaps**: stable-ID policy closure, immutable structural kernel realization, pinned-reader semantics, projection or facade realization.
 - **Why still open**: architecture is documented but not realized or verified yet.
 - **Canonical owner**: W002.
 
@@ -56,8 +56,7 @@ Last updated: 2026-03-15.
 ### IP-06: Core Formalization and Gate Binding
 
 - **Status**: in-progress
-- **Current floor**: formalization and assurance direction is drafted, W006 is active, and successor planning worksets W007 through W010 now exist for Lean, TLA+, replay and pack binding, and experiment planning.
-- **Remaining gaps**: actual formal artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the new assurance-planning sequence.
-- **Why still open**: the assurance lane now has structure, but not yet exercised artifacts.
+- **Current floor**: formalization and assurance direction is drafted, W006 is active, and W007 now contains the first Lean-facing object inventory and transition-boundary packet. Successor planning worksets W008 through W010 exist for TLA+, replay and pack binding, and experiment planning.
+- **Remaining gaps**: actual Lean or TLA+ artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the remaining assurance-planning sequence.
+- **Why still open**: the assurance lane now has an initial state vocabulary, but not yet exercised formal artifacts.
 - **Canonical owner**: W006.
-

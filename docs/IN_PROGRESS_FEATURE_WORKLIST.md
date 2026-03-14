@@ -32,7 +32,7 @@ Last updated: 2026-03-15.
 ### IP-03: Stage 1 Coordinator and Publication Baseline
 
 - **Status**: planned
-- **Current floor**: canonical coordinator/publication architecture drafted; no exercised implementation.
+- **Current floor**: canonical coordinator and publication architecture drafted; no exercised implementation.
 - **Remaining gaps**: single-publisher realization, accept/reject enforcement, atomic publication bundle, stable observer-visible state, replay-oriented reject detail.
 - **Why still open**: coordinator remains spec-first and unexercised.
 - **Canonical owner**: W003.
@@ -41,7 +41,7 @@ Last updated: 2026-03-15.
 
 - **Status**: planned
 - **Current floor**: canonical recalc and overlay architecture drafted; no exercised implementation.
-- **Remaining gaps**: invalidation-state machine, verification-oriented incremental subset, dynamic-dependency overlay handling, fallback/economics instrumentation.
+- **Remaining gaps**: invalidation-state machine, verification-oriented incremental subset, dynamic-dependency overlay handling, fallback or economics instrumentation.
 - **Why still open**: baseline direction is now explicit, but realization and evidence are not in place.
 - **Canonical owner**: W004.
 
@@ -55,8 +55,9 @@ Last updated: 2026-03-15.
 
 ### IP-06: Core Formalization and Gate Binding
 
-- **Status**: planned
-- **Current floor**: formalization/assurance and realization roadmap docs drafted; no realized Lean/TLA+/pack closure yet.
-- **Remaining gaps**: initial Lean model objects, initial TLA+ coordinator model, staged gate binding to real worksets and pack artifacts.
-- **Why still open**: near-formal direction is specified but not yet exercised.
+- **Status**: in-progress
+- **Current floor**: formalization and assurance direction is drafted, W006 is active, and successor planning worksets W007 through W010 now exist for Lean, TLA+, replay and pack binding, and experiment planning.
+- **Remaining gaps**: actual formal artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the new assurance-planning sequence.
+- **Why still open**: the assurance lane now has structure, but not yet exercised artifacts.
 - **Canonical owner**: W006.
+

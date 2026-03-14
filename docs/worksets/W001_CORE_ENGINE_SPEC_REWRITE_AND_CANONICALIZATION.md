@@ -23,8 +23,8 @@ Replace the OxCalc bootstrap core-engine spec set with a rewritten canonical Tre
 ## Deliverables
 1. Canonical rewritten core-engine doc set exists in `docs/spec/core-engine/`.
 2. Bootstrap set preserved in an archive location.
-3. Repo index and feature/workset tracking point at the rewritten set.
-4. First seam handoff candidates are explicitly identified.
+3. Repo index and feature or workset tracking point at the rewritten set.
+4. First seam handoff pressure is explicitly identified and registered.
 
 ## Gate Model
 ### Entry gate
@@ -39,11 +39,11 @@ Replace the OxCalc bootstrap core-engine spec set with a rewritten canonical Tre
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
 | 2 | Pack expectations updated for affected packs? | no |
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | no |
-| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | no |
+| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
 | 6 | All required tests pass? | no |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
@@ -56,7 +56,8 @@ Replace the OxCalc bootstrap core-engine spec set with a rewritten canonical Tre
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - seam handoff packet not yet filed
-  - supersession treatment for remaining bootstrap/reference files may need tightening
-  - no replay/pack/assurance closure yet
+  - no replay, pack, or assurance closure yet for the rewritten architecture set
+  - remaining bootstrap and reference material still needs eventual final tightening
+  - W006 and successor assurance-planning worksets remain open
 - claim_confidence: provisional
+- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

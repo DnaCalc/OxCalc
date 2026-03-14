@@ -14,7 +14,7 @@ This document binds the architectural and assurance docs to:
 2. staged-later promotion lanes,
 3. decisive experiments,
 4. pack and evidence gates,
-5. first handoff pressure to OxFml where shared seam clauses must tighten.
+5. seam hardening state and follow-on pressure with OxFml.
 
 ## 2. Roadmap Purpose
 The roadmap exists to answer three questions explicitly:
@@ -52,7 +52,7 @@ Stage 1 is intentionally conservative in realization, but not weak in architectu
 ### 5.1 Stage 1 Must Realize
 1. immutable structural snapshots,
 2. stable identity and projection discipline,
-3. pinned stable reader/observer views,
+3. pinned stable reader and observer views,
 4. deterministic topo/SCC scheduling baseline,
 5. explicit invalidation-state model,
 6. explicit runtime overlay model at architecture-relevant minimum,
@@ -61,19 +61,19 @@ Stage 1 is intentionally conservative in realization, but not weak in architectu
 9. reject-is-no-publish behavior,
 10. explicit coordinator-facing seam boundary with OxFml,
 11. replay-oriented diagnostics for accept/reject and structural/recalc behavior,
-12. initial assurance scaffolding for Lean/TLA+/pack mapping.
+12. initial assurance scaffolding for Lean, TLA+, and pack mapping.
 
 ### 5.2 Stage 1 May Realize Conservatively
 1. verification-oriented incremental behavior through a conservative subset,
 2. dynamic dependency handling through explicit runtime discipline plus bounded fallback where needed,
 3. overlay retention and reuse through a safe initial policy before economics tuning,
-4. cycle/iteration support through the declared profile subset.
+4. cycle or iteration support through the declared profile subset.
 
 ### 5.3 Stage 1 Does Not Need To Realize Yet
 1. default dynamic-topological maintenance,
 2. full SAC-style repair,
 3. advanced visibility-priority scheduling,
-4. full staged concurrent/async throughput realization,
+4. full staged concurrent or async throughput realization,
 5. later grid-native substrate semantics.
 
 ## 6. Stage 1 Assurance and Evidence Minimum
@@ -94,8 +94,8 @@ Stage 1 should not be declared as architecturally sound without evidence across 
 3. Stage 1 pack obligations are identified and exercised where possible.
 
 ### 6.4 Measurement Axis
-1. baseline counters for reuse/fallback/eviction behavior are planned,
-2. baseline timing/signature measurement for recalc behavior is planned,
+1. baseline counters for reuse, fallback, and eviction behavior are planned,
+2. baseline timing and signature measurement for recalc behavior is planned,
 3. economics questions are captured as explicit experiments rather than guesswork.
 
 ## 7. Stage 2 Promotion Gate
@@ -130,7 +130,7 @@ Promotion requires:
 Promotion requires:
 1. semantic-equivalence evidence,
 2. deterministic policy definition,
-3. fairness/starvation evidence where relevant.
+3. fairness or starvation evidence where relevant.
 
 ### 8.4 Later Grid Expansion
 Promotion requires:
@@ -143,7 +143,7 @@ The roadmap requires explicit decisive experiments rather than optional benchmar
 
 ### 9.1 Early-Cutoff Experiment
 Purpose:
-1. determine correctness and practical value of verification/early-cutoff behavior for the intended workloads.
+1. determine correctness and practical value of verification or early-cutoff behavior for the intended workloads.
 
 ### 9.2 Dynamic-Topo Versus Rebuild Experiment
 Purpose:
@@ -172,33 +172,44 @@ The roadmap expects early instrumentation for at least:
 
 The exact counter schema is refined elsewhere, but the roadmap locks the requirement that such counters are part of the realization plan from early on.
 
-## 11. OxFml Handoff Pressure In The Roadmap
-The roadmap should treat seam hardening as an active lane, not a passive dependency.
+## 11. OxFml Handoff State In The Roadmap
+Seam hardening remains an active lane, but it is no longer only a local request set.
 
-Likely Stage 1 or pre-Stage 2 handoff pressure includes:
-1. accepted-result payload structure needed by coordinator publication,
-2. reject-detail taxonomy and payload structure,
-3. snapshot/token/capability fence consequences in canonical shared terms,
-4. dynamic-dependency or runtime-derived effect reporting if required by coordinator correctness.
+Current state:
+1. `HANDOFF-CALC-001` has been filed by OxCalc,
+2. OxFml has acknowledged and adapted the shared seam in its canonical docs,
+3. OxCalc must now align local realization and assurance planning to the accepted candidate-result versus publication split.
 
-These are not yet closed merely because OxCalc has documented them locally.
+Remaining follow-on pressure includes:
+1. replay artifact binding for the candidate-result versus publication boundary,
+2. pack and trace binding for typed fence and capability rejects,
+3. narrower follow-on handoff only if runtime-derived effect taxonomy needs stronger shared obligations.
 
-## 12. Relationship To Worksets and Feature Register
-The rewritten roadmap should eventually drive:
-1. new OxCalc worksets,
-2. updated in-progress feature ownership,
-3. explicit gate criteria per work packet.
+## 12. Workset Execution Sequence
+The roadmap now binds to the following execution sequence.
+This is dependency-ordered, not date-ordered.
 
-The roadmap is the bridge from architecture to execution packets.
+1. `W001`: core-engine spec rewrite and canonicalization.
+2. `W002`: TreeCalc structural state and snapshot kernel.
+3. `W003`: Stage 1 coordinator and publication baseline.
+4. `W004`: incremental recalc and overlay baseline.
+5. `W005`: OxFml seam hardening and handoff tracking.
+6. `W006`: core formalization and gate binding.
+7. `W007`: Lean-facing state objects and transition boundary plan.
+8. `W008`: TLA+ coordinator, publication, and fence-safety model plan.
+9. `W009`: replay and pack binding for Stage 1 seam and coordinator behavior.
+10. `W010`: experiment register and measurement-schema planning for Stage 1 and Stage 2 promotion lanes.
+
+The purpose of `W007` through `W010` is to turn `W006` from a generic formalization placeholder into executable assurance-planning packets.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
 
 This means every promotion lane must name:
-1. proof/model-check expectations where applicable,
+1. proof or model-check expectations where applicable,
 2. replay artifact expectations,
 3. pack obligations,
-4. performance/economics evidence requirements.
+4. performance or economics evidence requirements.
 
 ## 14. Explicit Non-Promotion Rule
 A lane is not promoted merely because:
@@ -211,10 +222,10 @@ Promotion requires the evidence class named for that lane.
 
 ## 15. Open Detailed Questions
 These remain roadmap-level follow-on questions within the now-locked staged structure:
-1. exact Stage 1 realization order across worksets,
-2. exact Stage 2 concurrency sub-phases,
-3. exact thresholds for economics-based promotion,
-4. exact handoff sequence and ownership timing with OxFml.
+1. exact Stage 2 concurrency sub-phases,
+2. exact thresholds for economics-based promotion,
+3. exact replay corpus shape for multi-stage coordinator traces,
+4. exact first realized pack set for W009 execution.
 
 ## 16. Status
 - execution_state: in_progress
@@ -222,6 +233,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - workset decomposition not yet updated to match the new roadmap,
-  - handoff packets not yet drafted,
-  - old bootstrap docs not yet formally marked superseded in place
+  - workset decomposition is now expanded, but W007 through W010 are still planning packets rather than exercised assurance artifacts,
+  - replay artifacts are still missing for the newly accepted seam boundaries,
+  - Stage 2 sub-phase planning remains coarse
+

@@ -1,7 +1,7 @@
 # W002: TreeCalc Structural State and Snapshot Kernel
 
 ## Purpose
-Realize the immutable structural state kernel for the TreeCalc-first engine, including stable identity, snapshot/version discipline, and pinned stable reader views.
+Define the implementation-facing TreeCalc structural kernel packet: stable identity, immutable snapshot shape, projection boundary, and pinned-reader semantics.
 
 ## Position and Dependencies
 - **Depends on**: W001
@@ -10,23 +10,29 @@ Realize the immutable structural state kernel for the TreeCalc-first engine, inc
 
 ## Scope
 ### In scope
-1. Stable-ID policy and snapshot kernel realization.
-2. Immutable structure plus derived/facade discipline.
-3. Pinned-reader safety semantics in implementation-facing form.
+1. Stable-ID policy for TreeCalc structural nodes and attached formula artifacts.
+2. Structural snapshot record shape and immutable-successor boundary.
+3. Projection and facade boundary for reader-facing traversal and address-like lookup.
+4. Pinned-reader semantics in implementation-facing terms.
 
 ### Out of scope
 1. Full coordinator implementation.
 2. Grid-native substrate work.
+3. Full formal proof artifacts.
 
 ## Deliverables
-1. Implementation-facing state-kernel work packet aligned to `CORE_ENGINE_STATE_AND_SNAPSHOTS.md`.
+1. Structural identity packet covering node-id classes, parent or child attachment rules, and formula-artifact attachment boundaries.
+2. Snapshot-kernel packet covering root shape, successor construction boundary, and immutable-truth versus derived-runtime split.
+3. Reader-view packet covering pin, unpin, and stable-view obligations that later replay and TLA+ work can consume.
 
 ## Gate Model
 ### Entry gate
 - W001 canonical rewrite integrated.
 
 ### Exit gate
-- Stable-ID and snapshot-kernel subset is explicit enough to implement and verify.
+- Stable-ID policy is explicit enough to implement without identity churn under TreeCalc edits.
+- Snapshot-kernel shape is explicit enough to code immutable successor construction without re-opening the architecture docs.
+- Reader pinning obligations are explicit enough to bind into W007, W008, and later replay artifacts.
 
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
@@ -47,5 +53,10 @@ Realize the immutable structural state kernel for the TreeCalc-first engine, inc
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
-- open_lanes: stable-ID closure, implementation realization, replay evidence, assurance closure
-- claim_confidence: draft
+- open_lanes:
+  - stable-ID decision closure is not yet authored as an implementation packet
+  - snapshot record and projection API packet are not yet drafted
+  - pinned-reader obligations are not yet tied to replay or TLA+ artifacts
+  - no exercised kernel implementation exists
+- claim_confidence: provisional
+- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

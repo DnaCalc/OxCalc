@@ -69,13 +69,15 @@ Each workset file must include:
 - integration_completeness: integrated | partial
 - open_lanes: <list or "none">
 - claim_confidence: draft | provisional | validated
+- reviewed_inbound_observations: <summary or "none">
 ```
 
 ## Rules
 
-1. Worksets are sequence/gate driven, never date driven.
+1. Worksets are sequence or gate driven, never date driven.
 2. Each workset must declare dependencies, deliverables, and gate criteria.
 3. Completion requires passing the Pre-Closure Verification Checklist (OPERATIONS.md Section 7).
 4. Completion requires a three-axis status report (AGENTS.md Section 3, Rule 3).
 5. Completion requires the Completion Claim Self-Audit (OPERATIONS.md Section 9).
 6. Claim confidence and status must be stated separately.
+7. Workset status should record reviewed inbound observations when interface or design inputs from sibling repos are relevant.

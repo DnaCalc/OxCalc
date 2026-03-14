@@ -1,0 +1,197 @@
+# CORE_ENGINE_OXFML_SEAM.md
+
+## 1. Purpose and Status
+This document defines the OxCalc view of the OxFml seam for the rewritten core-engine spec set.
+
+Status:
+1. active rewrite baseline,
+2. intended canonical OxCalc-local seam companion,
+3. coordinator-facing in emphasis,
+4. subject to shared-clause handoff where canonical shared seam text must be updated in OxFml.
+
+This document does not claim canonical ownership of the shared evaluator protocol.
+OxFml remains the canonical owner of shared FEC/F3E seam specification.
+
+This document exists to make OxCalc's coordinator-facing requirements explicit.
+
+## 2. Ownership Rule
+The seam is shared, but ownership is split.
+
+### 2.1 OxFml Owns
+OxFml owns:
+1. formula grammar,
+2. parse and bind semantics,
+3. evaluator-side session and execution semantics,
+4. canonical shared seam specification text,
+5. evaluator-facing trace and result contracts where those are canonical seam artifacts.
+
+### 2.2 OxCalc Owns
+OxCalc owns:
+1. coordinator acceptance and rejection consequences,
+2. publication-fence requirements,
+3. snapshot compatibility requirements from the coordinator side,
+4. scheduling and stabilization interaction,
+5. what candidate evaluator work must provide for coordinator-controlled publication.
+
+### 2.3 Shared-Clause Rule
+Where a clause is shared but canonical in OxFml, OxCalc must express its requirement locally and then hand off canonical text changes rather than silently diverging.
+
+## 3. Why This Seam Must Be Explicit
+The seam must be explicit because:
+1. the evaluator is not the coordinator,
+2. candidate evaluator work is not identical to committed publication,
+3. replay and reject behavior depend on shared structure,
+4. later concurrency makes weak seam wording unsafe.
+
+If the seam is left implicit, publication, runtime state, and evaluator behavior will drift into one another.
+The rewrite rejects that outcome.
+
+## 4. OxCalc Expectations Of Evaluator Artifacts
+OxCalc treats evaluator artifacts as immutable, versioned inputs.
+
+The seam therefore requires that OxCalc be able to reason about:
+1. which immutable evaluator artifact a candidate work unit is based on,
+2. what token or version discipline guards that artifact,
+3. what profile/version context applies,
+4. what compatibility assumptions are being asserted by candidate work.
+
+OxCalc does not need to own the evaluator internals to require this compatibility structure.
+
+## 5. Candidate Work Boundary
+The seam must expose a clear boundary between:
+1. structural/evaluator inputs,
+2. candidate evaluation work,
+3. candidate derived results,
+4. accepted publication consequences.
+
+This distinction matters because the coordinator must be able to:
+1. reject candidate work safely,
+2. publish accepted work atomically,
+3. preserve stable observer-visible state,
+4. replay and diagnose accept/reject behavior.
+
+## 6. Snapshot and Fence Requirements
+From the OxCalc side, the seam must support coordinator reasoning about compatibility and fences.
+
+At minimum, the seam must make it possible for the coordinator to determine:
+1. which snapshot or structural basis candidate work depends on,
+2. which evaluator artifact/token basis candidate work depends on,
+3. whether profile/version assumptions match,
+4. whether candidate work is eligible for publication under current coordinator state.
+
+The exact canonical field names belong in shared seam specs, but the architectural requirement is fixed here.
+
+## 7. Accepted Result Requirements
+For accepted work, the seam must provide candidate result structure that is rich enough for coordinator-controlled publication.
+
+This means OxCalc must be able to receive or derive, through the seam, the information required to:
+1. publish accepted results atomically,
+2. update stable observer-visible derived state coherently,
+3. integrate relevant topology/dependency consequences,
+4. preserve replay and diagnostic fidelity.
+
+The coordinator does not accept opaque "success" without adequate publication-relevant structure.
+
+## 8. Reject Detail Requirements
+Rejected work is architecturally no-publish.
+
+But reject outcomes must still provide structured detail sufficient for:
+1. deterministic replay,
+2. diagnostics,
+3. seam-hardening work,
+4. staged concurrency analysis.
+
+From the OxCalc side, the seam must support reject detail that distinguishes at least:
+1. compatibility or fence mismatch,
+2. artifact/token mismatch,
+3. capability or session mismatch where relevant,
+4. other coordinator-relevant reject classes that affect replay and migration understanding.
+
+The canonical taxonomy belongs in shared seam work, but the requirement for structured detail is locked here.
+
+## 9. Publication Ownership Rule
+The seam must not blur evaluator success with committed publication.
+
+The evaluator may produce candidate results.
+The coordinator alone decides whether those results become committed published consequences.
+
+Therefore the seam must preserve the distinction between:
+1. evaluator-produced candidate output,
+2. coordinator-accepted publication,
+3. rejected no-publish outcome.
+
+## 10. Dynamic Dependency and Runtime-Derived Consequences
+Where evaluator execution reveals runtime-relevant facts that matter to OxCalc coordination,
+the seam must support explicit transmission or derivation of those facts.
+
+This is necessary for cases such as:
+1. runtime-observed dependency effects,
+2. runtime capability/fence implications,
+3. other evaluator-discovered facts that influence recalc or publication.
+
+These effects must not be left as hidden evaluator internals if OxCalc is expected to coordinate on them.
+
+## 11. Stage-1 Versus Later-Stage Seam Pressure
+
+### 11.1 Stage 1
+Stage 1 may realize a conservative subset of the full seam-hardening story.
+
+But even in Stage 1, the seam must already preserve:
+1. candidate-versus-publication distinction,
+2. explicit compatibility/fence basis,
+3. reject detail adequate for replay and diagnostics,
+4. coordinator ownership of accept/reject consequences.
+
+### 11.2 Later Stages
+Later concurrent and async stages increase seam pressure.
+
+They require stronger handling for:
+1. contention and retry visibility,
+2. fence mismatches under concurrent work,
+3. deterministic replay of staged concurrency outcomes,
+4. publication safety under overlapping candidate work.
+
+The seam should therefore be written now with later hardening in mind.
+
+## 12. Handoff Rule
+Whenever OxCalc local requirements imply changes to canonical shared seam text, OxCalc must:
+1. document the local requirement here,
+2. prepare an explicit handoff packet for OxFml,
+3. register the handoff,
+4. avoid claiming the shared clause is fully resolved until the canonical side acknowledges it.
+
+## 13. Formalization and Evidence Direction
+This seam is assurance-relevant, not only integration-relevant.
+
+Expected obligations include:
+1. replay-visible candidate-versus-publication distinctions,
+2. structured reject-detail coverage,
+3. fence-safety modeling tied into coordinator assurance,
+4. pack obligations for commit atomicity and reject determinism,
+5. evidence artifacts sufficient for staged concurrency hardening.
+
+## 14. Immediate Handoff Candidates
+Based on the rewrite direction, likely shared-clause handoff candidates include:
+1. canonical articulation of accepted candidate result structure needed by coordinator publication,
+2. reject-detail taxonomy and payload requirements,
+3. snapshot/token/capability fence consequences relevant to coordinator accept/reject behavior,
+4. any dynamic-dependency or runtime-derived effect reporting required for coordinator correctness.
+
+These are candidate handoff areas, not yet filed packets.
+
+## 15. Open Detailed Questions
+These remain seam-hardening questions rather than reasons to weaken the split:
+1. exact accepted-result payload boundaries in shared canonical terms,
+2. exact reject taxonomy shape and ownership partition,
+3. exact runtime-derived effect reporting required by the evaluator,
+4. exact trace schema mapping for coordinator-facing replay and diagnostics.
+
+## 16. Status
+- execution_state: in_progress
+- scope_completeness: scope_partial
+- target_completeness: target_partial
+- integration_completeness: partial
+- open_lanes:
+  - handoff packets not yet drafted,
+  - exact canonical shared-clause wording not yet coordinated with OxFml,
+  - roadmap still needs to connect seam hardening to staged realization gates

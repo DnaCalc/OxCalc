@@ -1,0 +1,227 @@
+# CORE_ENGINE_REALIZATION_ROADMAP.md
+
+## 1. Purpose and Status
+This document defines the staged realization roadmap for the rewritten OxCalc core-engine spec set.
+
+Status:
+1. active rewrite baseline,
+2. intended canonical execution roadmap companion,
+3. TreeCalc-first in immediate target scope,
+4. gate-driven rather than time-driven.
+
+This document binds the architectural and assurance docs to:
+1. the Stage 1 realization subset,
+2. staged-later promotion lanes,
+3. decisive experiments,
+4. pack and evidence gates,
+5. first handoff pressure to OxFml where shared seam clauses must tighten.
+
+## 2. Roadmap Purpose
+The roadmap exists to answer three questions explicitly:
+1. what is the first serious engine we are actually building,
+2. what belongs in that first realization versus later staged promotion,
+3. what evidence is required before a staged-later lane can be promoted.
+
+## 3. Immediate Realization Target
+The immediate realization target is the DNA TreeCalc engine baseline.
+
+This means:
+1. tree-based substrate,
+2. no grid baseline,
+3. no hidden grid assumptions in required Stage 1 semantics,
+4. explicit OxFml seam discipline,
+5. deterministic single-publisher coordinator,
+6. strong incremental architecture direction from the start.
+
+## 4. Stage Structure
+
+### 4.1 Stage 1
+Stage 1 is the first realized baseline.
+
+Its role is to prove the architecture on TreeCalc-first scope.
+
+### 4.2 Stage 2
+Stage 2 introduces staged concurrent and async realization behind the same architectural contracts.
+
+### 4.3 Stage 3+
+Stage 3 and later phases promote more ambitious runtime strategy lanes and later substrate expansion under explicit gates.
+
+## 5. Stage 1 Realization Subset
+Stage 1 is intentionally conservative in realization, but not weak in architecture.
+
+### 5.1 Stage 1 Must Realize
+1. immutable structural snapshots,
+2. stable identity and projection discipline,
+3. pinned stable reader/observer views,
+4. deterministic topo/SCC scheduling baseline,
+5. explicit invalidation-state model,
+6. explicit runtime overlay model at architecture-relevant minimum,
+7. single-publisher coordinator authority,
+8. accepted-commit atomic publication,
+9. reject-is-no-publish behavior,
+10. explicit coordinator-facing seam boundary with OxFml,
+11. replay-oriented diagnostics for accept/reject and structural/recalc behavior,
+12. initial assurance scaffolding for Lean/TLA+/pack mapping.
+
+### 5.2 Stage 1 May Realize Conservatively
+1. verification-oriented incremental behavior through a conservative subset,
+2. dynamic dependency handling through explicit runtime discipline plus bounded fallback where needed,
+3. overlay retention and reuse through a safe initial policy before economics tuning,
+4. cycle/iteration support through the declared profile subset.
+
+### 5.3 Stage 1 Does Not Need To Realize Yet
+1. default dynamic-topological maintenance,
+2. full SAC-style repair,
+3. advanced visibility-priority scheduling,
+4. full staged concurrent/async throughput realization,
+5. later grid-native substrate semantics.
+
+## 6. Stage 1 Assurance and Evidence Minimum
+Stage 1 should not be declared as architecturally sound without evidence across these axes:
+
+### 6.1 Spec Axis
+1. the new canonical docs are internally aligned for the Stage 1 subset,
+2. Stage 1 subset wording is explicit and not implied.
+
+### 6.2 Replay Axis
+1. deterministic replay exists for declared Stage 1 behaviors,
+2. accept/reject consequences are observable and diagnosable,
+3. pinned-view and publication invariants can be exercised through artifacts.
+
+### 6.3 Assurance Axis
+1. initial Lean-facing model objects are defined,
+2. initial TLA+ coordinator safety model is defined,
+3. Stage 1 pack obligations are identified and exercised where possible.
+
+### 6.4 Measurement Axis
+1. baseline counters for reuse/fallback/eviction behavior are planned,
+2. baseline timing/signature measurement for recalc behavior is planned,
+3. economics questions are captured as explicit experiments rather than guesswork.
+
+## 7. Stage 2 Promotion Gate
+Stage 2 is the first concurrency-bearing promotion.
+
+It should require explicit closure of at least:
+1. deterministic contention replay,
+2. coordinator fence safety under concurrent or async work,
+3. pinned-reader safety under overlapping work,
+4. reject-detail adequacy for concurrency diagnosis,
+5. stable publication behavior under staged concurrency.
+
+Stage 2 is not allowed to reinterpret the publication or observer model.
+It must preserve the Stage 1 contracts while extending realization strategy.
+
+## 8. Staged-Later Optimization Lanes
+The following lanes are explicitly retained as intended design space but are not baseline Stage 1 commitments.
+
+### 8.1 Dynamic Topological Maintenance
+Promotion requires:
+1. correctness parity with the baseline,
+2. deterministic replay compatibility,
+3. demonstrated economics crossover against rebuild-based strategy.
+
+### 8.2 SAC-Inspired Repair or More Ambitious Trace Repair
+Promotion requires:
+1. correctness evidence at least matching the baseline,
+2. replay and diagnostics compatibility,
+3. clear economics value for targeted workloads.
+
+### 8.3 Later Scheduling Policies
+Promotion requires:
+1. semantic-equivalence evidence,
+2. deterministic policy definition,
+3. fairness/starvation evidence where relevant.
+
+### 8.4 Later Grid Expansion
+Promotion requires:
+1. explicit substrate-extension spec work,
+2. semantic-gap closure against TreeCalc baseline assumptions,
+3. preservation of immutable-structure and publication discipline.
+
+## 9. Decisive Experiments
+The roadmap requires explicit decisive experiments rather than optional benchmarks.
+
+### 9.1 Early-Cutoff Experiment
+Purpose:
+1. determine correctness and practical value of verification/early-cutoff behavior for the intended workloads.
+
+### 9.2 Dynamic-Topo Versus Rebuild Experiment
+Purpose:
+1. determine the crossover point, if any, where dynamic-topological maintenance is justified.
+
+### 9.3 Dynamic-Dependency Economics Experiment
+Purpose:
+1. determine when explicit runtime-tracked dynamic dependency behavior outperforms conservative fallback.
+
+### 9.4 Overlay Economics Experiment
+Purpose:
+1. measure reuse, miss, fallback, and eviction behavior,
+2. calibrate retention policy and future thresholds.
+
+### 9.5 Staged Concurrency Replay Experiment
+Purpose:
+1. validate that concurrent or async realization preserves deterministic replay and publication safety.
+
+## 10. Required Counter and Measurement Direction
+The roadmap expects early instrumentation for at least:
+1. overlay reuse and miss rates,
+2. fallback rates,
+3. eviction counts,
+4. recalc work-volume signatures,
+5. staged concurrency replay signatures once Stage 2 begins.
+
+The exact counter schema is refined elsewhere, but the roadmap locks the requirement that such counters are part of the realization plan from early on.
+
+## 11. OxFml Handoff Pressure In The Roadmap
+The roadmap should treat seam hardening as an active lane, not a passive dependency.
+
+Likely Stage 1 or pre-Stage 2 handoff pressure includes:
+1. accepted-result payload structure needed by coordinator publication,
+2. reject-detail taxonomy and payload structure,
+3. snapshot/token/capability fence consequences in canonical shared terms,
+4. dynamic-dependency or runtime-derived effect reporting if required by coordinator correctness.
+
+These are not yet closed merely because OxCalc has documented them locally.
+
+## 12. Relationship To Worksets and Feature Register
+The rewritten roadmap should eventually drive:
+1. new OxCalc worksets,
+2. updated in-progress feature ownership,
+3. explicit gate criteria per work packet.
+
+The roadmap is the bridge from architecture to execution packets.
+
+## 13. Relationship To Assurance
+No staged promotion is complete without coupling to the assurance surfaces.
+
+This means every promotion lane must name:
+1. proof/model-check expectations where applicable,
+2. replay artifact expectations,
+3. pack obligations,
+4. performance/economics evidence requirements.
+
+## 14. Explicit Non-Promotion Rule
+A lane is not promoted merely because:
+1. an implementation exists,
+2. it appears faster locally,
+3. it matches intuition,
+4. it was proposed in a research note.
+
+Promotion requires the evidence class named for that lane.
+
+## 15. Open Detailed Questions
+These remain roadmap-level follow-on questions within the now-locked staged structure:
+1. exact Stage 1 realization order across worksets,
+2. exact Stage 2 concurrency sub-phases,
+3. exact thresholds for economics-based promotion,
+4. exact handoff sequence and ownership timing with OxFml.
+
+## 16. Status
+- execution_state: in_progress
+- scope_completeness: scope_partial
+- target_completeness: target_partial
+- integration_completeness: partial
+- open_lanes:
+  - workset decomposition not yet updated to match the new roadmap,
+  - handoff packets not yet drafted,
+  - old bootstrap docs not yet formally marked superseded in place

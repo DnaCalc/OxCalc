@@ -1,12 +1,3 @@
-# Reference-only local snapshot
-
-This file is retained as a local Foundation-derived snapshot for reference and provenance.
-It is not part of the canonical rewritten OxCalc core-engine spec set.
-
-For canonical OxCalc core-engine guidance, use the rewritten documents in this directory,
-starting with CORE_ENGINE_ARCHITECTURE.md.
-
----
 # ARCHITECTURE_AND_REQUIREMENTS.md — DNA Calc Architecture and Requirements
 
 ## 1. Overview
@@ -399,4 +390,3 @@ Architecture progression must respect dependency constitution:
 2. OxFml consumes OxFunc and exposes evaluator contracts.
 3. OxCalc consumes OxFml/OxFunc and owns multi-node execution policy.
 4. Host repos compose lanes; they do not redefine lane ownership or doctrine.
-

@@ -1,12 +1,3 @@
-# Reference-only local snapshot
-
-This file is retained as a local Foundation-derived snapshot for reference and provenance.
-It is not part of the canonical rewritten OxCalc core-engine spec set.
-
-For canonical OxCalc core-engine guidance, use the rewritten documents in this directory,
-starting with CORE_ENGINE_ARCHITECTURE.md.
-
----
 # OPERATIONS.md — DNA Calc Operations
 
 ## 1. Purpose
@@ -451,4 +442,3 @@ Use this dependency-ordered wave sequence for current execution planning:
 5. **Wave E**: DNA TreeCalc proving host for serious multi-node behavior before grid complexity.
 6. **Wave F**: DNA PreCalc first integrated tree-grid-hybrid host with staged concurrency policy.
 7. **Wave G**: DNA SuperCalc and DNA Calc expansion lanes under bounded advanced-lane policy and parity evidence.
-

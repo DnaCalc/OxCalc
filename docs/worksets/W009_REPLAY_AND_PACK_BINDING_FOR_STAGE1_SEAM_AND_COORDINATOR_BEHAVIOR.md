@@ -220,6 +220,17 @@ Current status:
 1. the Stage 1 effect and dependency-shape subset is now explicit enough to name the first replay classes
 2. broader pack breadth still remains reserved until artifacts exist
 
+## Current Evidence Traceability Matrix
+This matrix should be extended as new replay artifacts and emitted runs are promoted.
+
+| Pack | Replay classes | Current scenario ids | Current artifact root |
+|---|---|---|---|
+| `PACK.fec.commit_atomicity` | `R1` | `tc_accept_publish_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+| `PACK.fec.reject_detail_replay` | `R2` | `tc_reject_no_publish_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+| `PACK.concurrent.epochs` | `R4`, `R5` | `tc_pinned_view_stability_001`, `tc_overlay_retention_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+| `PACK.fec.overlay_lifecycle` | `R5` | `tc_overlay_retention_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+| `PACK.dag.dynamic_dependency_bind_semantics` | reserve -> `R8`; current partial via shape update path | `tc_dynamic_dep_switch_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+
 ## First Trace Schema Pressure List
 W009 should make explicit which trace fields are now required by the accepted seam and W008 model shape.
 
@@ -292,7 +303,7 @@ This order prioritizes the coordinator and publication contract before broader r
   - the first replay artifacts for `R1`, `R2`, and `R7` now exist as hand-authored seeds and are also exercised by the emitted `w013-sequence-a-baseline` harness run
   - `R4` and `R5` are now exercised by the emitted baseline run, but they do not yet have dedicated hand-authored seed artifacts
   - trace-schema ownership split with OxFml is still only partially explicit
-  - W010 still needs to connect counters and experiments to these replay classes
+  - W010 still needs to connect counters and experiments to these replay classes more tightly than the current matrix
   - `R3`, `R6`, and `R8` still need authored and exercised artifacts
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

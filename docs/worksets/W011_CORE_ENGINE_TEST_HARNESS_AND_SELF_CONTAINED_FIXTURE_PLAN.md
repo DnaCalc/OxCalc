@@ -36,6 +36,7 @@ Define the self-contained OxCalc test harness shape needed to test coordinator, 
 - W003 and W004 define the Stage 1 coordinator and recalc packet boundaries.
 - W005 accepted seam direction is available.
 - W009 and W010 define replay classes, pack hooks, and measurement families the harness must support.
+- any replay class named as required for the target execution wave has at least one authored scenario in the checked-in corpus before harness implementation begins.
 
 ### Exit gate
 - The self-contained harness boundary is explicit enough to author the first unit-test fixture and scriptable host.
@@ -160,6 +161,12 @@ The concrete harness companion specs are now drafted at `docs/spec/core-engine/C
 5. overlay retention and release behavior
 6. dynamic-dependency fallback behavior
 7. synthetic scale graph runs for work-volume and retention counters
+
+## Corpus-Readiness Rule
+For future execution waves, the harness lane should not begin implementation until:
+1. each replay class required by the target execution packet has at least one authored scenario id,
+2. the scenario ids are registered in the corpus manifest,
+3. any reserve replay classes are listed explicitly as later lanes rather than being silently omitted.
 
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |

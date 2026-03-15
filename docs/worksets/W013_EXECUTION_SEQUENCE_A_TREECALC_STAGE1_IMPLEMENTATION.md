@@ -35,6 +35,41 @@ Execution Sequence A assumes the following preconditions already hold:
 4. the OxFml seam has acknowledged `HANDOFF-CALC-001`,
 5. W001 and W005 remain open as governance/integration lanes, but no longer block the first local implementation sequence.
 
+## Execution Environment
+Required tools:
+1. `dotnet`
+2. `lean`
+
+Optional tools:
+1. `tlc`
+
+Fallback rule:
+1. if `tlc` is unavailable, the first TLA+ artifact may still satisfy this wave as an authored artifact, but the report must state that no model-check run was executed.
+
+## Evidence Layout
+Canonical emitted artifact root:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/`
+
+Checked-in baseline run for this sequence:
+1. `w013-sequence-a-baseline`
+
+Checked-in policy:
+1. the baseline run is tracked,
+2. ad hoc smoke or validation runs should use separate run ids and remain untracked unless intentionally promoted.
+
+## Replay-Corpus Readiness
+Required replay classes for this sequence and their minimum scenario ids:
+1. `R1` -> `tc_accept_publish_001`
+2. `R2` -> `tc_reject_no_publish_001`
+3. `R7` -> `tc_verify_clean_no_publish_001`
+4. `R4` -> `tc_pinned_view_stability_001`
+5. `R5` -> `tc_overlay_retention_001`
+
+Reserve replay classes for later waves:
+1. `R3`
+2. `R6`
+3. `R8`
+
 ## Critical-Path Doctrine
 The critical path for the first implementation wave is:
 1. W002 structural kernel,

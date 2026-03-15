@@ -119,7 +119,7 @@ Normative wording rules:
 
 These five lessons are derived from observed execution failures in OxVba (86+ worksets) and OxFunc (13 worksets). They are not speculative — each addresses a real failure mode.
 
-A separate `docs/LOCAL_EXECUTION_DOCTRINE.md` will be created when locally-observed lessons emerge from actual OxCalc execution.
+OxCalc-local lessons discovered from exercised work now live in `docs/LOCAL_EXECUTION_DOCTRINE.md`.
 
 ### Lesson 1: Scaffold Determinism Is a Gate
 Scaffolding (stubs, empty traits, compile-only code) must produce deterministic outputs or be explicitly marked non-functional. Non-deterministic scaffolding that silently passes tests is a gate failure.
@@ -179,3 +179,63 @@ Agents starting work on OxCalc interface or contract design must:
 2. Note any unresolved observations that are relevant to current scope.
 3. Include a "reviewed inbound observations" line in the workset status report.
 4. When a design decision addresses an inbound observation, reference the observation entry explicitly.
+
+## 13. Emitted Artifact Protocol
+
+### 13.1 Canonical Artifact Root Required
+Any execution packet that expects emitted evidence must declare a canonical artifact root before implementation begins.
+
+That declaration must state:
+1. the canonical root path,
+2. whether the artifacts are checked in or ephemeral,
+3. whether emitted artifacts are runner-only, oracle-only, or comparison artifacts.
+
+### 13.2 Path Normalization Rule
+Tracked artifacts must use repo-relative paths only.
+
+Absolute paths are allowed only in transient local diagnostics that are not tracked.
+
+### 13.3 Validation Non-Mutation Rule
+Validation runs must not mutate tracked evidence in place.
+
+If a checked-in baseline run exists:
+1. re-validation should run into a separate transient run id, or
+2. the tracked baseline should be regenerated intentionally as a new evidence act, not accidentally during validation.
+
+### 13.4 Artifact Root Reporting Rule
+Completion and status reports for any emitted-evidence workset must name:
+1. the canonical artifact root,
+2. the checked-in baseline run if one exists,
+3. the commands used to generate or validate it.
+
+## 14. Execution Packet Minimums
+
+Any workset that acts as an execution packet must include the following sections explicitly.
+
+### 14.1 Environment Preconditions
+1. required tools on PATH,
+2. optional tools and their role,
+3. fallback evidence rules if optional tools are unavailable.
+
+### 14.2 Evidence Layout
+1. canonical emitted artifact root,
+2. checked-in versus ephemeral policy,
+3. stable naming policy for baseline runs.
+
+### 14.3 Replay-Corpus Readiness
+If replay classes are part of the gate model, the packet must state:
+1. which replay classes require corpus scenarios before implementation begins,
+2. which scenario ids satisfy them,
+3. which replay classes remain reserve or later lanes.
+
+### 14.4 Pack-Evidence Traceability
+Execution packets that mention packs must identify:
+1. pack name,
+2. replay classes,
+3. scenario ids or artifact paths once they exist.
+
+## 15. Local Doctrine Reference
+OxCalc-local execution lessons now live at `docs/LOCAL_EXECUTION_DOCTRINE.md`.
+
+Those lessons are additive to the carried-forward lessons in Section 11.
+They should be updated when later execution waves reveal new recurring failure modes or stronger operating practices.

@@ -59,6 +59,22 @@ Each workset file must include:
 ### Exit gate
 - <criteria — binary yes/no>
 
+## Execution Packet Additions
+(Required when the workset is an execution packet rather than a planning-only packet)
+
+### Environment Preconditions
+- <required tools>
+- <optional tools and fallback rules>
+
+### Evidence Layout
+- canonical artifact root: <path>
+- checked-in or ephemeral: <policy>
+- baseline run naming: <policy>
+
+### Replay-Corpus Readiness
+- required replay classes with scenario ids: <mapping>
+- reserve or later replay classes: <mapping>
+
 ## Pre-Closure Verification Checklist
 (Copy from OPERATIONS.md Section 7, fill in yes/no for each item)
 
@@ -81,3 +97,5 @@ Each workset file must include:
 5. Completion requires the Completion Claim Self-Audit (OPERATIONS.md Section 9).
 6. Claim confidence and status must be stated separately.
 7. Workset status should record reviewed inbound observations when interface or design inputs from sibling repos are relevant.
+8. Execution packets must declare environment preconditions, evidence layout, and replay-corpus readiness before implementation begins.
+9. If a workset expects emitted evidence, it must declare the canonical artifact root and whether the emitted artifacts are checked in or ephemeral.

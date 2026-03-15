@@ -236,8 +236,9 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - workset decomposition is now expanded, and W007 through W012 now include substantive planning packets plus drafted harness and oracle companions, but not yet exercised assurance artifacts,
-  - replay artifacts are still missing for the newly accepted seam boundaries,
+  - W003 and W004 now carry explicit Stage 1 transition packets and an overlay-retention floor, but not yet exercised assurance artifacts,
+  - replay artifacts are still missing for the newly accepted seam boundaries and the newly named Stage 1 transitions,
   - Stage 2 sub-phase planning remains coarse,
   - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted, seeded with an initial corpus, and tightened with a first artifact/diff policy, but not yet realized in validator, fixture, host, oracle, or replay artifacts
+
 

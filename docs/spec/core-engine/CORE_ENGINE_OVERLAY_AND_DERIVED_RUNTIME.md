@@ -174,6 +174,32 @@ Eviction policy must ensure:
 2. no observer-visible committed state depends on already-evicted overlay material without replacement,
 3. no future claim of replay determinism is undermined by ambiguous retention behavior.
 
+### 7.6 Stage 1 Retention and Eviction Matrix
+The first Stage 1 overlay retention matrix should be:
+
+1. `invalidation_execution_state`
+   - retain while the owning node remains `dirty_pending`, `needed`, `evaluating`, `publish_ready`, or protected by a pinned reader.
+   - evict when the owning node has returned to `clean` or `verified_clean`, no pinned reader requires the prior state, and no replay capture policy still references the instance.
+2. `dynamic_dependency`
+   - retain while its `struct_snapshot_id`, `compatibility_basis`, and owning-node identity remain compatible, and while no reject or fallback path has invalidated the observed dependency shape.
+   - evict when superseded by a newer accepted publication, invalidated by reject or fallback, or released beyond the safe pinned-epoch boundary.
+3. `capability_fence_attachment`
+   - retain while the associated capability basis and candidate/publication decision remain live.
+   - evict immediately on capability mismatch, publication-fence mismatch, or after the accepted or rejected decision has been recorded and no pinned reader depends on the attachment.
+4. `observer_priority_metadata`
+   - retain only while the current demanded frontier or pinned-reader policy needs it.
+   - evict when the demanded frontier is released, when a newer publication supersedes it, or when deterministic policy says it is no longer required.
+
+The purpose of this first matrix is to remove ambiguity about when Stage 1 overlays survive across work and when they must be dropped.
+
+### 7.7 Stage 1 Fallback Consequences
+The first Stage 1 fallback consequences should be:
+1. missing required runtime-derived effect detail invalidates reuse of the affected dynamic-dependency overlay,
+2. incompatible overlay key basis forces discard rather than speculative remapping,
+3. rejected candidate work may preserve diagnostics but must not preserve publish-scoped overlay consequences as if they were accepted,
+4. unsupported region or spill-like shape effects force explicit conservative fallback and trace labeling,
+5. host-injected fallback used by the harness must follow the same visibility and eviction rules as organic fallback.
+
 ## 8. Epoch-Safe Retention and Eviction
 
 ### 8.1 Epoch Safety Principle
@@ -266,7 +292,7 @@ Expected obligations include:
 
 ## 15. Open Detailed Questions
 These remain implementation-detail questions within the now-locked architectural frame:
-1. exact overlay key fields by overlay class,
+1. exact overlay key fields by overlay class beyond the now-declared Stage 1 floor,
 2. exact retention thresholds and policy tuning,
 3. exact representation of session-scoped versus publish-scoped runtime attachments,
 4. exact observer-priority metadata encoding,
@@ -278,6 +304,8 @@ These remain implementation-detail questions within the now-locked architectural
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - coordinator/publication companion not yet drafted,
-  - exact overlay-class schemas not yet fixed,
-  - seam consequences not yet tied into OxFml handoff text
+  - the first Stage 1 retention and eviction matrix is now explicit, but exact overlay-class schemas and thresholds are not yet fixed,
+  - replay and pack binding for fallback and eviction behavior still need W009 realization,
+  - seam consequences beyond the Stage 1 floor are not yet tied into narrower OxFml follow-on text
+
+

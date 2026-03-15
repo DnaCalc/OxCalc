@@ -89,6 +89,36 @@ The minimum Stage 1 coordinator-local reject classes should be:
 3. `synthetic_cycle_reject` supports self-contained cycle-region and iteration-profile tests,
 4. `host_injected_failure` keeps the harness able to force deterministic rejection scenarios.
 
+## Stage 1 Coordinator Transition Packet
+The first implementation-facing Stage 1 coordinator transition packet should contain at least:
+
+| Transition | Input / precondition | Required state effect | Minimum trace pressure |
+|---|---|---|---|
+| `C1 AdmitCandidateWork` | local candidate intake packet received for current structural basis | create or replace in-flight coordinator record keyed by `candidate_result_id` and `struct_snapshot_id` | `candidate_admitted` |
+| `C2 RecordAcceptedCandidateResult` | intake packet passes shape validation and is still pending decision | register `AcceptedCandidateResult` as non-published candidate work | `candidate_recorded` |
+| `C3 RejectCandidateWork` | any typed reject class or fence mismatch is detected before publish | append reject detail, clear publication eligibility, preserve no stable publication side effects | `candidate_rejected` |
+| `C4 AcceptAndPublish` | compatibility basis still holds and publish bundle derivation succeeds | emit one atomic publication bundle, advance published view, clear in-flight candidate | `publication_committed` |
+| `C5 PinReader` | reader requests stable view protection | add reader pin against the current published epoch or publication boundary | `reader_pinned` |
+| `C6 UnpinAndReleaseProtection` | reader releases protection | remove pin and re-open eviction eligibility where safe | `reader_unpinned` |
+
+### Transition Notes
+1. `C1` and `C2` preserve the candidate-result versus publication split required by the OxFml seam.
+2. `C3` is architecturally no-publish and must never emit observer-visible publication deltas.
+3. `C4` is the only Stage 1 transition allowed to create stable publication.
+4. `C5` and `C6` keep pinned-reader safety in the same transition packet rather than leaving it implicit.
+5. These names are intentionally aligned to W008 actions `A4` through `A9` so later TLA+ authoring does not have to reinterpret the packet.
+
+## Stage 1 Coordinator State Variables
+The minimum coordinator-local state variables to carry through W003 should be:
+1. `published_view_ref`
+2. `in_flight_candidate_ref`
+3. `accepted_candidate_ref`
+4. `pinned_reader_set`
+5. `reject_log`
+6. `publication_counter_state`
+
+These are the minimum implementation-facing handles needed to make the Stage 1 transition packet testable and replay-visible.
+
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
@@ -109,9 +139,11 @@ The minimum Stage 1 coordinator-local reject classes should be:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - coordinator transition packet still needs replay-class and TLA+ action binding
-  - publish-bundle fields are now explicit locally, but no conformance artifact or implementation exists yet
+  - the Stage 1 coordinator transition packet and state-variable floor are now explicit, but replay-class and TLA+ field binding still need W008 and W009 realization
+  - publish-bundle fields are explicit locally, but no conformance artifact or implementation exists yet
   - reject-detail mapping still needs pack and trace binding in W009
   - no exercised coordinator implementation exists
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+
+

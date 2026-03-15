@@ -32,7 +32,7 @@ Last updated: 2026-03-15.
 ### IP-03: Stage 1 Coordinator and Publication Baseline
 
 - **Status**: in-progress
-- **Current floor**: canonical coordinator and publication architecture drafted, and W003 now fixes the first implementation-facing Stage 1 candidate-result intake, publication bundle, and typed reject floor; no exercised implementation.
+- **Current floor**: canonical coordinator and publication architecture drafted, and W003 now fixes the first implementation-facing Stage 1 candidate-result intake, publication bundle, typed reject floor, and coordinator transition packet; no exercised implementation.
 - **Remaining gaps**: single-publisher realization, accept/reject enforcement, atomic publication bundle realization, stable observer-visible state, replay-oriented reject-detail binding, and emitted publication artifacts.
 - **Why still open**: coordinator packet boundaries are now tighter, but realization, replay artifacts, and exercised behavior remain absent.
 - **Canonical owner**: W003.
@@ -40,7 +40,7 @@ Last updated: 2026-03-15.
 ### IP-04: Incremental Recalc and Overlay Baseline
 
 - **Status**: in-progress
-- **Current floor**: canonical recalc and overlay architecture drafted, and W004 now fixes the first implementation-facing Stage 1 runtime-derived effect subset, dependency-shape handling subset, and fallback floor; no exercised implementation.
+- **Current floor**: canonical recalc and overlay architecture drafted, and W004 now fixes the first implementation-facing Stage 1 runtime-derived effect subset, dependency-shape handling subset, fallback floor, invalidation transition packet, and overlay retention matrix; no exercised implementation.
 - **Remaining gaps**: invalidation-state machine realization, verification-oriented incremental subset realization, overlay retention and eviction matrix completion, replay binding for the named effect subset, and fallback or economics instrumentation.
 - **Why still open**: the Stage 1 recalc packet is now tighter, but realization, replay binding, and evidence are not in place.
 - **Canonical owner**: W004.

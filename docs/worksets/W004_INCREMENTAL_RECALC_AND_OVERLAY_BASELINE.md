@@ -79,6 +79,32 @@ The minimum fallback triggers should include at least:
 4. rejected candidate result,
 5. explicit host or harness fallback injection.
 
+## Stage 1 Invalidation Transition Packet
+The first implementation-facing Stage 1 invalidation transition packet should include at least:
+
+| Transition | Source -> target | Trigger | Minimum required consequence |
+|---|---|---|---|
+| `I1 MarkDirty` | `clean | verified_clean -> dirty_pending` | structural edit, upstream publication delta, or explicit external invalidation | record stale frontier without forcing immediate evaluation |
+| `I2 MarkNeeded` | `dirty_pending -> needed` | demanded frontier or stabilization target requires the node | put node into deterministic work-discovery order |
+| `I3 BeginEvaluate` | `needed -> evaluating` | deterministic scheduler selects the node on a compatible basis | begin evaluator work and protect competing implicit state changes |
+| `I4 VerifyClean` | `evaluating -> verified_clean` | early-cutoff or conservative verification proves unchanged observable result | avoid publication while still resolving demanded work |
+| `I5 ProduceDependencyShapeUpdate` | `evaluating -> publish_ready` | evaluation yields values and dependency-shape/runtime-effect outputs | make candidate-result publication possible and update overlay candidates |
+| `I6 RejectOrFallback` | `evaluating | publish_ready -> rejected_pending_repair` | typed reject, incompatible overlay key, or insufficient effect detail | clear publish eligibility and force explicit conservative re-entry |
+| `I7 PublishAndClear` | `publish_ready -> clean` | coordinator accepts and publishes the candidate result | commit stable effects and clear stale state |
+| `I8 ReleaseAndEvictEligible` | `clean | verified_clean -> clean` | demanded frontier is released and no pin protects prior overlay state | keep node clean while making overlays eligible for deterministic eviction |
+
+## Stage 1 Overlay Retention Matrix
+The first implementation-facing Stage 1 overlay retention matrix should be:
+
+| Overlay class | Retain while | Evict when |
+|---|---|---|
+| `invalidation_execution_state` | node is not yet back to a stable `clean` or `verified_clean` state, or a pinned reader still protects the prior view | node is stable, pin protection is gone, and replay policy does not still reference the instance |
+| `dynamic_dependency` | key basis remains compatible and no reject or fallback path has invalidated the observed dependency shape | superseded by accepted publication, invalidated by reject or fallback, or beyond the safe pinned-epoch boundary |
+| `capability_fence_attachment` | associated capability basis and candidate/publication decision are still live | capability or publication fence mismatch occurs, or decision is resolved and no pin still depends on the attachment |
+| `observer_priority_metadata` | demanded frontier or pinned-reader policy still needs the metadata | frontier is released, newer publication supersedes it, or policy marks it dispensable |
+
+This matrix is the first Stage 1 floor for deterministic overlay reuse and eviction behavior.
+
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
@@ -99,9 +125,11 @@ The minimum fallback triggers should include at least:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - invalidation-state packet still needs fuller implementation-facing transition detail
-  - overlay retention and eviction matrix is still not fully authored
+  - the first invalidation transition packet and overlay retention matrix are now explicit, but finer transition detail and thresholds are still open
   - replay and pack classes for the now-named dynamic-dependency subset still need W009 binding
+  - conservative fallback thresholds and observer-demand integration still need tightening
   - no exercised recalc or overlay implementation exists
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+
+

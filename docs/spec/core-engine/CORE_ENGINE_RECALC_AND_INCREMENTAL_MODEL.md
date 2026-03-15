@@ -82,6 +82,45 @@ The recalc model must support:
 4. deterministic transition ordering,
 5. replay-visible transition evidence where required by packs.
 
+### 5.4 Stage 1 Local State Vocabulary
+For Stage 1, the first local invalidation-state vocabulary should be:
+1. `clean`
+2. `dirty_pending`
+3. `needed`
+4. `evaluating`
+5. `verified_clean`
+6. `publish_ready`
+7. `rejected_pending_repair`
+8. `cycle_blocked`
+
+These names are the first OxCalc-local floor for implementation-facing work.
+They may later map into richer formal names, but the distinctions are now fixed for Stage 1 planning.
+
+### 5.5 Stage 1 Transition Packet
+The first Stage 1 transition packet should include at least:
+1. `R1 MarkDirty`: `clean | verified_clean -> dirty_pending`
+2. `R2 MarkNeeded`: `dirty_pending -> needed`
+3. `R3 BeginEvaluate`: `needed -> evaluating`
+4. `R4 VerifyClean`: `evaluating -> verified_clean`
+5. `R5 ProduceCandidateResult`: `evaluating -> publish_ready`
+6. `R6 RejectAndFallback`: `evaluating | publish_ready -> rejected_pending_repair`
+7. `R7 PublishAcceptedResult`: `publish_ready -> clean`
+8. `R8 HoldCycleBoundary`: `needed | evaluating -> cycle_blocked` where the active profile forbids immediate publish
+9. `R9 ReleaseNeed`: `verified_clean | clean -> clean` with demanded-frontier pressure removed
+
+The minimum transition intent is:
+1. `MarkDirty` records possible semantic impact without yet forcing evaluation,
+2. `MarkNeeded` marks work required for the current stabilization objective,
+3. `BeginEvaluate` begins deterministic evaluator work on the current snapshot and fence basis,
+4. `VerifyClean` records an early-cutoff or verification success without producing a new publication candidate,
+5. `ProduceCandidateResult` hands control to the coordinator through the local `AcceptedCandidateResult` floor,
+6. `RejectAndFallback` records no-publish failure and any required conservative re-entry into the stale frontier,
+7. `PublishAcceptedResult` clears the node back to `clean` only through accepted publication,
+8. `HoldCycleBoundary` makes cycle-region staging explicit instead of treating it as scheduler folklore,
+9. `ReleaseNeed` keeps demanded-frontier pressure explicit and replay-visible.
+
+These transitions are the Stage 1 semantic bridge into W008 action naming and W009 replay classes.
+
 ## 6. Deterministic Topo/SCC Baseline
 
 ### 6.1 Baseline Scheduling Skeleton
@@ -283,7 +322,7 @@ Expected assurance consequences:
 
 ## 17. Open Detailed Questions
 The following remain detailed follow-on questions within the architecture:
-1. exact canonical invalidation-state names and transition tables,
+1. exact TLA+ and replay field mapping for the now-locked Stage 1 invalidation states and transitions,
 2. exact Stage 1 realization subset for verification-oriented recalculation,
 3. exact thresholding and policy for conservative fallback,
 4. exact observer-demand integration rules,
@@ -295,6 +334,8 @@ The following remain detailed follow-on questions within the architecture:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - companion overlay doc not yet drafted,
-  - exact Stage 1 subset wording still to be tightened in the roadmap,
-  - concurrency-specific scheduler clauses still to be tied into coordinator publication doc
+  - the Stage 1 invalidation-state vocabulary and first transition packet are now explicit, but replay and TLA+ field binding still need W008 and W009 realization,
+  - conservative fallback thresholds and observer-demand integration remain open,
+  - concurrency-specific scheduler clauses still need tighter coupling to coordinator publication behavior
+
+

@@ -1,0 +1,45 @@
+{
+  "artifact_id": "calc.replay.r2.001",
+  "replay_class": "R2",
+  "description": "Typed rejection produces no publication change.",
+  "anchors": {
+    "actions": ["A4", "A6"],
+    "safety": ["S2"],
+    "transitions": ["C1", "C3", "I6"]
+  },
+  "initial_state": {
+    "struct_snapshot_id": "snapshot:1",
+    "published_view_id": "published:baseline",
+    "publication_id": "publication:baseline",
+    "node_calc_state": {
+      "node:3": "evaluating"
+    }
+  },
+  "events": [
+    {
+      "seq": 1,
+      "label": "candidate_admitted",
+      "transition": "C1",
+      "action": "A4",
+      "candidate_result_id": "candidate:reject-1",
+      "struct_snapshot_id": "snapshot:1",
+      "compatibility_basis": "compat:v1"
+    },
+    {
+      "seq": 2,
+      "label": "candidate_rejected",
+      "transition": "C3",
+      "action": "A6",
+      "candidate_result_id": "candidate:reject-1",
+      "reject_kind": "capability_mismatch",
+      "reject_detail": "required capability profile was absent",
+      "published_view_id": "published:baseline",
+      "publication_visible": false
+    }
+  ],
+  "assertions": [
+    "published_view_unchanged_after_reject",
+    "typed_reject_detail_present",
+    "reject_is_no_publish"
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "artifact_id": "calc.replay.r1.001",
+  "replay_class": "R1",
+  "description": "Candidate result remains distinct from publication until explicit accept-and-publish.",
+  "anchors": {
+    "actions": ["A4", "A5", "A7"],
+    "safety": ["S1", "S3"],
+    "transitions": ["C1", "C2", "C4", "I5", "I7"]
+  },
+  "initial_state": {
+    "struct_snapshot_id": "snapshot:1",
+    "published_view_id": "published:baseline",
+    "publication_id": "publication:baseline",
+    "node_calc_state": {
+      "node:3": "evaluating"
+    }
+  },
+  "events": [
+    {
+      "seq": 1,
+      "label": "candidate_admitted",
+      "transition": "C1",
+      "action": "A4",
+      "candidate_result_id": "candidate:1",
+      "struct_snapshot_id": "snapshot:1",
+      "compatibility_basis": "compat:v1",
+      "published_view_id": "published:baseline"
+    },
+    {
+      "seq": 2,
+      "label": "candidate_recorded",
+      "transition": "C2",
+      "action": "A5",
+      "candidate_result_id": "candidate:1",
+      "struct_snapshot_id": "snapshot:1",
+      "dependency_shape_update": "activate_dynamic_dep",
+      "published_view_id": "published:baseline",
+      "publication_visible": false
+    },
+    {
+      "seq": 3,
+      "label": "publication_committed",
+      "transition": "C4",
+      "action": "A7",
+      "candidate_result_id": "candidate:1",
+      "publication_id": "publication:1",
+      "published_view_id": "published:1",
+      "node_calc_state_after": "clean"
+    }
+  ],
+  "assertions": [
+    "candidate_result_is_not_publication_before_seq_3",
+    "published_view_unchanged_through_seq_2",
+    "publication_changes_only_at_seq_3"
+  ]
+}

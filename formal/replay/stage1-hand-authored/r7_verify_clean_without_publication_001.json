@@ -1,0 +1,60 @@
+{
+  "artifact_id": "calc.replay.r7.001",
+  "replay_class": "R7",
+  "description": "Verification-clean resolves demanded work without publication.",
+  "anchors": {
+    "actions": ["A1", "A2", "A3", "A3b"],
+    "safety": ["S2"],
+    "transitions": ["I1", "I2", "I3", "I4"]
+  },
+  "initial_state": {
+    "struct_snapshot_id": "snapshot:1",
+    "published_view_id": "published:baseline",
+    "publication_id": "publication:baseline",
+    "node_calc_state": {
+      "node:3": "clean"
+    }
+  },
+  "events": [
+    {
+      "seq": 1,
+      "label": "node_marked_dirty",
+      "transition": "I1",
+      "action": "A1",
+      "node_id": "node:3",
+      "node_calc_state_after": "dirty_pending"
+    },
+    {
+      "seq": 2,
+      "label": "node_marked_needed",
+      "transition": "I2",
+      "action": "A2",
+      "node_id": "node:3",
+      "node_calc_state_after": "needed"
+    },
+    {
+      "seq": 3,
+      "label": "evaluation_started",
+      "transition": "I3",
+      "action": "A3",
+      "node_id": "node:3",
+      "candidate_result_id": "candidate:verify-1",
+      "node_calc_state_after": "evaluating"
+    },
+    {
+      "seq": 4,
+      "label": "node_verified_clean",
+      "transition": "I4",
+      "action": "A3b",
+      "node_id": "node:3",
+      "node_calc_state_after": "verified_clean",
+      "published_view_id": "published:baseline",
+      "publication_visible": false
+    }
+  ],
+  "assertions": [
+    "verification_path_emits_no_publication",
+    "published_view_unchanged_after_verify_clean",
+    "demanded_work_resolved_without_commit_bundle"
+  ]
+}

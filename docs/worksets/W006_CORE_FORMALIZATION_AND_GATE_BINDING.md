@@ -53,7 +53,7 @@ Bind the rewritten OxCalc core-engine architecture to initial Lean, TLA+, replay
 - integration_completeness: partial
 - open_lanes:
   - the first Lean-facing and TLA+ skeleton artifacts now exist under `formal/`; the Lean file has been typechecked once locally, but the TLA+ file has not been model-checked in this repo yet
-  - replay artifacts and exercised pack evidence are still absent
+  - the first replay artifacts now exist as hand-authored Stage 1 seed artifacts, but pack evidence and emitted replay pipelines are still absent
   - narrower follow-on seam pressure may emerge from W008 and W009 once replay and trace fields are exercised
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

@@ -18,6 +18,8 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - first TLA+ skeleton for Stage 1 coordinator, publication, reject, pin, and recalc actions.
 3. `formal/tla/CoreEngineStage1.cfg`
    - first model-check configuration skeleton for the Stage 1 TLA+ module.
+4. `formal/replay/stage1-hand-authored/`
+   - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
 
 ## Status
 - execution_state: in_progress
@@ -27,5 +29,5 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 - open_lanes:
   - the Lean skeleton has been typechecked once locally, but no theorem authoring exists yet
   - no TLC or other TLA+ tool run has been executed in this repo yet
-  - replay and pack artifacts do not yet consume these formal artifacts
-  - the artifact set is still a first skeleton floor rather than a proof- or model-check-complete lane
+  - replay artifacts now exist only as hand-authored seed artifacts, not as harness- or oracle-emitted outputs
+  - the artifact set is still a first skeleton floor rather than a proof-, model-check-, or replay-pipeline-complete lane

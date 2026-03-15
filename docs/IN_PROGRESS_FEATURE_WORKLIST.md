@@ -56,7 +56,7 @@ Last updated: 2026-03-15.
 ### IP-06: Core Formalization and Gate Binding
 
 - **Status**: in-progress
-- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, and W008 now contains the first TLA+-oriented coordinator-state and safety-boundary packet. Successor planning worksets W009 and W010 remain in place for replay and pack binding and experiment planning.
+- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet, W009 contains the first replay-class and pack-binding packet, and W010 now contains the first experiment-register and measurement-schema packet.
 - **Remaining gaps**: actual Lean or TLA+ artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the remaining assurance-planning sequence.
-- **Why still open**: the assurance lane now has initial state and concurrency-model planning packets, but not yet exercised formal artifacts.
+- **Why still open**: the assurance lane now has initial state, concurrency-model, replay-binding, and measurement-planning packets, but not yet exercised formal, replay, or instrumentation artifacts.
 - **Canonical owner**: W006.

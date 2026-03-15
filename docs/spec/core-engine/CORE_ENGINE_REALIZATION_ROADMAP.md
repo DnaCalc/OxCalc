@@ -203,7 +203,6 @@ This is dependency-ordered, not date-ordered.
 12. `W012`: TraceCalc reference machine and conformance oracle.
 13. `W013`: Execution Sequence A for the first TreeCalc-first Stage 1 implementation wave.
 
-
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
 
@@ -239,8 +238,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - W013 now defines the first execution wave across W002 through W012, but none of its sub-phase gates have been discharged into implementation artifacts yet,
-  - replay artifacts are still missing for the newly accepted seam boundaries and the newly named Stage 1 transitions,
-  - Stage 2 sub-phase planning remains coarse,
-  - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted, seeded with an initial corpus, and tightened with a first artifact/diff policy, but not yet realized in validator, fixture, host, oracle, or replay artifacts
-
+  - W013 is now actively executing: the first structural, coordinator, and recalc implementation slices exist locally with passing tests, but the later assurance, harness, and oracle phases have not started in artifact form
+  - replay artifacts are still missing for the accepted seam boundaries and the implemented Stage 1 transitions
+  - Stage 1 scheduling is still a minimal tracker floor rather than the broader topo or SCC execution baseline called for by the roadmap
+  - self-contained harness, validator-runner, and oracle guidance remain spec_drafted but unrealized in executable artifacts

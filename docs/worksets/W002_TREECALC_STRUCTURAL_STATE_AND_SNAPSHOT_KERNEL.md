@@ -37,26 +37,26 @@ Define the implementation-facing TreeCalc structural kernel packet: stable ident
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
 | 2 | Pack expectations updated for affected packs? | no |
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
-| 4 | Semantic-equivalence statement provided for policy/strategy changes? | no |
+| 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
+| 6 | All required tests pass? | yes |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
-| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | no |
+| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
 | 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - stable-ID decision closure is not yet authored as an implementation packet
-  - snapshot record and projection API packet are not yet drafted
-  - pinned-reader obligations are not yet tied to replay or TLA+ artifacts
-  - no exercised kernel implementation exists
+  - the structural kernel is now scaffolded into executable code with passing snapshot and pinning tests, but replay and assurance bindings do not exist yet
+  - stable IDs, projection paths, and immutable successor construction are realized only for the current TreeCalc seed shape and builder floor
+  - formula-artifact attachment is still a minimal identifier carrier rather than a richer OxFml-integrated structural contract
+  - W003 and W004 now depend on concrete kernel code, but W007 and W008 have not yet consumed the implemented object names
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

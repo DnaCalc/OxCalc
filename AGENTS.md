@@ -75,14 +75,19 @@ A coordinator policy or scheduling change is not complete unless a semantic-equi
 
 ## 4. Continuation Behavior
 
-Mode: **checkpoint-at-gates** (conservative).
+Mode: **AutoRun** for `W013 Execution Sequence A`; otherwise **checkpoint-at-gates** (conservative).
 
-1. Agent must pause and report status at each workset gate boundary.
-2. AutoRun is disabled by default.
-3. AutoRun may only be enabled when explicitly requested by the user for a specific scope.
-4. Between gates, the agent may proceed autonomously within the declared workset scope.
+1. AutoRun is enabled for the declared scope `W013_EXECUTION_SEQUENCE_A_TREECALC_STAGE1_IMPLEMENTATION.md`.
+2. The AutoRun exit gate is the final gate declared in `W013_EXECUTION_SEQUENCE_A_TREECALC_STAGE1_IMPLEMENTATION.md`.
+3. While AutoRun is active for W013, the agent must continue across the numbered W013 sub-phases without pausing at intermediate workset gates unless:
+   - the W013 final gate is reached,
+   - a blocker requires `CURRENT_BLOCKERS.md` handling under Section 5,
+   - a cross-repo or destructive decision requires user confirmation,
+   - a direct conflict with user changes requires resolution.
+4. While AutoRun is active, the agent must still report brief status updates during execution and must checkpoint at meaningful sequence milestones, but those checkpoints do not suspend execution.
+5. Outside the declared W013 scope, the default mode remains checkpoint-at-gates.
 
-Rationale: premature completion is exacerbated by speed pressure. Conservative gate-pausing is the default until OxCalc has 5+ completed worksets with validated gate closures.
+Rationale: the user has explicitly authorized continuous execution for the first TreeCalc-first implementation wave, with W013 acting as the governing exit gate.
 
 ## 5. Blocker Handling
 
@@ -115,3 +120,4 @@ Scope exclusions (do not add attribution by default):
 2. Changes to shared seam specs (FEC/F3E coordinator-facing clauses, publication fences, scheduling interaction, rejection policy) require cross-repo impact assessment before promotion.
 3. When proposing changes that affect OxFml evaluator-facing clauses, file a handoff packet per OPERATIONS.md Section 5 and register it in `docs/handoffs/HANDOFF_REGISTER.csv`.
 4. Neither repo marks a seam change as "complete" until both sides acknowledge.
+

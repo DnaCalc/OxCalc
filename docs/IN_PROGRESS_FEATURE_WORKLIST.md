@@ -23,26 +23,26 @@ Last updated: 2026-03-15.
 
 ### IP-02: TreeCalc Structural State and Snapshot Kernel
 
-- **Status**: planned
-- **Current floor**: canonical architecture and state-kernel docs drafted; no exercised implementation.
-- **Remaining gaps**: stable-ID policy closure, immutable structural kernel realization, pinned-reader semantics, projection or facade realization.
-- **Why still open**: architecture is documented but not realized or verified yet.
+- **Status**: in-progress
+- **Current floor**: immutable structural snapshot, builder, projection lookup, and pinned structural view are now scaffolded in code with passing tests over snapshot construction, successor identity stability, and pinning behavior.
+- **Remaining gaps**: richer structural edit operations, formula-artifact integration depth, replay artifacts, and formal or assurance bindings.
+- **Why still open**: the kernel now exists as executable code, but only at the initial TreeCalc floor and without downstream assurance artifacts.
 - **Canonical owner**: W002.
 
 ### IP-03: Stage 1 Coordinator and Publication Baseline
 
 - **Status**: in-progress
-- **Current floor**: canonical coordinator and publication architecture drafted, and W003 now fixes the first implementation-facing Stage 1 candidate-result intake, publication bundle, typed reject floor, and coordinator transition packet; no exercised implementation.
-- **Remaining gaps**: single-publisher realization, accept/reject enforcement, atomic publication bundle realization, stable observer-visible state, replay-oriented reject-detail binding, and emitted publication artifacts.
-- **Why still open**: coordinator packet boundaries are now tighter, but realization, replay artifacts, and exercised behavior remain absent.
+- **Current floor**: canonical coordinator and publication architecture is drafted, and the local Stage 1 floor is now scaffolded in code with candidate intake, accepted-candidate recording, typed reject handling, atomic publish, pinned publication views, and passing tests for candidate-versus-publication separation and reject-is-no-publish behavior.
+- **Remaining gaps**: richer publication artifact emission, replay-oriented reject-detail binding, concurrency-facing safety realization, and emitted publication diagnostics.
+- **Why still open**: the sequential coordinator floor exists, but assurance, artifact emission, and broader realization remain partial.
 - **Canonical owner**: W003.
 
 ### IP-04: Incremental Recalc and Overlay Baseline
 
 - **Status**: in-progress
-- **Current floor**: canonical recalc and overlay architecture drafted, and W004 now fixes the first implementation-facing Stage 1 runtime-derived effect subset, dependency-shape handling subset, fallback floor, invalidation transition packet, and overlay retention matrix; no exercised implementation.
-- **Remaining gaps**: invalidation-state machine realization, verification-oriented incremental subset realization, overlay retention and eviction matrix completion, replay binding for the named effect subset, and fallback or economics instrumentation.
-- **Why still open**: the Stage 1 recalc packet is now tighter, but realization, replay binding, and evidence are not in place.
+- **Current floor**: canonical recalc and overlay architecture is drafted, and the local Stage 1 floor is now scaffolded in code with named invalidation states, overlay keys and entries, fallback transitions, release and eviction eligibility, and passing tests for publish, verify-clean, reject, and overlay-retention paths.
+- **Remaining gaps**: multi-node scheduling, topo or SCC execution, counter instrumentation, replay binding, richer runtime-effect handling, and broader overlay economics evidence.
+- **Why still open**: the recalc floor now exists as an executable single-node baseline, but it is not yet the broader Stage 1 engine slice the workset targets.
 - **Canonical owner**: W004.
 
 ### IP-05: OxFml Seam Hardening and Handoff Closure
@@ -76,4 +76,3 @@ Last updated: 2026-03-15.
 - **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
 - **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
 - **Canonical owner**: W012.
-

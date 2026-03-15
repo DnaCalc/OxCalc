@@ -127,7 +127,7 @@ These are the minimum implementation-facing handles needed to make the Stage 1 t
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
+| 6 | All required tests pass? | yes |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
@@ -139,11 +139,9 @@ These are the minimum implementation-facing handles needed to make the Stage 1 t
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the Stage 1 coordinator transition packet and state-variable floor are now explicit, but replay-class and TLA+ field binding still need W008 and W009 realization
-  - publish-bundle fields are explicit locally, but no conformance artifact or implementation exists yet
-  - reject-detail mapping still needs pack and trace binding in W009
-  - no exercised coordinator implementation exists
+  - the Stage 1 coordinator now has executable admission, accept, reject, publish, pin, and unpin logic with passing tests, but no replay or conformance artifacts exist yet
+  - publication bundle and reject-detail surfaces are still local implementation shapes rather than emitted artifact families
+  - the single-publisher floor is realized only for the sequential Stage 1 path; no concurrency-facing guarantees are exercised yet
+  - W008 and W009 still need to bind the implemented coordinator fields and transitions into authored TLA+ and replay artifacts
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
-
-

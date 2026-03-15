@@ -113,7 +113,7 @@ This matrix is the first Stage 1 floor for deterministic overlay reuse and evict
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
+| 6 | All required tests pass? | yes |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
@@ -125,11 +125,9 @@ This matrix is the first Stage 1 floor for deterministic overlay reuse and evict
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first invalidation transition packet and overlay retention matrix are now explicit, but finer transition detail and thresholds are still open
-  - replay and pack classes for the now-named dynamic-dependency subset still need W009 binding
-  - conservative fallback thresholds and observer-demand integration still need tightening
-  - no exercised recalc or overlay implementation exists
+  - the Stage 1 invalidation states, overlay key floor, fallback transition, and retention or eviction eligibility are now scaffolded in executable code with passing tests, but they remain a single-node baseline rather than a scheduler-rich engine slice
+  - topo or SCC scheduling, multi-node propagation, and richer observer-demand integration are still absent from the implementation floor
+  - W009 and W010 still need to bind the implemented transitions and overlay states into replay artifacts and counter families
+  - runtime-derived effect handling is still narrower in code than in the full Stage 1 spec packet and may yet force a follow-on seam handoff
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
-
-

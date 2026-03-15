@@ -266,7 +266,7 @@ It is the end of the first implementation wave that makes Stage 1 executable, me
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
+| 6 | All required tests pass? | yes |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
@@ -278,9 +278,8 @@ It is the end of the first implementation wave that makes Stage 1 executable, me
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this packet now defines the first execution wave, but none of the sequence sub-phases have been executed into implementation artifacts yet
+  - Sequences 1 through 3 are now scaffolded into local implementation code with passing tests, but the gate criteria remain only partially discharged because replay, assurance, and broader scheduling artifacts do not exist yet
   - W001 and W005 remain carried governance/integration lanes across the sequence
-  - the final gate depends on artifacts that do not exist yet across W002 through W012
+  - Sequences 4 through 10 still depend on authored Lean, TLA+, replay, measurement, harness, and oracle artifacts that have not been realized yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
-

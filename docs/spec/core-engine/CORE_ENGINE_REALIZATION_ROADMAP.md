@@ -202,9 +202,11 @@ This is dependency-ordered, not date-ordered.
 11. `W011`: core-engine test harness and self-contained fixture plan.
 12. `W012`: TraceCalc reference machine and conformance oracle.
 13. `W013`: Execution Sequence A for the first TreeCalc-first Stage 1 implementation wave.
+14. `W014`: Execution Sequence B for Stage 1 widening and evidence hardening.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
+`W014` is the follow-on operational packet that widens the Stage 1 baseline, hardens emitted evidence, and closes the largest remaining pre-concurrency gaps.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -239,6 +241,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - integration_completeness: partial
 - open_lanes:
   - W013 has now reached its final gate for the first TreeCalc Stage 1 implementation wave; the first structural, coordinator, recalc, Lean, TLA+, replay-seed, measurement-schema, harness, and oracle slices exist locally and the Lean state file has been typechecked once
+  - W014 is now defined as the next execution wave for multi-node scheduling, first SCC-oriented handling, emitted counters, and replay widening
   - replay artifacts now include both the hand-authored seed set for `R1`, `R2`, and `R7` and the emitted `w013-sequence-a-baseline` run that exercises `R1`, `R2`, `R7`, `R4`, and `R5`
   - measurement artifacts are schema-level only and are not emitted by running code yet
   - Stage 1 scheduling is still a minimal tracker floor rather than the broader topo or SCC execution baseline called for by the roadmap

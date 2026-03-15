@@ -156,6 +156,22 @@ The first step kinds should include:
 4. `seed_overlay`
 5. `reset_fixture`
 
+#### `pin_view` Step Fields
+1. `view_id`
+2. `snapshot_id`
+3. `observed_nodes`
+
+#### `unpin_view` Step Fields
+1. `view_id`
+
+#### `mark_stale` Step Fields
+1. `targets`
+
+#### `seed_overlay` Step Fields
+1. `overlay_kind`
+2. `owner_node_id`
+3. `payload`
+
 ### 7.2 Candidate Admission Step
 `admit_work` should contain:
 1. `compatibility_basis`
@@ -184,6 +200,10 @@ Optional fields:
 Each dependency shape update should contain:
 1. `node_id`
 2. `kind`
+
+Optional fields:
+1. `dep_id`
+2. `payload`
 
 Initial kinds:
 1. `none`
@@ -399,14 +419,15 @@ These examples are illustrative schema examples, not yet replay artifacts.
 ```
 
 ## 10. Corpus Direction
-The first authored self-contained corpus should include at least:
-1. accept-and-publish,
-2. reject-is-no-publish,
-3. candidate-result versus publication separation,
-4. pinned-view stability,
-5. dynamic dependency activation and release,
-6. overlay retention and release,
-7. one synthetic scale scenario with generator metadata.
+The first authored hand-auditable corpus now lives under `docs/test-corpus/core-engine/tracecalc/hand-auditable/`.
+
+The first authored hand-auditable corpus now includes:
+1. `tc_accept_publish_001`
+2. `tc_reject_no_publish_001`
+3. `tc_pinned_view_stability_001`
+4. `tc_dynamic_dep_switch_001`
+5. `tc_overlay_retention_001`
+6. `tc_scale_chain_seed_001`
 
 A later corpus may split into:
 1. hand-auditable scenarios,
@@ -417,10 +438,10 @@ A later corpus may split into:
 This schema intentionally leaves some details open for later realization work.
 
 Open but bounded areas:
-1. exact file location and naming convention for the first corpus,
-2. exact validator implementation,
-3. whether generated scale scenarios are checked in fully expanded or retained as generator inputs,
-4. exact trace event body schema beyond the label-count assertion layer defined here.
+1. exact validator implementation,
+2. whether generated scale scenarios are checked in fully expanded or retained as generator inputs,
+3. exact trace event body schema beyond the label-count assertion layer defined here,
+4. exact replay-pack binding shape for these corpus files.
 
 These are no longer allowed to block fixture authoring.
 
@@ -430,9 +451,11 @@ These are no longer allowed to block fixture authoring.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no concrete corpus files or fixture runner exist yet
+  - the initial hand-auditable corpus now exists, but no validator or fixture runner consumes it yet
   - candidate-result and reject payloads still need final alignment with W003 and W004 realization packets
   - exact trace event body schema remains narrower than the future replay artifact schema
-  - corpus-location and validator implementation details are still open
+  - exact validator implementation and replay-pack binding details are still open
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+
+

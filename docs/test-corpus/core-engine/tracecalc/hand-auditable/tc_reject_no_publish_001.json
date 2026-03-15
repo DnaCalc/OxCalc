@@ -1,0 +1,50 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_reject_no_publish_001",
+  "description": "typed reject preserves the prior published view",
+  "calc_space": "TraceCalc",
+  "tags": ["reject", "publication"],
+  "pack_tags": ["stage1", "reject-is-no-publish"],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      { "node_id": "A", "kind": "value", "expr": { "op": "const", "value": 2 } },
+      { "node_id": "B", "kind": "value", "expr": { "op": "cap_gate", "required_capability": "fmt", "dep": "A" } }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      { "node_id": "A", "value": 2 },
+      { "node_id": "B", "value": 2 }
+    ]
+  },
+  "steps": [
+    { "step_id": "st1", "kind": "admit_work", "admission_id": "adm1", "compatibility_basis": "s0", "targets": ["B"] },
+    {
+      "step_id": "st2",
+      "kind": "emit_reject",
+      "reject_id": "rej1",
+      "reject_kind": "capability_mismatch",
+      "reject_detail": { "required_capability": "fmt", "observed_capability": "none" },
+      "diagnostic_events": []
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        { "node_id": "A", "value": 2 },
+        { "node_id": "B", "value": 2 }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      { "label": "candidate_admitted", "count": 1 },
+      { "label": "candidate_rejected", "count": 1 }
+    ],
+    "counter_expectations": [],
+    "rejects": [
+      { "reject_id": "rej1", "reject_kind": "capability_mismatch", "detail_contains": "fmt" }
+    ]
+  }
+}

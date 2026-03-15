@@ -1,0 +1,80 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_scale_chain_seed_001",
+  "description": "small explicit chain-sum scenario carrying generator metadata for later scale expansion",
+  "calc_space": "TraceCalc",
+  "tags": ["scale", "generator"],
+  "pack_tags": ["stage1", "economics-seed"],
+  "generator": {
+    "kind": "chain_sum",
+    "node_count": 12,
+    "base_value": 1,
+    "generated_from_seed": true
+  },
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      { "node_id": "N01", "kind": "value", "expr": { "op": "const", "value": 1 } },
+      { "node_id": "N02", "kind": "value", "expr": { "op": "sum", "deps": ["N01"] } },
+      { "node_id": "N03", "kind": "value", "expr": { "op": "sum", "deps": ["N02"] } },
+      { "node_id": "N04", "kind": "value", "expr": { "op": "sum", "deps": ["N03"] } },
+      { "node_id": "N05", "kind": "value", "expr": { "op": "sum", "deps": ["N04"] } },
+      { "node_id": "N06", "kind": "value", "expr": { "op": "sum", "deps": ["N05"] } },
+      { "node_id": "N07", "kind": "value", "expr": { "op": "sum", "deps": ["N06"] } },
+      { "node_id": "N08", "kind": "value", "expr": { "op": "sum", "deps": ["N07"] } },
+      { "node_id": "N09", "kind": "value", "expr": { "op": "sum", "deps": ["N08"] } },
+      { "node_id": "N10", "kind": "value", "expr": { "op": "sum", "deps": ["N09"] } },
+      { "node_id": "N11", "kind": "value", "expr": { "op": "sum", "deps": ["N10"] } },
+      { "node_id": "N12", "kind": "value", "expr": { "op": "sum", "deps": ["N11"] } }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      { "node_id": "N01", "value": 1 },
+      { "node_id": "N02", "value": 1 },
+      { "node_id": "N03", "value": 1 },
+      { "node_id": "N04", "value": 1 },
+      { "node_id": "N05", "value": 1 },
+      { "node_id": "N06", "value": 1 },
+      { "node_id": "N07", "value": 1 },
+      { "node_id": "N08", "value": 1 },
+      { "node_id": "N09", "value": 1 },
+      { "node_id": "N10", "value": 1 },
+      { "node_id": "N11", "value": 1 },
+      { "node_id": "N12", "value": 1 }
+    ]
+  },
+  "steps": [
+    { "step_id": "st1", "kind": "mark_stale", "targets": ["N12"] },
+    { "step_id": "st2", "kind": "admit_work", "admission_id": "adm1", "compatibility_basis": "s0", "targets": ["N12"] },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand1",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        { "node_id": "N12", "value": 1 }
+      ],
+      "dependency_shape_updates": [],
+      "runtime_effects": [],
+      "diagnostic_events": []
+    },
+    { "step_id": "st4", "kind": "publish_candidate", "candidate_result_id": "cand1", "publication_id": "pub1" }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        { "node_id": "N12", "value": 1 }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      { "label": "candidate_admitted", "count": 1 },
+      { "label": "candidate_emitted", "count": 1 },
+      { "label": "candidate_published", "count": 1 }
+    ],
+    "counter_expectations": [],
+    "rejects": []
+  }
+}

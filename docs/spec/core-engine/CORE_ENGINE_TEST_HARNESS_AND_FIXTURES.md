@@ -346,8 +346,8 @@ The first realized harness does not need:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no fixture or host implementation exists yet
-  - `TraceCalc` scenario schema is now defined, but no concrete scenario corpus or runner exists yet
+  - the initial hand-auditable corpus now exists, but no validator, fixture library, or host implementation exists yet
+  - `TraceCalc` scenario schema and initial corpus are now defined, but no runner consumes them yet
   - replay-pack ownership and exact artifact locations still need binding through W009
   - OxFml-integrated harness coverage still remains a later companion lane
 - claim_confidence: provisional

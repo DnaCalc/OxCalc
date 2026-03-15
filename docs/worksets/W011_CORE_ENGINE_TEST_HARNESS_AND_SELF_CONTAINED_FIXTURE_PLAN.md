@@ -177,9 +177,9 @@ The concrete harness companion specs are now drafted at `docs/spec/core-engine/C
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the supporting harness companion spec is now drafted, but no harness or fixture artifact has been authored yet
+  - the supporting harness companion specs and first hand-auditable corpus are now drafted, but no validator, fixture, or host artifact has been authored yet
   - exact minimal test-double payload shape still needs final alignment with W003 and W004 packets
-  - the `TraceCalc` scenario schema is now defined, but no scenario corpus or validator artifact has been authored yet
+  - the `TraceCalc` scenario schema and first corpus slice are now defined, but no validator artifact has been authored yet
   - no scriptable host schema or fixture implementation exists yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

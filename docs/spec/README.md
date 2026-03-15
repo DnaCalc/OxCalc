@@ -19,6 +19,10 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`
   - supporting companion defining canonical JSON scenario schema and the first concrete `TraceCalc` surface.
 
+## Seed Test Corpus
+- `docs/test-corpus/core-engine/tracecalc/README.md`
+  - first checked-in self-contained `TraceCalc` scenario corpus.
+
 ## Archived Rewrite-Control Material
 The rewrite-control artifacts used to establish the canonical set are preserved for provenance under:
 - `docs/spec/core-engine/archive/rewrite-control-2026-03/`

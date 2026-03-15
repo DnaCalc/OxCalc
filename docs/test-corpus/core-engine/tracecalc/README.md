@@ -33,6 +33,7 @@ Current scenarios:
 This corpus is authored against:
 1. `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`
 2. `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`
+3. `docs/spec/core-engine/CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`
 
 ## Status
 - execution_state: in_progress
@@ -40,6 +41,6 @@ This corpus is authored against:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no validator or fixture runner consumes this corpus yet
+  - the validator-runner contract is now defined, but no validator or fixture runner consumes this corpus yet
   - no replay-pack artifact binds to these scenarios yet
   - generated large-graph corpus lanes are still unauthored

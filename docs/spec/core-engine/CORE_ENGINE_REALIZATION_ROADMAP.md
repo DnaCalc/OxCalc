@@ -227,7 +227,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 2. exact thresholds for economics-based promotion,
 3. exact replay corpus shape for multi-stage coordinator traces,
 4. exact first realized pack set for W009 execution,
-5. exact validator shape, replay-pack binding layout, and generated-scenario retention policy for the self-contained harness.
+5. exact emitted-artifact root, replay-pack binding layout, and generated-scenario retention policy for the self-contained harness.
 
 ## 16. Status
 - execution_state: in_progress
@@ -238,5 +238,5 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - workset decomposition is now expanded, and W007 through W011 now include substantive planning packets plus a drafted harness companion spec, but not yet exercised assurance artifacts,
   - replay artifacts are still missing for the newly accepted seam boundaries,
   - Stage 2 sub-phase planning remains coarse,
-  - self-contained harness and scenario guidance are now spec_drafted and seeded with an initial corpus, but not yet realized in validator, fixture, host, or replay artifacts
+  - self-contained harness, scenario, and validator-runner guidance are now spec_drafted and seeded with an initial corpus, but not yet realized in validator, fixture, host, or replay artifacts
 

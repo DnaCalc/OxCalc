@@ -18,6 +18,8 @@ The rewritten canonical core-engine set is:
   - supporting companion for self-contained fixture, scenario, and alternate calculation-space design.
 - `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`
   - supporting companion defining canonical JSON scenario schema and the first concrete `TraceCalc` surface.
+- `docs/spec/core-engine/CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`
+  - supporting companion defining how the self-contained corpus is validated, executed, and emitted as run artifacts.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

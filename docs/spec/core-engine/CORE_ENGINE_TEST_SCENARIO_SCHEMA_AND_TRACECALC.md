@@ -17,9 +17,11 @@ This document refines:
 2. `CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`,
 3. `CORE_ENGINE_OXFML_SEAM.md`,
 4. `CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`,
-5. `W009`, `W010`, and `W011`.
+5. `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`,
+6. `W009`, `W010`, and `W011`.
 
 Its purpose is to make the first fixture and host implementation authorable without reopening basic schema choices.
+The concrete validator and runner consumption contract for this schema is defined in `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`.
 
 ## 3. Canonical Scenario Serialization
 The canonical scenario serialization for the self-contained harness should be:
@@ -451,7 +453,7 @@ These are no longer allowed to block fixture authoring.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the initial hand-auditable corpus now exists, but no validator or fixture runner consumes it yet
+  - the initial hand-auditable corpus and validator-runner contract now exist, but no validator or fixture runner consumes them yet
   - candidate-result and reject payloads still need final alignment with W003 and W004 realization packets
   - exact trace event body schema remains narrower than the future replay artifact schema
   - exact validator implementation and replay-pack binding details are still open

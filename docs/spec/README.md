@@ -16,6 +16,8 @@ The rewritten canonical core-engine set is:
 ## Supporting Realization and Test Docs
 - `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`
   - supporting companion for self-contained fixture, scenario, and alternate calculation-space design.
+- `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`
+  - supporting companion defining canonical JSON scenario schema and the first concrete `TraceCalc` surface.
 
 ## Archived Rewrite-Control Material
 The rewrite-control artifacts used to establish the canonical set are preserved for provenance under:

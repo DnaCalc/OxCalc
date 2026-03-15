@@ -23,7 +23,8 @@ It binds together:
 2. `CORE_ENGINE_OXFML_SEAM.md`,
 3. `CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`,
 4. `CORE_ENGINE_REALIZATION_ROADMAP.md`,
-5. `W003`, `W004`, `W009`, `W010`, and `W011`.
+5. `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`,
+6. `W003`, `W004`, `W009`, `W010`, and `W011`.
 
 ## 3. Harness Goals
 The self-contained harness should let OxCalc test:
@@ -227,7 +228,7 @@ The intended top-level fields are:
 8. `expected_views`
 9. `pack_tags`
 
-This is a direction for authoring; the exact serialization format remains an implementation choice.
+The concrete first schema and canonical JSON serialization are now defined in `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`.
 
 ## 8. Alternate Calculation Space
 OxCalc should define a small alternate calculation space for engine-only tests.
@@ -237,6 +238,8 @@ Without it, core-engine testing remains too tightly coupled to Excel-language an
 
 ### 8.1 Name and Role
 The alternate space should be treated as a synthetic test language.
+
+The first concrete schema for `TraceCalc` scenarios is defined in `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`.
 
 Working name:
 1. `TraceCalc`
@@ -344,7 +347,7 @@ The first realized harness does not need:
 - integration_completeness: partial
 - open_lanes:
   - no fixture or host implementation exists yet
-  - `TraceCalc` scenario schema is directed here, but not yet bound to a concrete file format
+  - `TraceCalc` scenario schema is now defined, but no concrete scenario corpus or runner exists yet
   - replay-pack ownership and exact artifact locations still need binding through W009
   - OxFml-integrated harness coverage still remains a later companion lane
 - claim_confidence: provisional

@@ -27,6 +27,7 @@ Define the self-contained OxCalc test harness shape needed to test coordinator, 
 3. Scriptable host packet for deterministic scenario authoring.
 4. Alternate calculation-space packet for correctness and scaling tests independent of Excel semantics.
 5. Companion spec note at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md` tying those deliverables into the active spec library.
+6. Companion schema note at `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md` defining canonical JSON scenario structure and the first concrete `TraceCalc` surface.
 
 ## Gate Model
 ### Entry gate
@@ -39,6 +40,7 @@ Define the self-contained OxCalc test harness shape needed to test coordinator, 
 - The minimum OxFml test-double interface is explicit enough to avoid coupling core-engine tests to the full formula language.
 - The alternate calculation space is explicit enough to support correctness and scale experiments with traceable semantics.
 - The supporting harness companion spec is drafted and linked from this workset.
+- The first concrete `TraceCalc` scenario schema is drafted and linked from this workset.
 
 ## Minimal OxFml Test-Double Interface Surface
 The self-contained harness should define the smallest evaluator-facing surface OxCalc needs for Stage 1 tests.
@@ -140,7 +142,7 @@ Its purpose is to test OxCalc's engine behavior, not Excel-language fidelity.
 4. it avoids blocking core-engine testing on full OxFml completeness
 
 ## Harness Companion Binding
-The concrete harness companion spec is now drafted at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md` and should feed:
+The concrete harness companion specs are now drafted at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md` and `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md` and should feed:
 1. W003 for coordinator fixture expectations
 2. W004 for invalidation, overlay, and fallback scenarios
 3. W009 for replay corpus authoring
@@ -177,7 +179,7 @@ The concrete harness companion spec is now drafted at `docs/spec/core-engine/COR
 - open_lanes:
   - the supporting harness companion spec is now drafted, but no harness or fixture artifact has been authored yet
   - exact minimal test-double payload shape still needs final alignment with W003 and W004 packets
-  - the alternate calculation-space semantics are now named as `TraceCalc`, but not yet bound to a concrete scenario file format
+  - the `TraceCalc` scenario schema is now defined, but no scenario corpus or validator artifact has been authored yet
   - no scriptable host schema or fixture implementation exists yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

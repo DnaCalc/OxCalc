@@ -228,7 +228,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 2. exact thresholds for economics-based promotion,
 3. exact replay corpus shape for multi-stage coordinator traces,
 4. exact first realized pack set for W009 execution,
-5. exact emitted-artifact root, replay-pack binding layout, generated-scenario retention policy, and first oracle-to-engine diff policy.
+5. exact replay-pack binding layout and generated-scenario retention policy after the now-closed first artifact-root and diff-policy decisions.
 
 ## 16. Status
 - execution_state: in_progress
@@ -239,5 +239,5 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - workset decomposition is now expanded, and W007 through W012 now include substantive planning packets plus drafted harness and oracle companions, but not yet exercised assurance artifacts,
   - replay artifacts are still missing for the newly accepted seam boundaries,
   - Stage 2 sub-phase planning remains coarse,
-  - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted and seeded with an initial corpus, but not yet realized in validator, fixture, host, oracle, or replay artifacts
+  - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted, seeded with an initial corpus, and tightened with a first artifact/diff policy, but not yet realized in validator, fixture, host, oracle, or replay artifacts
 

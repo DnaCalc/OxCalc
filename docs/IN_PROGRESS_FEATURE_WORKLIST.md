@@ -65,14 +65,16 @@ Last updated: 2026-03-15.
 
 - **Status**: in-progress
 - **Current floor**: `W011` now has a planning packet, three supporting spec companions, and a first checked-in hand-auditable `TraceCalc` corpus covering the minimal OxFml test-double surface, fixture lifecycle direction, canonical JSON scenario shape, validator-runner consumption contract, and the alternate calculation space for engine-only testing.
-- **Remaining gaps**: final test-double payload alignment, validator and scriptable host realization, emitted-artifact location closure, replay-pack binding, generated-corpus lanes, and later fixture implementation.
+- **Remaining gaps**: final test-double payload alignment, validator and scriptable host realization, replay-pack binding, generated-corpus lanes, and later fixture implementation.
 - **Why still open**: harness, scenario, and consumption guidance are now spec_drafted and seeded with an initial corpus, but no validator, fixture, host, or replay artifacts exist yet.
 - **Canonical owner**: W011.
+
 ### IP-08: TraceCalc Reference Machine and Conformance Oracle
 
 - **Status**: in-progress
-- **Current floor**: `W012` now defines the first canonical oracle lane for a `TraceCalc Reference Machine`, including the reference state model, transition set, conformance surface, and later-engine comparison doctrine.
-- **Remaining gaps**: reference-machine implementation, emitted-artifact root closure, richer trace comparison policy, and the first actual engine-versus-oracle conformance run.
+- **Current floor**: `W012` now defines the first canonical oracle lane for a `TraceCalc Reference Machine`, including the reference state model, transition set, canonical artifact root, first diff policy, conformance surface, and later-engine comparison doctrine.
+- **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
 - **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
 - **Canonical owner**: W012.
+
 

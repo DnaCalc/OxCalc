@@ -29,6 +29,7 @@ Define the `TraceCalc Reference Machine` as the first executable conformance ora
 2. Explicit reference-machine state and transition inventory sufficient to implement a first deterministic interpreter.
 3. Explicit conformance surface naming what later engines must match.
 4. Roadmap and feature-register integration for the reference-machine lane.
+5. Closed first-pass policy for artifact layout and oracle-to-engine diff behavior.
 
 ## Gate Model
 ### Entry gate
@@ -43,6 +44,7 @@ Define the `TraceCalc Reference Machine` as the first executable conformance ora
 - The observed artifact surface is explicit enough to compare later engine outputs against the oracle.
 - The conformance rule is explicit enough to state when a later engine matches or diverges from the oracle.
 - The lane is integrated into the active roadmap and workset sequence.
+- The first-pass artifact layout and diff policy are explicit enough to implement directly.
 
 ## State-Model Direction
 The reference machine should align with:
@@ -91,9 +93,9 @@ The first conformance surface should require matching at least:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the oracle doctrine and companion spec are now drafted, but no reference-machine implementation exists yet
-  - emitted artifact root and naming policy are still open
+  - the oracle doctrine and companion spec are now drafted with first-pass artifact and diff policy, but no reference-machine implementation exists yet
   - richer trace-payload comparison policy is still open beyond the first declared conformance surface
   - no conformance run exists yet comparing an engine implementation to the oracle
+  - no emitted run artifacts exist yet at the canonical artifact root
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

@@ -191,7 +191,26 @@ The machine must emit the canonical observed artifacts later engines are compare
 7. canonical reject artifact where relevant,
 8. conformance-ready metadata.
 
-### 10.2 Artifact Intent
+### 10.2 Canonical Artifact Root
+The first canonical artifact root for oracle and conformance outputs is:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/`
+
+Each oracle or comparison run should emit into:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/<run_id>/`
+
+The expected normalized layout under `<run_id>` is:
+1. `run_summary.json`
+2. `manifest_selection.json`
+3. `scenarios/<scenario_id>/result.json`
+4. `scenarios/<scenario_id>/trace.json`
+5. `scenarios/<scenario_id>/counters.json`
+6. `scenarios/<scenario_id>/published_view.json`
+7. `scenarios/<scenario_id>/pinned_views.json`
+8. `scenarios/<scenario_id>/rejects.json`
+9. `conformance/oracle_baseline.json` for oracle-only normalized comparison surfaces
+10. `conformance/engine_diff.json` for engine-versus-oracle comparison results
+
+### 10.3 Artifact Intent
 These artifacts are not only diagnostics.
 They are the observable semantic surface used for conformance comparison.
 
@@ -214,7 +233,29 @@ The first conformance comparison may allow differences in:
 3. performance metrics,
 4. richer trace payload fields not yet promoted to required comparison surfaces.
 
-### 11.3 Failure Meaning
+### 11.3 First Diff Policy
+The first oracle-to-engine diff policy should compare surfaces in this order:
+1. scenario presence and result state,
+2. published view,
+3. pinned views,
+4. typed rejects,
+5. trace label counts,
+6. counters,
+7. optional richer trace payloads only when explicitly enabled.
+
+The first diff policy should emit typed mismatch kinds at least for:
+1. `missing_scenario_result`,
+2. `result_state_mismatch`,
+3. `published_view_mismatch`,
+4. `pinned_view_mismatch`,
+5. `reject_mismatch`,
+6. `trace_count_mismatch`,
+7. `counter_mismatch`,
+8. `unexpected_extra_artifact`.
+
+Richer trace payload mismatches should be treated as informational unless the compared field has been promoted into the required equality surface.
+
+### 11.4 Failure Meaning
 A mismatch against the reference machine should be treated as:
 1. a semantic regression,
 2. an incomplete implementation,
@@ -276,8 +317,8 @@ This is the intended anti-regression and anti-premature-optimization gate.
 - integration_completeness: partial
 - open_lanes:
   - no reference-machine implementation exists yet
-  - exact emitted artifact root and naming policy are still open
-  - comparison policy for richer trace payloads still needs tightening
-  - production-engine conformance workflow remains unauthored beyond the high-level contract
+  - production-engine conformance workflow remains unauthored beyond the first diff policy
+  - richer trace payload promotion remains a later tightening lane
+  - no engine-versus-oracle conformance run exists yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

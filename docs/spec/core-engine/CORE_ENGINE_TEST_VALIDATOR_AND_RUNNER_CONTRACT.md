@@ -149,10 +149,32 @@ The first runner lifecycle should have explicit phases.
 3. emit counter snapshot,
 4. emit assertion details.
 
-## 7. Artifact Shapes
+## 7. Artifact Root and Naming Policy
+The first canonical artifact root for self-contained reference-machine and runner outputs is:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/`
+
+Each run should emit into:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/<run_id>/`
+
+The first canonical file layout under `<run_id>` is:
+1. `run_summary.json`
+2. `manifest_selection.json`
+3. `scenarios/<scenario_id>/result.json`
+4. `scenarios/<scenario_id>/trace.json`
+5. `scenarios/<scenario_id>/counters.json`
+6. `scenarios/<scenario_id>/published_view.json`
+7. `scenarios/<scenario_id>/pinned_views.json`
+8. `scenarios/<scenario_id>/rejects.json`
+9. `conformance/oracle_baseline.json` when the run is an oracle run
+10. `conformance/engine_diff.json` when the run is a comparison run
+
+This layout is canonical for the first implementation slice.
+Alternative transient local output locations may exist during development, but any checked-in or pack-bound artifact should normalize to this layout.
+
+## 8. Artifact Shapes
 The first realized runner should emit data-first artifacts rather than ad hoc console text only.
 
-### 7.1 Run Summary
+### 8.1 Run Summary
 The run summary should contain:
 1. `run_id`,
 2. `schema_version`,
@@ -160,7 +182,7 @@ The run summary should contain:
 4. `result_counts`,
 5. `artifact_root`.
 
-### 7.2 Per-Scenario Result
+### 8.2 Per-Scenario Result
 Each per-scenario result should contain:
 1. `scenario_id`,
 2. `result_state`,
@@ -168,7 +190,7 @@ Each per-scenario result should contain:
 4. `assertion_failures`,
 5. `artifact_paths`.
 
-### 7.3 Trace Artifact
+### 8.3 Trace Artifact
 The first trace artifact should contain:
 1. `scenario_id`,
 2. `run_id`,
@@ -180,7 +202,7 @@ Each event should contain at least:
 3. `label`,
 4. `payload`.
 
-### 7.4 Counter Snapshot
+### 8.4 Counter Snapshot
 The first counter artifact should contain:
 1. `scenario_id`,
 2. `counters`.
@@ -189,26 +211,26 @@ Each counter entry should contain:
 1. `counter`,
 2. `value`.
 
-## 8. Failure Semantics
+## 9. Failure Semantics
 The runner must distinguish scenario invalidity from execution failure.
 
-### 8.1 Invalid Scenario
+### 9.1 Invalid Scenario
 This means validation failed before execution.
 No scenario-execution trace should be emitted.
 
-### 8.2 Failed Assertion
+### 9.2 Failed Assertion
 This means execution succeeded, but expected state did not match observed state.
 Trace and counter artifacts must still be emitted.
 
-### 8.3 Execution Error
+### 9.3 Execution Error
 This means the harness or runner could not complete deterministic execution.
 Partial artifacts may be emitted, but the error must be typed.
 
-### 8.4 Unsupported Feature
+### 9.4 Unsupported Feature
 This means the scenario uses a feature that the current runner intentionally does not realize yet.
 This should be explicit, not silently downgraded.
 
-## 9. Manifest and Selection Contract
+## 10. Manifest and Selection Contract
 The first runner should support:
 1. run all scenarios in the manifest,
 2. run one named scenario,
@@ -217,7 +239,7 @@ The first runner should support:
 Selection must not change scenario semantics.
 It only changes which validated scenarios are executed.
 
-## 10. Relationship To Replay Packs
+## 11. Relationship To Replay Packs
 The validator and runner contract should be replay-pack aware, even before replay-pack artifacts are finalized.
 
 That means the runner should preserve:
@@ -229,7 +251,7 @@ That means the runner should preserve:
 
 W009 remains the place where those artifacts are promoted into pack obligations.
 
-## 11. Realization Direction
+## 12. Realization Direction
 The first realized validator and runner slice should likely be:
 1. manifest loader,
 2. scenario validator,
@@ -243,15 +265,15 @@ It does not need yet:
 3. full replay-pack export,
 4. generated-corpus expansion.
 
-## 12. Status
+## 13. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
   - no validator, runner, or reference-machine implementation exists yet
-  - exact on-disk artifact root for emitted run artifacts is still open
   - candidate-result and reject payload alignment with W003 and W004 still needs tightening
   - replay-pack fragment shape remains a W009 follow-on lane
+  - generated-corpus execution policy remains a later lane
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

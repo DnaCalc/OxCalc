@@ -278,8 +278,8 @@ It is the end of the first implementation wave that makes Stage 1 executable, me
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - Sequences 1 through 7 are now scaffolded into local code, first formal artifact skeletons, and first replay seed artifacts, but the gate criteria remain only partially discharged because measurement, harness, and oracle artifacts do not exist yet
+  - Sequences 1 through 8 are now scaffolded into local code, first formal artifact skeletons, replay seed artifacts, and measurement schemas, but the gate criteria remain only partially discharged because harness and oracle artifacts do not exist yet
   - W001 and W005 remain carried governance/integration lanes across the sequence
-  - Sequences 8 through 10 still depend on authored counter, harness, and oracle artifacts that have not been realized yet
+  - Sequences 9 and 10 still depend on authored harness and oracle artifacts that have not been realized yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

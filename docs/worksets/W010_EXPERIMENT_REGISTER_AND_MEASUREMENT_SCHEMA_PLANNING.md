@@ -243,9 +243,9 @@ The planning rule is simple: counters must be explainable by replay class and pr
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - experiment register and counter families now exist, but no instrumentation artifacts have been authored yet
-  - W004 still needs to provide the tighter dynamic-dependency and overlay packet that several counters depend on
-  - Stage 2 reserved counters are intentionally not yet realized
-  - no promotion-threshold evidence rules are closed yet
+  - the first machine-readable Stage 1 counter schema and experiment register now exist under `formal/measurement/`, but no runtime instrumentation emits them yet
+  - replay-linked summaries, regression thresholds, and scenario-level counter snapshots are still absent
+  - W004 still needs to provide tighter runtime-effect and overlay detail before several counters become operationally meaningful
+  - Stage 2 reserved counters remain intentionally declarative only
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

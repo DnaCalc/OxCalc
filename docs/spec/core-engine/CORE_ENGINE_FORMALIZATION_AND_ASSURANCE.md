@@ -233,6 +233,7 @@ These remain assurance-planning questions within the now-locked architecture:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first Lean, TLA+, and hand-authored replay seed artifacts now exist under `formal/`; the Lean file has been typechecked locally, but no TLA+ tool execution has been performed yet
+  - the first Lean, TLA+, replay-seed, and measurement-schema artifacts now exist under `formal/`; the Lean file has been typechecked locally, but no TLA+ tool execution has been performed yet
   - replay and pack pipelines are still absent even though the first replay artifacts now exist on disk
+  - runtime instrumentation has not yet begun emitting the counter schema that now exists on disk
   - handoff packet text for shared trace/reject clauses is still only partially exercised

@@ -1,0 +1,71 @@
+{
+  "schema_id": "oxcalc.stage1.counter-schema.v1",
+  "description": "First Stage 1 counter schema aligned to W010 families and W009 replay classes.",
+  "families": [
+    {
+      "family_id": "C1",
+      "name": "candidate_and_publication",
+      "replay_classes": ["R1", "R2", "R3"],
+      "pack_hooks": ["PACK.fec.commit_atomicity", "PACK.fec.reject_detail_replay"],
+      "counters": [
+        { "counter_id": "candidate_admissions", "unit": "count", "description": "Candidate admissions accepted by the coordinator." },
+        { "counter_id": "accepted_candidate_results", "unit": "count", "description": "Accepted candidate results recorded before publication." },
+        { "counter_id": "publications_committed", "unit": "count", "description": "Atomic publication bundles committed by the coordinator." },
+        { "counter_id": "rejects_by_class", "unit": "map<count>", "description": "Typed reject counts keyed by reject class." },
+        { "counter_id": "abandoned_candidates", "unit": "count", "description": "Candidate results that never reached publication." }
+      ]
+    },
+    {
+      "family_id": "C2",
+      "name": "pinned_reader_and_retention",
+      "replay_classes": ["R4", "R5"],
+      "pack_hooks": ["PACK.concurrent.epochs", "PACK.fec.overlay_lifecycle"],
+      "counters": [
+        { "counter_id": "pinned_reader_count", "unit": "count", "description": "Current number of active pinned readers." },
+        { "counter_id": "pin_lifetime_bucket", "unit": "histogram", "description": "Distribution of pin lifetimes by scenario or run." },
+        { "counter_id": "release_events", "unit": "count", "description": "Reader-release events observed." },
+        { "counter_id": "retention_blocked_cleanup", "unit": "count", "description": "Cleanup attempts blocked by protection." },
+        { "counter_id": "eviction_eligibility_opened", "unit": "count", "description": "Retention entries made eviction-eligible after release." }
+      ]
+    },
+    {
+      "family_id": "C3",
+      "name": "invalidation_and_fallback",
+      "replay_classes": ["R7", "R8"],
+      "pack_hooks": ["PACK.dag.dynamic_dependency_bind_semantics", "PACK.overlay.fallback_economics"],
+      "counters": [
+        { "counter_id": "nodes_marked_dirty", "unit": "count", "description": "Nodes transitioned into dirty pending." },
+        { "counter_id": "nodes_marked_needed", "unit": "count", "description": "Nodes transitioned into needed." },
+        { "counter_id": "verified_clean_nodes", "unit": "count", "description": "Verification-clean resolutions without publication." },
+        { "counter_id": "fallback_by_reason", "unit": "map<count>", "description": "Fallback counts keyed by reason." },
+        { "counter_id": "fallback_affected_work_volume", "unit": "count", "description": "Work volume touched by fallback paths." }
+      ]
+    },
+    {
+      "family_id": "C4",
+      "name": "overlay_economics",
+      "replay_classes": ["R5", "R8"],
+      "pack_hooks": ["PACK.fec.overlay_lifecycle", "PACK.overlay.fallback_economics"],
+      "counters": [
+        { "counter_id": "overlay_lookups", "unit": "count", "description": "Overlay key lookups attempted." },
+        { "counter_id": "overlay_hits", "unit": "count", "description": "Overlay lookups that found a reusable entry." },
+        { "counter_id": "overlay_misses", "unit": "count", "description": "Overlay lookups that missed." },
+        { "counter_id": "overlay_creations", "unit": "count", "description": "Overlay entries created." },
+        { "counter_id": "overlay_evictions", "unit": "count", "description": "Overlay entries evicted." },
+        { "counter_id": "overlay_reuse_after_retention", "unit": "count", "description": "Reuses after a prior protected-retention interval." }
+      ]
+    },
+    {
+      "family_id": "C5",
+      "name": "stage2_reserved",
+      "replay_classes": [],
+      "pack_hooks": ["PACK.concurrent.epochs"],
+      "counters": [
+        { "counter_id": "contention_by_class", "unit": "map<count>", "description": "Reserved Stage 2 contention counts keyed by class." },
+        { "counter_id": "retry_by_class", "unit": "map<count>", "description": "Reserved Stage 2 retry counts keyed by class." },
+        { "counter_id": "overlapping_in_flight_work", "unit": "count", "description": "Reserved Stage 2 overlapping work count." },
+        { "counter_id": "publish_order_replay_signature", "unit": "count", "description": "Reserved Stage 2 publish-order replay signature count." }
+      ]
+    }
+  ]
+}

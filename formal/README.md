@@ -20,6 +20,10 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - first model-check configuration skeleton for the Stage 1 TLA+ module.
 4. `formal/replay/stage1-hand-authored/`
    - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
+5. `formal/measurement/stage1_counter_schema.json`
+   - first machine-readable Stage 1 counter schema.
+6. `formal/measurement/stage1_experiment_register.json`
+   - first machine-readable Stage 1 experiment register.
 
 ## Status
 - execution_state: in_progress
@@ -30,4 +34,5 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
   - the Lean skeleton has been typechecked once locally, but no theorem authoring exists yet
   - no TLC or other TLA+ tool run has been executed in this repo yet
   - replay artifacts now exist only as hand-authored seed artifacts, not as harness- or oracle-emitted outputs
-  - the artifact set is still a first skeleton floor rather than a proof-, model-check-, or replay-pipeline-complete lane
+  - measurement artifacts now exist only as schema/register definitions; no runtime instrumentation emits them yet
+  - the artifact set is still a first skeleton floor rather than a proof-, model-check-, replay-pipeline-, or instrumentation-complete lane

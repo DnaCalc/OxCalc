@@ -1,0 +1,41 @@
+{
+  "register_id": "oxcalc.stage1.experiment-register.v1",
+  "description": "First Stage 1 experiment register aligned to W010 decisive experiment questions.",
+  "experiments": [
+    {
+      "experiment_id": "E1",
+      "name": "early_cutoff_benefit",
+      "question": "Does verification-clean materially reduce propagation without semantic drift?",
+      "inputs": ["C3.verified_clean_nodes", "R7"],
+      "outputs": ["hit_rate", "avoided_work_estimate", "semantic_drift_count"]
+    },
+    {
+      "experiment_id": "E2",
+      "name": "dynamic_topo_vs_rebuild",
+      "question": "Is dynamic-topological maintenance justified relative to deterministic rebuild?",
+      "inputs": ["work_volume_signature", "structural_change_count", "replay_stable_scenario_family"],
+      "outputs": ["crossover_region_estimate", "correctness_parity_status", "replay_compatibility_status"]
+    },
+    {
+      "experiment_id": "E3",
+      "name": "dynamic_dependency_economics",
+      "question": "When does explicit dynamic dependency handling outperform conservative fallback?",
+      "inputs": ["C3.fallback_by_reason", "C4.overlay_hits", "R8"],
+      "outputs": ["fallback_rate_by_scenario", "overlay_reuse_benefit_estimate", "high_cost_case_list"]
+    },
+    {
+      "experiment_id": "E4",
+      "name": "overlay_retention",
+      "question": "What retention policy gives useful reuse without excessive protection buildup?",
+      "inputs": ["C2.retention_blocked_cleanup", "C4.overlay_reuse_after_retention", "R4", "R5"],
+      "outputs": ["protected_retention_hit_rate", "blocked_cleanup_count", "post_release_cleanup_effectiveness"]
+    },
+    {
+      "experiment_id": "E5",
+      "name": "stage2_replay_readiness",
+      "question": "Is Stage 1 instrumented enough to detect concurrency-sensitive publication or retention drift before Stage 2?",
+      "inputs": ["C5", "S1", "S2", "S3", "S4", "S5", "S6"],
+      "outputs": ["instrumentation_gap_list", "missing_counter_families", "missing_replay_classes"]
+    }
+  ]
+}

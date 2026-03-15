@@ -222,7 +222,7 @@ The roadmap document then binds these assurance obligations to staged realizatio
 
 ## 15. Open Detailed Questions
 These remain assurance-planning questions within the now-locked architecture:
-1. exact Lean module split and naming in OxCalc-local terms,
+1. exact Lean module split beyond the first Stage 1 state vocabulary file,
 2. exact TLA+ state-variable factoring between coordinator, overlay, and observer state,
 3. exact trace schema ownership split between OxCalc and OxFml,
 4. exact boundary between theorem-backed claims and replay-backed claims for dynamic-dependency behavior.
@@ -233,6 +233,6 @@ These remain assurance-planning questions within the now-locked architecture:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - realization roadmap still needed to bind assurance to stage gates,
-  - exact Lean/TLA+ artifact placement not yet specified,
-  - handoff packet text for shared trace/reject clauses not yet drafted
+  - the first Lean and TLA+ skeleton artifacts now exist under `formal/`; the Lean file has been typechecked locally, but no TLA+ tool execution has been performed yet
+  - replay and pack artifacts are still absent
+  - handoff packet text for shared trace/reject clauses is still only partially exercised

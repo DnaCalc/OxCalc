@@ -278,8 +278,8 @@ It is the end of the first implementation wave that makes Stage 1 executable, me
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - Sequences 1 through 3 are now scaffolded into local implementation code with passing tests, but the gate criteria remain only partially discharged because replay, assurance, and broader scheduling artifacts do not exist yet
+  - Sequences 1 through 6 are now scaffolded into local code or first formal artifact skeletons, but the gate criteria remain only partially discharged because replay, measurement, harness, and oracle artifacts do not exist yet
   - W001 and W005 remain carried governance/integration lanes across the sequence
-  - Sequences 4 through 10 still depend on authored Lean, TLA+, replay, measurement, harness, and oracle artifacts that have not been realized yet
+  - Sequences 7 through 10 still depend on authored replay, counter, harness, and oracle artifacts that have not been realized yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

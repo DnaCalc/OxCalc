@@ -306,9 +306,9 @@ W009 should consume this packet by binding replay and pack expectations to:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the TLA+ model boundary now includes explicit Stage 1 transition bindings, but no artifact has been authored yet
+  - the first TLA+ Stage 1 skeleton now exists under `formal/tla/`, but no TLC run or syntax check has been executed in this repo yet
   - liveness questions are named, but fairness and progress assumptions are still open
-  - replay linkage for the newly bound invalidation and publication transitions is still absent
+  - replay linkage for the implemented invalidation and publication transitions is still absent
   - W009 must still bind the safety classes and transition families to replay and pack artifacts
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

@@ -56,9 +56,9 @@ Last updated: 2026-03-15.
 ### IP-06: Core Formalization and Gate Binding
 
 - **Status**: in-progress
-- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet plus explicit Stage 1 transition bindings, W009 contains the first replay-class and pack-binding packet plus transition-coverage mapping, and W010 now contains the first experiment-register and measurement-schema packet.
-- **Remaining gaps**: actual Lean or TLA+ artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the remaining assurance-planning sequence.
-- **Why still open**: the assurance lane now has initial state, concurrency-model, replay-binding, and measurement-planning packets, but not yet exercised formal, replay, or instrumentation artifacts.
+- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet plus explicit Stage 1 transition bindings, W009 contains the first replay-class and pack-binding packet plus transition-coverage mapping, W010 contains the first experiment-register and measurement-schema packet, and the repo now includes the first Lean and TLA+ skeleton artifacts under `formal/`, with the Lean state file typechecked once locally.
+- **Remaining gaps**: theorem authoring, TLA+ model checking, replay and pack artifact creation, initial counter-schema drafting, and execution of the remaining assurance-planning sequence.
+- **Why still open**: the assurance lane now has initial state, concurrency-model, replay-binding, and measurement-planning packets plus first artifact skeletons, but not yet exercised replay, instrumentation, or TLA+ evidence.
 - **Canonical owner**: W006.
 
 ### IP-07: Self-Contained Test Harness Planning
@@ -76,3 +76,5 @@ Last updated: 2026-03-15.
 - **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
 - **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
 - **Canonical owner**: W012.
+
+

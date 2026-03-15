@@ -252,9 +252,9 @@ This packet should hand forward to:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - object inventory exists, but no Lean artifact has been authored yet
-  - theorem backlog is only the first anchored slice, not a closed assurance map
+  - the first Lean-facing state vocabulary artifact now exists under `formal/lean/` and has been typechecked once locally, but no theorem authoring has been run yet
+  - theorem backlog is still the first anchored slice, not a closed assurance map
   - replay-grounded validation inputs are still absent
-  - W008 and W009 must still consume this packet
+  - W008 and W009 still need to consume the authored Lean-facing names rather than only the planning packet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

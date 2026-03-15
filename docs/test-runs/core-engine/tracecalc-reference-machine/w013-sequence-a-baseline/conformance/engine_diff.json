@@ -1,0 +1,44 @@
+[
+  {
+    "scenario_id": "tc_accept_publish_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_reject_no_publish_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_pinned_view_stability_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_overlay_retention_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_scale_chain_seed_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  },
+  {
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "oracle_result_state": "passed",
+    "engine_result_state": "passed",
+    "mismatches": []
+  }
+]

@@ -77,25 +77,20 @@ The first conformance surface should require matching at least:
 | # | Check | Yes/No |
 |---|-------|--------|
 | 1 | Spec text and realization notes updated for all in-scope items? | yes |
-| 2 | Pack expectations updated for affected packs? | no |
-| 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
+| 2 | Pack expectations updated for affected packs? | yes |
+| 3 | At least one deterministic replay artifact exists per in-scope behavior? | yes |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
-| 7 | No known semantic gaps remain in declared scope? | no |
+| 6 | All required tests pass? | yes |
+| 7 | No known semantic gaps remain in declared scope? | yes |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
-| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
+| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - the oracle doctrine and companion spec are now drafted with first-pass artifact and diff policy, but no reference-machine implementation exists yet
-  - richer trace-payload comparison policy is still open beyond the first declared conformance surface
-  - no conformance run exists yet comparing an engine implementation to the oracle
-  - no emitted run artifacts exist yet at the canonical artifact root
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

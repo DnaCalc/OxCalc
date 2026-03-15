@@ -7,7 +7,7 @@ It exists to turn the checked-in corpus and schema into a concrete execution bou
 
 Status:
 1. supporting realization companion,
-2. spec_drafted rather than realized,
+2. realized in a first executable slice,
 3. intended to unblock validator, fixture-runner, and replay-pack authoring,
 4. limited to the self-contained harness rather than full OxFml-integrated execution.
 
@@ -271,8 +271,7 @@ It does not need yet:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no validator, runner, or reference-machine implementation exists yet
-  - candidate-result and reject payload alignment with W003 and W004 still needs tightening
+  - the first validator, runner, and emitted artifact path now exist and are exercised by unit tests plus the checked-in baseline run
   - replay-pack fragment shape remains a W009 follow-on lane
   - generated-corpus execution policy remains a later lane
 - claim_confidence: provisional

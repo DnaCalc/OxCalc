@@ -1,0 +1,15 @@
+{
+  "scenario_id": "tc_pinned_view_stability_001",
+  "result_state": "passed",
+  "validation_failures": [],
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "artifact_paths": {
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/trace.json",
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/counters.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/published_view.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/pinned_views.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_pinned_view_stability_001/rejects.json"
+  }
+}

@@ -7,7 +7,7 @@ It turns the `TraceCalc` direction from `CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.m
 
 Status:
 1. supporting realization companion,
-2. spec_drafted rather than realized,
+2. schema and initial executable corpus both now exist,
 3. intended to unblock fixture, corpus, and replay-pack authoring,
 4. limited to the self-contained engine-test harness rather than full OxFml-integrated scenarios.
 
@@ -432,6 +432,7 @@ The first authored hand-auditable corpus now includes:
 4. `tc_dynamic_dep_switch_001`
 5. `tc_overlay_retention_001`
 6. `tc_scale_chain_seed_001`
+7. `tc_verify_clean_no_publish_001`
 
 A later corpus may split into:
 1. hand-auditable scenarios,
@@ -455,10 +456,9 @@ These are no longer allowed to block fixture authoring.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the initial hand-auditable corpus, validator-runner contract, and oracle doctrine now exist, but no validator or fixture runner consumes them yet
-  - candidate-result and reject payloads still need final alignment with W003 and W004 realization packets
-  - exact trace event body schema remains narrower than the future replay artifact schema
-  - exact validator implementation and replay-pack binding details are still open
+  - the initial hand-auditable corpus is now executable through the validator, runner, and reference-machine path
+  - exact trace event body schema remains narrower than the later replay-pack schema
+  - generated corpus expansion and later replay-pack binding details are still open
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
 

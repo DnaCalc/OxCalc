@@ -258,28 +258,49 @@ Execution Sequence A reaches its final gate only when all of the following hold:
 This final gate is not the end of OxCalc Stage 1 in full.
 It is the end of the first implementation wave that makes Stage 1 executable, measurable, and judgeable.
 
+## Sequence Evidence
+The current evidence set for this packet is:
+1. Stage 1 structural, coordinator, recalc, harness, and oracle code under `src/OxCalc.Core/` and `src/OxCalc.TraceCalc.Tool/`
+2. passing unit tests in `tests/OxCalc.Core.Tests/`, including `TraceCalcRunnerTests`
+3. Lean-facing state vocabulary at `formal/lean/OxCalc/CoreEngine/Stage1State.lean`, typechecked locally
+4. first TLA+ artifact at `formal/tla/CoreEngineStage1.tla`
+5. hand-authored replay seed artifacts for `R1`, `R2`, and `R7` under `formal/replay/stage1-hand-authored/`
+6. emitted baseline harness and oracle artifacts at `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+
+Replay-class evidence currently maps as follows:
+1. `R1` -> `tc_accept_publish_001`
+2. `R2` -> `tc_reject_no_publish_001`
+3. `R7` -> `tc_verify_clean_no_publish_001`
+4. `R4` -> `tc_pinned_view_stability_001`
+5. `R5` -> `tc_overlay_retention_001`
+
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
 | 1 | Spec text and realization notes updated for all in-scope items? | yes |
-| 2 | Pack expectations updated for affected packs? | no |
-| 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
+| 2 | Pack expectations updated for affected packs? | yes |
+| 3 | At least one deterministic replay artifact exists per in-scope behavior? | yes |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
 | 6 | All required tests pass? | yes |
-| 7 | No known semantic gaps remain in declared scope? | no |
+| 7 | No known semantic gaps remain in declared scope? | yes |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
-| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
+| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
+
+## Completion Claim Self-Audit
+| Step | Result | Notes |
+|---|---|---|
+| Step 1: Scope Re-Read | pass | The declared W013 scope is the first implementation wave and its ten-sequence gate model; emitted evidence now covers that declared scope. |
+| Step 2: Gate Criteria Re-Read | pass | Sequences 1 through 10 now have authored and exercised artifacts sufficient for their declared exit gates. |
+| Step 3: Silent Scope Reduction Check | pass | No scope narrowing was introduced; later Stage 2, later grid work, and broader replay families remain explicitly out of scope. |
+| Step 4: "Looks Done But Is Not" Pattern Check | pass | The harness, runner, and reference machine are exercised by tests and a checked-in emitted baseline run; no unresolved receiving-repo handoff is blocking this local packet. |
+| Step 5: Include Result | pass | W013 reaches its final gate for declared scope. |
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - Sequences 1 through 8 are now scaffolded into local code, first formal artifact skeletons, replay seed artifacts, and measurement schemas, but the gate criteria remain only partially discharged because harness and oracle artifacts do not exist yet
-  - W001 and W005 remain carried governance/integration lanes across the sequence
-  - Sequences 9 and 10 still depend on authored harness and oracle artifacts that have not been realized yet
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

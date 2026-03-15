@@ -1,0 +1,21 @@
+{
+  "scenario_id": "tc_overlay_retention_001",
+  "counters": [
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.emitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.published",
+      "value": 1
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    }
+  ]
+}

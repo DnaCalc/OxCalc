@@ -57,6 +57,14 @@ public sealed class Stage1RecalcTracker
         ProtectExecutionOverlay(nodeId, "verified_clean");
     }
 
+    public void ProduceCandidateResult(TreeNodeId nodeId, string compatibilityBasis, string payloadIdentity = "none")
+    {
+        RequireState(nodeId, NodeCalcState.Evaluating);
+        _nodeStates[nodeId] = NodeCalcState.PublishReady;
+        ProtectExecutionOverlay(nodeId, "publish_ready");
+        UpsertOverlay(new OverlayKey(nodeId, OverlayKind.CapabilityFenceAttachment, Snapshot.SnapshotId, compatibilityBasis, payloadIdentity), true, false, "candidate_ready");
+    }
+
     public void ProduceDependencyShapeUpdate(TreeNodeId nodeId, string compatibilityBasis, string payloadIdentity)
     {
         RequireState(nodeId, NodeCalcState.Evaluating);

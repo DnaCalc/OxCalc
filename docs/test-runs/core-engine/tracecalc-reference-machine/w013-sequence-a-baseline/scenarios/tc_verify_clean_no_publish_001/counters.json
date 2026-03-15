@@ -1,0 +1,17 @@
+{
+  "scenario_id": "tc_verify_clean_no_publish_001",
+  "counters": [
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 1
+    },
+    {
+      "counter": "recalc.verified_clean",
+      "value": 1
+    }
+  ]
+}

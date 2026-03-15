@@ -1,0 +1,24 @@
+{
+  "scenario_id": "tc_reject_no_publish_001",
+  "run_id": "w013-sequence-a-baseline",
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "step_id": "st1",
+      "label": "candidate_admitted",
+      "payload": {
+        "admission_id": "adm1",
+        "compatibility_basis": "s0"
+      }
+    },
+    {
+      "event_id": "evt-0002",
+      "step_id": "st2",
+      "label": "candidate_rejected",
+      "payload": {
+        "reject_id": "rej1",
+        "reject_kind": "capability_mismatch"
+      }
+    }
+  ]
+}

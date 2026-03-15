@@ -1,0 +1,87 @@
+[
+  {
+    "scenario_id": "tc_accept_publish_001",
+    "path": "hand-auditable/tc_accept_publish_001.json",
+    "focus": [
+      "candidate-publication-boundary",
+      "accept-publish"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_reject_no_publish_001",
+    "path": "hand-auditable/tc_reject_no_publish_001.json",
+    "focus": [
+      "reject-is-no-publish",
+      "typed-reject"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_pinned_view_stability_001",
+    "path": "hand-auditable/tc_pinned_view_stability_001.json",
+    "focus": [
+      "pinned-view",
+      "stable-reader"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "path": "hand-auditable/tc_dynamic_dep_switch_001.json",
+    "focus": [
+      "dynamic-dependency",
+      "runtime-effects"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_overlay_retention_001",
+    "path": "hand-auditable/tc_overlay_retention_001.json",
+    "focus": [
+      "overlay-retention",
+      "runtime-effects"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_scale_chain_seed_001",
+    "path": "hand-auditable/tc_scale_chain_seed_001.json",
+    "focus": [
+      "scale-seed",
+      "generator-metadata"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "scale"
+    ]
+  },
+  {
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "path": "hand-auditable/tc_verify_clean_no_publish_001.json",
+    "focus": [
+      "verify-clean",
+      "no-publication"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  }
+]

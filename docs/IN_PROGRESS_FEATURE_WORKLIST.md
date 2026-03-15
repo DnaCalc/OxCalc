@@ -64,17 +64,17 @@ Last updated: 2026-03-15.
 ### IP-07: Self-Contained Test Harness Planning
 
 - **Status**: in-progress
-- **Current floor**: `W011` now has a planning packet, three supporting spec companions, and a first checked-in hand-auditable `TraceCalc` corpus covering the minimal OxFml test-double surface, fixture lifecycle direction, canonical JSON scenario shape, validator-runner consumption contract, and the alternate calculation space for engine-only testing.
-- **Remaining gaps**: final test-double payload alignment, validator and scriptable host realization, replay-pack binding, generated-corpus lanes, and later fixture implementation.
-- **Why still open**: harness, scenario, and consumption guidance are now spec_drafted and seeded with an initial corpus, but no validator, fixture, host, or replay artifacts exist yet.
+- **Current floor**: `W011` has now progressed from planning into a first realized slice: the repo contains the `TraceCalc` corpus, a validator and runner path under `src/OxCalc.Core/TraceCalc/`, a small tool host under `src/OxCalc.TraceCalc.Tool/`, unit-test coverage for the runner, and a checked-in emitted baseline run at `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`.
+- **Remaining gaps**: broader replay-pack export, generated-corpus lanes, richer failure-surface coverage, and later OxFml-integrated harness coverage.
+- **Why still open**: the first self-contained harness slice is exercised, but the broader harness feature area still has later replay, scale, and integrated-host lanes.
 - **Canonical owner**: W011.
 
 ### IP-08: TraceCalc Reference Machine and Conformance Oracle
 
 - **Status**: in-progress
-- **Current floor**: `W012` now defines the first canonical oracle lane for a `TraceCalc Reference Machine`, including the reference state model, transition set, canonical artifact root, first diff policy, conformance surface, and later-engine comparison doctrine.
-- **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
-- **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
+- **Current floor**: `W012` now includes an executable `TraceCalc Reference Machine`, an engine adapter, conformance comparison logic, a checked-in emitted oracle/conformance baseline run for the seven-scenario corpus, and unit-test coverage for the runner path that hosts the oracle.
+- **Remaining gaps**: richer trace comparison policy beyond the first conformance surface, broader corpus coverage, and later continuous engine-versus-oracle series beyond the current baseline run.
+- **Why still open**: the first oracle slice now exists and is exercised, but the broader oracle feature area still has later replay-pack and scale lanes.
 - **Canonical owner**: W012.
 
 

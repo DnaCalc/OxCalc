@@ -289,9 +289,10 @@ This order prioritizes the coordinator and publication contract before broader r
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first replay artifacts for `R1`, `R2`, and `R7` now exist as hand-authored seed artifacts under `formal/replay/`, but they are not yet emitted by a runner or harness
+  - the first replay artifacts for `R1`, `R2`, and `R7` now exist as hand-authored seeds and are also exercised by the emitted `w013-sequence-a-baseline` harness run
+  - `R4` and `R5` are now exercised by the emitted baseline run, but they do not yet have dedicated hand-authored seed artifacts
   - trace-schema ownership split with OxFml is still only partially explicit
   - W010 still needs to connect counters and experiments to these replay classes
-  - `R4`, `R5`, `R3`, `R8`, and `R6` still need authored artifacts
+  - `R3`, `R6`, and `R8` still need authored and exercised artifacts
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

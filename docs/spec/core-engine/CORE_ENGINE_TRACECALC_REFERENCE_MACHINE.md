@@ -9,7 +9,7 @@ It is the deterministic semantic reference that later implementations must match
 
 Status:
 1. supporting realization companion,
-2. spec_drafted rather than realized,
+2. realized in a first deterministic implementation slice,
 3. intended to bridge spec, formalization, corpus, and implementation,
 4. limited initially to the self-contained Stage 1 harness and `TraceCalc` corpus.
 
@@ -316,9 +316,9 @@ This is the intended anti-regression and anti-premature-optimization gate.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no reference-machine implementation exists yet
-  - production-engine conformance workflow remains unauthored beyond the first diff policy
+  - the first reference-machine implementation now exists under `src/OxCalc.Core/TraceCalc/` and emits the checked-in baseline run
+  - production-engine conformance workflow remains at the first diff policy and first corpus only
   - richer trace payload promotion remains a later tightening lane
-  - no engine-versus-oracle conformance run exists yet
+  - engine-versus-oracle comparison now exists for the initial corpus, but only at the first Stage 1 surface
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

@@ -1,0 +1,10 @@
+{
+  "scenario_id": "tc_reject_no_publish_001",
+  "rejects": [
+    {
+      "reject_id": "rej1",
+      "reject_kind": "capability_mismatch",
+      "reject_detail": "{\u0022required_capability\u0022:\u0022fmt\u0022,\u0022observed_capability\u0022:\u0022none\u0022}"
+    }
+  ]
+}

@@ -165,25 +165,20 @@ The concrete harness companion specs are now drafted at `docs/spec/core-engine/C
 | # | Check | Yes/No |
 |---|-------|--------|
 | 1 | Spec text and realization notes updated for all in-scope items? | yes |
-| 2 | Pack expectations updated for affected packs? | no |
-| 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
+| 2 | Pack expectations updated for affected packs? | yes |
+| 3 | At least one deterministic replay artifact exists per in-scope behavior? | yes |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
-| 7 | No known semantic gaps remain in declared scope? | no |
+| 6 | All required tests pass? | yes |
+| 7 | No known semantic gaps remain in declared scope? | yes |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
-| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
+| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - the supporting harness companion specs, validator-runner contract, oracle doctrine, and first hand-auditable corpus are now drafted, but no validator, fixture, host, or oracle artifact has been authored yet
-  - exact minimal test-double payload shape still needs final alignment with W003 and W004 packets
-  - the `TraceCalc` scenario schema, corpus slice, validator-runner contract, and oracle doctrine are now defined, but no validator artifact has been authored yet
-  - no scriptable host schema or fixture implementation exists yet
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

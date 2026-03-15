@@ -1,0 +1,54 @@
+{
+  "scenario_id": "tc_scale_chain_seed_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "N01",
+      "value": "1"
+    },
+    {
+      "node_id": "N02",
+      "value": "1"
+    },
+    {
+      "node_id": "N03",
+      "value": "1"
+    },
+    {
+      "node_id": "N04",
+      "value": "1"
+    },
+    {
+      "node_id": "N05",
+      "value": "1"
+    },
+    {
+      "node_id": "N06",
+      "value": "1"
+    },
+    {
+      "node_id": "N07",
+      "value": "1"
+    },
+    {
+      "node_id": "N08",
+      "value": "1"
+    },
+    {
+      "node_id": "N09",
+      "value": "1"
+    },
+    {
+      "node_id": "N10",
+      "value": "1"
+    },
+    {
+      "node_id": "N11",
+      "value": "1"
+    },
+    {
+      "node_id": "N12",
+      "value": "1"
+    }
+  ]
+}

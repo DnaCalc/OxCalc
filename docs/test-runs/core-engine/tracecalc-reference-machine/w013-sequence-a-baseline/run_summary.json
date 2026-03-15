@@ -1,0 +1,9 @@
+{
+  "run_id": "w013-sequence-a-baseline",
+  "schema_version": "tracecalc-corpus-s1",
+  "scenario_count": 7,
+  "result_counts": {
+    "passed": 7
+  },
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline"
+}

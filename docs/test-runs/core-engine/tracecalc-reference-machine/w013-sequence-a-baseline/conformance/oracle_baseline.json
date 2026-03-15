@@ -1,0 +1,313 @@
+[
+  {
+    "scenario_id": "tc_accept_publish_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "2"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.emitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.published",
+        "value": 1
+      },
+      {
+        "counter": "recalc.mark_dirty",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  {
+    "scenario_id": "tc_reject_no_publish_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "2"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.rejected",
+        "value": 1
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej1",
+        "reject_kind": "capability_mismatch",
+        "reject_detail": "{\u0022required_capability\u0022:\u0022fmt\u0022,\u0022observed_capability\u0022:\u0022none\u0022}"
+      }
+    ]
+  },
+  {
+    "scenario_id": "tc_pinned_view_stability_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "1"
+      },
+      {
+        "node_id": "C",
+        "value": "3"
+      }
+    ],
+    "pinned_views": [
+      {
+        "view_id": "pv1",
+        "snapshot_id": "s0",
+        "node_values": [
+          {
+            "node_id": "A",
+            "value": "1"
+          },
+          {
+            "node_id": "C",
+            "value": "2"
+          }
+        ]
+      }
+    ],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.emitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.published",
+        "value": 1
+      },
+      {
+        "counter": "reader.pinned",
+        "value": 1
+      },
+      {
+        "counter": "recalc.mark_dirty",
+        "value": 2
+      }
+    ],
+    "rejects": []
+  },
+  {
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "Left",
+        "value": "10"
+      },
+      {
+        "node_id": "Mode",
+        "value": "right"
+      },
+      {
+        "node_id": "Pick",
+        "value": "20"
+      },
+      {
+        "node_id": "Right",
+        "value": "20"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.emitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.published",
+        "value": 1
+      },
+      {
+        "counter": "overlay.retained",
+        "value": 1
+      },
+      {
+        "counter": "recalc.mark_dirty",
+        "value": 2
+      }
+    ],
+    "rejects": []
+  },
+  {
+    "scenario_id": "tc_overlay_retention_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "Left",
+        "value": "10"
+      },
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Pick",
+        "value": "10"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.emitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.published",
+        "value": 1
+      },
+      {
+        "counter": "overlay.retained",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  {
+    "scenario_id": "tc_scale_chain_seed_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "N01",
+        "value": "1"
+      },
+      {
+        "node_id": "N02",
+        "value": "1"
+      },
+      {
+        "node_id": "N03",
+        "value": "1"
+      },
+      {
+        "node_id": "N04",
+        "value": "1"
+      },
+      {
+        "node_id": "N05",
+        "value": "1"
+      },
+      {
+        "node_id": "N06",
+        "value": "1"
+      },
+      {
+        "node_id": "N07",
+        "value": "1"
+      },
+      {
+        "node_id": "N08",
+        "value": "1"
+      },
+      {
+        "node_id": "N09",
+        "value": "1"
+      },
+      {
+        "node_id": "N10",
+        "value": "1"
+      },
+      {
+        "node_id": "N11",
+        "value": "1"
+      },
+      {
+        "node_id": "N12",
+        "value": "1"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.emitted",
+        "value": 1
+      },
+      {
+        "counter": "candidate.published",
+        "value": 1
+      },
+      {
+        "counter": "recalc.mark_dirty",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  {
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "result_state": "passed",
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "2"
+      }
+    ],
+    "pinned_views": [],
+    "counters": [
+      {
+        "counter": "candidate.admitted",
+        "value": 1
+      },
+      {
+        "counter": "recalc.mark_dirty",
+        "value": 1
+      },
+      {
+        "counter": "recalc.verified_clean",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  }
+]

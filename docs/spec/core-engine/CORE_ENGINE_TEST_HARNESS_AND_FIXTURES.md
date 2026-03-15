@@ -10,7 +10,7 @@ It exists so OxCalc can test coordinator, publication, invalidation, overlay, re
 
 Status:
 1. supporting realization companion,
-2. spec_drafted rather than realized,
+2. spec and first implementation slice both exist,
 3. aligned to the TreeCalc-first Stage 1 target,
 4. intended to guide fixture, replay, and stress-test authoring.
 
@@ -351,9 +351,8 @@ The first realized harness does not need:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the initial hand-auditable corpus, validator-runner contract, and reference-machine doctrine now exist, but no validator, fixture library, host, or oracle implementation exists yet
-  - `TraceCalc` scenario schema, corpus, consumption contract, and oracle doctrine are now defined, but no runner consumes them yet
-  - replay-pack ownership and exact artifact locations still need binding through W009
+  - the initial hand-auditable corpus, validator, runner, tool host, and reference-machine implementation now exist and emit a checked-in baseline run
+  - replay-pack ownership and broader replay-family promotion still need further W009 execution
   - OxFml-integrated harness coverage still remains a later companion lane
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

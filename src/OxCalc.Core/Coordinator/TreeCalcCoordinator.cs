@@ -38,6 +38,22 @@ public sealed class TreeCalcCoordinator
 
     public IReadOnlyCollection<PinnedPublicationView> PinnedReaders => _pins.Values;
 
+    public void SeedPublishedView(IReadOnlyDictionary<TreeNodeId, string> values, string? publicationId = null, IEnumerable<RuntimeEffect>? runtimeEffects = null)
+    {
+        var runtimeEffectArray = runtimeEffects?.ToImmutableArray() ?? ImmutableArray<RuntimeEffect>.Empty;
+        PublicationBundle? publication = publicationId is null
+            ? null
+            : new PublicationBundle(
+                publicationId,
+                "seed:published-view",
+                Snapshot.SnapshotId,
+                values.ToImmutableDictionary(),
+                runtimeEffectArray,
+                ["publication_seeded"]);
+
+        PublishedView = new PublishedView(Snapshot, publication, values.ToImmutableDictionary());
+    }
+
     public void AdmitCandidateWork(AcceptedCandidateResult candidate)
     {
         EnsureSnapshotMatches(candidate.StructuralSnapshotId);

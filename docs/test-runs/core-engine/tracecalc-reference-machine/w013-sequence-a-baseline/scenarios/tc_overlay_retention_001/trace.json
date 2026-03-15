@@ -1,0 +1,40 @@
+{
+  "scenario_id": "tc_overlay_retention_001",
+  "run_id": "w013-sequence-a-baseline",
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "step_id": "st1",
+      "label": "candidate_admitted",
+      "payload": {
+        "admission_id": "adm1",
+        "compatibility_basis": "s0"
+      }
+    },
+    {
+      "event_id": "evt-0002",
+      "step_id": "st2",
+      "label": "candidate_emitted",
+      "payload": {
+        "candidate_result_id": "cand1"
+      }
+    },
+    {
+      "event_id": "evt-0003",
+      "step_id": "st3",
+      "label": "overlay_retained",
+      "payload": {
+        "candidate_result_id": "cand1"
+      }
+    },
+    {
+      "event_id": "evt-0004",
+      "step_id": "st3",
+      "label": "candidate_published",
+      "payload": {
+        "candidate_result_id": "cand1",
+        "publication_id": "pub1"
+      }
+    }
+  ]
+}

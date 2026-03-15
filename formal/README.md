@@ -20,9 +20,11 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - first model-check configuration skeleton for the Stage 1 TLA+ module.
 4. `formal/replay/stage1-hand-authored/`
    - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
-5. `formal/measurement/stage1_counter_schema.json`
+5. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+   - first emitted harness and oracle baseline run covering `R1`, `R2`, `R7`, `R4`, and `R5` through the `TraceCalc` corpus.
+6. `formal/measurement/stage1_counter_schema.json`
    - first machine-readable Stage 1 counter schema.
-6. `formal/measurement/stage1_experiment_register.json`
+7. `formal/measurement/stage1_experiment_register.json`
    - first machine-readable Stage 1 experiment register.
 
 ## Status
@@ -33,6 +35,6 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 - open_lanes:
   - the Lean skeleton has been typechecked once locally, but no theorem authoring exists yet
   - no TLC or other TLA+ tool run has been executed in this repo yet
-  - replay artifacts now exist only as hand-authored seed artifacts, not as harness- or oracle-emitted outputs
-  - measurement artifacts now exist only as schema/register definitions; no runtime instrumentation emits them yet
-  - the artifact set is still a first skeleton floor rather than a proof-, model-check-, replay-pipeline-, or instrumentation-complete lane
+  - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
+  - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface
+  - the artifact set is still a first assurance floor rather than a proof-, model-check-, replay-pack-, or instrumentation-complete lane

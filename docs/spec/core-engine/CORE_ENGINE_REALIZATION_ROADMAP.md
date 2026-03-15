@@ -199,8 +199,9 @@ This is dependency-ordered, not date-ordered.
 8. `W008`: TLA+ coordinator, publication, and fence-safety model plan.
 9. `W009`: replay and pack binding for Stage 1 seam and coordinator behavior.
 10. `W010`: experiment register and measurement-schema planning for Stage 1 and Stage 2 promotion lanes.
+11. `W011`: core-engine test harness and self-contained fixture plan.
 
-The purpose of `W007` through `W010` is to turn `W006` from a generic formalization placeholder into executable assurance-planning packets.
+The purpose of `W007` through `W011` is to turn `W006` from a generic formalization placeholder into executable assurance and test-planning packets.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -225,7 +226,8 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 1. exact Stage 2 concurrency sub-phases,
 2. exact thresholds for economics-based promotion,
 3. exact replay corpus shape for multi-stage coordinator traces,
-4. exact first realized pack set for W009 execution.
+4. exact first realized pack set for W009 execution,
+5. exact self-contained harness boundary for engine-only scenarios versus OxFml-integrated scenarios.
 
 ## 16. Status
 - execution_state: in_progress
@@ -233,7 +235,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - workset decomposition is now expanded, but W007 through W010 are still planning packets rather than exercised assurance artifacts,
+  - workset decomposition is now expanded, but W007 through W011 are still planning packets rather than exercised assurance artifacts,
   - replay artifacts are still missing for the newly accepted seam boundaries,
-  - Stage 2 sub-phase planning remains coarse
-
+  - Stage 2 sub-phase planning remains coarse,
+  - self-contained harness planning is now explicit but not yet realized

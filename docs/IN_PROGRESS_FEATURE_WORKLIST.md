@@ -60,3 +60,11 @@ Last updated: 2026-03-15.
 - **Remaining gaps**: actual Lean or TLA+ artifact authoring, replay and pack artifact creation, initial counter-schema drafting, and execution of the remaining assurance-planning sequence.
 - **Why still open**: the assurance lane now has initial state, concurrency-model, replay-binding, and measurement-planning packets, but not yet exercised formal, replay, or instrumentation artifacts.
 - **Canonical owner**: W006.
+
+### IP-07: Self-Contained Test Harness Planning
+
+- **Status**: in-progress
+- **Current floor**: `W011` now defines the first planning packet for a self-contained harness, minimal OxFml test-double surface, scriptable host, and alternate non-Excel calculation space for engine-only testing.
+- **Remaining gaps**: concrete test-double payload shape, scenario schema, scriptable host contract, and later fixture implementation.
+- **Why still open**: the harness boundary is now planned, but no fixture or host artifacts exist yet.
+- **Canonical owner**: W011.

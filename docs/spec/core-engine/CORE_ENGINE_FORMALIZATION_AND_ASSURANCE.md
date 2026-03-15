@@ -163,6 +163,36 @@ The rewritten architecture expects replay artifacts to support at least:
 Replay is not only a debugging aid.
 It is part of the conformance and promotion story.
 
+## 9.1 Replay Adapter Capability Evidence Ladder
+The Replay appliance rollout adds an explicit adapter-capability evidence ladder to the assurance story.
+
+The OxCalc adapter must treat the Foundation capability levels as cumulative conformance targets:
+1. `cap.C0.ingest_valid`
+2. `cap.C1.replay_valid`
+3. `cap.C2.diff_valid`
+4. `cap.C3.explain_valid`
+5. `cap.C4.distill_valid`
+6. `cap.C5.pack_valid`
+
+OxCalc may document the path to later levels, but it may only claim the highest level currently proven by local conformance artifacts.
+
+## 9.2 OxCalc Conformance Targets `C0..C4`
+
+### `C0`
+OxCalc can ingest `TraceCalc` source scenarios and emitted run artifacts into a bundle-valid projection and surface projection gaps explicitly.
+
+### `C1`
+OxCalc can replay supported `TraceCalc` scenarios deterministically and preserve candidate/publication, reject, and pinned-view semantics.
+
+### `C2`
+OxCalc can emit typed mismatch classes and severity-class mappings over oracle-versus-engine comparison surfaces.
+
+### `C3`
+OxCalc can emit explain records over `why_changed`, `why_rejected`, and `why_diff` queries using bundle-valid refs alone.
+
+### `C4`
+OxCalc can distill reduced witnesses using declared reduction units, closure rules, and explicit preservation predicates, while preserving replay validity or marking outputs explanatory-only.
+
 ## 10. Pack Mapping Direction
 The rewritten architecture should map directly to pack obligations.
 
@@ -174,6 +204,15 @@ At minimum, the architecture depends on or implies:
 5. staged concurrency and epoch/fence packs,
 6. visibility or scheduling-equivalence packs where such policies are enabled,
 7. performance/economics packs for optimization-lane promotion.
+
+## 10.1 Lifecycle and Quarantine Effects On Assurance Claims
+Lifecycle and quarantine state now directly affect assurance claims.
+
+Rules:
+1. explanatory-only or quarantined witnesses are not pack-eligible,
+2. a capability claim may not exceed the highest level backed by current conformance artifacts,
+3. a retained failure may support local triage without supporting pack promotion,
+4. pack-facing assurance claims must reference witness lifecycle and capability state as well as replay artifacts.
 
 ## 11. Empirical and Economics Obligations
 Not every architectural decision can be fully settled by proof before implementation.
@@ -217,6 +256,7 @@ This assurance document depends on and validates:
 4. `CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`
 5. `CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
 6. `CORE_ENGINE_OXFML_SEAM.md`
+7. `CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`
 
 The roadmap document then binds these assurance obligations to staged realization and promotion gates.
 

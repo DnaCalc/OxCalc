@@ -99,3 +99,11 @@ Each workset file must include:
 7. Workset status should record reviewed inbound observations when interface or design inputs from sibling repos are relevant.
 8. Execution packets must declare environment preconditions, evidence layout, and replay-corpus readiness before implementation begins.
 9. If a workset expects emitted evidence, it must declare the canonical artifact root and whether the emitted artifacts are checked in or ephemeral.
+
+## Current Sequence Tail
+
+The current planned continuation after `W014` is:
+1. `W015_REPLAY_APPLIANCE_ADAPTER_AND_BUNDLE_VALIDATOR_ROLLOUT.md`
+2. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
+
+These worksets extend the Stage 1 replay/oracle baseline into Replay appliance adapter rollout, capability-manifest governance, and later retained reduced-witness handling.

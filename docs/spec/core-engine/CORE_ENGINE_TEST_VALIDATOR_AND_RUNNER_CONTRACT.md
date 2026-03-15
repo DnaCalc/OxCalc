@@ -17,7 +17,8 @@ This document refines:
 2. `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`,
 3. `CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`,
 4. `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`,
-5. `W009`, `W010`, `W011`, and `W012`.
+5. `CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`,
+6. `W009`, `W010`, `W011`, `W012`, `W015`, and `W016`.
 
 Its purpose is to lock:
 1. what must be validated before a scenario is runnable,
@@ -171,6 +172,24 @@ The first canonical file layout under `<run_id>` is:
 This layout is canonical for the first implementation slice.
 Alternative transient local output locations may exist during development, but any checked-in or pack-bound artifact should normalize to this layout.
 
+## 7.1 Normalized Replay Bundle Emission Path
+The current runner artifact root remains canonical for OxCalc-local execution.
+
+When the Replay appliance adapter is emitted, the normalized bundle projection for a run should emit under:
+1. `docs/test-runs/core-engine/tracecalc-reference-machine/<run_id>/replay-appliance/`
+
+The first expected normalized bundle layout under that root should follow the Foundation bundle direction and include at least:
+1. `bundle_manifest.json`
+2. `runs/<run_id>/run_manifest.json`
+3. `runs/<run_id>/scenarios/<scenario_id>/events.jsonl`
+4. `runs/<run_id>/scenarios/<scenario_id>/counters.json`
+5. `runs/<run_id>/scenarios/<scenario_id>/views/*.json`
+6. `runs/<run_id>/diff/*.json`
+7. `adapter_capabilities/oxcalc.json`
+
+This projection root is additive.
+It does not replace the current OxCalc-native artifact layout.
+
 ## 8. Artifact Shapes
 The first realized runner should emit data-first artifacts rather than ad hoc console text only.
 
@@ -211,6 +230,25 @@ Each counter entry should contain:
 1. `counter`,
 2. `value`.
 
+## 8.5 Capability Manifest Output Expectation
+Replay-appliance-aware runner flows should either:
+1. emit a run-local adapter capability snapshot at `replay-appliance/adapter_capabilities/oxcalc.json`, or
+2. emit a stable reference to the canonical manifest `docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json`.
+
+The canonical manifest remains the authority for claimed capability levels.
+Run-local snapshots may only narrow or annotate that claim, never silently widen it.
+
+## 8.6 Registry-Id Usage Expectation
+Replay-appliance-aware emissions should use Foundation registry ids where a registry family exists, including:
+1. `mismatch_kind`
+2. `severity_class`
+3. `predicate_kind`
+4. `reduction_status`
+5. `witness_lifecycle_state`
+6. `capability_level`
+
+If OxCalc needs a temporary id family before Foundation publishes a machine-readable registry artifact, it must use the `oxcalc.local.*` prefix and mark the field as local-only.
+
 ## 9. Failure Semantics
 The runner must distinguish scenario invalidity from execution failure.
 
@@ -250,6 +288,33 @@ That means the runner should preserve:
 5. typed reject outcomes.
 
 W009 remains the place where those artifacts are promoted into pack obligations.
+
+## 11.1 Witness Lifecycle and Quarantine
+Replay-aware runner flows must preserve the distinction between:
+1. replay-valid artifacts,
+2. explanatory-only reduced witnesses,
+3. quarantined witnesses,
+4. pack-eligible retained witnesses.
+
+If a replay or distill flow cannot satisfy the required capture surface, it must not silently produce pack-eligible output.
+It must instead surface:
+1. an explicit unsupported or degraded-capture outcome,
+2. the relevant known limit or projection gap,
+3. where applicable, a witness lifecycle state such as `wit.explanatory_only` or `wit.quarantined`.
+
+## 11.2 Unsupported or Degraded Capture
+Unsupported or degraded capture must be explicit.
+
+Allowed behavior:
+1. emit `unsupported_feature` when the runner does not support a requested feature,
+2. emit `execution_error` when deterministic execution fails,
+3. emit explicit projection-gap or known-limit metadata when normalized bundle projection is incomplete,
+4. quarantine reduced witnesses when required replay-valid capture is missing.
+
+Not allowed:
+1. silently omitting required candidate/publication boundaries,
+2. silently dropping reject sets or pinned-view surfaces,
+3. treating degraded capture as replay-valid pack evidence.
 
 ## 12. Realization Direction
 The first realized validator and runner slice should likely be:

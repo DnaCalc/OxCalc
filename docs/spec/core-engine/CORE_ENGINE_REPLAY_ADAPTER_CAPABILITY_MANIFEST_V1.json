@@ -1,0 +1,87 @@
+{
+  "adapter_id": "oxcalc-tracecalc-replay-adapter",
+  "adapter_version": "0.1.0-draft",
+  "lane_id": "oxcalc",
+  "supported_source_schema_ids": [
+    "tracecalc-s1",
+    "oxcalc.local.tracecalc-run-artifacts.v1"
+  ],
+  "supported_replay_bundle_schema_versions": [
+    "dna-replay-bundle/v1"
+  ],
+  "claimed_capability_levels": [
+    "cap.C0.ingest_valid",
+    "cap.C1.replay_valid"
+  ],
+  "target_capability_levels": [
+    "cap.C2.diff_valid",
+    "cap.C3.explain_valid",
+    "cap.C4.distill_valid"
+  ],
+  "known_limits": [
+    {
+      "limit_id": "oxcalc.local.limit.bundle_projection_not_emitted",
+      "summary": "The normalized replay-appliance bundle root is specified but not yet emitted by the current runner."
+    },
+    {
+      "limit_id": "oxcalc.local.limit.diff_severity_not_emitted",
+      "summary": "Current engine_diff artifacts emit local mismatch kinds only and do not yet emit normalized mismatch_kind or severity_class ids."
+    },
+    {
+      "limit_id": "oxcalc.local.limit.explain_not_realized",
+      "summary": "Explain records and why_changed/why_rejected projections are documented but not yet realized."
+    },
+    {
+      "limit_id": "oxcalc.local.limit.distillation_not_realized",
+      "summary": "Witness distillation, reduction manifests, and lifecycle records are planned but not yet emitted."
+    },
+    {
+      "limit_id": "oxcalc.local.limit.pack_valid_not_proven",
+      "summary": "No pack-grade Replay appliance evidence exists yet for cap.C5.pack_valid."
+    }
+  ],
+  "conformance_artifact_refs": [
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/run_summary.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/conformance/oracle_baseline.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/conformance/engine_diff.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_accept_publish_001/trace.json",
+    "tests/OxCalc.Core.Tests/TraceCalcRunnerTests.cs"
+  ],
+  "registry_version_refs": [
+    {
+      "registry_family": "predicate_kind",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    },
+    {
+      "registry_family": "mismatch_kind",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    },
+    {
+      "registry_family": "severity_class",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    },
+    {
+      "registry_family": "reduction_status",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    },
+    {
+      "registry_family": "witness_lifecycle_state",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    },
+    {
+      "registry_family": "capability_level",
+      "registry_version": "foundation.replay.authoritative-pass-01.2026-03-15",
+      "source_ref": "../Foundation/research/runs/20260315-215019-replay-appliance-authoritative-pass-01/outputs/12_predicate_mismatch_and_status_registry.md"
+    }
+  ],
+  "rollout_notes": [
+    "OxCalc preserves local authority over TraceCalc scenarios, Stage 1 replay classes, and reference-machine semantics.",
+    "Source labels remain preserved even when normalized event families are added.",
+    "This manifest documents the path to cap.C4.distill_valid but intentionally claims only the highest locally proven level."
+  ]
+}

@@ -19,7 +19,8 @@ This document refines:
 4. `CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`,
 5. `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`,
 6. `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`,
-7. `W009`, `W010`, `W011`, and `W012`.
+7. `CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`,
+8. `W009`, `W010`, `W011`, `W012`, `W015`, and `W016`.
 
 Its purpose is to make the first fixture and host implementation authorable without reopening basic schema choices.
 The concrete validator and runner consumption contract for this schema is defined in `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`.
@@ -58,6 +59,8 @@ Each scenario document should have the following top-level fields.
 2. `pack_tags`
 3. `generator`
 4. `notes`
+5. `replay_projection`
+6. `witness_anchors`
 
 ### 4.3 Field Meanings
 - `schema_version`: schema identifier for host compatibility.
@@ -72,6 +75,62 @@ Each scenario document should have the following top-level fields.
 - `pack_tags`: pack membership hints.
 - `generator`: optional generator metadata for synthetic large scenarios.
 - `notes`: optional explanatory prose.
+- `replay_projection`: optional replay-class, pack-binding, equality-surface, and normalization metadata projected into the Replay appliance adapter.
+- `witness_anchors`: optional reduction-unit anchors for later witness distillation and retained-failure handling.
+
+## 4.4 Replay Projection Metadata
+Where present, `replay_projection` should be treated as OxCalc-owned metadata projected into the Replay appliance.
+
+### Required Or Expected Members
+1. `replay_classes`
+2. `pack_bindings`
+3. `required_equality_surfaces`
+4. `normalized_event_family_map_ref`
+5. `safety_properties`
+6. `transition_labels`
+
+### Rule
+This metadata does not replace scenario meaning.
+It names how the existing scenario participates in:
+1. `R1..R8` replay coverage,
+2. pack bindings,
+3. required equality surfaces for `engine_diff`,
+4. normalized event-family projection.
+
+### Required Equality Surface Rule
+`required_equality_surfaces` defines which observed surfaces are semantic equality requirements for oracle-versus-engine comparison.
+
+Initial recommended surface ids are:
+1. `published_view`
+2. `pinned_view`
+3. `reject_set`
+4. `trace_labels`
+5. `counters`
+6. `candidate_publication_boundary`
+7. `assertion_result_set`
+
+Any additional ids must either:
+1. come from the Foundation replay handoff, or
+2. be marked with the `oxcalc.local.*` prefix.
+
+## 4.5 Witness Anchor Metadata
+Where present, `witness_anchors` should define reduction-unit anchors without changing scenario authoring.
+
+### Recommended Members
+1. `scenario_anchor_id`
+2. `phase_blocks`
+3. `event_groups`
+4. `reject_records`
+5. `view_slices`
+
+### Recommended Anchor Levels
+1. scenario-level anchor
+2. phase-block anchor
+3. event-group anchor
+4. reject-record anchor
+5. view-slice anchor
+
+These anchors should be stable enough to support later reduced-witness manifests and retained-failure packs.
 
 ## 5. Initial Graph Schema
 `initial_graph` defines the immutable starting snapshot.
@@ -151,6 +210,8 @@ Optional per-step fields:
 1. `description`
 2. `expect_trace_labels`
 3. `expect_counter_deltas`
+4. `phase_block_id`
+5. `event_group_id`
 
 ### 7.1 Structural and Host Steps
 The first step kinds should include:
@@ -291,6 +352,13 @@ Initial recommended labels include:
 6. `reader_unpinned`
 7. `overlay_retained`
 8. `overlay_released`
+
+These source labels remain canonical OxCalc trace labels.
+Normalized event-family projection is defined by `CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`.
+
+Current required drift handling is:
+1. `candidate_recorded` and `candidate_emitted` both normalize to `candidate.built`
+2. `publication_committed` and `candidate_published` both normalize to `publication.committed`
 
 ### 8.5 Counter Expectation Shape
 Each counter expectation should contain:
@@ -438,6 +506,11 @@ A later corpus may split into:
 1. hand-auditable scenarios,
 2. replay-pack scenarios,
 3. generated economics scenarios.
+
+Future authored scenarios should gradually add:
+1. `replay_projection` metadata for `R1..R8`,
+2. explicit `required_equality_surfaces`,
+3. `witness_anchors` for scenario, phase-block, event-group, reject-record, and view-slice reduction units.
 
 ## 11. Open Design Constraints
 This schema intentionally leaves some details open for later realization work.

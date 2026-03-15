@@ -38,7 +38,10 @@ This document refines and connects:
 4. `CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`,
 5. `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`,
 6. `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`,
-7. `W007` through `W012`.
+7. `CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`,
+8. `W007` through `W012`,
+9. `W015`,
+10. `W016`.
 
 Its role is to define:
 1. the reference state model,
@@ -255,6 +258,17 @@ The first diff policy should emit typed mismatch kinds at least for:
 
 Richer trace payload mismatches should be treated as informational unless the compared field has been promoted into the required equality surface.
 
+### 11.5 Severity Mapping Rule
+The reference machine is also the local acceptance oracle for typed diff severity.
+
+Default mapping:
+1. result-state, published-view, pinned-view, reject, and candidate-versus-publication-boundary mismatches are `sev.semantic`,
+2. trace or counter mismatches on optional comparison surfaces are `sev.instrumentation`,
+3. unexpected optional artifacts or optional sidecar differences are `sev.informational`,
+4. later evidence or clause-binding mismatches, when emitted, are `sev.coverage`.
+
+This severity split must remain grounded in OxCalc-owned required equality surfaces, not generic cross-lane flattening.
+
 ### 11.4 Failure Meaning
 A mismatch against the reference machine should be treated as:
 1. a semantic regression,
@@ -290,6 +304,17 @@ That means:
 The validator-runner contract remains the external execution boundary.
 The reference machine is the semantic core inside that boundary.
 
+## 13.1 Acceptance-Oracle Role In Witness Distillation
+The `TraceCalc Reference Machine` is the first OxCalc acceptance oracle for witness distillation.
+
+For OxCalc-local reduced witnesses, the acceptance oracle should evaluate:
+1. whether the reduced witness remains replay-valid,
+2. whether the required `engine_diff` mismatch kind remains present,
+3. whether the required view or reject mismatch remains present,
+4. whether the candidate-versus-publication boundary remains preserved where the predicate depends on it.
+
+If the reduced witness cannot be replay-validated, it must not be treated as a normal retained witness.
+
 ## 14. Realization Direction
 The first realized `TraceCalc Reference Machine` slice should likely include:
 1. deterministic state object materialization,
@@ -304,6 +329,24 @@ It does not need yet:
 3. OxFml-integrated evaluator execution,
 4. generated large-graph expansion,
 5. replay-pack export beyond conformance-ready local artifacts.
+
+## 14.1 Reduced-Witness And Retained-Failure Artifact Expectation
+When witness distillation is realized, the reference-machine-aware artifact surface should also support:
+1. `replay-appliance/reductions/<reduction_id>/reduction_manifest.json`
+2. `replay-appliance/reductions/<reduction_id>/candidate_journal.jsonl`
+3. `replay-appliance/reductions/<reduction_id>/witness_bundle/*`
+4. `replay-appliance/witnesses/<witness_id>/lifecycle.json`
+
+These artifacts are future additive surfaces.
+They do not replace the current run artifacts.
+
+## 14.2 Reduced-Witness Validity Rule
+Reduced witnesses should remain replay-valid by default.
+
+If a reduced artifact is useful only as an explanatory slice and not as a replay-valid witness:
+1. it must be marked explanatory-only,
+2. it must remain out of pack-eligible lifecycle states,
+3. the reason must be explicit in lifecycle or reduction metadata.
 
 ## 15. Promotion Rule
 No later production-engine optimization lane should be treated as semantically trustworthy for covered behaviors until it has been compared against the `TraceCalc Reference Machine` on the covered corpus.

@@ -22,6 +22,8 @@ The rewritten canonical core-engine set is:
   - supporting companion defining how the self-contained corpus is validated, executed, and emitted as run artifacts.
 - `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
   - supporting companion defining the executable semantic oracle and later-engine conformance baseline.
+- `docs/spec/core-engine/CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`
+  - supporting companion defining how OxCalc-owned `TraceCalc`, runner, oracle, and diff artifacts project into the Foundation Replay appliance rollout.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

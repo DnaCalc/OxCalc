@@ -1,7 +1,7 @@
 # W009: Replay and Pack Binding for Stage 1 Seam and Coordinator Behavior
 
 ## Purpose
-Bind the accepted seam direction and Stage 1 coordinator architecture to explicit replay artifact classes and first-pack expectations.
+Bind the accepted seam direction and Stage 1 coordinator architecture to explicit replay artifact classes, first-pack expectations, and the newly named Stage 1 coordinator and recalc transitions.
 
 ## Position and Dependencies
 - **Depends on**: W006, W007, W008
@@ -14,6 +14,7 @@ Bind the accepted seam direction and Stage 1 coordinator architecture to explici
 2. Typed reject replay cases for fence and capability mismatch.
 3. First-pack binding for Stage 1 seam and coordinator obligations.
 4. Trace-schema pressure that may require narrower follow-on handoff.
+5. Explicit replay coverage for the named Stage 1 recalc and coordinator transitions.
 
 ### Out of scope
 1. Implementing the replay harness.
@@ -22,6 +23,7 @@ Bind the accepted seam direction and Stage 1 coordinator architecture to explici
 
 ## Deliverables
 1. A replay and pack-binding planning packet for first assurance artifact creation.
+2. A first transition-coverage matrix tying W003/W004 transitions to replay classes and trace fields.
 
 ## Gate Model
 ### Entry gate
@@ -29,7 +31,8 @@ Bind the accepted seam direction and Stage 1 coordinator architecture to explici
 
 ### Exit gate
 - Stage 1 replay artifact classes and first-pack bindings are explicit enough to drive artifact authoring.
-- Replay classes are aligned to W008 actions `A5` through `A9` and safety classes `S1` through `S6`.
+- Replay classes are aligned to W008 actions `A1` through `A10` where relevant and safety classes `S1` through `S6`.
+- The named W003 and W004 Stage 1 transitions are covered by at least one replay class or explicit reserve lane.
 
 ## Stage 1 Replay Artifact Classes
 The first replay corpus should be organized by behavior class rather than by ad hoc scenario naming.
@@ -108,7 +111,8 @@ Minimum trace shape:
 Primary W008 anchors:
 1. `A8`
 2. `A9`
-3. `S6`
+3. `A10`
+4. `S6`
 
 ### R6. Typed Reject Taxonomy Coverage
 Purpose:
@@ -123,6 +127,61 @@ Initial reject families:
 Primary W008 anchors:
 1. `A6`
 2. `rejectLog`
+
+### R7. Verification-Clean Without Publication
+Purpose:
+1. show that demanded work can resolve through verification without emitting a publication bundle
+2. preserve replay visibility for `I4 VerifyClean` and `A3b VerifyClean`
+
+Minimum trace shape:
+1. node marked dirty and needed
+2. evaluation begins
+3. verification-clean resolution occurs
+4. published view remains unchanged
+5. demanded frontier can release without synthetic publication
+
+Primary W008 anchors:
+1. `A2`
+2. `A3`
+3. `A3b`
+
+### R8. Fallback And Overlay Re-entry
+Purpose:
+1. show that incompatible overlay basis or insufficient runtime-derived effect detail routes to explicit fallback
+2. prove the fallback path is no-publish and replay-visible
+
+Minimum trace shape:
+1. node reaches evaluation on a compatible structural basis
+2. dynamic-dependency or overlay condition fails the optimized path
+3. typed reject or fallback label is emitted
+4. node re-enters the stale or needed frontier under conservative policy
+5. overlay reuse is withheld until compatible basis is restored
+
+Primary W008 anchors:
+1. `A3`
+2. `A5`
+3. `A6`
+4. `A10`
+
+## Stage 1 Transition Coverage Matrix
+The first replay corpus should make the Stage 1 transition coverage explicit.
+
+| Stage 1 transition | Minimum replay class | Minimum trace labels |
+|---|---|---|
+| `I1 MarkDirty` | `R7` or `R8` depending on path | `node_marked_dirty` |
+| `I2 MarkNeeded` | `R7`, `R8`, or any publish-path class | `node_marked_needed` |
+| `I3 BeginEvaluate` | `R1`, `R2`, `R3`, `R7`, `R8` | `evaluation_started` |
+| `I4 VerifyClean` | `R7` | `node_verified_clean` |
+| `I5 ProduceDependencyShapeUpdate` | `R1`, `R3`, `R8` | `candidate_shape_update_produced` |
+| `I6 RejectOrFallback` | `R2`, `R6`, `R8` | `candidate_rejected` or `fallback_forced` |
+| `I7 PublishAndClear` | `R1`, `R3` | `publication_committed`, `node_cleared` |
+| `I8 ReleaseAndEvictEligible` | `R5`, `R8` | `eviction_eligibility_opened` |
+| `C1 AdmitCandidateWork` | `R1`, `R2`, `R3` | `candidate_admitted` |
+| `C2 RecordAcceptedCandidateResult` | `R1`, `R3` | `candidate_recorded` |
+| `C3 RejectCandidateWork` | `R2`, `R6`, `R8` | `candidate_rejected` |
+| `C4 AcceptAndPublish` | `R1`, `R3` | `publication_committed` |
+| `C5 PinReader` | `R4`, `R5` | `reader_pinned` |
+| `C6 UnpinAndReleaseProtection` | `R5` | `reader_unpinned`, `eviction_eligibility_opened` |
 
 ## First Pack Binding Matrix
 The first pack set should be anchored directly to replay classes and safety properties.
@@ -148,14 +207,18 @@ Stage 1 subset should bind to:
 ### P4. `PACK.fec.overlay_lifecycle`
 Stage 1 subset should bind to:
 1. replay class `R5`
-2. any overlay retention or release counters referenced later by W010
+2. replay class `R8`
+3. any overlay retention or release counters referenced later by W010
 
 ### P5. `PACK.dag.dynamic_dependency_bind_semantics`
-Stage 1 subset should later bind to replay only when W004 defines the runtime-derived effect cases to include.
+Stage 1 subset should bind first to:
+1. replay class `R8`
+2. the dynamic-dependency branches of `R3`
+3. the relevant fallback and reuse labels from the transition coverage matrix
 
 Current status:
-1. reserve this pack binding,
-2. do not over-claim concrete replay classes before W004 and later W009 follow-on detail are settled.
+1. the Stage 1 effect and dependency-shape subset is now explicit enough to name the first replay classes
+2. broader pack breadth still remains reserved until artifacts exist
 
 ## First Trace Schema Pressure List
 W009 should make explicit which trace fields are now required by the accepted seam and W008 model shape.
@@ -167,6 +230,9 @@ W009 should make explicit which trace fields are now required by the accepted se
 4. accept-and-publish event
 5. pin-reader event
 6. unpin or release-protection event
+7. verification-clean event
+8. fallback-forced event
+9. eviction-eligibility-opened event
 
 ### Required Trace Fields
 1. structural snapshot identity
@@ -177,6 +243,9 @@ W009 should make explicit which trace fields are now required by the accepted se
 6. typed reject detail where rejection occurs
 7. pinned-reader identity where reader protection matters
 8. overlay protection or release markers where retention safety matters
+9. node invalidation state before and after the transition where W004 transitions are under test
+10. transition label drawn from the Stage 1 transition coverage matrix
+11. overlay key or compatibility-basis fragment where fallback or eviction eligibility is being asserted
 
 ## Cross-Repo Seam Pressure Assessment
 At the planning level, W009 should assume the current OxFml seam is sufficient for:
@@ -191,10 +260,12 @@ Potential narrower follow-on handoff pressure exists only if:
 The first actual replay or pack authoring should proceed in this order:
 1. `R1` candidate-result versus publication separation
 2. `R2` reject-is-no-publish
-3. `R4` pinned-reader stability
-4. `R5` overlay retention or release safety
-5. `R3` fence-compatibility split
-6. `R6` broader reject taxonomy coverage
+3. `R7` verification-clean without publication
+4. `R4` pinned-reader stability
+5. `R5` overlay retention or release safety
+6. `R3` fence-compatibility split
+7. `R8` fallback and overlay re-entry
+8. `R6` broader reject taxonomy coverage
 
 This order prioritizes the coordinator and publication contract before broader replay breadth.
 
@@ -218,9 +289,9 @@ This order prioritizes the coordinator and publication contract before broader r
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - replay classes and pack hooks exist, but no artifacts have been authored yet
-  - W004 still needs to tighten the dynamic-dependency and runtime-derived effect subset before broader replay binding
+  - replay classes, transition coverage, and pack hooks now exist, but no artifacts have been authored yet
   - trace-schema ownership split with OxFml is still only partially explicit
   - W010 still needs to connect counters and experiments to these replay classes
+  - richer multi-transition corpus composition and generated-scenario policy remain open
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

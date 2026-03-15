@@ -1,0 +1,94 @@
+{
+  "scenario_id": "tc_cycle_region_reject_001",
+  "run_id": "w014-stage1-widening-baseline",
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "step_id": "st1",
+      "label": "node_marked_dirty",
+      "payload": {
+        "node_id": "A"
+      }
+    },
+    {
+      "event_id": "evt-0002",
+      "step_id": "st2",
+      "label": "cycle_region_detected",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A,B"
+      }
+    },
+    {
+      "event_id": "evt-0003",
+      "step_id": "st2",
+      "label": "scc_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A,B"
+      }
+    },
+    {
+      "event_id": "evt-0004",
+      "step_id": "st2",
+      "label": "node_marked_needed",
+      "payload": {
+        "node_id": "A"
+      }
+    },
+    {
+      "event_id": "evt-0005",
+      "step_id": "st2",
+      "label": "evaluation_started",
+      "payload": {
+        "node_id": "A",
+        "compatibility_basis": "s0"
+      }
+    },
+    {
+      "event_id": "evt-0006",
+      "step_id": "st2",
+      "label": "node_marked_dirty",
+      "payload": {
+        "node_id": "B"
+      }
+    },
+    {
+      "event_id": "evt-0007",
+      "step_id": "st2",
+      "label": "node_marked_needed",
+      "payload": {
+        "node_id": "B"
+      }
+    },
+    {
+      "event_id": "evt-0008",
+      "step_id": "st2",
+      "label": "evaluation_started",
+      "payload": {
+        "node_id": "B",
+        "compatibility_basis": "s0"
+      }
+    },
+    {
+      "event_id": "evt-0009",
+      "step_id": "st2",
+      "label": "candidate_admitted",
+      "payload": {
+        "admission_id": "adm1",
+        "compatibility_basis": "s0",
+        "target_count": "2"
+      }
+    },
+    {
+      "event_id": "evt-0010",
+      "step_id": "st3",
+      "label": "candidate_rejected",
+      "payload": {
+        "reject_id": "rej1",
+        "reject_kind": "synthetic_cycle_reject",
+        "target_count": "2"
+      }
+    }
+  ]
+}

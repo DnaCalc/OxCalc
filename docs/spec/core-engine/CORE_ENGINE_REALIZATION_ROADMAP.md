@@ -240,9 +240,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - W013 has now reached its final gate for the first TreeCalc Stage 1 implementation wave; the first structural, coordinator, recalc, Lean, TLA+, replay-seed, measurement-schema, harness, and oracle slices exist locally and the Lean state file has been typechecked once
-  - W014 is now defined as the next execution wave for multi-node scheduling, first SCC-oriented handling, emitted counters, and replay widening
-  - replay artifacts now include both the hand-authored seed set for `R1`, `R2`, and `R7` and the emitted `w013-sequence-a-baseline` run that exercises `R1`, `R2`, `R7`, `R4`, and `R5`
-  - measurement artifacts are schema-level only and are not emitted by running code yet
-  - Stage 1 scheduling is still a minimal tracker floor rather than the broader topo or SCC execution baseline called for by the roadmap
-  - later Stage 1 widening, Stage 2 concurrency realization, and broader replay-pack export remain later roadmap lanes
+  - W013 has reached its final gate for the first TreeCalc Stage 1 implementation wave
+  - W014 has now reached its final gate for the widening wave: the Stage 1 slice executes deterministic multi-node DAG handling, first SCC-oriented handling, widened replay classes, emitted per-scenario counters, and the checked-in `w014-stage1-widening-baseline` run
+  - replay artifacts now include the widened 12-scenario corpus and checked-in baseline runs for both `w013-sequence-a-baseline` and `w014-stage1-widening-baseline`
+  - later replay-appliance rollout, retained-witness handling, Stage 2 concurrency realization, and broader replay-pack export remain later roadmap lanes

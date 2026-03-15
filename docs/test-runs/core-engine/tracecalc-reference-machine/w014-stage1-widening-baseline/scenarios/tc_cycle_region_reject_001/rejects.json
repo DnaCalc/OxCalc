@@ -1,0 +1,10 @@
+{
+  "scenario_id": "tc_cycle_region_reject_001",
+  "rejects": [
+    {
+      "reject_id": "rej1",
+      "reject_kind": "synthetic_cycle_reject",
+      "reject_detail": "{\u0022region_id\u0022:\u0022R1\u0022,\u0022handling_mode\u0022:\u0022stage1-bounded-reject\u0022}"
+    }
+  ]
+}

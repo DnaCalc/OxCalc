@@ -1,0 +1,22 @@
+{
+  "scenario_id": "tc_multinode_dag_publish_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "3"
+    },
+    {
+      "node_id": "B",
+      "value": "3"
+    },
+    {
+      "node_id": "C",
+      "value": "3"
+    },
+    {
+      "node_id": "D",
+      "value": "6"
+    }
+  ]
+}

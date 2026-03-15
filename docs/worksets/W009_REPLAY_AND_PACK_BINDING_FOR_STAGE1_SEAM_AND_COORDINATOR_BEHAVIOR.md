@@ -225,11 +225,12 @@ This matrix should be extended as new replay artifacts and emitted runs are prom
 
 | Pack | Replay classes | Current scenario ids | Current artifact root |
 |---|---|---|---|
-| `PACK.fec.commit_atomicity` | `R1` | `tc_accept_publish_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
-| `PACK.fec.reject_detail_replay` | `R2` | `tc_reject_no_publish_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
-| `PACK.concurrent.epochs` | `R4`, `R5` | `tc_pinned_view_stability_001`, `tc_overlay_retention_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
-| `PACK.fec.overlay_lifecycle` | `R5` | `tc_overlay_retention_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
-| `PACK.dag.dynamic_dependency_bind_semantics` | reserve -> `R8`; current partial via shape update path | `tc_dynamic_dep_switch_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/` |
+| `PACK.fec.commit_atomicity` | `R1`, `R3` compatible branch | `tc_accept_publish_001`, `tc_multinode_dag_publish_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
+| `PACK.fec.reject_detail_replay` | `R2`, `R3` incompatible branch, `R6` | `tc_reject_no_publish_001`, `tc_publication_fence_reject_001`, `tc_artifact_token_reject_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
+| `PACK.concurrent.epochs` | `R4`, `R5` | `tc_pinned_view_stability_001`, `tc_overlay_retention_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
+| `PACK.fec.overlay_lifecycle` | `R5`, `R8` | `tc_overlay_retention_001`, `tc_fallback_reentry_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
+| `PACK.dag.dynamic_dependency_bind_semantics` | `R8` plus dynamic-shape publish path | `tc_dynamic_dep_switch_001`, `tc_fallback_reentry_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
+| `PACK.stage1.scc_bounded_handling` | local W014 SCC lane | `tc_cycle_region_reject_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
 
 ## First Trace Schema Pressure List
 W009 should make explicit which trace fields are now required by the accepted seam and W008 model shape.
@@ -300,10 +301,9 @@ This order prioritizes the coordinator and publication contract before broader r
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first replay artifacts for `R1`, `R2`, and `R7` now exist as hand-authored seeds and are also exercised by the emitted `w013-sequence-a-baseline` harness run
-  - `R4` and `R5` are now exercised by the emitted baseline run, but they do not yet have dedicated hand-authored seed artifacts
+  - `R1` through `R8` are now exercised by the widened checked-in corpus and the emitted `w014-stage1-widening-baseline` run
+  - dedicated replay-appliance bundle projection and validator output remain later than the current OxCalc-native artifact surface
   - trace-schema ownership split with OxFml is still only partially explicit
-  - W010 still needs to connect counters and experiments to these replay classes more tightly than the current matrix
-  - `R3`, `R6`, and `R8` still need authored and exercised artifacts
+  - W010 still needs promotion-threshold reporting and replay-linked summaries over the now-emitted counters
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

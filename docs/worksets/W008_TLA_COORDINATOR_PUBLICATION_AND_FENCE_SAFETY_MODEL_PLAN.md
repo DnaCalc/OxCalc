@@ -306,9 +306,9 @@ W009 should consume this packet by binding replay and pack expectations to:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first TLA+ Stage 1 skeleton now exists under `formal/tla/`, but no TLC run or syntax check has been executed in this repo yet
+  - the first TLA+ Stage 1 skeleton now exists under `formal/tla/`, and the `CoreEngineStage1.smoke.cfg` model has been checked once locally with TLC
   - liveness questions are named, but fairness and progress assumptions are still open
-  - replay linkage for the implemented invalidation and publication transitions is still absent
-  - W009 must still bind the safety classes and transition families to replay and pack artifacts
+  - the widened W014 replay classes and scenario ids now bind the implemented invalidation and publication transitions, but fuller concurrency-facing replay linkage remains later
+  - fairness-bearing or richer model configurations remain later than the current smoke scope
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

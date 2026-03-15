@@ -91,6 +91,13 @@ public sealed class Stage1RecalcTracker
         ProtectExecutionOverlay(nodeId, $"fallback:{reason}");
     }
 
+    public void ReenterRejectedPendingRepair(TreeNodeId nodeId)
+    {
+        RequireState(nodeId, NodeCalcState.RejectedPendingRepair);
+        _nodeStates[nodeId] = NodeCalcState.Needed;
+        ProtectExecutionOverlay(nodeId, "reenter_needed");
+    }
+
     public void PublishAndClear(TreeNodeId nodeId)
     {
         RequireState(nodeId, NodeCalcState.PublishReady);
@@ -112,6 +119,21 @@ public sealed class Stage1RecalcTracker
             var entry = _overlays[key];
             _overlays[key] = entry with { IsProtected = false, IsEvictionEligible = true };
         }
+    }
+
+    public int EvictEligibleOverlays()
+    {
+        var toEvict = _overlays
+            .Where(static pair => pair.Value.IsEvictionEligible && !pair.Value.IsProtected)
+            .Select(static pair => pair.Key)
+            .ToArray();
+
+        foreach (var key in toEvict)
+        {
+            _overlays.Remove(key);
+        }
+
+        return toEvict.Length;
     }
 
     private void ProtectExecutionOverlay(TreeNodeId nodeId, string detail)

@@ -1,0 +1,10 @@
+{
+  "scenario_id": "tc_fallback_reentry_001",
+  "rejects": [
+    {
+      "reject_id": "rej1",
+      "reject_kind": "dynamic_dependency_failure",
+      "reject_detail": "{\u0022owner_node_id\u0022:\u0022Pick\u0022,\u0022phase\u0022:\u0022first-pass\u0022}"
+    }
+  ]
+}

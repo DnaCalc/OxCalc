@@ -501,6 +501,11 @@ The first authored hand-auditable corpus now includes:
 5. `tc_overlay_retention_001`
 6. `tc_scale_chain_seed_001`
 7. `tc_verify_clean_no_publish_001`
+8. `tc_multinode_dag_publish_001`
+9. `tc_publication_fence_reject_001`
+10. `tc_artifact_token_reject_001`
+11. `tc_fallback_reentry_001`
+12. `tc_cycle_region_reject_001`
 
 A later corpus may split into:
 1. hand-auditable scenarios,
@@ -529,7 +534,7 @@ These are no longer allowed to block fixture authoring.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the initial hand-auditable corpus is now executable through the validator, runner, and reference-machine path
+  - the hand-auditable corpus now includes the widened W014 replay classes and is executable through the validator, runner, engine, and reference-machine paths
   - exact trace event body schema remains narrower than the later replay-pack schema
   - generated corpus expansion and later replay-pack binding details are still open
 - claim_confidence: provisional

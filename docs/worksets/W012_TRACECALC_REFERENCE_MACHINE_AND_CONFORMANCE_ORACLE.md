@@ -88,9 +88,12 @@ The first conformance surface should require matching at least:
 | 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
 
 ## Status
-- execution_state: complete
-- scope_completeness: scope_complete
-- target_completeness: target_complete
-- integration_completeness: integrated
+- execution_state: in_progress
+- scope_completeness: scope_partial
+- target_completeness: target_partial
+- integration_completeness: partial
+- open_lanes:
+  - the reference-machine and engine conformance path is now widened through the 12-scenario `w014-stage1-widening-baseline` run
+  - replay-appliance bundle projection, richer mismatch severity output, and reduced-witness flows remain later lanes
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

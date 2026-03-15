@@ -336,7 +336,8 @@ It does not need yet:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first validator, runner, and emitted artifact path now exist and are exercised by unit tests plus the checked-in baseline run
+  - the first validator, runner, and emitted artifact path now exist and are exercised by unit tests plus the checked-in `w013-sequence-a-baseline` and `w014-stage1-widening-baseline` runs
+  - emitted runtime counter snapshots now exist per scenario in the checked-in widened baseline run
   - replay-pack fragment shape remains a W009 follow-on lane
   - generated-corpus execution policy remains a later lane
 - claim_confidence: provisional

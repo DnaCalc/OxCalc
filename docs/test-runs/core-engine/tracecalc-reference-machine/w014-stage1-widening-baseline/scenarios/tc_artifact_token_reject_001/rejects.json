@@ -1,0 +1,10 @@
+{
+  "scenario_id": "tc_artifact_token_reject_001",
+  "rejects": [
+    {
+      "reject_id": "rej1",
+      "reject_kind": "artifact_token_mismatch",
+      "reject_detail": "{\u0022expected_token\u0022:\u0022artifact:tracecalc\u0022,\u0022observed_token\u0022:\u0022artifact:stale\u0022}"
+    }
+  ]
+}

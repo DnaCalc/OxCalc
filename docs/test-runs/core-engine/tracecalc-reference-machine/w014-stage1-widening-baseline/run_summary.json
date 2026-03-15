@@ -1,0 +1,9 @@
+{
+  "run_id": "w014-stage1-widening-baseline",
+  "schema_version": "tracecalc-corpus-s1",
+  "scenario_count": 12,
+  "result_counts": {
+    "passed": 12
+  },
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline"
+}

@@ -263,26 +263,22 @@ It is the end of the widening wave that makes the Stage 1 baseline materially br
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
-| 2 | Pack expectations updated for affected packs? | no |
-| 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
-| 4 | Semantic-equivalence statement provided for policy/strategy changes? | no |
-| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | no |
-| 6 | All required tests pass? | no |
-| 7 | No known semantic gaps remain in declared scope? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
+| 2 | Pack expectations updated for affected packs? | yes |
+| 3 | At least one deterministic replay artifact exists per in-scope behavior? | yes |
+| 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
+| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
+| 6 | All required tests pass? | yes |
+| 7 | No known semantic gaps remain in declared scope? | yes |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
-| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | no |
-| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
+| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
+| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
 
 ## Status
-- execution_state: planned
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - the packet is now defined, but no widening implementation artifacts exist yet
-  - the required `R3`, `R6`, and `R8` scenarios are not yet authored
-  - emitted runtime counters do not yet exist
-  - the widened baseline run does not yet exist
-- claim_confidence: draft
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: none
+- claim_confidence: validated
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

@@ -1,0 +1,14 @@
+{
+  "scenario_id": "tc_artifact_token_reject_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "5"
+    },
+    {
+      "node_id": "B",
+      "value": "5"
+    }
+  ]
+}

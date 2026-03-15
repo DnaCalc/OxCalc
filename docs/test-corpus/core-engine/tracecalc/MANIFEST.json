@@ -87,6 +87,71 @@
         "stage1",
         "hand-auditable"
       ]
+    },
+    {
+      "scenario_id": "tc_multinode_dag_publish_001",
+      "path": "hand-auditable/tc_multinode_dag_publish_001.json",
+      "focus": [
+        "multi-node-dag",
+        "topo-scheduling"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w014"
+      ]
+    },
+    {
+      "scenario_id": "tc_publication_fence_reject_001",
+      "path": "hand-auditable/tc_publication_fence_reject_001.json",
+      "focus": [
+        "publication-fence-reject",
+        "typed-reject"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w014"
+      ]
+    },
+    {
+      "scenario_id": "tc_artifact_token_reject_001",
+      "path": "hand-auditable/tc_artifact_token_reject_001.json",
+      "focus": [
+        "artifact-token-reject",
+        "typed-reject"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w014"
+      ]
+    },
+    {
+      "scenario_id": "tc_fallback_reentry_001",
+      "path": "hand-auditable/tc_fallback_reentry_001.json",
+      "focus": [
+        "fallback-reentry",
+        "overlay-reuse"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w014"
+      ]
+    },
+    {
+      "scenario_id": "tc_cycle_region_reject_001",
+      "path": "hand-auditable/tc_cycle_region_reject_001.json",
+      "focus": [
+        "cycle-region",
+        "scc-handling"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w014"
+      ]
     }
   ]
 }

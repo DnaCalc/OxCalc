@@ -243,8 +243,8 @@ The planning rule is simple: counters must be explainable by replay class and pr
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first machine-readable Stage 1 counter schema and experiment register now exist under `formal/measurement/`, but no runtime instrumentation emits them yet
-  - replay-linked summaries, regression thresholds, and scenario-level counter snapshots are still absent
+  - the first machine-readable Stage 1 counter schema and experiment register now exist under `formal/measurement/`, and runtime instrumentation now emits per-scenario counter snapshots through the widened `TraceCalc` runner
+  - replay-linked summaries, regression thresholds, and promotion-threshold reporting are still absent
   - W004 still needs to provide tighter runtime-effect and overlay detail before several counters become operationally meaningful
   - Stage 2 reserved counters remain intentionally declarative only
 - claim_confidence: provisional

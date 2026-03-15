@@ -1,0 +1,14 @@
+{
+  "scenario_id": "tc_publication_fence_reject_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "2"
+    },
+    {
+      "node_id": "B",
+      "value": "2"
+    }
+  ]
+}

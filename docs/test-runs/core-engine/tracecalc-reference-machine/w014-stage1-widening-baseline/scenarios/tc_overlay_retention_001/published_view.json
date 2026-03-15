@@ -1,0 +1,18 @@
+{
+  "scenario_id": "tc_overlay_retention_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "Left",
+      "value": "10"
+    },
+    {
+      "node_id": "Mode",
+      "value": "left"
+    },
+    {
+      "node_id": "Pick",
+      "value": "10"
+    }
+  ]
+}

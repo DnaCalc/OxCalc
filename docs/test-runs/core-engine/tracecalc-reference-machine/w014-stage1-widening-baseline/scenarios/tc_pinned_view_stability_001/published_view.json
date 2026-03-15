@@ -1,0 +1,18 @@
+{
+  "scenario_id": "tc_pinned_view_stability_001",
+  "snapshot_id": "s0",
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "2"
+    },
+    {
+      "node_id": "B",
+      "value": "1"
+    },
+    {
+      "node_id": "C",
+      "value": "3"
+    }
+  ]
+}

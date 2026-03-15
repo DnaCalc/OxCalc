@@ -1,0 +1,10 @@
+{
+  "scenario_id": "tc_publication_fence_reject_001",
+  "rejects": [
+    {
+      "reject_id": "rej1",
+      "reject_kind": "publication_fence_mismatch",
+      "reject_detail": "{\u0022expected_basis\u0022:\u0022s0\u0022,\u0022observed_basis\u0022:\u0022s1\u0022}"
+    }
+  ]
+}

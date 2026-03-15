@@ -3,7 +3,7 @@
 Canonical repo-level register of feature areas that are in-progress under workset completion doctrine.
 
 Status: active.
-Last updated: 2026-03-15.
+Last updated: 2026-03-16.
 
 ## Status Vocabulary
 
@@ -40,9 +40,9 @@ Last updated: 2026-03-15.
 ### IP-04: Incremental Recalc and Overlay Baseline
 
 - **Status**: in-progress
-- **Current floor**: canonical recalc and overlay architecture is drafted, and the local Stage 1 floor is now scaffolded in code with named invalidation states, overlay keys and entries, fallback transitions, release and eviction eligibility, and passing tests for publish, verify-clean, reject, and overlay-retention paths.
-- **Remaining gaps**: multi-node scheduling, topo or SCC execution, emitted counter instrumentation, replay widening, richer runtime-effect handling, and broader overlay economics evidence.
-- **Why still open**: the recalc floor now exists as an executable single-node baseline, but it is not yet the broader Stage 1 engine slice the workset targets.
+- **Current floor**: canonical recalc and overlay architecture is drafted, and the local Stage 1 floor now executes a widened planner-driven slice with deterministic multi-node DAG scheduling, first SCC-oriented handling, fallback re-entry, emitted per-scenario counters, and passing tests plus a checked-in widened baseline run.
+- **Remaining gaps**: richer runtime-effect handling, broader overlay-economics reporting, replay-appliance bundle projection, and later concurrency-facing widening.
+- **Why still open**: the widened Stage 1 slice now exists, but later evidence, replay projection, and Stage 2-facing lanes remain partial.
 - **Canonical owner**: W004.
 
 ### IP-05: OxFml Seam Hardening and Handoff Closure
@@ -56,25 +56,25 @@ Last updated: 2026-03-15.
 ### IP-06: Core Formalization and Gate Binding
 
 - **Status**: in-progress
-- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet plus explicit Stage 1 transition bindings, W009 contains the first replay-class and pack-binding packet plus transition-coverage mapping, W010 contains the first experiment-register and measurement-schema packet, and the repo now includes first Lean, TLA+, replay-seed, and measurement-schema artifacts under `formal/`, with the Lean state file typechecked once locally and the JSON replay/measurement artifacts validated.
-- **Remaining gaps**: theorem authoring, TLA+ model checking, broader replay artifact coverage, emitted counter snapshots, pack artifact creation, and W014 execution over the widened Stage 1 slice.
-- **Why still open**: the assurance lane now has initial state, concurrency-model, replay-binding, and measurement-planning packets plus first artifact skeletons and seed artifacts, but not yet exercised pack, instrumentation, or TLA+ evidence.
+- **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet plus explicit Stage 1 transition bindings, W009 contains the replay-class and pack-binding matrix through `R8`, W010 contains the experiment-register and measurement-schema packet, and the repo now includes Lean, TLA+, replay-seed, measurement-schema, emitted counter, and widened baseline run artifacts; the Lean state file has been typechecked locally and the TLA+ smoke model has been checked once with TLC.
+- **Remaining gaps**: theorem authoring, richer TLA+ model exploration, replay-appliance bundle projection, pack artifact creation, and later retained-witness evidence.
+- **Why still open**: the assurance lane now has real widened Stage 1 evidence, but its later proof, pack, and replay-appliance lanes remain partial.
 - **Canonical owner**: W006.
 
 ### IP-07: Self-Contained Test Harness Planning
 
 - **Status**: in-progress
-- **Current floor**: `W011` has now progressed from planning into a first realized slice: the repo contains the `TraceCalc` corpus, a validator and runner path under `src/OxCalc.Core/TraceCalc/`, a small tool host under `src/OxCalc.TraceCalc.Tool/`, unit-test coverage for the runner, and a checked-in emitted baseline run at `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`.
-- **Remaining gaps**: broader replay-pack export, generated-corpus lanes, richer failure-surface coverage, widened Stage 1 corpus for `R3`, `R6`, `R8`, DAG, and SCC cases, and later OxFml-integrated harness coverage.
-- **Why still open**: the first self-contained harness slice is exercised, but the broader harness feature area still has later replay, scale, and integrated-host lanes.
+- **Current floor**: `W011` now includes an exercised 12-scenario `TraceCalc` corpus, validator and runner paths under `src/OxCalc.Core/TraceCalc/`, a small tool host under `src/OxCalc.TraceCalc.Tool/`, planner tests, runner tests, and checked-in emitted baseline runs at `w013-sequence-a-baseline` and `w014-stage1-widening-baseline`.
+- **Remaining gaps**: replay-appliance bundle export, richer retained-failure handling, larger generated-corpus lanes, and later OxFml-integrated harness coverage.
+- **Why still open**: the widened self-contained harness slice is exercised, but later replay, retained-witness, and integrated-host lanes remain partial.
 - **Canonical owner**: W011.
 
 ### IP-08: TraceCalc Reference Machine and Conformance Oracle
 
 - **Status**: in-progress
-- **Current floor**: `W012` now includes an executable `TraceCalc Reference Machine`, an engine adapter, conformance comparison logic, a checked-in emitted oracle/conformance baseline run for the seven-scenario corpus, and unit-test coverage for the runner path that hosts the oracle.
-- **Remaining gaps**: richer trace comparison policy beyond the first conformance surface, broader corpus coverage, widened Stage 1 conformance over multi-node and SCC-oriented cases, and later continuous engine-versus-oracle series beyond the current baseline run.
-- **Why still open**: the first oracle slice now exists and is exercised, but the broader oracle feature area still has later replay-pack and scale lanes.
+- **Current floor**: `W012` now includes an executable `TraceCalc Reference Machine`, an engine adapter, conformance comparison logic, planner-driven DAG and SCC coverage, and checked-in emitted oracle/conformance baseline runs for both the original and widened 12-scenario corpora.
+- **Remaining gaps**: richer trace comparison policy beyond the first conformance surface, replay-appliance bundle projection, reduced-witness flows, and later continuous engine-versus-oracle series beyond the current baseline runs.
+- **Why still open**: the oracle is exercised over the widened Stage 1 slice, but later replay-appliance and retained-witness lanes remain partial.
 - **Canonical owner**: W012.
 
 

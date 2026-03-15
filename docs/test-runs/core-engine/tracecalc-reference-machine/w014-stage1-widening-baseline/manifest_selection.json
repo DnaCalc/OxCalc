@@ -1,0 +1,152 @@
+[
+  {
+    "scenario_id": "tc_accept_publish_001",
+    "path": "hand-auditable/tc_accept_publish_001.json",
+    "focus": [
+      "candidate-publication-boundary",
+      "accept-publish"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_reject_no_publish_001",
+    "path": "hand-auditable/tc_reject_no_publish_001.json",
+    "focus": [
+      "reject-is-no-publish",
+      "typed-reject"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_pinned_view_stability_001",
+    "path": "hand-auditable/tc_pinned_view_stability_001.json",
+    "focus": [
+      "pinned-view",
+      "stable-reader"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "path": "hand-auditable/tc_dynamic_dep_switch_001.json",
+    "focus": [
+      "dynamic-dependency",
+      "runtime-effects"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_overlay_retention_001",
+    "path": "hand-auditable/tc_overlay_retention_001.json",
+    "focus": [
+      "overlay-retention",
+      "runtime-effects"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_scale_chain_seed_001",
+    "path": "hand-auditable/tc_scale_chain_seed_001.json",
+    "focus": [
+      "scale-seed",
+      "generator-metadata"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "scale"
+    ]
+  },
+  {
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "path": "hand-auditable/tc_verify_clean_no_publish_001.json",
+    "focus": [
+      "verify-clean",
+      "no-publication"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "scenario_id": "tc_multinode_dag_publish_001",
+    "path": "hand-auditable/tc_multinode_dag_publish_001.json",
+    "focus": [
+      "multi-node-dag",
+      "topo-scheduling"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "scenario_id": "tc_publication_fence_reject_001",
+    "path": "hand-auditable/tc_publication_fence_reject_001.json",
+    "focus": [
+      "publication-fence-reject",
+      "typed-reject"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "scenario_id": "tc_artifact_token_reject_001",
+    "path": "hand-auditable/tc_artifact_token_reject_001.json",
+    "focus": [
+      "artifact-token-reject",
+      "typed-reject"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "scenario_id": "tc_fallback_reentry_001",
+    "path": "hand-auditable/tc_fallback_reentry_001.json",
+    "focus": [
+      "fallback-reentry",
+      "overlay-reuse"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "scenario_id": "tc_cycle_region_reject_001",
+    "path": "hand-auditable/tc_cycle_region_reject_001.json",
+    "focus": [
+      "cycle-region",
+      "scc-handling"
+    ],
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  }
+]

@@ -1,0 +1,62 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_cycle_region_reject_001",
+  "description": "first SCC-oriented handling is surfaced as a bounded synthetic cycle reject",
+  "calc_space": "TraceCalc",
+  "tags": ["cycle", "scc", "w014"],
+  "pack_tags": ["stage1", "w014", "scc-oriented"],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      { "node_id": "A", "kind": "value", "expr": { "op": "sum", "deps": ["B"] } },
+      { "node_id": "B", "kind": "value", "expr": { "op": "sum", "deps": ["A"] } }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      { "node_id": "A", "value": 0 },
+      { "node_id": "B", "value": 0 }
+    ]
+  },
+  "steps": [
+    { "step_id": "st1", "kind": "mark_stale", "targets": ["A"] },
+    { "step_id": "st2", "kind": "admit_work", "admission_id": "adm1", "compatibility_basis": "s0", "targets": ["A"] },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej1",
+      "reject_kind": "synthetic_cycle_reject",
+      "reject_detail": {
+        "region_id": "R1",
+        "handling_mode": "stage1-bounded-reject"
+      },
+      "diagnostic_events": []
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        { "node_id": "A", "value": 0 },
+        { "node_id": "B", "value": 0 }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      { "label": "node_marked_dirty", "count": 2 },
+      { "label": "candidate_admitted", "count": 1 },
+      { "label": "cycle_region_detected", "count": 1 },
+      { "label": "scc_group_scheduled", "count": 1 },
+      { "label": "node_marked_needed", "count": 2 },
+      { "label": "evaluation_started", "count": 2 },
+      { "label": "candidate_rejected", "count": 1 }
+    ],
+    "counter_expectations": [
+      { "counter": "cycle_region_groups", "comparison": "eq", "value": 1 },
+      { "counter": "rejects_by_class.synthetic_cycle_reject", "comparison": "eq", "value": 1 }
+    ],
+    "rejects": [
+      { "reject_id": "rej1", "reject_kind": "synthetic_cycle_reject", "detail_contains": "stage1-bounded-reject" }
+    ]
+  }
+}

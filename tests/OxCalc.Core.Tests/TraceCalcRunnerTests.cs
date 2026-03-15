@@ -18,7 +18,7 @@ public sealed class TraceCalcRunnerTests
             var summary = runner.ExecuteManifest(repoRoot, runId);
 
             Assert.Equal(runId, summary.RunId);
-            Assert.Equal(7, summary.ScenarioCount);
+            Assert.Equal(12, summary.ScenarioCount);
             Assert.True(summary.ResultCounts.TryGetValue(nameof(TraceCalcScenarioResultState.Passed), out var passedCount));
             Assert.Equal(summary.ScenarioCount, passedCount);
             Assert.True(File.Exists(Path.Combine(artifactRoot, "run_summary.json")));
@@ -28,6 +28,7 @@ public sealed class TraceCalcRunnerTests
 
             var diffDocument = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "conformance", "engine_diff.json")))!.AsArray();
             Assert.Contains(diffDocument, node => string.Equals(node?["scenario_id"]?.GetValue<string>(), "tc_verify_clean_no_publish_001", StringComparison.Ordinal));
+            Assert.Contains(diffDocument, node => string.Equals(node?["scenario_id"]?.GetValue<string>(), "tc_fallback_reentry_001", StringComparison.Ordinal));
             Assert.DoesNotContain(diffDocument, node => node?["mismatches"]?.AsArray().Count > 0);
 
             var verifyResult = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_verify_clean_no_publish_001", "result.json")))!.AsObject();
@@ -36,6 +37,9 @@ public sealed class TraceCalcRunnerTests
             var verifyTrace = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_verify_clean_no_publish_001", "trace.json")))!.AsObject();
             var events = verifyTrace["events"]!.AsArray();
             Assert.Contains(events, node => string.Equals(node?["label"]?.GetValue<string>(), "node_verified_clean", StringComparison.Ordinal));
+
+            var fallbackResult = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_fallback_reentry_001", "result.json")))!.AsObject();
+            Assert.Equal("passed", fallbackResult["result_state"]?.GetValue<string>());
         }
         finally
         {

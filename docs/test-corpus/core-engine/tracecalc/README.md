@@ -18,8 +18,7 @@ The corpus exists to provide hand-auditable scenario inputs for:
   - small explicit scenarios intended for direct inspection.
 
 ## Current Corpus Slice
-The current checked-in slice is intentionally small and explicit.
-It is suitable for future validator, runner, and replay-pack work, but it is not yet an exercised replay corpus.
+The current checked-in slice is intentionally explicit and is now exercised by the validator, runner, engine, and reference-machine paths.
 
 Current scenarios:
 1. `tc_accept_publish_001.json`
@@ -28,6 +27,12 @@ Current scenarios:
 4. `tc_dynamic_dep_switch_001.json`
 5. `tc_overlay_retention_001.json`
 6. `tc_scale_chain_seed_001.json`
+7. `tc_verify_clean_no_publish_001.json`
+8. `tc_multinode_dag_publish_001.json`
+9. `tc_publication_fence_reject_001.json`
+10. `tc_artifact_token_reject_001.json`
+11. `tc_fallback_reentry_001.json`
+12. `tc_cycle_region_reject_001.json`
 
 ## Relationship To Spec Docs
 This corpus is authored against:
@@ -41,6 +46,6 @@ This corpus is authored against:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the validator-runner contract is now defined, but no validator or fixture runner consumes this corpus yet
-  - no replay-pack artifact binds to these scenarios yet
-  - generated large-graph corpus lanes are still unauthored
+  - the corpus is now exercised by the checked-in `w013-sequence-a-baseline` and `w014-stage1-widening-baseline` runs
+  - replay-pack and replay-appliance bundle projections are still later lanes
+  - generated large-graph corpus lanes remain narrower than the later economics and retained-failure lanes

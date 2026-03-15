@@ -179,19 +179,64 @@ The current shared direction now includes:
 
 Follow-on handoff pressure remains only where OxCalc later needs narrower or stronger requirements than the current shared canonical wording.
 
-## 15. Open Detailed Questions
+## 15. OxCalc-Local Stage 1 Minimum Seam Packet
+
+### 15.1 AcceptedCandidateResult Minimum
+For Stage 1, OxCalc requires the shared seam to preserve enough information to derive or surface a minimum local `AcceptedCandidateResult` containing:
+1. `candidate_result_id`
+2. `struct_snapshot_id`
+3. `artifact_token_basis`
+4. `compatibility_basis`
+5. `target_set`
+6. `value_updates`
+7. `dependency_shape_updates`
+8. `runtime_effects`
+9. `diagnostic_events`
+
+This is an OxCalc-local minimum requirement for coordinator-controlled publication.
+It does not claim that the shared OxFml-side canonical field names or artifact layering are identical.
+
+### 15.2 Runtime-Derived Effect Subset
+For Stage 1, OxCalc expects at least the following local runtime-derived effect subset to be preservable through the seam:
+1. `dynamic_ref_activated`
+2. `dynamic_ref_released`
+3. `region_shape_activated`
+4. `region_shape_released`
+5. `capability_observed`
+6. `format_observed`
+
+This subset is the local coordinator and overlay floor.
+It is not a claim that the broader shared runtime-derived effect taxonomy is closed.
+
+### 15.3 Reject Subset
+For Stage 1, OxCalc expects the shared seam to support a local typed reject subset covering at least:
+1. `snapshot_mismatch`
+2. `artifact_token_mismatch`
+3. `profile_version_mismatch`
+4. `capability_mismatch`
+5. `publication_fence_mismatch`
+6. `dynamic_dependency_failure`
+7. `synthetic_cycle_reject`
+8. `host_injected_failure`
+
+This is the minimum local reject floor needed for coordinator no-publish behavior, replay classification, and self-contained harness scenarios.
+It does not claim that the shared OxFml-side canonical taxonomy or ownership split is fully closed.
+
+## 16. Open Detailed Questions
 These remain seam-hardening questions rather than reasons to weaken the split:
-1. exact accepted-result payload boundaries in shared canonical terms,
-2. exact reject taxonomy shape and ownership partition,
-3. exact runtime-derived effect taxonomy required by the evaluator,
+1. exact accepted-result payload naming and artifact partition in shared canonical terms,
+2. exact reject taxonomy ownership partition beyond the now-locked Stage 1 local subset,
+3. exact broader runtime-derived effect taxonomy beyond the Stage 1 local subset,
 4. exact trace schema mapping for coordinator-facing replay and diagnostics.
 
-## 16. Status
+## 17. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
   - replay artifacts not yet attached for candidate-result versus publication boundaries,
-  - exact runtime-derived effect taxonomy remains open,
+  - the Stage 1 local seam packet is now explicit, but broader shared taxonomy closure remains open,
   - roadmap and worksets still need downstream alignment to the updated shared seam
+
+

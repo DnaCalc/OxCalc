@@ -14,6 +14,7 @@ Define the implementation-facing Stage 1 packet for invalidation state, conserva
 2. Conservative subset of the verification-oriented incremental architecture.
 3. Dynamic-dependency overlay baseline and explicit fallback policy.
 4. Overlay retention, reuse, eviction, and measurement requirements.
+5. Stage 1 runtime-derived effect subset consumed from accepted candidate results.
 
 ### Out of scope
 1. Default dynamic-topological maintenance.
@@ -24,6 +25,7 @@ Define the implementation-facing Stage 1 packet for invalidation state, conserva
 1. Invalidation-state packet covering dirty, necessary, verified, and fallback-relevant transitions.
 2. Overlay packet covering key shape, retention rules, eviction triggers, and runtime-derived effect handling assumptions.
 3. Measurement packet covering fallback rates, overlay reuse or miss rates, and the Stage 1 experiment hooks needed by later work.
+4. Stage 1 runtime-derived effect subset and dependency-shape handling packet for W009 replay and W010 measurement consumption.
 
 ## Gate Model
 ### Entry gate
@@ -35,11 +37,52 @@ Define the implementation-facing Stage 1 packet for invalidation state, conserva
 - Stage 1 recalc and overlay subset is explicit enough to implement without re-opening baseline architecture choices.
 - Overlay lifecycle and fallback policy are explicit enough to bind into W009 replay planning and W010 measurement planning.
 - Runtime-derived effect assumptions are explicit enough to decide whether a narrower follow-on seam handoff is needed.
+- The minimum Stage 1 effect subset and dependency-shape update handling are explicit in OxCalc-local terms.
+
+## Stage 1 Runtime-Derived Effect Subset
+The Stage 1 OxCalc-local runtime-derived effect subset should include at least:
+1. `dynamic_ref_activated`
+2. `dynamic_ref_released`
+3. `region_shape_activated`
+4. `region_shape_released`
+5. `capability_observed`
+6. `format_observed`
+
+This is the minimum local subset the overlay and fallback baseline should consume.
+It is not a claim that the shared OxFml-side taxonomy is closed.
+
+## Stage 1 Dependency-Shape Update Handling
+The Stage 1 dependency-shape update kinds the recalc and overlay baseline should consume are:
+1. `none`
+2. `activate_dynamic_dep`
+3. `release_dynamic_dep`
+4. `change_region_membership`
+5. `synthetic_spill_shape`
+
+### Handling Direction
+1. `activate_dynamic_dep` and `release_dynamic_dep` feed dynamic-overlay updates and fallback decisions.
+2. `change_region_membership` and `synthetic_spill_shape` feed region- or spill-like overlay updates where a scenario or implementation path models them.
+3. `none` keeps candidate-result publication explicit even when dependency shape is unchanged.
+
+## Stage 1 Overlay Key and Fallback Direction
+The minimum Stage 1 overlay key should be based on:
+1. `owner_node_id`
+2. `overlay_kind`
+3. `struct_snapshot_id`
+4. `compatibility_basis`
+5. optional effect-specific payload identity
+
+The minimum fallback triggers should include at least:
+1. missing required dynamic-dependency effect detail,
+2. incompatible overlay key basis,
+3. unsupported region-shape or spill-shape consequence,
+4. rejected candidate result,
+5. explicit host or harness fallback injection.
 
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
 | 2 | Pack expectations updated for affected packs? | no |
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | no |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
@@ -47,18 +90,18 @@ Define the implementation-facing Stage 1 packet for invalidation state, conserva
 | 6 | All required tests pass? | no |
 | 7 | No known semantic gaps remain in declared scope? | no |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
-| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | no |
+| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
 | 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | no |
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - invalidation-state packet is not yet authored in implementation-facing detail
-  - overlay key, retention, and fallback matrix is not yet drafted
-  - replay and pack classes for dynamic-dependency behavior are still absent
+  - invalidation-state packet still needs fuller implementation-facing transition detail
+  - overlay retention and eviction matrix is still not fully authored
+  - replay and pack classes for the now-named dynamic-dependency subset still need W009 binding
   - no exercised recalc or overlay implementation exists
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

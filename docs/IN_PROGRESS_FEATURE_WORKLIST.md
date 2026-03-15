@@ -31,26 +31,26 @@ Last updated: 2026-03-15.
 
 ### IP-03: Stage 1 Coordinator and Publication Baseline
 
-- **Status**: planned
-- **Current floor**: canonical coordinator and publication architecture drafted; no exercised implementation.
-- **Remaining gaps**: single-publisher realization, accept/reject enforcement, atomic publication bundle, stable observer-visible state, replay-oriented reject detail.
-- **Why still open**: coordinator remains spec-first and unexercised.
+- **Status**: in-progress
+- **Current floor**: canonical coordinator and publication architecture drafted, and W003 now fixes the first implementation-facing Stage 1 candidate-result intake, publication bundle, and typed reject floor; no exercised implementation.
+- **Remaining gaps**: single-publisher realization, accept/reject enforcement, atomic publication bundle realization, stable observer-visible state, replay-oriented reject-detail binding, and emitted publication artifacts.
+- **Why still open**: coordinator packet boundaries are now tighter, but realization, replay artifacts, and exercised behavior remain absent.
 - **Canonical owner**: W003.
 
 ### IP-04: Incremental Recalc and Overlay Baseline
 
-- **Status**: planned
-- **Current floor**: canonical recalc and overlay architecture drafted; no exercised implementation.
-- **Remaining gaps**: invalidation-state machine, verification-oriented incremental subset, dynamic-dependency overlay handling, fallback or economics instrumentation.
-- **Why still open**: baseline direction is now explicit, but realization and evidence are not in place.
+- **Status**: in-progress
+- **Current floor**: canonical recalc and overlay architecture drafted, and W004 now fixes the first implementation-facing Stage 1 runtime-derived effect subset, dependency-shape handling subset, and fallback floor; no exercised implementation.
+- **Remaining gaps**: invalidation-state machine realization, verification-oriented incremental subset realization, overlay retention and eviction matrix completion, replay binding for the named effect subset, and fallback or economics instrumentation.
+- **Why still open**: the Stage 1 recalc packet is now tighter, but realization, replay binding, and evidence are not in place.
 - **Canonical owner**: W004.
 
 ### IP-05: OxFml Seam Hardening and Handoff Closure
 
 - **Status**: in-progress
-- **Current floor**: OxCalc-local seam requirements are drafted; `HANDOFF-CALC-001` is filed, acknowledged by OxFml, and reflected in OxFml canonical seam updates.
-- **Remaining gaps**: OxCalc-side alignment to `AcceptedCandidateResult` terminology and typed reject consequences, replay artifacts for candidate-result versus publication boundaries, exhaustive runtime-derived effect taxonomy, and any narrower follow-on handoff if required.
-- **Why still open**: acknowledgment exists, but evidence and full downstream alignment are still partial.
+- **Current floor**: OxCalc-local seam requirements are drafted; `HANDOFF-CALC-001` is filed, acknowledged by OxFml, reflected in OxFml canonical seam updates, and now tightened locally with an explicit Stage 1 candidate-result, runtime-effect, and typed-reject floor.
+- **Remaining gaps**: replay artifacts for candidate-result versus publication boundaries, broader runtime-derived effect taxonomy beyond the Stage 1 subset, exact trace-schema mapping, and any narrower follow-on handoff if required.
+- **Why still open**: acknowledgment and local tightening exist, but evidence and full downstream alignment are still partial.
 - **Canonical owner**: W005.
 
 ### IP-06: Core Formalization and Gate Binding
@@ -76,5 +76,4 @@ Last updated: 2026-03-15.
 - **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
 - **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
 - **Canonical owner**: W012.
-
 

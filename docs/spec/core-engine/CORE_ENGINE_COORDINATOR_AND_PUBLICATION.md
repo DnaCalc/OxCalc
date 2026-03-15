@@ -233,7 +233,49 @@ Stabilization and publication policy may evolve in detail, but it must remain tr
 3. rejected work is no-publish,
 4. observer-visible state remains coherent.
 
-## 16. Formalization Direction
+## 16. Stage 1 Local Candidate and Reject Packet
+
+### 16.1 AcceptedCandidateResult Intake Minimum
+The minimum Stage 1 OxCalc-local `AcceptedCandidateResult` intake packet should contain:
+1. `candidate_result_id`
+2. `struct_snapshot_id`
+3. `artifact_token_basis`
+4. `compatibility_basis`
+5. `target_set`
+6. `value_updates`
+7. `dependency_shape_updates`
+8. `runtime_effects`
+9. `diagnostic_events`
+
+This is the minimum local coordinator intake surface required to preserve candidate-versus-publication separation while still allowing atomic publish, typed reject, and replay-friendly diagnostics.
+
+### 16.2 Publication Bundle Minimum
+The minimum Stage 1 OxCalc-local publication bundle derived from an accepted candidate result should contain:
+1. `publication_id`
+2. `candidate_result_id`
+3. `published_view_delta`
+4. `published_runtime_effects`
+5. `counter_deltas`
+6. `trace_markers`
+
+This is the minimum observer-facing stable publication surface for the Stage 1 coordinator.
+The exact shared canonical field names may differ on the OxFml side, but the coordinator-local publication consequences are fixed to this minimum shape.
+
+### 16.3 Stage 1 Reject Taxonomy
+The minimum Stage 1 coordinator-local reject classes should be:
+1. `snapshot_mismatch`
+2. `artifact_token_mismatch`
+3. `profile_version_mismatch`
+4. `capability_mismatch`
+5. `publication_fence_mismatch`
+6. `dynamic_dependency_failure`
+7. `synthetic_cycle_reject`
+8. `host_injected_failure`
+
+These classes are the local Stage 1 floor for coordinator reasoning, replay classification, and typed no-publish behavior.
+They do not claim that the shared OxFml canonical taxonomy is closed.
+
+## 17. Formalization Direction
 Coordinator behavior is one of the highest-priority near-formal areas in the core engine.
 
 Expected assurance consequences include:
@@ -244,20 +286,22 @@ Expected assurance consequences include:
 5. liveness or progress analysis for staged concurrent and async execution where applicable,
 6. replay and pack obligations for contention and reject behavior.
 
-## 17. Open Detailed Questions
+## 18. Open Detailed Questions
 These remain detailed follow-on questions within the now-locked architecture:
-1. exact accepted-bundle schema boundaries in OxCalc-local terms,
-2. exact reject taxonomy mapping in coordinator-local terms,
-3. exact in-flight progress publication policy if any,
-4. exact contention and retry policies for later stages,
-5. exact relationship between stabilized state markers and observer APIs.
+1. exact in-flight progress publication policy if any,
+2. exact contention and retry policies for later stages,
+3. exact relationship between stabilized state markers and observer APIs,
+4. exact pack and trace binding for the now-locked Stage 1 candidate and reject classes,
+5. exact promotion path from the Stage 1 local packet shape to later richer comparison and replay payloads.
 
-## 18. Status
+## 19. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
   - replay artifacts still needed for candidate-result versus publication behavior,
-  - exact reject-detail mapping still needs pack and trace binding,
-  - roadmap still needs the stage-gate text that complements this document
+  - the Stage 1 local packet shape is now explicit, but pack and trace binding still need W009 realization,
+  - no exercised coordinator implementation or emitted publication artifacts exist yet
+
+

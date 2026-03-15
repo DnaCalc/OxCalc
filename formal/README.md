@@ -17,14 +17,16 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 2. `formal/tla/CoreEngineStage1.tla`
    - first TLA+ skeleton for Stage 1 coordinator, publication, reject, pin, and recalc actions.
 3. `formal/tla/CoreEngineStage1.cfg`
-   - first model-check configuration skeleton for the Stage 1 TLA+ module.
-4. `formal/replay/stage1-hand-authored/`
+   - deeper exploration configuration for the Stage 1 TLA+ module.
+4. `formal/tla/CoreEngineStage1.smoke.cfg`
+   - bounded smoke-model configuration for quick local TLC verification.
+5. `formal/replay/stage1-hand-authored/`
    - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
-5. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+6. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
    - first emitted harness and oracle baseline run covering `R1`, `R2`, `R7`, `R4`, and `R5` through the `TraceCalc` corpus.
-6. `formal/measurement/stage1_counter_schema.json`
+7. `formal/measurement/stage1_counter_schema.json`
    - first machine-readable Stage 1 counter schema.
-7. `formal/measurement/stage1_experiment_register.json`
+8. `formal/measurement/stage1_experiment_register.json`
    - first machine-readable Stage 1 experiment register.
 
 ## Status
@@ -34,7 +36,10 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 - integration_completeness: partial
 - open_lanes:
   - the Lean skeleton has been typechecked once locally, but no theorem authoring exists yet
-  - no TLC or other TLA+ tool run has been executed in this repo yet
+  - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
+  - `formal/tla/CoreEngineStage1.tla` has been exercised locally with `& .\scripts\run-tlc.ps1 formal/tla/CoreEngineStage1.tla formal/tla/CoreEngineStage1.smoke.cfg`
+  - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
+  - wider model-check coverage and stronger TLA+ property inventory remain open
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
   - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface
   - the artifact set is still a first assurance floor rather than a proof-, model-check-, replay-pack-, or instrumentation-complete lane

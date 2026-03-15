@@ -65,7 +65,7 @@ vars == <<
 >>
 
 NodeStateType == [Nodes -> NodeStates]
-PinnedReaderType == [ReaderIds -> [active : BOOLEAN, snapshot : Snapshots, publicationId : STRING]]
+PinnedReaderType == [ReaderIds -> [active : BOOLEAN, snapshot : Snapshots, publicationId : PublishBundleIds \cup {NullPublication}]]
 CompatBasisType == [snapshot : Snapshots, basis : CompatibilityBases]
 
 AppendTransition(label) == Append(transitionHistory, label)
@@ -226,7 +226,7 @@ TypeInvariant ==
   /\ runtimeView.snapshot \in Snapshots
   /\ coordState.phase \in {"idle", "candidate_admitted", "candidate_recorded", "candidate_rejected", "publication_committed"}
   /\ publishedView.snapshot \in Snapshots
-  /\ publishedView.publicationId \in STRING
+  /\ publishedView.publicationId \in PublishBundleIds \cup {NullPublication}
   /\ pinnedReaders \in PinnedReaderType
   /\ nodeCalcState \in NodeStateType
   /\ demandSet \subseteq Nodes
@@ -246,10 +246,12 @@ PinnedReaderStability ==
   \A readerId \in ReaderIds :
     pinnedReaders[readerId].active =>
       /\ pinnedReaders[readerId].snapshot \in Snapshots
-      /\ pinnedReaders[readerId].publicationId \in STRING
+      /\ pinnedReaders[readerId].publicationId \in PublishBundleIds \cup {NullPublication}
 
 OverlayEvictionSafety ==
   \A entry \in overlayState : ~(entry.protected /\ entry.evictionEligible)
+
+SmokeConstraint == Len(transitionHistory) <= 4
 
 Spec == Init /\ [][Next]_vars
 

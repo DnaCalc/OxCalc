@@ -200,8 +200,9 @@ This is dependency-ordered, not date-ordered.
 9. `W009`: replay and pack binding for Stage 1 seam and coordinator behavior.
 10. `W010`: experiment register and measurement-schema planning for Stage 1 and Stage 2 promotion lanes.
 11. `W011`: core-engine test harness and self-contained fixture plan.
+12. `W012`: TraceCalc reference machine and conformance oracle.
 
-The purpose of `W007` through `W011` is to turn `W006` from a generic formalization placeholder into executable assurance and test-planning packets.
+The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -227,7 +228,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 2. exact thresholds for economics-based promotion,
 3. exact replay corpus shape for multi-stage coordinator traces,
 4. exact first realized pack set for W009 execution,
-5. exact emitted-artifact root, replay-pack binding layout, and generated-scenario retention policy for the self-contained harness.
+5. exact emitted-artifact root, replay-pack binding layout, generated-scenario retention policy, and first oracle-to-engine diff policy.
 
 ## 16. Status
 - execution_state: in_progress
@@ -235,8 +236,8 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - workset decomposition is now expanded, and W007 through W011 now include substantive planning packets plus a drafted harness companion spec, but not yet exercised assurance artifacts,
+  - workset decomposition is now expanded, and W007 through W012 now include substantive planning packets plus drafted harness and oracle companions, but not yet exercised assurance artifacts,
   - replay artifacts are still missing for the newly accepted seam boundaries,
   - Stage 2 sub-phase planning remains coarse,
-  - self-contained harness, scenario, and validator-runner guidance are now spec_drafted and seeded with an initial corpus, but not yet realized in validator, fixture, host, or replay artifacts
+  - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted and seeded with an initial corpus, but not yet realized in validator, fixture, host, oracle, or replay artifacts
 

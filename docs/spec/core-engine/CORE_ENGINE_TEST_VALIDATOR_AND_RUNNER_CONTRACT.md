@@ -16,13 +16,16 @@ This document refines:
 1. `CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`,
 2. `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`,
 3. `CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`,
-4. `W009`, `W010`, and `W011`.
+4. `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`,
+5. `W009`, `W010`, `W011`, and `W012`.
 
 Its purpose is to lock:
 1. what must be validated before a scenario is runnable,
 2. what a runner must do with a scenario,
 3. what artifacts a run must emit,
 4. what failure classes must be distinguishable.
+
+The first realized runner is expected to host the `TraceCalc Reference Machine` defined in `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`.
 
 ## 3. Corpus Consumption Boundary
 The first validator and runner should consume:
@@ -81,6 +84,7 @@ The validator must not rewrite authored semantics.
 
 ## 5. Runner Contract
 The runner consumes validated scenarios and produces deterministic execution artifacts.
+The semantic core inside that runner boundary is expected to be the `TraceCalc Reference Machine`.
 
 ### 5.1 Runner Inputs
 The runner consumes:
@@ -245,7 +249,7 @@ It does not need yet:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - no validator or runner implementation exists yet
+  - no validator, runner, or reference-machine implementation exists yet
   - exact on-disk artifact root for emitted run artifacts is still open
   - candidate-result and reject payload alignment with W003 and W004 still needs tightening
   - replay-pack fragment shape remains a W009 follow-on lane

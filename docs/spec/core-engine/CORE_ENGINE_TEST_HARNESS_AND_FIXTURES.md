@@ -25,7 +25,8 @@ It binds together:
 4. `CORE_ENGINE_REALIZATION_ROADMAP.md`,
 5. `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`,
 6. `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`,
-7. `W003`, `W004`, `W009`, `W010`, and `W011`.
+7. `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`,
+8. `W003`, `W004`, `W009`, `W010`, `W011`, and `W012`.
 
 ## 3. Harness Goals
 The self-contained harness should let OxCalc test:
@@ -231,6 +232,7 @@ The intended top-level fields are:
 
 The concrete first schema and canonical JSON serialization are now defined in `CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`.
 The validator and runner consumption contract for that schema is defined in `CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`.
+The semantic oracle intended to sit inside that runner boundary is defined in `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`.
 
 ## 8. Alternate Calculation Space
 OxCalc should define a small alternate calculation space for engine-only tests.
@@ -331,11 +333,12 @@ The self-contained harness should be the first testing surface, because it makes
 
 ## 11. Realization Direction
 The first realized harness slice should likely be:
-1. a unit-test fixture library,
-2. a small scenario runner,
-3. a `TraceCalc` graph builder,
-4. deterministic trace capture,
-5. golden replay-pack fragments for a small initial corpus.
+1. a validator and runner shell around the reference machine,
+2. a unit-test fixture library,
+3. a small scenario runner,
+4. a `TraceCalc` graph builder,
+5. deterministic trace capture,
+6. golden replay-pack fragments for a small initial corpus.
 
 The first realized harness does not need:
 1. a production-grade DSL parser,
@@ -348,8 +351,8 @@ The first realized harness does not need:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the initial hand-auditable corpus now exists and the validator-runner contract is now defined, but no validator, fixture library, or host implementation exists yet
-  - `TraceCalc` scenario schema, corpus, and consumption contract are now defined, but no runner consumes them yet
+  - the initial hand-auditable corpus, validator-runner contract, and reference-machine doctrine now exist, but no validator, fixture library, host, or oracle implementation exists yet
+  - `TraceCalc` scenario schema, corpus, consumption contract, and oracle doctrine are now defined, but no runner consumes them yet
   - replay-pack ownership and exact artifact locations still need binding through W009
   - OxFml-integrated harness coverage still remains a later companion lane
 - claim_confidence: provisional

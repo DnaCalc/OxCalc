@@ -29,6 +29,7 @@ Define the self-contained OxCalc test harness shape needed to test coordinator, 
 5. Companion spec note at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md` tying those deliverables into the active spec library.
 6. Companion schema note at `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md` defining canonical JSON scenario structure and the first concrete `TraceCalc` surface.
 7. Companion validator-runner note at `docs/spec/core-engine/CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md` defining how the corpus is validated, executed, and emitted as run artifacts.
+8. Companion oracle note at `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md` defining the executable semantic reference and later-engine conformance baseline.
 
 ## Gate Model
 ### Entry gate
@@ -43,6 +44,7 @@ Define the self-contained OxCalc test harness shape needed to test coordinator, 
 - The supporting harness companion spec is drafted and linked from this workset.
 - The first concrete `TraceCalc` scenario schema is drafted and linked from this workset.
 - The validator and runner consumption contract is drafted and linked from this workset.
+- The reference-machine oracle doctrine is drafted and linked from this workset.
 
 ## Minimal OxFml Test-Double Interface Surface
 The self-contained harness should define the smallest evaluator-facing surface OxCalc needs for Stage 1 tests.
@@ -144,7 +146,7 @@ Its purpose is to test OxCalc's engine behavior, not Excel-language fidelity.
 4. it avoids blocking core-engine testing on full OxFml completeness
 
 ## Harness Companion Binding
-The concrete harness companion specs are now drafted at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`, `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`, and `docs/spec/core-engine/CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md` and should feed:
+The concrete harness companion specs are now drafted at `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`, `docs/spec/core-engine/CORE_ENGINE_TEST_SCENARIO_SCHEMA_AND_TRACECALC.md`, `docs/spec/core-engine/CORE_ENGINE_TEST_VALIDATOR_AND_RUNNER_CONTRACT.md`, and `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md` and should feed:
 1. W003 for coordinator fixture expectations
 2. W004 for invalidation, overlay, and fallback scenarios
 3. W009 for replay corpus authoring
@@ -179,9 +181,9 @@ The concrete harness companion specs are now drafted at `docs/spec/core-engine/C
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the supporting harness companion specs, validator-runner contract, and first hand-auditable corpus are now drafted, but no validator, fixture, or host artifact has been authored yet
+  - the supporting harness companion specs, validator-runner contract, oracle doctrine, and first hand-auditable corpus are now drafted, but no validator, fixture, host, or oracle artifact has been authored yet
   - exact minimal test-double payload shape still needs final alignment with W003 and W004 packets
-  - the `TraceCalc` scenario schema, corpus slice, and validator-runner contract are now defined, but no validator artifact has been authored yet
+  - the `TraceCalc` scenario schema, corpus slice, validator-runner contract, and oracle doctrine are now defined, but no validator artifact has been authored yet
   - no scriptable host schema or fixture implementation exists yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

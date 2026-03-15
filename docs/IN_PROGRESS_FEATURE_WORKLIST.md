@@ -17,7 +17,7 @@ Last updated: 2026-03-15.
 
 - **Status**: in-progress
 - **Current floor**: rewritten canonical core-engine spec set drafted; bootstrap set archived; repo integration now includes first OxFml seam handoff and receiving-side acknowledgment tracking.
-- **Remaining gaps**: final integration tightening, follow-on seam alignment wording, workset closure discipline, and later replay-backed evidence.
+- **Remaining gaps**: final integration tightening, follow-on seam alignment wording, workset closure discipline, operational execution of W013, and later replay-backed evidence.
 - **Why still open**: the canonical set is established, but realization and assurance closure are still outstanding.
 - **Canonical owner**: W001.
 
@@ -76,5 +76,4 @@ Last updated: 2026-03-15.
 - **Remaining gaps**: reference-machine implementation, richer trace comparison policy beyond the first conformance surface, emitted artifact production, and the first actual engine-versus-oracle conformance run.
 - **Why still open**: oracle doctrine is now spec_drafted, but no executable reference machine or conformance artifact exists yet.
 - **Canonical owner**: W012.
-
 

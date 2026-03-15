@@ -201,8 +201,11 @@ This is dependency-ordered, not date-ordered.
 10. `W010`: experiment register and measurement-schema planning for Stage 1 and Stage 2 promotion lanes.
 11. `W011`: core-engine test harness and self-contained fixture plan.
 12. `W012`: TraceCalc reference machine and conformance oracle.
+13. `W013`: Execution Sequence A for the first TreeCalc-first Stage 1 implementation wave.
+
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
+`W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -236,10 +239,8 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - W003 and W004 now carry explicit Stage 1 transition packets and an overlay-retention floor, and W008/W009 now bind them into first formal and replay coverage packets, but not yet exercised assurance artifacts,
+  - W013 now defines the first execution wave across W002 through W012, but none of its sub-phase gates have been discharged into implementation artifacts yet,
   - replay artifacts are still missing for the newly accepted seam boundaries and the newly named Stage 1 transitions,
   - Stage 2 sub-phase planning remains coarse,
   - self-contained harness, scenario, validator-runner, and oracle guidance are now spec_drafted, seeded with an initial corpus, and tightened with a first artifact/diff policy, but not yet realized in validator, fixture, host, oracle, or replay artifacts
-
-
 

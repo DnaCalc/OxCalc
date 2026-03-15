@@ -64,7 +64,8 @@ Last updated: 2026-03-15.
 ### IP-07: Self-Contained Test Harness Planning
 
 - **Status**: in-progress
-- **Current floor**: `W011` now defines the first planning packet for a self-contained harness, minimal OxFml test-double surface, scriptable host, and alternate non-Excel calculation space for engine-only testing.
-- **Remaining gaps**: concrete test-double payload shape, scenario schema, scriptable host contract, and later fixture implementation.
-- **Why still open**: the harness boundary is now planned, but no fixture or host artifacts exist yet.
+- **Current floor**: `W011` now has both a planning packet and a supporting harness companion spec covering the minimal OxFml test-double surface, scriptable host direction, fixture lifecycle, and the `TraceCalc` alternate calculation space for engine-only testing.
+- **Remaining gaps**: final test-double payload alignment, concrete scenario serialization, scriptable host contract realization, replay-pack binding, and later fixture implementation.
+- **Why still open**: harness guidance is now spec_drafted, but no fixture or host artifacts exist yet.
 - **Canonical owner**: W011.
+

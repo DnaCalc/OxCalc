@@ -11,10 +11,10 @@ This directory holds emitted self-contained harness and oracle runs for the `Tra
 Historical checked-in baseline:
 1. `w013-sequence-a-baseline`
 
-Current active checked-in baseline:
+Historical semantic-anchor baseline:
 1. `w014-stage1-widening-baseline`
 
-Rust parity evidence run:
+Current active regenerable Rust baseline:
 1. `w017-rust-parity-baseline`
 
 They were emitted by:
@@ -37,8 +37,12 @@ The active widened baseline currently covers:
 12. a first scale-seed scenario.
 
 ## Rust Parity Direction
-During `W017`, Rust-specific parity runs must use distinct run ids.
+Rust-specific parity runs must use distinct run ids.
 They must not silently rewrite `w014-stage1-widening-baseline`.
+
+Role split:
+1. `w014-stage1-widening-baseline` remains the carried semantic anchor for Stage 1 parity comparison.
+2. `w017-rust-parity-baseline` is the current regenerable implementation baseline produced by the active Rust workspace.
 
 The carried baseline comparison contract is enforced by:
 1. `scripts/compare-tracecalc-run.ps1`
@@ -52,5 +56,5 @@ The current carried parity proof is:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this directory holds carried deterministic baselines plus one Rust parity evidence run
+  - this directory holds carried historical baselines plus one active regenerable Rust baseline
   - richer generated corpus, replay-pack export, and later engine-versus-oracle series remain later lanes

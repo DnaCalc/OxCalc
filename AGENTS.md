@@ -75,19 +75,15 @@ A coordinator policy or scheduling change is not complete unless a semantic-equi
 
 ## 4. Continuation Behavior
 
-Mode: **AutoRun** for `W014 Execution Sequence B`; otherwise **checkpoint-at-gates** (conservative).
+Mode: **checkpoint-at-gates** (conservative).
 
-1. AutoRun is enabled for the declared scope `W014_EXECUTION_SEQUENCE_B_STAGE1_WIDENING_AND_EVIDENCE_HARDENING.md`.
-2. The AutoRun exit gate is the final gate declared in `W014_EXECUTION_SEQUENCE_B_STAGE1_WIDENING_AND_EVIDENCE_HARDENING.md`.
-3. While AutoRun is active for W014, the agent must continue across the numbered W014 sub-phases without pausing at intermediate workset gates unless:
-   - the W014 final gate is reached,
-   - a blocker requires `CURRENT_BLOCKERS.md` handling under Section 5,
-   - a cross-repo or destructive decision requires user confirmation,
-   - a direct conflict with user changes requires resolution.
-4. While AutoRun is active, the agent must still report brief status updates during execution and must checkpoint at meaningful sequence milestones, but those checkpoints do not suspend execution.
-5. Outside the declared W014 scope, the default mode remains checkpoint-at-gates.
+1. Agent must pause and report status at each workset gate boundary.
+2. AutoRun is disabled by default.
+3. AutoRun may only be enabled when explicitly requested by the user for a specific declared scope.
+4. When AutoRun is enabled for a declared scope, the governing workset and exit gate must be updated here before execution continues under AutoRun.
+5. Outside an explicitly declared AutoRun scope, the default mode remains checkpoint-at-gates.
 
-Rationale: the user has explicitly authorized continuous execution for the Stage 1 widening wave, with W014 acting as the governing exit gate.
+Rationale: conservative gate-pausing remains the default unless the user explicitly authorizes continuous execution for a named workset scope.
 
 ## 5. Blocker Handling
 

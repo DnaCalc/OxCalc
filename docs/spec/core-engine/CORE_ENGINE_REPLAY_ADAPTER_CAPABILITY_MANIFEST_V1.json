@@ -47,7 +47,8 @@
     "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_accept_publish_001/trace.json",
     "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_fallback_reentry_001/result.json",
     "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/run_summary.json",
-    "src/oxcalc-tracecalc/src/runner.rs"
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/conformance/oracle_baseline.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/conformance/engine_diff.json"
   ],
   "registry_version_refs": [
     {

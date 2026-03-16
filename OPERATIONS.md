@@ -260,3 +260,31 @@ OxCalc-local execution lessons now live at `docs/LOCAL_EXECUTION_DOCTRINE.md`.
 
 Those lessons are additive to the carried-forward lessons in Section 11.
 They should be updated when later execution waves reveal new recurring failure modes or stronger operating practices.
+
+## 16. Rust-First Realization Doctrine
+
+### 16.1 Direction
+1. OxCalc implementation work for the core engine and `TraceCalc` executable host/tooling lane is Rust-first.
+2. Existing .NET implementation artifacts remain valid as exercised evidence, replay emitters, and executable comparison references until Rust reaches parity for the relevant declared scope.
+3. New feature or behavior work should not deepen the .NET implementation unless:
+   - it is required to preserve current evidence or local tooling continuity,
+   - it is needed to support parity comparison during Rust rollout,
+   - or a workset explicitly declares a narrow maintenance exception.
+
+### 16.2 Foundation Conflict Adaptation
+1. Foundation doctrine still states that repository tooling is generally .NET-first by default.
+2. For OxCalc, this default is explicitly adapted locally for behavior-critical engine and `TraceCalc` runtime work: those lanes are now Rust-first by repo direction.
+3. This adaptation does not rewrite Foundation doctrine globally; it is an OxCalc-local implementation direction for this repo.
+
+### 16.3 Rust Quality Floor
+1. `unsafe` is forbidden for OxCalc Rust realization. Crates must declare `#![forbid(unsafe_code)]`.
+2. Rust work must be warning-clean under the declared toolchain. Validation should include `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and the relevant `cargo test` scope.
+3. Error handling must use explicit typed error pathways where failures are part of behavior or tooling control flow; avoid stringly typed control flow as the primary contract.
+4. Deterministic replay, artifact emission, and comparison behavior must remain first-class constraints in crate and module design.
+5. Interior mutability, global state, or hidden concurrency primitives require explicit justification in the workset and must not be introduced casually.
+6. Rust module and type design must follow Rust ownership and data-model strengths rather than imitating .NET service, inheritance, or mutable object-graph patterns.
+
+### 16.4 Porting Discipline
+1. Reimplementation work must treat OxCalc specs, replay artifacts, baseline runs, and conformance behavior as the authority.
+2. Existing .NET code may be used as executable comparison, fixture generation support, and behavioral reference, but not as the design template to be copied mechanically.
+3. Any semantic difference introduced by the Rust realization must be called out explicitly and justified through the normal semantic-equivalence and replay-evidence rules.

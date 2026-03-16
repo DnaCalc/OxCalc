@@ -204,11 +204,15 @@ This is dependency-ordered, not date-ordered.
 13. `W013`: Execution Sequence A for the first TreeCalc-first Stage 1 implementation wave.
 14. `W014`: Execution Sequence B for Stage 1 widening and evidence hardening.
 15. `W015`: Replay appliance adapter and bundle-validator rollout.
+16. `W017`: Execution Sequence C for Rust-first reimplementation of the current realized TreeCalc and TraceCalc scope.
+17. `W016`: witness distillation and retained failure packs.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
 `W014` is the follow-on operational packet that widens the Stage 1 baseline, hardens emitted evidence, and closes the largest remaining pre-concurrency gaps.
 `W015` is the replay-facing integration packet that adds local replay coherence, adapter doctrine, capability-floor governance, and normalized-bundle expectations without weakening OxCalc-owned semantics.
+`W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using the existing .NET realization only as executable comparison and parity evidence.
+`W016` remains the retained-witness follow-on lane, but it no longer represents the immediate next implementation packet after W015.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -246,4 +250,5 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W014 has now reached its final gate for the widening wave: the Stage 1 slice executes deterministic multi-node DAG handling, first SCC-oriented handling, widened replay classes, emitted per-scenario counters, and the checked-in `w014-stage1-widening-baseline` run
   - replay artifacts now include the widened 12-scenario corpus and checked-in baseline runs for both `w013-sequence-a-baseline` and `w014-stage1-widening-baseline`
   - W015 now covers the local replay-coherence refactor and adapter-rollout doctrine, but normalized replay-appliance bundle emission and retained-witness handling remain later roadmap lanes
+  - W017 is now the next implementation-facing packet: Rust-first reimplementation must establish parity against the current exercised TreeCalc and TraceCalc scope before deeper replay or retained-witness expansion
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

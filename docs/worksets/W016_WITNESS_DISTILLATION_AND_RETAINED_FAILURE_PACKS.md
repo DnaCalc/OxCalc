@@ -6,7 +6,7 @@ Plan the OxCalc-local rollout of witness distillation, retained reduced witnesse
 This workset turns the Foundation witness-distillation handoff into an OxCalc-owned rollout plan without weakening local scenario, oracle, or diff meaning.
 
 ## Position and Dependencies
-- **Depends on**: W015
+- **Depends on**: W015, W017
 - **Blocks**: none
 - **Cross-repo**: aligned to Foundation witness lifecycle and registry policy; any shared seam pressure discovered during reduced-witness rollout must route through W005
 
@@ -33,6 +33,7 @@ This workset turns the Foundation witness-distillation handoff into an OxCalc-ow
 ## Gate Model
 ### Entry gate
 - W015 has established the adapter, manifest, normalized event-family mapping, and registry pinning rules.
+- W017 has established the Rust-first implementation direction and the parity-reference role of the existing .NET implementation.
 - The OxCalc-local acceptance oracle remains the `TraceCalc Reference Machine` plus local diff surfaces.
 
 ### Exit gate
@@ -69,6 +70,7 @@ This workset turns the Foundation witness-distillation handoff into an OxCalc-ow
 - integration_completeness: partial
 - open_lanes:
   - witness distillation remains planning-only
+  - W017 now sits ahead of W016 in the active execution sequence
   - no reduced-witness artifacts or lifecycle records exist yet
   - retained-failure pack bindings remain specification-only
 - claim_confidence: draft

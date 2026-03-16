@@ -8,6 +8,11 @@ OxCalc is the multi-node core calculation engine lane for DNA Calc.
 3. Coordinator scheduling and publication semantics.
 4. Deterministic staged realization (Stage 1 sequential -> Stage 2 partitioned parallel -> Stage 3 advanced lanes).
 
+## Implementation Direction
+1. OxCalc implementation work is now Rust-first for the core engine and the `TraceCalc` tool/runtime lane.
+2. The existing .NET implementation remains valuable as exercised evidence, executable comparison surface, and parity reference during the Rust realization.
+3. New implementation design should be idiomatic Rust rather than a line-by-line or pattern-by-pattern transfer of the current .NET code.
+
 ## Startup Docs
 - `CHARTER.md`
 - `OPERATIONS.md`

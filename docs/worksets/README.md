@@ -106,10 +106,16 @@ Each workset file must include:
 9. If a workset expects emitted evidence, it must declare the canonical artifact root and whether the emitted artifacts are checked in or ephemeral.
 10. If a workset widens semantic behavior, it must state how engine, oracle, and conformance surfaces widen together.
 11. Workset closure and broader feature-area continuation are distinct; later widening should use successor worksets or explicit extension lanes rather than silently reopening a completed workset.
+12. When a workset changes implementation language or runtime direction, it must state:
+    - the authoritative semantic and evidence references,
+    - what existing implementation remains as executable comparison surface,
+    - and the rules preventing mechanical cross-language pattern transfer.
 
 ## Current Sequence Tail
 
 The current planned continuation after `W015` is:
-1. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
+1. `W017_RUST_FIRST_REIMPLEMENTATION_OF_CURRENT_REALIZED_SCOPE.md`
+2. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
 
-This workset extends the Stage 1 replay/oracle baseline into retained reduced-witness handling after the adapter rollout and local replay-coherence refactor.
+`W017` shifts OxCalc implementation execution to a Rust-first lane while preserving the existing exercised .NET code as parity/evidence reference.
+`W016` remains the retained-witness follow-on lane after the Rust-first implementation direction is established.

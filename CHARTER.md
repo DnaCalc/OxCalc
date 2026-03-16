@@ -20,6 +20,7 @@ In scope:
 3. Stage 1 baseline sequential coordinator and staged concurrency promotion criteria.
 4. Visibility-priority policy (`VisibleFirst`) with semantic-equivalence and fairness constraints.
 5. Tree-only to tree-grid-hybrid progression semantics and gap tracking.
+6. Rust-first realization of OxCalc-owned executable artifacts for the core engine and `TraceCalc` tooling/runtime.
 
 Out of scope:
 1. Formula grammar and evaluator protocol ownership (OxFml).
@@ -48,3 +49,8 @@ A coordinator policy/spec change is done only when:
 2. required pack expectations are updated,
 3. deterministic replay evidence exists,
 4. FEC/F3E cross-repo impact is recorded.
+
+## 7. Implementation Direction
+1. OxCalc-owned executable realization is Rust-first from this point onward.
+2. Existing .NET code remains a parity and evidence reference until the Rust realization covers the same declared scope.
+3. Rust realization must be treated as an ab initio implementation against OxCalc specs, replay artifacts, and executable comparison surfaces, not as a mechanical translation of .NET shapes or idioms.

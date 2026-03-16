@@ -3,24 +3,69 @@
   "scenario_id": "tc_publication_fence_reject_001",
   "description": "a publication fence incompatibility rejects the admitted work and preserves the published view",
   "calc_space": "TraceCalc",
-  "tags": ["reject", "fence", "w014"],
-  "pack_tags": ["stage1", "w014", "r3-incompatible-branch", "r6-reject-taxonomy"],
+  "tags": [
+    "reject",
+    "fence",
+    "w014"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w014",
+    "r3-incompatible-branch",
+    "r6-reject-taxonomy"
+  ],
   "initial_graph": {
     "snapshot_id": "s0",
     "nodes": [
-      { "node_id": "A", "kind": "value", "expr": { "op": "const", "value": 2 } },
-      { "node_id": "B", "kind": "value", "expr": { "op": "sum", "deps": ["A"] } }
+      {
+        "node_id": "A",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 2
+        }
+      },
+      {
+        "node_id": "B",
+        "kind": "value",
+        "expr": {
+          "op": "sum",
+          "deps": [
+            "A"
+          ]
+        }
+      }
     ]
   },
   "initial_runtime": {
     "published_values": [
-      { "node_id": "A", "value": 2 },
-      { "node_id": "B", "value": 2 }
+      {
+        "node_id": "A",
+        "value": 2
+      },
+      {
+        "node_id": "B",
+        "value": 2
+      }
     ]
   },
   "steps": [
-    { "step_id": "st1", "kind": "mark_stale", "targets": ["B"] },
-    { "step_id": "st2", "kind": "admit_work", "admission_id": "adm1", "compatibility_basis": "s0", "targets": ["B"] },
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "B"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm1",
+      "compatibility_basis": "s0",
+      "targets": [
+        "B"
+      ]
+    },
     {
       "step_id": "st3",
       "kind": "emit_reject",
@@ -37,24 +82,118 @@
     "published_view": {
       "snapshot_id": "s0",
       "node_values": [
-        { "node_id": "A", "value": 2 },
-        { "node_id": "B", "value": 2 }
+        {
+          "node_id": "A",
+          "value": 2
+        },
+        {
+          "node_id": "B",
+          "value": 2
+        }
       ]
     },
     "pinned_views": [],
     "trace_labels": [
-      { "label": "node_marked_dirty", "count": 1 },
-      { "label": "candidate_admitted", "count": 1 },
-      { "label": "node_marked_needed", "count": 1 },
-      { "label": "evaluation_started", "count": 1 },
-      { "label": "candidate_rejected", "count": 1 }
+      {
+        "label": "node_marked_dirty",
+        "count": 1
+      },
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "node_marked_needed",
+        "count": 1
+      },
+      {
+        "label": "evaluation_started",
+        "count": 1
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
     ],
     "counter_expectations": [
-      { "counter": "rejects_by_class.publication_fence_mismatch", "comparison": "eq", "value": 1 },
-      { "counter": "abandoned_candidates", "comparison": "eq", "value": 1 }
+      {
+        "counter": "rejects_by_class.publication_fence_mismatch",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "abandoned_candidates",
+        "comparison": "eq",
+        "value": 1
+      }
     ],
     "rejects": [
-      { "reject_id": "rej1", "reject_kind": "publication_fence_mismatch", "detail_contains": "observed_basis" }
+      {
+        "reject_id": "rej1",
+        "reject_kind": "publication_fence_mismatch",
+        "detail_contains": "observed_basis"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R3",
+      "R6"
+    ],
+    "pack_bindings": [
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "assertion_result_set"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2",
+      "S4"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_publication_fence_reject_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [
+      {
+        "reject_record_id": "rej1/record",
+        "reject_id": "rej1"
+      }
+    ],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
     ]
   }
 }

@@ -59,8 +59,42 @@ public sealed record TraceCalcScenario(
     TraceCalcInitialRuntime InitialRuntime,
     IReadOnlyList<TraceCalcStep> Steps,
     TraceCalcExpected Expected,
+    TraceCalcReplayProjection? ReplayProjection,
+    TraceCalcWitnessAnchors? WitnessAnchors,
     JsonObject? Generator,
     IReadOnlyList<string> Notes);
+
+public sealed record TraceCalcReplayProjection(
+    IReadOnlyList<string> ReplayClasses,
+    IReadOnlyList<string> PackBindings,
+    IReadOnlyList<string> RequiredEqualitySurfaces,
+    string NormalizedEventFamilyMapRef,
+    IReadOnlyList<string> SafetyProperties,
+    IReadOnlyList<string> TransitionLabels);
+
+public sealed record TraceCalcWitnessAnchors(
+    string ScenarioAnchorId,
+    IReadOnlyList<TraceCalcPhaseBlockAnchor> PhaseBlocks,
+    IReadOnlyList<TraceCalcEventGroupAnchor> EventGroups,
+    IReadOnlyList<TraceCalcRejectRecordAnchor> RejectRecords,
+    IReadOnlyList<TraceCalcViewSliceAnchor> ViewSlices);
+
+public sealed record TraceCalcPhaseBlockAnchor(
+    string PhaseBlockId,
+    IReadOnlyList<string> StepIds);
+
+public sealed record TraceCalcEventGroupAnchor(
+    string EventGroupId,
+    IReadOnlyList<string> StepIds);
+
+public sealed record TraceCalcRejectRecordAnchor(
+    string RejectRecordId,
+    string RejectId);
+
+public sealed record TraceCalcViewSliceAnchor(
+    string ViewSliceId,
+    string ViewKind,
+    string? ViewId);
 
 public sealed record TraceCalcInitialGraph(
     string SnapshotId,
@@ -214,6 +248,8 @@ public static class TraceCalcJson
             initialRuntime,
             steps,
             ParseExpected(root.RequireObject("expected")),
+            ParseReplayProjection(root.OptionalObject("replay_projection")),
+            ParseWitnessAnchors(root.OptionalObject("witness_anchors")),
             root.OptionalObject("generator"),
             root.OptionalStringArray("notes"));
     }
@@ -234,6 +270,16 @@ public static class TraceCalcJson
         if (!string.Equals(manifestScenario.ScenarioId, scenario.ScenarioId, StringComparison.Ordinal))
         {
             failures.Add(new TraceCalcValidationFailure(TraceCalcValidationFailureKind.ManifestMismatch, $"Manifest scenario id '{manifestScenario.ScenarioId}' does not match '{scenario.ScenarioId}'."));
+        }
+
+        if (scenario.PackTags.Count > 0 && scenario.ReplayProjection is null)
+        {
+            failures.Add(new TraceCalcValidationFailure(TraceCalcValidationFailureKind.InvalidExpectedShape, $"Replay-facing scenario '{scenario.ScenarioId}' is missing replay_projection metadata."));
+        }
+
+        if (scenario.ReplayProjection is not null && scenario.ReplayProjection.ReplayClasses.Count == 0)
+        {
+            failures.Add(new TraceCalcValidationFailure(TraceCalcValidationFailureKind.InvalidExpectedShape, $"Replay projection for '{scenario.ScenarioId}' must name at least one replay class."));
         }
 
         var nodeIds = scenario.InitialGraph.Nodes.Select(node => node.NodeId).ToHashSet(StringComparer.Ordinal);
@@ -367,8 +413,51 @@ public static class TraceCalcJson
             obj.OptionalArray("seed_overlays").Objects().Select(ParseSeedOverlay).ToArray());
     }
 
+    private static TraceCalcReplayProjection? ParseReplayProjection(JsonObject? obj)
+    {
+        if (obj is null)
+        {
+            return null;
+        }
+
+        return new TraceCalcReplayProjection(
+            obj.OptionalStringArray("replay_classes"),
+            obj.OptionalStringArray("pack_bindings"),
+            obj.OptionalStringArray("required_equality_surfaces"),
+            obj.RequireString("normalized_event_family_map_ref"),
+            obj.OptionalStringArray("safety_properties"),
+            obj.OptionalStringArray("transition_labels"));
+    }
+
+    private static TraceCalcWitnessAnchors? ParseWitnessAnchors(JsonObject? obj)
+    {
+        if (obj is null)
+        {
+            return null;
+        }
+
+        return new TraceCalcWitnessAnchors(
+            obj.RequireString("scenario_anchor_id"),
+            obj.OptionalArray("phase_blocks").Objects().Select(ParsePhaseBlockAnchor).ToArray(),
+            obj.OptionalArray("event_groups").Objects().Select(ParseEventGroupAnchor).ToArray(),
+            obj.OptionalArray("reject_records").Objects().Select(ParseRejectRecordAnchor).ToArray(),
+            obj.OptionalArray("view_slices").Objects().Select(ParseViewSliceAnchor).ToArray());
+    }
+
     private static TraceCalcSeedOverlay ParseSeedOverlay(JsonObject obj) =>
         new(obj.RequireString("overlay_kind"), obj.RequireString("owner_node_id"), obj["payload"]?.DeepClone());
+
+    private static TraceCalcPhaseBlockAnchor ParsePhaseBlockAnchor(JsonObject obj) =>
+        new(obj.RequireString("phase_block_id"), obj.OptionalStringArray("step_ids"));
+
+    private static TraceCalcEventGroupAnchor ParseEventGroupAnchor(JsonObject obj) =>
+        new(obj.RequireString("event_group_id"), obj.OptionalStringArray("step_ids"));
+
+    private static TraceCalcRejectRecordAnchor ParseRejectRecordAnchor(JsonObject obj) =>
+        new(obj.RequireString("reject_record_id"), obj.RequireString("reject_id"));
+
+    private static TraceCalcViewSliceAnchor ParseViewSliceAnchor(JsonObject obj) =>
+        new(obj.RequireString("view_slice_id"), obj.RequireString("view_kind"), obj.OptionalString("view_id"));
 
     private static TraceCalcStep ParseStep(JsonObject obj) =>
         new(

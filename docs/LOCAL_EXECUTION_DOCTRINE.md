@@ -7,10 +7,13 @@ These lessons are operating doctrine.
 They should influence future workset design, execution packet authoring, and closure claims.
 
 ## 2. Current Basis
-The first local lesson set is derived from:
+The current local lesson set is derived from:
 1. `W013_EXECUTION_SEQUENCE_A_TREECALC_STAGE1_IMPLEMENTATION.md`
-2. the first realized `TraceCalc` validator, runner, and reference machine
-3. the emitted baseline run at `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+2. `W014_EXECUTION_SEQUENCE_B_STAGE1_WIDENING_AND_EVIDENCE_HARDENING.md`
+3. the first realized `TraceCalc` validator, runner, engine, and reference machine
+4. the emitted baseline runs at:
+   - `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+   - `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/`
 
 ## 3. Local Lessons
 
@@ -98,6 +101,44 @@ Rule:
 1. planning packets should link each named pack to replay classes, scenario ids, and emitted artifact paths as soon as those exist,
 2. pack references without evidence links remain planning-only.
 
+### Lesson 8: Engine and Oracle Widening Must Move Together
+W014 only became stable once the planner-driven widening was applied to both the real engine and the `TraceCalc Reference Machine` in the same slice.
+
+Reason:
+1. semantic widening on one side alone creates noisy conformance failures,
+2. late oracle alignment obscures whether the defect is semantic or mechanical,
+3. widened replay evidence is much easier to trust when engine and oracle evolve together.
+
+Rule:
+1. any semantic widening lane must update engine, oracle, and conformance comparison in the same execution slice,
+2. widening work is not gate-ready if one of those three surfaces is left behind.
+
+### Lesson 9: Workset Closure and Feature-Area Continuation Must Stay Separate
+W014 reinforced that a workset can reach its declared gate while the broader feature area still continues in later waves.
+
+Reason:
+1. later widening should not silently reopen already-closed worksets,
+2. closure loses meaning if broader feature continuation is treated as retroactive incompleteness,
+3. the feature register and workset sequence serve different purposes and should say so clearly.
+
+Rule:
+1. once a workset reaches its declared gate, later widening should land in a successor workset or explicit extension lane,
+2. the feature register may remain `in-progress` while the completed workset stays closed for its declared scope,
+3. docs should state that distinction explicitly rather than implying one invalidates the other.
+
+### Lesson 10: Replay-Facing Scenarios Need Stronger Metadata Discipline
+The widened W014 scenarios were authorable without strict metadata, but W015 and W016 will need stable replay and witness anchors immediately.
+
+Reason:
+1. replay-bundle projection depends on explicit replay classes and equality surfaces,
+2. witness reduction depends on stable scenario, phase, event-group, reject, and view anchors,
+3. leaving these as optional in practice creates cleanup work in later replay lanes.
+
+Rule:
+1. any new replay-facing scenario must carry `replay_projection`,
+2. any scenario intended for retained-failure or witness reduction lanes must carry `witness_anchors`,
+3. “optional” metadata in the base schema may still be required by narrower execution packets.
+
 ## 4. Immediate Promotion Targets
 These lessons should now influence:
 1. `OPERATIONS.md`
@@ -111,5 +152,5 @@ These lessons should now influence:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this local doctrine currently reflects only the W013 lesson set
+  - this local doctrine now reflects W013 and W014 lessons, but later replay-appliance and retained-witness waves may add further lessons
   - later execution waves may add or refine local lessons

@@ -1,11 +1,24 @@
 {
   "scenario_id": "tc_verify_clean_no_publish_001",
   "run_id": "w014-stage1-widening-baseline",
+  "replay_projection": {
+    "replay_classes": [
+      "R7"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "assertion_result_set"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1"
+  },
   "events": [
     {
       "event_id": "evt-0001",
       "step_id": "st1",
       "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
       "payload": {
         "node_id": "B"
       }
@@ -14,6 +27,7 @@
       "event_id": "evt-0002",
       "step_id": "st2",
       "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
       "payload": {
         "group_index": "0",
         "nodes": "B"
@@ -23,6 +37,7 @@
       "event_id": "evt-0003",
       "step_id": "st2",
       "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
       "payload": {
         "node_id": "B"
       }
@@ -31,6 +46,7 @@
       "event_id": "evt-0004",
       "step_id": "st2",
       "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
       "payload": {
         "node_id": "B",
         "compatibility_basis": "s0"
@@ -40,6 +56,7 @@
       "event_id": "evt-0005",
       "step_id": "st2",
       "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
       "payload": {
         "admission_id": "adm1",
         "compatibility_basis": "s0",
@@ -50,6 +67,7 @@
       "event_id": "evt-0006",
       "step_id": "st3",
       "label": "node_verified_clean",
+      "normalized_event_family": "candidate.verified_clean",
       "payload": {
         "node_id": "B"
       }

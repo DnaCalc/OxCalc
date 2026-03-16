@@ -4,6 +4,30 @@
   "validation_failures": [],
   "assertion_failures": [],
   "conformance_mismatches": [],
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.fec.overlay_lifecycle",
+      "PACK.concurrent.epochs"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S5",
+      "S6"
+    ],
+    "transition_labels": [
+      "C4",
+      "A9",
+      "A10"
+    ]
+  },
   "artifact_paths": {
     "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_overlay_retention_001/result.json",
     "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_overlay_retention_001/trace.json",

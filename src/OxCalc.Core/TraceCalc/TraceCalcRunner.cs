@@ -202,6 +202,15 @@ public sealed class TraceCalcRunner
             validation_failures = validationFailures.Select(failure => new { kind = ToSnakeCase(failure.Kind), message = failure.Message }).ToArray(),
             assertion_failures = assertionFailures,
             conformance_mismatches = conformanceMismatches.Select(ToMismatchObject).ToArray(),
+            replay_projection = scenario?.ReplayProjection is null ? null : new
+            {
+                replay_classes = scenario.ReplayProjection.ReplayClasses,
+                pack_bindings = scenario.ReplayProjection.PackBindings,
+                required_equality_surfaces = scenario.ReplayProjection.RequiredEqualitySurfaces,
+                normalized_event_family_map_ref = scenario.ReplayProjection.NormalizedEventFamilyMapRef,
+                safety_properties = scenario.ReplayProjection.SafetyProperties,
+                transition_labels = scenario.ReplayProjection.TransitionLabels,
+            },
             artifact_paths = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["result"] = RelativeArtifactPath(relativeScenarioRoot, "result.json"),
@@ -217,6 +226,12 @@ public sealed class TraceCalcRunner
         {
             scenario_id = scenarioId,
             run_id = runId,
+            replay_projection = scenario?.ReplayProjection is null ? null : new
+            {
+                replay_classes = scenario.ReplayProjection.ReplayClasses,
+                required_equality_surfaces = scenario.ReplayProjection.RequiredEqualitySurfaces,
+                normalized_event_family_map_ref = scenario.ReplayProjection.NormalizedEventFamilyMapRef,
+            },
             events = artifacts.TraceEvents.Select(ToTraceEventObject).ToArray(),
         }, JsonOptions));
 
@@ -277,12 +292,16 @@ public sealed class TraceCalcRunner
         event_id = traceEvent.EventId,
         step_id = traceEvent.StepId,
         label = traceEvent.Label,
+        normalized_event_family = TraceCalcReplayMappings.NormalizeEventFamily(traceEvent.Label),
         payload = traceEvent.Payload,
     };
 
     private static object ToMismatchObject(TraceCalcConformanceMismatch mismatch) => new
     {
         kind = ToSnakeCase(mismatch.Kind),
+        mismatch_kind = TraceCalcReplayMappings.ToRegistryMismatchKind(mismatch.Kind),
+        severity_class = TraceCalcReplayMappings.ToSeverityClass(mismatch.Kind),
+        required_equality_surface = TraceCalcReplayMappings.ToRequiredEqualitySurface(mismatch.Kind),
         message = mismatch.Message,
     };
 

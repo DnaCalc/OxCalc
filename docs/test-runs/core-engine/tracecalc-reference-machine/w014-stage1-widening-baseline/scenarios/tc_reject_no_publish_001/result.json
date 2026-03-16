@@ -4,6 +4,29 @@
   "validation_failures": [],
   "assertion_failures": [],
   "conformance_mismatches": [],
+  "replay_projection": {
+    "replay_classes": [
+      "R2"
+    ],
+    "pack_bindings": [
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "assertion_result_set"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
   "artifact_paths": {
     "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_reject_no_publish_001/result.json",
     "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_reject_no_publish_001/trace.json",

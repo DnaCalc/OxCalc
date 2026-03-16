@@ -37,9 +37,14 @@ public sealed class TraceCalcRunnerTests
             var verifyTrace = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_verify_clean_no_publish_001", "trace.json")))!.AsObject();
             var events = verifyTrace["events"]!.AsArray();
             Assert.Contains(events, node => string.Equals(node?["label"]?.GetValue<string>(), "node_verified_clean", StringComparison.Ordinal));
+            Assert.Contains(events, node => string.Equals(node?["normalized_event_family"]?.GetValue<string>(), "candidate.verified_clean", StringComparison.Ordinal));
+
+            var acceptTrace = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_accept_publish_001", "trace.json")))!.AsObject();
+            Assert.Equal("candidate.built", acceptTrace["events"]!.AsArray().Single(node => string.Equals(node?["label"]?.GetValue<string>(), "candidate_emitted", StringComparison.Ordinal))?["normalized_event_family"]?.GetValue<string>());
 
             var fallbackResult = JsonNode.Parse(File.ReadAllText(Path.Combine(artifactRoot, "scenarios", "tc_fallback_reentry_001", "result.json")))!.AsObject();
             Assert.Equal("passed", fallbackResult["result_state"]?.GetValue<string>());
+            Assert.NotNull(fallbackResult["replay_projection"]);
         }
         finally
         {

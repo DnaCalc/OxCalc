@@ -4,6 +4,28 @@
   "validation_failures": [],
   "assertion_failures": [],
   "conformance_mismatches": [],
+  "replay_projection": {
+    "replay_classes": [
+      "oxcalc.local.scc_stage1"
+    ],
+    "pack_bindings": [
+      "PACK.dag.cycle_iterative_semantics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "I6",
+      "C3"
+    ]
+  },
   "artifact_paths": {
     "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_cycle_region_reject_001/result.json",
     "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_cycle_region_reject_001/trace.json",

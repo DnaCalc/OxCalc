@@ -75,11 +75,28 @@ Each scenario document should have the following top-level fields.
 - `pack_tags`: pack membership hints.
 - `generator`: optional generator metadata for synthetic large scenarios.
 - `notes`: optional explanatory prose.
-- `replay_projection`: optional replay-class, pack-binding, equality-surface, and normalization metadata projected into the Replay appliance adapter.
-- `witness_anchors`: optional reduction-unit anchors for later witness distillation and retained-failure handling.
+- `replay_projection`: replay-class, pack-binding, equality-surface, and normalization metadata projected into the Replay appliance adapter. Required for replay-facing scenarios.
+- `witness_anchors`: reduction-unit anchors for later witness distillation and retained-failure handling. Required for replay-facing scenarios that are intended to participate in retained-failure or witness-reduction lanes.
+
+### 4.3.1 Replay-Facing Scenario Rule
+For early hand-authored schema examples these fields may still be omitted.
+For actual replay-facing corpus authoring, the rule is stricter.
+
+A scenario is replay-facing if any of the following hold:
+1. it is named as satisfying a replay class in a workset or execution packet,
+2. it is referenced by a pack-evidence matrix,
+3. it is intended for oracle-versus-engine comparison beyond ad hoc local debugging,
+4. it is intended to participate in retained-failure or witness-distillation lanes.
+
+Replay-facing scenarios must carry:
+1. `replay_projection`
+2. `witness_anchors` when the scenario is intended for retained-failure, witness reduction, or replay-appliance rollout lanes
+
+This rule does not replace `TraceCalc`.
+It narrows authoring discipline for scenarios that participate in the replay and witness pipeline.
 
 ## 4.4 Replay Projection Metadata
-Where present, `replay_projection` should be treated as OxCalc-owned metadata projected into the Replay appliance.
+`replay_projection` should be treated as OxCalc-owned metadata projected into the Replay appliance.
 
 ### Required Or Expected Members
 1. `replay_classes`
@@ -114,7 +131,7 @@ Any additional ids must either:
 2. be marked with the `oxcalc.local.*` prefix.
 
 ## 4.5 Witness Anchor Metadata
-Where present, `witness_anchors` should define reduction-unit anchors without changing scenario authoring.
+Where required, `witness_anchors` should define reduction-unit anchors without changing scenario authoring.
 
 ### Recommended Members
 1. `scenario_anchor_id`
@@ -517,6 +534,8 @@ Future authored scenarios should gradually add:
 2. explicit `required_equality_surfaces`,
 3. `witness_anchors` for scenario, phase-block, event-group, reject-record, and view-slice reduction units.
 
+For post-W014 replay-facing scenarios, those items should be treated as required rather than “gradual”.
+
 ## 11. Open Design Constraints
 This schema intentionally leaves some details open for later realization work.
 
@@ -535,6 +554,7 @@ These are no longer allowed to block fixture authoring.
 - integration_completeness: partial
 - open_lanes:
   - the hand-auditable corpus now includes the widened W014 replay classes and is executable through the validator, runner, engine, and reference-machine paths
+  - replay-facing scenario metadata is now present in the checked-in corpus, but later generated-corpus lanes still need the same discipline
   - exact trace event body schema remains narrower than the later replay-pack schema
   - generated corpus expansion and later replay-pack binding details are still open
 - claim_confidence: provisional

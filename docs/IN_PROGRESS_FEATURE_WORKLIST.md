@@ -77,6 +77,14 @@ Last updated: 2026-03-16.
 - **Why still open**: the oracle is exercised over the widened Stage 1 slice, but later replay-appliance and retained-witness lanes remain partial.
 - **Canonical owner**: W012.
 
+### IP-09: Replay Appliance Adapter Rollout
+
+- **Status**: in-progress
+- **Current floor**: `W015` now has an execution-ready packet, local replay-coherence refactor direction, explicit adapter and capability-manifest docs, normalized event-family projection embodied in runner output, typed local mismatch projection fields, and replay-facing scenario metadata carried in the checked-in corpus and active widened baseline run.
+- **Remaining gaps**: normalized replay-appliance bundle emission, bundle-validator conformance artifacts, explain records, capability promotion beyond the current conservative floor, and later retained-witness rollout.
+- **Why still open**: local replay coherence and adapter doctrine are now in place, but the actual bundle-projection and retained-witness lanes are still later work.
+- **Canonical owner**: W015.
+
 
 
 

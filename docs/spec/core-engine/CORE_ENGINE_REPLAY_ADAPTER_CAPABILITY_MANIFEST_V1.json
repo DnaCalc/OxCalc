@@ -24,8 +24,8 @@
       "summary": "The normalized replay-appliance bundle root is specified but not yet emitted by the current runner."
     },
     {
-      "limit_id": "oxcalc.local.limit.diff_severity_not_emitted",
-      "summary": "Current engine_diff artifacts emit local mismatch kinds only and do not yet emit normalized mismatch_kind or severity_class ids."
+      "limit_id": "oxcalc.local.limit.bundle_diff_projection_not_emitted",
+      "summary": "The local engine_diff shape now has normalized mismatch projection fields, but no replay-appliance bundle diff stream is emitted yet."
     },
     {
       "limit_id": "oxcalc.local.limit.explain_not_realized",
@@ -41,10 +41,11 @@
     }
   ],
   "conformance_artifact_refs": [
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/run_summary.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/conformance/oracle_baseline.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/conformance/engine_diff.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/scenarios/tc_accept_publish_001/trace.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/run_summary.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/conformance/oracle_baseline.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/conformance/engine_diff.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_accept_publish_001/trace.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/scenarios/tc_fallback_reentry_001/result.json",
     "tests/OxCalc.Core.Tests/TraceCalcRunnerTests.cs"
   ],
   "registry_version_refs": [

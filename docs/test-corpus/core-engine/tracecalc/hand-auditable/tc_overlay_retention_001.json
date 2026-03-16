@@ -3,62 +3,207 @@
   "scenario_id": "tc_overlay_retention_001",
   "description": "runtime effect retention is surfaced as an overlay retention scenario",
   "calc_space": "TraceCalc",
-  "tags": ["overlay", "retention"],
-  "pack_tags": ["stage1", "overlay-retention"],
+  "tags": [
+    "overlay",
+    "retention"
+  ],
+  "pack_tags": [
+    "stage1",
+    "overlay-retention"
+  ],
   "initial_graph": {
     "snapshot_id": "s0",
     "nodes": [
-      { "node_id": "Mode", "kind": "value", "expr": { "op": "const", "value": "left" } },
-      { "node_id": "Left", "kind": "value", "expr": { "op": "const", "value": 10 } },
-      { "node_id": "Pick", "kind": "value", "expr": { "op": "dyn_select", "selector": "Mode", "candidates": { "left": "Left" } } }
+      {
+        "node_id": "Mode",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": "left"
+        }
+      },
+      {
+        "node_id": "Left",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 10
+        }
+      },
+      {
+        "node_id": "Pick",
+        "kind": "value",
+        "expr": {
+          "op": "dyn_select",
+          "selector": "Mode",
+          "candidates": {
+            "left": "Left"
+          }
+        }
+      }
     ]
   },
   "initial_runtime": {
     "published_values": [
-      { "node_id": "Mode", "value": "left" },
-      { "node_id": "Left", "value": 10 },
-      { "node_id": "Pick", "value": 10 }
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Left",
+        "value": 10
+      },
+      {
+        "node_id": "Pick",
+        "value": 10
+      }
     ]
   },
   "steps": [
-    { "step_id": "st1", "kind": "admit_work", "admission_id": "adm1", "compatibility_basis": "s0", "targets": ["Pick"] },
+    {
+      "step_id": "st1",
+      "kind": "admit_work",
+      "admission_id": "adm1",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
     {
       "step_id": "st2",
       "kind": "emit_candidate_result",
       "candidate_result_id": "cand1",
       "compatibility_basis": "s0",
       "value_updates": [
-        { "node_id": "Pick", "value": 10 }
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
       ],
       "dependency_shape_updates": [
-        { "node_id": "Pick", "kind": "activate_dynamic_dep", "dep_id": "Left" }
+        {
+          "node_id": "Pick",
+          "kind": "activate_dynamic_dep",
+          "dep_id": "Left"
+        }
       ],
       "runtime_effects": [
-        { "effect_kind": "dynamic_ref_activated", "owner_node_id": "Pick", "payload": { "dep_id": "Left" } }
+        {
+          "effect_kind": "dynamic_ref_activated",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Left"
+          }
+        }
       ],
       "diagnostic_events": []
     },
-    { "step_id": "st3", "kind": "publish_candidate", "candidate_result_id": "cand1", "publication_id": "pub1" }
+    {
+      "step_id": "st3",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand1",
+      "publication_id": "pub1"
+    }
   ],
   "expected": {
     "published_view": {
       "snapshot_id": "s0",
       "node_values": [
-        { "node_id": "Mode", "value": "left" },
-        { "node_id": "Left", "value": 10 },
-        { "node_id": "Pick", "value": 10 }
+        {
+          "node_id": "Mode",
+          "value": "left"
+        },
+        {
+          "node_id": "Left",
+          "value": 10
+        },
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
       ]
     },
     "pinned_views": [],
     "trace_labels": [
-      { "label": "candidate_admitted", "count": 1 },
-      { "label": "candidate_emitted", "count": 1 },
-      { "label": "candidate_published", "count": 1 },
-      { "label": "overlay_retained", "count": 1 }
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      },
+      {
+        "label": "overlay_retained",
+        "count": 1
+      }
     ],
     "counter_expectations": [
-      { "counter": "overlay.retained", "comparison": "eq", "value": 1 }
+      {
+        "counter": "overlay.retained",
+        "comparison": "eq",
+        "value": 1
+      }
     ],
     "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.fec.overlay_lifecycle",
+      "PACK.concurrent.epochs"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S5",
+      "S6"
+    ],
+    "transition_labels": [
+      "C4",
+      "A9",
+      "A10"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_overlay_retention_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
   }
 }

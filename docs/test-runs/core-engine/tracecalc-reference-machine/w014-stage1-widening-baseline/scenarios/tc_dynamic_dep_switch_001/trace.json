@@ -1,11 +1,24 @@
 {
   "scenario_id": "tc_dynamic_dep_switch_001",
   "run_id": "w014-stage1-widening-baseline",
+  "replay_projection": {
+    "replay_classes": [
+      "R8"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "candidate_publication_boundary"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1"
+  },
   "events": [
     {
       "event_id": "evt-0001",
       "step_id": "st1",
       "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
       "payload": {
         "node_id": "Mode"
       }
@@ -14,6 +27,7 @@
       "event_id": "evt-0002",
       "step_id": "st1",
       "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
       "payload": {
         "node_id": "Pick"
       }
@@ -22,6 +36,7 @@
       "event_id": "evt-0003",
       "step_id": "st2",
       "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
       "payload": {
         "group_index": "0",
         "nodes": "Mode"
@@ -31,6 +46,7 @@
       "event_id": "evt-0004",
       "step_id": "st2",
       "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
       "payload": {
         "group_index": "1",
         "nodes": "Pick"
@@ -40,6 +56,7 @@
       "event_id": "evt-0005",
       "step_id": "st2",
       "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
       "payload": {
         "node_id": "Mode"
       }
@@ -48,6 +65,7 @@
       "event_id": "evt-0006",
       "step_id": "st2",
       "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
       "payload": {
         "node_id": "Mode",
         "compatibility_basis": "s0"
@@ -57,6 +75,7 @@
       "event_id": "evt-0007",
       "step_id": "st2",
       "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
       "payload": {
         "node_id": "Pick"
       }
@@ -65,6 +84,7 @@
       "event_id": "evt-0008",
       "step_id": "st2",
       "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
       "payload": {
         "node_id": "Pick",
         "compatibility_basis": "s0"
@@ -74,6 +94,7 @@
       "event_id": "evt-0009",
       "step_id": "st2",
       "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
       "payload": {
         "admission_id": "adm1",
         "compatibility_basis": "s0",
@@ -84,6 +105,7 @@
       "event_id": "evt-0010",
       "step_id": "st3",
       "label": "candidate_shape_update_produced",
+      "normalized_event_family": "oxcalc.local.event.candidate_shape_update_produced",
       "payload": {
         "node_id": "Pick"
       }
@@ -92,6 +114,7 @@
       "event_id": "evt-0011",
       "step_id": "st3",
       "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
       "payload": {
         "candidate_result_id": "cand1",
         "target_count": "2"
@@ -101,6 +124,7 @@
       "event_id": "evt-0012",
       "step_id": "st4",
       "label": "overlay_retained",
+      "normalized_event_family": "overlay.retained",
       "payload": {
         "publication_id": "pub1"
       }
@@ -109,6 +133,7 @@
       "event_id": "evt-0013",
       "step_id": "st4",
       "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
       "payload": {
         "candidate_result_id": "cand1",
         "publication_id": "pub1"

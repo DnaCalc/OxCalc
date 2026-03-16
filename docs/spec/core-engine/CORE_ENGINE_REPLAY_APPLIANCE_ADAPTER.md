@@ -165,6 +165,15 @@ The adapter may not silently pick one and erase the other.
 ### 6.4 Local-Only Id Rule
 If OxCalc needs a projection id not present in the Foundation handoff, it must use the `oxcalc.local.*` prefix and mark the id as local-only.
 
+### 6.5 Current Local Realization Floor
+The local replay-facing floor is now embodied in the OxCalc runner and baseline artifacts.
+
+Current exercised surfaces include:
+1. source trace labels preserved in `trace.json`,
+2. `normalized_event_family` emitted beside each source label,
+3. scenario-level `replay_projection` metadata emitted in replay-facing scenario results and traces,
+4. local mismatch projection fields emitted by `engine_diff` when mismatches are present.
+
 ## 7. Required Preserved View Surfaces
 The adapter must preserve these view surfaces as first-class artifacts:
 1. `published_view`
@@ -213,8 +222,7 @@ Default rule:
 4. evidence or clause binding mismatches, when later emitted, are `sev.coverage`.
 
 ### 8.4 Current Rollout Limitation
-Current `engine_diff.json` does not yet emit normalized mismatch ids or `severity_class` ids.
-This is a documented rollout gap, not a reason to blur the local mismatch meanings.
+Current local `engine_diff` artifacts now have a normalized mismatch projection shape, but the replay-appliance bundle projection does not yet emit a separate normalized diff stream under `replay-appliance/`.
 
 ## 9. Adapter Capability Target and Known Limits
 
@@ -319,8 +327,8 @@ They justify explicit normalization and staged rollout.
 - integration_completeness: partial
 - open_lanes:
   - normalized bundle emission is specified but not yet emitted by the current runner,
-  - `engine_diff.json` does not yet emit normalized mismatch ids or severity ids,
+  - replay-appliance-aware diff bundle emission is not yet emitted under `replay-appliance/`,
   - explain and distillation flows remain planned rather than realized,
-  - the adapter manifest intentionally stops short of `cap.C2.diff_valid`
+  - the adapter manifest intentionally remains conservative on capability claims until replay-appliance-aware diff evidence is promoted
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

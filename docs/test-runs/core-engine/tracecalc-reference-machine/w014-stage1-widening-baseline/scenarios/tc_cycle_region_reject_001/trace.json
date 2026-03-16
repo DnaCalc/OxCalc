@@ -1,11 +1,24 @@
 {
   "scenario_id": "tc_cycle_region_reject_001",
   "run_id": "w014-stage1-widening-baseline",
+  "replay_projection": {
+    "replay_classes": [
+      "oxcalc.local.scc_stage1"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1"
+  },
   "events": [
     {
       "event_id": "evt-0001",
       "step_id": "st1",
       "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
       "payload": {
         "node_id": "A"
       }
@@ -14,6 +27,7 @@
       "event_id": "evt-0002",
       "step_id": "st2",
       "label": "cycle_region_detected",
+      "normalized_event_family": "oxcalc.local.event.cycle_region_detected",
       "payload": {
         "group_index": "0",
         "nodes": "A,B"
@@ -23,6 +37,7 @@
       "event_id": "evt-0003",
       "step_id": "st2",
       "label": "scc_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.scc_group_scheduled",
       "payload": {
         "group_index": "0",
         "nodes": "A,B"
@@ -32,6 +47,7 @@
       "event_id": "evt-0004",
       "step_id": "st2",
       "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
       "payload": {
         "node_id": "A"
       }
@@ -40,6 +56,7 @@
       "event_id": "evt-0005",
       "step_id": "st2",
       "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
       "payload": {
         "node_id": "A",
         "compatibility_basis": "s0"
@@ -49,6 +66,7 @@
       "event_id": "evt-0006",
       "step_id": "st2",
       "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
       "payload": {
         "node_id": "B"
       }
@@ -57,6 +75,7 @@
       "event_id": "evt-0007",
       "step_id": "st2",
       "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
       "payload": {
         "node_id": "B"
       }
@@ -65,6 +84,7 @@
       "event_id": "evt-0008",
       "step_id": "st2",
       "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
       "payload": {
         "node_id": "B",
         "compatibility_basis": "s0"
@@ -74,6 +94,7 @@
       "event_id": "evt-0009",
       "step_id": "st2",
       "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
       "payload": {
         "admission_id": "adm1",
         "compatibility_basis": "s0",
@@ -84,6 +105,7 @@
       "event_id": "evt-0010",
       "step_id": "st3",
       "label": "candidate_rejected",
+      "normalized_event_family": "reject.issued",
       "payload": {
         "reject_id": "rej1",
         "reject_kind": "synthetic_cycle_reject",

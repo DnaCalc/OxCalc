@@ -208,6 +208,15 @@ Completion and status reports for any emitted-evidence workset must name:
 2. the checked-in baseline run if one exists,
 3. the commands used to generate or validate it.
 
+### 13.5 Baseline Run Retention Rule
+Execution packets that check in emitted baseline runs must state:
+1. which baseline run is the active normative one for that wave,
+2. whether earlier baseline runs remain active references or historical snapshots,
+3. how intentional regeneration is recorded.
+
+Later waves must not silently replace an earlier checked-in baseline run.
+They may supersede it only by naming the new active baseline explicitly.
+
 ## 14. Execution Packet Minimums
 
 Any workset that acts as an execution packet must include the following sections explicitly.
@@ -228,11 +237,23 @@ If replay classes are part of the gate model, the packet must state:
 2. which scenario ids satisfy them,
 3. which replay classes remain reserve or later lanes.
 
+If semantic widening depends on an oracle or conformance lane, the packet must also state:
+1. which oracle surfaces must widen in the same slice,
+2. which engine-versus-oracle comparison artifact proves the widened behavior.
+
 ### 14.4 Pack-Evidence Traceability
 Execution packets that mention packs must identify:
 1. pack name,
 2. replay classes,
 3. scenario ids or artifact paths once they exist.
+
+### 14.5 Workset Versus Feature-Area Rule
+Execution packets and feature-register items have different closure semantics.
+
+Rule:
+1. a workset may reach `complete` for its declared scope while the broader feature area remains `in-progress`,
+2. later widening must use a successor workset or explicit extension lane rather than silently reopening a completed workset,
+3. completion reports should state this distinction whenever a broader feature area remains active.
 
 ## 15. Local Doctrine Reference
 OxCalc-local execution lessons now live at `docs/LOCAL_EXECUTION_DOCTRINE.md`.

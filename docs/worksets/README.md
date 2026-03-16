@@ -75,6 +75,11 @@ Each workset file must include:
 - required replay classes with scenario ids: <mapping>
 - reserve or later replay classes: <mapping>
 
+### Coupled Widening Rule
+- engine surfaces widened in this packet: <list or "none">
+- oracle/conformance surfaces widened in the same slice: <list or "none">
+- widened comparison artifact: <path or "none">
+
 ## Pre-Closure Verification Checklist
 (Copy from OPERATIONS.md Section 7, fill in yes/no for each item)
 
@@ -99,11 +104,12 @@ Each workset file must include:
 7. Workset status should record reviewed inbound observations when interface or design inputs from sibling repos are relevant.
 8. Execution packets must declare environment preconditions, evidence layout, and replay-corpus readiness before implementation begins.
 9. If a workset expects emitted evidence, it must declare the canonical artifact root and whether the emitted artifacts are checked in or ephemeral.
+10. If a workset widens semantic behavior, it must state how engine, oracle, and conformance surfaces widen together.
+11. Workset closure and broader feature-area continuation are distinct; later widening should use successor worksets or explicit extension lanes rather than silently reopening a completed workset.
 
 ## Current Sequence Tail
 
-The current planned continuation after `W014` is:
-1. `W015_REPLAY_APPLIANCE_ADAPTER_AND_BUNDLE_VALIDATOR_ROLLOUT.md`
-2. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
+The current planned continuation after `W015` is:
+1. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
 
-These worksets extend the Stage 1 replay/oracle baseline into Replay appliance adapter rollout, capability-manifest governance, and later retained reduced-witness handling.
+This workset extends the Stage 1 replay/oracle baseline into retained reduced-witness handling after the adapter rollout and local replay-coherence refactor.

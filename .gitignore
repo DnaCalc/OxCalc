@@ -4,3 +4,4 @@ TestResults/
 .vs/
 tools/tla/
 formal/tla/states/
+target/

@@ -178,6 +178,43 @@ Exit gate:
 - validation commands are explicit for Rust formatting, lint, tests, and parity comparison,
 - baseline regeneration versus transient comparison policy is explicit.
 
+Parity contract for this sequence:
+1. carried active baseline run:
+   - `w014-stage1-widening-baseline`
+2. carried replay classes:
+   - `R1` through `R8` as declared in the replay-corpus section of this packet
+3. carried scenario ids:
+   - `tc_accept_publish_001`
+   - `tc_reject_no_publish_001`
+   - `tc_pinned_view_stability_001`
+   - `tc_dynamic_dep_switch_001`
+   - `tc_overlay_retention_001`
+   - `tc_scale_chain_seed_001`
+   - `tc_verify_clean_no_publish_001`
+   - `tc_multinode_dag_publish_001`
+   - `tc_publication_fence_reject_001`
+   - `tc_artifact_token_reject_001`
+   - `tc_fallback_reentry_001`
+   - `tc_cycle_region_reject_001`
+4. carried equality and comparison surfaces:
+   - `result_state`
+   - replay-class projection
+   - required-equality-surface projection
+   - trace projection: ordered `step_id`, `label`, `normalized_event_family`
+   - `published_view`
+   - `pinned_views`
+   - `rejects`
+   - `counters`
+   - conformance `engine_diff` projection: `oracle_result_state`, `engine_result_state`, `kind`, `mismatch_kind`, `severity_class`, `required_equality_surface`
+5. explicit command floor for this sequence:
+   - `cargo fmt --check`
+   - `cargo clippy --all-targets --all-features -- -D warnings`
+   - `cargo test`
+   - `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId <candidate-run-id> -BaselineRunId w014-stage1-widening-baseline`
+6. baseline policy:
+   - Rust parity validation should use distinct transient or Rust-specific run ids
+   - `w014-stage1-widening-baseline` remains carried authority and must not be silently regenerated during Rust parity checks
+
 ### Sequence 3. Structural and Coordinator Rust Reimplementation
 Primary work areas:
 - structural snapshot kernel
@@ -277,25 +314,57 @@ It is the end of the implementation-direction change wave that makes Rust the ac
 ## Pre-Closure Verification Checklist
 | # | Check | Yes/No |
 |---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | no |
-| 2 | Pack expectations updated for affected packs? | no |
+| 1 | Spec text and realization notes updated for all in-scope items? | yes |
+| 2 | Pack expectations updated for affected packs? | yes |
 | 3 | At least one deterministic replay artifact exists per in-scope behavior? | yes |
 | 4 | Semantic-equivalence statement provided for policy/strategy changes? | yes |
 | 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | yes |
-| 6 | All required tests pass? | no |
-| 7 | No known semantic gaps remain in declared scope? | no |
+| 6 | All required tests pass? | yes |
+| 7 | No known semantic gaps remain in declared scope? | yes |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | yes |
 | 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | yes |
 | 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | yes |
 
 ## Status
-- execution_state: planned
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - no Rust crates or parity artifacts exist yet
-  - crate-boundary and validation-plan decisions are declared, not realized
-  - current .NET code still carries the exercised implementation surface
-- claim_confidence: draft
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: []
+- claim_confidence: high
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+
+## Closure Evidence
+The following Rust-local evidence now exists for the declared W017 scope:
+1. a Rust workspace and crate split under `rust/` with:
+   - `oxcalc-core`
+   - `oxcalc-tracecalc`
+   - `oxcalc-tracecalc-cli`
+2. `#![forbid(unsafe_code)]` across the Rust crates,
+3. passing validation commands:
+   - `cargo fmt --check`
+   - `cargo clippy --all-targets --all-features -- -D warnings`
+   - `cargo test`
+4. a distinct Rust-emitted run:
+   - `w017-rust-parity-baseline`
+5. parity comparison evidence:
+   - `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w017-rust-parity-baseline -BaselineRunId w014-stage1-widening-baseline`
+
+## Semantic-Equivalence Statement
+W017 changes the implementation strategy for the current realized scope from the prior local .NET execution path to a Rust-first execution path.
+
+For the carried W014 Stage 1 corpus and comparison surface, the observable semantics remain invariant:
+1. the Rust-emitted `w017-rust-parity-baseline` matches the carried `w014-stage1-widening-baseline`,
+2. parity comparison succeeds for:
+   - `result_state`
+   - replay projection
+   - required equality surface projection
+   - ordered trace projection
+   - `published_view`
+   - `pinned_views`
+   - `rejects`
+   - `counters`
+   - `engine_diff` projection,
+3. no semantic widening was introduced during the language transition inside the declared W017 scope.
+
+The current .NET implementation therefore moves to carried comparison and historical evidence duty for this declared scope, while Rust becomes the active realization path.

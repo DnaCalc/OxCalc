@@ -87,10 +87,10 @@ Last updated: 2026-03-16.
 
 ### IP-10: Rust-First Reimplementation of Current Realized Scope
 
-- **Status**: planned
-- **Current floor**: OxCalc has an exercised .NET realization for the current TreeCalc Stage 1 scope, widened TraceCalc corpus, reference-machine comparisons, replay-facing adapter doctrine through W015, and an execution-sequenced Rust-first transition packet in W017.
-- **Remaining gaps**: Rust crate layout, Rust implementation of the current structural/coordinator/recalc/TraceCalc surfaces, Rust test and artifact tooling, and parity/conformance evidence against the current exercised baseline.
-- **Why still open**: the repo direction has shifted to Rust-first realization, but the current exercised implementation surface is still .NET-based.
+- **Status**: in-progress
+- **Current floor**: the declared current realized scope now has a Rust execution path under `rust/` covering the structural snapshot kernel, coordinator/publication baseline, recalc/overlay baseline, `TraceCalc` runner/reference-machine lane, and Rust CLI host, all validated under `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`, with a distinct emitted run at `w017-rust-parity-baseline` and a passing parity comparison against `w014-stage1-widening-baseline`.
+- **Remaining gaps**: later Stage 2 and concurrency realization in Rust, replay-appliance bundle emission in Rust, retained-witness flows after W016, and eventual retirement or archival policy for the carried .NET comparison lane.
+- **Why still open**: W017 reached its final gate for the current declared scope, but the broader Rust-first feature area remains active for later widening, replay, and retained-witness lanes.
 - **Canonical owner**: W017.
 
 

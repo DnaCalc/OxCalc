@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline",
+  "result_counts": {
+    "passed": 12
+  },
+  "run_id": "w017-rust-parity-baseline",
+  "scenario_count": 12,
+  "schema_version": "tracecalc-corpus-s1"
+}

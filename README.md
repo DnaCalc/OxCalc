@@ -10,8 +10,9 @@ OxCalc is the multi-node core calculation engine lane for DNA Calc.
 
 ## Implementation Direction
 1. OxCalc implementation work is now Rust-first for the core engine and the `TraceCalc` tool/runtime lane.
-2. The existing .NET implementation remains valuable as exercised evidence, executable comparison surface, and parity reference during the Rust realization.
-3. New implementation design should be idiomatic Rust rather than a line-by-line or pattern-by-pattern transfer of the current .NET code.
+2. The active implementation lives under `src/` as a Rust workspace with separate crates for the core engine, `TraceCalc`, and the CLI host.
+3. Historical baseline runs remain valuable as carried evidence, but the repo no longer carries a parallel prior-language implementation tree.
+4. New implementation design should be idiomatic Rust rather than a line-by-line or pattern-by-pattern transfer of older non-Rust shapes.
 
 ## Startup Docs
 - `CHARTER.md`

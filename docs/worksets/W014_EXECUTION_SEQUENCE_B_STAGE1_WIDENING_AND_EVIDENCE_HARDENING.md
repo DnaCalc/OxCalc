@@ -42,7 +42,7 @@ Execution Sequence B assumes the following preconditions already hold:
 
 ## Execution Environment
 Required tools:
-1. `dotnet`
+1. `cargo`
 2. `lean`
 
 Optional tools:

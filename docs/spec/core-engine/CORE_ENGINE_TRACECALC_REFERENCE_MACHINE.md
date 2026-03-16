@@ -359,7 +359,7 @@ This is the intended anti-regression and anti-premature-optimization gate.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the first reference-machine implementation now exists under `src/OxCalc.Core/TraceCalc/` and emits the checked-in `w013-sequence-a-baseline` and `w014-stage1-widening-baseline` runs
+  - the reference-machine implementation now exists under [src/oxcalc-tracecalc](/C:/Work/DnaCalc/OxCalc/src/oxcalc-tracecalc) and emits the checked-in `w013-sequence-a-baseline`, `w014-stage1-widening-baseline`, and `w017-rust-parity-baseline` runs
   - production-engine conformance workflow remains at the first diff policy, now widened through multi-node DAG, typed-reject taxonomy, fallback re-entry, and first SCC-oriented cases
   - richer trace payload promotion remains a later tightening lane
   - engine-versus-oracle comparison now exists for the widened 12-scenario Stage 1 corpus, but only at the first comparison surface

@@ -117,5 +117,5 @@ The current planned continuation after `W015` is:
 1. `W017_RUST_FIRST_REIMPLEMENTATION_OF_CURRENT_REALIZED_SCOPE.md`
 2. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
 
-`W017` shifts OxCalc implementation execution to a Rust-first lane while preserving the existing exercised .NET code as parity/evidence reference.
+`W017` has now moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
 `W016` remains the retained-witness follow-on lane after the Rust-first implementation direction is established.

@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "rust/oxcalc-core",
-    "rust/oxcalc-tracecalc",
-    "rust/oxcalc-tracecalc-cli",
+    "src/oxcalc-core",
+    "src/oxcalc-tracecalc",
+    "src/oxcalc-tracecalc-cli",
 ]
 
 [workspace.package]

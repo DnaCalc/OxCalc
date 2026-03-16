@@ -33,7 +33,7 @@ This workset turns the Foundation witness-distillation handoff into an OxCalc-ow
 ## Gate Model
 ### Entry gate
 - W015 has established the adapter, manifest, normalized event-family mapping, and registry pinning rules.
-- W017 has established the Rust-first implementation direction and the parity-reference role of the existing .NET implementation.
+- W017 has established the Rust-first implementation direction and the parity-reference role of the carried historical baseline artifacts.
 - The OxCalc-local acceptance oracle remains the `TraceCalc Reference Machine` plus local diff surfaces.
 
 ### Exit gate

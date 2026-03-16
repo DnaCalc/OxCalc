@@ -37,7 +37,7 @@ Execution Sequence A assumes the following preconditions already hold:
 
 ## Execution Environment
 Required tools:
-1. `dotnet`
+1. `cargo`
 2. `lean`
 
 Optional tools:
@@ -295,8 +295,8 @@ It is the end of the first implementation wave that makes Stage 1 executable, me
 
 ## Sequence Evidence
 The current evidence set for this packet is:
-1. Stage 1 structural, coordinator, recalc, harness, and oracle code under `src/OxCalc.Core/` and `src/OxCalc.TraceCalc.Tool/`
-2. passing unit tests in `tests/OxCalc.Core.Tests/`, including `TraceCalcRunnerTests`
+1. historical Stage 1 structural, coordinator, recalc, harness, and oracle evidence carried forward into the current Rust workspace under [src](/C:/Work/DnaCalc/OxCalc/src)
+2. passing Rust crate tests including the `TraceCalc` runner tests under [src/oxcalc-tracecalc](/C:/Work/DnaCalc/OxCalc/src/oxcalc-tracecalc)
 3. Lean-facing state vocabulary at `formal/lean/OxCalc/CoreEngine/Stage1State.lean`, typechecked locally
 4. first TLA+ artifact at `formal/tla/CoreEngineStage1.tla`
 5. hand-authored replay seed artifacts for `R1`, `R2`, and `R7` under `formal/replay/stage1-hand-authored/`

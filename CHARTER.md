@@ -52,5 +52,6 @@ A coordinator policy/spec change is done only when:
 
 ## 7. Implementation Direction
 1. OxCalc-owned executable realization is Rust-first from this point onward.
-2. Existing .NET code remains a parity and evidence reference until the Rust realization covers the same declared scope.
-3. Rust realization must be treated as an ab initio implementation against OxCalc specs, replay artifacts, and executable comparison surfaces, not as a mechanical translation of .NET shapes or idioms.
+2. The active repo implementation is the Rust workspace under `src/`.
+3. Historical baseline runs and checked-in artifacts remain valid evidence, but they are not a second live implementation lane.
+4. Rust realization must be treated as an ab initio implementation against OxCalc specs, replay artifacts, and executable comparison surfaces, not as a mechanical translation of older non-Rust shapes or idioms.

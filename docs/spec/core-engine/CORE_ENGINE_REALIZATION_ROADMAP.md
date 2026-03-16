@@ -211,7 +211,7 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
 `W014` is the follow-on operational packet that widens the Stage 1 baseline, hardens emitted evidence, and closes the largest remaining pre-concurrency gaps.
 `W015` is the replay-facing integration packet that adds local replay coherence, adapter doctrine, capability-floor governance, and normalized-bundle expectations without weakening OxCalc-owned semantics.
-`W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using the existing .NET realization only as executable comparison and parity evidence.
+`W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using carried historical baseline artifacts as comparison and parity evidence.
 `W016` remains the retained-witness follow-on lane, but it no longer represents the immediate next implementation packet after W015.
 
 ## 13. Relationship To Assurance

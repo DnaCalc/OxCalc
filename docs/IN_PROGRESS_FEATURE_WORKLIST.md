@@ -64,7 +64,7 @@ Last updated: 2026-03-16.
 ### IP-07: Self-Contained Test Harness Planning
 
 - **Status**: in-progress
-- **Current floor**: `W011` now includes an exercised 12-scenario `TraceCalc` corpus, validator and runner paths under `src/OxCalc.Core/TraceCalc/`, a small tool host under `src/OxCalc.TraceCalc.Tool/`, planner tests, runner tests, and checked-in emitted baseline runs at `w013-sequence-a-baseline` and `w014-stage1-widening-baseline`.
+- **Current floor**: `W011` now includes an exercised 12-scenario `TraceCalc` corpus, validator and runner paths under [src/oxcalc-tracecalc](/C:/Work/DnaCalc/OxCalc/src/oxcalc-tracecalc), a CLI host under [src/oxcalc-tracecalc-cli](/C:/Work/DnaCalc/OxCalc/src/oxcalc-tracecalc-cli), crate-local tests, and checked-in emitted baseline runs at `w013-sequence-a-baseline`, `w014-stage1-widening-baseline`, and `w017-rust-parity-baseline`.
 - **Remaining gaps**: replay-appliance bundle export, richer retained-failure handling, larger generated-corpus lanes, and later OxFml-integrated harness coverage.
 - **Why still open**: the widened self-contained harness slice is exercised, but later replay, retained-witness, and integrated-host lanes remain partial.
 - **Canonical owner**: W011.
@@ -89,7 +89,7 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: the declared current realized scope now has a Rust execution path under `rust/` covering the structural snapshot kernel, coordinator/publication baseline, recalc/overlay baseline, `TraceCalc` runner/reference-machine lane, and Rust CLI host, all validated under `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`, with a distinct emitted run at `w017-rust-parity-baseline` and a passing parity comparison against `w014-stage1-widening-baseline`.
-- **Remaining gaps**: later Stage 2 and concurrency realization in Rust, replay-appliance bundle emission in Rust, retained-witness flows after W016, and eventual retirement or archival policy for the carried .NET comparison lane.
+- **Remaining gaps**: later Stage 2 and concurrency realization in Rust, replay-appliance bundle emission in Rust, retained-witness flows after W016, and later archival policy for superseded historical implementation artifacts.
 - **Why still open**: W017 reached its final gate for the current declared scope, but the broader Rust-first feature area remains active for later widening, replay, and retained-witness lanes.
 - **Canonical owner**: W017.
 

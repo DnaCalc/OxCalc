@@ -58,7 +58,7 @@ This workset establishes the OxCalc-local adapter contract, capability manifest,
 
 ### Environment Preconditions
 - required tools:
-  - `dotnet`
+  - `cargo`
   - `powershell`
 - optional tools:
   - `lean`

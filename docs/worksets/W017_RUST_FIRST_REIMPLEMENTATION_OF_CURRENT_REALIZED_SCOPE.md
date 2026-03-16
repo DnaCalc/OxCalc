@@ -5,7 +5,7 @@ Operationalize the implementation-direction change after `W015`.
 
 This packet exists to:
 1. move OxCalc implementation execution onto an idiomatic Rust footing,
-2. preserve the current exercised .NET realization as semantic evidence, executable comparison surface, and parity reference,
+2. preserve the carried historical baseline artifacts as semantic evidence, executable comparison surface, and parity reference,
 3. ensure the Rust lane is driven by OxCalc specs, replay artifacts, oracle behavior, and baseline runs rather than by mechanical cross-language translation,
 4. define the first parity-oriented Rust execution wave before deeper replay-appliance or retained-witness rollout continues.
 
@@ -18,16 +18,16 @@ This packet exists to:
 ### In scope
 1. Define the Rust-first implementation direction for OxCalc executable work.
 2. Execute the first planning and sequencing packet for ab initio Rust realization of the currently exercised structural, coordinator, recalc, `TraceCalc`, and tool-host scope.
-3. Declare the comparison role of the current .NET implementation and checked-in baseline runs.
+3. Declare the comparison role of the checked-in baseline runs and carried historical artifacts.
 4. Lock the Rust quality floor, crate-boundary direction, and validation requirements for the reimplementation wave.
-5. Define parity, conformance, and evidence gates for Rust replacing the current .NET implementation as the active realization lane for the declared scope.
+5. Define parity, conformance, and evidence gates for Rust as the active realization lane for the declared scope.
 
 ### Out of scope
 1. Stage 2 concurrency realization.
 2. New semantic widening beyond the already exercised W014/W015 scope.
 3. Witness-distillation execution and retained-failure rollout.
-4. Generic cross-language transliteration of current .NET code structure.
-5. Immediate retirement of the .NET implementation before Rust parity evidence exists.
+4. Generic cross-language transliteration of older non-Rust code structure.
+5. Immediate retirement of historical baseline evidence before Rust parity evidence exists.
 
 ## Deliverables
 1. A clear Rust-first realization doctrine and execution boundary for OxCalc.
@@ -37,19 +37,19 @@ This packet exists to:
    - recalc and overlay baseline,
    - `TraceCalc` scenario loading, runner, engine machine, reference machine, and tool host.
 3. A validation plan that uses current replay artifacts, checked-in baseline runs, and engine-versus-oracle comparisons as the Rust parity floor.
-4. A crate and evidence plan that makes the Rust implementation idiomatic rather than .NET-shaped.
+4. A crate and evidence plan that makes the Rust implementation idiomatic rather than shaped by older non-Rust code.
 5. A concrete execution sequence with per-phase entry and exit gates for the Rust realization wave.
 
 ## Gate Model
 ### Entry gate
 - W014 has established the widened Stage 1 baseline and active normative run `w014-stage1-widening-baseline`.
 - W015 has established replay-facing coherence, normalized event-family mapping, and adapter doctrine.
-- The current .NET implementation remains available as an exercised comparison surface.
+- The carried historical baseline artifacts remain available as exercised comparison surfaces.
 
 ### Exit gate
 - The Rust-first implementation direction is explicit in OxCalc-local doctrine and planning.
 - The Rust reimplementation is defined as an ab initio realization against spec and evidence, not as a mechanical translation lane.
-- The .NET implementation’s new role as executable comparison/evidence reference is explicit.
+- The role of carried historical baseline artifacts as executable comparison/evidence references is explicit.
 - Validation gates for Rust parity against the current exercised scope are explicit enough to drive the first Rust execution packet.
 - W016 is explicitly sequenced after the Rust reimplementation direction change rather than being treated as the immediate next implementation lane.
 
@@ -57,7 +57,7 @@ This packet exists to:
 Execution Sequence C assumes the following preconditions already hold:
 1. `W014` has reached its final gate and `w014-stage1-widening-baseline` remains the active normative baseline,
 2. `W015` has established local replay-coherence rules, replay-facing scenario metadata, and normalized event-family doctrine,
-3. the current .NET implementation remains executable and can still serve as a parity reference during the Rust transition,
+3. the carried historical baseline artifacts remain available and can still serve as a parity reference during the Rust transition,
 4. the current `TraceCalc` corpus through `R8` remains the minimum replay and parity surface for the first Rust wave,
 5. the Rust-first doctrine in `OPERATIONS.md` has been adopted before any new Rust code lands.
 
@@ -71,10 +71,8 @@ Execution Sequence C assumes the following preconditions already hold:
 - optional tools:
   - `lean`
   - `tlc`
-  - `dotnet`
 - fallback rules:
-  - `dotnet` remains strongly preferred during the Rust parity phase because the current exercised implementation is the executable comparison surface
-  - if `dotnet` becomes unavailable later, Rust parity claims must rely on previously checked-in baseline artifacts plus reference-machine comparison evidence
+  - Rust parity claims rely on previously checked-in baseline artifacts plus reference-machine comparison evidence
   - if `lean` or `tlc` are unavailable, W017 may proceed on implementation-direction and parity-planning scope, but no fresh formal-tool evidence may be implied
 
 ### Evidence Layout
@@ -82,7 +80,7 @@ Execution Sequence C assumes the following preconditions already hold:
   - carried baseline artifact roots remain under `docs/test-runs/core-engine/tracecalc-reference-machine/`
 - checked-in or ephemeral:
   - existing checked-in W013/W014 baselines remain active references during Rust rollout
-  - Rust parity runs should use explicit new run ids rather than silently rewriting the carried .NET-era baselines
+  - Rust parity runs should use explicit new run ids rather than silently rewriting the carried historical baselines
 - baseline run naming:
   - carried active baseline entering W017: `w014-stage1-widening-baseline`
   - first Rust parity baseline should be promoted under a distinct Rust-specific run id
@@ -103,7 +101,7 @@ Execution Sequence C assumes the following preconditions already hold:
 ### Coupled Widening Rule
 - engine surfaces widened in this packet:
   - none in semantic scope
-  - implementation-language realization changes from .NET-first local code to Rust-first local code
+  - implementation-language realization changes from the prior local implementation to Rust-first local code
 - oracle/conformance surfaces widened in the same slice:
   - Rust parity comparison against the carried oracle and baseline run surfaces
   - no semantic widening is allowed without a successor workset
@@ -112,7 +110,7 @@ Execution Sequence C assumes the following preconditions already hold:
 
 ## Rust Reimplementation Doctrine
 1. The Rust implementation is an ab initio realization against OxCalc specs, replay artifacts, baseline runs, and conformance behavior.
-2. The current .NET code is a useful executable reference, but it is not the architecture template.
+2. The carried historical baseline artifacts are useful behavior references, but they are not the architecture template.
 3. Rust design should prefer:
    - explicit data types and enums over class hierarchies,
    - borrowing and ownership-driven interfaces over shared mutable service graphs,
@@ -123,7 +121,7 @@ Execution Sequence C assumes the following preconditions already hold:
 
 ## Critical-Path Doctrine
 The critical path for this Rust-first wave is:
-1. establish crate and module boundaries that reflect OxCalc semantics rather than the current .NET object layout,
+1. establish crate and module boundaries that reflect OxCalc semantics rather than older non-Rust object layouts,
 2. define parity validation against the carried baseline and reference-machine surfaces,
 3. realize the structural and coordinator kernel in Rust,
 4. realize the widened recalc and overlay baseline in Rust,
@@ -154,8 +152,8 @@ Execution objective:
 
 Exit gate:
 - Rust crate boundaries are explicit enough to start code without reopening language-direction questions,
-- the plan states what existing .NET components remain as executable reference only,
-- no crate boundary depends on copying current .NET service or object-graph structure mechanically.
+- the plan states what carried historical evidence remains as comparison reference only,
+- no crate boundary depends on copying older non-Rust service or object-graph structure mechanically.
 
 ### Sequence 2. Parity and Validation Contract Definition
 Primary work areas:
@@ -228,7 +226,7 @@ Execution objective:
 
 Exit gate:
 - Rust covers the current structural snapshot, pinning, candidate-result, reject, and publication baseline for the declared W014/W015 surface,
-- the Rust design is demonstrably ownership- and enum-driven rather than .NET-shaped,
+- the Rust design is demonstrably ownership- and enum-driven rather than shaped by older non-Rust code,
 - parity checks against the carried baseline are defined for this slice.
 
 ### Sequence 4. Recalc and Overlay Rust Reimplementation
@@ -265,7 +263,7 @@ Execution objective:
 Exit gate:
 - Rust can consume the carried `TraceCalc` corpus,
 - Rust emits artifact shapes that are still comparable against the current OxCalc contracts,
-- the tool-host lane no longer depends on the .NET runner for the declared Rust-covered scope.
+- the tool-host lane no longer depends on any superseded non-Rust runner for the declared Rust-covered scope.
 
 ### Sequence 6. Rust Parity Baseline and Closure Evidence
 Primary work areas:
@@ -283,7 +281,7 @@ Exit gate:
 - at least one explicit Rust baseline run exists under the canonical artifact root,
 - the Rust run is compared against `w014-stage1-widening-baseline` and the carried oracle/conformance surfaces,
 - any semantic-equivalence claim is stated explicitly,
-- any remaining reliance on .NET is narrow and explicitly recorded.
+- any remaining reliance on historical baseline artifacts is narrow and explicitly recorded.
 
 ## Parallel Side-Lane Rules
 Execution Sequence C remains critical-path driven, but these side-lane rules apply:
@@ -303,7 +301,7 @@ The following remain active across the sequence but are not numbered sub-phases:
 Execution Sequence C reaches its final gate only when all of the following hold:
 1. Sequences 1 through 6 have each met their declared exit gate.
 2. The Rust-first implementation direction is no longer only doctrinal; it is backed by a concrete Rust execution path covering the declared current realized scope.
-3. The current .NET implementation’s role has been narrowed to explicit parity/evidence reference for any still-unported surfaces.
+3. Any remaining historical baseline role is narrowed to explicit parity/evidence reference for any still-unported surfaces.
 4. A Rust baseline run exists and is comparable against the carried W014 baseline and current oracle surfaces.
 5. No silent semantic drift has been introduced during the language transition.
 6. W016 remains correctly sequenced as a later lane rather than being used to hide unresolved Rust parity work.
@@ -351,7 +349,7 @@ The following Rust-local evidence now exists for the declared W017 scope:
    - `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w017-rust-parity-baseline -BaselineRunId w014-stage1-widening-baseline`
 
 ## Semantic-Equivalence Statement
-W017 changes the implementation strategy for the current realized scope from the prior local .NET execution path to a Rust-first execution path.
+W017 changes the implementation strategy for the current realized scope from the prior local execution path to a Rust-first execution path.
 
 For the carried W014 Stage 1 corpus and comparison surface, the observable semantics remain invariant:
 1. the Rust-emitted `w017-rust-parity-baseline` matches the carried `w014-stage1-widening-baseline`,
@@ -367,4 +365,4 @@ For the carried W014 Stage 1 corpus and comparison surface, the observable seman
    - `engine_diff` projection,
 3. no semantic widening was introduced during the language transition inside the declared W017 scope.
 
-The current .NET implementation therefore moves to carried comparison and historical evidence duty for this declared scope, while Rust becomes the active realization path.
+The carried historical baseline artifacts therefore remain comparison and evidence duty for this declared scope, while Rust becomes the active realization path.

@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/OxCalc.Core/OxCalc.Core.csproj" />
-    <Project Path="src/OxCalc.TraceCalc.Tool/OxCalc.TraceCalc.Tool.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/OxCalc.Core.Tests/OxCalc.Core.Tests.csproj" />
-  </Folder>
-</Solution>

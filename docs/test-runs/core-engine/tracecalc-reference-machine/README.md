@@ -18,8 +18,8 @@ Rust parity evidence run:
 1. `w017-rust-parity-baseline`
 
 They were emitted by:
-1. `dotnet run --project src/OxCalc.TraceCalc.Tool -- w013-sequence-a-baseline`
-2. `dotnet run --project src/OxCalc.TraceCalc.Tool -- w014-stage1-widening-baseline`
+1. a historical pre-Rust implementation path for `w013-sequence-a-baseline`
+2. a historical pre-Rust implementation path for `w014-stage1-widening-baseline`
 3. `cargo run -p oxcalc-tracecalc-cli -- w017-rust-parity-baseline`
 
 The active widened baseline currently covers:

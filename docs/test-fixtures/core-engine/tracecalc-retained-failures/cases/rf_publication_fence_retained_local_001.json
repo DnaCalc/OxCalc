@@ -1,0 +1,27 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_publication_fence_retained_local_001",
+  "description": "Replay-valid retained-local witness over the publication-fence reject surface.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_publication_fence_reject_001.json",
+  "lifecycle_target": "wit.retained_local",
+  "target_mismatch_kind": "reject_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "reject_id_present",
+    "reference": "rej1"
+  },
+  "quarantine_reason": null,
+  "notes": [
+    "The selected unit starts from the published-view slice and closes over the event and reject units.",
+    "This is the first bounded replay-valid retained-local witness family for W016."
+  ]
+}

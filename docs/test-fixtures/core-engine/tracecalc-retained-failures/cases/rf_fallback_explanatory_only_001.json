@@ -1,0 +1,27 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_fallback_explanatory_only_001",
+  "description": "Explanatory-only retained witness over fallback counter behavior.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_fallback_reentry_001.json",
+  "lifecycle_target": "wit.explanatory_only",
+  "target_mismatch_kind": "counter_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters"
+  ],
+  "selected_unit_ids": [
+    "events:main"
+  ],
+  "preservation_check": {
+    "kind": "counter_present",
+    "reference": "fallback_reentry_count"
+  },
+  "quarantine_reason": null,
+  "notes": [
+    "This case remains explanatory-only even though the source scenario replays.",
+    "The predicate is tracked over fallback counters rather than promoted to retained-local status."
+  ]
+}

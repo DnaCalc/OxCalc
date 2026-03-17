@@ -316,6 +316,20 @@ Not allowed:
 2. silently dropping reject sets or pinned-view surfaces,
 3. treating degraded capture as replay-valid pack evidence.
 
+## 11.3 First Retained-Witness Seed Slice
+The first realized W016 slice may emit deterministic witness-seed artifacts before full reduced-witness replay validity exists.
+
+That first slice should:
+1. emit `reduction_manifest.json` and `lifecycle.json` under the declared replay-appliance root,
+2. use `wit.generated_local` for lifecycle state,
+3. keep `pack_eligible` false,
+4. mark any pre-registry reduction-status id as explicit OxCalc-local status rather than silently treating it as canonical Foundation registry state.
+
+The next realized retained-witness slice may additionally:
+1. transition lifecycle state to `wit.explanatory_only` when mismatch or assertion preservation remains informative but replay-valid retained-witness status is not yet justified,
+2. transition lifecycle state to `wit.quarantined` with explicit quarantine reason when validation or capture is insufficient,
+3. keep those outcomes non-pack-eligible.
+
 ## 12. Realization Direction
 The first realized validator and runner slice should likely be:
 1. manifest loader,

@@ -1,0 +1,25 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_verify_clean_quarantined_001",
+  "description": "Quarantined retained witness for verify-clean publication-stability behavior.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_verify_clean_no_publish_001.json",
+  "lifecycle_target": "wit.quarantined",
+  "target_mismatch_kind": "result_state_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters"
+  ],
+  "selected_unit_ids": [
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "published_view_present",
+    "reference": "published/current"
+  },
+  "quarantine_reason": "capture_insufficient",
+  "notes": [
+    "This case exists to keep quarantined witness behavior explicit in the retained-failure baseline."
+  ]
+}

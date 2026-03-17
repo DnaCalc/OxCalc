@@ -340,6 +340,19 @@ When witness distillation is realized, the reference-machine-aware artifact surf
 These artifacts are future additive surfaces.
 They do not replace the current run artifacts.
 
+The first realized W016 slice may emit only:
+1. seeded `reduction_manifest.json` files,
+2. seeded `lifecycle.json` files.
+
+In that first slice:
+1. `candidate_journal.jsonl` remains unrealized,
+2. `witness_bundle/*` remains unrealized,
+3. the emitted reduction status may use an explicit OxCalc-local id while Foundation machine-readable registry binding remains open.
+
+The next retained-witness slice may classify those lifecycle records further into:
+1. `wit.explanatory_only` when mismatch-preserving reduction evidence exists but replay-valid retained-witness status is not yet justified,
+2. `wit.quarantined` when validation or capture insufficiency prevents replay-valid retained-witness use.
+
 ## 14.2 Reduced-Witness Validity Rule
 Reduced witnesses should remain replay-valid by default.
 

@@ -20,6 +20,7 @@ use crate::machine::{TraceCalcEngineMachine, TraceCalcReferenceMachine};
 use crate::replay_mappings::{
     normalize_event_family, registry_mismatch_kind, required_equality_surface, severity_class,
 };
+use crate::witness::{TraceCalcWitnessSeedInputs, build_witness_seed};
 
 #[derive(Debug, Error)]
 pub enum TraceCalcRunnerError {
@@ -101,6 +102,9 @@ impl TraceCalcRunner {
         create_directory(&artifact_root)?;
         create_directory(&artifact_root.join("scenarios"))?;
         create_directory(&artifact_root.join("conformance"))?;
+        create_directory(&artifact_root.join("replay-appliance"))?;
+        create_directory(&artifact_root.join("replay-appliance/reductions"))?;
+        create_directory(&artifact_root.join("replay-appliance/witnesses"))?;
 
         write_json(
             &artifact_root.join("manifest_selection.json"),
@@ -157,6 +161,11 @@ impl TraceCalcRunner {
                                 } else {
                                     TraceCalcScenarioResultState::FailedAssertion
                                 };
+                                let artifact_paths = all_artifact_paths(
+                                    &relative_artifact_root,
+                                    Some(&scenario),
+                                    &entry.scenario_id,
+                                );
                                 write_scenario_artifacts(
                                     &scenario_directory,
                                     run_id,
@@ -167,7 +176,20 @@ impl TraceCalcRunner {
                                     &assertion_failures,
                                     &conformance_mismatches,
                                     &oracle_artifacts,
-                                    &relative_artifact_root,
+                                    &artifact_paths,
+                                )?;
+                                write_witness_seed_artifacts(
+                                    &artifact_root,
+                                    TraceCalcWitnessSeedInputs {
+                                        run_id,
+                                        relative_artifact_root: &relative_artifact_root,
+                                        scenario: &scenario,
+                                        result_state,
+                                        validation_failures: &validation_failures,
+                                        assertion_failures: &assertion_failures,
+                                        scenario_artifact_paths: &artifact_paths,
+                                        conformance_mismatches: &conformance_mismatches,
+                                    },
                                 )?;
                                 oracle_baseline.push(oracle_baseline_object(
                                     &entry.scenario_id,
@@ -185,10 +207,7 @@ impl TraceCalcRunner {
                                     validation_failures,
                                     assertion_failures: assertion_failures.clone(),
                                     conformance_mismatches,
-                                    artifact_paths: scenario_artifact_paths(
-                                        &relative_artifact_root,
-                                        &entry.scenario_id,
-                                    ),
+                                    artifact_paths,
                                 });
                             }
                             (Err(error), _) | (_, Err(error)) => {
@@ -200,6 +219,11 @@ impl TraceCalcRunner {
                                     &entry.scenario_id,
                                     TraceCalcScenarioResultState::ExecutionError,
                                 );
+                                let artifact_paths = all_artifact_paths(
+                                    &relative_artifact_root,
+                                    None,
+                                    &entry.scenario_id,
+                                );
                                 write_scenario_artifacts(
                                     &scenario_directory,
                                     run_id,
@@ -210,7 +234,7 @@ impl TraceCalcRunner {
                                     &assertion_failures,
                                     &[],
                                     &empty,
-                                    &relative_artifact_root,
+                                    &artifact_paths,
                                 )?;
                                 oracle_baseline
                                     .push(oracle_baseline_object(&entry.scenario_id, &empty));
@@ -226,10 +250,7 @@ impl TraceCalcRunner {
                                     validation_failures: validation,
                                     assertion_failures,
                                     conformance_mismatches: Vec::new(),
-                                    artifact_paths: scenario_artifact_paths(
-                                        &relative_artifact_root,
-                                        &entry.scenario_id,
-                                    ),
+                                    artifact_paths,
                                 });
                             }
                         }
@@ -237,6 +258,11 @@ impl TraceCalcRunner {
                         let empty = create_empty_artifacts(
                             &entry.scenario_id,
                             TraceCalcScenarioResultState::InvalidScenario,
+                        );
+                        let artifact_paths = all_artifact_paths(
+                            &relative_artifact_root,
+                            Some(&scenario),
+                            &entry.scenario_id,
                         );
                         write_scenario_artifacts(
                             &scenario_directory,
@@ -248,7 +274,20 @@ impl TraceCalcRunner {
                             &assertion_failures,
                             &[],
                             &empty,
-                            &relative_artifact_root,
+                            &artifact_paths,
+                        )?;
+                        write_witness_seed_artifacts(
+                            &artifact_root,
+                            TraceCalcWitnessSeedInputs {
+                                run_id,
+                                relative_artifact_root: &relative_artifact_root,
+                                scenario: &scenario,
+                                result_state: TraceCalcScenarioResultState::InvalidScenario,
+                                validation_failures: &validation_failures,
+                                assertion_failures: &assertion_failures,
+                                scenario_artifact_paths: &artifact_paths,
+                                conformance_mismatches: &[],
+                            },
                         )?;
                         oracle_baseline.push(oracle_baseline_object(&entry.scenario_id, &empty));
                         engine_diff.push(json!({
@@ -263,10 +302,7 @@ impl TraceCalcRunner {
                             validation_failures,
                             assertion_failures,
                             conformance_mismatches: Vec::new(),
-                            artifact_paths: scenario_artifact_paths(
-                                &relative_artifact_root,
-                                &entry.scenario_id,
-                            ),
+                            artifact_paths,
                         });
                     }
                 }
@@ -279,6 +315,8 @@ impl TraceCalcRunner {
                         &entry.scenario_id,
                         TraceCalcScenarioResultState::ExecutionError,
                     );
+                    let artifact_paths =
+                        all_artifact_paths(&relative_artifact_root, None, &entry.scenario_id);
                     write_scenario_artifacts(
                         &scenario_directory,
                         run_id,
@@ -289,7 +327,7 @@ impl TraceCalcRunner {
                         &assertion_failures,
                         &[],
                         &empty,
-                        &relative_artifact_root,
+                        &artifact_paths,
                     )?;
                     oracle_baseline.push(oracle_baseline_object(&entry.scenario_id, &empty));
                     engine_diff.push(json!({
@@ -304,10 +342,7 @@ impl TraceCalcRunner {
                         validation_failures: validation,
                         assertion_failures,
                         conformance_mismatches: Vec::new(),
-                        artifact_paths: scenario_artifact_paths(
-                            &relative_artifact_root,
-                            &entry.scenario_id,
-                        ),
+                        artifact_paths,
                     });
                 }
             }
@@ -391,11 +426,8 @@ fn write_scenario_artifacts(
     assertion_failures: &[String],
     conformance_mismatches: &[TraceCalcConformanceMismatch],
     artifacts: &TraceCalcExecutionArtifacts,
-    relative_artifact_root: &str,
+    artifact_paths: &[(String, String)],
 ) -> Result<(), TraceCalcRunnerError> {
-    let relative_scenario_root =
-        relative_artifact_path([relative_artifact_root, "scenarios", scenario_id]);
-
     write_json(
         &scenario_directory.join("result.json"),
         &json!({
@@ -415,7 +447,7 @@ fn write_scenario_artifacts(
                 "safety_properties": projection.safety_properties,
                 "transition_labels": projection.transition_labels,
             })),
-            "artifact_paths": BTreeMap::from_iter(scenario_artifact_paths(relative_artifact_root, scenario_id)),
+            "artifact_paths": BTreeMap::from_iter(artifact_paths.iter().cloned()),
         }),
     )?;
 
@@ -479,9 +511,81 @@ fn write_scenario_artifacts(
             })).collect::<Vec<_>>(),
         }),
     )?;
-
-    let _ = relative_scenario_root;
     Ok(())
+}
+
+fn write_witness_seed_artifacts(
+    artifact_root: &Path,
+    inputs: TraceCalcWitnessSeedInputs<'_>,
+) -> Result<(), TraceCalcRunnerError> {
+    let Some(seed) = build_witness_seed(inputs) else {
+        return Ok(());
+    };
+
+    let reduction_directory = artifact_root
+        .join("replay-appliance")
+        .join("reductions")
+        .join(&seed.reduction_id);
+    create_directory(&reduction_directory)?;
+    write_json(
+        &reduction_directory.join("reduction_manifest.json"),
+        &serde_json::to_value(&seed.reduction_manifest)
+            .expect("reduction manifest serialization should succeed"),
+    )?;
+
+    let witness_directory = artifact_root
+        .join("replay-appliance")
+        .join("witnesses")
+        .join(&seed.witness_id);
+    create_directory(&witness_directory)?;
+    write_json(
+        &witness_directory.join("lifecycle.json"),
+        &serde_json::to_value(&seed.lifecycle)
+            .expect("witness lifecycle serialization should succeed"),
+    )?;
+
+    Ok(())
+}
+
+fn all_artifact_paths(
+    relative_artifact_root: &str,
+    scenario: Option<&TraceCalcScenario>,
+    scenario_id: &str,
+) -> Vec<(String, String)> {
+    let mut artifact_paths = scenario_artifact_paths(relative_artifact_root, scenario_id);
+    if let Some(scenario) = scenario
+        && let Some((witness_id, reduction_id)) = witness_artifact_ids(scenario)
+    {
+        artifact_paths.push((
+            "witness_lifecycle".to_string(),
+            relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "witnesses",
+                &witness_id,
+                "lifecycle.json",
+            ]),
+        ));
+        artifact_paths.push((
+            "reduction_manifest".to_string(),
+            relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "reductions",
+                &reduction_id,
+                "reduction_manifest.json",
+            ]),
+        ));
+    }
+    artifact_paths
+}
+
+fn witness_artifact_ids(scenario: &TraceCalcScenario) -> Option<(String, String)> {
+    scenario.witness_anchors.as_ref()?;
+    Some((
+        format!("{}--witness-seed", scenario.scenario_id),
+        format!("{}--reduction-seed", scenario.scenario_id),
+    ))
 }
 
 fn scenario_artifact_paths(
@@ -631,6 +735,20 @@ mod tests {
                 .exists()
         );
         assert!(artifact_root.join("conformance/engine_diff.json").exists());
+        assert!(
+            artifact_root
+                .join(
+                    "replay-appliance/reductions/tc_publication_fence_reject_001--reduction-seed/reduction_manifest.json",
+                )
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(
+                    "replay-appliance/witnesses/tc_publication_fence_reject_001--witness-seed/lifecycle.json",
+                )
+                .exists()
+        );
 
         let diff_document = serde_json::from_str::<Value>(
             &fs::read_to_string(artifact_root.join("conformance/engine_diff.json")).unwrap(),
@@ -670,6 +788,53 @@ mod tests {
             events
                 .iter()
                 .any(|event| event["normalized_event_family"] == "candidate.verified_clean")
+        );
+
+        let witness_lifecycle = serde_json::from_str::<Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "replay-appliance/witnesses/tc_publication_fence_reject_001--witness-seed/lifecycle.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(witness_lifecycle["lifecycle_state"], "wit.generated_local");
+        assert_eq!(witness_lifecycle["pack_eligible"], false);
+
+        let scenario_result = serde_json::from_str::<Value>(
+            &fs::read_to_string(
+                artifact_root.join("scenarios/tc_publication_fence_reject_001/result.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            scenario_result["artifact_paths"]["witness_lifecycle"],
+            "docs/test-runs/core-engine/tracecalc-reference-machine/".to_string()
+                + &run_id
+                + "/replay-appliance/witnesses/tc_publication_fence_reject_001--witness-seed/lifecycle.json"
+        );
+
+        let reduction_manifest = serde_json::from_str::<Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "replay-appliance/reductions/tc_publication_fence_reject_001--reduction-seed/reduction_manifest.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            reduction_manifest["status_id"],
+            "oxcalc.reduction.seeded_local"
+        );
+        assert!(
+            reduction_manifest["units"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|unit| unit["unit_kind"] == "reject_record" && unit["reject_id"] == "rej1")
         );
 
         cleanup();

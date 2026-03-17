@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w016-sequence1-witness-seeds",
+  "result_counts": {
+    "passed": 12
+  },
+  "run_id": "w016-sequence1-witness-seeds",
+  "scenario_count": 12,
+  "schema_version": "tracecalc-corpus-s1"
+}

@@ -88,10 +88,18 @@ Last updated: 2026-03-16.
 ### IP-10: Rust-First Reimplementation of Current Realized Scope
 
 - **Status**: in-progress
-- **Current floor**: the declared current realized scope now has a Rust execution path under `rust/` covering the structural snapshot kernel, coordinator/publication baseline, recalc/overlay baseline, `TraceCalc` runner/reference-machine lane, and Rust CLI host, all validated under `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`, with a distinct emitted run at `w017-rust-parity-baseline` and a passing parity comparison against `w014-stage1-widening-baseline`.
+- **Current floor**: the declared current realized scope now has a Rust execution path under `src/` covering the structural snapshot kernel, coordinator/publication baseline, recalc/overlay baseline, `TraceCalc` runner/reference-machine lane, and Rust CLI host, all validated under `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`, with a distinct emitted run at `w017-rust-parity-baseline` and a passing parity comparison against `w014-stage1-widening-baseline`.
 - **Remaining gaps**: later Stage 2 and concurrency realization in Rust, replay-appliance bundle emission in Rust, retained-witness flows after W016, and later archival policy for superseded historical implementation artifacts.
 - **Why still open**: W017 reached its final gate for the current declared scope, but the broader Rust-first feature area remains active for later widening, replay, and retained-witness lanes.
 - **Canonical owner**: W017.
+
+### IP-11: Witness Distillation and Retained Failure Packs
+
+- **Status**: in-progress
+- **Current floor**: `W016` has reached its declared gate with deterministic witness-seed artifacts, explicit lifecycle-state handling for `wit.generated_local`, `wit.explanatory_only`, `wit.quarantined`, one replay-valid retained-local witness family, a retained-failure fixture runner, and a checked-in retained-failure baseline run.
+- **Remaining gaps**: candidate journals, richer witness bundles beyond scenario copies, additional retained-local mismatch families, later pack-facing promotion evidence, and any successor workset for broader retained-failure widening.
+- **Why still open**: W016 has discharged its declared scope, but the broader retained-witness feature area remains active beyond this first retained-failure baseline.
+- **Canonical owner**: W016.
 
 
 

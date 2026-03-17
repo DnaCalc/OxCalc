@@ -113,8 +113,9 @@ Each workset file must include:
 
 ## Current Sequence Tail
 
-The current planned continuation after `W017` is:
+The current realized continuation after `W017` is:
 1. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
 
-`W017` has moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
-`W016` is now the immediate retained-witness follow-on lane unless a new explicitly declared successor workset is inserted ahead of it.
+`W017` moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
+`W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
+The next immediate continuation must be a newly declared successor workset rather than silently reopening `W016`.

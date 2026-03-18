@@ -113,7 +113,7 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: OxCalc now has a local receipt for `HANDOFF-FML-001`, an outbound `NOTES_FOR_OXFML.md` reply, and a returned OxFml topic-by-topic classification pass. That pass now treats identity/fence vocabulary, candidate/commit consequence categories, and host-query/direct-binding-sensitive truth as already canonical, while leaving dependency projection and semantic-display boundary as canonical but narrower.
-- **Remaining gaps**: W019 still needs to consume those stronger and now-bounded OxFml inputs in exercised replay and retained-witness widening, and a later narrower handoff may still be needed if OxCalc discovers stronger execution-restriction or publication-consequence pressure.
+- **Remaining gaps**: W019 still needs to consume those stronger and now-bounded OxFml inputs in exercised replay and retained-witness widening, and a later narrower handoff may still be needed if OxCalc discovers stronger execution-restriction or publication-consequence pressure. Availability/provider-failure and callable-publication remain watch lanes, but not active seam triggers.
 - **Why still open**: the note exchange has materially narrowed uncertainty, but the stabilized OxCalc/OxFml seam still depends on exercised W019 evidence rather than note-level agreement alone.
 - **Canonical owner**: W020.
 

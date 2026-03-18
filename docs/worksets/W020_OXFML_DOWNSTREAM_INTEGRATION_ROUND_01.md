@@ -59,6 +59,7 @@ This packet exists to:
 - open_lanes:
   - W019 still needs to consume the now-bounded OxFml replay and host-boundary floor in exercised evidence
   - the local seam docs still need to finish absorbing the returned OxFml classifications everywhere they matter
+  - OxFml's latest OxFunc-refinement intake now explicitly says there is no new OxCalc-facing seam trigger yet; provider-failure and callable-publication remain watch lanes only
   - no final exercised decision exists yet on whether W019 evidence will require a narrower follow-on handoff
 - claim_confidence: provisional
-- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` and `HANDOFF-FML-001` are the direct inputs for this round; OxFml has now returned explicit topic classifications marking identity/fence, candidate/commit consequence shape, and host-query/direct-binding truth as already canonical, with dependency projection and semantic-display boundary narrower but still open
+- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` and `HANDOFF-FML-001` are the direct inputs for this round; OxFml has now returned explicit topic classifications marking identity/fence, candidate/commit consequence shape, and host-query/direct-binding truth as already canonical, with dependency projection and semantic-display boundary narrower but still open; the latest OxFunc-refinement closure adds no new OxCalc-facing seam trigger yet and should currently be treated as watch-lane context rather than intake pressure

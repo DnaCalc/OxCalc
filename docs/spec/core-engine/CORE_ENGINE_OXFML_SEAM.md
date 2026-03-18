@@ -281,6 +281,11 @@ These remain seam-hardening questions rather than reasons to weaken the split:
 6. exact replay-facing preservation rule for direct-binding-sensitive witness and pack-candidate families once W019 broadens them,
 7. exact shared reading of semantic-format versus display-facing publication consequences before broader retained and pack-candidate widening.
 
+The latest OxFml note also makes one useful non-trigger explicit:
+1. current OxFunc refinement and round-closure work does not yet introduce a new OxCalc-facing seam change,
+2. availability/provider-failure handling and callable-publication restriction are the most likely future upstream semantic lanes to become coordinator-visible later,
+3. OxCalc should treat those as watch lanes rather than as current seam-closure blockers.
+
 ## 17. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial

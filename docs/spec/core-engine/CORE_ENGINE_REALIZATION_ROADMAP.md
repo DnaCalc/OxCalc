@@ -221,7 +221,7 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using carried historical baseline artifacts as comparison and parity evidence.
 `W016` is the first retained-witness and retained-failure baseline lane over the active Rust runner.
 `W018` is the next replay-facing realization lane: it turns current replay-aware local artifacts into emitted replay-appliance bundle artifacts and capability evidence.
-`W020` is the first post-W018 downstream OxFml integration lane: it records inbound schema and replay observations, aligns local ownership, and decides whether any narrower follow-on handoff is required.
+`W020` is the first post-W018 downstream OxFml integration lane: it records inbound schema and replay observations, aligns local ownership, and decides whether any narrower follow-on handoff is required. That round is now materially processed and does not currently justify a narrower handoff.
 `W019` is the explicit replay successor lane after W020 for `cap.C4.distill_valid`, first pack-candidate rehearsal, and the bounded narrowing of dependency-projection and semantic-display questions.
 `W021` is the next explicit replay successor lane after W019 for any later `cap.C5.pack_valid` promotion.
 
@@ -264,7 +264,8 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W017 has reached its final gate for the current Rust-first realization scope
   - W016 has reached its declared retained-witness baseline gate
   - W018 has now reached its declared gate: emitted replay-appliance bundle roots, validator artifacts, explain records, and checked-in replay-appliance-aware baselines exist for the current realized scope
-  - W020 is now the immediate OxFml integration continuation: inbound schema, replay, retained-local, and host-boundary observations must be consumed locally without reopening W005
+  - W020 has now reached its declared gate: inbound OxFml schema, replay, retained-local, and host-boundary observations were consumed locally without reopening W005, and no narrower follow-on handoff is required yet
   - W019 has now reached its declared gate: replay-appliance evidence includes replay-valid reduced witnesses, run-level distill validation, and rehearsal-only pack-candidate separation
   - W021 is now the next replay-facing continuation for later `cap.C5.pack_valid`
+  - provider-failure and callable-publication remain downstream watch lanes rather than active current seam blockers
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

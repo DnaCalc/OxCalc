@@ -52,14 +52,31 @@ This packet exists to:
 - the need for any narrower follow-on handoff is stated explicitly as `required now` or `not required yet`.
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
 - open_lanes:
-  - W019 still needs to consume the now-bounded OxFml replay and host-boundary floor in exercised evidence
-  - the local seam docs still need to finish absorbing the returned OxFml classifications everywhere they matter
-  - OxFml's latest OxFunc-refinement intake now explicitly says there is no new OxCalc-facing seam trigger yet; provider-failure and callable-publication remain watch lanes only
-  - no final exercised decision exists yet on whether W019 evidence will require a narrower follow-on handoff
-- claim_confidence: provisional
-- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` and `HANDOFF-FML-001` are the direct inputs for this round; OxFml has now returned explicit topic classifications marking identity/fence, candidate/commit consequence shape, and host-query/direct-binding truth as already canonical, with dependency projection and semantic-display boundary narrower but still open; the latest OxFunc-refinement closure adds no new OxCalc-facing seam trigger yet and should currently be treated as watch-lane context rather than intake pressure
+  - provider-failure and callable-publication remain watch lanes only for a later downstream integration round
+  - any narrower `HANDOFF-CALC-002` remains deferred unless later exercised evidence creates stronger execution-restriction or publication-consequence pressure
+- claim_confidence: validated
+- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` and `HANDOFF-FML-001` were the direct inputs for this round; OxFml returned explicit topic classifications marking identity/fence, candidate/commit consequence shape, and host-query/direct-binding truth as already canonical, with dependency projection and semantic-display boundary canonical but narrower; later OxFml intake clarified that the current OxFunc refinement adds no new OxCalc-facing seam trigger, and W019 has now exercised the bounded dependency-projection and semantic-display questions without justifying a narrower follow-on handoff
+
+## Pre-Closure Verification Checklist
+1. Reviewed inbound OxFml note and `HANDOFF-FML-001` locally: yes
+2. Recorded local acknowledgment and ownership without reopening W005: yes
+3. Produced and maintained OxCalc-owned `NOTES_FOR_OXFML.md`: yes
+4. Reflected returned OxFml topic classifications in local seam and planning docs: yes
+5. Used later exercised evidence rather than note-only agreement to resolve the bounded uncertainty: yes
+6. Stated whether a narrower follow-on handoff is required now: yes
+7. Preserved OxCalc ownership of coordinator semantics and local replay meaning: yes
+8. Kept provider-failure and callable-publication as watch lanes rather than active seam blockers: yes
+9. Updated the local register/roadmap to reflect the processed round: yes
+10. No known W020 blocker remains inside declared scope: yes
+
+## Completion Claim Self-Audit
+1. Scope Re-Read: pass
+2. Gate Criteria Re-Read: pass
+3. Silent Scope Reduction Check: pass
+4. "Looks Done But Is Not" Pattern Check: pass
+5. Include Result: pass

@@ -148,3 +148,19 @@ It should not be used to:
 1. silently rewrite OxFml canonical meaning from the OxCalc side,
 2. treat note-level agreement as handoff closure,
 3. imply that the current seam is final or exhaustive.
+
+## 15. Current OxCalc Position After W019 Evidence
+OxCalc has now exercised the two bounded uncertainty areas that remained active after the first returned-classification pass.
+
+Current local read is:
+1. dependency additions/removals/reclassifications are now exercised locally in replay-valid retained-local and reduced-witness families, and nothing in that evidence currently forces a narrower formal handoff,
+2. the semantic-format versus display-facing boundary is now narrowed locally to `semantic_only_tracecalc_scope` for the current Stage 1 `TraceCalc` surface, without over-claiming broader display-facing closure,
+3. the latest OxFml/OxFunc note adds no new OxCalc-facing seam trigger,
+4. provider-failure and callable-publication remain watch lanes only,
+5. a narrower `HANDOFF-CALC-002` is not required yet.
+
+## 16. Current Working Rule After This Round
+After the current note round and W019 evidence:
+1. treat the OxCalc/OxFml seam as strong enough for continued coordinator, replay, and retained-witness work,
+2. keep using W019/W021 evidence rather than note-only alignment to decide whether a narrower follow-on handoff is needed,
+3. escalate to a narrower formal handoff only if later exercised evidence shows stronger coordinator pressure around execution-restriction transport or publication/topology consequence breadth.

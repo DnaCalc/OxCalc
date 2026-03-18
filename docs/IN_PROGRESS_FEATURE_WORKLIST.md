@@ -112,9 +112,9 @@ Last updated: 2026-03-18.
 ### IP-13: OxFml Downstream Integration Rounds
 
 - **Status**: in-progress
-- **Current floor**: OxCalc now has a local receipt for `HANDOFF-FML-001`, an outbound `NOTES_FOR_OXFML.md` reply, and a returned OxFml topic-by-topic classification pass. That pass now treats identity/fence vocabulary, candidate/commit consequence categories, and host-query/direct-binding-sensitive truth as already canonical, while leaving dependency projection and semantic-display boundary as canonical but narrower.
-- **Remaining gaps**: W019 still needs to consume those stronger and now-bounded OxFml inputs in exercised replay and retained-witness widening, and a later narrower handoff may still be needed if OxCalc discovers stronger execution-restriction or publication-consequence pressure. Availability/provider-failure and callable-publication remain watch lanes, but not active seam triggers.
-- **Why still open**: the note exchange has materially narrowed uncertainty, but the stabilized OxCalc/OxFml seam still depends on exercised W019 evidence rather than note-level agreement alone.
+- **Current floor**: OxCalc now has a local receipt for `HANDOFF-FML-001`, an outbound `NOTES_FOR_OXFML.md` reply, a returned OxFml topic-by-topic classification pass, and the later OxFml clarification that the current OxFunc refinement adds no new OxCalc-facing seam trigger. W019 has now also exercised the previously bounded dependency-projection and semantic-display questions without producing a new formal seam trigger.
+- **Remaining gaps**: later downstream rounds may still be needed if stronger coordinator pressure appears around execution-restriction transport or publication/topology consequence breadth. Availability/provider-failure and callable-publication remain watch lanes only.
+- **Why still open**: round 01 is now materially processed, but the broader downstream integration feature area remains active for future OxFml/OxFunc pressure and any later narrower handoff.
 - **Canonical owner**: W020.
 
 

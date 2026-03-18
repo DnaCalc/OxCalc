@@ -1,0 +1,6 @@
+{"event_id":"evt-0001","normalized_event_family":"oxcalc.local.event.topo_group_scheduled","payload":{"group_index":"0","nodes":"B"},"source_label":"topo_group_scheduled","step_id":"st1"}
+{"event_id":"evt-0002","normalized_event_family":"oxcalc.local.event.node_marked_dirty","payload":{"node_id":"B"},"source_label":"node_marked_dirty","step_id":"st1"}
+{"event_id":"evt-0003","normalized_event_family":"oxcalc.local.event.node_marked_needed","payload":{"node_id":"B"},"source_label":"node_marked_needed","step_id":"st1"}
+{"event_id":"evt-0004","normalized_event_family":"oxcalc.local.event.evaluation_started","payload":{"compatibility_basis":"s0","node_id":"B"},"source_label":"evaluation_started","step_id":"st1"}
+{"event_id":"evt-0005","normalized_event_family":"candidate.admitted","payload":{"admission_id":"adm1","compatibility_basis":"s0","target_count":"1"},"source_label":"candidate_admitted","step_id":"st1"}
+{"event_id":"evt-0006","normalized_event_family":"reject.issued","payload":{"reject_id":"rej1","reject_kind":"artifact_token_mismatch","target_count":"1"},"source_label":"candidate_rejected","step_id":"st2"}

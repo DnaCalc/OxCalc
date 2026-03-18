@@ -1,0 +1,28 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_dynamic_dependency_retained_local_001",
+  "description": "Replay-valid retained witness over dynamic dependency projection and runtime effect preservation.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_dynamic_dep_switch_001.json",
+  "lifecycle_target": "wit.retained_local",
+  "target_mismatch_kind": "dependency_projection_effect",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "dependency_shape_kind_present",
+    "reference": "release_dynamic_dep"
+  },
+  "quarantine_reason": null,
+  "pack_candidate_rehearsal": true,
+  "notes": [
+    "This case forces reduced-witness projection to preserve dependency release and activation facts explicitly.",
+    "It is replay-valid and retained-local, but any later pack-grade move still remains blocked by the semantic-display boundary and wider pack evidence requirements."
+  ]
+}

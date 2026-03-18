@@ -13,10 +13,11 @@
     "cap.C0.ingest_valid",
     "cap.C1.replay_valid",
     "cap.C2.diff_valid",
-    "cap.C3.explain_valid"
+    "cap.C3.explain_valid",
+    "cap.C4.distill_valid"
   ],
   "target_capability_levels": [
-    "cap.C4.distill_valid"
+    "cap.C5.pack_valid"
   ],
   "known_limits": [
     {
@@ -24,24 +25,22 @@
       "summary": "Explain artifacts are emitted for the current realized retained-failure and engine-diff family set, but broader mismatch-family explain coverage remains a later widening lane."
     },
     {
-      "limit_id": "oxcalc.local.limit.distill_valid_not_proven",
-      "summary": "Witness and retained-failure lifecycle artifacts now project into replay-appliance bundle roots, but cap.C4.distill_valid is not yet proven by a dedicated reduced-witness bundle-valid promotion act."
-    },
-    {
       "limit_id": "oxcalc.local.limit.pack_valid_not_proven",
-      "summary": "No pack-grade Replay appliance evidence exists yet for cap.C5.pack_valid."
+      "summary": "Replay-valid reduced witnesses and rehearsal-only pack-candidate assessments now exist, but no pack-grade Replay appliance evidence exists yet for cap.C5.pack_valid."
     }
   ],
   "conformance_artifact_refs": [
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w018-replay-appliance-bundle-baseline/replay-appliance/bundle_manifest.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w018-replay-appliance-bundle-baseline/replay-appliance/validation/bundle_validation.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w018-replay-appliance-bundle-baseline/replay-appliance/runs/w018-replay-appliance-bundle-baseline/run_manifest.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w018-replay-appliance-bundle-baseline/replay-appliance/runs/w018-replay-appliance-bundle-baseline/diff/engine_diff.json",
-    "docs/test-runs/core-engine/tracecalc-reference-machine/w018-replay-appliance-bundle-baseline/replay-appliance/runs/w018-replay-appliance-bundle-baseline/diff/explain_records.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/bundle_manifest.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/validation/bundle_validation.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/explain.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json"
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w019-replay-distill-baseline/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w019-replay-distill-baseline/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w019-replay-distill-baseline/replay-appliance/runs/w019-replay-distill-baseline/run_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w019-replay-distill-baseline/replay-appliance/runs/w019-replay-distill-baseline/diff/engine_diff.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w019-replay-distill-baseline/replay-appliance/runs/w019-replay-distill-baseline/diff/explain_records.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/validation/distill_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/validation/pack_candidate_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_publication_fence_retained_local_001/distill_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json"
   ],
   "registry_version_refs": [
     {
@@ -78,7 +77,7 @@
   "rollout_notes": [
     "OxCalc preserves local authority over TraceCalc scenarios, Stage 1 replay classes, and reference-machine semantics.",
     "Source labels remain preserved even when normalized event families are added.",
-    "This manifest now claims through cap.C3.explain_valid on the basis of checked-in bundle-valid ordinary and retained-failure evidence.",
-    "The path to cap.C4.distill_valid and cap.C5.pack_valid remains explicit but intentionally unclaimed."
+    "This manifest now claims through cap.C4.distill_valid on the basis of checked-in bundle-valid ordinary and retained-failure distillation evidence.",
+    "Pack-candidate rehearsal evidence now exists, but cap.C5.pack_valid remains intentionally unclaimed."
   ]
 }

@@ -20,6 +20,9 @@ Current active regenerable Rust baseline:
 Current replay-appliance-aware baseline:
 1. `w018-replay-appliance-bundle-baseline`
 
+Current distill-capability ordinary baseline:
+1. `w019-replay-distill-baseline`
+
 Current additive witness-seed run:
 1. `w016-sequence1-witness-seeds`
 
@@ -33,6 +36,7 @@ They were emitted by:
 4. `cargo run -p oxcalc-tracecalc-cli -- w018-replay-appliance-bundle-baseline`
 5. `cargo run -p oxcalc-tracecalc-cli -- w016-sequence1-witness-seeds`
 6. `cargo run -p oxcalc-tracecalc-cli -- w016-sequence2-lifecycle-outcomes`
+7. `cargo run -p oxcalc-tracecalc-cli -- w019-replay-distill-baseline`
 
 The active widened baseline currently covers:
 1. candidate-result versus publication separation,
@@ -56,8 +60,9 @@ Role split:
 1. `w014-stage1-widening-baseline` remains the carried semantic anchor for Stage 1 parity comparison.
 2. `w017-rust-parity-baseline` is the current regenerable implementation baseline produced by the active Rust workspace.
 3. `w018-replay-appliance-bundle-baseline` is the current replay-appliance-aware ordinary-run baseline and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
-4. `w016-sequence1-witness-seeds` is the first additive retained-witness seed run and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
-5. `w016-sequence2-lifecycle-outcomes` is the current additive retained-witness lifecycle run and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
+4. `w019-replay-distill-baseline` is the current ordinary-run baseline carrying the refreshed `cap.C4.distill_valid` capability floor and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
+5. `w016-sequence1-witness-seeds` is the first additive retained-witness seed run and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
+6. `w016-sequence2-lifecycle-outcomes` is the current additive retained-witness lifecycle run and must remain parity-equivalent to `w017-rust-parity-baseline` on the carried conformance surface.
 
 The carried baseline comparison contract is enforced by:
 1. `scripts/compare-tracecalc-run.ps1`
@@ -65,8 +70,9 @@ The carried baseline comparison contract is enforced by:
 The current carried parity proof is:
 1. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w017-rust-parity-baseline -BaselineRunId w014-stage1-widening-baseline`
 2. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w018-replay-appliance-bundle-baseline -BaselineRunId w017-rust-parity-baseline`
-3. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w016-sequence1-witness-seeds -BaselineRunId w017-rust-parity-baseline`
-4. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w016-sequence2-lifecycle-outcomes -BaselineRunId w017-rust-parity-baseline`
+3. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w019-replay-distill-baseline -BaselineRunId w017-rust-parity-baseline`
+4. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w016-sequence1-witness-seeds -BaselineRunId w017-rust-parity-baseline`
+5. `pwsh ./scripts/compare-tracecalc-run.ps1 -CandidateRunId w016-sequence2-lifecycle-outcomes -BaselineRunId w017-rust-parity-baseline`
 
 ## Status
 - execution_state: in_progress
@@ -74,5 +80,5 @@ The current carried parity proof is:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this directory now holds the carried historical baselines, one active regenerable Rust baseline, one checked-in replay-appliance-aware baseline, and additive W016 witness-seed and witness-lifecycle runs
+  - this directory now holds the carried historical baselines, one active regenerable Rust baseline, the W018 replay-appliance-aware baseline, the W019 distill-capability baseline, and additive W016 witness-seed and witness-lifecycle runs
   - richer generated corpus, broader mismatch-family explain coverage, replay-pack export, replay-valid reduced-witness widening, and later engine-versus-oracle series remain later lanes

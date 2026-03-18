@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "0"
+    },
+    {
+      "node_id": "B",
+      "value": "0"
+    }
+  ],
+  "scenario_id": "tc_cycle_region_reject_001",
+  "snapshot_id": "s0"
+}

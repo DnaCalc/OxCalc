@@ -1,0 +1,37 @@
+{
+  "blocked_by": [
+    "boundary.semantic_display.unexercised",
+    "pack.grade.validator.unproven"
+  ],
+  "cases": [
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_publication_fence_retained_local_001",
+      "pack_eligible": false
+    },
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_fallback_explanatory_only_001",
+      "pack_eligible": false
+    },
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_verify_clean_quarantined_001",
+      "pack_eligible": false
+    },
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "pack_eligible": false
+    }
+  ],
+  "pack_valid": false,
+  "rehearsal_case_count": 2,
+  "run_id": "w019-distill-and-pack-candidate-baseline",
+  "schema_version": "oxcalc.tracecalc.pack_candidate_validation.v1",
+  "status": "pack_candidate_rehearsed_only"
+}

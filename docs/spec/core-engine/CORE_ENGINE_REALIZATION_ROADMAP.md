@@ -212,6 +212,7 @@ This is dependency-ordered, not date-ordered.
 18. `W018`: replay-appliance bundle and capability promotion.
 19. `W020`: OxFml downstream integration round 01.
 20. `W019`: replay distill and pack promotion.
+21. `W021`: pack-grade replay promotion.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
@@ -221,7 +222,8 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W016` is the first retained-witness and retained-failure baseline lane over the active Rust runner.
 `W018` is the next replay-facing realization lane: it turns current replay-aware local artifacts into emitted replay-appliance bundle artifacts and capability evidence.
 `W020` is the first post-W018 downstream OxFml integration lane: it records inbound schema and replay observations, aligns local ownership, and decides whether any narrower follow-on handoff is required.
-`W019` is the explicit replay successor lane after W020 for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening.
+`W019` is the explicit replay successor lane after W020 for `cap.C4.distill_valid`, first pack-candidate rehearsal, and the bounded narrowing of dependency-projection and semantic-display questions.
+`W021` is the next explicit replay successor lane after W019 for any later `cap.C5.pack_valid` promotion.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -263,5 +265,6 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W016 has reached its declared retained-witness baseline gate
   - W018 has now reached its declared gate: emitted replay-appliance bundle roots, validator artifacts, explain records, and checked-in replay-appliance-aware baselines exist for the current realized scope
   - W020 is now the immediate OxFml integration continuation: inbound schema, replay, retained-local, and host-boundary observations must be consumed locally without reopening W005
-  - W019 is the next replay-facing continuation after that intake round: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening remain later execution work
+  - W019 has now reached its declared gate: replay-appliance evidence includes replay-valid reduced witnesses, run-level distill validation, and rehearsal-only pack-candidate separation
+  - W021 is now the next replay-facing continuation for later `cap.C5.pack_valid`
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

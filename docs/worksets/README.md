@@ -130,5 +130,6 @@ The current realized continuation after `W017` is:
 `W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
 `W018` has now reached its declared gate for replay-appliance bundle realization and capability promotion through `cap.C3.explain_valid`.
 `W020` is the first post-W018 OxFml downstream integration round: it processes the current OxFml note and inbound handoff without reopening W005.
-`W019` is the explicit successor lane for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening after that intake round.
-Later widening must use successor worksets rather than silently reopening `W016`, `W018`, or W005.
+`W019` has now reached its declared gate: it proves `cap.C4.distill_valid`, adds dependency-projection-sensitive reduced witnesses, and defines rehearsal-only pack-candidate separation without claiming `cap.C5.pack_valid`.
+`W021` is the explicit successor lane for later pack-grade replay promotion.
+Later widening must use successor worksets rather than silently reopening `W016`, `W018`, `W019`, or W005.

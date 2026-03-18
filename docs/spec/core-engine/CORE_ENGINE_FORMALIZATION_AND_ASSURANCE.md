@@ -179,7 +179,8 @@ OxCalc may document the path to later levels, but it may only claim the highest 
 Current local proof floor:
 1. checked-in replay-appliance-aware baselines and validator artifacts now support `cap.C2.diff_valid`,
 2. checked-in retained-failure explain artifacts now support `cap.C3.explain_valid`,
-3. `cap.C4.distill_valid` and `cap.C5.pack_valid` remain later lanes.
+3. checked-in reduced-witness retained-failure artifacts now support `cap.C4.distill_valid`,
+4. `cap.C5.pack_valid` remains a later lane.
 
 ## 9.2 OxCalc Conformance Targets `C0..C4`
 
@@ -279,6 +280,7 @@ These remain assurance-planning questions within the now-locked architecture:
 - integration_completeness: partial
 - open_lanes:
   - the first Lean, TLA+, replay-seed, and measurement-schema artifacts now exist under `formal/`; the Lean state file has been typechecked locally and the TLA+ smoke model has been checked with TLC
-  - replay and pack pipelines are still absent even though the first replay artifacts now exist on disk
+  - replay-appliance evidence now reaches ordinary bundle validation, explain, and distill validation, but pack-grade promotion remains a later lane
   - runtime instrumentation now emits per-scenario counter artifacts through the `TraceCalc` runner, but replay-linked summaries and promotion-threshold reporting remain later lanes
+  - replay-appliance evidence now reaches `cap.C4.distill_valid`, while `cap.C5.pack_valid` remains a later bounded promotion lane
   - handoff packet text for shared trace/reject clauses is still only partially exercised

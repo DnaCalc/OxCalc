@@ -353,6 +353,12 @@ The next retained-witness slice may classify those lifecycle records further int
 1. `wit.explanatory_only` when mismatch-preserving reduction evidence exists but replay-valid retained-witness status is not yet justified,
 2. `wit.quarantined` when validation or capture insufficiency prevents replay-valid retained-witness use.
 
+The current W019 floor now additionally realizes:
+1. reduced-scenario emission for retained-failure witness bundles,
+2. per-case `distillation_manifest.json`,
+3. per-case and run-level `distill_validation.json`,
+4. per-case and run-level pack-candidate rehearsal assessments that remain explicitly non-pack.
+
 ## 14.2 Reduced-Witness Validity Rule
 Reduced witnesses should remain replay-valid by default.
 

@@ -3,7 +3,7 @@
 Canonical repo-level register of feature areas that are in-progress under workset completion doctrine.
 
 Status: active.
-Last updated: 2026-03-16.
+Last updated: 2026-03-18.
 
 ## Status Vocabulary
 
@@ -104,10 +104,10 @@ Last updated: 2026-03-16.
 ### IP-12: Replay Appliance Bundle Emission and Capability Promotion
 
 - **Status**: in-progress
-- **Current floor**: `W018` has reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in replay-appliance-aware baselines, and a refreshed capability claim through `cap.C3.explain_valid`.
-- **Remaining gaps**: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader mismatch-family explain coverage.
-- **Why still open**: W018 discharged its declared scope, but the broader replay-appliance feature area remains active beyond this first bundle-valid and explain-valid baseline.
-- **Canonical owner**: W019.
+- **Current floor**: `W019` has now reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in ordinary and retained-failure baselines, replay-valid reduced-witness distillation artifacts, run-level `distill_validation.json`, and a refreshed capability claim through `cap.C4.distill_valid`.
+- **Remaining gaps**: `cap.C5.pack_valid`, broader mismatch-family explain coverage, and later pack-grade replay governance.
+- **Why still open**: W019 discharged its declared scope, but the broader replay-appliance feature area remains active for later pack-grade promotion and wider explain coverage.
+- **Canonical owner**: W021.
 
 ### IP-13: OxFml Downstream Integration Rounds
 

@@ -20,6 +20,7 @@
     "reference": "rej1"
   },
   "quarantine_reason": null,
+  "pack_candidate_rehearsal": true,
   "notes": [
     "The selected unit starts from the published-view slice and closes over the event and reject units.",
     "This is the first bounded replay-valid retained-local witness family for W016."

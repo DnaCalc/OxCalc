@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -43,7 +43,7 @@ pub enum TraceCalcConformanceMismatchKind {
     UnexpectedExtraArtifact,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcManifest {
     pub schema_version: String,
     pub corpus_id: String,
@@ -51,7 +51,7 @@ pub struct TraceCalcManifest {
     pub scenarios: Vec<TraceCalcManifestScenario>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcManifestScenario {
     pub scenario_id: String,
     pub path: String,
@@ -61,7 +61,7 @@ pub struct TraceCalcManifestScenario {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcScenario {
     pub schema_version: String,
     pub scenario_id: String,
@@ -83,7 +83,7 @@ pub struct TraceCalcScenario {
     pub notes: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcReplayProjection {
     #[serde(default)]
     pub replay_classes: Vec<String>,
@@ -98,7 +98,7 @@ pub struct TraceCalcReplayProjection {
     pub transition_labels: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcWitnessAnchors {
     pub scenario_anchor_id: String,
     #[serde(default)]
@@ -111,40 +111,40 @@ pub struct TraceCalcWitnessAnchors {
     pub view_slices: Vec<TraceCalcViewSliceAnchor>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcPhaseBlockAnchor {
     pub phase_block_id: String,
     #[serde(default)]
     pub step_ids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcEventGroupAnchor {
     pub event_group_id: String,
     #[serde(default)]
     pub step_ids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcRejectRecordAnchor {
     pub reject_record_id: String,
     pub reject_id: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcViewSliceAnchor {
     pub view_slice_id: String,
     pub view_kind: String,
     pub view_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcInitialGraph {
     pub snapshot_id: String,
     pub nodes: Vec<TraceCalcNode>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcNode {
     pub node_id: String,
     pub kind: String,
@@ -152,7 +152,7 @@ pub struct TraceCalcNode {
     pub expression: Value,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct TraceCalcInitialRuntime {
     #[serde(default)]
     pub pinned_views: Vec<TraceCalcPinnedViewExpectation>,
@@ -164,14 +164,14 @@ pub struct TraceCalcInitialRuntime {
     pub seed_overlays: Vec<TraceCalcSeedOverlay>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcSeedOverlay {
     pub overlay_kind: String,
     pub owner_node_id: String,
     pub payload: Option<Value>,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct TraceCalcStep {
     pub step_id: String,
     pub kind: String,
@@ -203,14 +203,14 @@ pub struct TraceCalcStep {
     pub payload: Option<Value>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcValueEntry {
     pub node_id: String,
     #[serde(deserialize_with = "deserialize_stringified_value")]
     pub value: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcDependencyShapeUpdate {
     pub node_id: String,
     pub kind: String,
@@ -219,14 +219,14 @@ pub struct TraceCalcDependencyShapeUpdate {
     pub payload: Option<Value>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcRuntimeEffect {
     pub effect_kind: String,
     pub owner_node_id: String,
     pub payload: Option<Value>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcExpected {
     pub published_view: TraceCalcPublishedViewExpectation,
     #[serde(default)]
@@ -239,14 +239,14 @@ pub struct TraceCalcExpected {
     pub rejects: Vec<TraceCalcRejectExpectation>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcPublishedViewExpectation {
     pub snapshot_id: String,
     #[serde(default)]
     pub node_values: Vec<TraceCalcValueEntry>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcPinnedViewExpectation {
     pub view_id: String,
     pub snapshot_id: String,
@@ -256,20 +256,20 @@ pub struct TraceCalcPinnedViewExpectation {
     pub node_values: Vec<TraceCalcValueEntry>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcTraceLabelExpectation {
     pub label: String,
     pub count: i64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcCounterExpectation {
     pub counter: String,
     pub comparison: String,
     pub value: i64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcRejectExpectation {
     pub reject_id: String,
     pub reject_kind: String,

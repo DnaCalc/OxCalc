@@ -529,12 +529,11 @@ fn write_bundle_capability_snapshot(
             "lane_id": "oxcalc",
             "run_id": run_id,
             "canonical_manifest_ref": "docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json",
-            "claimed_capability_levels": ["cap.C0.ingest_valid", "cap.C1.replay_valid", "cap.C2.diff_valid", "cap.C3.explain_valid"],
-            "target_capability_levels": ["cap.C4.distill_valid"],
+            "claimed_capability_levels": ["cap.C0.ingest_valid", "cap.C1.replay_valid", "cap.C2.diff_valid", "cap.C3.explain_valid", "cap.C4.distill_valid"],
+            "target_capability_levels": ["cap.C5.pack_valid"],
             "projection_scope": "run_local_snapshot_only",
             "known_limits": [
                 "oxcalc.local.limit.explain_coverage_is_current_family_only",
-                "oxcalc.local.limit.distill_valid_not_proven",
                 "oxcalc.local.limit.pack_valid_not_proven"
             ],
             "registry_version_ref": FOUNDATION_REPLAY_REGISTRY_VERSION,

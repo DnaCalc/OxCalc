@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "bundle_distill_validation_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_publication_fence_retained_local_001/distill_validation.json",
+      "case_id": "rf_publication_fence_retained_local_001",
+      "distill_status": "distill_valid",
+      "lifecycle_state": "wit.retained_local"
+    },
+    {
+      "bundle_distill_validation_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_fallback_explanatory_only_001/distill_validation.json",
+      "case_id": "rf_fallback_explanatory_only_001",
+      "distill_status": "distill_explanatory_only",
+      "lifecycle_state": "wit.explanatory_only"
+    },
+    {
+      "bundle_distill_validation_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_verify_clean_quarantined_001/distill_validation.json",
+      "case_id": "rf_verify_clean_quarantined_001",
+      "distill_status": "distill_quarantined",
+      "lifecycle_state": "wit.quarantined"
+    },
+    {
+      "bundle_distill_validation_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json",
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "distill_status": "distill_valid",
+      "lifecycle_state": "wit.retained_local"
+    }
+  ],
+  "distill_valid_case_count": 2,
+  "run_id": "w019-distill-and-pack-candidate-baseline",
+  "schema_version": "oxcalc.tracecalc.distill_validation.v1",
+  "status": "cap.C4.distill_valid"
+}

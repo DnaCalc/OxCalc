@@ -81,8 +81,8 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: `W015` now has an execution-ready packet, local replay-coherence refactor direction, explicit adapter and capability-manifest docs, normalized event-family projection embodied in runner output, typed local mismatch projection fields, and replay-facing scenario metadata carried in the checked-in corpus and active widened baseline run.
-- **Remaining gaps**: normalized replay-appliance bundle emission, bundle-validator conformance artifacts, explain records, capability promotion beyond the current conservative floor, and later retained-witness rollout.
-- **Why still open**: local replay coherence and adapter doctrine are now in place, but the actual bundle-projection and retained-witness lanes are still later work.
+- **Remaining gaps**: normalized replay-appliance bundle emission, bundle-validator conformance artifacts, explain records, capability promotion beyond the current conservative floor, and later pack-facing rollout.
+- **Why still open**: local replay coherence and adapter doctrine are now in place, but the emitted-bundle and capability-promotion lane is now carried by `W018`.
 - **Canonical owner**: W015.
 
 ### IP-10: Rust-First Reimplementation of Current Realized Scope
@@ -100,6 +100,14 @@ Last updated: 2026-03-16.
 - **Remaining gaps**: candidate journals, richer witness bundles beyond scenario copies, additional retained-local mismatch families, later pack-facing promotion evidence, and any successor workset for broader retained-failure widening.
 - **Why still open**: W016 has discharged its declared scope, but the broader retained-witness feature area remains active beyond this first retained-failure baseline.
 - **Canonical owner**: W016.
+
+### IP-12: Replay Appliance Bundle Emission and Capability Promotion
+
+- **Status**: planned
+- **Current floor**: `W018` is now sequenced as the successor packet for emitted replay-appliance bundle realization, validator rollout, explain-surface emission, and capability-floor promotion over the active Rust runner.
+- **Remaining gaps**: emitted bundle roots, validator evidence, explain-record emission, capability-manifest promotion, and a checked-in replay-appliance-aware baseline.
+- **Why still open**: W018 is newly sequenced and no realization artifacts exist yet for its declared scope.
+- **Canonical owner**: W018.
 
 
 

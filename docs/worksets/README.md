@@ -123,10 +123,12 @@ Each workset file must include:
 The current realized continuation after `W017` is:
 1. `W016_WITNESS_DISTILLATION_AND_RETAINED_FAILURE_PACKS.md`
 2. `W018_EXECUTION_SEQUENCE_E_REPLAY_APPLIANCE_BUNDLE_AND_CAPABILITY_PROMOTION.md`
-3. `W019_EXECUTION_SEQUENCE_F_REPLAY_DISTILL_AND_PACK_PROMOTION.md`
+3. `W020_OXFML_DOWNSTREAM_INTEGRATION_ROUND_01.md`
+4. `W019_EXECUTION_SEQUENCE_F_REPLAY_DISTILL_AND_PACK_PROMOTION.md`
 
 `W017` moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
 `W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
 `W018` has now reached its declared gate for replay-appliance bundle realization and capability promotion through `cap.C3.explain_valid`.
-`W019` is the explicit successor lane for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening.
-Later widening must use successor worksets rather than silently reopening `W016` or `W018`.
+`W020` is the first post-W018 OxFml downstream integration round: it processes the current OxFml note and inbound handoff without reopening W005.
+`W019` is the explicit successor lane for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening after that intake round.
+Later widening must use successor worksets rather than silently reopening `W016`, `W018`, or W005.

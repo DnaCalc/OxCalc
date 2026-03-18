@@ -178,12 +178,15 @@ Seam hardening remains an active lane, but it is no longer only a local request 
 Current state:
 1. `HANDOFF-CALC-001` has been filed by OxCalc,
 2. OxFml has acknowledged and adapted the shared seam in its canonical docs,
-3. OxCalc must now align local realization and assurance planning to the accepted candidate-result versus publication split.
+3. OxCalc must now align local realization and assurance planning to the accepted candidate-result versus publication split,
+4. OxFml has now also sent `HANDOFF-FML-001` and a stronger downstream observation note, both of which are local intake inputs for the next OxCalc round.
 
 Remaining follow-on pressure includes:
 1. replay artifact binding for the candidate-result versus publication boundary,
 2. pack and trace binding for typed fence and capability rejects,
-3. narrower follow-on handoff only if runtime-derived effect taxonomy needs stronger shared obligations.
+3. surfaced execution-restriction and capability-sensitive effect intake where coordinator replay or publication interpretation depends on them,
+4. direct-binding-sensitive retained-witness and host-boundary handling where replay truth depends on concrete cell resolution,
+5. narrower follow-on handoff only if exercised W019 evidence needs stronger shared obligations.
 
 ## 12. Workset Execution Sequence
 The roadmap now binds to the following execution sequence.
@@ -207,7 +210,8 @@ This is dependency-ordered, not date-ordered.
 16. `W017`: Execution Sequence C for Rust-first reimplementation of the current realized TreeCalc and TraceCalc scope.
 17. `W016`: witness distillation and retained failure packs.
 18. `W018`: replay-appliance bundle and capability promotion.
-19. `W019`: replay distill and pack promotion.
+19. `W020`: OxFml downstream integration round 01.
+20. `W019`: replay distill and pack promotion.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
@@ -216,7 +220,8 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using carried historical baseline artifacts as comparison and parity evidence.
 `W016` is the first retained-witness and retained-failure baseline lane over the active Rust runner.
 `W018` is the next replay-facing realization lane: it turns current replay-aware local artifacts into emitted replay-appliance bundle artifacts and capability evidence.
-`W019` is the explicit successor lane after W018 for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening.
+`W020` is the first post-W018 downstream OxFml integration lane: it records inbound schema and replay observations, aligns local ownership, and decides whether any narrower follow-on handoff is required.
+`W019` is the explicit replay successor lane after W020 for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -257,5 +262,6 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W017 has reached its final gate for the current Rust-first realization scope
   - W016 has reached its declared retained-witness baseline gate
   - W018 has now reached its declared gate: emitted replay-appliance bundle roots, validator artifacts, explain records, and checked-in replay-appliance-aware baselines exist for the current realized scope
-  - W019 is now the next replay-facing continuation: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening remain later execution work
+  - W020 is now the immediate OxFml integration continuation: inbound schema, replay, retained-local, and host-boundary observations must be consumed locally without reopening W005
+  - W019 is the next replay-facing continuation after that intake round: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening remain later execution work
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

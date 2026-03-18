@@ -179,22 +179,48 @@ The current shared direction now includes:
 
 Follow-on handoff pressure remains only where OxCalc later needs narrower or stronger requirements than the current shared canonical wording.
 
+`HANDOFF-FML-001` has now also been received from OxFml.
+That inbound handoff and the current OxFml downstream note strengthen the currently consumed floor with:
+1. minimum typed schema objects for accepted candidate, commit, reject-context, and trace-correlation payload families,
+2. a stronger managed-session baseline for stale-fence rejection, capability denial, session termination, and execution-restriction-sensitive no-publish paths,
+3. a stronger replay and retained-local floor through the current OxFml-local `cap.C3.explain_valid` posture,
+4. an explicit DNA OneCalc downstream host boundary that must not be mistaken for OxCalc coordinator policy.
+
+The latest note-exchange round with OxFml also narrows several earlier uncertainties:
+1. identity and fence vocabulary consumption is now treated as already canonical on the OxFml side,
+2. candidate-result and commit-bundle consequence categories are now treated as already canonical on the OxFml side,
+3. host-query and direct-binding-sensitive truth is now treated as already canonical on the OxFml side,
+4. dependency consequence taxonomy and semantic-display boundary remain canonical but narrower rather than fully open.
+
 ## 15. OxCalc-Local Stage 1 Minimum Seam Packet
 
 ### 15.1 AcceptedCandidateResult Minimum
 For Stage 1, OxCalc requires the shared seam to preserve enough information to derive or surface a minimum local `AcceptedCandidateResult` containing:
 1. `candidate_result_id`
-2. `struct_snapshot_id`
-3. `artifact_token_basis`
-4. `compatibility_basis`
-5. `target_set`
-6. `value_updates`
-7. `dependency_shape_updates`
-8. `runtime_effects`
-9. `diagnostic_events`
+2. consumed identity and fence basis:
+   - `formula_stable_id`
+   - `formula_token`
+   - `snapshot_epoch`
+   - `bind_hash`
+   - `profile_version`
+   - important-but-still-narrower `capability_view_key`
+3. trace and publication correlation:
+   - `commit_attempt_id` where present
+   - `reject_record_id` where relevant
+   - optional `fence_snapshot_ref`
+4. candidate publication-consequence categories:
+   - `value_delta`
+   - `shape_delta`
+   - `topology_delta`
+   - optional `format_delta`
+   - optional `display_delta`
+   - optional spill-event set
+5. surfaced evaluator facts needed for coordinator correctness where not already derivable from the deltas
+6. diagnostic and trace correlation metadata
 
 This is an OxCalc-local minimum requirement for coordinator-controlled publication.
 It does not claim that the shared OxFml-side canonical field names or artifact layering are identical.
+But it now explicitly consumes the already-canonical OxFml category split rather than compressing it into generic local buckets alone.
 
 ### 15.2 Runtime-Derived Effect Subset
 For Stage 1, OxCalc expects at least the following local runtime-derived effect subset to be preservable through the seam:
@@ -204,9 +230,14 @@ For Stage 1, OxCalc expects at least the following local runtime-derived effect 
 4. `region_shape_released`
 5. `capability_observed`
 6. `format_observed`
+7. `execution_restriction_observed`
 
 This subset is the local coordinator and overlay floor.
 It is not a claim that the broader shared runtime-derived effect taxonomy is closed.
+Current shared reading after the latest note round:
+1. execution-restriction effects are stable enough to consume semantically now,
+2. OxCalc should not yet assume one final frozen single-object carrier for those effects,
+3. dependency additions, removals, and reclassifications remain intended evaluator/runtime facts, but their exact retained/reduced witness projection closure is still narrower than a fully frozen universal rule.
 
 ### 15.3 Reject Subset
 For Stage 1, OxCalc expects the shared seam to support a local typed reject subset covering at least:
@@ -222,12 +253,33 @@ For Stage 1, OxCalc expects the shared seam to support a local typed reject subs
 This is the minimum local reject floor needed for coordinator no-publish behavior, replay classification, and self-contained harness scenarios.
 It does not claim that the shared OxFml-side canonical taxonomy or ownership split is fully closed.
 
+The current stronger OxFml-managed baseline makes the following canonical context families especially important to preserve without coordinator reinterpretation:
+1. `FenceMismatchContext`
+2. `CapabilityDenialContext`
+3. `SessionTerminationContext`
+4. `DynamicReferenceFailureContext`
+
+### 15.4 Host-Boundary Preservation Rule
+OxCalc does not own DNA OneCalc host policy.
+But where retained witnesses, pack-candidate artifacts, or replay-valid scenarios depend on concrete host-sensitive truth, OxCalc must preserve the OxFml-declared direct-binding boundary rather than collapsing those cases into name-only or prose-only artifacts.
+
+This is a replay and evidence-preservation rule.
+It is not a transfer of host-policy ownership into OxCalc.
+
+Current shared reading after the latest note round:
+1. typed host-query capability views are already canonical on the OxFml side,
+2. direct-cell-binding-sensitive truth is already canonical on the OxFml side where semantic correctness depends on concrete resolution,
+3. the broader naming and indexing convention for direct-binding-sensitive pack-candidate families remains open and belongs to later replay widening rather than immediate seam redefinition.
+
 ## 16. Open Detailed Questions
 These remain seam-hardening questions rather than reasons to weaken the split:
 1. exact accepted-result payload naming and artifact partition in shared canonical terms,
 2. exact reject taxonomy ownership partition beyond the now-locked Stage 1 local subset,
-3. exact broader runtime-derived effect taxonomy beyond the Stage 1 local subset,
-4. exact trace schema mapping for coordinator-facing replay and diagnostics.
+3. exact broader runtime-derived effect taxonomy beyond the Stage 1 local subset, especially execution-restriction and capability-sensitive transport closure,
+4. exact retained/reduced witness projection closure for dependency additions, removals, and reclassifications,
+5. exact trace schema mapping for coordinator-facing replay and diagnostics, especially stable use of `candidate_result_id`, `commit_attempt_id`, `reject_record_id`, and optional fence snapshot references,
+6. exact replay-facing preservation rule for direct-binding-sensitive witness and pack-candidate families once W019 broadens them,
+7. exact shared reading of semantic-format versus display-facing publication consequences before broader retained and pack-candidate widening.
 
 ## 17. Status
 - execution_state: in_progress
@@ -236,7 +288,8 @@ These remain seam-hardening questions rather than reasons to weaken the split:
 - integration_completeness: partial
 - open_lanes:
   - replay artifacts not yet attached for candidate-result versus publication boundaries,
-  - the Stage 1 local seam packet is now explicit, but broader shared taxonomy closure remains open,
-  - roadmap and worksets still need downstream alignment to the updated shared seam
+  - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but narrower projection-closure questions remain open,
+  - W020 and W019 still need to consume the stronger OxFml inbound handoff and downstream note,
+  - a narrower follow-on handoff is not required yet, but remains an explicit later decision if W019 evidence creates stronger coordinator pressure
 
 

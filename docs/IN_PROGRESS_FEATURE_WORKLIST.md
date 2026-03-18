@@ -48,10 +48,10 @@ Last updated: 2026-03-16.
 ### IP-05: OxFml Seam Hardening and Handoff Closure
 
 - **Status**: in-progress
-- **Current floor**: OxCalc-local seam requirements are drafted; `HANDOFF-CALC-001` is filed, acknowledged by OxFml, reflected in OxFml canonical seam updates, and now tightened locally with an explicit Stage 1 candidate-result, runtime-effect, and typed-reject floor.
-- **Remaining gaps**: replay artifacts for candidate-result versus publication boundaries, broader runtime-derived effect taxonomy beyond the Stage 1 subset, exact trace-schema mapping, and any narrower follow-on handoff if required.
-- **Why still open**: acknowledgment and local tightening exist, but evidence and full downstream alignment are still partial.
-- **Canonical owner**: W005.
+- **Current floor**: OxCalc-local seam requirements are drafted; `HANDOFF-CALC-001` is filed and acknowledged; the stronger OxFml downstream note and `HANDOFF-FML-001` are now also received locally, giving OxCalc a stronger minimum-schema, typed reject-context, runtime-effect, and host-boundary floor to consume.
+- **Remaining gaps**: replay artifacts for candidate-result versus publication boundaries, broader runtime-derived effect taxonomy beyond the Stage 1 subset, exact trace-schema mapping, and any narrower follow-on handoff if exercised evidence later requires it.
+- **Why still open**: the first bilateral seam round is incorporated, but the broader seam and replay-consumption area remains active and is now carried by a successor integration packet rather than by reopening W005.
+- **Canonical owner**: W020.
 
 ### IP-06: Core Formalization and Gate Binding
 
@@ -108,6 +108,14 @@ Last updated: 2026-03-16.
 - **Remaining gaps**: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader mismatch-family explain coverage.
 - **Why still open**: W018 discharged its declared scope, but the broader replay-appliance feature area remains active beyond this first bundle-valid and explain-valid baseline.
 - **Canonical owner**: W019.
+
+### IP-13: OxFml Downstream Integration Rounds
+
+- **Status**: in-progress
+- **Current floor**: OxCalc now has a local receipt for `HANDOFF-FML-001`, an outbound `NOTES_FOR_OXFML.md` reply, and a returned OxFml topic-by-topic classification pass. That pass now treats identity/fence vocabulary, candidate/commit consequence categories, and host-query/direct-binding-sensitive truth as already canonical, while leaving dependency projection and semantic-display boundary as canonical but narrower.
+- **Remaining gaps**: W019 still needs to consume those stronger and now-bounded OxFml inputs in exercised replay and retained-witness widening, and a later narrower handoff may still be needed if OxCalc discovers stronger execution-restriction or publication-consequence pressure.
+- **Why still open**: the note exchange has materially narrowed uncertainty, but the stabilized OxCalc/OxFml seam still depends on exercised W019 evidence rather than note-level agreement alone.
+- **Canonical owner**: W020.
 
 
 

@@ -340,4 +340,4 @@ They justify explicit normalization and staged rollout.
   - `cap.C4.distill_valid` and `cap.C5.pack_valid` remain later promotion lanes,
   - broader mismatch-family explain coverage remains a later widening lane
 - claim_confidence: provisional
-- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+- reviewed_inbound_observations: OxFml's current downstream note reinforces that evaluator/runtime/replay artifact meaning, retained-local and pack-candidate admissibility, and DNA OneCalc host-boundary semantics remain OxFml-owned inputs to this adapter

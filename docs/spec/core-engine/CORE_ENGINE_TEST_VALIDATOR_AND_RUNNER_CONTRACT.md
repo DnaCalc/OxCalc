@@ -364,4 +364,4 @@ It does not need yet:
   - replay-pack fragment shape remains a W009 follow-on lane
   - generated-corpus execution policy remains a later lane
 - claim_confidence: provisional
-- reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing
+- reviewed_inbound_observations: OxFml's current downstream note is reviewed; this validator and runner contract remains OxCalc-owned and self-contained, but later OxFml-integrated execution lanes must preserve OxFml-owned candidate, reject, fence, and capability meanings

@@ -21,6 +21,14 @@ const RETAINED_FAILURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.tracecalc.retained_fai
 const RETAINED_FAILURE_CASE_SCHEMA_V1: &str = "oxcalc.tracecalc.retained_failure_case.v1";
 const RETAINED_LOCAL_REDUCTION_STATUS_ID: &str = "oxcalc.reduction.retained_local";
 const RETAINED_STATUS_SCOPE: &str = "local_only_until_foundation_binding";
+const REPLAY_BUNDLE_MANIFEST_SCHEMA_V1: &str = "oxcalc.local.replay_bundle_manifest.v1";
+const REPLAY_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.local.replay_run_manifest.v1";
+const REPLAY_ADAPTER_CAPABILITY_SNAPSHOT_SCHEMA_V1: &str =
+    "oxcalc.local.adapter_capability_snapshot.v1";
+const REPLAY_BUNDLE_VALIDATION_SCHEMA_V1: &str = "oxcalc.local.replay_bundle_validation.v1";
+const REPLAY_EXPLAIN_RECORD_SCHEMA_V1: &str = "oxcalc.local.replay_explain_record.v1";
+const FOUNDATION_REPLAY_REGISTRY_VERSION: &str =
+    "foundation.replay.authoritative-pass-01.2026-03-15";
 
 #[derive(Debug, Clone, Deserialize)]
 struct RetainedFailureManifest {
@@ -189,6 +197,18 @@ impl TraceCalcRetainedFailureRunner {
 
         create_directory(&artifact_root)?;
         create_directory(&artifact_root.join("cases"))?;
+        create_directory(&artifact_root.join("replay-appliance"))?;
+        create_directory(&artifact_root.join("replay-appliance/adapter_capabilities"))?;
+        create_directory(&artifact_root.join("replay-appliance/runs"))?;
+        create_directory(&artifact_root.join("replay-appliance/validation"))?;
+        create_directory(&artifact_root.join("replay-appliance/runs").join(run_id))?;
+        create_directory(
+            &artifact_root
+                .join("replay-appliance/runs")
+                .join(run_id)
+                .join("cases"),
+        )?;
+        write_bundle_capability_snapshot(&artifact_root, run_id)?;
 
         write_json(
             &artifact_root.join("manifest_selection.json"),
@@ -197,6 +217,7 @@ impl TraceCalcRetainedFailureRunner {
 
         let mut lifecycle_counts = BTreeMap::new();
         let mut case_summaries = Vec::new();
+        let mut bundle_cases = Vec::new();
 
         for entry in &manifest.cases {
             let case_path = repo_root
@@ -281,6 +302,17 @@ impl TraceCalcRetainedFailureRunner {
             create_directory(&case_directory)?;
             let witness_bundle_directory = case_directory.join("witness_bundle");
             create_directory(&witness_bundle_directory)?;
+            let case_summary = TraceCalcRetainedFailureCaseSummary {
+                case_id: case.case_id.clone(),
+                description: case.description.clone(),
+                source_scenario_id: scenario.scenario_id.clone(),
+                lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
+                replay_validation_assessed: replay_validation.replay_validation_assessed,
+                replay_valid: replay_validation.scenario_replay_valid,
+                predicate_preserved: replay_validation.predicate_preserved,
+                artifact_paths: BTreeMap::new(),
+                notes: case.notes.clone(),
+            };
 
             write_json(
                 &case_directory.join("lifecycle.json"),
@@ -297,7 +329,7 @@ impl TraceCalcRetainedFailureRunner {
             )?;
             fs::write(
                 witness_bundle_directory.join("scenario.json"),
-                scenario_text,
+                &scenario_text,
             )
             .map_err(|source| TraceCalcRetainedFailureError::WriteFile {
                 path: witness_bundle_directory
@@ -350,18 +382,23 @@ impl TraceCalcRetainedFailureRunner {
             write_json(
                 &case_directory.join("case_summary.json"),
                 &serde_json::to_value(&TraceCalcRetainedFailureCaseSummary {
-                    case_id: case.case_id.clone(),
-                    description: case.description.clone(),
-                    source_scenario_id: scenario.scenario_id.clone(),
-                    lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
-                    replay_validation_assessed: replay_validation.replay_validation_assessed,
-                    replay_valid: replay_validation.scenario_replay_valid,
-                    predicate_preserved: replay_validation.predicate_preserved,
                     artifact_paths: case_artifact_paths.clone(),
-                    notes: case.notes.clone(),
+                    ..case_summary.clone()
                 })
                 .expect("case summary serialization"),
             )?;
+            bundle_cases.push(write_bundle_case_projection(
+                &artifact_root,
+                run_id,
+                &relative_artifact_root,
+                &case.case_id,
+                &case_summary,
+                &witness.lifecycle,
+                &witness.reduction_manifest,
+                &replay_validation,
+                &scenario_text,
+                &case_artifact_paths,
+            )?);
 
             *lifecycle_counts
                 .entry(witness.lifecycle.lifecycle_state.clone())
@@ -390,6 +427,14 @@ impl TraceCalcRetainedFailureRunner {
             &artifact_root.join("run_summary.json"),
             &serde_json::to_value(&summary).expect("summary serialization"),
         )?;
+        write_bundle_run_projection(
+            &artifact_root,
+            run_id,
+            &relative_artifact_root,
+            &bundle_cases,
+            &summary,
+        )?;
+        write_bundle_validation(repo_root, &artifact_root, run_id, &bundle_cases)?;
         Ok(summary)
     }
 }
@@ -634,6 +679,287 @@ fn write_json(path: &Path, value: &serde_json::Value) -> Result<(), TraceCalcRet
     })
 }
 
+fn write_bundle_capability_snapshot(
+    artifact_root: &Path,
+    run_id: &str,
+) -> Result<(), TraceCalcRetainedFailureError> {
+    write_json(
+        &artifact_root.join("replay-appliance/adapter_capabilities/oxcalc.json"),
+        &json!({
+            "schema_version": REPLAY_ADAPTER_CAPABILITY_SNAPSHOT_SCHEMA_V1,
+            "adapter_id": "oxcalc-tracecalc-replay-adapter",
+            "lane_id": "oxcalc",
+            "run_id": run_id,
+            "canonical_manifest_ref": "docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json",
+            "claimed_capability_levels": ["cap.C0.ingest_valid", "cap.C1.replay_valid", "cap.C2.diff_valid", "cap.C3.explain_valid"],
+            "target_capability_levels": ["cap.C4.distill_valid"],
+            "projection_scope": "run_local_snapshot_only",
+            "known_limits": [
+                "oxcalc.local.limit.explain_coverage_is_current_family_only",
+                "oxcalc.local.limit.distill_valid_not_proven",
+                "oxcalc.local.limit.pack_valid_not_proven"
+            ],
+            "registry_version_ref": FOUNDATION_REPLAY_REGISTRY_VERSION,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn write_bundle_case_projection(
+    artifact_root: &Path,
+    run_id: &str,
+    relative_artifact_root: &str,
+    case_id: &str,
+    case_summary: &TraceCalcRetainedFailureCaseSummary,
+    lifecycle: &crate::witness::TraceCalcWitnessLifecycleRecord,
+    reduction_manifest: &crate::witness::TraceCalcReductionManifest,
+    replay_validation: &TraceCalcRetainedFailureReplayValidation,
+    scenario_text: &str,
+    source_artifact_paths: &BTreeMap<String, String>,
+) -> Result<serde_json::Value, TraceCalcRetainedFailureError> {
+    let bundle_case_root = artifact_root
+        .join("replay-appliance/runs")
+        .join(run_id)
+        .join("cases")
+        .join(case_id);
+    create_directory(&bundle_case_root)?;
+    create_directory(&bundle_case_root.join("witness_bundle"))?;
+
+    fs::write(
+        bundle_case_root.join("witness_bundle/scenario.json"),
+        scenario_text,
+    )
+    .map_err(|source| TraceCalcRetainedFailureError::WriteFile {
+        path: bundle_case_root
+            .join("witness_bundle/scenario.json")
+            .display()
+            .to_string(),
+        source,
+    })?;
+    write_json(
+        &bundle_case_root.join("lifecycle.json"),
+        &serde_json::to_value(lifecycle).expect("lifecycle serialization"),
+    )?;
+    write_json(
+        &bundle_case_root.join("reduction_manifest.json"),
+        &serde_json::to_value(reduction_manifest).expect("reduction serialization"),
+    )?;
+    write_json(
+        &bundle_case_root.join("replay_validation.json"),
+        &serde_json::to_value(replay_validation).expect("replay validation serialization"),
+    )?;
+
+    let relative_bundle_root = relative_artifact_path([
+        relative_artifact_root,
+        "replay-appliance",
+        "runs",
+        run_id,
+        "cases",
+        case_id,
+    ]);
+    let bundle_artifact_paths = BTreeMap::from([
+        (
+            "lifecycle".to_string(),
+            relative_artifact_path([&relative_bundle_root, "lifecycle.json"]),
+        ),
+        (
+            "reduction_manifest".to_string(),
+            relative_artifact_path([&relative_bundle_root, "reduction_manifest.json"]),
+        ),
+        (
+            "replay_validation".to_string(),
+            relative_artifact_path([&relative_bundle_root, "replay_validation.json"]),
+        ),
+        (
+            "witness_bundle_scenario".to_string(),
+            relative_artifact_path([&relative_bundle_root, "witness_bundle", "scenario.json"]),
+        ),
+    ]);
+    write_json(
+        &bundle_case_root.join("case_summary.json"),
+        &serde_json::to_value(&TraceCalcRetainedFailureCaseSummary {
+            artifact_paths: bundle_artifact_paths.clone(),
+            ..case_summary.clone()
+        })
+        .expect("case summary serialization"),
+    )?;
+    write_json(
+        &bundle_case_root.join("explain.json"),
+        &json!({
+            "schema_version": REPLAY_EXPLAIN_RECORD_SCHEMA_V1,
+            "explain_id": format!("{case_id}--why-diff"),
+            "explain_kind": "why_diff",
+            "case_id": case_id,
+            "source_scenario_id": case_summary.source_scenario_id,
+            "lifecycle_state": case_summary.lifecycle_state,
+            "source_target_mismatch_kind": replay_validation.target_mismatch_kind,
+            "mismatch_kind": normalized_mismatch_kind(&replay_validation.target_mismatch_kind),
+            "predicate_preserved": replay_validation.predicate_preserved,
+            "replay_validation_assessed": replay_validation.replay_validation_assessed,
+            "replay_valid": replay_validation.scenario_replay_valid,
+            "selected_unit_ids": replay_validation.selected_unit_ids,
+            "required_equality_surfaces": replay_validation.required_equality_surfaces,
+            "source_refs": {
+                "lifecycle": bundle_artifact_paths["lifecycle"],
+                "reduction_manifest": bundle_artifact_paths["reduction_manifest"],
+                "replay_validation": bundle_artifact_paths["replay_validation"],
+            },
+        }),
+    )?;
+
+    Ok(json!({
+        "case_id": case_id,
+        "source_scenario_id": case_summary.source_scenario_id,
+        "lifecycle_state": case_summary.lifecycle_state,
+        "bundle_artifact_paths": bundle_artifact_paths,
+        "source_artifact_paths": source_artifact_paths,
+        "target_mismatch_kind": replay_validation.target_mismatch_kind,
+        "required_equality_surfaces": replay_validation.required_equality_surfaces,
+        "explain_path": relative_artifact_path([&relative_bundle_root, "explain.json"]),
+    }))
+}
+
+fn write_bundle_run_projection(
+    artifact_root: &Path,
+    run_id: &str,
+    relative_artifact_root: &str,
+    bundle_cases: &[serde_json::Value],
+    summary: &TraceCalcRetainedFailureRunSummary,
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let replay_root = artifact_root.join("replay-appliance");
+    let replay_run_root = replay_root.join("runs").join(run_id);
+    write_json(
+        &replay_run_root.join("run_manifest.json"),
+        &json!({
+            "schema_version": REPLAY_RUN_MANIFEST_SCHEMA_V1,
+            "run_kind": "tracecalc_retained_failure_run",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "source_run_summary_path": relative_artifact_path([relative_artifact_root, "run_summary.json"]),
+            "source_case_index_path": relative_artifact_path([relative_artifact_root, "case_index.json"]),
+            "cases": bundle_cases,
+            "lifecycle_counts": summary.lifecycle_counts,
+        }),
+    )?;
+    write_json(
+        &replay_root.join("bundle_manifest.json"),
+        &json!({
+            "schema_version": REPLAY_BUNDLE_MANIFEST_SCHEMA_V1,
+            "bundle_kind": "tracecalc_retained_failure_run",
+            "lane_id": "oxcalc",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "run_manifest_path": relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "runs",
+                run_id,
+                "run_manifest.json",
+            ]),
+            "adapter_capabilities_path": relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "adapter_capabilities",
+                "oxcalc.json",
+            ]),
+            "preserved_view_families": [
+                "published_view",
+                "pinned_view",
+                "reject_set",
+                "assertion_result_set",
+                "counter_set",
+            ],
+            "projection_status": "projection_validated_with_explain",
+            "registry_version_ref": FOUNDATION_REPLAY_REGISTRY_VERSION,
+        }),
+    )
+}
+
+fn normalized_mismatch_kind(source_kind: &str) -> &str {
+    match source_kind {
+        "missing_scenario_result" => "mm.scenario.presence",
+        "result_state_mismatch" => "mm.result.state",
+        "published_view_mismatch" | "pinned_view_mismatch" => "mm.view.value",
+        "reject_mismatch" => "mm.reject.kind",
+        "trace_count_mismatch" => "mm.trace.event",
+        "counter_mismatch" => "mm.counter.value",
+        "unexpected_extra_artifact" => "mm.sidecar.payload",
+        _ => "oxcalc.local.mm.unknown",
+    }
+}
+
+fn write_bundle_validation(
+    repo_root: &Path,
+    artifact_root: &Path,
+    run_id: &str,
+    bundle_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let mut checked_paths = vec![
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "bundle_manifest.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "adapter_capabilities",
+            "oxcalc.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "runs",
+            run_id,
+            "run_manifest.json",
+        ]),
+    ];
+    for case in bundle_cases {
+        if let Some(paths) = case["bundle_artifact_paths"].as_object() {
+            checked_paths.extend(
+                paths
+                    .values()
+                    .filter_map(|value| value.as_str())
+                    .map(str::to_string),
+            );
+        }
+        if let Some(explain_path) = case["explain_path"].as_str() {
+            checked_paths.push(explain_path.to_string());
+        }
+    }
+
+    let missing_paths = checked_paths
+        .iter()
+        .filter(|path| !repo_root.join(path).exists())
+        .cloned()
+        .collect::<Vec<_>>();
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+        &json!({
+            "schema_version": REPLAY_BUNDLE_VALIDATION_SCHEMA_V1,
+            "bundle_kind": "tracecalc_retained_failure_run",
+            "run_id": run_id,
+            "status": if missing_paths.is_empty() { "bundle_valid" } else { "bundle_degraded" },
+            "degraded_capture": !missing_paths.is_empty(),
+            "checked_paths": checked_paths,
+            "missing_paths": missing_paths,
+        }),
+    )
+}
+
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
     segments
         .into_iter()
@@ -672,6 +998,40 @@ mod tests {
         assert_eq!(summary.case_count, 3);
         assert!(
             artifact_root
+                .join("replay-appliance/bundle_manifest.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/adapter_capabilities/oxcalc.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!("replay-appliance/runs/{run_id}/run_manifest.json"))
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!(
+                    "replay-appliance/runs/{run_id}/cases/rf_publication_fence_retained_local_001/lifecycle.json"
+                ))
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/bundle_validation.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!(
+                    "replay-appliance/runs/{run_id}/cases/rf_publication_fence_retained_local_001/explain.json"
+                ))
+                .exists()
+        );
+        assert!(
+            artifact_root
                 .join("cases/rf_publication_fence_retained_local_001/lifecycle.json")
                 .exists()
         );
@@ -703,6 +1063,21 @@ mod tests {
         .unwrap();
         assert_eq!(replay_validation["scenario_replay_valid"], true);
         assert_eq!(replay_validation["predicate_preserved"], true);
+
+        let bundle_validation = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+        )
+        .unwrap();
+        assert_eq!(bundle_validation["status"], "bundle_valid");
+
+        let explain_record = load_json::<serde_json::Value>(
+            &artifact_root.join(format!(
+                "replay-appliance/runs/{run_id}/cases/rf_publication_fence_retained_local_001/explain.json"
+            )),
+        )
+        .unwrap();
+        assert_eq!(explain_record["explain_kind"], "why_diff");
+        assert_eq!(explain_record["mismatch_kind"], "mm.reject.kind");
 
         cleanup();
     }

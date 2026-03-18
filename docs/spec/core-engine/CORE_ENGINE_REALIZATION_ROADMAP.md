@@ -207,6 +207,7 @@ This is dependency-ordered, not date-ordered.
 16. `W017`: Execution Sequence C for Rust-first reimplementation of the current realized TreeCalc and TraceCalc scope.
 17. `W016`: witness distillation and retained failure packs.
 18. `W018`: replay-appliance bundle and capability promotion.
+19. `W019`: replay distill and pack promotion.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
@@ -215,6 +216,7 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W017` is the implementation-direction shift packet and Execution Sequence C: it re-establishes the current realized scope as a Rust-first ab initio implementation, using carried historical baseline artifacts as comparison and parity evidence.
 `W016` is the first retained-witness and retained-failure baseline lane over the active Rust runner.
 `W018` is the next replay-facing realization lane: it turns current replay-aware local artifacts into emitted replay-appliance bundle artifacts and capability evidence.
+`W019` is the explicit successor lane after W018 for `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -254,5 +256,6 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W015 now covers the local replay-coherence refactor and adapter-rollout doctrine, but normalized replay-appliance bundle emission remains a later roadmap lane
   - W017 has reached its final gate for the current Rust-first realization scope
   - W016 has reached its declared retained-witness baseline gate
-  - W018 is now the immediate replay-facing continuation: emitted replay-appliance bundle roots, validator evidence, and capability-floor promotion remain unrealized
+  - W018 has now reached its declared gate: emitted replay-appliance bundle roots, validator artifacts, explain records, and checked-in replay-appliance-aware baselines exist for the current realized scope
+  - W019 is now the next replay-facing continuation: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader replay-appliance widening remain later execution work
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

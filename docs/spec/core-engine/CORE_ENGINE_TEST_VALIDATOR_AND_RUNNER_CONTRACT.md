@@ -175,20 +175,29 @@ Alternative transient local output locations may exist during development, but a
 ## 7.1 Normalized Replay Bundle Emission Path
 The current runner artifact root remains canonical for OxCalc-local execution.
 
-When the Replay appliance adapter is emitted, the normalized bundle projection for a run should emit under:
+The current Rust runner now emits the normalized additive bundle projection for an ordinary run under:
 1. `docs/test-runs/core-engine/tracecalc-reference-machine/<run_id>/replay-appliance/`
+
+The retained-failure runner now emits the matching additive bundle projection under:
+1. `docs/test-runs/core-engine/tracecalc-retained-failures/<run_id>/replay-appliance/`
 
 The first expected normalized bundle layout under that root should follow the Foundation bundle direction and include at least:
 1. `bundle_manifest.json`
-2. `runs/<run_id>/run_manifest.json`
-3. `runs/<run_id>/scenarios/<scenario_id>/events.jsonl`
-4. `runs/<run_id>/scenarios/<scenario_id>/counters.json`
-5. `runs/<run_id>/scenarios/<scenario_id>/views/*.json`
-6. `runs/<run_id>/diff/*.json`
-7. `adapter_capabilities/oxcalc.json`
+2. `validation/bundle_validation.json`
+3. `runs/<run_id>/run_manifest.json`
+4. `runs/<run_id>/scenarios/<scenario_id>/events.jsonl`
+5. `runs/<run_id>/scenarios/<scenario_id>/counters.json`
+6. `runs/<run_id>/scenarios/<scenario_id>/views/*.json`
+7. `runs/<run_id>/diff/*.json`
+8. `adapter_capabilities/oxcalc.json`
 
 This projection root is additive.
 It does not replace the current OxCalc-native artifact layout.
+
+The current realized Rust runner floor now also emits:
+1. `replay-appliance/validation/bundle_validation.json` for ordinary and retained-failure runs,
+2. `replay-appliance/runs/<run_id>/diff/explain_records.json` for ordinary runs,
+3. `replay-appliance/runs/<run_id>/cases/<case_id>/explain.json` for retained-failure runs.
 
 ## 8. Artifact Shapes
 The first realized runner should emit data-first artifacts rather than ad hoc console text only.

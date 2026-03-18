@@ -139,6 +139,55 @@ Rule:
 2. any scenario intended for retained-failure or witness reduction lanes must carry `witness_anchors`,
 3. “optional” metadata in the base schema may still be required by narrower execution packets.
 
+### Lesson 11: Replay Projection Must Stay Additive
+W018 only stayed coherent because replay-appliance bundle roots, validator artifacts, and explain artifacts were emitted as additive sidecars over the canonical OxCalc-native artifact surface.
+
+Reason:
+1. replay consumers need normalized artifacts,
+2. OxCalc still needs its native artifacts to remain the semantic authority,
+3. replacing native artifacts would have muddied parity checks and semantic ownership.
+
+Rule:
+1. replay-facing projections must be additive to canonical OxCalc-native artifacts,
+2. a replay projection wave may widen emitted evidence, but it must not replace the native artifact root as the semantic authority.
+
+### Lesson 12: Projection, Validator, and Explain Should Ship Together
+W018 moved cleanly once bundle emission, validation, and explain were treated as one artifact family rather than three disconnected later steps.
+
+Reason:
+1. a projection without validation is weak evidence,
+2. validation without explain makes capability promotion stall,
+3. splitting them too far apart creates avoidable rework in manifests and baselines.
+
+Rule:
+1. replay-facing execution packets should declare emitted projection, validator output, explain output, and capability consequence together,
+2. a capability-promotion wave is not gate-ready if one of those surfaces is deferred without being called out explicitly.
+
+### Lesson 13: Capability Claims Follow Checked-In Evidence, Not Code Shape
+The W018 capability refresh only became trustworthy once the checked-in baselines, validator artifacts, explain artifacts, canonical manifest, and run-local snapshots all agreed.
+
+Reason:
+1. code can get ahead of evidence,
+2. run-local snapshots can drift from the canonical manifest,
+3. capability promotion becomes sloppy if the checked-in evidence root is not authoritative.
+
+Rule:
+1. capability claims move only when checked-in replay-facing baselines and emitted validator or explain artifacts exist,
+2. run-local capability snapshots must be regenerated when the canonical manifest changes,
+3. code-level readiness without checked-in evidence is not a capability promotion act.
+
+### Lesson 14: Capability-Ladder Waves Need Their Successor Packet Before Closure
+W018 closed cleanly only once W019 existed as the explicit follow-on for `cap.C4.distill_valid` and `cap.C5.pack_valid`.
+
+Reason:
+1. otherwise future capability work gets smeared back into the closing packet,
+2. workset closure and feature continuation become blurry again,
+3. later widening risks silently reopening a packet that already reached its gate.
+
+Rule:
+1. any capability-promotion wave should author its successor packet before closure if later capability levels are already known,
+2. broader feature continuation must point to that successor rather than implicitly reopening the closing workset.
+
 ## 4. Immediate Promotion Targets
 These lessons should now influence:
 1. `OPERATIONS.md`

@@ -217,6 +217,30 @@ Execution packets that check in emitted baseline runs must state:
 Later waves must not silently replace an earlier checked-in baseline run.
 They may supersede it only by naming the new active baseline explicitly.
 
+### 13.6 Replay Projection Additivity Rule
+Replay-appliance bundle roots, validator outputs, and explain artifacts are additive sidecars unless a spec explicitly says otherwise.
+
+That means:
+1. the native OxCalc artifact root remains the semantic authority,
+2. replay-facing projections may normalize, enrich, or validate emitted evidence,
+3. replay-facing projections may not silently replace the native artifact surface as the authoritative meaning layer.
+
+### 13.7 Capability Snapshot Consistency Rule
+If a replay-facing run emits a run-local capability snapshot, it must remain aligned with the canonical manifest.
+
+That means:
+1. the canonical manifest remains the authority for claimed capability levels,
+2. run-local snapshots may narrow or annotate the claim, but may not silently widen it,
+3. when the canonical manifest changes, checked-in replay-facing baselines and run-local snapshots must be intentionally regenerated or explicitly marked stale.
+
+### 13.8 Projection-Validator-Explain Coupling Rule
+Replay-facing capability-promotion waves must declare projection, validator, and explain outputs together.
+
+That means:
+1. an emitted replay bundle root without validator output is a partial wave,
+2. validator output without explain output may still be below the intended capability floor,
+3. a capability-promotion workset must state the capability consequence of each emitted replay-facing artifact family.
+
 ## 14. Execution Packet Minimums
 
 Any workset that acts as an execution packet must include the following sections explicitly.
@@ -246,6 +270,14 @@ Execution packets that mention packs must identify:
 1. pack name,
 2. replay classes,
 3. scenario ids or artifact paths once they exist.
+
+### 14.5 Capability-Ladder Continuation
+If an execution packet is expected to advance a replay capability ladder and later levels are already known, the successor packet should be authored before the current packet closes.
+
+This avoids:
+1. smearing later capability work back into the closing packet,
+2. implicitly reopening a packet that already reached its declared gate,
+3. ambiguity about where the next capability promotion act belongs.
 
 ### 14.5 Workset Versus Feature-Area Rule
 Execution packets and feature-register items have different closure semantics.

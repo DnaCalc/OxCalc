@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"observed_capability\":\"none\",\"required_capability\":\"fmt\"}",
+      "reject_id": "rej1",
+      "reject_kind": "capability_mismatch"
+    }
+  ],
+  "scenario_id": "tc_reject_no_publish_001"
+}

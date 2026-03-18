@@ -176,6 +176,11 @@ The OxCalc adapter must treat the Foundation capability levels as cumulative con
 
 OxCalc may document the path to later levels, but it may only claim the highest level currently proven by local conformance artifacts.
 
+Current local proof floor:
+1. checked-in replay-appliance-aware baselines and validator artifacts now support `cap.C2.diff_valid`,
+2. checked-in retained-failure explain artifacts now support `cap.C3.explain_valid`,
+3. `cap.C4.distill_valid` and `cap.C5.pack_valid` remain later lanes.
+
 ## 9.2 OxCalc Conformance Targets `C0..C4`
 
 ### `C0`

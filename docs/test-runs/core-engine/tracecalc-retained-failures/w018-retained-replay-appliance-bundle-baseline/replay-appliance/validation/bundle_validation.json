@@ -1,0 +1,28 @@
+{
+  "bundle_kind": "tracecalc_retained_failure_run",
+  "checked_paths": [
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/adapter_capabilities/oxcalc.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/run_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/witness_bundle/scenario.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/explain.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/witness_bundle/scenario.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/explain.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/witness_bundle/scenario.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/explain.json"
+  ],
+  "degraded_capture": false,
+  "missing_paths": [],
+  "run_id": "w018-retained-replay-appliance-bundle-baseline",
+  "schema_version": "oxcalc.local.replay_bundle_validation.v1",
+  "status": "bundle_valid"
+}

@@ -1,0 +1,97 @@
+{
+  "cases": [
+    {
+      "bundle_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/witness_bundle/scenario.json"
+      },
+      "case_id": "rf_publication_fence_retained_local_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/explain.json",
+      "lifecycle_state": "wit.retained_local",
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels"
+      ],
+      "source_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/witness_bundle/scenario.json"
+      },
+      "source_scenario_id": "tc_publication_fence_reject_001",
+      "target_mismatch_kind": "reject_mismatch"
+    },
+    {
+      "bundle_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/witness_bundle/scenario.json"
+      },
+      "case_id": "rf_fallback_explanatory_only_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/explain.json",
+      "lifecycle_state": "wit.explanatory_only",
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters"
+      ],
+      "source_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/witness_bundle/scenario.json"
+      },
+      "source_scenario_id": "tc_fallback_reentry_001",
+      "target_mismatch_kind": "counter_mismatch"
+    },
+    {
+      "bundle_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/witness_bundle/scenario.json"
+      },
+      "case_id": "rf_verify_clean_quarantined_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/explain.json",
+      "lifecycle_state": "wit.quarantined",
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters"
+      ],
+      "source_artifact_paths": {
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+        "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/witness_bundle/scenario.json"
+      },
+      "source_scenario_id": "tc_verify_clean_no_publish_001",
+      "target_mismatch_kind": "result_state_mismatch"
+    }
+  ],
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      1
+    ]
+  ],
+  "run_id": "w018-retained-replay-appliance-bundle-baseline",
+  "run_kind": "tracecalc_retained_failure_run",
+  "schema_version": "oxcalc.local.replay_run_manifest.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline",
+  "source_case_index_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/case_index.json",
+  "source_run_summary_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/run_summary.json"
+}

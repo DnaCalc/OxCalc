@@ -1,0 +1,33 @@
+{
+  "counters": [
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 1
+    },
+    {
+      "counter": "recalc.verified_clean",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "scenario_id": "tc_verify_clean_no_publish_001"
+}

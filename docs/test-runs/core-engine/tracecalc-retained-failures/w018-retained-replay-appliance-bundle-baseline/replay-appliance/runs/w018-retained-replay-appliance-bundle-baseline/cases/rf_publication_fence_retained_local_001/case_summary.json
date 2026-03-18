@@ -1,0 +1,19 @@
+{
+  "artifact_paths": {
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+    "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/replay-appliance/runs/w018-retained-replay-appliance-bundle-baseline/cases/rf_publication_fence_retained_local_001/witness_bundle/scenario.json"
+  },
+  "case_id": "rf_publication_fence_retained_local_001",
+  "description": "Replay-valid retained-local witness over the publication-fence reject surface.",
+  "lifecycle_state": "wit.retained_local",
+  "notes": [
+    "The selected unit starts from the published-view slice and closes over the event and reject units.",
+    "This is the first bounded replay-valid retained-local witness family for W016."
+  ],
+  "predicate_preserved": true,
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "source_scenario_id": "tc_publication_fence_reject_001"
+}

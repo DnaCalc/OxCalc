@@ -1,0 +1,20 @@
+{
+  "artifact_root": "\\\\?\\C:\\Work\\DnaCalc\\OxCalc\\docs\\test-runs\\core-engine\\tracecalc-retained-failures\\w018-retained-replay-appliance-bundle-baseline",
+  "case_count": 3,
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      1
+    ]
+  ],
+  "run_id": "w018-retained-replay-appliance-bundle-baseline",
+  "schema_version": "oxcalc.tracecalc.retained_failure_manifest.v1"
+}

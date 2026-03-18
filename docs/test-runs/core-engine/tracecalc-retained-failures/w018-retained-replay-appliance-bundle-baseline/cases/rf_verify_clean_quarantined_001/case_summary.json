@@ -1,0 +1,18 @@
+{
+  "artifact_paths": {
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+    "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_verify_clean_quarantined_001/witness_bundle/scenario.json"
+  },
+  "case_id": "rf_verify_clean_quarantined_001",
+  "description": "Quarantined retained witness for verify-clean publication-stability behavior.",
+  "lifecycle_state": "wit.quarantined",
+  "notes": [
+    "This case exists to keep quarantined witness behavior explicit in the retained-failure baseline."
+  ],
+  "predicate_preserved": true,
+  "replay_valid": null,
+  "replay_validation_assessed": false,
+  "source_scenario_id": "tc_verify_clean_no_publish_001"
+}

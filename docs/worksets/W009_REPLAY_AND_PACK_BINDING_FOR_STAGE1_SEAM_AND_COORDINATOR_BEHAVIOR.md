@@ -302,7 +302,7 @@ This order prioritizes the coordinator and publication contract before broader r
 - integration_completeness: partial
 - open_lanes:
   - `R1` through `R8` are now exercised by the widened checked-in corpus and the emitted `w014-stage1-widening-baseline` run
-  - dedicated replay-appliance bundle projection and validator output remain later than the current OxCalc-native artifact surface
+  - dedicated replay-appliance bundle projection, validator output, and explain artifacts now exist in the W018 replay-appliance-aware baselines, but pack-grade promotion remains later than the current OxCalc-native artifact surface
   - trace-schema ownership split with OxFml is still only partially explicit
   - W010 still needs promotion-threshold reporting and replay-linked summaries over the now-emitted counters
 - claim_confidence: provisional

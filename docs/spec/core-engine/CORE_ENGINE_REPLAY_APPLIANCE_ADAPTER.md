@@ -126,6 +126,14 @@ The adapter must preserve:
 7. pack tags and replay-class metadata,
 8. engine-diff mismatch kinds.
 
+### 5.5 Projection Additivity Rule
+The replay-appliance projection is additive.
+
+That means:
+1. the OxCalc-native artifact root remains the semantic authority,
+2. replay-appliance bundle roots, validator artifacts, and explain artifacts are sidecars over that native root,
+3. the adapter may normalize and enrich emitted evidence, but it may not replace OxCalc-native semantics with a generic replay abstraction.
+
 ## 6. Normalized Event-Family Mapping and Label Drift
 
 ### 6.1 Mapping Rule
@@ -222,7 +230,10 @@ Default rule:
 4. evidence or clause binding mismatches, when later emitted, are `sev.coverage`.
 
 ### 8.4 Current Rollout Limitation
-Current local `engine_diff` artifacts now have a normalized mismatch projection shape, but the replay-appliance bundle projection does not yet emit a separate normalized diff stream under `replay-appliance/`.
+Current local `engine_diff` artifacts now have a normalized mismatch projection shape, and the active Rust runner emits an additive replay-appliance bundle diff stream under `replay-appliance/runs/<run_id>/diff/engine_diff.json`.
+
+The remaining limitation is not diff absence.
+It is that bundle validation, explain projection, and capability-promotion evidence are still unrealized.
 
 ## 9. Adapter Capability Target and Known Limits
 
@@ -238,17 +249,17 @@ OxCalc is the first proving lane for the Replay appliance and should document th
 The OxCalc adapter manifest currently claims only the highest locally proven level.
 
 For this pass, the highest honest claim is:
-1. `cap.C1.replay_valid`
+1. `cap.C3.explain_valid`
 
-The path to `cap.C2.diff_valid`, `cap.C3.explain_valid`, and `cap.C4.distill_valid` is documented and workset-bound, but not yet proven by local conformance artifacts.
+`cap.C2.diff_valid` and `cap.C3.explain_valid` are now backed by checked-in replay-appliance-aware ordinary and retained-failure baselines, bundle-validation artifacts, and emitted explain records.
+
+The path to `cap.C4.distill_valid` remains documented and workset-bound, but not yet proven by a dedicated reduced-witness bundle-valid promotion act.
 
 ### 9.3 Known Limits
 Known current limits include:
-1. normalized severity ids are not yet emitted in `engine_diff.json`,
-2. replay bundle projection is specified but not yet emitted by the current runner,
-3. explain records are not yet emitted by the current OxCalc runner or oracle tooling,
-4. witness distillation and reduced-witness bundle emission are not yet realized,
-5. `cap.C5.pack_valid` is not claimed because the repo does not yet contain pack-grade Replay appliance evidence.
+1. explain coverage is still limited to the current realized ordinary-diff and retained-failure family set,
+2. witness distillation and retained-witness bundle emission exist locally, but `cap.C4.distill_valid` is not yet proven by replay-appliance bundle evidence,
+3. `cap.C5.pack_valid` is not claimed because the repo does not yet contain pack-grade Replay appliance evidence.
 
 ## 10. Registry Version Pins
 
@@ -305,11 +316,9 @@ If a reduced artifact is explanatory-only rather than replay-valid, that status 
 ## 12. Open Alignment Items and Follow-On Evidence
 Open alignment items include:
 1. closing the gap between current source trace labels and normalized event-family emission,
-2. emitting normalized mismatch ids and `severity_class` ids in `engine_diff.json`,
-3. emitting a normalized bundle root under each run's `replay-appliance/` directory,
-4. realizing explain records over `engine_diff`, view mismatches, and reject sets,
-5. realizing reduced-witness bundles and lifecycle records for OxCalc-local failures,
-6. proving `cap.C2.diff_valid`, `cap.C3.explain_valid`, and `cap.C4.distill_valid` with local conformance artifacts.
+2. widening explain coverage beyond the current retained-failure and ordinary-diff family set,
+3. realizing reduced-witness bundle promotion with a dedicated `cap.C4.distill_valid` evidence act,
+4. proving `cap.C5.pack_valid` with pack-grade replay evidence.
 
 ## 13. Current Semantic Conflict Notes
 The following conflicts remain explicitly adapted rather than silently resolved:
@@ -326,9 +335,9 @@ They justify explicit normalization and staged rollout.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - normalized bundle emission is specified but not yet emitted by the current runner,
-  - replay-appliance-aware diff bundle emission is not yet emitted under `replay-appliance/`,
-  - explain and distillation flows remain planned rather than realized,
-  - the adapter manifest intentionally remains conservative on capability claims until replay-appliance-aware diff evidence is promoted
+  - checked-in replay-appliance-aware ordinary and retained-failure baselines now exist,
+  - bundle-validator and explain artifacts now exist for the current realized scope,
+  - `cap.C4.distill_valid` and `cap.C5.pack_valid` remain later promotion lanes,
+  - broader mismatch-family explain coverage remains a later widening lane
 - claim_confidence: provisional
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` missing

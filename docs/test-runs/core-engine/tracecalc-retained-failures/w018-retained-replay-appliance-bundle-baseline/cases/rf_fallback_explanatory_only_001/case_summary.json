@@ -1,0 +1,19 @@
+{
+  "artifact_paths": {
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+    "witness_bundle_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w018-retained-replay-appliance-bundle-baseline/cases/rf_fallback_explanatory_only_001/witness_bundle/scenario.json"
+  },
+  "case_id": "rf_fallback_explanatory_only_001",
+  "description": "Explanatory-only retained witness over fallback counter behavior.",
+  "lifecycle_state": "wit.explanatory_only",
+  "notes": [
+    "This case remains explanatory-only even though the source scenario replays.",
+    "The predicate is tracked over fallback counters rather than promoted to retained-local status."
+  ],
+  "predicate_preserved": false,
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "source_scenario_id": "tc_fallback_reentry_001"
+}

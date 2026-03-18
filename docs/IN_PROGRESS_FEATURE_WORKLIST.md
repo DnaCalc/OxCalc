@@ -41,7 +41,7 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: canonical recalc and overlay architecture is drafted, and the local Stage 1 floor now executes a widened planner-driven slice with deterministic multi-node DAG scheduling, first SCC-oriented handling, fallback re-entry, emitted per-scenario counters, and passing tests plus a checked-in widened baseline run.
-- **Remaining gaps**: richer runtime-effect handling, broader overlay-economics reporting, replay-appliance bundle projection, and later concurrency-facing widening.
+- **Remaining gaps**: richer runtime-effect handling, broader overlay-economics reporting, replay-appliance bundle validation and explain emission, and later concurrency-facing widening.
 - **Why still open**: the widened Stage 1 slice now exists, but later evidence, replay projection, and Stage 2-facing lanes remain partial.
 - **Canonical owner**: W004.
 
@@ -57,7 +57,7 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: formalization and assurance direction is drafted, W006 is active, W007 contains the first Lean-facing object inventory and transition-boundary packet, W008 contains the first TLA+-oriented coordinator-state and safety-boundary packet plus explicit Stage 1 transition bindings, W009 contains the replay-class and pack-binding matrix through `R8`, W010 contains the experiment-register and measurement-schema packet, and the repo now includes Lean, TLA+, replay-seed, measurement-schema, emitted counter, and widened baseline run artifacts; the Lean state file has been typechecked locally and the TLA+ smoke model has been checked once with TLC.
-- **Remaining gaps**: theorem authoring, richer TLA+ model exploration, replay-appliance bundle projection, pack artifact creation, and later retained-witness evidence.
+- **Remaining gaps**: theorem authoring, richer TLA+ model exploration, replay-appliance bundle validation, pack artifact creation, and later retained-witness evidence.
 - **Why still open**: the assurance lane now has real widened Stage 1 evidence, but its later proof, pack, and replay-appliance lanes remain partial.
 - **Canonical owner**: W006.
 
@@ -73,7 +73,7 @@ Last updated: 2026-03-16.
 
 - **Status**: in-progress
 - **Current floor**: `W012` now includes an executable `TraceCalc Reference Machine`, an engine adapter, conformance comparison logic, planner-driven DAG and SCC coverage, and checked-in emitted oracle/conformance baseline runs for both the original and widened 12-scenario corpora.
-- **Remaining gaps**: richer trace comparison policy beyond the first conformance surface, replay-appliance bundle projection, reduced-witness flows, and later continuous engine-versus-oracle series beyond the current baseline runs.
+- **Remaining gaps**: richer trace comparison policy beyond the first conformance surface, replay-appliance bundle validation, reduced-witness flows, and later continuous engine-versus-oracle series beyond the current baseline runs.
 - **Why still open**: the oracle is exercised over the widened Stage 1 slice, but later replay-appliance and retained-witness lanes remain partial.
 - **Canonical owner**: W012.
 
@@ -103,11 +103,11 @@ Last updated: 2026-03-16.
 
 ### IP-12: Replay Appliance Bundle Emission and Capability Promotion
 
-- **Status**: planned
-- **Current floor**: `W018` is now sequenced as the successor packet for emitted replay-appliance bundle realization, validator rollout, explain-surface emission, and capability-floor promotion over the active Rust runner.
-- **Remaining gaps**: emitted bundle roots, validator evidence, explain-record emission, capability-manifest promotion, and a checked-in replay-appliance-aware baseline.
-- **Why still open**: W018 is newly sequenced and no realization artifacts exist yet for its declared scope.
-- **Canonical owner**: W018.
+- **Status**: in-progress
+- **Current floor**: `W018` has reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in replay-appliance-aware baselines, and a refreshed capability claim through `cap.C3.explain_valid`.
+- **Remaining gaps**: `cap.C4.distill_valid`, `cap.C5.pack_valid`, and broader mismatch-family explain coverage.
+- **Why still open**: W018 discharged its declared scope, but the broader replay-appliance feature area remains active beyond this first bundle-valid and explain-valid baseline.
+- **Canonical owner**: W019.
 
 
 

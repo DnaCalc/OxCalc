@@ -22,6 +22,15 @@ use crate::replay_mappings::{
 };
 use crate::witness::{TraceCalcWitnessSeedInputs, build_witness_seed};
 
+const REPLAY_BUNDLE_MANIFEST_SCHEMA_V1: &str = "oxcalc.local.replay_bundle_manifest.v1";
+const REPLAY_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.local.replay_run_manifest.v1";
+const REPLAY_ADAPTER_CAPABILITY_SNAPSHOT_SCHEMA_V1: &str =
+    "oxcalc.local.adapter_capability_snapshot.v1";
+const REPLAY_BUNDLE_VALIDATION_SCHEMA_V1: &str = "oxcalc.local.replay_bundle_validation.v1";
+const REPLAY_EXPLAIN_RECORD_SCHEMA_V1: &str = "oxcalc.local.replay_explain_record.v1";
+const FOUNDATION_REPLAY_REGISTRY_VERSION: &str =
+    "foundation.replay.authoritative-pass-01.2026-03-15";
+
 #[derive(Debug, Error)]
 pub enum TraceCalcRunnerError {
     #[error(transparent)]
@@ -103,8 +112,31 @@ impl TraceCalcRunner {
         create_directory(&artifact_root.join("scenarios"))?;
         create_directory(&artifact_root.join("conformance"))?;
         create_directory(&artifact_root.join("replay-appliance"))?;
+        create_directory(&artifact_root.join("replay-appliance/adapter_capabilities"))?;
         create_directory(&artifact_root.join("replay-appliance/reductions"))?;
+        create_directory(&artifact_root.join("replay-appliance/runs"))?;
+        create_directory(&artifact_root.join("replay-appliance/validation"))?;
+        create_directory(&artifact_root.join("replay-appliance/runs").join(run_id))?;
+        create_directory(
+            &artifact_root
+                .join("replay-appliance/runs")
+                .join(run_id)
+                .join("scenarios"),
+        )?;
+        create_directory(
+            &artifact_root
+                .join("replay-appliance/runs")
+                .join(run_id)
+                .join("diff"),
+        )?;
+        create_directory(
+            &artifact_root
+                .join("replay-appliance/runs")
+                .join(run_id)
+                .join("oracle"),
+        )?;
         create_directory(&artifact_root.join("replay-appliance/witnesses"))?;
+        write_bundle_capability_snapshot(&artifact_root, run_id)?;
 
         write_json(
             &artifact_root.join("manifest_selection.json"),
@@ -126,6 +158,7 @@ impl TraceCalcRunner {
         let mut scenario_results = Vec::new();
         let mut oracle_baseline = Vec::new();
         let mut engine_diff = Vec::new();
+        let mut bundle_scenarios = Vec::new();
 
         for entry in &selected_scenarios {
             let scenario_directory = artifact_root.join("scenarios").join(&entry.scenario_id);
@@ -191,6 +224,18 @@ impl TraceCalcRunner {
                                         conformance_mismatches: &conformance_mismatches,
                                     },
                                 )?;
+                                bundle_scenarios.push(write_bundle_scenario_projection(
+                                    &artifact_root,
+                                    run_id,
+                                    Some(&scenario),
+                                    &entry.scenario_id,
+                                    result_state,
+                                    &validation_failures,
+                                    &assertion_failures,
+                                    &conformance_mismatches,
+                                    &oracle_artifacts,
+                                    &artifact_paths,
+                                )?);
                                 oracle_baseline.push(oracle_baseline_object(
                                     &entry.scenario_id,
                                     &oracle_artifacts,
@@ -236,6 +281,18 @@ impl TraceCalcRunner {
                                     &empty,
                                     &artifact_paths,
                                 )?;
+                                bundle_scenarios.push(write_bundle_scenario_projection(
+                                    &artifact_root,
+                                    run_id,
+                                    None,
+                                    &entry.scenario_id,
+                                    TraceCalcScenarioResultState::ExecutionError,
+                                    &validation,
+                                    &assertion_failures,
+                                    &[],
+                                    &empty,
+                                    &artifact_paths,
+                                )?);
                                 oracle_baseline
                                     .push(oracle_baseline_object(&entry.scenario_id, &empty));
                                 engine_diff.push(json!({
@@ -289,6 +346,18 @@ impl TraceCalcRunner {
                                 conformance_mismatches: &[],
                             },
                         )?;
+                        bundle_scenarios.push(write_bundle_scenario_projection(
+                            &artifact_root,
+                            run_id,
+                            Some(&scenario),
+                            &entry.scenario_id,
+                            TraceCalcScenarioResultState::InvalidScenario,
+                            &validation_failures,
+                            &assertion_failures,
+                            &[],
+                            &empty,
+                            &artifact_paths,
+                        )?);
                         oracle_baseline.push(oracle_baseline_object(&entry.scenario_id, &empty));
                         engine_diff.push(json!({
                             "scenario_id": entry.scenario_id,
@@ -329,6 +398,18 @@ impl TraceCalcRunner {
                         &empty,
                         &artifact_paths,
                     )?;
+                    bundle_scenarios.push(write_bundle_scenario_projection(
+                        &artifact_root,
+                        run_id,
+                        None,
+                        &entry.scenario_id,
+                        TraceCalcScenarioResultState::ExecutionError,
+                        &validation,
+                        &assertion_failures,
+                        &[],
+                        &empty,
+                        &artifact_paths,
+                    )?);
                     oracle_baseline.push(oracle_baseline_object(&entry.scenario_id, &empty));
                     engine_diff.push(json!({
                         "scenario_id": entry.scenario_id,
@@ -356,6 +437,16 @@ impl TraceCalcRunner {
             &artifact_root.join("conformance/engine_diff.json"),
             &json!(engine_diff),
         )?;
+        write_bundle_run_projection(
+            &artifact_root,
+            run_id,
+            &relative_artifact_root,
+            &bundle_scenarios,
+            &oracle_baseline,
+            &engine_diff,
+        )?;
+        write_bundle_explain_records(&artifact_root, run_id, &engine_diff)?;
+        write_bundle_validation(repo_root, &artifact_root, run_id, &bundle_scenarios)?;
 
         let mut result_counts = BTreeMap::new();
         for result in &scenario_results {
@@ -413,6 +504,400 @@ fn write_json(path: &Path, value: &serde_json::Value) -> Result<(), TraceCalcRun
         path: path.display().to_string(),
         source,
     })
+}
+
+fn write_jsonl(path: &Path, lines: &[String]) -> Result<(), TraceCalcRunnerError> {
+    let mut text = lines.join("\n");
+    if !text.is_empty() {
+        text.push('\n');
+    }
+    fs::write(path, text).map_err(|source| TraceCalcRunnerError::WriteFile {
+        path: path.display().to_string(),
+        source,
+    })
+}
+
+fn write_bundle_capability_snapshot(
+    artifact_root: &Path,
+    run_id: &str,
+) -> Result<(), TraceCalcRunnerError> {
+    write_json(
+        &artifact_root.join("replay-appliance/adapter_capabilities/oxcalc.json"),
+        &json!({
+            "schema_version": REPLAY_ADAPTER_CAPABILITY_SNAPSHOT_SCHEMA_V1,
+            "adapter_id": "oxcalc-tracecalc-replay-adapter",
+            "lane_id": "oxcalc",
+            "run_id": run_id,
+            "canonical_manifest_ref": "docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json",
+            "claimed_capability_levels": ["cap.C0.ingest_valid", "cap.C1.replay_valid", "cap.C2.diff_valid", "cap.C3.explain_valid"],
+            "target_capability_levels": ["cap.C4.distill_valid"],
+            "projection_scope": "run_local_snapshot_only",
+            "known_limits": [
+                "oxcalc.local.limit.explain_coverage_is_current_family_only",
+                "oxcalc.local.limit.distill_valid_not_proven",
+                "oxcalc.local.limit.pack_valid_not_proven"
+            ],
+            "registry_version_ref": FOUNDATION_REPLAY_REGISTRY_VERSION,
+        }),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn write_bundle_scenario_projection(
+    artifact_root: &Path,
+    run_id: &str,
+    scenario: Option<&TraceCalcScenario>,
+    scenario_id: &str,
+    result_state: TraceCalcScenarioResultState,
+    validation_failures: &[TraceCalcValidationFailure],
+    assertion_failures: &[String],
+    conformance_mismatches: &[TraceCalcConformanceMismatch],
+    artifacts: &TraceCalcExecutionArtifacts,
+    artifact_paths: &[(String, String)],
+) -> Result<serde_json::Value, TraceCalcRunnerError> {
+    let bundle_scenario_root = artifact_root
+        .join("replay-appliance/runs")
+        .join(run_id)
+        .join("scenarios")
+        .join(scenario_id);
+    create_directory(&bundle_scenario_root)?;
+    create_directory(&bundle_scenario_root.join("views"))?;
+
+    let relative_bundle_root = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "tracecalc-reference-machine",
+        run_id,
+        "replay-appliance",
+        "runs",
+        run_id,
+        "scenarios",
+        scenario_id,
+    ]);
+
+    write_json(
+        &bundle_scenario_root.join("result.json"),
+        &json!({
+            "scenario_id": scenario_id,
+            "result_state": to_snake_case(&format!("{result_state:?}")),
+            "validation_failures": validation_failures.iter().map(|failure| json!({
+                "kind": to_snake_case(&format!("{:?}", failure.kind)),
+                "message": failure.message,
+            })).collect::<Vec<_>>(),
+            "assertion_failures": assertion_failures,
+            "conformance_mismatches": conformance_mismatches.iter().map(mismatch_object).collect::<Vec<_>>(),
+            "replay_projection": scenario.and_then(|scenario| scenario.replay_projection.as_ref()).map(|projection| json!({
+                "replay_classes": projection.replay_classes,
+                "pack_bindings": projection.pack_bindings,
+                "required_equality_surfaces": projection.required_equality_surfaces,
+                "normalized_event_family_map_ref": projection.normalized_event_family_map_ref,
+                "safety_properties": projection.safety_properties,
+                "transition_labels": projection.transition_labels,
+            })),
+            "source_artifact_paths": BTreeMap::from_iter(artifact_paths.iter().cloned()),
+        }),
+    )?;
+    write_jsonl(
+        &bundle_scenario_root.join("events.jsonl"),
+        &artifacts
+            .trace_events
+            .iter()
+            .map(|event| {
+                serde_json::to_string(&json!({
+                    "event_id": event.event_id,
+                    "step_id": event.step_id,
+                    "source_label": event.label,
+                    "normalized_event_family": normalize_event_family(&event.label),
+                    "payload": BTreeMap::from_iter(event.payload.clone()),
+                }))
+                .expect("event serialization should succeed")
+            })
+            .collect::<Vec<_>>(),
+    )?;
+    write_json(
+        &bundle_scenario_root.join("counters.json"),
+        &json!({
+            "scenario_id": scenario_id,
+            "counters": counter_entries(&artifacts.counters),
+        }),
+    )?;
+    write_json(
+        &bundle_scenario_root.join("views/published_view.json"),
+        &json!({
+            "scenario_id": scenario_id,
+            "snapshot_id": scenario.map(|scenario| scenario.initial_graph.snapshot_id.clone()).unwrap_or_default(),
+            "node_values": value_entries(&artifacts.published_values),
+        }),
+    )?;
+    write_json(
+        &bundle_scenario_root.join("views/pinned_views.json"),
+        &json!({
+            "scenario_id": scenario_id,
+            "views": artifacts.pinned_views.iter().map(|view| json!({
+                "view_id": view.view_id,
+                "snapshot_id": view.snapshot_id,
+                "node_values": value_entries(&view.node_values),
+            })).collect::<Vec<_>>(),
+        }),
+    )?;
+    write_json(
+        &bundle_scenario_root.join("views/reject_set.json"),
+        &json!({
+            "scenario_id": scenario_id,
+            "rejects": artifacts.rejects.iter().map(|reject| json!({
+                "reject_id": reject.reject_id,
+                "reject_kind": reject.reject_kind,
+                "reject_detail": reject.reject_detail,
+            })).collect::<Vec<_>>(),
+        }),
+    )?;
+
+    Ok(json!({
+        "scenario_id": scenario_id,
+        "result_state": to_snake_case(&format!("{result_state:?}")),
+        "replay_classes": scenario
+            .and_then(|scenario| scenario.replay_projection.as_ref())
+            .map(|projection| projection.replay_classes.clone())
+            .unwrap_or_default(),
+        "required_equality_surfaces": scenario
+            .and_then(|scenario| scenario.replay_projection.as_ref())
+            .map(|projection| projection.required_equality_surfaces.clone())
+            .unwrap_or_default(),
+        "bundle_artifact_paths": {
+            "result": relative_artifact_path([&relative_bundle_root, "result.json"]),
+            "events": relative_artifact_path([&relative_bundle_root, "events.jsonl"]),
+            "counters": relative_artifact_path([&relative_bundle_root, "counters.json"]),
+            "published_view": relative_artifact_path([&relative_bundle_root, "views", "published_view.json"]),
+            "pinned_views": relative_artifact_path([&relative_bundle_root, "views", "pinned_views.json"]),
+            "reject_set": relative_artifact_path([&relative_bundle_root, "views", "reject_set.json"]),
+        },
+        "source_artifact_paths": BTreeMap::from_iter(artifact_paths.iter().cloned()),
+    }))
+}
+
+fn write_bundle_run_projection(
+    artifact_root: &Path,
+    run_id: &str,
+    relative_artifact_root: &str,
+    bundle_scenarios: &[serde_json::Value],
+    oracle_baseline: &[serde_json::Value],
+    engine_diff: &[serde_json::Value],
+) -> Result<(), TraceCalcRunnerError> {
+    let replay_root = artifact_root.join("replay-appliance");
+    let replay_run_root = replay_root.join("runs").join(run_id);
+
+    write_json(
+        &replay_run_root.join("oracle/oracle_baseline.json"),
+        &json!(oracle_baseline),
+    )?;
+    write_json(
+        &replay_run_root.join("diff/engine_diff.json"),
+        &json!(engine_diff),
+    )?;
+    write_json(
+        &replay_run_root.join("run_manifest.json"),
+        &json!({
+            "schema_version": REPLAY_RUN_MANIFEST_SCHEMA_V1,
+            "run_kind": "tracecalc_reference_run",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "source_run_summary_path": relative_artifact_path([relative_artifact_root, "run_summary.json"]),
+            "source_manifest_selection_path": relative_artifact_path([relative_artifact_root, "manifest_selection.json"]),
+            "source_oracle_baseline_path": relative_artifact_path([relative_artifact_root, "conformance", "oracle_baseline.json"]),
+            "source_engine_diff_path": relative_artifact_path([relative_artifact_root, "conformance", "engine_diff.json"]),
+            "bundle_diff_path": relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "runs",
+                run_id,
+                "diff",
+                "engine_diff.json",
+            ]),
+            "scenarios": bundle_scenarios,
+        }),
+    )?;
+    write_json(
+        &replay_root.join("bundle_manifest.json"),
+        &json!({
+            "schema_version": REPLAY_BUNDLE_MANIFEST_SCHEMA_V1,
+            "bundle_kind": "tracecalc_reference_run",
+            "lane_id": "oxcalc",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "run_manifest_path": relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "runs",
+                run_id,
+                "run_manifest.json",
+            ]),
+            "adapter_capabilities_path": relative_artifact_path([
+                relative_artifact_root,
+                "replay-appliance",
+                "adapter_capabilities",
+                "oxcalc.json",
+            ]),
+            "preserved_view_families": [
+                "published_view",
+                "pinned_view",
+                "reject_set",
+                "assertion_result_set",
+                "counter_set",
+            ],
+            "projection_status": "projection_validated_with_explain",
+            "registry_version_ref": FOUNDATION_REPLAY_REGISTRY_VERSION,
+        }),
+    )
+}
+
+fn write_bundle_validation(
+    repo_root: &Path,
+    artifact_root: &Path,
+    run_id: &str,
+    bundle_scenarios: &[serde_json::Value],
+) -> Result<(), TraceCalcRunnerError> {
+    let mut checked_paths = vec![
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            run_id,
+            "replay-appliance",
+            "bundle_manifest.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            run_id,
+            "replay-appliance",
+            "adapter_capabilities",
+            "oxcalc.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            run_id,
+            "replay-appliance",
+            "runs",
+            run_id,
+            "run_manifest.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            run_id,
+            "replay-appliance",
+            "runs",
+            run_id,
+            "diff",
+            "engine_diff.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            run_id,
+            "replay-appliance",
+            "runs",
+            run_id,
+            "diff",
+            "explain_records.json",
+        ]),
+    ];
+    for scenario in bundle_scenarios {
+        if let Some(paths) = scenario["bundle_artifact_paths"].as_object() {
+            checked_paths.extend(
+                paths
+                    .values()
+                    .filter_map(|value| value.as_str())
+                    .map(str::to_string),
+            );
+        }
+    }
+
+    let missing_paths = checked_paths
+        .iter()
+        .filter(|path| !repo_root.join(path).exists())
+        .cloned()
+        .collect::<Vec<_>>();
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+        &json!({
+            "schema_version": REPLAY_BUNDLE_VALIDATION_SCHEMA_V1,
+            "bundle_kind": "tracecalc_reference_run",
+            "run_id": run_id,
+            "status": if missing_paths.is_empty() { "bundle_valid" } else { "bundle_degraded" },
+            "degraded_capture": !missing_paths.is_empty(),
+            "checked_paths": checked_paths,
+            "missing_paths": missing_paths,
+        }),
+    )
+}
+
+fn write_bundle_explain_records(
+    artifact_root: &Path,
+    run_id: &str,
+    engine_diff: &[serde_json::Value],
+) -> Result<(), TraceCalcRunnerError> {
+    let explain_records = engine_diff
+        .iter()
+        .flat_map(|entry| {
+            let scenario_id = entry["scenario_id"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
+            entry["mismatches"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .enumerate()
+                .map(move |(index, mismatch)| {
+                    json!({
+                        "schema_version": REPLAY_EXPLAIN_RECORD_SCHEMA_V1,
+                        "explain_id": format!("{scenario_id}--why-diff-{}", index + 1),
+                        "explain_kind": "why_diff",
+                        "scenario_id": scenario_id,
+                        "mismatch_kind": mismatch["mismatch_kind"],
+                        "severity_class": mismatch["severity_class"],
+                        "required_equality_surface": mismatch["required_equality_surface"],
+                        "message": mismatch["message"],
+                        "source_refs": {
+                            "bundle_diff_path": relative_artifact_path([
+                                "docs",
+                                "test-runs",
+                                "core-engine",
+                                "tracecalc-reference-machine",
+                                run_id,
+                                "replay-appliance",
+                                "runs",
+                                run_id,
+                                "diff",
+                                "engine_diff.json",
+                            ]),
+                        },
+                    })
+                })
+        })
+        .collect::<Vec<_>>();
+
+    write_json(
+        &artifact_root
+            .join("replay-appliance/runs")
+            .join(run_id)
+            .join("diff/explain_records.json"),
+        &json!(explain_records),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -749,6 +1234,47 @@ mod tests {
                 )
                 .exists()
         );
+        assert!(
+            artifact_root
+                .join("replay-appliance/bundle_manifest.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/adapter_capabilities/oxcalc.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!("replay-appliance/runs/{run_id}/run_manifest.json"))
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!(
+                    "replay-appliance/runs/{run_id}/scenarios/tc_verify_clean_no_publish_001/events.jsonl"
+                ))
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!(
+                    "replay-appliance/runs/{run_id}/diff/engine_diff.json"
+                ))
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/bundle_validation.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join(format!(
+                    "replay-appliance/runs/{run_id}/diff/explain_records.json"
+                ))
+                .exists()
+        );
 
         let diff_document = serde_json::from_str::<Value>(
             &fs::read_to_string(artifact_root.join("conformance/engine_diff.json")).unwrap(),
@@ -836,6 +1362,40 @@ mod tests {
                 .iter()
                 .any(|unit| unit["unit_kind"] == "reject_record" && unit["reject_id"] == "rej1")
         );
+
+        let bundle_manifest = serde_json::from_str::<Value>(
+            &fs::read_to_string(artifact_root.join("replay-appliance/bundle_manifest.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            bundle_manifest["projection_status"],
+            "projection_validated_with_explain"
+        );
+
+        let bundle_events = fs::read_to_string(artifact_root.join(format!(
+            "replay-appliance/runs/{run_id}/scenarios/tc_verify_clean_no_publish_001/events.jsonl"
+        )))
+        .unwrap();
+        assert!(bundle_events.contains("\"normalized_event_family\":\"candidate.verified_clean\""));
+
+        let bundle_validation = serde_json::from_str::<Value>(
+            &fs::read_to_string(
+                artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(bundle_validation["status"], "bundle_valid");
+
+        let explain_records = serde_json::from_str::<Value>(
+            &fs::read_to_string(artifact_root.join(format!(
+                "replay-appliance/runs/{run_id}/diff/explain_records.json"
+            )))
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(explain_records.as_array().unwrap().is_empty());
 
         cleanup();
     }

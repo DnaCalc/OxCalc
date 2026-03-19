@@ -26,6 +26,12 @@ Current W021 gate baseline:
 Current W022 direct-binding family baseline:
 1. `w022-sequence1-direct-binding-family`
 
+Current W022 shared-lifecycle family baseline:
+1. `w022-sequence2-shared-lifecycle-family`
+
+Current W022 decision baseline:
+1. `w022-sequence3-pack-decision`
+
 It is emitted by:
 1. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w016-sequence4-retained-failure-baseline`
 2. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w018-retained-replay-appliance-bundle-baseline`
@@ -33,6 +39,8 @@ It is emitted by:
 4. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w021-sequence1-pack-contract`
 5. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w021-pack-grade-gate-baseline`
 6. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence1-direct-binding-family`
+7. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence2-shared-lifecycle-family`
+8. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence3-pack-decision`
 
 The current retained-failure baseline carries:
 1. one replay-valid retained-local witness family,
@@ -65,11 +73,21 @@ The W022 Sequence 1 baseline additionally carries:
 2. pack-facing metadata proving that the direct-binding family is now exercised locally,
 3. a narrowed pack-grade blocker set focused on missing shared-lifecycle evidence.
 
+The W022 Sequence 2 baseline additionally carries:
+1. one replay-valid retained-shared witness family,
+2. pack-facing validation that family coverage is now reached for the current semantic-only `TraceCalc` pack scope,
+3. no claim of `cap.C5.pack_valid`, leaving that as the explicit next decision lane.
+
+The W022 Sequence 3 baseline additionally carries:
+1. an explicit `pack_grade_decision.json` artifact,
+2. a bounded local decision to keep `cap.C5.pack_valid` unclaimed for the current semantic-only scope,
+3. a packetized residual lane in `W023` rather than an implicit lingering blocker.
+
 ## Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, the W019 distill-valid retained-failure baseline, the W021 gate baseline, and the W022 direct-binding family baseline
-  - retained-shared or pack-promoted witness-family evidence and later shared replay governance remain later lanes
+  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, the W019 distill-valid retained-failure baseline, the W021 gate baseline, and the W022 direct-binding, shared-lifecycle, and decision baselines
+  - the next live lane is the broader program-grade pack promotion packet in W023

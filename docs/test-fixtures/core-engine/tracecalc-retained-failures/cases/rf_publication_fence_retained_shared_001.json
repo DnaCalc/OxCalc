@@ -1,0 +1,29 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_publication_fence_retained_shared_001",
+  "description": "Replay-valid retained-shared witness over the publication-fence reject surface for shared-lifecycle pack coverage.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_publication_fence_reject_001.json",
+  "lifecycle_target": "wit.retained_shared",
+  "target_mismatch_kind": "reject_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "reject_id_present",
+    "reference": "rej1"
+  },
+  "quarantine_reason": null,
+  "pack_candidate_rehearsal": true,
+  "pack_family_id": "pf.semantic_only_retained_shared",
+  "notes": [
+    "This case widens pack-family coverage from retained-local only to an explicit retained-shared family.",
+    "It keeps the current TraceCalc pack scope semantic-only and replay-valid without claiming pack-grade promotion."
+  ]
+}

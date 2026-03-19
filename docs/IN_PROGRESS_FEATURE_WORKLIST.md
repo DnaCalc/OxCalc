@@ -104,10 +104,10 @@ Last updated: 2026-03-19.
 ### IP-12: Replay Appliance Bundle Emission and Capability Promotion
 
 - **Status**: in-progress
-- **Current floor**: `W019` has now reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in ordinary and retained-failure baselines, replay-valid reduced-witness distillation artifacts, run-level `distill_validation.json`, and a refreshed capability claim through `cap.C4.distill_valid`. `W021` then converted the pack-grade gap into bounded emitted blockers, and `W022` Sequence 1 has now added a checked-in direct-binding-sensitive retained-local baseline in `w022-sequence1-direct-binding-family`.
-- **Remaining gaps**: `cap.C5.pack_valid`, retained-shared or pack-promoted witness-family evidence, broader mismatch-family explain coverage, and later pack-grade replay governance.
-- **Why still open**: W021 packetized the pack-grade gap, and W022 has now removed the direct-binding-family blocker from the current emitted validator state, but shared-lifecycle widening is still required before any later capability-promotion decision.
-- **Canonical owner**: W022.
+- **Current floor**: `W019` has now reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in ordinary and retained-failure baselines, replay-valid reduced-witness distillation artifacts, run-level `distill_validation.json`, and a refreshed capability claim through `cap.C4.distill_valid`. `W021` then converted the pack-grade gap into bounded emitted blockers, and `W022` has now added both a checked-in direct-binding-sensitive retained-local baseline in `w022-sequence1-direct-binding-family` and a checked-in retained-shared family baseline in `w022-sequence2-shared-lifecycle-family`, plus an explicit `pack_grade_decision.json` that keeps `cap.C5.pack_valid` unclaimed for the current semantic-only scope and defers any narrower handoff.
+- **Remaining gaps**: broader program-scope pack evidence beyond the current semantic-only `TraceCalc` family, broader mismatch-family explain coverage, any narrower handoff if later pack-grade promotion creates stronger seam pressure, and later pack-grade replay governance.
+- **Why still open**: W022 has now discharged its declared scope by making the capability and handoff decisions explicit, but the broader pack-promotion feature area remains active and is now carried by W023.
+- **Canonical owner**: W023.
 
 ### IP-13: OxFml Downstream Integration Rounds
 

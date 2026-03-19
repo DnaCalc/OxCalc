@@ -1,0 +1,324 @@
+{
+  "calc_space": "TraceCalc",
+  "description": "Distilled witness slice for tc_dynamic_dep_switch_001",
+  "expected": {
+    "counter_expectations": [],
+    "pinned_views": [],
+    "published_view": {
+      "node_values": [
+        {
+          "node_id": "Mode",
+          "value": "right"
+        },
+        {
+          "node_id": "Left",
+          "value": "10"
+        },
+        {
+          "node_id": "Right",
+          "value": "20"
+        },
+        {
+          "node_id": "Pick",
+          "value": "20"
+        }
+      ],
+      "snapshot_id": "s0"
+    },
+    "rejects": [],
+    "trace_labels": [
+      {
+        "count": 1,
+        "label": "candidate_admitted"
+      },
+      {
+        "count": 1,
+        "label": "candidate_emitted"
+      },
+      {
+        "count": 1,
+        "label": "candidate_published"
+      }
+    ]
+  },
+  "generator": null,
+  "initial_graph": {
+    "nodes": [
+      {
+        "expr": {
+          "op": "const",
+          "value": "left"
+        },
+        "kind": "value",
+        "node_id": "Mode"
+      },
+      {
+        "expr": {
+          "op": "const",
+          "value": 10
+        },
+        "kind": "value",
+        "node_id": "Left"
+      },
+      {
+        "expr": {
+          "op": "const",
+          "value": 20
+        },
+        "kind": "value",
+        "node_id": "Right"
+      },
+      {
+        "expr": {
+          "candidates": {
+            "left": "Left",
+            "right": "Right"
+          },
+          "op": "dyn_select",
+          "selector": "Mode"
+        },
+        "kind": "value",
+        "node_id": "Pick"
+      }
+    ],
+    "snapshot_id": "s0"
+  },
+  "initial_runtime": {
+    "pinned_views": [],
+    "published_runtime_effects": [
+      {
+        "effect_kind": "dynamic_ref_activated",
+        "owner_node_id": "Pick",
+        "payload": {
+          "dep_id": "Left"
+        }
+      }
+    ],
+    "published_values": [
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Left",
+        "value": "10"
+      },
+      {
+        "node_id": "Right",
+        "value": "20"
+      },
+      {
+        "node_id": "Pick",
+        "value": "10"
+      }
+    ],
+    "seed_overlays": []
+  },
+  "notes": [
+    "Distilled from retained-failure case 'rf_dynamic_dependency_retained_local_001' using declared reduction units."
+  ],
+  "pack_tags": [
+    "stage1",
+    "dynamic-dependency"
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.dag.dynamic_dependency_bind_semantics"
+    ],
+    "replay_classes": [
+      "R8"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "candidate_publication_boundary"
+    ],
+    "safety_properties": [
+      "S3",
+      "S6"
+    ],
+    "transition_labels": [
+      "I5",
+      "C2",
+      "C4"
+    ]
+  },
+  "scenario_id": "rf_dynamic_dependency_retained_local_001--distilled",
+  "schema_version": "tracecalc-s1",
+  "steps": [
+    {
+      "admission_id": null,
+      "candidate_result_id": null,
+      "compatibility_basis": null,
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "mark_stale",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st1",
+      "targets": [
+        "Mode",
+        "Pick"
+      ],
+      "value_updates": [],
+      "view_id": null
+    },
+    {
+      "admission_id": "adm1",
+      "candidate_result_id": null,
+      "compatibility_basis": "s0",
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "admit_work",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st2",
+      "targets": [
+        "Mode",
+        "Pick"
+      ],
+      "value_updates": [],
+      "view_id": null
+    },
+    {
+      "admission_id": null,
+      "candidate_result_id": "cand1",
+      "compatibility_basis": "s0",
+      "dependency_shape_updates": [
+        {
+          "dep_id": "Left",
+          "kind": "release_dynamic_dep",
+          "node_id": "Pick",
+          "payload": null
+        },
+        {
+          "dep_id": "Right",
+          "kind": "activate_dynamic_dep",
+          "node_id": "Pick",
+          "payload": null
+        }
+      ],
+      "diagnostic_events": [],
+      "kind": "emit_candidate_result",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [
+        {
+          "effect_kind": "dynamic_ref_released",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Left"
+          }
+        },
+        {
+          "effect_kind": "dynamic_ref_activated",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Right"
+          }
+        }
+      ],
+      "snapshot_id": null,
+      "step_id": "st3",
+      "targets": [],
+      "value_updates": [
+        {
+          "node_id": "Mode",
+          "value": "right"
+        },
+        {
+          "node_id": "Pick",
+          "value": "20"
+        }
+      ],
+      "view_id": null
+    },
+    {
+      "admission_id": null,
+      "candidate_result_id": "cand1",
+      "compatibility_basis": null,
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "publish_candidate",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": "pub1",
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st4",
+      "targets": [],
+      "value_updates": [],
+      "view_id": null
+    }
+  ],
+  "tags": [
+    "dynamic",
+    "dependency"
+  ],
+  "witness_anchors": {
+    "event_groups": [
+      {
+        "event_group_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "phase_blocks": [
+      {
+        "phase_block_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "scenario_anchor_id": "tc_dynamic_dep_switch_001/scenario",
+    "view_slices": [
+      {
+        "view_id": null,
+        "view_kind": "published_view",
+        "view_slice_id": "published/current"
+      }
+    ]
+  }
+}

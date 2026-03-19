@@ -1,0 +1,24 @@
+{
+  "artifact_root": "\\\\?\\C:\\Work\\DnaCalc\\OxCalc\\docs\\test-runs\\core-engine\\tracecalc-retained-failures\\w022-sequence2-shared-lifecycle-family",
+  "case_count": 6,
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      3
+    ],
+    [
+      "wit.retained_shared",
+      1
+    ]
+  ],
+  "run_id": "w022-sequence2-shared-lifecycle-family",
+  "schema_version": "oxcalc.tracecalc.retained_failure_manifest.v1"
+}

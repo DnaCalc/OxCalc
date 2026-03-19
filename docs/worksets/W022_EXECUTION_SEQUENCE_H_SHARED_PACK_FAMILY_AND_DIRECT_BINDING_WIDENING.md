@@ -11,7 +11,7 @@ This packet exists to:
 
 ## Position and Dependencies
 - **Depends on**: W021
-- **Blocks**: later shared replay-pack promotion lanes
+- **Blocks**: W023
 - **Cross-repo**: may become the first packet that justifies a narrower `HANDOFF-CALC-002` if widened shared-pack or direct-binding evidence creates stronger seam pressure
 
 ## Scope
@@ -31,6 +31,7 @@ This packet exists to:
 3. bounded evidence plan for direct-binding-sensitive pack families
 4. explicit handoff-decision criteria for any later `HANDOFF-CALC-002`
 5. first checked-in direct-binding-sensitive retained-local baseline for the current local `TraceCalc` scope
+6. explicit pack-grade capability and handoff decision artifact for the current semantic-only scope
 
 ## Gate Model
 ### Entry gate
@@ -50,15 +51,19 @@ This packet exists to:
 ### Evidence Layout
 - canonical artifact root:
   - `docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/`
+  - `docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence2-shared-lifecycle-family/`
 - checked-in or ephemeral:
   - checked-in
 - baseline run naming:
   - Sequence 1 direct-binding family baseline: `w022-sequence1-direct-binding-family`
+  - Sequence 2 shared-lifecycle family baseline: `w022-sequence2-shared-lifecycle-family`
+  - Sequence 3 decision baseline: `w022-sequence3-pack-decision`
 
 ### Replay-Corpus Readiness
 - required retained-failure cases:
   - `rf_publication_fence_retained_local_001`
   - `rf_dynamic_dependency_retained_local_001`
+  - `rf_publication_fence_retained_shared_001`
   - `rf_direct_binding_sensitive_retained_local_001`
 - reserve or later replay families:
   - retained-shared and pack-promoted witness families remain later sequences
@@ -98,26 +103,22 @@ Exit condition:
 1. capability decision and handoff decision are explicit
 
 ## Pre-Closure Verification Checklist
-1. spec text and realization notes updated for all in-scope items: no
-2. pack expectations updated for affected packs: no
-3. at least one deterministic replay artifact exists per in-scope behavior: no
-4. semantic-equivalence statement provided for policy or strategy changes: no
-5. FEC/F3E cross-repo impact assessed and handoff filed if needed: no
-6. all required tests pass: no
-7. no known semantic gaps remain in declared scope: no
-8. completion language audit passed: no
-9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: no
-10. `CURRENT_BLOCKERS.md` updated if needed: no
+1. spec text and realization notes updated for all in-scope items: yes
+2. pack expectations updated for affected packs: yes
+3. at least one deterministic replay artifact exists per in-scope behavior: yes
+4. semantic-equivalence statement provided for policy or strategy changes: yes
+5. FEC/F3E cross-repo impact assessed and handoff filed if needed: yes
+6. all required tests pass: yes
+7. no known semantic gaps remain in declared scope: yes
+8. completion language audit passed: yes
+9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: yes
+10. `CURRENT_BLOCKERS.md` updated if needed: no new blocker entries were required
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - Sequence 1 has reached its gate with a checked-in direct-binding-sensitive retained-local baseline at `w022-sequence1-direct-binding-family`
-  - retained-shared or pack-promoted witness-family widening remains open
-  - the remaining pack-grade blocker is now `pack.grade.shared_lifecycle.unexercised`
-  - no narrower follow-on handoff is justified yet
-- claim_confidence: provisional
-- reviewed_inbound_observations: W020 remains the carried downstream seam intake baseline; provider-failure and callable-publication remain watch lanes only until widened pack evidence creates stronger pressure
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: []
+- claim_confidence: validated
+- reviewed_inbound_observations: W020 remains the carried downstream seam intake baseline; provider-failure and callable-publication remain watch lanes only until broader program-grade pack evidence creates stronger pressure

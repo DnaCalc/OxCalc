@@ -259,7 +259,7 @@ For this pass, the highest honest claim is:
 Known current limits include:
 1. explain coverage is still limited to the current realized ordinary-diff and retained-failure family set,
 2. a semantic-only `TraceCalc` pack-grade contract and validator now exist for the current retained-failure family, but the current validator blocks promotion on missing shared-lifecycle and direct-binding-sensitive pack evidence,
-3. `cap.C5.pack_valid` is not claimed because the repo does not yet contain pack-grade Replay appliance evidence.
+3. W022 now exercises retained-shared and direct-binding-sensitive witness families and emits an explicit pack-grade decision artifact, but `cap.C5.pack_valid` is still not claimed because the repo does not yet contain broader program-grade pack evidence beyond the current semantic-only `TraceCalc` scope.
 
 ## 10. Registry Version Pins
 
@@ -317,7 +317,8 @@ If a reduced artifact is explanatory-only rather than replay-valid, that status 
 Open alignment items include:
 1. closing the gap between current source trace labels and normalized event-family emission,
 2. widening explain coverage beyond the current retained-failure and ordinary-diff family set,
-3. proving `cap.C5.pack_valid` with retained-shared or pack-promoted witness families and direct-binding-sensitive pack evidence.
+3. proving `cap.C5.pack_valid` with broader program-grade pack evidence beyond the current semantic-only `TraceCalc` witness families.
+4. deciding whether broader program-grade pack evidence later justifies a narrower `HANDOFF-CALC-002`.
 
 ## 13. Current Semantic Conflict Notes
 The following conflicts remain explicitly adapted rather than silently resolved:

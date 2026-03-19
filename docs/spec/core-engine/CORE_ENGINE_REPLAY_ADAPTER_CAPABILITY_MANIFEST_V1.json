@@ -26,7 +26,7 @@
     },
     {
       "limit_id": "oxcalc.local.limit.pack_valid_not_proven",
-      "summary": "W021 now emits a semantic-only pack-grade contract and pack-grade validation artifact, but cap.C5.pack_valid remains unclaimed because retained-shared or pack-promoted witness families and direct-binding-sensitive pack evidence are not yet exercised."
+      "summary": "W022 now exercises retained-shared and direct-binding-sensitive witness families and emits an explicit pack-grade decision artifact, but cap.C5.pack_valid remains unclaimed because the current evidence is still limited to the semantic-only TraceCalc scope rather than broader program-grade pack evidence."
     }
   ],
   "conformance_artifact_refs": [
@@ -42,7 +42,10 @@
     "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_publication_fence_retained_local_001/distill_validation.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_contract.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_validation.json"
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_contract.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_decision.json"
   ],
   "registry_version_refs": [
     {
@@ -80,6 +83,7 @@
     "OxCalc preserves local authority over TraceCalc scenarios, Stage 1 replay classes, and reference-machine semantics.",
     "Source labels remain preserved even when normalized event families are added.",
     "This manifest now claims through cap.C4.distill_valid on the basis of checked-in bundle-valid ordinary and retained-failure distillation evidence.",
-    "W021 adds a semantic-only pack-grade contract and pack-grade validation artifact, but cap.C5.pack_valid remains intentionally unclaimed because shared-lifecycle and direct-binding-sensitive pack evidence are not yet exercised."
+    "W021 adds the first semantic-only pack-grade contract and pack-grade validation artifact.",
+    "W022 then exercises retained-shared and direct-binding-sensitive witness families and emits a pack-grade decision artifact, but cap.C5.pack_valid remains intentionally unclaimed because the current evidence is still limited to the semantic-only TraceCalc scope."
   ]
 }

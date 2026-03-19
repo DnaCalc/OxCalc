@@ -1,0 +1,42 @@
+[
+  {
+    "case_id": "rf_publication_fence_retained_local_001",
+    "path": "rf_publication_fence_retained_local_001.json",
+    "tags": [
+      "retained_local",
+      "reject_mismatch"
+    ]
+  },
+  {
+    "case_id": "rf_fallback_explanatory_only_001",
+    "path": "rf_fallback_explanatory_only_001.json",
+    "tags": [
+      "explanatory_only",
+      "counter_mismatch"
+    ]
+  },
+  {
+    "case_id": "rf_verify_clean_quarantined_001",
+    "path": "rf_verify_clean_quarantined_001.json",
+    "tags": [
+      "quarantined",
+      "capture_insufficient"
+    ]
+  },
+  {
+    "case_id": "rf_dynamic_dependency_retained_local_001",
+    "path": "rf_dynamic_dependency_retained_local_001.json",
+    "tags": [
+      "retained_local",
+      "dynamic_dependency"
+    ]
+  },
+  {
+    "case_id": "rf_direct_binding_sensitive_retained_local_001",
+    "path": "rf_direct_binding_sensitive_retained_local_001.json",
+    "tags": [
+      "retained_local",
+      "direct_binding_sensitive"
+    ]
+  }
+]

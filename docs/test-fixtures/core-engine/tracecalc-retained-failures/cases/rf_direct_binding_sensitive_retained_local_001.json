@@ -1,0 +1,34 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_direct_binding_sensitive_retained_local_001",
+  "description": "Replay-valid retained witness whose pack-facing meaning depends on concrete direct-binding identity.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_accept_publish_001.json",
+  "lifecycle_target": "wit.retained_local",
+  "target_mismatch_kind": "published_view_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "published_view_present",
+    "reference": "published/current"
+  },
+  "quarantine_reason": null,
+  "pack_candidate_rehearsal": true,
+  "pack_family_id": "pf.direct_binding_sensitive_retained_local",
+  "binding_identity_requirement": "binding.direct_identity_required",
+  "binding_identity_refs": [
+    "tracecalc.node:A",
+    "tracecalc.node:B"
+  ],
+  "notes": [
+    "This is a local TraceCalc analogue for a direct-binding-sensitive pack family.",
+    "It does not claim full Excel binding semantics, but it makes the binding-identity preservation requirement explicit in emitted replay-pack artifacts."
+  ]
+}

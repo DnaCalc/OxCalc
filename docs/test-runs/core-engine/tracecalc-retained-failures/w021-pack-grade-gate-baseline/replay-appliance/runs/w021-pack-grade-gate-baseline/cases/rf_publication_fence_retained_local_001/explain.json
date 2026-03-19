@@ -1,0 +1,31 @@
+{
+  "case_id": "rf_publication_fence_retained_local_001",
+  "distill_status": "distill_valid",
+  "explain_id": "rf_publication_fence_retained_local_001--why-diff",
+  "explain_kind": "why_diff",
+  "lifecycle_state": "wit.retained_local",
+  "mismatch_kind": "mm.reject.kind",
+  "predicate_preserved": true,
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels"
+  ],
+  "schema_version": "oxcalc.local.replay_explain_record.v1",
+  "selected_unit_ids": [
+    "events:main",
+    "reject:rej1/record",
+    "view:published/current"
+  ],
+  "source_refs": {
+    "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/distill_validation.json",
+    "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/distillation_manifest.json",
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/replay_validation.json"
+  },
+  "source_scenario_id": "tc_publication_fence_reject_001",
+  "source_target_mismatch_kind": "reject_mismatch"
+}

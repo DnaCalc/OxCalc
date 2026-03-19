@@ -213,6 +213,7 @@ This is dependency-ordered, not date-ordered.
 19. `W020`: OxFml downstream integration round 01.
 20. `W019`: replay distill and pack promotion.
 21. `W021`: pack-grade replay promotion.
+22. `W022`: shared pack family and direct-binding widening.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
@@ -223,7 +224,8 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W018` is the next replay-facing realization lane: it turns current replay-aware local artifacts into emitted replay-appliance bundle artifacts and capability evidence.
 `W020` is the first post-W018 downstream OxFml integration lane: it records inbound schema and replay observations, aligns local ownership, and decides whether any narrower follow-on handoff is required. That round is now materially processed and does not currently justify a narrower handoff.
 `W019` is the explicit replay successor lane after W020 for `cap.C4.distill_valid`, first pack-candidate rehearsal, and the bounded narrowing of dependency-projection and semantic-display questions.
-`W021` is the next explicit replay successor lane after W019 for any later `cap.C5.pack_valid` promotion.
+`W021` is the next explicit replay successor lane after W019 for `cap.C5.pack_valid` promotion. It now leaves that capability unclaimed, but converts the gap into explicit pack-grade validation blockers and next evidence steps.
+`W022` is the next explicit replay successor lane after W021 for retained-shared or pack-promoted witness families, direct-binding-sensitive pack evidence, and any later narrower handoff trigger if those families create stronger seam pressure.
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -266,6 +268,7 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W018 has now reached its declared gate: emitted replay-appliance bundle roots, validator artifacts, explain records, and checked-in replay-appliance-aware baselines exist for the current realized scope
   - W020 has now reached its declared gate: inbound OxFml schema, replay, retained-local, and host-boundary observations were consumed locally without reopening W005, and no narrower follow-on handoff is required yet
   - W019 has now reached its declared gate: replay-appliance evidence includes replay-valid reduced witnesses, run-level distill validation, and rehearsal-only pack-candidate separation
-  - W021 is now the next replay-facing continuation for later `cap.C5.pack_valid`
+  - W021 has now reached its declared gate: a semantic-only pack-grade contract and pack-grade validation artifact exist, and `cap.C5.pack_valid` remains explicitly blocked by missing shared-lifecycle and direct-binding-sensitive pack evidence
+  - W022 is now the next replay-facing continuation for retained-shared or pack-promoted witness families, direct-binding-sensitive pack evidence, and any later `cap.C5.pack_valid` promotion
   - provider-failure and callable-publication remain downstream watch lanes rather than active current seam blockers
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

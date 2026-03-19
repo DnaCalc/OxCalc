@@ -1,0 +1,31 @@
+{
+  "case_id": "rf_fallback_explanatory_only_001",
+  "dependency_projection_status": "dp.projected_in_reduced_witness",
+  "distillation_id": "rf_fallback_explanatory_only_001--distilled",
+  "lifecycle_state": "wit.explanatory_only",
+  "removed_step_ids": [],
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters"
+  ],
+  "schema_version": "oxcalc.tracecalc.distillation_manifest.v1",
+  "selected_step_ids": [
+    "st1",
+    "st2",
+    "st3",
+    "st4",
+    "st5",
+    "st6"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "reject:rej1/record"
+  ],
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_id": "tc_fallback_reentry_001",
+  "target_mismatch_kind": "counter_mismatch",
+  "witness_id": "tc_fallback_reentry_001--witness-seed"
+}

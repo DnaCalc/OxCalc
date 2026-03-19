@@ -1,0 +1,18 @@
+{
+  "adapter_capabilities_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/adapter_capabilities/oxcalc.json",
+  "bundle_kind": "tracecalc_retained_failure_run",
+  "lane_id": "oxcalc",
+  "preserved_view_families": [
+    "published_view",
+    "pinned_view",
+    "reject_set",
+    "assertion_result_set",
+    "counter_set"
+  ],
+  "projection_status": "projection_validated_with_explain",
+  "registry_version_ref": "foundation.replay.authoritative-pass-01.2026-03-15",
+  "run_id": "w022-sequence1-direct-binding-family",
+  "run_manifest_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/run_manifest.json",
+  "schema_version": "oxcalc.local.replay_bundle_manifest.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family"
+}

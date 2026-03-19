@@ -1,0 +1,24 @@
+{
+  "eligibility_floor": {
+    "required_candidate_state": "pc.rehearsal_only",
+    "required_distill_status": "distill_valid",
+    "required_lifecycle_state": "wit.retained_local",
+    "required_replay_valid": true
+  },
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "pack_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "remaining_blockers": [
+    "pack.grade.validator.unproven"
+  ],
+  "run_id": "w021-sequence1-pack-contract",
+  "schema_version": "oxcalc.tracecalc.pack_grade_contract.v1",
+  "semantic_display_policy": {
+    "boundary_status": "boundary.semantic_only_tracecalc_scope",
+    "display_delta_required": false,
+    "format_delta_required": false,
+    "note": "Current TraceCalc retained-failure pack work is limited to semantic-only surfaces. Broader display-facing pack promotion remains a later lane."
+  },
+  "semantic_only_candidate_count": 2,
+  "status": "semantic_only_pack_scope_declared",
+  "target_capability": "cap.C5.pack_valid"
+}

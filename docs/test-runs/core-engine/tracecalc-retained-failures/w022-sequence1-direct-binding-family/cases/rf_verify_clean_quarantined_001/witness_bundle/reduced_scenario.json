@@ -1,0 +1,134 @@
+{
+  "calc_space": "TraceCalc",
+  "description": "Distilled witness slice for tc_verify_clean_no_publish_001",
+  "expected": {
+    "counter_expectations": [
+      {
+        "comparison": "eq",
+        "counter": "recalc.verified_clean",
+        "value": 1
+      }
+    ],
+    "pinned_views": [],
+    "published_view": {
+      "node_values": [
+        {
+          "node_id": "A",
+          "value": "2"
+        },
+        {
+          "node_id": "B",
+          "value": "2"
+        }
+      ],
+      "snapshot_id": "s0"
+    },
+    "rejects": [],
+    "trace_labels": [
+      {
+        "count": 1,
+        "label": "node_marked_dirty"
+      },
+      {
+        "count": 1,
+        "label": "candidate_admitted"
+      },
+      {
+        "count": 1,
+        "label": "node_verified_clean"
+      }
+    ]
+  },
+  "generator": null,
+  "initial_graph": {
+    "nodes": [
+      {
+        "expr": {
+          "op": "const",
+          "value": 2
+        },
+        "kind": "value",
+        "node_id": "A"
+      },
+      {
+        "expr": {
+          "deps": [
+            "A"
+          ],
+          "op": "sum"
+        },
+        "kind": "value",
+        "node_id": "B"
+      }
+    ],
+    "snapshot_id": "s0"
+  },
+  "initial_runtime": {
+    "pinned_views": [],
+    "published_runtime_effects": [],
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "2"
+      }
+    ],
+    "seed_overlays": []
+  },
+  "notes": [
+    "Distilled from retained-failure case 'rf_verify_clean_quarantined_001' using declared reduction units.",
+    "removed_step_id=st1",
+    "removed_step_id=st2",
+    "removed_step_id=st3"
+  ],
+  "pack_tags": [
+    "stage1",
+    "verify-clean-no-publication"
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.commit_atomicity"
+    ],
+    "replay_classes": [
+      "R7"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "assertion_result_set"
+    ],
+    "safety_properties": [
+      "S3"
+    ],
+    "transition_labels": [
+      "I1",
+      "I2",
+      "I4"
+    ]
+  },
+  "scenario_id": "rf_verify_clean_quarantined_001--distilled",
+  "schema_version": "tracecalc-s1",
+  "steps": [],
+  "tags": [
+    "verify-clean",
+    "publication"
+  ],
+  "witness_anchors": {
+    "event_groups": [],
+    "phase_blocks": [],
+    "reject_records": [],
+    "scenario_anchor_id": "tc_verify_clean_no_publish_001/scenario",
+    "view_slices": [
+      {
+        "view_id": null,
+        "view_kind": "published_view",
+        "view_slice_id": "published/current"
+      }
+    ]
+  }
+}

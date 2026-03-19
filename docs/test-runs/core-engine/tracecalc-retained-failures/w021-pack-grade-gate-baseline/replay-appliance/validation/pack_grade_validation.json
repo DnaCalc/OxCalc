@@ -1,0 +1,45 @@
+{
+  "blocked_by": [
+    "pack.grade.shared_lifecycle.unexercised",
+    "pack.grade.direct_binding_family.unexercised"
+  ],
+  "blocked_case_count": 2,
+  "blocked_cases": [
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_fallback_explanatory_only_001",
+      "pack_eligible": false
+    },
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_verify_clean_quarantined_001",
+      "pack_eligible": false
+    }
+  ],
+  "eligible_case_count": 2,
+  "eligible_cases": [
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_publication_fence_retained_local_001",
+      "pack_eligible": false
+    },
+    {
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/runs/w021-pack-grade-gate-baseline/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "pack_eligible": false
+    }
+  ],
+  "evaluated_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "next_evidence_steps": [
+    "add retained-shared or pack-promoted witness families with replay-valid bundle evidence",
+    "exercise direct-binding-sensitive pack families where semantic truth depends on concrete binding identity"
+  ],
+  "pack_valid": false,
+  "run_id": "w021-pack-grade-gate-baseline",
+  "schema_version": "oxcalc.tracecalc.pack_grade_validation.v1",
+  "status": "pack_grade_blocked"
+}

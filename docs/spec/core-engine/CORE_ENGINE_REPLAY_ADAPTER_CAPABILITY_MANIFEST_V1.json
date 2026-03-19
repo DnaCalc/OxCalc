@@ -26,7 +26,7 @@
     },
     {
       "limit_id": "oxcalc.local.limit.pack_valid_not_proven",
-      "summary": "Replay-valid reduced witnesses and rehearsal-only pack-candidate assessments now exist, but no pack-grade Replay appliance evidence exists yet for cap.C5.pack_valid."
+      "summary": "W021 now emits a semantic-only pack-grade contract and pack-grade validation artifact, but cap.C5.pack_valid remains unclaimed because retained-shared or pack-promoted witness families and direct-binding-sensitive pack evidence are not yet exercised."
     }
   ],
   "conformance_artifact_refs": [
@@ -40,7 +40,9 @@
     "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/validation/distill_validation.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/validation/pack_candidate_validation.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_publication_fence_retained_local_001/distill_validation.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json"
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w019-distill-and-pack-candidate-baseline/replay-appliance/runs/w019-distill-and-pack-candidate-baseline/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_contract.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_validation.json"
   ],
   "registry_version_refs": [
     {
@@ -78,6 +80,6 @@
     "OxCalc preserves local authority over TraceCalc scenarios, Stage 1 replay classes, and reference-machine semantics.",
     "Source labels remain preserved even when normalized event families are added.",
     "This manifest now claims through cap.C4.distill_valid on the basis of checked-in bundle-valid ordinary and retained-failure distillation evidence.",
-    "Pack-candidate rehearsal evidence now exists, but cap.C5.pack_valid remains intentionally unclaimed."
+    "W021 adds a semantic-only pack-grade contract and pack-grade validation artifact, but cap.C5.pack_valid remains intentionally unclaimed because shared-lifecycle and direct-binding-sensitive pack evidence are not yet exercised."
   ]
 }

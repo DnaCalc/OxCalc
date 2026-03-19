@@ -125,11 +125,14 @@ The current realized continuation after `W017` is:
 2. `W018_EXECUTION_SEQUENCE_E_REPLAY_APPLIANCE_BUNDLE_AND_CAPABILITY_PROMOTION.md`
 3. `W020_OXFML_DOWNSTREAM_INTEGRATION_ROUND_01.md`
 4. `W019_EXECUTION_SEQUENCE_F_REPLAY_DISTILL_AND_PACK_PROMOTION.md`
+5. `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`
+6. `W022_EXECUTION_SEQUENCE_H_SHARED_PACK_FAMILY_AND_DIRECT_BINDING_WIDENING.md`
 
 `W017` moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
 `W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
 `W018` has now reached its declared gate for replay-appliance bundle realization and capability promotion through `cap.C3.explain_valid`.
 `W020` is the first post-W018 OxFml downstream integration round: it processes the current OxFml note and inbound handoff without reopening W005. That round is now materially processed and does not currently justify a narrower follow-on handoff.
 `W019` has now reached its declared gate: it proves `cap.C4.distill_valid`, adds dependency-projection-sensitive reduced witnesses, and defines rehearsal-only pack-candidate separation without claiming `cap.C5.pack_valid`.
-`W021` is the explicit successor lane for later pack-grade replay promotion.
+`W021` has now reached its declared gate: it declares a semantic-only pack-grade contract, emits a pack-grade validation artifact, and leaves `cap.C5.pack_valid` explicitly blocked rather than implicit.
+`W022` is the explicit successor lane for retained-shared or pack-promoted witness families, direct-binding-sensitive pack evidence, and any later pack-grade promotion.
 Later widening must use successor worksets rather than silently reopening `W016`, `W018`, `W019`, or W005.

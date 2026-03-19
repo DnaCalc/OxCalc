@@ -1,0 +1,17 @@
+{
+  "case_id": "rf_verify_clean_quarantined_001",
+  "engine_conformance_match": null,
+  "lifecycle_target": "wit.quarantined",
+  "predicate_preserved": true,
+  "replay_validation_assessed": false,
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters"
+  ],
+  "scenario_replay_valid": null,
+  "selected_unit_ids": [
+    "view:published/current"
+  ],
+  "target_mismatch_kind": "result_state_mismatch"
+}

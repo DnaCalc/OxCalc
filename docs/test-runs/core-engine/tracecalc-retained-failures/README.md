@@ -17,10 +17,22 @@ Current replay-appliance-aware retained-failure baseline:
 Current distill-valid and pack-candidate rehearsal baseline:
 1. `w019-distill-and-pack-candidate-baseline`
 
+Current W021 semantic-only pack-contract baseline:
+1. `w021-sequence1-pack-contract`
+
+Current W021 gate baseline:
+1. `w021-pack-grade-gate-baseline`
+
+Current W022 direct-binding family baseline:
+1. `w022-sequence1-direct-binding-family`
+
 It is emitted by:
 1. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w016-sequence4-retained-failure-baseline`
 2. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w018-retained-replay-appliance-bundle-baseline`
 3. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w019-distill-and-pack-candidate-baseline`
+4. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w021-sequence1-pack-contract`
+5. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w021-pack-grade-gate-baseline`
+6. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence1-direct-binding-family`
 
 The current retained-failure baseline carries:
 1. one replay-valid retained-local witness family,
@@ -38,11 +50,26 @@ The W019 retained-failure baseline additionally carries:
 3. dependency-projection-sensitive retained-local evidence,
 4. rehearsal-only `pack_candidate_validation.json` proving non-pack separation without claiming `cap.C5.pack_valid`.
 
+W021 Sequence 1 begins by adding:
+1. `pack_grade_contract.json` to declare the current semantic-only `TraceCalc` pack scope,
+2. an explicit emitted statement that the pack-grade validator remains a later proof step,
+3. no change to the current highest honest capability claim.
+
+The W021 gate baseline additionally carries:
+1. `pack_grade_validation.json` with explicit bounded blockers,
+2. no claim of `cap.C5.pack_valid`,
+3. next evidence steps for retained-shared or pack-promoted witness families and direct-binding-sensitive pack evidence.
+
+The W022 Sequence 1 baseline additionally carries:
+1. one direct-binding-sensitive retained-local case,
+2. pack-facing metadata proving that the direct-binding family is now exercised locally,
+3. a narrowed pack-grade blocker set focused on missing shared-lifecycle evidence.
+
 ## Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, and the W019 distill-valid retained-failure baseline
-  - broader retained-local mismatch coverage, pack-grade promotion, and later shared replay governance remain later lanes
+  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, the W019 distill-valid retained-failure baseline, the W021 gate baseline, and the W022 direct-binding family baseline
+  - retained-shared or pack-promoted witness-family evidence and later shared replay governance remain later lanes

@@ -31,6 +31,8 @@ const DISTILL_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.distill_validation.
 const DISTILLATION_MANIFEST_SCHEMA_V1: &str = "oxcalc.tracecalc.distillation_manifest.v1";
 const PACK_CANDIDATE_ASSESSMENT_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_candidate_assessment.v1";
 const PACK_CANDIDATE_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_candidate_validation.v1";
+const PACK_GRADE_CONTRACT_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_grade_contract.v1";
+const PACK_GRADE_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_grade_validation.v1";
 const FOUNDATION_REPLAY_REGISTRY_VERSION: &str =
     "foundation.replay.authoritative-pass-01.2026-03-15";
 
@@ -66,6 +68,12 @@ struct RetainedFailureCase {
     quarantine_reason: Option<String>,
     #[serde(default)]
     pack_candidate_rehearsal: bool,
+    #[serde(default = "default_pack_family_id")]
+    pack_family_id: String,
+    #[serde(default = "default_binding_identity_requirement")]
+    binding_identity_requirement: String,
+    #[serde(default)]
+    binding_identity_refs: Vec<String>,
     #[serde(default)]
     notes: Vec<String>,
 }
@@ -91,6 +99,9 @@ struct TraceCalcRetainedFailureCaseSummary {
     description: String,
     source_scenario_id: String,
     lifecycle_state: String,
+    pack_family_id: String,
+    binding_identity_requirement: String,
+    binding_identity_refs: Vec<String>,
     replay_validation_assessed: bool,
     replay_valid: Option<bool>,
     predicate_preserved: bool,
@@ -171,6 +182,9 @@ struct TraceCalcPackCandidateAssessment {
     case_id: String,
     lifecycle_state: String,
     distill_status: String,
+    pack_family_id: String,
+    binding_identity_requirement: String,
+    binding_identity_refs: Vec<String>,
     candidate_state: String,
     pack_eligible: bool,
     replay_valid: Option<bool>,
@@ -227,6 +241,14 @@ pub enum TraceCalcRetainedFailureError {
     },
     #[error("replay validation failed for retained-local case '{case_id}'")]
     ReplayValidationFailed { case_id: String },
+}
+
+fn default_pack_family_id() -> String {
+    "pf.semantic_only_retained_local".to_string()
+}
+
+fn default_binding_identity_requirement() -> String {
+    "binding.not_required".to_string()
 }
 
 #[derive(Debug, Default)]
@@ -402,6 +424,9 @@ impl TraceCalcRetainedFailureRunner {
                 description: case.description.clone(),
                 source_scenario_id: scenario.scenario_id.clone(),
                 lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
+                pack_family_id: case.pack_family_id.clone(),
+                binding_identity_requirement: case.binding_identity_requirement.clone(),
+                binding_identity_refs: case.binding_identity_refs.clone(),
                 replay_validation_assessed: replay_validation.replay_validation_assessed,
                 replay_valid: replay_validation.scenario_replay_valid,
                 predicate_preserved: replay_validation.predicate_preserved,
@@ -572,6 +597,9 @@ impl TraceCalcRetainedFailureRunner {
                 "case_id": case.case_id,
                 "candidate_state": pack_candidate_assessment.candidate_state,
                 "pack_eligible": pack_candidate_assessment.pack_eligible,
+                "pack_family_id": pack_candidate_assessment.pack_family_id,
+                "binding_identity_requirement": pack_candidate_assessment.binding_identity_requirement,
+                "binding_identity_refs": pack_candidate_assessment.binding_identity_refs,
                 "bundle_pack_candidate_assessment_path": relative_artifact_path([
                     &relative_artifact_root,
                     "replay-appliance",
@@ -590,6 +618,9 @@ impl TraceCalcRetainedFailureRunner {
                 "case_id": case.case_id,
                 "source_scenario_id": scenario.scenario_id,
                 "lifecycle_state": witness.lifecycle.lifecycle_state,
+                "pack_family_id": case.pack_family_id,
+                "binding_identity_requirement": case.binding_identity_requirement,
+                "binding_identity_refs": case.binding_identity_refs,
                 "artifact_paths": case_artifact_paths,
             }));
         }
@@ -619,6 +650,8 @@ impl TraceCalcRetainedFailureRunner {
         )?;
         write_distill_validation(&artifact_root, run_id, &distill_cases)?;
         write_pack_candidate_validation(&artifact_root, run_id, &pack_candidate_cases)?;
+        write_pack_grade_contract(&artifact_root, run_id, &pack_candidate_cases)?;
+        write_pack_grade_validation(&artifact_root, run_id, &pack_candidate_cases)?;
         write_bundle_validation(repo_root, &artifact_root, run_id, &bundle_cases)?;
         Ok(summary)
     }
@@ -1033,10 +1066,7 @@ fn build_pack_candidate_assessment(
     witness: &TraceCalcWitnessSeed,
     distill_validation: &TraceCalcDistillValidation,
 ) -> TraceCalcPackCandidateAssessment {
-    let mut blocked_by = vec![
-        "boundary.semantic_display.unexercised".to_string(),
-        "pack.grade.validator.unproven".to_string(),
-    ];
+    let mut blocked_by = vec!["pack.grade.shared_lifecycle.unexercised".to_string()];
     let candidate_state = match witness.lifecycle.lifecycle_state.as_str() {
         "wit.retained_local"
             if case.pack_candidate_rehearsal
@@ -1064,6 +1094,9 @@ fn build_pack_candidate_assessment(
         case_id: case.case_id.clone(),
         lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
         distill_status: distill_validation.distill_status.clone(),
+        pack_family_id: case.pack_family_id.clone(),
+        binding_identity_requirement: case.binding_identity_requirement.clone(),
+        binding_identity_refs: case.binding_identity_refs.clone(),
         candidate_state,
         pack_eligible: false,
         replay_valid: distill_validation.reduced_scenario_replay_valid,
@@ -1542,6 +1575,26 @@ fn write_bundle_validation(
             "validation",
             "pack_candidate_validation.json",
         ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "validation",
+            "pack_grade_contract.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "validation",
+            "pack_grade_validation.json",
+        ]),
     ];
     for case in bundle_cases {
         if let Some(paths) = case["bundle_artifact_paths"].as_object() {
@@ -1607,6 +1660,17 @@ fn write_pack_candidate_validation(
         .iter()
         .filter(|entry| entry["candidate_state"] == "pc.rehearsal_only")
         .count();
+    let direct_binding_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["binding_identity_requirement"] == "binding.direct_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let mut blocked_by = vec!["pack.grade.shared_lifecycle.unexercised".to_string()];
+    if direct_binding_count == 0 {
+        blocked_by.push("pack.grade.direct_binding_family.unexercised".to_string());
+    }
     write_json(
         &artifact_root.join("replay-appliance/validation/pack_candidate_validation.json"),
         &json!({
@@ -1615,11 +1679,108 @@ fn write_pack_candidate_validation(
             "status": "pack_candidate_rehearsed_only",
             "pack_valid": false,
             "rehearsal_case_count": rehearsal_count,
-            "blocked_by": [
-                "boundary.semantic_display.unexercised",
-                "pack.grade.validator.unproven"
-            ],
+            "direct_binding_rehearsal_count": direct_binding_count,
+            "blocked_by": blocked_by,
             "cases": pack_candidate_cases,
+        }),
+    )
+}
+
+fn write_pack_grade_contract(
+    artifact_root: &Path,
+    run_id: &str,
+    pack_candidate_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let semantic_only_candidate_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| entry["candidate_state"] == "pc.rehearsal_only")
+        .count();
+    let direct_binding_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["binding_identity_requirement"] == "binding.direct_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let mut remaining_blockers = vec!["pack.grade.shared_lifecycle.unexercised".to_string()];
+    if direct_binding_case_count == 0 {
+        remaining_blockers.push("pack.grade.direct_binding_family.unexercised".to_string());
+    }
+    write_json(
+        &artifact_root.join("replay-appliance/validation/pack_grade_contract.json"),
+        &json!({
+            "schema_version": PACK_GRADE_CONTRACT_SCHEMA_V1,
+            "run_id": run_id,
+            "pack_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+            "status": "semantic_only_pack_scope_declared",
+            "highest_honest_capability": "cap.C4.distill_valid",
+            "target_capability": "cap.C5.pack_valid",
+            "semantic_display_policy": {
+                "boundary_status": "boundary.semantic_only_tracecalc_scope",
+                "format_delta_required": false,
+                "display_delta_required": false,
+                "note": "Current TraceCalc retained-failure pack work is limited to semantic-only surfaces. Broader display-facing pack promotion remains a later lane."
+            },
+            "eligibility_floor": {
+                "required_lifecycle_state": "wit.retained_local",
+                "required_candidate_state": "pc.rehearsal_only",
+                "required_distill_status": "distill_valid",
+                "required_replay_valid": true
+            },
+            "semantic_only_candidate_count": semantic_only_candidate_count,
+            "direct_binding_case_count": direct_binding_case_count,
+            "remaining_blockers": remaining_blockers
+        }),
+    )
+}
+
+fn write_pack_grade_validation(
+    artifact_root: &Path,
+    run_id: &str,
+    pack_candidate_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let eligible_cases = pack_candidate_cases
+        .iter()
+        .filter(|entry| entry["candidate_state"] == "pc.rehearsal_only")
+        .cloned()
+        .collect::<Vec<_>>();
+    let blocked_cases = pack_candidate_cases
+        .iter()
+        .filter(|entry| entry["candidate_state"] != "pc.rehearsal_only")
+        .cloned()
+        .collect::<Vec<_>>();
+    let direct_binding_case_count = eligible_cases
+        .iter()
+        .filter(|entry| entry["binding_identity_requirement"] == "binding.direct_identity_required")
+        .count();
+    let mut blocked_by = vec!["pack.grade.shared_lifecycle.unexercised".to_string()];
+    let mut next_evidence_steps = vec![
+        "add retained-shared or pack-promoted witness families with replay-valid bundle evidence"
+            .to_string(),
+    ];
+    if direct_binding_case_count == 0 {
+        blocked_by.push("pack.grade.direct_binding_family.unexercised".to_string());
+        next_evidence_steps.push(
+            "exercise direct-binding-sensitive pack families where semantic truth depends on concrete binding identity"
+                .to_string(),
+        );
+    }
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/pack_grade_validation.json"),
+        &json!({
+            "schema_version": PACK_GRADE_VALIDATION_SCHEMA_V1,
+            "run_id": run_id,
+            "status": "pack_grade_blocked",
+            "pack_valid": false,
+            "evaluated_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+            "eligible_case_count": eligible_cases.len(),
+            "blocked_case_count": blocked_cases.len(),
+            "direct_binding_case_count": direct_binding_case_count,
+            "blocked_by": blocked_by,
+            "next_evidence_steps": next_evidence_steps,
+            "eligible_cases": eligible_cases,
+            "blocked_cases": blocked_cases,
         }),
     )
 }
@@ -1659,7 +1820,7 @@ mod tests {
 
         cleanup();
         let summary = runner.execute_manifest(&repo_root, &run_id).unwrap();
-        assert_eq!(summary.case_count, 4);
+        assert_eq!(summary.case_count, 5);
         assert!(
             artifact_root
                 .join("replay-appliance/bundle_manifest.json")
@@ -1695,6 +1856,16 @@ mod tests {
         assert!(
             artifact_root
                 .join("replay-appliance/validation/pack_candidate_validation.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/pack_grade_contract.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/pack_grade_validation.json")
                 .exists()
         );
         assert!(
@@ -1758,6 +1929,28 @@ mod tests {
             pack_candidate_validation["status"],
             "pack_candidate_rehearsed_only"
         );
+
+        let pack_grade_contract = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/pack_grade_contract.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            pack_grade_contract["status"],
+            "semantic_only_pack_scope_declared"
+        );
+        assert_eq!(
+            pack_grade_contract["semantic_display_policy"]["boundary_status"],
+            "boundary.semantic_only_tracecalc_scope"
+        );
+        assert_eq!(pack_grade_contract["direct_binding_case_count"], 1);
+
+        let pack_grade_validation = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/pack_grade_validation.json"),
+        )
+        .unwrap();
+        assert_eq!(pack_grade_validation["status"], "pack_grade_blocked");
+        assert_eq!(pack_grade_validation["pack_valid"], false);
+        assert_eq!(pack_grade_validation["direct_binding_case_count"], 1);
 
         let explain_record = load_json::<serde_json::Value>(
             &artifact_root.join(format!(

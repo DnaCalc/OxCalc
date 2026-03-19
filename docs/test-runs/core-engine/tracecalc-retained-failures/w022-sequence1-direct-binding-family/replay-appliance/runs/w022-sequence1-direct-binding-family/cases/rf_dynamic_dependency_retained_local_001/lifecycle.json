@@ -1,0 +1,26 @@
+{
+  "anchor_counts": {
+    "event_group_count": 1,
+    "phase_block_count": 1,
+    "reject_record_count": 0,
+    "view_slice_count": 1
+  },
+  "lifecycle_state": "wit.retained_local",
+  "pack_eligible": false,
+  "quarantine_reason": null,
+  "reduction_manifest_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/reductions/tc_dynamic_dep_switch_001--reduction-seed/reduction_manifest.json",
+  "replay_validity_assessed": true,
+  "run_id": "w022-sequence1-direct-binding-family",
+  "scenario_id": "tc_dynamic_dep_switch_001",
+  "schema_version": "oxcalc.tracecalc.witness_lifecycle.v1",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/counters.json",
+    "engine_diff": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/conformance/engine_diff.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/published_view.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w017-rust-parity-baseline/scenarios/tc_dynamic_dep_switch_001/trace.json"
+  },
+  "witness_id": "tc_dynamic_dep_switch_001--witness-seed"
+}

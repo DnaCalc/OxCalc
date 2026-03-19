@@ -1,0 +1,52 @@
+{
+  "mismatch_kinds": [
+    "counter_mismatch"
+  ],
+  "reduction_id": "tc_fallback_reentry_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters"
+  ],
+  "run_id": "w022-sequence1-direct-binding-family",
+  "scenario_id": "tc_fallback_reentry_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.explanatory_only",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "main",
+      "closure_unit_ids": [
+        "reject:rej1/record"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4",
+        "st5",
+        "st6"
+      ],
+      "unit_id": "events:main",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "rej1/record",
+      "closure_unit_ids": [],
+      "reject_id": "rej1",
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "reject:rej1/record",
+      "unit_kind": "reject_record",
+      "view_id": null,
+      "view_kind": null
+    }
+  ],
+  "witness_id": "tc_fallback_reentry_001--witness-seed"
+}

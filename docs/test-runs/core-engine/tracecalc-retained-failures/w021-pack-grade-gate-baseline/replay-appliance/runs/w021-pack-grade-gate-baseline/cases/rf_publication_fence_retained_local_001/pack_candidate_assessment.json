@@ -1,0 +1,16 @@
+{
+  "blocked_by": [
+    "pack.grade.shared_lifecycle.unexercised",
+    "pack.grade.direct_binding_family.unexercised"
+  ],
+  "candidate_state": "pc.rehearsal_only",
+  "case_id": "rf_publication_fence_retained_local_001",
+  "dependency_projection_status": "dp.not_applicable",
+  "distill_status": "distill_valid",
+  "lifecycle_state": "wit.retained_local",
+  "pack_eligible": false,
+  "predicate_preserved": true,
+  "replay_valid": true,
+  "schema_version": "oxcalc.tracecalc.pack_candidate_assessment.v1",
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope"
+}

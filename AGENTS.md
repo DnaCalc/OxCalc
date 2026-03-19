@@ -83,6 +83,11 @@ Mode: **checkpoint-at-gates** (conservative).
 4. When AutoRun is enabled for a declared scope, the governing workset and exit gate must be updated here before execution continues under AutoRun.
 5. Outside an explicitly declared AutoRun scope, the default mode remains checkpoint-at-gates.
 
+### Temporary AutoRun Scope
+1. No current AutoRun scope is active.
+2. The most recent temporary AutoRun scope was `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`.
+3. After that gate was reached, control returned to the default checkpoint-at-gates mode.
+
 Rationale: conservative gate-pausing remains the default unless the user explicitly authorizes continuous execution for a named workset scope.
 
 ## 5. Blocker Handling

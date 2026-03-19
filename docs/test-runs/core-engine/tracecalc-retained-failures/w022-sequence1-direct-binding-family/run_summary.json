@@ -1,0 +1,20 @@
+{
+  "artifact_root": "\\\\?\\C:\\Work\\DnaCalc\\OxCalc\\docs\\test-runs\\core-engine\\tracecalc-retained-failures\\w022-sequence1-direct-binding-family",
+  "case_count": 5,
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      3
+    ]
+  ],
+  "run_id": "w022-sequence1-direct-binding-family",
+  "schema_version": "oxcalc.tracecalc.retained_failure_manifest.v1"
+}

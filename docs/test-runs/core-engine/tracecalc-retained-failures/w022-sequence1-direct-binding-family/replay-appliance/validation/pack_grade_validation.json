@@ -1,0 +1,68 @@
+{
+  "blocked_by": [
+    "pack.grade.shared_lifecycle.unexercised"
+  ],
+  "blocked_case_count": 2,
+  "blocked_cases": [
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_fallback_explanatory_only_001",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local"
+    },
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_verify_clean_quarantined_001",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local"
+    }
+  ],
+  "direct_binding_case_count": 1,
+  "eligible_case_count": 3,
+  "eligible_cases": [
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_publication_fence_retained_local_001",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local"
+    },
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local"
+    },
+    {
+      "binding_identity_refs": [
+        "tracecalc.node:A",
+        "tracecalc.node:B"
+      ],
+      "binding_identity_requirement": "binding.direct_identity_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence1-direct-binding-family/replay-appliance/runs/w022-sequence1-direct-binding-family/cases/rf_direct_binding_sensitive_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_direct_binding_sensitive_retained_local_001",
+      "pack_eligible": false,
+      "pack_family_id": "pf.direct_binding_sensitive_retained_local"
+    }
+  ],
+  "evaluated_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "next_evidence_steps": [
+    "add retained-shared or pack-promoted witness families with replay-valid bundle evidence"
+  ],
+  "pack_valid": false,
+  "run_id": "w022-sequence1-direct-binding-family",
+  "schema_version": "oxcalc.tracecalc.pack_grade_validation.v1",
+  "status": "pack_grade_blocked"
+}

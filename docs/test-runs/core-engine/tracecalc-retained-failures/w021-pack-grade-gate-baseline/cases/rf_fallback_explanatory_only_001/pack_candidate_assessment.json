@@ -1,0 +1,17 @@
+{
+  "blocked_by": [
+    "pack.grade.shared_lifecycle.unexercised",
+    "pack.grade.direct_binding_family.unexercised",
+    "lifecycle.explanatory_only"
+  ],
+  "candidate_state": "pc.blocked_by_lifecycle",
+  "case_id": "rf_fallback_explanatory_only_001",
+  "dependency_projection_status": "dp.projected_in_reduced_witness",
+  "distill_status": "distill_explanatory_only",
+  "lifecycle_state": "wit.explanatory_only",
+  "pack_eligible": false,
+  "predicate_preserved": false,
+  "replay_valid": true,
+  "schema_version": "oxcalc.tracecalc.pack_candidate_assessment.v1",
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope"
+}

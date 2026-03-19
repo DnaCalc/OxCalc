@@ -1,0 +1,153 @@
+{
+  "cases": [
+    {
+      "bundle_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/witness_bundle/source_scenario.json"
+      },
+      "case_id": "rf_publication_fence_retained_local_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/explain.json",
+      "lifecycle_state": "wit.retained_local",
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels"
+      ],
+      "source_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/witness_bundle/source_scenario.json"
+      },
+      "source_scenario_id": "tc_publication_fence_reject_001",
+      "target_mismatch_kind": "reject_mismatch"
+    },
+    {
+      "bundle_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/witness_bundle/source_scenario.json"
+      },
+      "case_id": "rf_fallback_explanatory_only_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/explain.json",
+      "lifecycle_state": "wit.explanatory_only",
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters"
+      ],
+      "source_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_fallback_explanatory_only_001/witness_bundle/source_scenario.json"
+      },
+      "source_scenario_id": "tc_fallback_reentry_001",
+      "target_mismatch_kind": "counter_mismatch"
+    },
+    {
+      "bundle_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/witness_bundle/source_scenario.json"
+      },
+      "case_id": "rf_verify_clean_quarantined_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/explain.json",
+      "lifecycle_state": "wit.quarantined",
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters"
+      ],
+      "source_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_verify_clean_quarantined_001/witness_bundle/source_scenario.json"
+      },
+      "source_scenario_id": "tc_verify_clean_no_publish_001",
+      "target_mismatch_kind": "result_state_mismatch"
+    },
+    {
+      "bundle_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/witness_bundle/source_scenario.json"
+      },
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "explain_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/replay-appliance/runs/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/explain.json",
+      "lifecycle_state": "wit.retained_local",
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "candidate_publication_boundary"
+      ],
+      "source_artifact_paths": {
+        "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/distill_validation.json",
+        "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/distillation_manifest.json",
+        "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/lifecycle.json",
+        "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+        "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/witness_bundle/reduced_scenario.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/reduction_manifest.json",
+        "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/replay_validation.json",
+        "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_dynamic_dependency_retained_local_001/witness_bundle/source_scenario.json"
+      },
+      "source_scenario_id": "tc_dynamic_dep_switch_001",
+      "target_mismatch_kind": "dependency_projection_effect"
+    }
+  ],
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      2
+    ]
+  ],
+  "run_id": "w021-sequence1-pack-contract",
+  "run_kind": "tracecalc_retained_failure_run",
+  "schema_version": "oxcalc.local.replay_run_manifest.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract",
+  "source_case_index_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/case_index.json",
+  "source_run_summary_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/run_summary.json"
+}

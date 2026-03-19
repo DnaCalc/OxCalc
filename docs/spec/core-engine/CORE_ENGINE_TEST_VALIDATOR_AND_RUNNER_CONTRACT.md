@@ -200,7 +200,9 @@ The current realized Rust runner floor now also emits:
 3. `replay-appliance/runs/<run_id>/cases/<case_id>/explain.json` for retained-failure runs,
 4. `replay-appliance/validation/distill_validation.json` for retained-failure distillation runs,
 5. `replay-appliance/validation/pack_candidate_validation.json` for rehearsal-only retained-failure pack-candidate separation,
-6. `replay-appliance/runs/<run_id>/cases/<case_id>/distill_validation.json` and `pack_candidate_assessment.json` for retained-failure case projections.
+6. `replay-appliance/validation/pack_grade_contract.json` for the current semantic-only pack-grade scope declaration,
+7. `replay-appliance/validation/pack_grade_validation.json` for bounded pack-grade proof or blocker reasons,
+8. `replay-appliance/runs/<run_id>/cases/<case_id>/distill_validation.json` and `pack_candidate_assessment.json` for retained-failure case projections.
 
 ## 8. Artifact Shapes
 The first realized runner should emit data-first artifacts rather than ad hoc console text only.

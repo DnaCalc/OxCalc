@@ -3,7 +3,7 @@
 Canonical repo-level register of feature areas that are in-progress under workset completion doctrine.
 
 Status: active.
-Last updated: 2026-03-18.
+Last updated: 2026-03-19.
 
 ## Status Vocabulary
 
@@ -104,10 +104,10 @@ Last updated: 2026-03-18.
 ### IP-12: Replay Appliance Bundle Emission and Capability Promotion
 
 - **Status**: in-progress
-- **Current floor**: `W019` has now reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in ordinary and retained-failure baselines, replay-valid reduced-witness distillation artifacts, run-level `distill_validation.json`, and a refreshed capability claim through `cap.C4.distill_valid`.
-- **Remaining gaps**: `cap.C5.pack_valid`, broader mismatch-family explain coverage, and later pack-grade replay governance.
-- **Why still open**: W019 discharged its declared scope, but the broader replay-appliance feature area remains active for later pack-grade promotion and wider explain coverage.
-- **Canonical owner**: W021.
+- **Current floor**: `W019` has now reached its declared gate with additive replay-appliance bundle roots for ordinary and retained-failure runs, bundle-validator artifacts, explain records, checked-in ordinary and retained-failure baselines, replay-valid reduced-witness distillation artifacts, run-level `distill_validation.json`, and a refreshed capability claim through `cap.C4.distill_valid`. `W021` then converted the pack-grade gap into bounded emitted blockers, and `W022` Sequence 1 has now added a checked-in direct-binding-sensitive retained-local baseline in `w022-sequence1-direct-binding-family`.
+- **Remaining gaps**: `cap.C5.pack_valid`, retained-shared or pack-promoted witness-family evidence, broader mismatch-family explain coverage, and later pack-grade replay governance.
+- **Why still open**: W021 packetized the pack-grade gap, and W022 has now removed the direct-binding-family blocker from the current emitted validator state, but shared-lifecycle widening is still required before any later capability-promotion decision.
+- **Canonical owner**: W022.
 
 ### IP-13: OxFml Downstream Integration Rounds
 

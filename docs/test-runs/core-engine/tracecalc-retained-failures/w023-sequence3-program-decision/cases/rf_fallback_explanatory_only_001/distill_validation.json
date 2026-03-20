@@ -1,0 +1,49 @@
+{
+  "case_id": "rf_fallback_explanatory_only_001",
+  "dependency_projection": {
+    "dependency_shape_kinds": [
+      "activate_dynamic_dep",
+      "release_dynamic_dep"
+    ],
+    "projection_status": "dp.projected_in_reduced_witness",
+    "runtime_effect_kinds": [
+      "dynamic_ref_activated",
+      "dynamic_ref_released"
+    ]
+  },
+  "distill_status": "distill_explanatory_only",
+  "distillation_id": "rf_fallback_explanatory_only_001--distilled",
+  "lifecycle_state": "wit.explanatory_only",
+  "predicate_preserved": false,
+  "reduced_engine_conformance_match": true,
+  "reduced_scenario_replay_valid": true,
+  "removed_step_ids": [],
+  "replay_validation_assessed": true,
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters"
+  ],
+  "schema_version": "oxcalc.tracecalc.distill_validation.v1",
+  "selected_step_ids": [
+    "st1",
+    "st2",
+    "st3",
+    "st4",
+    "st5",
+    "st6"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "reject:rej1/record"
+  ],
+  "semantic_display_boundary": {
+    "boundary_status": "boundary.semantic_only_tracecalc_scope",
+    "display_delta_exercised": false,
+    "format_delta_exercised": false,
+    "note": "Current TraceCalc Stage 1 distillation covers semantic surfaces only; format/display delta families remain outside the exercised scope.",
+    "semantic_surface_only": true
+  },
+  "target_mismatch_kind": "counter_mismatch"
+}

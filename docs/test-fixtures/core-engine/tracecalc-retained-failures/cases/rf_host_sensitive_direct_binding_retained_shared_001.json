@@ -1,0 +1,40 @@
+{
+  "schema_version": "oxcalc.tracecalc.retained_failure_case.v1",
+  "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+  "description": "Replay-valid retained-shared witness that rehearses broader host-sensitive direct-binding identity preservation.",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_path": "hand-auditable/tc_accept_publish_001.json",
+  "lifecycle_target": "wit.retained_shared",
+  "target_mismatch_kind": "published_view_mismatch",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "preservation_check": {
+    "kind": "published_view_present",
+    "reference": "published/current"
+  },
+  "quarantine_reason": null,
+  "pack_candidate_rehearsal": true,
+  "pack_family_id": "pf.host_sensitive_direct_binding_retained_shared",
+  "program_family_id": "pg.host_sensitive_direct_binding_shared",
+  "binding_identity_requirement": "binding.direct_identity_required",
+  "binding_identity_refs": [
+    "tracecalc.node:A",
+    "tracecalc.node:B"
+  ],
+  "host_scope_requirement": "host_scope.broader_identity_required",
+  "host_identity_refs": [
+    "dna.onecalc.binding:sheet1!A1",
+    "dna.onecalc.binding:sheet1!B1"
+  ],
+  "notes": [
+    "This is still a TraceCalc-side rehearsal artifact, not a claim of full Excel host semantics.",
+    "Its purpose is to make broader host-sensitive direct-binding preservation visible in emitted program-grade replay artifacts."
+  ]
+}

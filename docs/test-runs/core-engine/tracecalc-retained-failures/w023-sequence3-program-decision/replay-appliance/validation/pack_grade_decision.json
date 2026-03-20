@@ -1,0 +1,34 @@
+{
+  "decision_reason_ids": [
+    "pack.grade.semantic_only_tracecalc_scope",
+    "pack.grade.shared_program_lifecycle.unproven"
+  ],
+  "decision_status": "capability_not_promoted",
+  "direct_binding_case_count": 2,
+  "evaluated_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "evidence_refs": {
+    "pack_grade_contract_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_contract.json",
+    "pack_grade_validation_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_validation.json"
+  },
+  "family_coverage_reached": true,
+  "handoff_decision": {
+    "reason_ids": [
+      "oxfml.seam.no_new_trigger_from_semantic_only_pack_scope",
+      "oxfml.seam.watch_lanes_only"
+    ],
+    "status": "handoff_not_required"
+  },
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "residual_lane": {
+    "reason_ids": [
+      "pack.grade.program_scope.unproven",
+      "pack.grade.direct_binding_family.broader_host_scope_unproven"
+    ],
+    "status": "packetized_residual",
+    "workset_id": "W023"
+  },
+  "run_id": "w023-sequence3-program-decision",
+  "schema_version": "oxcalc.tracecalc.pack_grade_decision.v1",
+  "shared_lifecycle_case_count": 2,
+  "target_capability": "cap.C5.pack_valid"
+}

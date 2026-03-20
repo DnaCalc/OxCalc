@@ -35,6 +35,9 @@ const PACK_CANDIDATE_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_candida
 const PACK_GRADE_CONTRACT_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_grade_contract.v1";
 const PACK_GRADE_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_grade_validation.v1";
 const PACK_GRADE_DECISION_SCHEMA_V1: &str = "oxcalc.tracecalc.pack_grade_decision.v1";
+const PROGRAM_GRADE_CONTRACT_SCHEMA_V1: &str = "oxcalc.tracecalc.program_grade_contract.v1";
+const PROGRAM_GRADE_VALIDATION_SCHEMA_V1: &str = "oxcalc.tracecalc.program_grade_validation.v1";
+const PROGRAM_GRADE_DECISION_SCHEMA_V1: &str = "oxcalc.tracecalc.program_grade_decision.v1";
 const FOUNDATION_REPLAY_REGISTRY_VERSION: &str =
     "foundation.replay.authoritative-pass-01.2026-03-15";
 
@@ -72,10 +75,16 @@ struct RetainedFailureCase {
     pack_candidate_rehearsal: bool,
     #[serde(default = "default_pack_family_id")]
     pack_family_id: String,
+    #[serde(default = "default_program_family_id")]
+    program_family_id: String,
     #[serde(default = "default_binding_identity_requirement")]
     binding_identity_requirement: String,
     #[serde(default)]
     binding_identity_refs: Vec<String>,
+    #[serde(default = "default_host_scope_requirement")]
+    host_scope_requirement: String,
+    #[serde(default)]
+    host_identity_refs: Vec<String>,
     #[serde(default)]
     notes: Vec<String>,
 }
@@ -102,8 +111,11 @@ struct TraceCalcRetainedFailureCaseSummary {
     source_scenario_id: String,
     lifecycle_state: String,
     pack_family_id: String,
+    program_family_id: String,
     binding_identity_requirement: String,
     binding_identity_refs: Vec<String>,
+    host_scope_requirement: String,
+    host_identity_refs: Vec<String>,
     replay_validation_assessed: bool,
     replay_valid: Option<bool>,
     predicate_preserved: bool,
@@ -185,8 +197,11 @@ struct TraceCalcPackCandidateAssessment {
     lifecycle_state: String,
     distill_status: String,
     pack_family_id: String,
+    program_family_id: String,
     binding_identity_requirement: String,
     binding_identity_refs: Vec<String>,
+    host_scope_requirement: String,
+    host_identity_refs: Vec<String>,
     candidate_state: String,
     pack_eligible: bool,
     replay_valid: Option<bool>,
@@ -249,8 +264,16 @@ fn default_pack_family_id() -> String {
     "pf.semantic_only_retained_local".to_string()
 }
 
+fn default_program_family_id() -> String {
+    "pg.semantic_local_only".to_string()
+}
+
 fn default_binding_identity_requirement() -> String {
     "binding.not_required".to_string()
+}
+
+fn default_host_scope_requirement() -> String {
+    "host_scope.local_only".to_string()
 }
 
 #[derive(Debug, Default)]
@@ -429,8 +452,11 @@ impl TraceCalcRetainedFailureRunner {
                 source_scenario_id: scenario.scenario_id.clone(),
                 lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
                 pack_family_id: case.pack_family_id.clone(),
+                program_family_id: case.program_family_id.clone(),
                 binding_identity_requirement: case.binding_identity_requirement.clone(),
                 binding_identity_refs: case.binding_identity_refs.clone(),
+                host_scope_requirement: case.host_scope_requirement.clone(),
+                host_identity_refs: case.host_identity_refs.clone(),
                 replay_validation_assessed: replay_validation.replay_validation_assessed,
                 replay_valid: replay_validation.scenario_replay_valid,
                 predicate_preserved: replay_validation.predicate_preserved,
@@ -603,8 +629,11 @@ impl TraceCalcRetainedFailureRunner {
                 "candidate_state": pack_candidate_assessment.candidate_state,
                 "pack_eligible": pack_candidate_assessment.pack_eligible,
                 "pack_family_id": pack_candidate_assessment.pack_family_id,
+                "program_family_id": pack_candidate_assessment.program_family_id,
                 "binding_identity_requirement": pack_candidate_assessment.binding_identity_requirement,
                 "binding_identity_refs": pack_candidate_assessment.binding_identity_refs,
+                "host_scope_requirement": pack_candidate_assessment.host_scope_requirement,
+                "host_identity_refs": pack_candidate_assessment.host_identity_refs,
                 "bundle_pack_candidate_assessment_path": relative_artifact_path([
                     &relative_artifact_root,
                     "replay-appliance",
@@ -624,8 +653,11 @@ impl TraceCalcRetainedFailureRunner {
                 "source_scenario_id": scenario.scenario_id,
                 "lifecycle_state": witness.lifecycle.lifecycle_state,
                 "pack_family_id": case.pack_family_id,
+                "program_family_id": case.program_family_id,
                 "binding_identity_requirement": case.binding_identity_requirement,
                 "binding_identity_refs": case.binding_identity_refs,
+                "host_scope_requirement": case.host_scope_requirement,
+                "host_identity_refs": case.host_identity_refs,
                 "artifact_paths": case_artifact_paths,
             }));
         }
@@ -658,6 +690,9 @@ impl TraceCalcRetainedFailureRunner {
         write_pack_grade_contract(&artifact_root, run_id, &pack_candidate_cases)?;
         write_pack_grade_validation(&artifact_root, run_id, &pack_candidate_cases)?;
         write_pack_grade_decision(&artifact_root, run_id, &pack_candidate_cases)?;
+        write_program_grade_contract(&artifact_root, run_id, &pack_candidate_cases)?;
+        write_program_grade_validation(&artifact_root, run_id, &pack_candidate_cases)?;
+        write_program_grade_decision(&artifact_root, run_id, &pack_candidate_cases)?;
         write_bundle_validation(repo_root, &artifact_root, run_id, &bundle_cases)?;
         Ok(summary)
     }
@@ -1101,8 +1136,11 @@ fn build_pack_candidate_assessment(
         lifecycle_state: witness.lifecycle.lifecycle_state.clone(),
         distill_status: distill_validation.distill_status.clone(),
         pack_family_id: case.pack_family_id.clone(),
+        program_family_id: case.program_family_id.clone(),
         binding_identity_requirement: case.binding_identity_requirement.clone(),
         binding_identity_refs: case.binding_identity_refs.clone(),
+        host_scope_requirement: case.host_scope_requirement.clone(),
+        host_identity_refs: case.host_identity_refs.clone(),
         candidate_state,
         pack_eligible: false,
         replay_valid: distill_validation.reduced_scenario_replay_valid,
@@ -1619,6 +1657,26 @@ fn write_bundle_validation(
             "validation",
             "pack_grade_decision.json",
         ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "validation",
+            "program_grade_contract.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-retained-failures",
+            run_id,
+            "replay-appliance",
+            "validation",
+            "program_grade_validation.json",
+        ]),
     ];
     for case in bundle_cases {
         if let Some(paths) = case["bundle_artifact_paths"].as_object() {
@@ -1937,6 +1995,244 @@ fn write_pack_grade_decision(
     )
 }
 
+fn write_program_grade_contract(
+    artifact_root: &Path,
+    run_id: &str,
+    pack_candidate_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let direct_binding_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["binding_identity_requirement"] == "binding.direct_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let shared_lifecycle_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["lifecycle_state"] == "wit.retained_shared"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let host_sensitive_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["host_scope_requirement"] == "host_scope.broader_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/program_grade_contract.json"),
+        &json!({
+            "schema_version": PROGRAM_GRADE_CONTRACT_SCHEMA_V1,
+            "run_id": run_id,
+            "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+            "source_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+            "highest_honest_capability": "cap.C4.distill_valid",
+            "target_capability": "cap.C5.pack_valid",
+            "required_program_families": [
+                "program.shared_lifecycle_beyond_local",
+                "program.direct_binding_broader_host_scope",
+                "program.host_sensitive_identity_preservation"
+            ],
+            "watch_lanes": [
+                "oxfml.watch.provider_failure",
+                "oxfml.watch.callable_publication"
+            ],
+            "current_local_floor": {
+                "semantic_scope_family_coverage_reached": direct_binding_case_count > 0 && shared_lifecycle_case_count > 0,
+                "direct_binding_case_count": direct_binding_case_count,
+                "shared_lifecycle_case_count": shared_lifecycle_case_count,
+                "host_sensitive_case_count": host_sensitive_case_count
+            },
+            "status": if host_sensitive_case_count > 0 {
+                "program_scope_host_family_coverage_reached"
+            } else {
+                "program_scope_declared"
+            },
+            "remaining_blockers": if host_sensitive_case_count > 0 {
+                json!(["pack.grade.program_scope.unproven"])
+            } else {
+                json!([
+                    "pack.grade.program_scope.unproven",
+                    "pack.grade.direct_binding_family.broader_host_scope_unproven"
+                ])
+            }
+        }),
+    )
+}
+
+fn write_program_grade_validation(
+    artifact_root: &Path,
+    run_id: &str,
+    pack_candidate_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let direct_binding_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["binding_identity_requirement"] == "binding.direct_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let shared_lifecycle_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["lifecycle_state"] == "wit.retained_shared"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let host_sensitive_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["host_scope_requirement"] == "host_scope.broader_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let blocked_by = if host_sensitive_case_count > 0 {
+        json!(["pack.grade.program_scope.unproven"])
+    } else {
+        json!([
+            "pack.grade.program_scope.unproven",
+            "pack.grade.direct_binding_family.broader_host_scope_unproven"
+        ])
+    };
+    let next_evidence_steps = if host_sensitive_case_count > 0 {
+        json!([
+            "add program-grade shared lifecycle evidence beyond the current local semantic-only TraceCalc scope",
+            "reassess whether broader pack evidence creates a narrower OxFml seam trigger"
+        ])
+    } else {
+        json!([
+            "add broader host-sensitive direct-binding families where semantic truth depends on non-local identity and host resolution",
+            "add program-grade shared lifecycle evidence beyond the current local semantic-only TraceCalc scope",
+            "reassess whether broader pack evidence creates a narrower OxFml seam trigger"
+        ])
+    };
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/program_grade_validation.json"),
+        &json!({
+            "schema_version": PROGRAM_GRADE_VALIDATION_SCHEMA_V1,
+            "run_id": run_id,
+            "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+            "status": "program_grade_blocked",
+            "pack_valid": false,
+            "semantic_scope_family_coverage_reached": direct_binding_case_count > 0 && shared_lifecycle_case_count > 0,
+            "direct_binding_case_count": direct_binding_case_count,
+            "shared_lifecycle_case_count": shared_lifecycle_case_count,
+            "host_sensitive_case_count": host_sensitive_case_count,
+            "blocked_by": blocked_by,
+            "next_evidence_steps": next_evidence_steps,
+            "handoff_status": "handoff_not_required_yet",
+            "semantic_scope_decision_path": relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "tracecalc-retained-failures",
+                run_id,
+                "replay-appliance",
+                "validation",
+                "pack_grade_decision.json"
+            ]),
+            "program_scope_decision_path": relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "tracecalc-retained-failures",
+                run_id,
+                "replay-appliance",
+                "validation",
+                "program_grade_decision.json"
+            ])
+        }),
+    )
+}
+
+fn write_program_grade_decision(
+    artifact_root: &Path,
+    run_id: &str,
+    pack_candidate_cases: &[serde_json::Value],
+) -> Result<(), TraceCalcRetainedFailureError> {
+    let direct_binding_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["binding_identity_requirement"] == "binding.direct_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let shared_lifecycle_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["lifecycle_state"] == "wit.retained_shared"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+    let host_sensitive_case_count = pack_candidate_cases
+        .iter()
+        .filter(|entry| {
+            entry["host_scope_requirement"] == "host_scope.broader_identity_required"
+                && entry["candidate_state"] == "pc.rehearsal_only"
+        })
+        .count();
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/program_grade_decision.json"),
+        &json!({
+            "schema_version": PROGRAM_GRADE_DECISION_SCHEMA_V1,
+            "run_id": run_id,
+            "decision_status": "capability_not_promoted",
+            "highest_honest_capability": "cap.C4.distill_valid",
+            "target_capability": "cap.C5.pack_valid",
+            "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+            "family_coverage_reached": host_sensitive_case_count > 0,
+            "direct_binding_case_count": direct_binding_case_count,
+            "shared_lifecycle_case_count": shared_lifecycle_case_count,
+            "host_sensitive_case_count": host_sensitive_case_count,
+            "decision_reason_ids": [
+                "pack.grade.program_scope.unproven",
+                "pack.grade.program_wider_host_and_lifecycle_scope_required"
+            ],
+            "handoff_decision": {
+                "status": "handoff_not_required",
+                "reason_ids": [
+                    "oxfml.seam.no_new_trigger_from_current_program_scope_evidence",
+                    "oxfml.seam.watch_lanes_only"
+                ]
+            },
+            "residual_lane": {
+                "workset_id": "W024",
+                "status": "packetized_residual",
+                "reason_ids": [
+                    "pack.grade.program_scope.unproven"
+                ]
+            },
+            "evidence_refs": {
+                "program_grade_contract_path": relative_artifact_path([
+                    "docs",
+                    "test-runs",
+                    "core-engine",
+                    "tracecalc-retained-failures",
+                    run_id,
+                    "replay-appliance",
+                    "validation",
+                    "program_grade_contract.json"
+                ]),
+                "program_grade_validation_path": relative_artifact_path([
+                    "docs",
+                    "test-runs",
+                    "core-engine",
+                    "tracecalc-retained-failures",
+                    run_id,
+                    "replay-appliance",
+                    "validation",
+                    "program_grade_validation.json"
+                ])
+            }
+        }),
+    )
+}
+
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
     segments
         .into_iter()
@@ -1972,7 +2268,7 @@ mod tests {
 
         cleanup();
         let summary = runner.execute_manifest(&repo_root, &run_id).unwrap();
-        assert_eq!(summary.case_count, 6);
+        assert_eq!(summary.case_count, 7);
         assert!(
             artifact_root
                 .join("replay-appliance/bundle_manifest.json")
@@ -2027,6 +2323,21 @@ mod tests {
         );
         assert!(
             artifact_root
+                .join("replay-appliance/validation/program_grade_contract.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/program_grade_validation.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/program_grade_decision.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
                 .join(format!(
                     "replay-appliance/runs/{run_id}/cases/rf_publication_fence_retained_local_001/explain.json"
                 ))
@@ -2065,6 +2376,15 @@ mod tests {
             retained_shared_lifecycle["lifecycle_state"],
             "wit.retained_shared"
         );
+        let host_sensitive_lifecycle = load_json::<serde_json::Value>(
+            &artifact_root
+                .join("cases/rf_host_sensitive_direct_binding_retained_shared_001/lifecycle.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            host_sensitive_lifecycle["lifecycle_state"],
+            "wit.retained_shared"
+        );
 
         let replay_validation = load_json::<serde_json::Value>(
             &artifact_root
@@ -2096,7 +2416,7 @@ mod tests {
         );
         assert_eq!(
             pack_candidate_validation["shared_lifecycle_rehearsal_count"],
-            1
+            2
         );
 
         let pack_grade_contract = load_json::<serde_json::Value>(
@@ -2111,8 +2431,8 @@ mod tests {
             pack_grade_contract["semantic_display_policy"]["boundary_status"],
             "boundary.semantic_only_tracecalc_scope"
         );
-        assert_eq!(pack_grade_contract["direct_binding_case_count"], 1);
-        assert_eq!(pack_grade_contract["shared_lifecycle_case_count"], 1);
+        assert_eq!(pack_grade_contract["direct_binding_case_count"], 2);
+        assert_eq!(pack_grade_contract["shared_lifecycle_case_count"], 2);
 
         let pack_grade_validation = load_json::<serde_json::Value>(
             &artifact_root.join("replay-appliance/validation/pack_grade_validation.json"),
@@ -2123,8 +2443,8 @@ mod tests {
             "pack_grade_ready_for_decision"
         );
         assert_eq!(pack_grade_validation["pack_valid"], false);
-        assert_eq!(pack_grade_validation["direct_binding_case_count"], 1);
-        assert_eq!(pack_grade_validation["shared_lifecycle_case_count"], 1);
+        assert_eq!(pack_grade_validation["direct_binding_case_count"], 2);
+        assert_eq!(pack_grade_validation["shared_lifecycle_case_count"], 2);
         let pack_grade_decision = load_json::<serde_json::Value>(
             &artifact_root.join("replay-appliance/validation/pack_grade_decision.json"),
         )
@@ -2142,6 +2462,53 @@ mod tests {
             "handoff_not_required"
         );
         assert_eq!(pack_grade_decision["residual_lane"]["workset_id"], "W023");
+        let program_grade_contract = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/program_grade_contract.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            program_grade_contract["status"],
+            "program_scope_host_family_coverage_reached"
+        );
+        assert_eq!(
+            program_grade_contract["current_local_floor"]["semantic_scope_family_coverage_reached"],
+            true
+        );
+        assert_eq!(
+            program_grade_contract["current_local_floor"]["host_sensitive_case_count"],
+            1
+        );
+        let program_grade_validation = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/program_grade_validation.json"),
+        )
+        .unwrap();
+        assert_eq!(program_grade_validation["status"], "program_grade_blocked");
+        assert_eq!(program_grade_validation["pack_valid"], false);
+        assert_eq!(program_grade_validation["host_sensitive_case_count"], 1);
+        assert_eq!(
+            program_grade_validation["blocked_by"][0],
+            "pack.grade.program_scope.unproven"
+        );
+        assert_eq!(
+            program_grade_validation["handoff_status"],
+            "handoff_not_required_yet"
+        );
+        let program_grade_decision = load_json::<serde_json::Value>(
+            &artifact_root.join("replay-appliance/validation/program_grade_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            program_grade_decision["decision_status"],
+            "capability_not_promoted"
+        );
+        assert_eq!(
+            program_grade_decision["handoff_decision"]["status"],
+            "handoff_not_required"
+        );
+        assert_eq!(
+            program_grade_decision["residual_lane"]["workset_id"],
+            "W024"
+        );
 
         let explain_record = load_json::<serde_json::Value>(
             &artifact_root.join(format!(

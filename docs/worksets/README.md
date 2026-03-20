@@ -128,6 +128,7 @@ The current realized continuation after `W017` is:
 5. `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`
 6. `W022_EXECUTION_SEQUENCE_H_SHARED_PACK_FAMILY_AND_DIRECT_BINDING_WIDENING.md`
 7. `W023_EXECUTION_SEQUENCE_I_PROGRAM_GRADE_PACK_PROMOTION.md`
+8. `W024_EXECUTION_SEQUENCE_J_BROADER_PROGRAM_SCOPE_PACK_PROMOTION.md`
 
 `W017` moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
 `W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
@@ -136,5 +137,7 @@ The current realized continuation after `W017` is:
 `W019` has now reached its declared gate: it proves `cap.C4.distill_valid`, adds dependency-projection-sensitive reduced witnesses, and defines rehearsal-only pack-candidate separation without claiming `cap.C5.pack_valid`.
 `W021` has now reached its declared gate: it declares a semantic-only pack-grade contract, emits a pack-grade validation artifact, and leaves `cap.C5.pack_valid` explicitly blocked rather than implicit.
 `W022` is the explicit successor lane for retained-shared or pack-promoted witness families, direct-binding-sensitive pack evidence, and any later pack-grade promotion. It now reaches a bounded decision point without claiming `cap.C5.pack_valid`.
-`W023` is the next residual lane for broader program-grade pack promotion beyond the current semantic-only `TraceCalc` scope.
+`W023` is the next residual lane for broader program-grade pack promotion beyond the current semantic-only `TraceCalc` scope. Its first slice emits explicit program-grade contract and validation sidecars, its second slice widens broader host-sensitive family evidence, and its third slice makes the capability and handoff decision explicit.
+
+`W024` is now the next residual lane after W023 for broader program-grade pack promotion beyond the currently exercised host-sensitive `TraceCalc` family.
 Later widening must use successor worksets rather than silently reopening `W016`, `W018`, `W019`, or W005.

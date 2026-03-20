@@ -32,6 +32,15 @@ Current W022 shared-lifecycle family baseline:
 Current W022 decision baseline:
 1. `w022-sequence3-pack-decision`
 
+Current W023 program-scope contract baseline:
+1. `w023-sequence1-program-scope-contract`
+
+Current W023 host-sensitive family baseline:
+1. `w023-sequence2-host-sensitive-family`
+
+Current W023 program-scope decision baseline:
+1. `w023-sequence3-program-decision`
+
 It is emitted by:
 1. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w016-sequence4-retained-failure-baseline`
 2. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w018-retained-replay-appliance-bundle-baseline`
@@ -41,6 +50,9 @@ It is emitted by:
 6. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence1-direct-binding-family`
 7. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence2-shared-lifecycle-family`
 8. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w022-sequence3-pack-decision`
+9. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w023-sequence1-program-scope-contract`
+10. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w023-sequence2-host-sensitive-family`
+11. `cargo run -p oxcalc-tracecalc-cli -- retained-failures w023-sequence3-program-decision`
 
 The current retained-failure baseline carries:
 1. one replay-valid retained-local witness family,
@@ -83,11 +95,26 @@ The W022 Sequence 3 baseline additionally carries:
 2. a bounded local decision to keep `cap.C5.pack_valid` unclaimed for the current semantic-only scope,
 3. a packetized residual lane in `W023` rather than an implicit lingering blocker.
 
+The W023 Sequence 1 baseline additionally carries:
+1. an explicit `program_grade_contract.json` artifact,
+2. an explicit `program_grade_validation.json` artifact,
+3. a bounded emitted statement that current semantic-only family coverage is insufficient for broader program-grade pack promotion.
+
+The W023 Sequence 2 baseline additionally carries:
+1. one retained-shared direct-binding case with broader host identity references,
+2. a narrowed `program_grade_validation.json` blocker set containing only `pack.grade.program_scope.unproven`,
+3. no claim of `cap.C5.pack_valid`, leaving broader program-grade promotion as the remaining decision lane.
+
+The W023 Sequence 3 baseline additionally carries:
+1. an explicit `program_grade_decision.json` artifact,
+2. a bounded local decision to keep `cap.C5.pack_valid` unclaimed,
+3. a packetized residual lane in `W024` rather than an implicit lingering blocker.
+
 ## Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, the W019 distill-valid retained-failure baseline, the W021 gate baseline, and the W022 direct-binding, shared-lifecycle, and decision baselines
-  - the next live lane is the broader program-grade pack promotion packet in W023
+  - this directory now carries the original retained-failure baseline, the replay-appliance-aware retained-failure baseline, the W019 distill-valid retained-failure baseline, the W021 gate baseline, the W022 direct-binding, shared-lifecycle, and decision baselines, and the W023 program-scope contract, host-sensitive family, and program-scope decision baselines
+  - the next live lane after W023 is broader program-scope widening in W024

@@ -1,0 +1,38 @@
+{
+  "case_id": "rf_verify_clean_quarantined_001",
+  "dependency_projection": {
+    "dependency_shape_kinds": [],
+    "projection_status": "dp.not_applicable",
+    "runtime_effect_kinds": []
+  },
+  "distill_status": "distill_quarantined",
+  "distillation_id": "rf_verify_clean_quarantined_001--distilled",
+  "lifecycle_state": "wit.quarantined",
+  "predicate_preserved": true,
+  "reduced_engine_conformance_match": null,
+  "reduced_scenario_replay_valid": null,
+  "removed_step_ids": [
+    "st1",
+    "st2",
+    "st3"
+  ],
+  "replay_validation_assessed": false,
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters"
+  ],
+  "schema_version": "oxcalc.tracecalc.distill_validation.v1",
+  "selected_step_ids": [],
+  "selected_unit_ids": [
+    "view:published/current"
+  ],
+  "semantic_display_boundary": {
+    "boundary_status": "boundary.semantic_only_tracecalc_scope",
+    "display_delta_exercised": false,
+    "format_delta_exercised": false,
+    "note": "Current TraceCalc Stage 1 distillation covers semantic surfaces only; format/display delta families remain outside the exercised scope.",
+    "semantic_surface_only": true
+  },
+  "target_mismatch_kind": "result_state_mismatch"
+}

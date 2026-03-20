@@ -26,7 +26,7 @@
     },
     {
       "limit_id": "oxcalc.local.limit.pack_valid_not_proven",
-      "summary": "W022 now exercises retained-shared and direct-binding-sensitive witness families and emits an explicit pack-grade decision artifact, but cap.C5.pack_valid remains unclaimed because the current evidence is still limited to the semantic-only TraceCalc scope rather than broader program-grade pack evidence."
+      "summary": "W023 now emits explicit program-grade contract, validation, and decision artifacts, but cap.C5.pack_valid remains unclaimed because the current evidence is still limited to the currently exercised TraceCalc host-sensitive family rather than broader program-grade pack evidence."
     }
   ],
   "conformance_artifact_refs": [
@@ -45,7 +45,14 @@
     "docs/test-runs/core-engine/tracecalc-retained-failures/w021-pack-grade-gate-baseline/replay-appliance/validation/pack_grade_validation.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_contract.json",
     "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_validation.json",
-    "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_decision.json"
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w022-sequence3-pack-decision/replay-appliance/validation/pack_grade_decision.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/validation/program_grade_contract.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/validation/program_grade_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/validation/program_grade_contract.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/validation/program_grade_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_contract.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json"
   ],
   "registry_version_refs": [
     {
@@ -84,6 +91,9 @@
     "Source labels remain preserved even when normalized event families are added.",
     "This manifest now claims through cap.C4.distill_valid on the basis of checked-in bundle-valid ordinary and retained-failure distillation evidence.",
     "W021 adds the first semantic-only pack-grade contract and pack-grade validation artifact.",
-    "W022 then exercises retained-shared and direct-binding-sensitive witness families and emits a pack-grade decision artifact, but cap.C5.pack_valid remains intentionally unclaimed because the current evidence is still limited to the semantic-only TraceCalc scope."
+    "W022 then exercises retained-shared and direct-binding-sensitive witness families and emits a pack-grade decision artifact, but cap.C5.pack_valid remains intentionally unclaimed because the current evidence is still limited to the semantic-only TraceCalc scope.",
+    "W023 Sequence 1 adds explicit program-grade contract and validation sidecars that keep the broader blocker set visible in emitted evidence.",
+    "W023 Sequence 2 adds broader host-sensitive retained-shared family evidence and narrows the emitted program-grade blocker set to pack.grade.program_scope.unproven.",
+    "W023 Sequence 3 adds an explicit program-grade decision artifact that keeps cap.C5.pack_valid unclaimed and packetizes the broader residual in W024."
   ]
 }

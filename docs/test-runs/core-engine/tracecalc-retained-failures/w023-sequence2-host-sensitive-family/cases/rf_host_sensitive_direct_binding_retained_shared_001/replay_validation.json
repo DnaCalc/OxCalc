@@ -1,0 +1,18 @@
+{
+  "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+  "engine_conformance_match": true,
+  "lifecycle_target": "wit.retained_shared",
+  "predicate_preserved": true,
+  "replay_validation_assessed": true,
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "scenario_replay_valid": true,
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "target_mismatch_kind": "published_view_mismatch"
+}

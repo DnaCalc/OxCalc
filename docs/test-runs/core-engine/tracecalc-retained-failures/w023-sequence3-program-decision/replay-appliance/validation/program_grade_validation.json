@@ -1,0 +1,21 @@
+{
+  "blocked_by": [
+    "pack.grade.program_scope.unproven"
+  ],
+  "direct_binding_case_count": 2,
+  "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+  "handoff_status": "handoff_not_required_yet",
+  "host_sensitive_case_count": 1,
+  "next_evidence_steps": [
+    "add program-grade shared lifecycle evidence beyond the current local semantic-only TraceCalc scope",
+    "reassess whether broader pack evidence creates a narrower OxFml seam trigger"
+  ],
+  "pack_valid": false,
+  "program_scope_decision_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+  "run_id": "w023-sequence3-program-decision",
+  "schema_version": "oxcalc.tracecalc.program_grade_validation.v1",
+  "semantic_scope_decision_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json",
+  "semantic_scope_family_coverage_reached": true,
+  "shared_lifecycle_case_count": 2,
+  "status": "program_grade_blocked"
+}

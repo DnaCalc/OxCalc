@@ -1,0 +1,24 @@
+{
+  "artifact_root": "\\\\?\\C:\\Work\\DnaCalc\\OxCalc\\docs\\test-runs\\core-engine\\tracecalc-retained-failures\\w023-sequence2-host-sensitive-family",
+  "case_count": 7,
+  "lifecycle_counts": [
+    [
+      "wit.explanatory_only",
+      1
+    ],
+    [
+      "wit.quarantined",
+      1
+    ],
+    [
+      "wit.retained_local",
+      3
+    ],
+    [
+      "wit.retained_shared",
+      2
+    ]
+  ],
+  "run_id": "w023-sequence2-host-sensitive-family",
+  "schema_version": "oxcalc.tracecalc.retained_failure_manifest.v1"
+}

@@ -1,0 +1,49 @@
+{
+  "mismatch_kinds": [
+    "dependency_projection_effect"
+  ],
+  "reduction_id": "tc_dynamic_dep_switch_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "run_id": "w023-sequence2-host-sensitive-family",
+  "scenario_id": "tc_dynamic_dep_switch_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.retained_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "main",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4"
+      ],
+      "unit_id": "events:main",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [
+        "events:main"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st4"
+      ],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_dynamic_dep_switch_001--witness-seed"
+}

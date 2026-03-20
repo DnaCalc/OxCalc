@@ -1,0 +1,35 @@
+{
+  "artifact_paths": {
+    "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/distill_validation.json",
+    "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/distillation_manifest.json",
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/lifecycle.json",
+    "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/pack_candidate_assessment.json",
+    "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/witness_bundle/reduced_scenario.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/replay_validation.json",
+    "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/witness_bundle/source_scenario.json"
+  },
+  "binding_identity_refs": [
+    "tracecalc.node:A",
+    "tracecalc.node:B"
+  ],
+  "binding_identity_requirement": "binding.direct_identity_required",
+  "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+  "description": "Replay-valid retained-shared witness that rehearses broader host-sensitive direct-binding identity preservation.",
+  "host_identity_refs": [
+    "dna.onecalc.binding:sheet1!A1",
+    "dna.onecalc.binding:sheet1!B1"
+  ],
+  "host_scope_requirement": "host_scope.broader_identity_required",
+  "lifecycle_state": "wit.retained_shared",
+  "notes": [
+    "This is still a TraceCalc-side rehearsal artifact, not a claim of full Excel host semantics.",
+    "Its purpose is to make broader host-sensitive direct-binding preservation visible in emitted program-grade replay artifacts."
+  ],
+  "pack_family_id": "pf.host_sensitive_direct_binding_retained_shared",
+  "predicate_preserved": true,
+  "program_family_id": "pg.host_sensitive_direct_binding_shared",
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "source_scenario_id": "tc_accept_publish_001"
+}

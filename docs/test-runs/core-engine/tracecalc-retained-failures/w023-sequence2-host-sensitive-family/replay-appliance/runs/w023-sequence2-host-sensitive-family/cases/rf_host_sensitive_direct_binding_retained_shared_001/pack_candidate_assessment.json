@@ -1,0 +1,25 @@
+{
+  "binding_identity_refs": [
+    "tracecalc.node:A",
+    "tracecalc.node:B"
+  ],
+  "binding_identity_requirement": "binding.direct_identity_required",
+  "blocked_by": [],
+  "candidate_state": "pc.rehearsal_only",
+  "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+  "dependency_projection_status": "dp.not_applicable",
+  "distill_status": "distill_valid",
+  "host_identity_refs": [
+    "dna.onecalc.binding:sheet1!A1",
+    "dna.onecalc.binding:sheet1!B1"
+  ],
+  "host_scope_requirement": "host_scope.broader_identity_required",
+  "lifecycle_state": "wit.retained_shared",
+  "pack_eligible": false,
+  "pack_family_id": "pf.host_sensitive_direct_binding_retained_shared",
+  "predicate_preserved": true,
+  "program_family_id": "pg.host_sensitive_direct_binding_shared",
+  "replay_valid": true,
+  "schema_version": "oxcalc.tracecalc.pack_candidate_assessment.v1",
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope"
+}

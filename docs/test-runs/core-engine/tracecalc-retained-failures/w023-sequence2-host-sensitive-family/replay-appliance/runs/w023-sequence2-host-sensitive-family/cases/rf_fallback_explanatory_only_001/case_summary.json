@@ -1,0 +1,29 @@
+{
+  "artifact_paths": {
+    "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/distill_validation.json",
+    "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/distillation_manifest.json",
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/lifecycle.json",
+    "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+    "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/witness_bundle/reduced_scenario.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/replay_validation.json",
+    "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/witness_bundle/source_scenario.json"
+  },
+  "binding_identity_refs": [],
+  "binding_identity_requirement": "binding.not_required",
+  "case_id": "rf_fallback_explanatory_only_001",
+  "description": "Explanatory-only retained witness over fallback counter behavior.",
+  "host_identity_refs": [],
+  "host_scope_requirement": "host_scope.local_only",
+  "lifecycle_state": "wit.explanatory_only",
+  "notes": [
+    "This case remains explanatory-only even though the source scenario replays.",
+    "The predicate is tracked over fallback counters rather than promoted to retained-local status."
+  ],
+  "pack_family_id": "pf.semantic_only_retained_local",
+  "predicate_preserved": false,
+  "program_family_id": "pg.semantic_local_only",
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "source_scenario_id": "tc_fallback_reentry_001"
+}

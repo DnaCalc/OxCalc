@@ -1,0 +1,27 @@
+{
+  "current_local_floor": {
+    "direct_binding_case_count": 2,
+    "host_sensitive_case_count": 1,
+    "semantic_scope_family_coverage_reached": true,
+    "shared_lifecycle_case_count": 2
+  },
+  "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "remaining_blockers": [
+    "pack.grade.program_scope.unproven"
+  ],
+  "required_program_families": [
+    "program.shared_lifecycle_beyond_local",
+    "program.direct_binding_broader_host_scope",
+    "program.host_sensitive_identity_preservation"
+  ],
+  "run_id": "w023-sequence2-host-sensitive-family",
+  "schema_version": "oxcalc.tracecalc.program_grade_contract.v1",
+  "source_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "status": "program_scope_host_family_coverage_reached",
+  "target_capability": "cap.C5.pack_valid",
+  "watch_lanes": [
+    "oxfml.watch.provider_failure",
+    "oxfml.watch.callable_publication"
+  ]
+}

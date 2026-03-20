@@ -258,8 +258,9 @@ For this pass, the highest honest claim is:
 ### 9.3 Known Limits
 Known current limits include:
 1. explain coverage is still limited to the current realized ordinary-diff and retained-failure family set,
-2. a semantic-only `TraceCalc` pack-grade contract and validator now exist for the current retained-failure family, but the current validator blocks promotion on missing shared-lifecycle and direct-binding-sensitive pack evidence,
-3. W022 now exercises retained-shared and direct-binding-sensitive witness families and emits an explicit pack-grade decision artifact, but `cap.C5.pack_valid` is still not claimed because the repo does not yet contain broader program-grade pack evidence beyond the current semantic-only `TraceCalc` scope.
+2. a semantic-only `TraceCalc` pack-grade contract and validator now exist for the current retained-failure family, and W022 exercises retained-shared and direct-binding-sensitive witness families with an explicit pack-grade decision artifact,
+3. W023 now adds explicit program-grade contract, validation, and decision sidecars so the broader blocker set is visible in artifacts rather than only in workset prose,
+4. `cap.C5.pack_valid` is still not claimed because the repo does not yet contain broader program-grade pack evidence beyond the currently exercised host-sensitive `TraceCalc` scope.
 
 ## 10. Registry Version Pins
 
@@ -317,7 +318,7 @@ If a reduced artifact is explanatory-only rather than replay-valid, that status 
 Open alignment items include:
 1. closing the gap between current source trace labels and normalized event-family emission,
 2. widening explain coverage beyond the current retained-failure and ordinary-diff family set,
-3. proving `cap.C5.pack_valid` with broader program-grade pack evidence beyond the current semantic-only `TraceCalc` witness families.
+3. proving `cap.C5.pack_valid` with broader program-grade pack evidence beyond the currently exercised host-sensitive `TraceCalc` witness families.
 4. deciding whether broader program-grade pack evidence later justifies a narrower `HANDOFF-CALC-002`.
 
 ## 13. Current Semantic Conflict Notes

@@ -1,0 +1,28 @@
+{
+  "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+  "dependency_projection_status": "dp.not_applicable",
+  "distillation_id": "rf_host_sensitive_direct_binding_retained_shared_001--distilled",
+  "lifecycle_state": "wit.retained_shared",
+  "removed_step_ids": [],
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "candidate_publication_boundary"
+  ],
+  "schema_version": "oxcalc.tracecalc.distillation_manifest.v1",
+  "selected_step_ids": [
+    "st1",
+    "st2",
+    "st3",
+    "st4"
+  ],
+  "selected_unit_ids": [
+    "events:main",
+    "view:published/current"
+  ],
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope",
+  "source_run_id": "w017-rust-parity-baseline",
+  "source_scenario_id": "tc_accept_publish_001",
+  "target_mismatch_kind": "published_view_mismatch",
+  "witness_id": "tc_accept_publish_001--witness-seed"
+}

@@ -1,0 +1,119 @@
+{
+  "blocked_by": [],
+  "blocked_case_count": 2,
+  "blocked_cases": [
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_fallback_explanatory_only_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_fallback_explanatory_only_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.explanatory_only",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local",
+      "program_family_id": "pg.semantic_local_only"
+    },
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.blocked_by_lifecycle",
+      "case_id": "rf_verify_clean_quarantined_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.quarantined",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local",
+      "program_family_id": "pg.semantic_local_only"
+    }
+  ],
+  "direct_binding_case_count": 2,
+  "eligible_case_count": 5,
+  "eligible_cases": [
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_publication_fence_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_publication_fence_retained_local_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.retained_local",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local",
+      "program_family_id": "pg.semantic_local_only"
+    },
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_dynamic_dependency_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_dynamic_dependency_retained_local_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.retained_local",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_local",
+      "program_family_id": "pg.semantic_local_only"
+    },
+    {
+      "binding_identity_refs": [],
+      "binding_identity_requirement": "binding.not_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_publication_fence_retained_shared_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_publication_fence_retained_shared_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.retained_shared",
+      "pack_eligible": false,
+      "pack_family_id": "pf.semantic_only_retained_shared",
+      "program_family_id": "pg.semantic_local_only"
+    },
+    {
+      "binding_identity_refs": [
+        "tracecalc.node:A",
+        "tracecalc.node:B"
+      ],
+      "binding_identity_requirement": "binding.direct_identity_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_host_sensitive_direct_binding_retained_shared_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_host_sensitive_direct_binding_retained_shared_001",
+      "host_identity_refs": [
+        "dna.onecalc.binding:sheet1!A1",
+        "dna.onecalc.binding:sheet1!B1"
+      ],
+      "host_scope_requirement": "host_scope.broader_identity_required",
+      "lifecycle_state": "wit.retained_shared",
+      "pack_eligible": false,
+      "pack_family_id": "pf.host_sensitive_direct_binding_retained_shared",
+      "program_family_id": "pg.host_sensitive_direct_binding_shared"
+    },
+    {
+      "binding_identity_refs": [
+        "tracecalc.node:A",
+        "tracecalc.node:B"
+      ],
+      "binding_identity_requirement": "binding.direct_identity_required",
+      "bundle_pack_candidate_assessment_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence2-host-sensitive-family/replay-appliance/runs/w023-sequence2-host-sensitive-family/cases/rf_direct_binding_sensitive_retained_local_001/pack_candidate_assessment.json",
+      "candidate_state": "pc.rehearsal_only",
+      "case_id": "rf_direct_binding_sensitive_retained_local_001",
+      "host_identity_refs": [],
+      "host_scope_requirement": "host_scope.local_only",
+      "lifecycle_state": "wit.retained_local",
+      "pack_eligible": false,
+      "pack_family_id": "pf.direct_binding_sensitive_retained_local",
+      "program_family_id": "pg.semantic_local_only"
+    }
+  ],
+  "evaluated_scope_id": "tracecalc.semantic_only_pack_scope.v1",
+  "next_evidence_steps": [
+    "decide whether the current semantic-only shared-pack evidence is sufficient for cap.C5.pack_valid or remains blocked by broader governance requirements"
+  ],
+  "pack_valid": false,
+  "run_id": "w023-sequence2-host-sensitive-family",
+  "schema_version": "oxcalc.tracecalc.pack_grade_validation.v1",
+  "shared_lifecycle_case_count": 2,
+  "status": "pack_grade_ready_for_decision"
+}

@@ -1,0 +1,255 @@
+{
+  "calc_space": "TraceCalc",
+  "description": "Distilled witness slice for tc_publication_fence_reject_001",
+  "expected": {
+    "counter_expectations": [
+      {
+        "comparison": "eq",
+        "counter": "rejects_by_class.publication_fence_mismatch",
+        "value": 1
+      },
+      {
+        "comparison": "eq",
+        "counter": "abandoned_candidates",
+        "value": 1
+      }
+    ],
+    "pinned_views": [],
+    "published_view": {
+      "node_values": [
+        {
+          "node_id": "A",
+          "value": "2"
+        },
+        {
+          "node_id": "B",
+          "value": "2"
+        }
+      ],
+      "snapshot_id": "s0"
+    },
+    "rejects": [
+      {
+        "detail_contains": "observed_basis",
+        "reject_id": "rej1",
+        "reject_kind": "publication_fence_mismatch"
+      }
+    ],
+    "trace_labels": [
+      {
+        "count": 1,
+        "label": "node_marked_dirty"
+      },
+      {
+        "count": 1,
+        "label": "candidate_admitted"
+      },
+      {
+        "count": 1,
+        "label": "node_marked_needed"
+      },
+      {
+        "count": 1,
+        "label": "evaluation_started"
+      },
+      {
+        "count": 1,
+        "label": "candidate_rejected"
+      }
+    ]
+  },
+  "generator": null,
+  "initial_graph": {
+    "nodes": [
+      {
+        "expr": {
+          "op": "const",
+          "value": 2
+        },
+        "kind": "value",
+        "node_id": "A"
+      },
+      {
+        "expr": {
+          "deps": [
+            "A"
+          ],
+          "op": "sum"
+        },
+        "kind": "value",
+        "node_id": "B"
+      }
+    ],
+    "snapshot_id": "s0"
+  },
+  "initial_runtime": {
+    "pinned_views": [],
+    "published_runtime_effects": [],
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": "2"
+      },
+      {
+        "node_id": "B",
+        "value": "2"
+      }
+    ],
+    "seed_overlays": []
+  },
+  "notes": [
+    "Distilled from retained-failure case 'rf_publication_fence_retained_shared_001' using declared reduction units."
+  ],
+  "pack_tags": [
+    "stage1",
+    "w014",
+    "r3-incompatible-branch",
+    "r6-reject-taxonomy"
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.reject_detail_replay"
+    ],
+    "replay_classes": [
+      "R3",
+      "R6"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "assertion_result_set"
+    ],
+    "safety_properties": [
+      "S2",
+      "S4"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
+  "scenario_id": "rf_publication_fence_retained_shared_001--distilled",
+  "schema_version": "tracecalc-s1",
+  "steps": [
+    {
+      "admission_id": null,
+      "candidate_result_id": null,
+      "compatibility_basis": null,
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "mark_stale",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st1",
+      "targets": [
+        "B"
+      ],
+      "value_updates": [],
+      "view_id": null
+    },
+    {
+      "admission_id": "adm1",
+      "candidate_result_id": null,
+      "compatibility_basis": "s0",
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "admit_work",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": null,
+      "reject_detail_text": null,
+      "reject_id": null,
+      "reject_kind": null,
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st2",
+      "targets": [
+        "B"
+      ],
+      "value_updates": [],
+      "view_id": null
+    },
+    {
+      "admission_id": null,
+      "candidate_result_id": null,
+      "compatibility_basis": null,
+      "dependency_shape_updates": [],
+      "diagnostic_events": [],
+      "kind": "emit_reject",
+      "observed_nodes": [],
+      "overlay_kind": null,
+      "owner_node_id": null,
+      "payload": null,
+      "publication_id": null,
+      "reject_detail": {
+        "expected_basis": "s0",
+        "observed_basis": "s1"
+      },
+      "reject_detail_text": null,
+      "reject_id": "rej1",
+      "reject_kind": "publication_fence_mismatch",
+      "runtime_effects": [],
+      "snapshot_id": null,
+      "step_id": "st3",
+      "targets": [],
+      "value_updates": [],
+      "view_id": null
+    }
+  ],
+  "tags": [
+    "reject",
+    "fence",
+    "w014"
+  ],
+  "witness_anchors": {
+    "event_groups": [
+      {
+        "event_group_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "phase_blocks": [
+      {
+        "phase_block_id": "main",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [
+      {
+        "reject_id": "rej1",
+        "reject_record_id": "rej1/record"
+      }
+    ],
+    "scenario_anchor_id": "tc_publication_fence_reject_001/scenario",
+    "view_slices": [
+      {
+        "view_id": null,
+        "view_kind": "published_view",
+        "view_slice_id": "published/current"
+      }
+    ]
+  }
+}

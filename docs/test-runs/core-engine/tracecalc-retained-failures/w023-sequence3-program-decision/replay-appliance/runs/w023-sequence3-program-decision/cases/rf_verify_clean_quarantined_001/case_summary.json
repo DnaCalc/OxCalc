@@ -1,0 +1,28 @@
+{
+  "artifact_paths": {
+    "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/distill_validation.json",
+    "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/distillation_manifest.json",
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+    "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/pack_candidate_assessment.json",
+    "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/witness_bundle/reduced_scenario.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/replay_validation.json",
+    "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/runs/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/witness_bundle/source_scenario.json"
+  },
+  "binding_identity_refs": [],
+  "binding_identity_requirement": "binding.not_required",
+  "case_id": "rf_verify_clean_quarantined_001",
+  "description": "Quarantined retained witness for verify-clean publication-stability behavior.",
+  "host_identity_refs": [],
+  "host_scope_requirement": "host_scope.local_only",
+  "lifecycle_state": "wit.quarantined",
+  "notes": [
+    "This case exists to keep quarantined witness behavior explicit in the retained-failure baseline."
+  ],
+  "pack_family_id": "pf.semantic_only_retained_local",
+  "predicate_preserved": true,
+  "program_family_id": "pg.semantic_local_only",
+  "replay_valid": null,
+  "replay_validation_assessed": false,
+  "source_scenario_id": "tc_verify_clean_no_publish_001"
+}

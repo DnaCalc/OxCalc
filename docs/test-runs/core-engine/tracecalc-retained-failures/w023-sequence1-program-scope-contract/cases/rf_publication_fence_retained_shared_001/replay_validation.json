@@ -1,0 +1,19 @@
+{
+  "case_id": "rf_publication_fence_retained_shared_001",
+  "engine_conformance_match": true,
+  "lifecycle_target": "wit.retained_shared",
+  "predicate_preserved": true,
+  "replay_validation_assessed": true,
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels"
+  ],
+  "scenario_replay_valid": true,
+  "selected_unit_ids": [
+    "events:main",
+    "reject:rej1/record",
+    "view:published/current"
+  ],
+  "target_mismatch_kind": "reject_mismatch"
+}

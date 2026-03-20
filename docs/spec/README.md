@@ -12,6 +12,7 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
 - `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
 - `docs/spec/core-engine/CORE_ENGINE_REALIZATION_ROADMAP.md`
+- `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
 
 ## Supporting Realization and Test Docs
 - `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`
@@ -24,6 +25,8 @@ The rewritten canonical core-engine set is:
   - supporting companion defining the executable semantic oracle and later-engine conformance baseline.
 - `docs/spec/core-engine/CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md`
   - supporting companion defining how OxCalc-owned `TraceCalc`, runner, oracle, and diff artifacts project into the Foundation Replay appliance rollout.
+- `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
+  - supporting companion defining the first semantically-complete TreeCalc engine target and the pre-optimization work sequence needed to reach it.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

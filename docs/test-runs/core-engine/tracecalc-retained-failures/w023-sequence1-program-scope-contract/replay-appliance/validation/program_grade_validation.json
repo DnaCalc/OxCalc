@@ -1,0 +1,21 @@
+{
+  "blocked_by": [
+    "pack.grade.program_scope.unproven",
+    "pack.grade.direct_binding_family.broader_host_scope_unproven"
+  ],
+  "direct_binding_case_count": 1,
+  "evaluated_scope_id": "tracecalc.program_grade_pack_scope.v1",
+  "handoff_status": "handoff_not_required_yet",
+  "next_evidence_steps": [
+    "add broader host-sensitive direct-binding families where semantic truth depends on non-local identity and host resolution",
+    "add program-grade shared lifecycle evidence beyond the current local semantic-only TraceCalc scope",
+    "reassess whether broader pack evidence creates a narrower OxFml seam trigger"
+  ],
+  "pack_valid": false,
+  "run_id": "w023-sequence1-program-scope-contract",
+  "schema_version": "oxcalc.tracecalc.program_grade_validation.v1",
+  "semantic_scope_decision_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/validation/pack_grade_decision.json",
+  "semantic_scope_family_coverage_reached": true,
+  "shared_lifecycle_case_count": 1,
+  "status": "program_grade_blocked"
+}

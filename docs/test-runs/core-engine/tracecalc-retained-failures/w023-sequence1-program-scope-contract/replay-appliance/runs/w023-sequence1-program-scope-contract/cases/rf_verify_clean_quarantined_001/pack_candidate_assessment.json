@@ -1,0 +1,18 @@
+{
+  "binding_identity_refs": [],
+  "binding_identity_requirement": "binding.not_required",
+  "blocked_by": [
+    "lifecycle.quarantined"
+  ],
+  "candidate_state": "pc.blocked_by_lifecycle",
+  "case_id": "rf_verify_clean_quarantined_001",
+  "dependency_projection_status": "dp.not_applicable",
+  "distill_status": "distill_quarantined",
+  "lifecycle_state": "wit.quarantined",
+  "pack_eligible": false,
+  "pack_family_id": "pf.semantic_only_retained_local",
+  "predicate_preserved": true,
+  "replay_valid": null,
+  "schema_version": "oxcalc.tracecalc.pack_candidate_assessment.v1",
+  "semantic_display_boundary_status": "boundary.semantic_only_tracecalc_scope"
+}

@@ -1,0 +1,29 @@
+{
+  "artifact_paths": {
+    "distill_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/distill_validation.json",
+    "distillation_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/distillation_manifest.json",
+    "lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/lifecycle.json",
+    "pack_candidate_assessment": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/pack_candidate_assessment.json",
+    "reduced_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/witness_bundle/reduced_scenario.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/reduction_manifest.json",
+    "replay_validation": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/replay_validation.json",
+    "source_scenario": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence1-program-scope-contract/replay-appliance/runs/w023-sequence1-program-scope-contract/cases/rf_direct_binding_sensitive_retained_local_001/witness_bundle/source_scenario.json"
+  },
+  "binding_identity_refs": [
+    "tracecalc.node:A",
+    "tracecalc.node:B"
+  ],
+  "binding_identity_requirement": "binding.direct_identity_required",
+  "case_id": "rf_direct_binding_sensitive_retained_local_001",
+  "description": "Replay-valid retained witness whose pack-facing meaning depends on concrete direct-binding identity.",
+  "lifecycle_state": "wit.retained_local",
+  "notes": [
+    "This is a local TraceCalc analogue for a direct-binding-sensitive pack family.",
+    "It does not claim full Excel binding semantics, but it makes the binding-identity preservation requirement explicit in emitted replay-pack artifacts."
+  ],
+  "pack_family_id": "pf.direct_binding_sensitive_retained_local",
+  "predicate_preserved": true,
+  "replay_valid": true,
+  "replay_validation_assessed": true,
+  "source_scenario_id": "tc_accept_publish_001"
+}

@@ -286,15 +286,192 @@ The latest OxFml note also makes one useful non-trigger explicit:
 2. availability/provider-failure handling and callable-publication restriction are the most likely future upstream semantic lanes to become coordinator-visible later,
 3. OxCalc should treat those as watch lanes rather than as current seam-closure blockers.
 
-## 17. Status
+## 17. TreeCalc Seam Negotiation Topics
+The next TreeCalc-ready engine phase requires a narrower negotiation shape than the earlier Stage 1 seam passes.
+
+The required note-exchange topics are:
+1. formula and bind artifact identity carriage for formula-bearing TreeCalc nodes,
+2. direct-reference versus relative-reference descriptor carriage,
+3. unresolved or host-sensitive reference carrier rules,
+4. dependency consequence carriage for additions, removals, and reclassifications,
+5. candidate-result consequence optionality and correlation guarantees,
+6. reject-context carrier and minimum diagnostic guarantee,
+7. runtime-derived effect transport and projection rules,
+8. direct-binding and host-sensitive witness-preservation rules,
+9. semantic-format versus display-facing consequence boundary.
+
+These topics are negotiation topics, not yet all formal handoff triggers.
+The purpose is to force explicit consumption decisions before W026 and later TreeCalc execution work.
+
+## 18. Required Consumed Topic Matrix For W026
+For the first TreeCalc-ready engine phase, OxCalc should process the seam in the following topic matrix.
+
+### 18.1 Topic A: Formula and Bind Artifact Identity
+OxCalc needs:
+1. stable formula artifact identity for formula-bearing nodes,
+2. bind-product identity and version basis,
+3. compatibility basis needed to determine whether a structure/formula edit implies rebind or only recalc.
+
+Expected current answer shape from OxFml:
+1. canonical now for `formula_stable_id`, `formula_token`, `bind_hash`, `snapshot_epoch`, and `profile_version`,
+2. narrower but consumable for `capability_view_key` where compatibility-sensitive evaluation meaning depends on it.
+
+W026 should explicitly record:
+1. which of these are required on every formula-bearing node,
+2. which may remain optional until candidate-result time,
+3. which are replay-visible identifiers versus compatibility-only handles.
+
+### 18.2 Topic B: Reference Descriptor Carriage
+OxCalc needs:
+1. direct-node reference descriptors,
+2. relative-reference descriptors or already-bound relative targets,
+3. explicit unresolved or host-sensitive reference forms,
+4. a rule for whether relative meaning is fixed at bind time or remains contextual.
+
+W026 should force explicit answers to:
+1. what the first in-scope relative-reference subset is,
+2. whether the bind product already resolves relative navigation fully,
+3. which structural edits force rebind rather than recalc.
+
+### 18.3 Topic C: Dependency Consequence Carriage
+OxCalc needs:
+1. static dependency facts suitable for graph build,
+2. runtime-derived dependency additions, removals, and reclassifications,
+3. explicit identity for dependency facts that later replay and reduced-witness lanes can preserve.
+
+Current shared read:
+1. semantic intent is stable enough to consume now,
+2. exact retained/reduced witness closure remains narrower than a universal rule.
+
+W026 should therefore separate:
+1. consumed now for live dependency and recalc semantics,
+2. still-open retained/reduced witness projection closure.
+
+### 18.4 Topic D: Candidate Result and Commit Consequence Carriage
+OxCalc needs:
+1. `candidate_result_id`,
+2. stable correlation with `commit_attempt_id` where present,
+3. optional `fence_snapshot_ref` where present,
+4. canonical consequence categories:
+   - `value_delta`
+   - `shape_delta`
+   - `topology_delta`
+   - optional `format_delta`
+   - optional `display_delta`
+   - spill or shape events
+5. surfaced evaluator/runtime facts required for coordinator correctness.
+
+W026 should make explicit:
+1. which optional consequence families must still preserve explicit absence/presence semantics,
+2. which families are publish-critical for the first TreeCalc phase,
+3. which remain carried only for replay honesty rather than first-phase coordinator behavior.
+
+### 18.5 Topic E: Reject Context Carriage
+OxCalc needs typed reject carriers for at least:
+1. snapshot mismatch,
+2. token or artifact mismatch,
+3. profile mismatch,
+4. capability denial,
+5. publication-fence mismatch,
+6. execution restriction or invalid phase,
+7. dynamic dependency failure,
+8. host-sensitive resolution failure where relevant.
+
+W026 should clarify:
+1. which reject contexts are canonical OxFml object families already,
+2. which local OxCalc labels remain merely local projections,
+3. which reject families must preserve additional host-sensitive or bind-sensitive diagnostics.
+
+### 18.6 Topic F: Runtime-Derived Effect Transport
+OxCalc needs explicit carriage for:
+1. dynamic dependency activation and release,
+2. capability observations,
+3. execution-restriction observations,
+4. shape and topology-sensitive runtime effects,
+5. format-sensitive runtime effects where semantically relevant.
+
+Current shared read:
+1. these are stable enough to consume semantically now,
+2. the final single transport carrier is not yet frozen.
+
+W026 should therefore force explicit recording of:
+1. semantic minimum consumed now,
+2. transport-shape assumptions OxCalc must not make yet,
+3. what later evidence would justify a narrower handoff.
+
+### 18.7 Topic G: Direct-Binding and Host-Sensitive Truth
+OxCalc needs:
+1. preserved concrete binding identity where semantic truth depends on it,
+2. explicit distinction between direct-binding-sensitive families and name-only families,
+3. replay-visible host-sensitive identity in retained and reduced witnesses where required.
+
+W026 should keep explicit:
+1. this is already canonical in OxFml semantic ownership,
+2. OxCalc is only consuming and preserving it,
+3. broader naming/indexing conventions for later pack families may still remain open.
+
+### 18.8 Topic H: Semantic-Format Versus Display Boundary
+OxCalc needs:
+1. a first consumed semantic floor,
+2. explicit format-sensitive consequences where they may affect runtime or later observer policy,
+3. display-sensitive consequences kept visible enough not to be silently collapsed.
+
+W026 should not force premature closure here.
+It should instead record:
+1. what is consumed now for the first TreeCalc phase,
+2. what remains canonical but narrower,
+3. what evidence in later TreeCalc runs would justify a narrower handoff.
+
+## 19. Note-Exchange Rule For W026
+W026 should treat `NOTES_FOR_OXFML.md` and `NOTES_FOR_OXCALC.md` as structured negotiation instruments rather than general commentary.
+
+Each pass should record, for every active topic:
+1. OxCalc consumed need,
+2. current OxFml classification:
+   - `already canonical`
+   - `canonical but narrower`
+   - `still open`
+3. consumed-now carrier assumptions,
+4. non-assumptions OxCalc must preserve,
+5. explicit trigger for whether note-level clarification is enough or a narrower handoff is required.
+
+The note passes should stop being generic once W026 starts.
+They should function as a bounded seam issue ledger until the first TreeCalc-ready intake floor is locked.
+
+The latest OxFml topic-matrix reply makes the current practical split clearer:
+1. consume now:
+   - formula and bind identity carriage
+   - candidate consequence and correlation floor
+   - reject-context typed families for the current floor
+   - direct-binding-sensitive witness preservation
+2. keep in note-level refinement:
+   - direct and relative reference descriptor carriage
+   - unresolved and host-sensitive reference carriers
+   - runtime-derived effect transport shape
+   - semantic-format versus display-facing boundary
+
+This means the current seam state is clear enough to proceed into W026 planning and later implementation preparation without reopening the shared ownership split.
+It does not mean every transport shape is frozen.
+
+## 20. Handoff Trigger Rule For The TreeCalc Seam Phase
+For the TreeCalc semantic-completion lane, a new narrower handoff should be filed only if one of the following occurs:
+1. OxCalc cannot consume the first in-scope bind/reference package without OxFml changing or clarifying a coordinator-facing seam clause,
+2. execution-restriction transport is too narrow for live TreeCalc coordinator semantics,
+3. dependency consequence transport is too narrow for live TreeCalc graph build or publication semantics,
+4. candidate-result consequence optionality is too weak for coordinator-controlled publication,
+5. direct-binding-sensitive truth cannot be preserved honestly for the first TreeCalc witness families.
+
+Otherwise the issue should remain in the note-exchange lane and be resolved there.
+
+## 21. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
   - replay artifacts not yet attached for candidate-result versus publication boundaries,
-  - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but narrower projection-closure questions remain open,
-  - W020 and W019 still need to consume the stronger OxFml inbound handoff and downstream note,
+  - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but narrower TreeCalc descriptor and transport questions remain open,
+  - W026 now has a clear consume-now versus refine-in-notes split, but the topic-matrix pass is not yet converted into executed seam intake work,
   - a narrower follow-on handoff is not required yet, but remains an explicit later decision if W019 evidence creates stronger coordinator pressure
 
 

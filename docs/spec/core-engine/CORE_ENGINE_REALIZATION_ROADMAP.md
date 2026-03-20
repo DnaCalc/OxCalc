@@ -216,6 +216,13 @@ This is dependency-ordered, not date-ordered.
 22. `W022`: shared pack family and direct-binding widening.
 23. `W023`: program-grade pack promotion beyond the current semantic-only TraceCalc scope.
 24. `W024`: broader program-scope pack promotion beyond the currently exercised host-sensitive TraceCalc family.
+25. `W025`: TreeCalc structural and formula substrate widening.
+26. `W026`: TreeCalc OxFml bind, reference, and seam intake.
+27. `W027`: TreeCalc dependency graph and invalidation closure.
+28. `W028`: TreeCalc evaluator-backed candidate result integration.
+29. `W029`: TreeCalc runtime-derived effects and overlay closure.
+30. `W030`: TreeCalc corpus, oracle, and first sequential baseline.
+31. `W031`: TreeCalc assurance refresh and residual packetization.
 
 The purpose of `W007` through `W012` is to turn `W006` from a generic formalization placeholder into executable assurance, harness, and conformance-oracle packets.
 `W013` is the operational coordination packet that turns that dependency graph into the first concrete implementation sequence.
@@ -230,9 +237,11 @@ The purpose of `W007` through `W012` is to turn `W006` from a generic formalizat
 `W022` is the next explicit replay successor lane after W021 for retained-shared or pack-promoted witness families, direct-binding-sensitive pack evidence, and any later narrower handoff trigger if those families create stronger seam pressure. It now reaches a bounded local decision point without promoting `cap.C5.pack_valid`.
 `W023` is the next explicit replay successor lane after W022 for broader program-grade pack promotion beyond the current semantic-only `TraceCalc` scope. Its first slice emits explicit program-grade contract and validation sidecars, its second slice widens broader host-sensitive family evidence, and its third slice makes the capability and handoff decision explicit.
 `W024` is the next replay-facing residual lane after W023 for broader program-grade pack promotion beyond the currently exercised host-sensitive `TraceCalc` family.
+`W025` through `W031` are the packetized TreeCalc semantic-completion sequence after the current replay-pack residual lane. They define the path from the current proving substrate to the first semantically-complete sequential TreeCalc engine.
 
 The first semantically-complete TreeCalc engine target beyond the current proving substrate is defined in:
 1. `CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
+2. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`
 
 ## 13. Relationship To Assurance
 No staged promotion is complete without coupling to the assurance surfaces.
@@ -279,5 +288,6 @@ These remain roadmap-level follow-on questions within the now-locked staged stru
   - W022 now reaches its bounded semantic-only decision point without promoting `cap.C5.pack_valid`
   - W023 has now made the broader program-grade capability and handoff decisions explicit without promoting `cap.C5.pack_valid`
   - W024 is the next replay-facing continuation for broader program-grade pack promotion and any later `cap.C5.pack_valid` claim beyond the current exercised host-sensitive TraceCalc family
+  - W025 through W031 are planned successor worksets for the first semantically-complete TreeCalc engine phase, but none of them have been executed yet
   - provider-failure and callable-publication remain downstream watch lanes rather than active current seam blockers
   - Stage 2 concurrency realization and broader replay-pack export remain later roadmap lanes

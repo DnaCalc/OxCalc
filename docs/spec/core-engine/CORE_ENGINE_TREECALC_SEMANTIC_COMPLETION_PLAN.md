@@ -523,6 +523,25 @@ That split keeps the major semantic boundaries visible:
 5. runtime-derived truth,
 6. evidence truth.
 
+### 14.1 Packetized Workset Mapping
+The current recommended packetization of this sequence is:
+1. `W025_TREECALC_STRUCTURAL_AND_FORMULA_SUBSTRATE_WIDENING.md`
+   - covers `TS-1`
+2. `W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md`
+   - covers the consumed-seam floor for `TS-2`
+3. `W027_TREECALC_DEPENDENCY_GRAPH_AND_INVALIDATION_CLOSURE.md`
+   - covers `TS-3` plus the structural invalidation closure portions of `TS-5`
+4. `W028_TREECALC_EVALUATOR_BACKED_CANDIDATE_RESULT_INTEGRATION.md`
+   - covers `TS-4`
+5. `W029_TREECALC_RUNTIME_DERIVED_EFFECTS_AND_OVERLAY_CLOSURE.md`
+   - covers the runtime-derived effect and overlay portions of `TS-5`
+6. `W030_TREECALC_CORPUS_ORACLE_AND_FIRST_SEQUENTIAL_BASELINE.md`
+   - covers `TS-6`, `TS-7`, and `TS-8`
+7. `W031_TREECALC_ASSURANCE_REFRESH_AND_RESIDUAL_PACKETIZATION.md`
+   - covers `TS-9` and any residual packetization required after the first TreeCalc-ready baseline
+
+This decomposition is the intended line-of-sight sequence after the current replay-pack residual lane.
+
 ## 15. Non-Negotiable Guardrails For Later Performance Work
 The following must remain true so later ultraperformance work still lands on the right semantic base:
 1. no scheduler or caching shortcut may redefine stabilized semantic truth,

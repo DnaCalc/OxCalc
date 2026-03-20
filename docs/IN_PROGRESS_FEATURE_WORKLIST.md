@@ -3,7 +3,7 @@
 Canonical repo-level register of feature areas that are in-progress under workset completion doctrine.
 
 Status: active.
-Last updated: 2026-03-19.
+Last updated: 2026-03-20.
 
 ## Status Vocabulary
 
@@ -116,6 +116,14 @@ Last updated: 2026-03-19.
 - **Remaining gaps**: later downstream rounds may still be needed if stronger coordinator pressure appears around execution-restriction transport or publication/topology consequence breadth. Availability/provider-failure and callable-publication remain watch lanes only.
 - **Why still open**: round 01 is now materially processed, but the broader downstream integration feature area remains active for future OxFml/OxFunc pressure and any later narrower handoff.
 - **Canonical owner**: W020.
+
+### IP-14: TreeCalc Semantic Completion
+
+- **Status**: planned
+- **Current floor**: the target and execution line are now defined in `CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`, and the plan has been packetized into `W025` through `W031`.
+- **Remaining gaps**: real TreeCalc structural/formula substrate widening, consumed OxFml bind/reference intake, formula-driven dependency graph build, evaluator-backed candidate intake, runtime-derived effect closure, first TreeCalc corpus and baseline, and assurance refresh.
+- **Why still open**: the line of sight is now explicit, but none of the TreeCalc semantic-completion worksets have been executed yet.
+- **Canonical owner**: W025.
 
 
 

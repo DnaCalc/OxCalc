@@ -129,6 +129,13 @@ The current realized continuation after `W017` is:
 6. `W022_EXECUTION_SEQUENCE_H_SHARED_PACK_FAMILY_AND_DIRECT_BINDING_WIDENING.md`
 7. `W023_EXECUTION_SEQUENCE_I_PROGRAM_GRADE_PACK_PROMOTION.md`
 8. `W024_EXECUTION_SEQUENCE_J_BROADER_PROGRAM_SCOPE_PACK_PROMOTION.md`
+9. `W025_TREECALC_STRUCTURAL_AND_FORMULA_SUBSTRATE_WIDENING.md`
+10. `W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md`
+11. `W027_TREECALC_DEPENDENCY_GRAPH_AND_INVALIDATION_CLOSURE.md`
+12. `W028_TREECALC_EVALUATOR_BACKED_CANDIDATE_RESULT_INTEGRATION.md`
+13. `W029_TREECALC_RUNTIME_DERIVED_EFFECTS_AND_OVERLAY_CLOSURE.md`
+14. `W030_TREECALC_CORPUS_ORACLE_AND_FIRST_SEQUENTIAL_BASELINE.md`
+15. `W031_TREECALC_ASSURANCE_REFRESH_AND_RESIDUAL_PACKETIZATION.md`
 
 `W017` moved the active implementation fully into the Rust workspace under `src/`, with historical carried runs replacing the old parallel-code reference role.
 `W016` has now reached its declared gate for the first retained-witness and retained-failure baseline.
@@ -140,4 +147,5 @@ The current realized continuation after `W017` is:
 `W023` is the next residual lane for broader program-grade pack promotion beyond the current semantic-only `TraceCalc` scope. Its first slice emits explicit program-grade contract and validation sidecars, its second slice widens broader host-sensitive family evidence, and its third slice makes the capability and handoff decision explicit.
 
 `W024` is now the next residual lane after W023 for broader program-grade pack promotion beyond the currently exercised host-sensitive `TraceCalc` family.
+`W025` through `W031` are the now-packetized TreeCalc semantic-completion sequence. Together they are the line-of-sight plan from the current proving substrate to the first semantically-complete sequential TreeCalc engine.
 Later widening must use successor worksets rather than silently reopening `W016`, `W018`, `W019`, or W005.

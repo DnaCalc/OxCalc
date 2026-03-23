@@ -1,0 +1,53 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_host_sensitive_reject_001",
+  "description": "Host-sensitive references emit runtime effects and reject conservatively in the local runtime.",
+  "snapshot_id": 4,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "HostCell",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:host",
+      "bind_artifact_id": "bind:host",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:host",
+      "bind_artifact_id": "bind:host",
+      "expression": {
+        "Reference": {
+          "HostSensitive": {
+            "carrier_id": "carrier:host",
+            "detail": "active_selection"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "rejected",
+    "evaluation_order": [2],
+    "reject_kind": "HostInjectedFailure",
+    "runtime_effect_kinds": [
+      "runtime_effect.host_sensitive_reference"
+    ]
+  }
+}

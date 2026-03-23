@@ -1,0 +1,19 @@
+{
+  "case_id": "tc_local_remove_direct_target_001",
+  "diagnostic_events": [
+    "node_removed:node:2"
+  ],
+  "edit_impacts": [
+    "Removal"
+  ],
+  "phase": "post_edit",
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate:post_edit",
+    "detail": "no value is available for referenced node node:2",
+    "kind": "DynamicDependencyFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

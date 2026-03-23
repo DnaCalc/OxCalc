@@ -453,6 +453,15 @@ The latest OxFml topic-matrix reply makes the current practical split clearer:
 This means the current seam state is clear enough to proceed into W026 planning and later implementation preparation without reopening the shared ownership split.
 It does not mean every transport shape is frozen.
 
+The latest narrower W026-focused OxFml reply further sharpens this:
+1. W026 can proceed now on a narrowed first relative-reference subset,
+2. W026 can proceed now on explicitly named unresolved and host-sensitive carrier families,
+3. W026 can proceed now on the semantic floor for runtime-derived effects and execution-restriction transport,
+4. W026 can proceed now on a semantics-first semantic-format/display split so long as broader display closure is not over-claimed.
+
+So the seam interface is settled enough for the first TreeCalc intake phase.
+What remains unsettled is not the ownership split or the consumed semantic floor; it is broader transport-shape closure beyond the first subset.
+
 ## 20. Handoff Trigger Rule For The TreeCalc Seam Phase
 For the TreeCalc semantic-completion lane, a new narrower handoff should be filed only if one of the following occurs:
 1. OxCalc cannot consume the first in-scope bind/reference package without OxFml changing or clarifying a coordinator-facing seam clause,
@@ -463,14 +472,56 @@ For the TreeCalc semantic-completion lane, a new narrower handoff should be file
 
 Otherwise the issue should remain in the note-exchange lane and be resolved there.
 
-## 21. Status
+## 21. Host Runtime Draft Intake
+OxCalc now also treats `../OxFml/docs/spec/OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` as the bounded OxFml-owned packet for the next host/coordinator seam round.
+
+Current local read is:
+1. it is sufficient for first implementation planning across the reduced direct-host lane and the first OxCalc-integrated host lane,
+2. it preserves the authority split correctly:
+   - OxFml owns artifact meaning, typed effect/reject semantics, and runtime library-context truth,
+   - OxCalc owns scheduler, publication, invalidation integration, and broader graph coordination outside OxFml artifact meaning,
+3. it does not yet need to be treated as shared seam-freeze text,
+4. it narrows host/coordinator seam uncertainty to a small set of remaining carrier-breadth questions.
+
+### 21.1 Consumed-now host/runtime floor
+For the first host/coordinator implementation slice, OxCalc now treats the following as consume-now:
+1. direct-host versus OxCalc-integrated host split,
+2. formula and structure inputs,
+3. direct-cell and defined-name bindings,
+4. typed host-query/provider families in the currently covered floor:
+   - `INFO`
+   - `CELL`
+   - `RTD`
+5. runtime `LibraryContextProvider` plus immutable `LibraryContextSnapshot` as the normative runtime catalog seam,
+6. candidate / commit / reject / trace output families,
+7. `ReturnedValueSurface` split,
+8. coordinator-relevant ids:
+   - `candidate_result_id`
+   - `commit_attempt_id` where present
+   - `reject_record_id`
+   - optional `fence_snapshot_ref`
+
+### 21.2 Host/runtime residuals that remain narrower
+The remaining narrower host/runtime questions are:
+1. caller-anchor and address-mode carriage for the first TreeCalc relative-reference subset,
+2. execution-restriction transport shape beyond the current semantic minimum,
+3. publication/topology consequence breadth beyond the current exercised local floor,
+4. provider-failure and callable-publication watch lanes if they later become coordinator-visible.
+
+Current local read:
+1. these remain note-level topics,
+2. no new handoff is justified yet from the host/runtime draft alone,
+3. they become handoff candidates only if live TreeCalc or host evidence exposes insufficiency.
+4. the latest OxFml reply explicitly agrees the host/runtime draft is strong enough for first implementation planning, while preserving these caution points as non-frozen residuals.
+
+## 22. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
   - replay artifacts not yet attached for candidate-result versus publication boundaries,
-  - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but narrower TreeCalc descriptor and transport questions remain open,
+  - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but broader TreeCalc descriptor and transport questions remain open beyond the first consumed subset,
   - W026 now has a clear consume-now versus refine-in-notes split, but the topic-matrix pass is not yet converted into executed seam intake work,
   - a narrower follow-on handoff is not required yet, but remains an explicit later decision if W019 evidence creates stronger coordinator pressure
 

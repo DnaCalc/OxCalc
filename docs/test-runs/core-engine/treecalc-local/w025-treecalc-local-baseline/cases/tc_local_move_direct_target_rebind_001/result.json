@@ -1,0 +1,36 @@
+{
+  "candidate_result": {
+    "candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+    "runtime_effects": [],
+    "target_set": [
+      3
+    ],
+    "value_updates": {
+      "3": "5"
+    }
+  },
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/dependency_graph.json",
+  "diagnostics": [],
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/node_states.json",
+  "publication_bundle": {
+    "candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+    "publication_id": "fixture:tc_local_move_direct_target_rebind_001:publication",
+    "published_runtime_effects": [],
+    "published_view_delta": {
+      "3": "5"
+    },
+    "trace_markers": [
+      "publication_committed"
+    ]
+  },
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/published_values.json",
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/runtime_effects.json"
+}

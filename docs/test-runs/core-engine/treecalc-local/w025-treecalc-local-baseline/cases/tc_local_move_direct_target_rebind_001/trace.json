@@ -1,0 +1,38 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "events": [
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 4,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+      "label": "candidate_adapted",
+      "step_id": 3,
+      "target_set": [
+        3
+      ]
+    },
+    {
+      "candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+      "label": "publication_committed",
+      "publication_id": "fixture:tc_local_move_direct_target_rebind_001:publication",
+      "step_id": 4
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 5
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

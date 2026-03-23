@@ -202,6 +202,29 @@ W026 output needed:
 2. explicit deferred display-facing questions,
 3. note-only residual until live TreeCalc evidence says otherwise.
 
+### 4.9 Host Runtime and External Requirements
+OxCalc consumed need:
+1. a clear direct-host versus OxCalc-integrated host split,
+2. explicit required inputs for formula, structure, direct bindings, defined names, host-query/provider families, runtime library-context snapshots, and capability/fence inputs,
+3. explicit required output families for candidate, commit, reject, trace, and `ReturnedValueSurface`,
+4. stable coordinator-relevant ids and consequence categories preserved without host-side reinterpretation.
+
+Why it matters:
+1. TreeCalc intake should not proceed on an implicit host contract,
+2. runtime library-context truth is now explicit OxFml/OxFunc-owned seam surface rather than a local convenience,
+3. the first coordinator-host implementation slice needs a bounded contract that is narrower than full product-host closure but stronger than proving-host-only prose.
+
+Expected current state:
+1. sufficient now for the first host/coordinator implementation slice,
+2. caller-anchor/address-mode handling for the first TreeCalc relative-reference subset remains narrower,
+3. provider-failure and callable-publication remain watch lanes only.
+4. OxFml has now explicitly agreed with OxCalc's `already canonical` read for this first slice.
+
+W026 output needed:
+1. consumed-now host/runtime baseline for the first integrated host slice,
+2. explicit residual note-level topics that remain narrower,
+3. no handoff trigger unless live host evidence reveals a missing coordinator-facing clause.
+
 ## 5. Negotiation Sequence
 Recommended note sequence for W026 preparation:
 1. Round A: identity, bind, direct and relative reference descriptors
@@ -226,7 +249,16 @@ Current local intake is:
 The practical consequence for W026 is:
 1. identity, candidate consequence, reject-context, and direct-binding preservation should now be treated as consume-now topics,
 2. relative-reference descriptor carriage, unresolved or host-sensitive reference carriers, runtime-derived effect transport shape, and semantic-format-display reading remain the main note-level refinement topics,
-3. no new narrower handoff is justified yet from this note round alone.
+3. the OxFml host/runtime draft is also sufficient to consume now for the first integrated host slice,
+4. no new narrower handoff is justified yet from this note round alone.
+
+The latest narrower W026-focused reply also supplies the first practical carrier guidance for the remaining four topics:
+1. relative-reference carriage is sufficient now for a narrowed first subset using current normalized reference-expression and bound-reference artifacts where contextual dependence is preserved honestly,
+2. unresolved and host-sensitive carriers are sufficient now if OxCalc preserves the current accepted-unresolved versus reject distinction plus typed unresolved/bind diagnostics and host-query capability-view surfaces,
+3. runtime-derived effect transport is sufficient now semantically through current surfaced evaluator facts and topology/effect refs, while final carrier closure remains open,
+4. semantic-format versus display-facing consequence handling is sufficient now for a semantics-first first phase so long as `format_delta` and `display_delta` remain explicitly distinct and broader display closure is not over-claimed.
+
+This means W026 is now blocked only by live consumption work, not by broad seam uncertainty.
 
 ## 7. Exit Condition For The Planning Phase
 This planning companion has served its purpose when:
@@ -240,9 +272,9 @@ This planning companion has served its purpose when:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - relative-reference descriptor carriage remains canonical but narrower
-  - unresolved and host-sensitive reference carriers remain canonical but narrower
-  - runtime-derived effect transport and semantic-format-display reading remain canonical but narrower
+  - relative-reference descriptor carriage remains canonical but narrower beyond the first explicitly consumed subset
+  - unresolved and host-sensitive reference carriers remain canonical but narrower beyond the first explicitly named families
+  - runtime-derived effect transport and semantic-format-display reading remain canonical but narrower beyond the current semantics-first floor
   - W026 has not yet consumed this matrix into executed seam intake work
   - no narrower handoff has been justified yet
 - claim_confidence: provisional

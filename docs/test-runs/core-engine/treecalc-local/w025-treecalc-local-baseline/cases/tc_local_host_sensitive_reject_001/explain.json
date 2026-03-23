@@ -1,0 +1,36 @@
+{
+  "case_id": "tc_local_host_sensitive_reject_001",
+  "conformance_state": "matches_expected",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "notes": [
+    "local fixture expectation floor matched observed artifacts",
+    "runtime-derived effects were emitted in the local sequential runtime",
+    "result ended in conservative local rejection"
+  ],
+  "publication_bundle": null,
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_host_sensitive_reject_001:candidate",
+    "detail": "reference owned by node:2 is host-sensitive and cannot be locally evaluated: active_selection",
+    "kind": "HostInjectedFailure"
+  },
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:4",
+      "detail": "runtime_effect.host_sensitive_reference|owner_node:node:2;carrier_id:carrier:host;detail:active_selection",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 2,
+      "payload_identity": "fixture:tc_local_host_sensitive_reject_001:candidate:runtime_effect:0",
+      "structural_snapshot_id": 4
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:2;carrier_id:carrier:host;detail:active_selection",
+      "kind": "runtime_effect.host_sensitive_reference"
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

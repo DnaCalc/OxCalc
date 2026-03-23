@@ -364,6 +364,8 @@ mod tests {
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2)],
                     formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -372,6 +374,8 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
                     formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
                 },
             ],
         )

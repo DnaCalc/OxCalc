@@ -9,4 +9,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+oxcalc-core = { path = "../oxcalc-core" }
 oxcalc-tracecalc = { path = "../oxcalc-tracecalc" }

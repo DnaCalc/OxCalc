@@ -1,0 +1,19 @@
+{
+  "case_id": "tc_local_relative_sum_001",
+  "conformance_state": "matches_expected",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "notes": [
+    "local fixture expectation floor matched observed artifacts",
+    "result reached candidate adaptation and publication"
+  ],
+  "publication_bundle": {
+    "candidate_result_id": "fixture:tc_local_relative_sum_001:candidate",
+    "publication_id": "fixture:tc_local_relative_sum_001:publication",
+    "published_runtime_effect_count": 0
+  },
+  "reject_detail": null,
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

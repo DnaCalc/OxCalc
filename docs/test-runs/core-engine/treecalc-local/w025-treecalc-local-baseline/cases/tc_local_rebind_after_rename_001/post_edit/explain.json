@@ -1,0 +1,19 @@
+{
+  "case_id": "tc_local_rebind_after_rename_001",
+  "diagnostic_events": [
+    "node_renamed:node:2:A_renamed"
+  ],
+  "edit_impacts": [
+    "RebindRequired"
+  ],
+  "phase": "post_edit",
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
+    "detail": "reference owned by node:3 could not be resolved: relative_path:ParentNode:A",
+    "kind": "HostInjectedFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

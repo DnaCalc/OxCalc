@@ -1,0 +1,24 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_dynamic_reject_001",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/dependency_graph.json",
+  "diagnostics": [
+    "dependency_diagnostic:dynamic_potential:carrier:dynamic:late_bound_projection",
+    "candidate_rejected:reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection"
+  ],
+  "evaluation_order": [
+    2
+  ],
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/node_states.json",
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/published_values.json",
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_dynamic_reject_001:candidate",
+    "detail": "reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection",
+    "kind": "DynamicDependencyFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/runtime_effects.json"
+}

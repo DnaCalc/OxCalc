@@ -1,0 +1,126 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+  "description": "A constant-value edit propagates through a two-formula dependency chain with deterministic rerun order.",
+  "snapshot_id": 14,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3, 4],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "A",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "2"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "B",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:b",
+      "bind_artifact_id": "bind:b",
+      "constant_value": null
+    },
+    {
+      "node_id": 4,
+      "kind": "calculation",
+      "symbol": "C",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:c",
+      "bind_artifact_id": "bind:c",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:b",
+      "bind_artifact_id": "bind:b",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "3"
+            }
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 4,
+      "formula_artifact_id": "formula:c",
+      "bind_artifact_id": "bind:c",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 3
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "2"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "post_edit": {
+    "successor_snapshot_start_id": 15,
+    "edits": [
+      {
+        "kind": "set_constant_value",
+        "node_id": 2,
+        "constant_value": "7"
+      }
+    ],
+    "expected_impacts": ["RecalcOnly"],
+    "expected_affected_node_ids": [
+      [2]
+    ],
+    "expected": {
+      "result_state": "published",
+      "published_values": {
+        "3": "10",
+        "4": "12"
+      },
+      "evaluation_order": [3, 4]
+    }
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "5",
+      "4": "7"
+    },
+    "evaluation_order": [3, 4]
+  }
+}

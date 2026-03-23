@@ -1,0 +1,6 @@
+[
+  {
+    "detail": "owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection",
+    "kind": "runtime_effect.dynamic_reference"
+  }
+]

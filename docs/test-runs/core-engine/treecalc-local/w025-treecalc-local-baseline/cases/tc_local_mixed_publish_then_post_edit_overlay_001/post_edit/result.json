@@ -1,0 +1,35 @@
+{
+  "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+  "evaluation_order": [
+    4,
+    5
+  ],
+  "published_values": {
+    "4": "5",
+    "5": "5"
+  },
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
+    "detail": "reference owned by node:5 is host-sensitive and cannot be locally evaluated: active_selection",
+    "kind": "HostInjectedFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:19",
+      "detail": "runtime_effect.host_sensitive_reference|owner_node:node:5;carrier_id:carrier:host;detail:active_selection",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 5,
+      "payload_identity": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit:runtime_effect:0",
+      "structural_snapshot_id": 19
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:5;carrier_id:carrier:host;detail:active_selection",
+      "kind": "runtime_effect.host_sensitive_reference"
+    }
+  ]
+}

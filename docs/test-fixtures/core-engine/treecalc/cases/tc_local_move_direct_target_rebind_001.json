@@ -1,0 +1,103 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "description": "A moved direct-reference target forces rebind on the successor snapshot while preserving publication semantics.",
+  "snapshot_id": 10,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3, 4],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "A",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "2"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "Leaf",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:leaf",
+      "bind_artifact_id": "bind:leaf",
+      "constant_value": null
+    },
+    {
+      "node_id": 4,
+      "kind": "container",
+      "symbol": "Group",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:leaf",
+      "bind_artifact_id": "bind:leaf",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "3"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "post_edit": {
+    "successor_snapshot_start_id": 11,
+    "edits": [
+      {
+        "kind": "move_node",
+        "node_id": 2,
+        "new_parent_id": 4,
+        "new_index": 0
+      }
+    ],
+    "expected_impacts": ["RebindRequired"],
+    "expected_affected_node_ids": [
+      [2, 4]
+    ],
+    "expected": {
+      "result_state": "verified_clean",
+      "published_values": {
+        "3": "5"
+      },
+      "evaluation_order": [3]
+    }
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "5"
+    },
+    "evaluation_order": [3]
+  }
+}

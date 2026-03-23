@@ -1,0 +1,15 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "diagnostic_events": [
+    "node_moved:node:2:node:4"
+  ],
+  "edit_impacts": [
+    "RebindRequired"
+  ],
+  "phase": "post_edit",
+  "reject_detail": null,
+  "result_state": "verified_clean",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

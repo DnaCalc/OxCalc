@@ -1,0 +1,13 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "evaluation_order": [
+    3
+  ],
+  "published_values": {
+    "3": "5"
+  },
+  "reject_detail": null,
+  "result_state": "verified_clean",
+  "runtime_effect_overlays": [],
+  "runtime_effects": []
+}

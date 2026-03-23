@@ -28,6 +28,7 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 3. a decision on whether a narrower `HANDOFF-CALC-002` is required before W027/W028
 4. updates to the canonical seam docs so later implementation work is not operating on compressed local summaries
 5. at least one TreeCalc-focused note-exchange round using the topic-matrix shape rather than broad prose-only seam commentary
+6. one bounded intake pass over `OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` so the first coordinator-host slice is not planned on implicit host/runtime assumptions
 
 ## Gate Model
 ### Entry gate
@@ -59,9 +60,10 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - TreeCalc-specific relative-reference and unresolved-reference carrier rules remain canonical but narrower
-  - runtime-derived effect and execution-restriction transport shape remain canonical but narrower
+  - TreeCalc-specific relative-reference and unresolved-reference carrier rules remain canonical but narrower beyond the first consumed subset
+  - runtime-derived effect and execution-restriction transport shape remain canonical but narrower beyond the current semantic minimum
+  - host/runtime direct-host versus integrated-host split is now sufficient for first implementation planning, but caller-anchor/address-mode carriage for the first TreeCalc relative-reference subset remains narrower
   - the consume-now topics identified by the latest OxFml reply are not yet packetized into executed seam intake work
   - narrower handoff need remains deferred pending live W026 evidence
 - claim_confidence: draft
-- reviewed_inbound_observations: W020 remains the current downstream seam baseline; the latest OxFml topic-matrix reply makes formula/bind identity, candidate consequence, reject-context, and direct-binding preservation consume-now topics, while relative-reference carriage, unresolved-reference carriers, runtime-derived transport, and semantic-format-display reading remain canonical but narrower
+- reviewed_inbound_observations: W020 remains the current downstream seam baseline; the latest OxFml topic-matrix and narrower W026-focused replies make formula/bind identity, candidate consequence, reject-context, and direct-binding preservation consume-now topics, confirm that W026 may proceed on a narrowed first subset for relative-reference, unresolved-reference, runtime-derived transport, and semantic-format/display handling without a new handoff, and the latest host/runtime reply agrees that `OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` is strong enough for the first coordinator-host implementation slice while keeping caller-anchor/address-mode, execution-restriction transport breadth, and publication/topology breadth as note-level residuals

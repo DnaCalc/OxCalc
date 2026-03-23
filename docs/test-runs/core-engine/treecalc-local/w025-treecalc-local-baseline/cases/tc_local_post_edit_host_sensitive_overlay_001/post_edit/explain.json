@@ -1,0 +1,35 @@
+{
+  "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+  "diagnostic_events": [
+    "constant_value_changed:node:2:7"
+  ],
+  "edit_impacts": [
+    "RecalcOnly"
+  ],
+  "phase": "post_edit",
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate:post_edit",
+    "detail": "reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection",
+    "kind": "HostInjectedFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:17",
+      "detail": "runtime_effect.host_sensitive_reference|owner_node:node:3;carrier_id:carrier:host;detail:active_selection",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate:post_edit:runtime_effect:0",
+      "structural_snapshot_id": 17
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:host;detail:active_selection",
+      "kind": "runtime_effect.host_sensitive_reference"
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

@@ -975,6 +975,8 @@ fn build_snapshot(
         parent_id: None,
         child_ids: Vec::new(),
         formula_artifact_id: None,
+        bind_artifact_id: None,
+        constant_value: None,
     });
     builder.set_root(root_node_id);
 
@@ -992,6 +994,8 @@ fn build_snapshot(
             parent_id: Some(root_node_id),
             child_ids: Vec::new(),
             formula_artifact_id: None,
+            bind_artifact_id: None,
+            constant_value: None,
         });
     }
     builder.replace_children(root_node_id, child_ids)?;

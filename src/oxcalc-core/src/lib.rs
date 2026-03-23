@@ -8,5 +8,10 @@
 //! of any older non-Rust object model.
 
 pub mod coordinator;
+pub mod dependency;
+pub mod formula;
 pub mod recalc;
 pub mod structural;
+pub mod treecalc;
+pub mod treecalc_fixture;
+pub mod treecalc_runner;

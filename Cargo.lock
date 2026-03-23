@@ -19,6 +19,7 @@ name = "oxcalc-core"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -36,6 +37,7 @@ dependencies = [
 name = "oxcalc-tracecalc-cli"
 version = "0.1.0"
 dependencies = [
+ "oxcalc-core",
  "oxcalc-tracecalc",
 ]
 

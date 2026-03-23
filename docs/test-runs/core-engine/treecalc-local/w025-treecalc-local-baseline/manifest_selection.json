@@ -1,0 +1,129 @@
+{
+  "base_path": "docs/test-fixtures/core-engine/treecalc",
+  "cases": [
+    {
+      "case_id": "tc_local_publish_001",
+      "path": "cases/tc_local_publish_001.json",
+      "tags": [
+        "local-sequential",
+        "publish"
+      ]
+    },
+    {
+      "case_id": "tc_local_verified_clean_001",
+      "path": "cases/tc_local_verified_clean_001.json",
+      "tags": [
+        "local-sequential",
+        "verified-clean"
+      ]
+    },
+    {
+      "case_id": "tc_local_relative_sum_001",
+      "path": "cases/tc_local_relative_sum_001.json",
+      "tags": [
+        "local-sequential",
+        "relative-reference"
+      ]
+    },
+    {
+      "case_id": "tc_local_sibling_offset_publish_001",
+      "path": "cases/tc_local_sibling_offset_publish_001.json",
+      "tags": [
+        "local-sequential",
+        "relative-reference",
+        "sibling-offset"
+      ]
+    },
+    {
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "path": "cases/tc_local_host_sensitive_reject_001.json",
+      "tags": [
+        "local-sequential",
+        "host-sensitive",
+        "rejected"
+      ]
+    },
+    {
+      "case_id": "tc_local_dynamic_reject_001",
+      "path": "cases/tc_local_dynamic_reject_001.json",
+      "tags": [
+        "local-sequential",
+        "dynamic-reference",
+        "rejected"
+      ]
+    },
+    {
+      "case_id": "tc_local_rebind_after_rename_001",
+      "path": "cases/tc_local_rebind_after_rename_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "rebind-required"
+      ]
+    },
+    {
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "path": "cases/tc_local_recalc_after_constant_edit_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "recalc-only"
+      ]
+    },
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "path": "cases/tc_local_move_direct_target_rebind_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "move-node",
+        "rebind-required"
+      ]
+    },
+    {
+      "case_id": "tc_local_remove_direct_target_001",
+      "path": "cases/tc_local_remove_direct_target_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "remove-node",
+        "removal"
+      ]
+    },
+    {
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "path": "cases/tc_local_recalc_chain_after_constant_edit_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "recalc-only",
+        "dependency-chain"
+      ]
+    },
+    {
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "path": "cases/tc_local_post_edit_host_sensitive_overlay_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "recalc-only",
+        "host-sensitive",
+        "runtime-effect-overlay"
+      ]
+    },
+    {
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "path": "cases/tc_local_mixed_publish_then_post_edit_overlay_001.json",
+      "tags": [
+        "local-sequential",
+        "structural-edit",
+        "recalc-only",
+        "dependency-chain",
+        "host-sensitive",
+        "runtime-effect-overlay"
+      ]
+    }
+  ],
+  "corpus_id": "treecalc-sequential-local-v1",
+  "schema_version": "oxcalc.treecalc.local_run_manifest.v1"
+}

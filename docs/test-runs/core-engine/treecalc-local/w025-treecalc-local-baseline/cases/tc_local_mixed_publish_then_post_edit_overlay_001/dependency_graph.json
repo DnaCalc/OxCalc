@@ -1,0 +1,33 @@
+{
+  "cycle_groups": [],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:c:ref:1",
+      "detail": "host_sensitive:carrier:host:active_selection",
+      "kind": "HostSensitiveReference"
+    }
+  ],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:b:ref:0",
+      "edge_id": "dep:4:3:bind:formula:b:ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 4,
+      "target_node_id": 3
+    },
+    {
+      "descriptor_id": "bind:formula:c:ref:0",
+      "edge_id": "dep:5:2:bind:formula:c:ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:c:ref:2",
+      "edge_id": "dep:5:4:bind:formula:c:ref:2",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 4
+    }
+  ]
+}

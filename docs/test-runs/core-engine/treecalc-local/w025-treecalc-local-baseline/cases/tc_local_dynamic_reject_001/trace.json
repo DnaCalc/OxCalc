@@ -1,0 +1,44 @@
+{
+  "case_id": "tc_local_dynamic_reject_001",
+  "events": [
+    {
+      "case_id": "tc_local_dynamic_reject_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 2,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 2,
+      "step_id": 2
+    },
+    {
+      "detail": "owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "label": "runtime_effect_observed",
+      "step_id": 3
+    },
+    {
+      "label": "runtime_effect_overlay_emitted",
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 2,
+      "payload_identity": "fixture:tc_local_dynamic_reject_001:candidate:runtime_effect:0",
+      "step_id": 4
+    },
+    {
+      "candidate_result_id": "fixture:tc_local_dynamic_reject_001:candidate",
+      "detail": "reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection",
+      "kind": "DynamicDependencyFailure",
+      "label": "candidate_rejected",
+      "step_id": 5
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 6
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

@@ -1,0 +1,92 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "description": "A constant-value edit triggers recalc-only impact and a post-edit publication with updated value.",
+  "snapshot_id": 8,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "A",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "2"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "Leaf",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:leaf",
+      "bind_artifact_id": "bind:leaf",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:leaf",
+      "bind_artifact_id": "bind:leaf",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "3"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "post_edit": {
+    "successor_snapshot_start_id": 9,
+    "edits": [
+      {
+        "kind": "set_constant_value",
+        "node_id": 2,
+        "constant_value": "7"
+      }
+    ],
+    "expected_impacts": ["RecalcOnly"],
+    "expected_affected_node_ids": [
+      [2]
+    ],
+    "expected": {
+      "result_state": "published",
+      "published_values": {
+        "3": "10"
+      },
+      "evaluation_order": [3]
+    }
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "5"
+    },
+    "evaluation_order": [3]
+  }
+}

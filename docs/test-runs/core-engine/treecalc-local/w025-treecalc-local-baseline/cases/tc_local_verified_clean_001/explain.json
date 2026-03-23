@@ -1,0 +1,14 @@
+{
+  "case_id": "tc_local_verified_clean_001",
+  "conformance_state": "matches_expected",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "notes": [
+    "local fixture expectation floor matched observed artifacts"
+  ],
+  "publication_bundle": null,
+  "reject_detail": null,
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

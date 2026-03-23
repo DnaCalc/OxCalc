@@ -52,13 +52,14 @@ Replace planner-only dependency derivation with real dependency graph build and 
 10. `CURRENT_BLOCKERS.md` updated if needed: no
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - real dependency graph build from bind facts is not realized yet
-  - replay-visible dependency identity is not realized yet
-  - invalidation closure over real TreeCalc dependency changes is not realized yet
-- claim_confidence: draft
+  - local formula-derived descriptor lowering, dependency graph, invalidation closure, sequential runtime scheduling, local candidate adaptation, first local runtime-effect emission, a first local runtime-effect overlay carrier, a local TreeCalc run-emission path, and local oracle/conformance sidecars now exist, but OxFml bind facts are not consumed yet
+  - replay-visible dependency identity is still open beyond deterministic local edge ids
+  - runtime-derived dynamic dependency overlay closure remains open
+  - checked-in TreeCalc fixtures and `w025-treecalc-local-baseline` currently cover the local sequential floor and a fixture-expectation oracle floor only, not the later live oracle/baseline lane
+- claim_confidence: moderate
 - reviewed_inbound_observations: latest OxFml seam baseline consumed; no new active trigger beyond declared dependency-projection watch points

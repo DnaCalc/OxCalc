@@ -1,0 +1,11 @@
+{
+  "cycle_groups": [],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:dynamic:ref:0",
+      "detail": "dynamic_potential:carrier:dynamic:late_bound_projection",
+      "kind": "DynamicPotentialReference"
+    }
+  ],
+  "edges": []
+}

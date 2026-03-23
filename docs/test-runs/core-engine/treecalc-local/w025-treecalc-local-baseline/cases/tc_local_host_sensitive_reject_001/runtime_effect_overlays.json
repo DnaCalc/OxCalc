@@ -1,0 +1,12 @@
+[
+  {
+    "compatibility_basis": "snapshot:4",
+    "detail": "runtime_effect.host_sensitive_reference|owner_node:node:2;carrier_id:carrier:host;detail:active_selection",
+    "is_eviction_eligible": false,
+    "is_protected": true,
+    "overlay_kind": "DynamicDependency",
+    "owner_node_id": 2,
+    "payload_identity": "fixture:tc_local_host_sensitive_reject_001:candidate:runtime_effect:0",
+    "structural_snapshot_id": 4
+  }
+]

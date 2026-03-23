@@ -1,0 +1,53 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_dynamic_reject_001",
+  "description": "Dynamic-potential references emit runtime effects and reject with dynamic dependency failure in the local runtime.",
+  "snapshot_id": 5,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "DynamicCell",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:dynamic",
+      "bind_artifact_id": "bind:dynamic",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:dynamic",
+      "bind_artifact_id": "bind:dynamic",
+      "expression": {
+        "Reference": {
+          "DynamicPotential": {
+            "carrier_id": "carrier:dynamic",
+            "detail": "late_bound_projection"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "rejected",
+    "evaluation_order": [2],
+    "reject_kind": "DynamicDependencyFailure",
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ]
+  }
+}

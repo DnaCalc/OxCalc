@@ -1,0 +1,24 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/dependency_graph.json",
+  "diagnostics": [
+    "dependency_diagnostic:host_sensitive:carrier:host:active_selection",
+    "candidate_rejected:reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection"
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/node_states.json",
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/published_values.json",
+  "reject_detail": {
+    "candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate",
+    "detail": "reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection",
+    "kind": "HostInjectedFailure"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/runtime_effects.json"
+}

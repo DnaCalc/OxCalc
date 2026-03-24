@@ -14,7 +14,7 @@
   "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
   "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/dependency_graph.json",
   "diagnostics": [
-    "dependency_diagnostic:host_sensitive:carrier:host:active_selection"
+    "dependency_diagnostic:residual:carrier:host:active_selection"
   ],
   "evaluation_order": [
     4,

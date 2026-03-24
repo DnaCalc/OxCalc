@@ -83,7 +83,7 @@
         3
       ],
       "published_values": null,
-      "reject_kind": "DynamicDependencyFailure",
+      "reject_kind": "HostInjectedFailure",
       "result_state": "rejected",
       "runtime_effect_kinds": null
     },

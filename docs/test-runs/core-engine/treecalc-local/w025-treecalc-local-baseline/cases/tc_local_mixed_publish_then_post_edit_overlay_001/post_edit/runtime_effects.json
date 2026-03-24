@@ -1,6 +1,1 @@
-[
-  {
-    "detail": "owner_node:node:5;carrier_id:carrier:host;detail:active_selection",
-    "kind": "runtime_effect.host_sensitive_reference"
-  }
-]
+[]

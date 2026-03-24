@@ -3,7 +3,9 @@
   "case_id": "tc_local_dynamic_reject_001",
   "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_dynamic_reject_001/dependency_graph.json",
   "diagnostics": [
-    "dependency_diagnostic:dynamic_potential:carrier:dynamic:late_bound_projection",
+    "dependency_diagnostic:residual:carrier:dynamic:late_bound_projection",
+    "oxfml_trace:AcceptedCandidateResultBuilt",
+    "oxfml_trace:CommitAccepted",
     "candidate_rejected:reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection"
   ],
   "evaluation_order": [

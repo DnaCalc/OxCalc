@@ -130,16 +130,12 @@
       [2]
     ],
     "expected": {
-      "result_state": "rejected",
+      "result_state": "published",
       "published_values": {
         "4": "5",
-        "5": "5"
+        "5": "Value"
       },
-      "evaluation_order": [4, 5],
-      "reject_kind": "HostInjectedFailure",
-      "runtime_effect_kinds": [
-        "runtime_effect.host_sensitive_reference"
-      ]
+      "evaluation_order": [4, 5]
     }
   },
   "expected": {

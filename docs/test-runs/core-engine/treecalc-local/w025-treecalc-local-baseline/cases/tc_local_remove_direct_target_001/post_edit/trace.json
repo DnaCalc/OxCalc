@@ -15,8 +15,8 @@
     },
     {
       "candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate:post_edit",
-      "detail": "no value is available for referenced node node:2",
-      "kind": "DynamicDependencyFailure",
+      "detail": "OxFml host run for node node:3 failed: reference resolution failed: UnresolvedReference { target: \"A2\" }",
+      "kind": "HostInjectedFailure",
       "label": "candidate_rejected",
       "step_id": 3
     },

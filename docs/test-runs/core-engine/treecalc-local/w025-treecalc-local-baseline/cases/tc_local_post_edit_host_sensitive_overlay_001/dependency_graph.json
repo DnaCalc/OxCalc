@@ -2,15 +2,15 @@
   "cycle_groups": [],
   "diagnostics": [
     {
-      "descriptor_id": "bind:formula:leaf:ref:1",
-      "detail": "host_sensitive:carrier:host:active_selection",
+      "descriptor_id": "bind:formula:leaf:oxfml_residual:0",
+      "detail": "residual:carrier:host:active_selection",
       "kind": "HostSensitiveReference"
     }
   ],
   "edges": [
     {
-      "descriptor_id": "bind:formula:leaf:ref:0",
-      "edge_id": "dep:3:2:bind:formula:leaf:ref:0",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:leaf:oxfml_ref:0",
       "kind": "StaticDirect",
       "owner_node_id": 3,
       "target_node_id": 2

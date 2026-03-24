@@ -3,15 +3,15 @@
   "diagnostics": [],
   "edges": [
     {
-      "descriptor_id": "bind:formula:b:ref:0",
-      "edge_id": "dep:3:2:bind:formula:b:ref:0",
+      "descriptor_id": "bind:formula:b:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
       "kind": "StaticDirect",
       "owner_node_id": 3,
       "target_node_id": 2
     },
     {
-      "descriptor_id": "bind:formula:c:ref:0",
-      "edge_id": "dep:4:3:bind:formula:c:ref:0",
+      "descriptor_id": "bind:formula:c:oxfml_ref:0",
+      "edge_id": "dep:4:3:bind:formula:c:oxfml_ref:0",
       "kind": "StaticDirect",
       "owner_node_id": 4,
       "target_node_id": 3

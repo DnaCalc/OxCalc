@@ -58,8 +58,8 @@ Create the first real TreeCalc structural substrate beyond the proving-floor sha
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFml bind-package consumption is still deferred to W026
-  - local TreeCalc formula ownership and reference lowering now exist, but real OxFml-produced bind artifacts are not consumed yet
-  - structural and formula artifacts now include a checked-in local TreeCalc fixture corpus covering direct publish, verified-clean, ancestor-relative, sibling-offset, host-sensitive reject, dynamic reject, rename-triggered rebind, recalc-only constant-edit, recalc-only dependency-chain, recalc-only post-edit runtime-effect and overlay, mixed publication-then-post-edit overlay, move-triggered rebind, and removal families, but replay-visible TreeCalc artifacts are still open
+  - broader OxFml bind-package intake is still deferred to W026, but the first agreed direct-host seam slice now drives the local TreeCalc runtime
+  - local TreeCalc formula ownership and reference lowering now exist, and the local sequential runtime now translates them into OxFml-backed formula/bind/evaluate flow, but broader bind/reference carrier breadth is still open
+  - structural and formula artifacts now include a checked-in local TreeCalc fixture corpus covering direct publish, verified-clean, ancestor-relative, sibling-offset, host-sensitive reject, dynamic reject, rename-triggered rebind, recalc-only constant-edit, recalc-only dependency-chain, recalc-only post-edit runtime-effect and overlay, mixed branch-sensitive seam behavior after post-edit recalculation, move-triggered rebind, and removal families, but replay-visible TreeCalc artifacts are still open
 - claim_confidence: moderate
 - reviewed_inbound_observations: latest OxFml downstream notes consumed as seam baseline; no new immediate handoff trigger exists yet

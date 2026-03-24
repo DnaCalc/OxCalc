@@ -2,8 +2,8 @@
   "cycle_groups": [],
   "diagnostics": [
     {
-      "descriptor_id": "bind:formula:host:ref:0",
-      "detail": "host_sensitive:carrier:host:active_selection",
+      "descriptor_id": "bind:formula:host:oxfml_residual:0",
+      "detail": "residual:carrier:host:active_selection",
       "kind": "HostSensitiveReference"
     }
   ],

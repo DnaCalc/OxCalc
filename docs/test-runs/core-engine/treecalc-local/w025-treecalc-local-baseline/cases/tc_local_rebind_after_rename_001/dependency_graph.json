@@ -3,8 +3,8 @@
   "diagnostics": [],
   "edges": [
     {
-      "descriptor_id": "bind:formula:leaf:ref:0",
-      "edge_id": "dep:3:2:bind:formula:leaf:ref:0",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:leaf:oxfml_ref:0",
       "kind": "RelativeBound",
       "owner_node_id": 3,
       "target_node_id": 2

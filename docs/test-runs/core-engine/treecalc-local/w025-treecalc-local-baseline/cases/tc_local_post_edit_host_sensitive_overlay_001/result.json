@@ -3,7 +3,8 @@
   "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
   "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/dependency_graph.json",
   "diagnostics": [
-    "dependency_diagnostic:host_sensitive:carrier:host:active_selection",
+    "dependency_diagnostic:residual:carrier:host:active_selection",
+    "oxfml_host_error:OxFunc surface evaluation failed for SUM: Value",
     "candidate_rejected:reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection"
   ],
   "evaluation_order": [

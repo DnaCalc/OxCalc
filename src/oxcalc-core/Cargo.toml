@@ -12,3 +12,5 @@ workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+oxfml_core = { path = "../../../OxFml/crates/oxfml_core" }
+oxfunc_core = { path = "../../../OxFunc/crates/oxfunc_core" }

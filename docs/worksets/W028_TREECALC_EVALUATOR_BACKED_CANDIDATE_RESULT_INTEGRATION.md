@@ -50,13 +50,13 @@ Move the live engine path from synthetic or proving-lane candidate intake to rea
 10. `CURRENT_BLOCKERS.md` updated if needed: no
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - evaluator-backed candidate intake is not realized yet
-  - real typed reject intake over TreeCalc families is not realized yet
-  - verified-clean semantics over the live TreeCalc path are not evidenced yet
+  - the first direct-host OxFml slice now drives local candidate adaptation and typed reject handling, but broader W026 bind/reference intake is still open
+  - verified-clean semantics are evidenced only for the current local TreeCalc subset, not yet for the broader first TreeCalc-ready family set
+  - publication, reject, and candidate artifacts are still local-floor TreeCalc evidence rather than the later live oracle/replay lane
 - claim_confidence: draft
 - reviewed_inbound_observations: W020 remains the carried seam-intake baseline

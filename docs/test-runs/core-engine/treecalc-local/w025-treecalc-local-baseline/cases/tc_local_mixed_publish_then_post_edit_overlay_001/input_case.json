@@ -145,13 +145,11 @@
       ],
       "published_values": {
         "4": "5",
-        "5": "5"
+        "5": "Value"
       },
-      "reject_kind": "HostInjectedFailure",
-      "result_state": "rejected",
-      "runtime_effect_kinds": [
-        "runtime_effect.host_sensitive_reference"
-      ]
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_kinds": null
     },
     "expected_affected_node_ids": [
       [

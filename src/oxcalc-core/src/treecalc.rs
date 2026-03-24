@@ -4,6 +4,16 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use oxfml_core::binding::{bind_formula, BindContext, BindRequest, NameKind};
+use oxfml_core::host::SingleFormulaHost;
+use oxfml_core::interface::{ReturnedValueSurfaceKind, TypedContextQueryBundle};
+use oxfml_core::red::project_red_view;
+use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
+use oxfml_core::syntax::parser::{parse_formula, ParseRequest};
+use oxfml_core::EvaluationBackend;
+use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
+use oxfunc_core::host_info::{HostInfoError, HostInfoProvider, InfoQuery};
+use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use thiserror::Error;
 
 use crate::coordinator::{
@@ -11,7 +21,8 @@ use crate::coordinator::{
     RuntimeEffect, TreeCalcCoordinator,
 };
 use crate::dependency::{
-    DependencyGraph, InvalidationClosure, InvalidationReasonKind, InvalidationSeed,
+    DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
+    InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaCatalog, TreeReference};
 use crate::recalc::{
@@ -91,6 +102,21 @@ pub enum LocalTreeCalcError {
     CycleDetected,
     #[error("division by zero")]
     DivisionByZero,
+    #[error("OxFml host run for node {owner_node_id} failed: {detail}")]
+    OxfmlHostFailure {
+        owner_node_id: TreeNodeId,
+        detail: String,
+    },
+    #[error("OxFml bind for node {owner_node_id} is unresolved: {detail}")]
+    OxfmlBindUnresolved {
+        owner_node_id: TreeNodeId,
+        detail: String,
+    },
+    #[error("OxFml commit for node {owner_node_id} rejected: {detail}")]
+    OxfmlCommitRejected {
+        owner_node_id: TreeNodeId,
+        detail: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,6 +132,7 @@ pub struct LocalEvaluatorCandidate {
 struct LocalFormulaEvaluationFailure {
     error: LocalTreeCalcError,
     runtime_effects: Vec<RuntimeEffect>,
+    diagnostics: Vec<String>,
 }
 
 impl From<LocalTreeCalcError> for LocalFormulaEvaluationFailure {
@@ -113,6 +140,7 @@ impl From<LocalTreeCalcError> for LocalFormulaEvaluationFailure {
         Self {
             error,
             runtime_effects: Vec::new(),
+            diagnostics: Vec::new(),
         }
     }
 }
@@ -125,11 +153,21 @@ impl LocalTreeCalcEngine {
         &self,
         input: LocalTreeCalcInput,
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+        let prepared_formulas = input
+            .formula_catalog
+            .bindings_by_owner()
+            .values()
+            .map(|binding| {
+                prepare_oxfml_formula(&input.structural_snapshot, binding)
+                    .map(|prepared| (binding.owner_node_id, prepared))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
         let dependency_graph = DependencyGraph::build(
             &input.structural_snapshot,
-            &input
-                .formula_catalog
-                .to_dependency_descriptors(&input.structural_snapshot),
+            &prepared_formulas
+                .values()
+                .flat_map(oxfml_dependency_descriptors)
+                .collect::<Vec<_>>(),
         );
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
         let invalidation_closure = dependency_graph.derive_invalidation_closure(
@@ -156,6 +194,11 @@ impl LocalTreeCalcEngine {
             .iter()
             .map(|diagnostic| format!("dependency_diagnostic:{}", diagnostic.detail))
             .collect::<Vec<_>>();
+        diagnostics.extend(
+            prepared_formulas
+                .values()
+                .flat_map(|prepared| prepared.bind_diagnostics.iter().cloned()),
+        );
 
         for node_id in &formula_owner_ids {
             recalc_tracker.mark_dirty(*node_id);
@@ -185,19 +228,14 @@ impl LocalTreeCalcEngine {
 
         for node_id in &evaluation_order {
             recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
-            let binding = input
-                .formula_catalog
-                .try_get_binding(*node_id)
+            let prepared = prepared_formulas
+                .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
-            let computed_value = match evaluate_formula(
-                &input.structural_snapshot,
-                *node_id,
-                &binding.expression,
-                &working_values,
-            ) {
+            let computed_value = match evaluate_via_oxfml(prepared, &working_values) {
                 Ok(value) => value,
                 Err(failure) => {
                     runtime_effects.extend(failure.runtime_effects.clone());
+                    diagnostics.extend(failure.diagnostics.clone());
                     let runtime_effect_overlays =
                         build_runtime_effect_overlays(&input, *node_id, &failure.runtime_effects);
                     return reject_run(
@@ -377,7 +415,10 @@ fn map_local_error_to_reject_kind(error: &LocalTreeCalcError) -> RejectKind {
         | LocalTreeCalcError::HostSensitiveReference { .. }
         | LocalTreeCalcError::UnsupportedNumericValue { .. }
         | LocalTreeCalcError::UnsupportedFunction { .. }
-        | LocalTreeCalcError::DivisionByZero => RejectKind::HostInjectedFailure,
+        | LocalTreeCalcError::DivisionByZero
+        | LocalTreeCalcError::OxfmlHostFailure { .. }
+        | LocalTreeCalcError::OxfmlBindUnresolved { .. }
+        | LocalTreeCalcError::OxfmlCommitRejected { .. } => RejectKind::HostInjectedFailure,
         LocalTreeCalcError::Coordinator(_)
         | LocalTreeCalcError::Recalc(_)
         | LocalTreeCalcError::MissingFormulaBinding { .. } => RejectKind::HostInjectedFailure,
@@ -480,162 +521,566 @@ fn topological_formula_order(
     Ok(order)
 }
 
-fn evaluate_formula(
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ResidualCarrierKind {
+    HostSensitive,
+    DynamicPotential,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResidualCarrier {
+    kind: ResidualCarrierKind,
+    owner_node_id: TreeNodeId,
+    carrier_id: String,
+    detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticReferenceBinding {
+    token: String,
+    target_node_id: TreeNodeId,
+    kind: DependencyDescriptorKind,
+    carrier_detail: String,
+    requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticUnresolvedBinding {
+    token: String,
+    kind: DependencyDescriptorKind,
+    carrier_detail: String,
+    requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TranslatedFormula {
+    source_text: String,
+    reference_bindings: Vec<SyntheticReferenceBinding>,
+    unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
+    residuals: Vec<ResidualCarrier>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreparedOxfmlFormula {
+    binding: crate::formula::TreeFormulaBinding,
+    source: FormulaSourceRecord,
+    translated: TranslatedFormula,
+    bound_formula: oxfml_core::binding::BoundFormula,
+    bind_diagnostics: Vec<String>,
+}
+
+fn prepare_oxfml_formula(
+    snapshot: &StructuralSnapshot,
+    binding: &crate::formula::TreeFormulaBinding,
+) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
+    let translated = translate_formula(snapshot, binding.owner_node_id, &binding.expression);
+    let source = FormulaSourceRecord::new(
+        binding.formula_artifact_id.to_string(),
+        binding.owner_node_id.0,
+        translated.source_text.clone(),
+    );
+    let parse = parse_formula(ParseRequest {
+        source: source.clone(),
+    });
+    let red_projection = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+    let bind_result = bind_formula(BindRequest {
+        source: source.clone(),
+        green_tree: parse.green_tree,
+        red_projection,
+        context: BindContext {
+            caller_row: synthetic_cell_row(binding.owner_node_id),
+            caller_col: 1,
+            formula_token: source.formula_token(),
+            structure_context_version: StructureContextVersion(snapshot.snapshot_id().to_string()),
+            names: translated
+                .reference_bindings
+                .iter()
+                .map(|reference| (reference.token.clone(), NameKind::ReferenceLike))
+                .collect(),
+            ..BindContext::default()
+        },
+    });
+
+    Ok(PreparedOxfmlFormula {
+        binding: binding.clone(),
+        source,
+        translated,
+        bind_diagnostics: bind_result
+            .bound_formula
+            .diagnostics
+            .iter()
+            .map(|diagnostic| format!("oxfml_bind_diagnostic:{}", diagnostic.message))
+            .collect(),
+        bound_formula: bind_result.bound_formula,
+    })
+}
+
+fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
+    let bound_name_tokens = prepared
+        .bound_formula
+        .normalized_references
+        .iter()
+        .filter_map(|reference| match reference {
+            oxfml_core::binding::NormalizedReference::Name(name) => Some(name.name.as_str()),
+            _ => None,
+        })
+        .collect::<BTreeSet<_>>();
+
+    let mut descriptors = prepared
+        .translated
+        .reference_bindings
+        .iter()
+        .enumerate()
+        .filter(|(_, reference)| bound_name_tokens.contains(reference.token.as_str()))
+        .map(|(index, reference)| DependencyDescriptor {
+            descriptor_id: format!(
+                "bind:{}:oxfml_ref:{index}",
+                prepared.binding.formula_artifact_id.0
+            ),
+            owner_node_id: prepared.binding.owner_node_id,
+            target_node_id: Some(reference.target_node_id),
+            kind: reference.kind,
+            carrier_detail: reference.carrier_detail.clone(),
+            requires_rebind_on_structural_change: reference.requires_rebind_on_structural_change,
+        })
+        .collect::<Vec<_>>();
+
+    descriptors.extend(
+        prepared
+            .translated
+            .unresolved_bindings
+            .iter()
+            .enumerate()
+            .map(|(index, unresolved)| DependencyDescriptor {
+                descriptor_id: format!(
+                    "bind:{}:oxfml_unresolved:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                owner_node_id: prepared.binding.owner_node_id,
+                target_node_id: None,
+                kind: unresolved.kind,
+                carrier_detail: unresolved.carrier_detail.clone(),
+                requires_rebind_on_structural_change: unresolved
+                    .requires_rebind_on_structural_change,
+            }),
+    );
+
+    descriptors.extend(prepared.translated.residuals.iter().enumerate().map(
+        |(index, residual)| DependencyDescriptor {
+            descriptor_id: format!(
+                "bind:{}:oxfml_residual:{index}",
+                prepared.binding.formula_artifact_id.0
+            ),
+            owner_node_id: prepared.binding.owner_node_id,
+            target_node_id: None,
+            kind: match residual.kind {
+                ResidualCarrierKind::HostSensitive => DependencyDescriptorKind::HostSensitive,
+                ResidualCarrierKind::DynamicPotential => DependencyDescriptorKind::DynamicPotential,
+            },
+            carrier_detail: format!("residual:{}:{}", residual.carrier_id, residual.detail),
+            requires_rebind_on_structural_change: matches!(
+                residual.kind,
+                ResidualCarrierKind::HostSensitive
+            ),
+        },
+    ));
+
+    descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
+    descriptors
+}
+
+fn evaluate_via_oxfml(
+    prepared: &PreparedOxfmlFormula,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Result<String, LocalFormulaEvaluationFailure> {
+    if let Some(unresolved) = prepared.bound_formula.unresolved_references.first() {
+        return Err(LocalFormulaEvaluationFailure {
+            error: LocalTreeCalcError::OxfmlBindUnresolved {
+                owner_node_id: prepared.binding.owner_node_id,
+                detail: format!("{} ({})", unresolved.source_text, unresolved.reason),
+            },
+            runtime_effects: Vec::new(),
+            diagnostics: prepared.bind_diagnostics.clone(),
+        });
+    }
+
+    let mut host = SingleFormulaHost::new(
+        prepared.source.formula_stable_id.0.clone(),
+        prepared.source.entered_formula_text.clone(),
+    );
+    host.formula_text_version = prepared.source.formula_text_version.0;
+    host.structure_context_version = prepared.bound_formula.structure_context_version.clone();
+    host.caller_row = synthetic_cell_row(prepared.binding.owner_node_id);
+    host.caller_col = 1;
+
+    for reference in &prepared.translated.reference_bindings {
+        host.set_defined_name_reference(
+            &reference.token,
+            ReferenceLike {
+                kind: ReferenceKind::A1,
+                target: synthetic_cell_target(reference.target_node_id),
+            },
+        );
+    }
+
+    for (node_id, value) in working_values {
+        host.set_cell_value(synthetic_cell_target(*node_id), string_to_eval_value(value));
+    }
+
+    let host_info_provider = TreeCalcHostInfoProvider;
+    let rtd_provider = TreeCalcRtdProvider;
+    let query_bundle = TypedContextQueryBundle::new(
+        prepared
+            .translated
+            .residuals
+            .iter()
+            .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive))
+            .then_some(&host_info_provider as &dyn HostInfoProvider),
+        prepared
+            .translated
+            .residuals
+            .iter()
+            .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential))
+            .then_some(&rtd_provider as &dyn RtdProvider),
+        None,
+        None,
+        None,
+    );
+    let run = match host.recalc_with_interfaces(EvaluationBackend::OxFuncBacked, query_bundle, None)
+    {
+        Ok(run) => run,
+        Err(detail) => {
+            if let Some(residual) = prepared.translated.residuals.first() {
+                let runtime_effects = prepared
+                    .translated
+                    .residuals
+                    .iter()
+                    .map(residual_runtime_effect)
+                    .collect::<Vec<_>>();
+                let error = match residual.kind {
+                    ResidualCarrierKind::HostSensitive => {
+                        LocalTreeCalcError::HostSensitiveReference {
+                            owner_node_id: residual.owner_node_id,
+                            detail: residual.detail.clone(),
+                        }
+                    }
+                    ResidualCarrierKind::DynamicPotential => LocalTreeCalcError::DynamicReference {
+                        owner_node_id: residual.owner_node_id,
+                        detail: residual.detail.clone(),
+                    },
+                };
+
+                return Err(LocalFormulaEvaluationFailure {
+                    error,
+                    runtime_effects,
+                    diagnostics: prepared
+                        .bind_diagnostics
+                        .iter()
+                        .cloned()
+                        .chain(std::iter::once(format!("oxfml_host_error:{detail}")))
+                        .collect(),
+                });
+            }
+
+            return Err(LocalFormulaEvaluationFailure {
+                error: LocalTreeCalcError::OxfmlHostFailure {
+                    owner_node_id: prepared.binding.owner_node_id,
+                    detail,
+                },
+                runtime_effects: Vec::new(),
+                diagnostics: prepared.bind_diagnostics.clone(),
+            });
+        }
+    };
+
+    if matches!(
+        run.returned_value_surface.kind,
+        ReturnedValueSurfaceKind::TypedHostProviderOutcome
+    ) {
+        let runtime_effects = prepared
+            .translated
+            .residuals
+            .iter()
+            .map(residual_runtime_effect)
+            .collect::<Vec<_>>();
+
+        if let Some(residual) = prepared.translated.residuals.first() {
+            let error = match residual.kind {
+                ResidualCarrierKind::HostSensitive => LocalTreeCalcError::HostSensitiveReference {
+                    owner_node_id: residual.owner_node_id,
+                    detail: residual.detail.clone(),
+                },
+                ResidualCarrierKind::DynamicPotential => LocalTreeCalcError::DynamicReference {
+                    owner_node_id: residual.owner_node_id,
+                    detail: residual.detail.clone(),
+                },
+            };
+
+            return Err(LocalFormulaEvaluationFailure {
+                error,
+                runtime_effects,
+                diagnostics: prepared
+                    .bind_diagnostics
+                    .iter()
+                    .cloned()
+                    .chain(
+                        run.trace_events
+                            .iter()
+                            .map(|event| format!("oxfml_trace:{:?}", event.event_kind)),
+                    )
+                    .collect(),
+            });
+        }
+    }
+
+    match &run.commit_decision {
+        oxfml_core::seam::AcceptDecision::Accepted(bundle) => Ok(value_payload_to_string(
+            &bundle.value_delta.published_payload,
+        )),
+        oxfml_core::seam::AcceptDecision::Rejected(reject) => Err(LocalFormulaEvaluationFailure {
+            error: LocalTreeCalcError::OxfmlCommitRejected {
+                owner_node_id: prepared.binding.owner_node_id,
+                detail: format!("{:?}", reject.reject_code),
+            },
+            runtime_effects: Vec::new(),
+            diagnostics: vec![format!("oxfml_reject:{:?}", reject.reject_code)],
+        }),
+    }
+}
+
+fn translate_formula(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
     formula: &TreeFormula,
-    values: &BTreeMap<TreeNodeId, String>,
-) -> Result<String, LocalFormulaEvaluationFailure> {
-    match formula {
-        TreeFormula::Literal { value } => Ok(value.clone()),
-        TreeFormula::Reference(reference) => {
-            let target_node_id = match reference {
-                TreeReference::HostSensitive { carrier_id, detail } => {
-                    return Err(LocalFormulaEvaluationFailure {
-                        error: LocalTreeCalcError::HostSensitiveReference {
-                            owner_node_id,
-                            detail: detail.clone(),
-                        },
-                        runtime_effects: vec![RuntimeEffect {
-                            kind: "runtime_effect.host_sensitive_reference".to_string(),
-                            detail: format!(
-                                "owner_node:{owner_node_id};carrier_id:{carrier_id};detail:{detail}"
-                            ),
-                        }],
-                    });
-                }
-                TreeReference::DynamicPotential { carrier_id, detail } => {
-                    return Err(LocalFormulaEvaluationFailure {
-                        error: LocalTreeCalcError::DynamicReference {
-                            owner_node_id,
-                            detail: detail.clone(),
-                        },
-                        runtime_effects: vec![RuntimeEffect {
-                            kind: "runtime_effect.dynamic_reference".to_string(),
-                            detail: format!(
-                                "owner_node:{owner_node_id};carrier_id:{carrier_id};detail:{detail}"
-                            ),
-                        }],
-                    });
-                }
-                TreeReference::Unresolved { token } => {
-                    return Err(LocalTreeCalcError::UnresolvedReference {
-                        owner_node_id,
-                        detail: token.clone(),
-                    }
-                    .into());
-                }
-                _ => reference
-                    .resolve_target(snapshot, owner_node_id)
-                    .ok_or_else(|| {
-                        LocalFormulaEvaluationFailure::from(
-                            LocalTreeCalcError::UnresolvedReference {
-                                owner_node_id,
-                                detail: reference.carrier_detail(),
-                            },
-                        )
-                    })?,
-            };
-
-            values
-                .get(&target_node_id)
-                .cloned()
-                .ok_or(LocalFormulaEvaluationFailure::from(
-                    LocalTreeCalcError::MissingReferencedValue {
-                        node_id: target_node_id,
-                    },
-                ))
-        }
-        TreeFormula::Binary { op, left, right } => {
-            let left_value = evaluate_formula(snapshot, owner_node_id, left, values)?;
-            let right_value = evaluate_formula(snapshot, owner_node_id, right, values)?;
-            let left_number = parse_i64(owner_node_id, &left_value)
-                .map_err(LocalFormulaEvaluationFailure::from)?;
-            let right_number = parse_i64(owner_node_id, &right_value)
-                .map_err(LocalFormulaEvaluationFailure::from)?;
-            let result = match op {
-                FormulaBinaryOp::Add => left_number + right_number,
-                FormulaBinaryOp::Subtract => left_number - right_number,
-                FormulaBinaryOp::Multiply => left_number * right_number,
-                FormulaBinaryOp::Divide => {
-                    if right_number == 0 {
-                        return Err(LocalFormulaEvaluationFailure::from(
-                            LocalTreeCalcError::DivisionByZero,
-                        ));
-                    }
-                    left_number / right_number
-                }
-            };
-            Ok(result.to_string())
-        }
-        TreeFormula::FunctionCall {
-            function_name,
-            arguments,
-            ..
-        } => evaluate_function(snapshot, owner_node_id, function_name, arguments, values),
+) -> TranslatedFormula {
+    let mut state = TranslationState {
+        snapshot,
+        owner_node_id,
+        next_reference_index: 0,
+        reference_bindings: Vec::new(),
+        unresolved_bindings: Vec::new(),
+        residuals: Vec::new(),
+    };
+    let source_text = state.translate(formula);
+    TranslatedFormula {
+        source_text,
+        reference_bindings: state.reference_bindings,
+        unresolved_bindings: state.unresolved_bindings,
+        residuals: state.residuals,
     }
 }
 
-fn evaluate_function(
-    snapshot: &StructuralSnapshot,
+struct TranslationState<'a> {
+    snapshot: &'a StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    function_name: &str,
-    arguments: &[TreeFormula],
-    values: &BTreeMap<TreeNodeId, String>,
-) -> Result<String, LocalFormulaEvaluationFailure> {
-    let upper_name = function_name.to_ascii_uppercase();
-    match upper_name.as_str() {
-        "SUM" => {
-            let mut total = 0i64;
-            for argument in arguments {
-                let value = evaluate_formula(snapshot, owner_node_id, argument, values)?;
-                total += parse_i64(owner_node_id, &value)
-                    .map_err(LocalFormulaEvaluationFailure::from)?;
+    next_reference_index: usize,
+    reference_bindings: Vec<SyntheticReferenceBinding>,
+    unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
+    residuals: Vec<ResidualCarrier>,
+}
+
+impl TranslationState<'_> {
+    fn translate(&mut self, formula: &TreeFormula) -> String {
+        match formula {
+            TreeFormula::Literal { value } => render_literal(value),
+            TreeFormula::Reference(reference) => self.translate_reference(reference),
+            TreeFormula::Binary { op, left, right } => {
+                let left = self.translate(left);
+                let right = self.translate(right);
+                let operator = match op {
+                    FormulaBinaryOp::Add => "+",
+                    FormulaBinaryOp::Subtract => "-",
+                    FormulaBinaryOp::Multiply => "*",
+                    FormulaBinaryOp::Divide => "/",
+                };
+                format!("({left}{operator}{right})")
             }
-            Ok(total.to_string())
+            TreeFormula::FunctionCall {
+                function_name,
+                arguments,
+                ..
+            } => {
+                let arguments = arguments
+                    .iter()
+                    .map(|argument| self.translate(argument))
+                    .collect::<Vec<_>>();
+                format!(
+                    "{}({})",
+                    function_name.to_ascii_uppercase(),
+                    arguments.join(",")
+                )
+            }
         }
-        "IF" => {
-            if arguments.len() != 3 {
-                return Err(LocalTreeCalcError::UnsupportedFunction {
-                    function_name: function_name.to_string(),
+    }
+
+    fn translate_reference(&mut self, reference: &TreeReference) -> String {
+        match reference {
+            TreeReference::DirectNode { target_node_id } => self.bind_target(
+                *target_node_id,
+                reference.descriptor_kind(),
+                reference.carrier_detail(),
+                reference.requires_rebind_on_structural_change(),
+            ),
+            TreeReference::ProjectionPath { .. }
+            | TreeReference::RelativePath { .. }
+            | TreeReference::SiblingOffset { .. } => {
+                if let Some(target_node_id) =
+                    reference.resolve_target(self.snapshot, self.owner_node_id)
+                {
+                    self.bind_target(
+                        target_node_id,
+                        reference.descriptor_kind(),
+                        reference.carrier_detail(),
+                        reference.requires_rebind_on_structural_change(),
+                    )
+                } else {
+                    self.bind_unresolved(
+                        reference.descriptor_kind(),
+                        reference.carrier_detail(),
+                        reference.requires_rebind_on_structural_change(),
+                    )
                 }
-                .into());
             }
-            let condition = evaluate_formula(snapshot, owner_node_id, &arguments[0], values)?;
-            let branch = if parse_i64(owner_node_id, &condition)
-                .map_err(LocalFormulaEvaluationFailure::from)?
-                != 0
-            {
-                &arguments[1]
-            } else {
-                &arguments[2]
-            };
-            evaluate_formula(snapshot, owner_node_id, branch, values)
-        }
-        "MAX" => {
-            let mut best = None::<i64>;
-            for argument in arguments {
-                let value = evaluate_formula(snapshot, owner_node_id, argument, values)?;
-                let number = parse_i64(owner_node_id, &value)
-                    .map_err(LocalFormulaEvaluationFailure::from)?;
-                best = Some(best.map_or(number, |current| current.max(number)));
+            TreeReference::HostSensitive { carrier_id, detail } => {
+                self.residuals.push(ResidualCarrier {
+                    kind: ResidualCarrierKind::HostSensitive,
+                    owner_node_id: self.owner_node_id,
+                    carrier_id: carrier_id.clone(),
+                    detail: detail.clone(),
+                });
+                "INFO(\"system\")".to_string()
             }
-            Ok(best.unwrap_or(0).to_string())
+            TreeReference::DynamicPotential { carrier_id, detail } => {
+                self.residuals.push(ResidualCarrier {
+                    kind: ResidualCarrierKind::DynamicPotential,
+                    owner_node_id: self.owner_node_id,
+                    carrier_id: carrier_id.clone(),
+                    detail: detail.clone(),
+                });
+                let topic = escape_excel_text(carrier_id);
+                format!("RTD(\"TREECALC\",\"\",\"{topic}\")")
+            }
+            TreeReference::Unresolved { token: _ } => self.bind_unresolved(
+                reference.descriptor_kind(),
+                reference.carrier_detail(),
+                reference.requires_rebind_on_structural_change(),
+            ),
         }
-        _ => Err(LocalTreeCalcError::UnsupportedFunction {
-            function_name: function_name.to_string(),
-        }
-        .into()),
+    }
+
+    fn bind_target(
+        &mut self,
+        target_node_id: TreeNodeId,
+        kind: DependencyDescriptorKind,
+        carrier_detail: String,
+        requires_rebind_on_structural_change: bool,
+    ) -> String {
+        let token = format!(
+            "TREE_REF_{}_{}",
+            self.owner_node_id.0, self.next_reference_index
+        );
+        self.next_reference_index += 1;
+        self.reference_bindings.push(SyntheticReferenceBinding {
+            token: token.clone(),
+            target_node_id,
+            kind,
+            carrier_detail,
+            requires_rebind_on_structural_change,
+        });
+        token
+    }
+
+    fn bind_unresolved(
+        &mut self,
+        kind: DependencyDescriptorKind,
+        carrier_detail: String,
+        requires_rebind_on_structural_change: bool,
+    ) -> String {
+        let token = format!(
+            "TREE_UNRESOLVED_{}_{}",
+            self.owner_node_id.0, self.next_reference_index
+        );
+        self.next_reference_index += 1;
+        self.unresolved_bindings.push(SyntheticUnresolvedBinding {
+            token: token.clone(),
+            kind,
+            carrier_detail,
+            requires_rebind_on_structural_change,
+        });
+        token
     }
 }
 
-fn parse_i64(owner_node_id: TreeNodeId, value: &str) -> Result<i64, LocalTreeCalcError> {
-    value
-        .parse::<i64>()
-        .map_err(|_| LocalTreeCalcError::UnsupportedNumericValue {
-            node_id: owner_node_id,
-            value: value.to_string(),
+fn render_literal(value: &str) -> String {
+    if value.parse::<f64>().is_ok() {
+        value.to_string()
+    } else {
+        format!("\"{}\"", escape_excel_text(value))
+    }
+}
+
+fn escape_excel_text(value: &str) -> String {
+    value.replace('"', "\"\"")
+}
+
+fn synthetic_cell_row(node_id: TreeNodeId) -> u32 {
+    u32::try_from(node_id.0).unwrap_or(u32::MAX)
+}
+
+fn synthetic_cell_target(node_id: TreeNodeId) -> String {
+    format!("A{}", synthetic_cell_row(node_id))
+}
+
+fn string_to_eval_value(value: &str) -> EvalValue {
+    if let Ok(number) = value.parse::<f64>() {
+        EvalValue::Number(number)
+    } else if let Ok(logical) = value.parse::<bool>() {
+        EvalValue::Logical(logical)
+    } else {
+        EvalValue::Text(ExcelText::from_interop_assignment(value))
+    }
+}
+
+fn value_payload_to_string(payload: &oxfml_core::seam::ValuePayload) -> String {
+    match payload {
+        oxfml_core::seam::ValuePayload::Number(value)
+        | oxfml_core::seam::ValuePayload::Text(value)
+        | oxfml_core::seam::ValuePayload::ErrorCode(value) => value.clone(),
+        oxfml_core::seam::ValuePayload::Logical(value) => value.to_string(),
+        oxfml_core::seam::ValuePayload::Blank => String::new(),
+    }
+}
+
+fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
+    let kind = match residual.kind {
+        ResidualCarrierKind::HostSensitive => "runtime_effect.host_sensitive_reference",
+        ResidualCarrierKind::DynamicPotential => "runtime_effect.dynamic_reference",
+    };
+    RuntimeEffect {
+        kind: kind.to_string(),
+        detail: format!(
+            "owner_node:{};carrier_id:{};detail:{}",
+            residual.owner_node_id, residual.carrier_id, residual.detail
+        ),
+    }
+}
+
+struct TreeCalcHostInfoProvider;
+
+impl HostInfoProvider for TreeCalcHostInfoProvider {
+    fn query_info(&self, _query: InfoQuery) -> Result<EvalValue, HostInfoError> {
+        Err(HostInfoError::ProviderFailure {
+            detail: "treecalc.host_sensitive_reference".to_string(),
         })
+    }
+}
+
+struct TreeCalcRtdProvider;
+
+impl RtdProvider for TreeCalcRtdProvider {
+    fn resolve_rtd(&self, _request: &RtdRequest) -> RtdProviderResult {
+        RtdProviderResult::CapabilityDenied
+    }
 }
 
 #[cfg(test)]
@@ -872,11 +1317,9 @@ mod tests {
             run.runtime_effects[0].kind,
             "runtime_effect.host_sensitive_reference"
         );
-        assert!(
-            run.runtime_effects[0]
-                .detail
-                .contains("carrier_id:carrier:host")
-        );
+        assert!(run.runtime_effects[0]
+            .detail
+            .contains("carrier_id:carrier:host"));
         assert_eq!(
             run.local_candidate
                 .as_ref()
@@ -888,11 +1331,9 @@ mod tests {
             run.runtime_effect_overlays[0].key.overlay_kind,
             OverlayKind::DynamicDependency
         );
-        assert!(
-            run.runtime_effect_overlays[0]
-                .detail
-                .contains("runtime_effect.host_sensitive_reference")
-        );
+        assert!(run.runtime_effect_overlays[0]
+            .detail
+            .contains("runtime_effect.host_sensitive_reference"));
     }
 
     #[test]
@@ -925,11 +1366,9 @@ mod tests {
             run.runtime_effects[0].kind,
             "runtime_effect.dynamic_reference"
         );
-        assert!(
-            run.runtime_effects[0]
-                .detail
-                .contains("carrier_id:carrier:dynamic")
-        );
+        assert!(run.runtime_effects[0]
+            .detail
+            .contains("carrier_id:carrier:dynamic"));
         assert_eq!(
             run.reject_detail.as_ref().map(|detail| detail.kind),
             Some(RejectKind::DynamicDependencyFailure)

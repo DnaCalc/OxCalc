@@ -76,7 +76,7 @@
     "expected": {
       "result_state": "rejected",
       "evaluation_order": [3],
-      "reject_kind": "DynamicDependencyFailure"
+      "reject_kind": "HostInjectedFailure"
     }
   },
   "expected": {

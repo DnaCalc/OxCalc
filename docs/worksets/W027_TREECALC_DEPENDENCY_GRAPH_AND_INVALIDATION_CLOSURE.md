@@ -57,7 +57,7 @@ Replace planner-only dependency derivation with real dependency graph build and 
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - local formula-derived descriptor lowering, dependency graph, invalidation closure, sequential runtime scheduling, local candidate adaptation, first local runtime-effect emission, a first local runtime-effect overlay carrier, a local TreeCalc run-emission path, and local oracle/conformance sidecars now exist, but OxFml bind facts are not consumed yet
+  - first OxFml bind-fact consumption now exists through the agreed direct-host translation and bind-preparation slice, but broader W026 bind/reference carrier intake is still open
   - replay-visible dependency identity is still open beyond deterministic local edge ids
   - runtime-derived dynamic dependency overlay closure remains open
   - checked-in TreeCalc fixtures and `w025-treecalc-local-baseline` currently cover the local sequential floor and a fixture-expectation oracle floor only, not the later live oracle/baseline lane

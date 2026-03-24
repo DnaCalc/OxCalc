@@ -3,22 +3,22 @@
   "diagnostics": [],
   "edges": [
     {
-      "descriptor_id": "bind:formula:mid:ref:0",
-      "edge_id": "dep:3:2:bind:formula:mid:ref:0",
+      "descriptor_id": "bind:formula:mid:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:mid:oxfml_ref:0",
       "kind": "RelativeBound",
       "owner_node_id": 3,
       "target_node_id": 2
     },
     {
-      "descriptor_id": "bind:formula:right:ref:1",
-      "edge_id": "dep:4:2:bind:formula:right:ref:1",
+      "descriptor_id": "bind:formula:right:oxfml_ref:1",
+      "edge_id": "dep:4:2:bind:formula:right:oxfml_ref:1",
       "kind": "RelativeBound",
       "owner_node_id": 4,
       "target_node_id": 2
     },
     {
-      "descriptor_id": "bind:formula:right:ref:0",
-      "edge_id": "dep:4:3:bind:formula:right:ref:0",
+      "descriptor_id": "bind:formula:right:oxfml_ref:0",
+      "edge_id": "dep:4:3:bind:formula:right:oxfml_ref:0",
       "kind": "RelativeBound",
       "owner_node_id": 4,
       "target_node_id": 3

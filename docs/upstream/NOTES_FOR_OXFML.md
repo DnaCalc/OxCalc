@@ -519,3 +519,111 @@ Current conclusion is:
 2. caller-anchor/address-mode handling for the first TreeCalc relative-reference subset should remain in the W026 note lane,
 3. provider-failure and callable-publication remain watch lanes only until they become coordinator-visible in exercised evidence,
 4. the remaining host/runtime uncertainty is bounded and note-level rather than a present handoff trigger.
+
+## 39. Current Intake Of OxFml's Latest Follow-Up Note
+OxCalc has now processed the latest OxFml follow-up note and related docs, especially:
+1. `../OxFml/docs/spec/OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md`
+2. `../OxFml/docs/worksets/W036_structured_reference_and_table_formula_semantics.md`
+3. `../OxFml/docs/worksets/W048_editor_language_service_and_immutable_formula_host_plan.md`
+4. `../OxFml/docs/worksets/W051_oxcalc_fixture_host_and_stand_in_packet.md`
+
+Current local read is:
+1. the first host/runtime packet remains converged enough for the first TreeCalc implementation slice,
+2. no new formal handoff is justified from this note alone,
+3. OxFml's newest bounded asks are now:
+   - structured-reference and table-context packet confirmation,
+   - immutable edit and validated completion packet review,
+   - fixture host and coordinator stand-in packet review.
+
+## 40. Current OxCalc Implementation Confirmation
+OxCalc has now landed the first seam-backed TreeCalc runtime slice locally.
+
+Current local implementation read is:
+1. the local TreeCalc runtime no longer uses its prior internal evaluator path for the active covered lane,
+2. the active local lane now translates TreeCalc formulas into the agreed OxFml direct-host slice and executes through OxFml bind/evaluate,
+3. the local dependency graph seed is now prepared from the translated OxFml bind slice plus explicit residual carriers rather than only from local lowering,
+4. current local baseline `w025-treecalc-local-baseline` regenerates successfully with `13` cases and `0` expectation mismatches after the seam-backed conversion.
+
+Important implementation-facing notes from this conversion:
+1. the first direct-host slice is strong enough for local TreeCalc evaluation planning,
+2. the conversion confirms that some previously local TreeCalc expectations should now follow seam-backed behavior rather than older local-only behavior,
+3. the current local lane still uses the narrowed first direct-host packet, not the broader future W026/W029 carrier breadth.
+
+## 41. Structured-Reference Packet Confirmation
+OxCalc's current read is that OxFml's proposed first semantic table packet is the right starting point for both direct-host and TreeCalc-integrated use:
+1. `table_catalog`
+2. `enclosing_table_ref`
+3. `caller_table_region`
+
+Current OxCalc confirmation is:
+1. yes, this is the right first semantic packet shape,
+2. yes, totals/header/data region identity should remain explicit in the packet even if the first executed floor is smaller than the later full workbook-table model,
+3. no narrower first anchor packet is required before first implementation use, provided `caller_table_region` is explicit enough to distinguish:
+   - headers
+   - data
+   - totals
+   - current-row-sensitive binding context where applicable.
+
+Current non-assumptions from OxCalc are:
+1. this does not imply OxCalc wants OxFml to own workbook table objects,
+2. this does not imply the whole broader table model is frozen,
+3. this does not imply broader structured-reference closure beyond the current first packet.
+
+## 42. Immutable Edit And Validated Completion Packet Read
+OxCalc's current read of the `W048` packet direction is:
+1. the split into immutable edit request, immutable edit result, and validated completion application result is the right first packetization,
+2. OxFml should return replacement-ready immutable formula artifacts and diagnostics rather than owning containing-spine replacement,
+3. validated completion application should remain host-local by default rather than coordinator-visible by default,
+4. coordinator visibility is only needed later if completion application itself starts producing replay-significant or publication-significant artifacts.
+
+Current OxCalc view of the proposed fields is:
+1. the proposed immutable edit request fields are sufficient for a first packet,
+2. the proposed immutable edit result fields are sufficient for a first packet,
+3. the proposed validated completion application result is sufficient for a first packet.
+
+Current likely useful additions from the OxCalc side are modest:
+1. an explicit host-owned formula-slot identity or slot-kind field may become useful once OxCalc moves beyond one narrow formula-bearing slot family,
+2. an explicit packet/schema version field should remain easy to project,
+3. no broader coordinator acknowledgment field is needed in the first packet.
+
+Current OxCalc reuse read is:
+1. yes, the same packet family should be reusable for ordinary cell formulas, host-managed defined-name formulas, and later other formula-bearing slots,
+2. the host remains owner of containing-tree replacement and acceptance of the resulting immutable artifact.
+
+## 43. Fixture Host And Coordinator Stand-In Packet Read
+OxCalc's current read of the `W051` stand-in packet direction is:
+1. yes, this is the right bounded next packet to support deterministic integration artifacts,
+2. yes, those inputs should be modeled as host/coordinator-supplied truths rather than evaluator-owned meaning,
+3. no, this should not be read as freezing the production OxCalc coordinator API.
+
+Current OxCalc confirmation on the proposed packet shape is:
+1. the stand-in packet families are directionally right:
+   - formula-slot facts
+   - binding-world facts
+   - typed host/query facts
+   - runtime catalog facts
+2. `RegisteredExternalProvider` may stay present from the start as an optional stand-in packet field, even if the first executed floor still defers broader worksheet external-provider lanes,
+3. candidate/commit/reject capture should remain a separate projection layer and should not be folded into the input stand-in packet.
+
+Current likely useful additional identity fields are:
+1. a stand-in packet identity or fixture-input identity,
+2. explicit structure-context identity,
+3. explicit formula-slot identity where the packet is reused across multiple slot families.
+
+## 44. Current OxCalc Watch Lanes After This Round
+The active watch lanes remain:
+1. caller-anchor and address-mode carriage for the first TreeCalc relative-reference subset,
+2. execution-restriction transport shape,
+3. publication/topology consequence breadth,
+4. provider-failure and callable-publication only if they become coordinator-visible in exercised evidence.
+
+Current OxCalc read is:
+1. these remain note-level refinement lanes rather than current handoff triggers,
+2. the latest OxFml note does not broaden them into a new immediate blocker set.
+
+## 45. Current OxCalc Working Rule After This Exchange
+After this note round, OxCalc's current working rule is:
+1. continue first TreeCalc integration work on the converged host/runtime and structured-table packet floor,
+2. treat the immutable edit packet and stand-in packet as the next bounded coordination topics rather than reopening broad seam design,
+3. reserve a narrower formal handoff only for concrete insufficiency exposed by live implementation evidence,
+4. keep the current direct-host TreeCalc conversion as implementation evidence for the first host/coordinator slice rather than over-claiming broader seam freeze.

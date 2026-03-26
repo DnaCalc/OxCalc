@@ -21,7 +21,7 @@ use oxfml_core::semantics::{
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfml_core::EvaluationBackend;
-use oxfunc_core::value::{EvalValue, WorksheetErrorCode};
+use oxfunc_core::value::{ArrayCellValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode};
 
 const UPSTREAM_HOST_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_manifest.v1";
 const UPSTREAM_HOST_FIXTURE_CASE_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_case.v1";
@@ -83,6 +83,8 @@ pub struct UpstreamHostFixtureBindingWorld {
     #[serde(default)]
     pub cell_fixture_numbers: BTreeMap<String, f64>,
     #[serde(default)]
+    pub cell_fixture_arrays: Vec<UpstreamHostFixtureArrayBinding>,
+    #[serde(default)]
     pub defined_name_values: BTreeMap<String, f64>,
     #[serde(default)]
     pub table_catalog: Vec<UpstreamHostFixtureTableDescriptor>,
@@ -116,6 +118,19 @@ pub struct UpstreamHostFixtureCallerTableRegion {
     pub table_id: String,
     pub region_kind: String,
     pub data_row_offset: Option<u32>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureArrayBinding {
+    pub target: String,
+    pub rows: Vec<Vec<UpstreamHostFixtureArrayCell>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UpstreamHostFixtureArrayCell {
+    Number { value: f64 },
+    Text { value: String },
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -336,12 +351,7 @@ fn build_packet(
             structure_context_version: case.formula_slot.structure_context_version.clone(),
         },
         binding_world: crate::upstream_host::MinimalBindingWorld {
-            cell_fixture: case
-                .binding_world
-                .cell_fixture_numbers
-                .iter()
-                .map(|(target, value)| (target.clone(), EvalValue::Number(*value)))
-                .collect(),
+            cell_fixture: build_cell_fixture(&case.binding_world)?,
             defined_name_bindings: case
                 .binding_world
                 .defined_name_values
@@ -388,6 +398,32 @@ fn build_packet(
                 .then(|| snapshot_with_entries(&case.runtime_catalog.surface_names)),
         },
     })
+}
+
+fn build_cell_fixture(
+    binding_world: &UpstreamHostFixtureBindingWorld,
+) -> Result<BTreeMap<String, EvalValue>, UpstreamHostFixtureError> {
+    let mut cell_fixture = binding_world
+        .cell_fixture_numbers
+        .iter()
+        .map(|(target, value)| (target.clone(), EvalValue::Number(*value)))
+        .collect::<BTreeMap<_, _>>();
+
+    for array_binding in &binding_world.cell_fixture_arrays {
+        let rows = array_binding
+            .rows
+            .iter()
+            .map(|row| row.iter().map(to_array_cell_value).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        let array =
+            EvalArray::from_rows(rows).ok_or_else(|| UpstreamHostFixtureError::Runtime {
+                case_id: "fixture-array-shape".to_string(),
+                detail: "invalid array fixture shape".to_string(),
+            })?;
+        cell_fixture.insert(array_binding.target.clone(), EvalValue::Array(array));
+    }
+
+    Ok(cell_fixture)
 }
 
 fn parse_formula_channel_kind(kind: &str) -> Result<FormulaChannelKind, UpstreamHostFixtureError> {
@@ -502,6 +538,15 @@ fn to_table_descriptor(descriptor: &UpstreamHostFixtureTableDescriptor) -> Table
     }
 }
 
+fn to_array_cell_value(cell: &UpstreamHostFixtureArrayCell) -> ArrayCellValue {
+    match cell {
+        UpstreamHostFixtureArrayCell::Number { value } => ArrayCellValue::Number(*value),
+        UpstreamHostFixtureArrayCell::Text { value } => {
+            ArrayCellValue::Text(ExcelText::from_interop_assignment(value))
+        }
+    }
+}
+
 fn to_caller_table_region(
     region: &UpstreamHostFixtureCallerTableRegion,
 ) -> Result<TableCallerRegion, UpstreamHostFixtureError> {
@@ -579,7 +624,7 @@ mod tests {
             repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
         let manifest = load_manifest(&manifest_path).unwrap();
 
-        assert_eq!(manifest.cases.len(), 6);
+        assert_eq!(manifest.cases.len(), 9);
 
         for entry in &manifest.cases {
             let case_path = repo_root

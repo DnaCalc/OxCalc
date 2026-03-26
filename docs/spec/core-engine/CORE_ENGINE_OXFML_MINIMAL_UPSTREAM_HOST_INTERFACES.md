@@ -79,7 +79,11 @@ It supports:
 3. defined-name value and reference bindings,
 4. cell fixtures,
 5. first table-context carriage through `table_catalog`, `enclosing_table_ref`, and `caller_table_region`,
-6. one bounded evaluator-facing structured-reference family on top of that same table-context packet,
+6. multiple bounded evaluator-facing structured-reference families on top of that same table-context packet, currently:
+   - current-row structured reference
+   - explicit-column aggregate
+   - headers-section return
+   - data-qualified multi-column aggregate
 7. typed host-info stand-ins, including unsupported-query, provider-failure, directory-value, and mixed directory-value-plus-filename-provider-failure outcomes,
 8. typed RTD stand-ins,
 9. locale-context selection,
@@ -137,5 +141,5 @@ Immediate intended use is:
 - open_lanes:
   - broader W026 bind/reference intake remains open beyond this minimal packet
   - caller-anchor/address-mode breadth, execution-restriction transport breadth, and broader publication/topology breadth remain narrower seam lanes
-  - first table-context carriage and one bounded evaluator-facing structured-reference family are fixture-covered in the first corpus, but richer structured-reference evaluator families are not yet fixture-covered
+  - first table-context carriage and four bounded evaluator-facing structured-reference families are fixture-covered in the first corpus, but richer structured-reference evaluator families are not yet fixture-covered
   - this packet is ready for deterministic automated scaffolding, first capture-packet testing, and first data-driven fixture use, but not a production coordinator API freeze

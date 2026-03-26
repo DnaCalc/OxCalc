@@ -14,6 +14,9 @@ Current corpus:
 4. `uh_sum_defined_name_bind_001`
 5. `uh_table_context_bind_001`
 6. `uh_structured_reference_eval_001`
+7. `uh_structured_column_sum_eval_001`
+8. `uh_structured_headers_section_eval_001`
+9. `uh_structured_data_multicol_sum_eval_001`
 
 Current executable coverage:
 1. loader and execution support in `src/oxcalc-core/src/upstream_host_fixture.rs`
@@ -27,5 +30,5 @@ Status:
 - integration_completeness: partial
 - open_lanes:
   - broader W026 bind/reference intake remains outside this first corpus
-  - first table-context carriage and one bounded evaluator-facing structured-reference family are now fixture-covered, but richer structured-reference evaluator families are not yet covered here
+  - first table-context carriage and four bounded evaluator-facing structured-reference families are now fixture-covered, but richer structured-reference evaluator families are not yet covered here
   - broader execution-restriction and publication/topology breadth remain later seam lanes

@@ -57,6 +57,41 @@
         "structured-reference",
         "evaluation"
       ]
+    },
+    {
+      "case_id": "uh_structured_column_sum_eval_001",
+      "path": "cases/uh_structured_column_sum_eval_001.json",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "aggregate"
+      ]
+    },
+    {
+      "case_id": "uh_structured_headers_section_eval_001",
+      "path": "cases/uh_structured_headers_section_eval_001.json",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "section"
+      ]
+    },
+    {
+      "case_id": "uh_structured_data_multicol_sum_eval_001",
+      "path": "cases/uh_structured_data_multicol_sum_eval_001.json",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "data-qualified",
+        "multi-column",
+        "aggregate"
+      ]
     }
   ]
 }

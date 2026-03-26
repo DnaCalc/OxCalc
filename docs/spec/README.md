@@ -29,6 +29,8 @@ The rewritten canonical core-engine set is:
   - supporting companion defining the first semantically-complete TreeCalc engine target and the pre-optimization work sequence needed to reach it.
 - `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`
   - supporting companion defining the topic-by-topic TreeCalc seam negotiation shape for the next OxCalc↔OxFml note rounds and W026 intake work.
+- `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
+  - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

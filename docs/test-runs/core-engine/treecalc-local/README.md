@@ -4,9 +4,10 @@ This root is for local sequential TreeCalc run artifacts emitted from the checke
 corpus under `docs/test-fixtures/core-engine/treecalc/`.
 
 Current role:
-- deterministic local run artifacts for the pre-OxFml TreeCalc floor
+- deterministic local run artifacts for the first seam-backed TreeCalc local floor
 - first local oracle and conformance sidecars against fixture-declared expectations
 - first local trace and explain sidecars against the emitted local runtime artifacts
+- first local run-comparison discipline through `scripts/compare-treecalc-local-run.ps1`
 - precursor to the first sequential TreeCalc baseline lane in `W030`
 
 Current emitted root:
@@ -29,6 +30,8 @@ Current local corpus floor:
 - removal consequence with typed post-edit rejection on missing direct dependency
 
 Current limits:
-- local formula IR and local evaluator only
-- no OxFml bind or evaluator intake yet
+- the current lane is seam-backed for the first direct-host slice, but not yet widened to the broader W026/W029 carrier breadth
 - oracle and conformance are local fixture-expectation floors only, not the later live TreeCalc oracle lane
+
+Current compare command:
+- `pwsh ./scripts/compare-treecalc-local-run.ps1 -CandidateRunId w025-treecalc-local-baseline`

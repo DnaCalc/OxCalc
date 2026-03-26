@@ -1,0 +1,38 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_rtd_provider_error_001",
+  "description": "RTD provider error surfaces through the typed host-provider outcome path with a worksheet error.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:003",
+    "formula_slot_id": "node:slot:upstream_host:003",
+    "formula_stable_id": "formula:upstream_host:003",
+    "formula_text": "=RTD(\"prog\",\"server\",\"topic\")",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "typed_query_facts": {
+    "rtd_mode": {
+      "kind": "provider_error",
+      "worksheet_error": "value"
+    }
+  },
+  "runtime_catalog": {
+    "surface_names": [
+      "RTD"
+    ]
+  },
+  "expected": {
+    "returned_surface_kind": "typed_host_provider_outcome",
+    "payload_summary": "ProviderError(Value)",
+    "worksheet_error": "value"
+  }
+}

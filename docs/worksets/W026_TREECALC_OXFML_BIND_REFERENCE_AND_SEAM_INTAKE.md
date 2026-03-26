@@ -55,15 +55,16 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 10. `CURRENT_BLOCKERS.md` updated if needed: no
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
+  - a widened minimal upstream host packet and adapter now exist for automated scaffolding and the first seam-backed TreeCalc direct-host slice, including typed host-info outcome variants, RTD stand-ins, in-memory runtime catalog snapshots, first replay-capture packet projection, explicit crate-level scaffolding tests, and a first checked-in upstream-host fixture corpus that now also covers the agreed first table-context packet plus one bounded evaluator-facing structured-reference family, but the broader consumed bind/reference intake is still open
   - TreeCalc-specific relative-reference and unresolved-reference carrier rules remain canonical but narrower beyond the first consumed subset
   - runtime-derived effect and execution-restriction transport shape remain canonical but narrower beyond the current semantic minimum
   - host/runtime direct-host versus integrated-host split is now sufficient for first implementation planning, but caller-anchor/address-mode carriage for the first TreeCalc relative-reference subset remains narrower
-  - the consume-now topics identified by the latest OxFml reply are not yet packetized into executed seam intake work
+  - the consume-now topics identified by the latest OxFml reply are only partially packetized into executed seam intake work
   - narrower handoff need remains deferred pending live W026 evidence
 - claim_confidence: draft
 - reviewed_inbound_observations: W020 remains the current downstream seam baseline; the latest OxFml topic-matrix and narrower W026-focused replies make formula/bind identity, candidate consequence, reject-context, and direct-binding preservation consume-now topics, confirm that W026 may proceed on a narrowed first subset for relative-reference, unresolved-reference, runtime-derived transport, and semantic-format/display handling without a new handoff, and the latest host/runtime reply agrees that `OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` is strong enough for the first coordinator-host implementation slice while keeping caller-anchor/address-mode, execution-restriction transport breadth, and publication/topology breadth as note-level residuals

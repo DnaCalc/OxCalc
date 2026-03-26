@@ -5,14 +5,11 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use oxfml_core::binding::{bind_formula, BindContext, BindRequest, NameKind};
-use oxfml_core::host::SingleFormulaHost;
-use oxfml_core::interface::{ReturnedValueSurfaceKind, TypedContextQueryBundle};
+use oxfml_core::interface::ReturnedValueSurfaceKind;
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{parse_formula, ParseRequest};
 use oxfml_core::EvaluationBackend;
-use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
-use oxfunc_core::host_info::{HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use thiserror::Error;
 
@@ -29,6 +26,11 @@ use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
 };
 use crate::structural::{StructuralSnapshot, TreeNodeId};
+use crate::upstream_host::{
+    MinimalBindingWorld, MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalRuntimeCatalogFacts,
+    MinimalTypedQueryFacts, MinimalUpstreamHostPacket, UpstreamDefinedNameBinding,
+    UpstreamHostAnchor,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalTreeCalcRunState {
@@ -704,49 +706,8 @@ fn evaluate_via_oxfml(
         });
     }
 
-    let mut host = SingleFormulaHost::new(
-        prepared.source.formula_stable_id.0.clone(),
-        prepared.source.entered_formula_text.clone(),
-    );
-    host.formula_text_version = prepared.source.formula_text_version.0;
-    host.structure_context_version = prepared.bound_formula.structure_context_version.clone();
-    host.caller_row = synthetic_cell_row(prepared.binding.owner_node_id);
-    host.caller_col = 1;
-
-    for reference in &prepared.translated.reference_bindings {
-        host.set_defined_name_reference(
-            &reference.token,
-            ReferenceLike {
-                kind: ReferenceKind::A1,
-                target: synthetic_cell_target(reference.target_node_id),
-            },
-        );
-    }
-
-    for (node_id, value) in working_values {
-        host.set_cell_value(synthetic_cell_target(*node_id), string_to_eval_value(value));
-    }
-
-    let host_info_provider = TreeCalcHostInfoProvider;
-    let rtd_provider = TreeCalcRtdProvider;
-    let query_bundle = TypedContextQueryBundle::new(
-        prepared
-            .translated
-            .residuals
-            .iter()
-            .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive))
-            .then_some(&host_info_provider as &dyn HostInfoProvider),
-        prepared
-            .translated
-            .residuals
-            .iter()
-            .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential))
-            .then_some(&rtd_provider as &dyn RtdProvider),
-        None,
-        None,
-        None,
-    );
-    let run = match host.recalc_with_interfaces(EvaluationBackend::OxFuncBacked, query_bundle, None)
+    let run = match build_upstream_host_packet(prepared, working_values)
+        .recalc(EvaluationBackend::OxFuncBacked)
     {
         Ok(run) => run,
         Err(detail) => {
@@ -845,6 +806,80 @@ fn evaluate_via_oxfml(
             runtime_effects: Vec::new(),
             diagnostics: vec![format!("oxfml_reject:{:?}", reject.reject_code)],
         }),
+    }
+}
+
+fn build_upstream_host_packet(
+    prepared: &PreparedOxfmlFormula,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> MinimalUpstreamHostPacket {
+    let mut defined_name_bindings = BTreeMap::new();
+    for reference in &prepared.translated.reference_bindings {
+        defined_name_bindings.insert(
+            reference.token.clone(),
+            UpstreamDefinedNameBinding::Reference(ReferenceLike {
+                kind: ReferenceKind::A1,
+                target: synthetic_cell_target(reference.target_node_id),
+            }),
+        );
+    }
+
+    let cell_fixture = working_values
+        .iter()
+        .map(|(node_id, value)| (synthetic_cell_target(*node_id), string_to_eval_value(value)))
+        .collect();
+
+    MinimalUpstreamHostPacket {
+        formula_slot: MinimalFormulaSlotFacts {
+            fixture_input_id: format!("fixture:{}", prepared.source.formula_stable_id.0),
+            formula_slot_id: Some(prepared.binding.owner_node_id.0.to_string()),
+            formula_stable_id: prepared.source.formula_stable_id.0.clone(),
+            formula_text: prepared.source.entered_formula_text.clone(),
+            formula_text_version: prepared.source.formula_text_version.0,
+            formula_channel_kind: prepared.source.formula_channel_kind,
+            caller_anchor: UpstreamHostAnchor {
+                row: synthetic_cell_row(prepared.binding.owner_node_id),
+                col: 1,
+            },
+            active_selection_anchor: None,
+            structure_context_version: prepared.bound_formula.structure_context_version.clone(),
+        },
+        binding_world: MinimalBindingWorld {
+            cell_fixture,
+            defined_name_bindings,
+            table_catalog: Vec::new(),
+            enclosing_table_ref: None,
+            caller_table_region: None,
+        },
+        typed_query_facts: MinimalTypedQueryFacts {
+            host_info_mode: if prepared
+                .translated
+                .residuals
+                .iter()
+                .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive))
+            {
+                MinimalHostInfoMode::ProviderFailure {
+                    detail: "treecalc.host_sensitive_reference".to_string(),
+                }
+            } else {
+                MinimalHostInfoMode::Disabled
+            },
+            rtd_mode: if prepared
+                .translated
+                .residuals
+                .iter()
+                .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential))
+            {
+                crate::upstream_host::MinimalRtdMode::CapabilityDenied
+            } else {
+                crate::upstream_host::MinimalRtdMode::Disabled
+            },
+            locale_context_kind: crate::upstream_host::MinimalLocaleContextKind::Disabled,
+            now_serial: None,
+            random_value: None,
+            registered_external_present: false,
+        },
+        runtime_catalog: MinimalRuntimeCatalogFacts::default(),
     }
 }
 
@@ -1062,24 +1097,6 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
             "owner_node:{};carrier_id:{};detail:{}",
             residual.owner_node_id, residual.carrier_id, residual.detail
         ),
-    }
-}
-
-struct TreeCalcHostInfoProvider;
-
-impl HostInfoProvider for TreeCalcHostInfoProvider {
-    fn query_info(&self, _query: InfoQuery) -> Result<EvalValue, HostInfoError> {
-        Err(HostInfoError::ProviderFailure {
-            detail: "treecalc.host_sensitive_reference".to_string(),
-        })
-    }
-}
-
-struct TreeCalcRtdProvider;
-
-impl RtdProvider for TreeCalcRtdProvider {
-    fn resolve_rtd(&self, _request: &RtdRequest) -> RtdProviderResult {
-        RtdProviderResult::CapabilityDenied
     }
 }
 

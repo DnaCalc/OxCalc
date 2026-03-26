@@ -1,0 +1,65 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_table_context_bind_001",
+  "description": "The first structured-reference packet direction is carried through the public bind context via table_catalog, enclosing_table_ref, and caller_table_region.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:005",
+    "formula_slot_id": "node:slot:upstream_host:005",
+    "formula_stable_id": "formula:upstream_host:005",
+    "formula_text": "=SUM(InputValue,2)",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 5,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 5,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "binding_world": {
+    "defined_name_values": {
+      "InputValue": 7.0
+    },
+    "table_catalog": [
+      {
+        "table_id": "table:sales",
+        "table_name": "Sales",
+        "workbook_scope_ref": "book:1",
+        "sheet_scope_ref": "sheet:1",
+        "table_range_ref": "A1:B4",
+        "header_row_present": true,
+        "totals_row_present": false,
+        "columns": [
+          {
+            "column_id": "table:sales:amount",
+            "column_name": "Amount",
+            "ordinal": 1,
+            "column_range_ref": "B2:B4"
+          }
+        ]
+      }
+    ],
+    "enclosing_table_ref": "table:sales",
+    "caller_table_region": {
+      "table_id": "table:sales",
+      "region_kind": "data",
+      "data_row_offset": 0
+    }
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "bind_name_kinds": {
+      "InputValue": "value_like"
+    },
+    "table_catalog_len": 1,
+    "enclosing_table_ref": "table:sales",
+    "caller_table_region": {
+      "table_id": "table:sales",
+      "region_kind": "data",
+      "data_row_offset": 0
+    }
+  }
+}

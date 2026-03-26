@@ -14,8 +14,8 @@ use crate::dependency::{DependencyDiagnostic, DependencyEdge, InvalidationClosur
 use crate::recalc::OverlayEntry;
 use crate::treecalc::{LocalTreeCalcRunArtifacts, LocalTreeCalcRunState};
 use crate::treecalc_fixture::{
-    TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
-    TreeCalcFixturePostEditExecution, execute_fixture_case, load_case, load_manifest,
+    execute_fixture_case, load_case, load_manifest, TreeCalcFixtureError, TreeCalcFixtureExecution,
+    TreeCalcFixtureExpected, TreeCalcFixturePostEditExecution,
 };
 
 const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifest.v1";
@@ -343,38 +343,32 @@ fn write_case_artifacts(
     )?;
     write_json(
         case_directory.join("published_values.json").as_path(),
-        &json!(
-            artifacts
-                .published_values
-                .iter()
-                .map(|(node_id, value)| json!({
-                    "node_id": node_id.0,
-                    "value": value,
-                }))
-                .collect::<Vec<_>>()
-        ),
+        &json!(artifacts
+            .published_values
+            .iter()
+            .map(|(node_id, value)| json!({
+                "node_id": node_id.0,
+                "value": value,
+            }))
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         case_directory.join("runtime_effects.json").as_path(),
-        &json!(
-            artifacts
-                .runtime_effects
-                .iter()
-                .map(runtime_effect_json)
-                .collect::<Vec<_>>()
-        ),
+        &json!(artifacts
+            .runtime_effects
+            .iter()
+            .map(runtime_effect_json)
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         case_directory
             .join("runtime_effect_overlays.json")
             .as_path(),
-        &json!(
-            artifacts
-                .runtime_effect_overlays
-                .iter()
-                .map(overlay_json)
-                .collect::<Vec<_>>()
-        ),
+        &json!(artifacts
+            .runtime_effect_overlays
+            .iter()
+            .map(overlay_json)
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         case_directory.join("dependency_graph.json").as_path(),
@@ -392,16 +386,14 @@ fn write_case_artifacts(
     )?;
     write_json(
         case_directory.join("node_states.json").as_path(),
-        &json!(
-            artifacts
-                .node_states
-                .iter()
-                .map(|(node_id, state)| json!({
-                    "node_id": node_id.0,
-                    "state": format!("{state:?}"),
-                }))
-                .collect::<Vec<_>>()
-        ),
+        &json!(artifacts
+            .node_states
+            .iter()
+            .map(|(node_id, state)| json!({
+                "node_id": node_id.0,
+                "state": format!("{state:?}"),
+            }))
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         case_directory.join("result.json").as_path(),
@@ -484,27 +476,23 @@ fn write_post_edit_artifacts(
     )?;
     write_json(
         post_edit_directory.join("runtime_effects.json").as_path(),
-        &json!(
-            execution
-                .rerun_artifacts
-                .runtime_effects
-                .iter()
-                .map(runtime_effect_json)
-                .collect::<Vec<_>>()
-        ),
+        &json!(execution
+            .rerun_artifacts
+            .runtime_effects
+            .iter()
+            .map(runtime_effect_json)
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         post_edit_directory
             .join("runtime_effect_overlays.json")
             .as_path(),
-        &json!(
-            execution
-                .rerun_artifacts
-                .runtime_effect_overlays
-                .iter()
-                .map(overlay_json)
-                .collect::<Vec<_>>()
-        ),
+        &json!(execution
+            .rerun_artifacts
+            .runtime_effect_overlays
+            .iter()
+            .map(overlay_json)
+            .collect::<Vec<_>>()),
     )?;
     write_json(
         post_edit_directory.join("result.json").as_path(),
@@ -898,62 +886,40 @@ mod tests {
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
-        assert!(
-            artifact_root
-                .join("conformance/oracle_baseline.json")
-                .exists()
-        );
+        assert!(artifact_root
+            .join("conformance/oracle_baseline.json")
+            .exists());
         assert!(artifact_root.join("conformance/engine_diff.json").exists());
-        assert!(
-            artifact_root
-                .join("cases/tc_local_publish_001/result.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_publish_001/oracle.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_publish_001/engine_diff.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_publish_001/trace.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_publish_001/explain.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_rebind_after_rename_001/post_edit/result.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_move_direct_target_rebind_001/post_edit/result.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_remove_direct_target_001/post_edit/result.json")
-                .exists()
-        );
-        assert!(
-            artifact_root
-                .join("cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json")
-                .exists()
-        );
+        assert!(artifact_root
+            .join("cases/tc_local_publish_001/result.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_publish_001/oracle.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_publish_001/engine_diff.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_publish_001/trace.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_publish_001/explain.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_rebind_after_rename_001/post_edit/result.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_move_direct_target_rebind_001/post_edit/result.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_remove_direct_target_001/post_edit/result.json")
+            .exists());
+        assert!(artifact_root
+            .join("cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json")
+            .exists());
         assert!(
             artifact_root
                 .join("cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effect_overlays.json")
@@ -964,11 +930,9 @@ mod tests {
                 .join("cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json")
                 .exists()
         );
-        assert!(
-            artifact_root
-                .join("conformance/explain_index.json")
-                .exists()
-        );
+        assert!(artifact_root
+            .join("conformance/explain_index.json")
+            .exists());
 
         fs::remove_dir_all(&artifact_root).unwrap();
     }

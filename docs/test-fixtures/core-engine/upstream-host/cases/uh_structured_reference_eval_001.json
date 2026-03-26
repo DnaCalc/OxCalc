@@ -1,0 +1,75 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_structured_reference_eval_001",
+  "description": "A current-row structured reference evaluates through the same table-context packet using an enclosed table and caller-table-region.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:006",
+    "formula_slot_id": "node:slot:upstream_host:006",
+    "formula_stable_id": "formula:upstream_host:006",
+    "formula_text": "=[@Amount]+2",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 3,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 3,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "binding_world": {
+    "cell_fixture_numbers": {
+      "B3": 7.0
+    },
+    "table_catalog": [
+      {
+        "table_id": "table:1",
+        "table_name": "Table1",
+        "workbook_scope_ref": "book:default",
+        "sheet_scope_ref": "sheet:default",
+        "table_range_ref": "A1:C5",
+        "header_row_present": true,
+        "totals_row_present": true,
+        "columns": [
+          {
+            "column_id": "column:label",
+            "column_name": "Label",
+            "ordinal": 1,
+            "column_range_ref": "A2:A4"
+          },
+          {
+            "column_id": "column:amount",
+            "column_name": "Amount",
+            "ordinal": 2,
+            "column_range_ref": "B2:B4"
+          },
+          {
+            "column_id": "column:tax",
+            "column_name": "Tax",
+            "ordinal": 3,
+            "column_range_ref": "C2:C4"
+          }
+        ]
+      }
+    ],
+    "enclosing_table_ref": "table:1",
+    "caller_table_region": {
+      "table_id": "table:1",
+      "region_kind": "data",
+      "data_row_offset": 1
+    }
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "payload_summary": "Number",
+    "table_catalog_len": 1,
+    "enclosing_table_ref": "table:1",
+    "caller_table_region": {
+      "table_id": "table:1",
+      "region_kind": "data",
+      "data_row_offset": 1
+    }
+  }
+}

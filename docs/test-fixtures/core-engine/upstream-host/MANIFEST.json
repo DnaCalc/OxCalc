@@ -1,0 +1,62 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_manifest.v1",
+  "corpus_id": "upstream-host-scaffolding-v1",
+  "base_path": "docs/test-fixtures/core-engine/upstream-host",
+  "cases": [
+    {
+      "case_id": "uh_info_directory_capture_001",
+      "path": "cases/uh_info_directory_capture_001.json",
+      "tags": [
+        "scaffolding",
+        "host-info",
+        "capture-packet"
+      ]
+    },
+    {
+      "case_id": "uh_info_unsupported_query_001",
+      "path": "cases/uh_info_unsupported_query_001.json",
+      "tags": [
+        "scaffolding",
+        "host-info",
+        "unsupported-query"
+      ]
+    },
+    {
+      "case_id": "uh_rtd_provider_error_001",
+      "path": "cases/uh_rtd_provider_error_001.json",
+      "tags": [
+        "scaffolding",
+        "rtd",
+        "provider-error"
+      ]
+    },
+    {
+      "case_id": "uh_sum_defined_name_bind_001",
+      "path": "cases/uh_sum_defined_name_bind_001.json",
+      "tags": [
+        "scaffolding",
+        "bind-context",
+        "defined-name"
+      ]
+    },
+    {
+      "case_id": "uh_table_context_bind_001",
+      "path": "cases/uh_table_context_bind_001.json",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "bind-context"
+      ]
+    },
+    {
+      "case_id": "uh_structured_reference_eval_001",
+      "path": "cases/uh_structured_reference_eval_001.json",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation"
+      ]
+    }
+  ]
+}

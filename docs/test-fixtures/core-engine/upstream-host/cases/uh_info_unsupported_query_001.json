@@ -1,0 +1,31 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_info_unsupported_query_001",
+  "description": "INFO(system) preserves the typed unsupported-query host-provider surface.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:002",
+    "formula_slot_id": "node:slot:upstream_host:002",
+    "formula_stable_id": "formula:upstream_host:002",
+    "formula_text": "=INFO(\"system\")",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "typed_query_facts": {
+    "host_info_mode": {
+      "kind": "unsupported_queries"
+    }
+  },
+  "expected": {
+    "returned_surface_kind": "typed_host_provider_outcome",
+    "host_provider_outcome_kind": "unsupported_query"
+  }
+}

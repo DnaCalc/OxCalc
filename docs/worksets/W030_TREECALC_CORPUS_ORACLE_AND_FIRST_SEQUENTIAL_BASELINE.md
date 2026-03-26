@@ -50,13 +50,13 @@ Turn the real TreeCalc engine path into an exercised and comparable runtime by w
 10. `CURRENT_BLOCKERS.md` updated if needed: no
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - real TreeCalc corpus is not authored yet
-  - TreeCalc oracle/conformance widening is not realized yet
-  - first sequential TreeCalc-ready baseline does not exist yet
+  - a local TreeCalc corpus, oracle, conformance, trace, explain, and baseline root now exist, but they are still local-floor evidence rather than the later live TreeCalc-ready lane
+  - TreeCalc local baseline comparison discipline now exists, but replay/diff/explain widening to the later live lane is still open
+  - the first sequential TreeCalc-ready baseline does not exist yet beyond `w025-treecalc-local-baseline`
 - claim_confidence: draft
 - reviewed_inbound_observations: current OxFml seam baseline remains sufficient for planning; narrower handoff only if exercised TreeCalc evidence reveals a new insufficiency

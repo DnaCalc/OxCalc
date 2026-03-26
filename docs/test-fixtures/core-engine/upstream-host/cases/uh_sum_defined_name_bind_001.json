@@ -1,0 +1,33 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_sum_defined_name_bind_001",
+  "description": "A defined-name value binding is preserved into the public bind-context projection.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:004",
+    "formula_slot_id": "node:slot:upstream_host:004",
+    "formula_stable_id": "formula:upstream_host:004",
+    "formula_text": "=SUM(InputValue,2)",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "binding_world": {
+    "defined_name_values": {
+      "InputValue": 5.0
+    }
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "bind_name_kinds": {
+      "InputValue": "value_like"
+    }
+  }
+}

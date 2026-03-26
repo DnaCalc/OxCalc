@@ -1,0 +1,42 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_info_directory_capture_001",
+  "description": "INFO(directory) uses a directory-value host packet and emits a first capture packet from the runtime catalog snapshot.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:001",
+    "formula_slot_id": "node:slot:upstream_host:001",
+    "formula_stable_id": "formula:upstream_host:001",
+    "formula_text": "=INFO(\"directory\")",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "active_selection_anchor": {
+      "row": 2,
+      "col": 2
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "typed_query_facts": {
+    "host_info_mode": {
+      "kind": "directory_value_and_filename_provider_failure",
+      "value": "C:\\Scaffold",
+      "detail": "filename_unavailable"
+    },
+    "locale_context_kind": "en_us"
+  },
+  "runtime_catalog": {
+    "surface_names": [
+      "INFO"
+    ]
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "capture_snapshot_ref": {
+      "snapshot_id": "snapshot:fixture",
+      "snapshot_version": "v1"
+    }
+  }
+}

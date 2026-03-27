@@ -232,6 +232,17 @@ Recommended note sequence for W026 preparation:
 3. Round C: runtime-derived effects, execution restrictions, direct-binding preservation, semantic-format-display boundary
 4. Round D: only if needed, a narrower handoff on the one remaining coordinator-facing insufficiency
 
+### 5.1 Current Residual Packetization
+After the broader topic-matrix rounds, the active residual packetization for W026 is now:
+1. Sequence 1: caller-anchor and address-mode carriage for the first TreeCalc relative-reference subset
+2. Sequence 2: execution-restriction transport breadth
+3. Sequence 3: publication/topology consequence breadth
+
+Working rule:
+1. each residual sequence should narrow consumed-now assumptions and explicit non-assumptions separately,
+2. each sequence should be able to stay note-level unless live implementation pressure shows a concrete insufficiency,
+3. the residual packet should not reopen already-consumed identity, candidate, reject-context, direct-binding, stand-in, or table-context topics.
+
 ## 6. Current Topic-Matrix Intake From OxFml
 The latest OxFml reply materially narrows the W026 starting state.
 
@@ -260,6 +271,19 @@ The latest narrower W026-focused reply also supplies the first practical carrier
 
 This means W026 is now blocked only by live consumption work, not by broad seam uncertainty.
 
+### 6.1 Current Intake Of The Three-Sequence Residual Reply
+OxFml has now also answered the later three-sequence residual round.
+
+Current local intake is:
+1. Sequence 1 caller-anchor and address-mode carriage: `canonical but narrower`
+2. Sequence 2 execution-restriction transport breadth: `canonical but narrower`
+3. Sequence 3 publication/topology consequence breadth: `canonical but narrower`
+
+Current practical consequence:
+1. all three residual sequences may remain note-level under W026,
+2. all three now have explicit consumed-now carriers rather than only abstract residual labels,
+3. no narrower handoff is justified unless live TreeCalc evidence later exposes a concrete insufficiency in one of those carried families.
+
 ## 7. Exit Condition For The Planning Phase
 This planning companion has served its purpose when:
 1. W026 has a consumed-now topic ledger for all in-scope TreeCalc seam topics,
@@ -275,7 +299,7 @@ This planning companion has served its purpose when:
   - relative-reference descriptor carriage remains canonical but narrower beyond the first explicitly consumed subset
   - unresolved and host-sensitive reference carriers remain canonical but narrower beyond the first explicitly named families
   - runtime-derived effect transport and semantic-format-display reading remain canonical but narrower beyond the current semantics-first floor
-  - W026 has not yet consumed this matrix into executed seam intake work
+  - W026 has not yet consumed this matrix into executed seam intake work; the current live residual packet is the three-sequence caller-context / execution-restriction / publication-topology narrowing lane
   - no narrower handoff has been justified yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note and returned classifications consumed as the starting baseline

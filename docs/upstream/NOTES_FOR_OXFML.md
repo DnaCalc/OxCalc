@@ -610,7 +610,26 @@ Current likely useful additional identity fields are:
 2. explicit structure-context identity,
 3. explicit formula-slot identity where the packet is reused across multiple slot families.
 
-## 44. Current OxCalc Watch Lanes After This Round
+## 44. Current Intake Of OxFml's Latest Stand-In And Registered-External Refinement
+OxCalc has now processed the latest OxFml follow-up covering the converged stand-in packet read and the first `W052` registered-external packet sharpening.
+
+Current local read is:
+1. the `W051` fixture-host and coordinator stand-in packet is now settled enough for deterministic automated scaffolding and first TreeCalc-facing integration artifacts,
+2. the latest OxFml reply accepts OxCalc's suggested packet refinements:
+   - stand-in packet or fixture-input identity,
+   - explicit structure-context identity,
+   - explicit formula-slot identity where reused across slot families,
+3. `RegisteredExternalProvider` should remain optional in the stand-in packet from the start,
+4. candidate / commit / reject capture should remain a separate projection layer rather than being folded into stand-in inputs,
+5. the first `W052` registered-external family sharpens later host-facing mutation lanes without freezing the production OxCalc coordinator API.
+
+Current OxCalc read of the `W052` sharpening is:
+1. host- or coordinator-initiated registration should be modeled as typed mutation requests funneled into OxFunc-owned catalog truth,
+2. OxCalc should preserve initiating channel and stable registration identity where later TreeCalc-facing integration uses that lane,
+3. OxCalc should not infer ownership of the function catalog from this packet sharpening,
+4. snapshot-generation and coordinator acknowledgment consequences from register and unregister remain narrower than the current first packet and are not yet being frozen.
+
+## 45. Current OxCalc Watch Lanes After This Round
 The active watch lanes remain:
 1. caller-anchor and address-mode carriage for the first TreeCalc relative-reference subset,
 2. execution-restriction transport shape,
@@ -621,9 +640,156 @@ Current OxCalc read is:
 1. these remain note-level refinement lanes rather than current handoff triggers,
 2. the latest OxFml note does not broaden them into a new immediate blocker set.
 
-## 45. Current OxCalc Working Rule After This Exchange
+## 46. Current OxCalc Working Rule After This Exchange
 After this note round, OxCalc's current working rule is:
 1. continue first TreeCalc integration work on the converged host/runtime and structured-table packet floor,
-2. treat the immutable edit packet and stand-in packet as the next bounded coordination topics rather than reopening broad seam design,
+2. treat the immutable edit packet, the stand-in packet, and the narrower registered-external mutation lane as bounded coordination topics rather than reopening broad seam design,
 3. reserve a narrower formal handoff only for concrete insufficiency exposed by live implementation evidence,
-4. keep the current direct-host TreeCalc conversion as implementation evidence for the first host/coordinator slice rather than over-claiming broader seam freeze.
+4. keep the current direct-host TreeCalc conversion and upstream-host scaffolding corpus as implementation evidence for the first host/coordinator slice rather than over-claiming broader seam freeze.
+
+## 47. Residual Narrowing Round
+OxCalc is now taking the three remaining note-level host/coordinator residuals as one bounded refinement round:
+1. caller-anchor and address-mode carriage for the first TreeCalc relative-reference subset,
+2. execution-restriction transport breadth,
+3. publication and topology consequence breadth.
+
+Current OxCalc read is:
+1. these do not justify a broad seam reopening,
+2. these are still note-level topics rather than current handoff triggers,
+3. the right next pass is to narrow consume-now assumptions and non-assumptions for each topic so implementation pressure can be judged concretely.
+4. this residual round is now packetized locally as:
+   - W026 Sequence 1: caller-anchor and address-mode carriage
+   - W026 Sequence 2: execution-restriction transport breadth
+   - W026 Sequence 3: publication and topology consequence breadth
+
+## 48. W026 Sequence 1: Caller-Anchor And Address-Mode Carriage
+### OxCalc consumed need
+For the first TreeCalc relative-reference subset, OxCalc needs enough caller-context carriage to:
+1. bind relative forms honestly for the first in-scope subset,
+2. distinguish edits that force rebind from those that require only recalc,
+3. preserve replay-visible context rather than hiding relative meaning in evaluator-local state,
+4. avoid inventing local coordinator semantics for address-mode-sensitive interpretation.
+
+### Current OxCalc consumed-now working assumption
+OxCalc is currently planning on the following minimum floor:
+1. `caller_anchor` remains explicit where relative or host-sensitive meaning depends on it,
+2. formula-channel and address-mode remain explicit host-supplied context,
+3. structure-context identity remains explicit and stable across bind and later candidate work,
+4. the first TreeCalc subset only consumes relative forms whose contextual dependence is already preserved honestly in the bound/reference artifact.
+
+### Explicit non-assumptions
+OxCalc is not assuming:
+1. full relative-reference closure,
+2. one final frozen transport shape for every caller-sensitive relative form,
+3. that every address-mode-sensitive clause is already closed for the broader TreeCalc universe.
+
+### OxCalc question back to OxFml
+For the first TreeCalc subset, OxCalc now wants the narrowest practical shared reading of:
+1. which caller-anchor and address-mode facts must be preserved as first-class carried inputs at bind time,
+2. which relative forms remain admissible only because that caller-context is still explicit,
+3. which edit families should be read as rebind-forcing because caller-sensitive meaning may change.
+
+## 49. W026 Sequence 2: Execution-Restriction Transport Breadth
+### OxCalc consumed need
+For the first TreeCalc-ready coordinator slice, OxCalc needs execution-restriction observations explicit enough to:
+1. preserve typed no-publish or reject meaning,
+2. keep capability-sensitive and restriction-sensitive outcomes out of generic scheduler failure buckets,
+3. keep replay and explain fidelity when execution restriction changes candidate interpretation,
+4. avoid silently flattening these facts into trace-only prose.
+
+### Current OxCalc consumed-now working assumption
+OxCalc is currently consuming:
+1. execution-restriction observations semantically,
+2. current candidate-result and commit-bundle surfaced evaluator facts,
+3. current topology/effect fact refs where execution restriction is carried through that family,
+4. distinct capability-sensitive and execution-restriction-sensitive readings unless OxFml later freezes a merged carrier explicitly.
+
+### Explicit non-assumptions
+OxCalc is not assuming:
+1. one final single-object carrier,
+2. that every execution-restriction observation is publication-critical,
+3. that scheduler policy may absorb or reinterpret the typed evaluator/runtime meaning.
+
+### OxCalc question back to OxFml
+For the first TreeCalc slice, OxCalc now wants the narrowest practical shared reading of:
+1. which execution-restriction facts must stay first-class in candidate and reject families,
+2. which can remain fact-ref or sidecar-carried without losing coordinator truth,
+3. whether any current first-slice execution-restriction observations should already be treated as topology-sensitive or publication-sensitive consequences rather than only runtime-effect sidecars.
+
+## 50. W026 Sequence 3: Publication And Topology Consequence Breadth
+### OxCalc consumed need
+For the first TreeCalc-ready publication path, OxCalc needs enough consequence breadth to:
+1. keep `value_delta`, `shape_delta`, and `topology_delta` distinct,
+2. preserve publish-visible absence versus presence semantics across consequence categories,
+3. keep topology and dependency consequences explicit where invalidation, publication, or replay meaning depends on them,
+4. avoid compressing broader consequence truth into a value-only publication summary.
+
+### Current OxCalc consumed-now working assumption
+OxCalc is currently planning on the following first-phase rule:
+1. `value_delta`, `shape_delta`, and `topology_delta` remain distinct canonical categories,
+2. optional `format_delta` and optional `display_delta` remain carried explicitly when present,
+3. first-phase TreeCalc stays semantics-first and does not over-claim broader display-facing or topology-breadth closure,
+4. topology-sensitive consequence breadth beyond the currently exercised floor remains a residual to be widened by evidence rather than assumed now.
+
+### Explicit non-assumptions
+OxCalc is not assuming:
+1. the whole broader publication consequence universe is already frozen,
+2. every topology-sensitive consequence family is already mandatory for the first TreeCalc subset,
+3. current local exercise breadth is equal to full coordinator publication breadth.
+
+### OxCalc question back to OxFml
+For the first TreeCalc slice, OxCalc now wants the narrowest practical shared reading of:
+1. which topology-sensitive consequence families are first-slice publish-critical,
+2. which may remain carried for replay honesty without first-slice publication dependence,
+3. whether any currently optional consequence families become effectively mandatory for the first TreeCalc coordinator path once structural edits and dynamic dependency effects are combined.
+
+## 51. Requested OxFml Reply Shape For This Residual Round
+For each of Sections 48 through 50, the most useful OxFml reply would be:
+1. current classification:
+   - `already canonical`
+   - `canonical but narrower`
+   - `still open`
+2. consumed-now carrier or object family OxCalc should rely on,
+3. explicit non-assumptions OxCalc must preserve,
+4. whether the topic remains note-level or now deserves a narrower handoff.
+
+## 52. Current Intake Of OxFml's Residual W026 Reply
+OxCalc has now processed OxFml's reply to the three-sequence residual round.
+
+Current local read is:
+1. OxFml agrees the three-sequence residual split is the right next note shape,
+2. W026 Sequence 1, Sequence 2, and Sequence 3 all remain note-level rather than becoming current handoff triggers,
+3. all three sequences remain `canonical but narrower`,
+4. no new formal handoff is justified from this residual reply.
+
+Current consumed-now carrier read from OxFml is:
+1. for W026 Sequence 1 caller-anchor and address-mode carriage:
+   - `FormulaSourceRecord`
+   - `caller_anchor`
+   - formula-channel and address-mode context
+   - structure-context identity
+   - current bound-reference and normalized-reference families only where the first subset already preserves contextual dependence honestly
+2. for W026 Sequence 2 execution-restriction transport breadth:
+   - current candidate-result and commit-bundle surfaced evaluator facts
+   - current topology/effect fact refs
+   - current typed capability-sensitive and execution-restriction-sensitive observations
+3. for W026 Sequence 3 publication and topology consequence breadth:
+   - `value_delta`
+   - `shape_delta`
+   - `topology_delta`
+   - optional `format_delta`
+   - optional `display_delta`
+   - current spill and dependency-sensitive surfaced evaluator/runtime fact refs where present
+
+Current explicit non-assumptions OxCalc is carrying forward are:
+1. do not treat caller-anchor and address-mode carriage as full relative-reference closure,
+2. do not treat execution-restriction transport as one final frozen single-object carrier,
+3. do not treat currently optional consequence families as universally mandatory across the broader future TreeCalc scope,
+4. do not treat the current local publication and topology breadth as equal to the full eventual coordinator publication universe.
+
+## 53. Current OxCalc Conclusion After The Residual Reply
+Current conclusion is:
+1. W026 Sequence 1, Sequence 2, and Sequence 3 may continue on the current note-level floor,
+2. the consumed-now carriers are now explicit enough for continued TreeCalc intake planning,
+3. the remaining uncertainty is about broader closure, not about immediate first-slice insufficiency,
+4. a narrower `HANDOFF-CALC-002` remains deferred unless live TreeCalc evidence later exposes a concrete gap in one of these carried families.

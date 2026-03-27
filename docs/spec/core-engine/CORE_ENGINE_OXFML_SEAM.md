@@ -513,6 +513,35 @@ Current local read:
 2. no new handoff is justified yet from the host/runtime draft alone,
 3. they become handoff candidates only if live TreeCalc or host evidence exposes insufficiency.
 4. the latest OxFml reply explicitly agrees the host/runtime draft is strong enough for first implementation planning, while preserving these caution points as non-frozen residuals.
+5. the later `W051` and `W052` stand-in packet refinements sharpen deterministic scaffolding inputs without changing this residual set:
+   - stand-in packet identity, structure-context identity, and formula-slot identity are now accepted refinements,
+   - `RegisteredExternalProvider` remains optional,
+   - any later host-initiated registration lane should be modeled as a typed mutation request into OxFunc-owned catalog truth rather than as coordinator-owned catalog mutation.
+
+### 21.3 Consumed-now local narrowing for the remaining residuals
+OxCalc is now treating the remaining residuals as bounded consume-now topics rather than general seam uncertainty.
+
+For caller-anchor and address-mode carriage:
+1. `caller_anchor`, formula-channel, address-mode, and structure-context identity remain explicit host-supplied inputs where relative or host-sensitive meaning depends on them,
+2. the first TreeCalc subset should only consume relative forms whose contextual dependence is preserved honestly in the current bound/reference artifact,
+3. OxCalc must not assume full relative-reference closure or one final frozen caller-sensitive transport shape.
+
+For execution-restriction transport breadth:
+1. execution-restriction observations are already consumed semantically as surfaced evaluator/runtime facts,
+2. OxCalc may consume them through current candidate-result, reject-context, topology/effect-ref, or runtime-effect families where that truth is explicitly carried,
+3. OxCalc must not collapse them into scheduler policy or assume one final single-object carrier yet.
+
+For publication/topology breadth:
+1. `value_delta`, `shape_delta`, and `topology_delta` remain distinct publish-facing categories,
+2. optional `format_delta` and `display_delta` remain distinct when present,
+3. OxCalc must not treat the currently exercised local breadth as closure of the full publication/topology universe,
+4. later evidence rather than prose-only agreement should determine whether currently optional consequence families become first-slice mandatory.
+
+The latest OxFml residual reply further sharpens this local narrowing:
+1. all three residuals remain `canonical but narrower`,
+2. the current consumed-now carrier set above is sufficient for continued W026 intake planning,
+3. no new narrower handoff is justified from this residual pass alone,
+4. the remaining pressure is broader closure beyond the first carried subset rather than a missing first-slice seam clause.
 
 ## 22. Status
 - execution_state: in_progress

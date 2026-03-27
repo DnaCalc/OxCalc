@@ -42,6 +42,95 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 - no hidden formula-language reinterpretation obligation remains on the OxCalc side for in-scope families
 - the active TreeCalc seam topics have at least one completed note-exchange pass with explicit `already canonical` / `canonical but narrower` / `still open` classification
 
+## Execution Packet Additions
+### Environment Preconditions
+- repo-local docs and planning surfaces are readable and writable
+- current OxFml downstream note is available at `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
+- no code execution is required for note-only or packet-only narrowing slices
+- if a later slice widens executable seam scaffolding, use existing `oxcalc-core` upstream-host tests and fixture corpus as the first validation floor
+
+### Evidence Layout
+- canonical artifact root:
+  - `docs/upstream/NOTES_FOR_OXFML.md`
+  - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+  - `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`
+  - `docs/worksets/W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md`
+- checked-in or ephemeral:
+  - checked-in for note and seam-packet narrowing artifacts
+  - later executable seam-intake evidence may be checked-in or ephemeral depending on the consuming implementation slice
+- baseline run naming:
+  - none required for note-only residual passes
+  - if executable seam-intake evidence is added later, use `w026-*` naming under the relevant run root
+
+### Replay-Corpus Readiness
+- required replay classes with scenario ids:
+  - none for the current note-only residual pass
+- reserve or later replay classes:
+  - TreeCalc bind/reference replay classes after executable seam intake
+  - later candidate/publication and execution-restriction replay families if W026 widens beyond note-level packetization
+
+### Coupled Widening Rule
+- engine surfaces widened in this packet:
+  - consumed-seam assumptions only
+  - no new executable engine semantics in the current residual pass
+- oracle/conformance surfaces widened in the same slice:
+  - none
+- widened comparison artifact:
+  - none
+
+## Sequences
+### Sequence 1: Caller-Anchor And Address-Mode Packet
+Primary work areas:
+- first TreeCalc relative-reference subset
+- caller-context and address-mode carriage
+- rebind-versus-recalc consequences for caller-sensitive forms
+
+Entry gate:
+- current host/runtime packet is accepted as sufficient for first-slice planning
+- current note lane already treats caller-anchor and address-mode as the main remaining relative-reference residual
+
+Execution objective:
+- record the consumed-now caller-context packet for the first TreeCalc relative-reference subset and narrow the remaining non-assumptions to the smallest practical set.
+
+Exit condition:
+1. `caller_anchor`, formula-channel, address-mode, and structure-context identity are named as the consumed-now first packet for the first TreeCalc subset
+2. rebind-forcing versus recalc-only edit pressure is stated explicitly for caller-sensitive forms
+3. the next OxFml reply needed on this topic is bounded and mismatch-driven rather than exploratory
+
+### Sequence 2: Execution-Restriction Transport Packet
+Primary work areas:
+- execution-restriction observations
+- candidate/reject transport shape
+- capability-sensitive versus restriction-sensitive distinction
+
+Entry gate:
+- Sequence 1 packet exists locally
+
+Execution objective:
+- define the semantic minimum OxCalc consumes now for execution-restriction truth and the transport assumptions OxCalc must not make yet.
+
+Exit condition:
+1. the consumed-now carrier families for execution restriction are named explicitly
+2. the non-assumptions around merged carriers, scheduler absorption, and publication-critical breadth are explicit
+3. the handoff trigger for this topic is narrowed to live insufficiency rather than note-level uncertainty
+
+### Sequence 3: Publication And Topology Breadth Packet
+Primary work areas:
+- candidate consequence breadth
+- publish-critical versus replay-only carried families
+- topology-sensitive consequence widening rules
+
+Entry gate:
+- Sequence 2 packet exists locally
+
+Execution objective:
+- define the first TreeCalc publication/topology breadth floor without over-claiming the whole broader consequence universe.
+
+Exit condition:
+1. `value_delta`, `shape_delta`, and `topology_delta` are explicitly preserved as distinct consumed categories for the first TreeCalc coordinator path
+2. optional `format_delta` and `display_delta` handling is explicit and non-collapsed
+3. the remaining publication/topology breadth residual is narrow enough to stay note-level unless live evidence later shows insufficiency
+
 ## Pre-Closure Verification Checklist
 1. Spec text and realization notes updated for all in-scope items: no
 2. Pack expectations updated for affected packs: no
@@ -60,11 +149,13 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - a widened minimal upstream host packet and adapter now exist for automated scaffolding and the first seam-backed TreeCalc direct-host slice, including typed host-info outcome variants, RTD stand-ins, in-memory runtime catalog snapshots, first replay-capture packet projection, explicit crate-level scaffolding tests, and a first checked-in upstream-host fixture corpus that now also covers the agreed first table-context packet plus four bounded evaluator-facing structured-reference families, but the broader consumed bind/reference intake is still open
-  - TreeCalc-specific relative-reference and unresolved-reference carrier rules remain canonical but narrower beyond the first consumed subset
-  - runtime-derived effect and execution-restriction transport shape remain canonical but narrower beyond the current semantic minimum
-  - host/runtime direct-host versus integrated-host split is now sufficient for first implementation planning, but caller-anchor/address-mode carriage for the first TreeCalc relative-reference subset remains narrower
-  - the consume-now topics identified by the latest OxFml reply are only partially packetized into executed seam intake work
+  - a widened minimal upstream host packet and adapter now exist for automated scaffolding and the first seam-backed TreeCalc direct-host slice, including typed host-info outcome variants, RTD stand-ins, in-memory runtime catalog snapshots, first replay-capture packet projection, explicit crate-level scaffolding tests, and a checked-in upstream-host fixture corpus that now also covers the agreed first table-context packet plus a bounded structured-reference evaluation subset, but the broader consumed bind/reference intake is still open
+  - TreeCalc-specific relative-reference and unresolved-reference carrier rules remain canonical but narrower beyond the first consumed subset, but Sequence 1 now has an explicit consumed-now carrier floor and no current handoff trigger
+  - runtime-derived effect and execution-restriction transport shape remain canonical but narrower beyond the current semantic minimum, but Sequence 2 now has an explicit consumed-now carrier floor and no current handoff trigger
+  - host/runtime direct-host versus integrated-host split is now sufficient for first implementation planning, and caller-anchor/address-mode carriage for the first TreeCalc relative-reference subset remains a note-level residual under Sequence 1
+  - publication/topology consequence breadth beyond the current exercised local floor remains a bounded consumed-seam residual for the first TreeCalc coordinator path, but Sequence 3 now has an explicit consumed-now category floor and no current handoff trigger
+  - the fixture-host stand-in packet is now converged enough for deterministic scaffolding, with explicit packet identity, structure-context identity, and formula-slot identity accepted as first refinements, while broader production coordinator-API freeze remains out of scope
+  - the consume-now topics identified by the latest OxFml reply are only partially packetized into executed seam intake work, and W026 is now split into Sequence 1 caller-context narrowing, Sequence 2 execution-restriction transport narrowing, and Sequence 3 publication/topology breadth narrowing
   - narrower handoff need remains deferred pending live W026 evidence
 - claim_confidence: draft
-- reviewed_inbound_observations: W020 remains the current downstream seam baseline; the latest OxFml topic-matrix and narrower W026-focused replies make formula/bind identity, candidate consequence, reject-context, and direct-binding preservation consume-now topics, confirm that W026 may proceed on a narrowed first subset for relative-reference, unresolved-reference, runtime-derived transport, and semantic-format/display handling without a new handoff, and the latest host/runtime reply agrees that `OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` is strong enough for the first coordinator-host implementation slice while keeping caller-anchor/address-mode, execution-restriction transport breadth, and publication/topology breadth as note-level residuals
+- reviewed_inbound_observations: W020 remains the current downstream seam baseline; the latest OxFml topic-matrix and narrower W026-focused replies make formula/bind identity, candidate consequence, reject-context, and direct-binding preservation consume-now topics, confirm that W026 may proceed on a narrowed first subset for relative-reference, unresolved-reference, runtime-derived transport, and semantic-format/display handling without a new handoff, the latest host/runtime reply agrees that `OXFML_HOST_RUNTIME_AND_EXTERNAL_REQUIREMENTS.md` is strong enough for the first coordinator-host implementation slice while keeping caller-anchor/address-mode, execution-restriction transport breadth, and publication/topology breadth as note-level residuals, the latest `W051`/`W052` stand-in refinement confirms deterministic fixture-host inputs plus optional registered-external presence without freezing the production coordinator API or shifting catalog ownership into OxCalc, and the latest OxFml residual reply confirms that W026 Sequence 1, Sequence 2, and Sequence 3 all remain `canonical but narrower` with explicit consumed-now carriers and no current narrower handoff trigger

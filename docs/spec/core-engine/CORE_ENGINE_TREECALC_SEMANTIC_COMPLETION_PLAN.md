@@ -18,6 +18,9 @@ The purpose here is to make the next target explicit:
 4. what work sequence gives real line of sight to that target,
 5. what must remain true so later optimization waves do not require semantic redesign.
 
+For downstream hosts that use OxCalc as seam-reference material only, this document is a supporting consumer-model companion.
+Read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` and `CORE_ENGINE_OXFML_SEAM.md` first, then use this document to understand how the consumed OxFml seam is expected to participate in the first TreeCalc-ready execution pipeline.
+
 ## 2. Target Outcome
 The target defined by this document is:
 

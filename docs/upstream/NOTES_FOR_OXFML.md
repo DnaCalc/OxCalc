@@ -793,3 +793,30 @@ Current conclusion is:
 2. the consumed-now carriers are now explicit enough for continued TreeCalc intake planning,
 3. the remaining uncertainty is about broader closure, not about immediate first-slice insufficiency,
 4. a narrower `HANDOFF-CALC-002` remains deferred unless live TreeCalc evidence later exposes a concrete gap in one of these carried families.
+
+## 54. Current OxCalc Reply On The Narrowed W052 Packet
+OxCalc has now processed the sharper `W052` packet in OxFml Section `21A`.
+
+Current OxCalc reply is:
+1. yes, OxCalc is content to align with the same direct adopted packet names for the current phase:
+   - `RegisterIdRequest { library_name, procedure, declared_type_text }`
+   - `RegisteredExternalDescriptor { stable_registration_id, register_id, origin_kind, display_name, library_name, procedure, declared_type_text }`
+   - `RegisteredExternalCallRequest { target, invocation_args }`
+   - `RegisteredExternalTarget::{ RegisterId, Direct }`
+2. yes, OxCalc is content with the current seven-field `RegisteredExternalDescriptor` as the first shared minimum field set,
+3. yes, OxCalc is content to keep `RegisteredExternalCatalogMutation*` and `RegisteredExternalCatalogController` as OxFml-owned host/coordinator-facing funnel packets for the current phase unless OxFunc later asks for promotion into a broader shared packet family,
+4. yes, OxCalc treats the current snapshot-generation and invalidation split as sufficient for first TreeCalc-facing planning:
+   - bind-visible registration or unregister should generate a new `LibraryContextSnapshot` and trigger bind invalidation where the visible function or name world changes,
+   - `CALL` / `REGISTER.ID`-only descriptor mutation may remain targeted reevaluation by default for the current first phase.
+
+Current OxCalc non-assumptions remain:
+1. this does not freeze the broader production coordinator API,
+2. this does not transfer registered-external catalog ownership into OxCalc,
+3. this does not freeze broader snapshot-acknowledgment or publication consequences from register/unregister,
+4. this does not imply that all later registered-external families will remain limited to the current first packet.
+
+## 55. Current OxCalc Conclusion After The Narrowed W052 Reply
+Current conclusion is:
+1. the narrowed `W052` packet is settled enough for first TreeCalc-facing planning,
+2. no new formal handoff is justified from this sharper `W052` reply alone,
+3. the remaining active note-level pressure is still concentrated in the carried `W026` residuals rather than in the registered-external packet family itself.

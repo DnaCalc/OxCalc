@@ -18,6 +18,7 @@ OxCalc is the multi-node core calculation engine lane for DNA Calc.
 - `CHARTER.md`
 - `OPERATIONS.md`
 - `docs/spec/README.md`
+- `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` for downstream hosts that use OxCalc as seam-reference material only
 
 ## Dependency Constitution
 - May depend on: `OxFml`, `OxFunc`.

@@ -10,6 +10,8 @@ Status:
 4. explicitly pre-handoff unless a narrower trigger is reached.
 
 This document exists so the next seam passes are structured around concrete consumed-carrier questions, not broad prose uncertainty.
+It is not the canonical local seam-reference source of truth for downstream hosts.
+Use `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` and `CORE_ENGINE_OXFML_SEAM.md` first, and then use this matrix only for narrower open topics and explicit non-assumptions.
 
 ## 2. Working Rule
 For the first TreeCalc-ready engine phase:

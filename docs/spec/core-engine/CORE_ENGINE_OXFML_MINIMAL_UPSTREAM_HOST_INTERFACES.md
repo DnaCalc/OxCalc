@@ -9,6 +9,9 @@ Status:
 3. not a freeze of the production OxCalc coordinator API,
 4. intentionally narrower than the full W026 seam intake.
 
+For downstream hosts such as `DNA OneCalc`, this document is seam-reference material only.
+It describes the first implementation-backed packet that can drive real `OxFml` paths, but it does not make OxCalc a runtime dependency and it does not freeze a final host API.
+
 ## 2. Why This Exists
 OxCalc now has a first seam-backed TreeCalc lane, but OxFml consumption should not depend on ad hoc host construction embedded inside one runtime path.
 
@@ -103,6 +106,11 @@ This packet is the first honest OxCalc-side answer to the OxFml stand-in packet 
 2. the packet can drive real OxFml execution,
 3. the same packet family can be reused by the TreeCalc seam-backed lane,
 4. future fixture hosts can widen the packet without rewriting the ownership split.
+
+For authority and interpretation:
+1. `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` defines where this document sits in the OxCalc seam-reference set,
+2. `CORE_ENGINE_OXFML_SEAM.md` remains the canonical OxCalc-local seam companion,
+3. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` carries the narrower residual topics that are not yet closed here.
 
 ## 7. Current Code Surface
 The current implementation lives in:

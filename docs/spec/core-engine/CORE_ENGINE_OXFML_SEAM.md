@@ -13,6 +13,10 @@ This document does not claim canonical ownership of the shared evaluator protoco
 OxFml remains the canonical owner of shared FEC/F3E seam specification.
 
 This document exists to make OxCalc's coordinator-facing requirements explicit.
+For downstream hosts that use OxCalc as seam-reference material only, read this document together with:
+1. `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md`
+2. `CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
+3. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` only for narrower residual topics and non-assumptions
 
 ## 2. Ownership Rule
 The seam is shared, but ownership is split.
@@ -517,6 +521,11 @@ Current local read:
    - stand-in packet identity, structure-context identity, and formula-slot identity are now accepted refinements,
    - `RegisteredExternalProvider` remains optional,
    - any later host-initiated registration lane should be modeled as a typed mutation request into OxFunc-owned catalog truth rather than as coordinator-owned catalog mutation.
+6. the latest narrowed `W052` reply further sharpens this registered-external lane without changing the broader seam split:
+   - direct adoption of `RegisterIdRequest`, `RegisteredExternalDescriptor`, `RegisteredExternalCallRequest`, and `RegisteredExternalTarget::{ RegisterId, Direct }` is now the settled current direction for the first packet,
+   - the current seven-field `RegisteredExternalDescriptor` is sufficient for first TreeCalc-facing planning,
+   - `RegisteredExternalCatalogMutation*` and `RegisteredExternalCatalogController` remain OxFml-owned host/coordinator funnel packets for the current phase,
+   - bind-visible register or unregister implies new `LibraryContextSnapshot` generation plus bind invalidation where the visible function or name world changes, while `CALL` / `REGISTER.ID`-only descriptor mutation may remain targeted reevaluation by default.
 
 ### 21.3 Consumed-now local narrowing for the remaining residuals
 OxCalc is now treating the remaining residuals as bounded consume-now topics rather than general seam uncertainty.

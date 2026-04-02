@@ -52,11 +52,22 @@ Current realized dependency substrate:
    - `HostSensitive`
    - `Unresolved`
 2. the graph now carries explicit:
+   - `descriptors_by_owner`
    - `edges_by_owner`
    - `reverse_edges`
    - `cycle_groups`
    - `diagnostics`
-3. invalidation closure is now derived from explicit seeds into:
+3. replay-visible dependency identity is now stronger than local edge ids alone:
+   - each lowered dependency descriptor now remains available as an explicit identity record
+   - descriptor identity includes:
+     - `descriptor_id`
+     - `owner_node_id`
+     - optional `target_node_id`
+     - `kind`
+     - `carrier_detail`
+     - `requires_rebind_on_structural_change`
+   - emitted `dependency_graph.json` now projects those descriptor records directly rather than forcing replay consumers to infer identity only from edge ids
+4. invalidation closure is now derived from explicit seeds into:
    - `impacted_order`
    - per-node records with `calc_state`
    - explicit `requires_rebind`
@@ -68,22 +79,22 @@ Current realized dependency substrate:
      - `DependencyAdded`
      - `DependencyRemoved`
      - `DependencyReclassified`
-4. cycle-sensitive state is no longer implicit:
+5. cycle-sensitive state is no longer implicit:
    - cycle groups are computed during graph build
    - cycle members surface as `CycleBlocked` in invalidation closure where applicable
-5. the host-facing TreeCalc contract already exposes this floor directly on `OxCalcTreeRecalcResult` through:
+6. the host-facing TreeCalc contract already exposes this floor directly on `OxCalcTreeRecalcResult` through:
    - `dependency_graph`
    - `invalidation_closure`
-6. deterministic artifact evidence for this floor already exists in the local TreeCalc runner and checked-in baseline through:
+7. deterministic artifact evidence for this floor already exists in the local TreeCalc runner and checked-in baseline through:
    - `dependency_graph.json`
    - `invalidation_closure.json`
    - `post_edit/invalidation_seeds.json`
-7. non-structural invalidation evidence is now explicit rather than implied:
+8. non-structural invalidation evidence is now explicit rather than implied:
    - engine-model tests now exercise `UpstreamPublication`, `DependencyAdded`, `DependencyRemoved`, and `DependencyReclassified`
    - emitted-artifact tests now prove those same reasons survive `invalidation_closure.json` and `invalidation_seeds.json` projection
 
 Current non-overclaim:
-1. stronger replay-visible dependency identity beyond the current local deterministic descriptor and edge ids remains open
+1. stronger replay-visible dependency identity beyond the current descriptor packet remains open only if later packets require cross-run or cross-host correlation stronger than the current descriptor fields
 2. broader invalidation-cause widening beyond the current first non-structural reason set remains open
 3. broader runtime-derived dependency closure still belongs to `W029`, not to this packet
 
@@ -107,7 +118,8 @@ Current non-overclaim:
 - integration_completeness: partial
 - open_lanes:
   - the first executed W027 floor now exists for graph build, reverse edges, cycle groups, diagnostics, structural invalidation seeds, and invalidation closure beneath `OxCalcTreeRecalcResult`
-  - replay-visible dependency identity remains open beyond the current local deterministic descriptor and edge ids
+  - the first stronger replay-visible dependency identity floor now exists through explicit descriptor records beneath `DependencyGraph` and in emitted `dependency_graph.json`
+  - any later identity widening would need to justify pressure beyond the current descriptor packet
   - broader invalidation-cause widening beyond the current first non-structural reason set remains open
   - runtime-derived dynamic dependency closure remains open and belongs to `W029`
   - broader sequential corpus/oracle baseline evidence remains open and belongs to `W030`

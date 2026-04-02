@@ -54,6 +54,7 @@ pub struct DependencyDiagnostic {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyGraph {
     pub snapshot_id: StructuralSnapshotId,
+    pub descriptors_by_owner: BTreeMap<TreeNodeId, Vec<DependencyDescriptor>>,
     pub edges_by_owner: BTreeMap<TreeNodeId, Vec<DependencyEdge>>,
     pub reverse_edges: BTreeMap<TreeNodeId, Vec<DependencyEdge>>,
     pub cycle_groups: Vec<Vec<TreeNodeId>>,
@@ -93,10 +94,16 @@ pub struct InvalidationClosure {
 impl DependencyGraph {
     #[must_use]
     pub fn build(snapshot: &StructuralSnapshot, descriptors: &[DependencyDescriptor]) -> Self {
+        let mut descriptors_by_owner = BTreeMap::<TreeNodeId, Vec<DependencyDescriptor>>::new();
         let mut edges_by_owner = BTreeMap::<TreeNodeId, Vec<DependencyEdge>>::new();
         let mut diagnostics = Vec::new();
 
         for descriptor in descriptors {
+            descriptors_by_owner
+                .entry(descriptor.owner_node_id)
+                .or_default()
+                .push(descriptor.clone());
+
             if snapshot.try_get_node(descriptor.owner_node_id).is_none() {
                 diagnostics.push(DependencyDiagnostic {
                     descriptor_id: descriptor.descriptor_id.clone(),
@@ -154,6 +161,10 @@ impl DependencyGraph {
             }
         }
 
+        for descriptors in descriptors_by_owner.values_mut() {
+            descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
+        }
+
         for edges in edges_by_owner.values_mut() {
             edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
         }
@@ -175,6 +186,7 @@ impl DependencyGraph {
 
         Self {
             snapshot_id: snapshot.snapshot_id(),
+            descriptors_by_owner,
             edges_by_owner,
             reverse_edges,
             cycle_groups,
@@ -466,6 +478,11 @@ mod tests {
         );
 
         assert_eq!(graph.edges_by_owner[&TreeNodeId(2)].len(), 1);
+        assert_eq!(graph.descriptors_by_owner[&TreeNodeId(2)].len(), 1);
+        assert_eq!(
+            graph.descriptors_by_owner[&TreeNodeId(4)][0].descriptor_id,
+            "dep-c-unresolved"
+        );
         assert_eq!(graph.reverse_edges[&TreeNodeId(2)].len(), 1);
         assert_eq!(graph.cycle_groups, vec![vec![TreeNodeId(2), TreeNodeId(3)]]);
         assert_eq!(graph.diagnostics.len(), 1);

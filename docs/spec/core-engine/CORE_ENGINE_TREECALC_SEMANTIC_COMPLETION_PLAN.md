@@ -587,8 +587,9 @@ Current W026 packet floor under this plan:
 
 Current W027 packet floor under this plan:
 1. the first dependency substrate is now exercised beneath the `OxCalcTree` host-facing contract:
-   - `DependencyGraph` now carries `edges_by_owner`, `reverse_edges`, `cycle_groups`, and `diagnostics`
+   - `DependencyGraph` now carries `descriptors_by_owner`, `edges_by_owner`, `reverse_edges`, `cycle_groups`, and `diagnostics`
    - the current first descriptor families lower into that graph through explicit dependency descriptors rather than planner-only prose
+   - replay-visible dependency identity is now stronger than local edge ids alone because the lowered dependency descriptors remain directly reachable as identity records
 2. structural invalidation closure is now exercised from explicit seeds into `InvalidationClosure`:
    - `impacted_order`
    - per-node invalidation records
@@ -603,12 +604,12 @@ Current W027 packet floor under this plan:
      - `DependencyReclassified`
 3. this floor is already reachable in both host-facing and replay-facing surfaces:
    - direct host-facing reachability on `OxCalcTreeRecalcResult`
-   - emitted `dependency_graph.json`
+   - emitted `dependency_graph.json`, now including explicit descriptor identity records
    - emitted `invalidation_closure.json`
    - emitted `post_edit/invalidation_seeds.json`
    - non-structural reason projection is now explicitly exercised in engine-model and emitted-artifact tests rather than only in enum shape
 4. W027 is therefore no longer blocked on first dependency realization:
-   - stronger replay-visible dependency identity beyond current local deterministic ids remains later W027 widening
+   - stronger replay-visible dependency identity beyond the current descriptor packet remains later W027 widening only if later packets require cross-run or cross-host correlation stronger than the current descriptor fields
    - broader invalidation-cause widening beyond the current first non-structural reason set remains later W027 widening
    - broader runtime-derived dependency closure remains W029 scope rather than hidden W027 residue
 

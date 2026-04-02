@@ -384,6 +384,7 @@ fn write_case_artifacts(
             "cycle_groups": artifacts.dependency_graph.cycle_groups.iter().map(|group| {
                 group.iter().map(|node_id| node_id.0).collect::<Vec<_>>()
             }).collect::<Vec<_>>(),
+            "descriptors": artifacts.dependency_graph.descriptors_by_owner.values().flat_map(|descriptors| descriptors.iter()).map(dependency_descriptor_json).collect::<Vec<_>>(),
             "diagnostics": artifacts.dependency_graph.diagnostics.iter().map(dependency_diagnostic_json).collect::<Vec<_>>(),
             "edges": artifacts.dependency_graph.edges_by_owner.values().flat_map(|edges| edges.iter()).map(dependency_edge_json).collect::<Vec<_>>(),
         }),
@@ -873,6 +874,19 @@ fn dependency_edge_json(edge: &DependencyEdge) -> serde_json::Value {
     })
 }
 
+fn dependency_descriptor_json(
+    descriptor: &crate::dependency::DependencyDescriptor,
+) -> serde_json::Value {
+    json!({
+        "descriptor_id": descriptor.descriptor_id,
+        "owner_node_id": descriptor.owner_node_id.0,
+        "target_node_id": descriptor.target_node_id.map(|node_id| node_id.0),
+        "kind": format!("{:?}", descriptor.kind),
+        "carrier_detail": descriptor.carrier_detail,
+        "requires_rebind_on_structural_change": descriptor.requires_rebind_on_structural_change,
+    })
+}
+
 fn dependency_diagnostic_json(diagnostic: &DependencyDiagnostic) -> serde_json::Value {
     json!({
         "descriptor_id": diagnostic.descriptor_id,
@@ -1212,6 +1226,37 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
+        let published_dependency_graph = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_publish_001/dependency_graph.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["descriptor_id"],
+            "bind:formula:b:oxfml_ref:0"
+        );
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["owner_node_id"],
+            3
+        );
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["target_node_id"],
+            2
+        );
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["kind"],
+            "StaticDirect"
+        );
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["carrier_detail"],
+            "direct_node:node:2"
+        );
+        assert_eq!(
+            published_dependency_graph["descriptors"][0]["requires_rebind_on_structural_change"],
+            false
+        );
         assert_eq!(
             published_result["candidate_result"]["aligned_canonical_family"],
             "AcceptedCandidateResult"

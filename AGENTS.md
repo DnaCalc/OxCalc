@@ -87,9 +87,15 @@ Mode: **checkpoint-at-gates** with light bead-doctrine execution.
 5. Outside an explicitly declared AutoRun scope, the default mode remains checkpoint-at-gates.
 
 ### Temporary AutoRun Scope
-1. No current AutoRun scope is active.
-2. The most recent temporary AutoRun scope was `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`.
-3. After that gate was reached, control returned to the default checkpoint-at-gates mode.
+1. Current temporary AutoRun scope: `W027_TREECALC_DEPENDENCY_GRAPH_AND_INVALIDATION_CLOSURE.md`
+2. Governing ready-path scope:
+   - execute the current ready bead set under `W027` one bead at a time,
+   - after each bead reaches closure evidence, close it in `.beads/`, commit it, and push it,
+   - then continue to the next `br ready` item if one exists.
+3. Exit gate for this temporary AutoRun scope:
+   - stop when `br ready` reports no ready beads, or when the next ready item falls outside `W027`.
+4. The most recent earlier temporary AutoRun scope before this one was `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`.
+5. After the current scope exits, control returns to the default checkpoint-at-gates mode.
 
 Transition note:
 1. OxCalc now uses `docs/WORKSET_REGISTER.md` plus `.beads/` as the ordinary execution-state model.

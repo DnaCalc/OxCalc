@@ -7,10 +7,18 @@ Status:
 1. active implementation companion,
 2. scoped to the first deterministic host-stand-in packet for automated tests,
 3. not a freeze of the production OxCalc coordinator API,
-4. intentionally narrower than the full W026 seam intake.
+4. intentionally narrower than the full W026 seam intake,
+5. current ordinary runtime and replay execution is realized against the landed `OxFml_V1` `consumer::runtime` and `consumer::replay` public surface.
 
 For downstream hosts such as `DNA OneCalc`, this document is seam-reference material only.
 It describes the first implementation-backed packet that can drive real `OxFml` paths, but it does not make OxCalc a runtime dependency and it does not freeze a final host API.
+Actual OxCalc runtime consumers such as `DNA TreeCalc` should read `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` first and then use this document only as the implementation-backed OxFml packet companion underneath that contract.
+
+Classification: **supporting-companion** per `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Section 4.1.
+
+Downstream hosts must not adopt this packet verbatim as their own host API.
+Instead, they should use it to understand the current exercised seam shape, then narrow and productize their own host packet against their own host-profile ladder.
+See `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Section 7.1 for the full interpretation model.
 
 ## 2. Why This Exists
 OxCalc now has a first seam-backed TreeCalc lane, but OxFml consumption should not depend on ad hoc host construction embedded inside one runtime path.
@@ -69,15 +77,16 @@ The first minimal upstream host interface package is:
 ### 4.4 Runtime catalog facts
 1. optional `library_context_snapshot`
 
-### 4.5 First replay capture projection
-1. deterministic `FirstHostReplayCapturePacket` emission from the same minimal packet
-2. carried `library_context_snapshot_ref` projection derived from the runtime catalog snapshot
+### 4.5 First replay projection
+1. deterministic replay projection from the same minimal packet through `consumer::replay::ReplayProjectionService`
+2. carried `library_context_snapshot_ref` projection derived from the runtime result and runtime catalog snapshot
 
 ## 5. Current Realized Minimal Behavior
 The current realized package is intentionally narrow.
+Its current ordinary execution path uses the landed `OxFml_V1` consumer facade rather than direct `oxfml_core::host` access.
 
 It supports:
-1. direct OxFml recalculation through `SingleFormulaHost`,
+1. direct OxFml recalculation through `consumer::runtime::{ RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult }`,
 2. deterministic bind-context projection for test scaffolding,
 3. defined-name value and reference bindings,
 4. cell fixtures,
@@ -91,7 +100,7 @@ It supports:
 8. typed RTD stand-ins,
 9. locale-context selection,
 10. in-memory library-context snapshot carriage,
-11. first replay-capture packet emission from the same deterministic host packet.
+11. first replay projection through `consumer::replay::{ ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService }` from the same deterministic host packet.
 
 It does not yet widen to:
 1. production coordinator API freeze,
@@ -108,9 +117,9 @@ This packet is the first honest OxCalc-side answer to the OxFml stand-in packet 
 4. future fixture hosts can widen the packet without rewriting the ownership split.
 
 For authority and interpretation:
-1. `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` defines where this document sits in the OxCalc seam-reference set,
+1. `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` defines where this document sits in the OxCalc seam-reference set and provides the full document classification summary (Section 4.1) and host-packet interpretation model (Section 7.1),
 2. `CORE_ENGINE_OXFML_SEAM.md` remains the canonical OxCalc-local seam companion,
-3. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` carries the narrower residual topics that are not yet closed here.
+3. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` carries the narrower residual topics that are not yet closed here; it is temporary-planning material and not seam authority.
 
 ## 7. Current Code Surface
 The current implementation lives in:
@@ -150,4 +159,4 @@ Immediate intended use is:
   - broader W026 bind/reference intake remains open beyond this minimal packet
   - caller-anchor/address-mode breadth, execution-restriction transport breadth, and broader publication/topology breadth remain narrower seam lanes
   - first table-context carriage and four bounded evaluator-facing structured-reference families are fixture-covered in the first corpus, but richer structured-reference evaluator families are not yet fixture-covered
-  - this packet is ready for deterministic automated scaffolding, first capture-packet testing, and first data-driven fixture use, but not a production coordinator API freeze
+  - this packet is ready for deterministic automated scaffolding, first replay-projection testing, and first data-driven fixture use, but not a production coordinator API freeze

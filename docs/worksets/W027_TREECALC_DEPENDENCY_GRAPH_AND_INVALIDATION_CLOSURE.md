@@ -2,6 +2,7 @@
 
 ## Purpose
 Replace planner-only dependency derivation with real dependency graph build and invalidation closure over TreeCalc structure plus consumed OxFml bind facts.
+This packet widens the engine beneath the existing `OxCalcTree` host-facing consumer contract rather than introducing a second host-facing dependency surface.
 
 ## Position and Dependencies
 - **Depends on**: W025, W026
@@ -33,6 +34,7 @@ Replace planner-only dependency derivation with real dependency graph build and 
 ### Entry gate
 - W025 has provided the widened structural model
 - W026 has locked the first consumed bind/reference package
+- the `OxCalcTree` consumer contract exists as the current host-facing entry surface, with dependency realization still widening beneath it
 
 ### Exit gate
 - structural dependency graph and reverse edges exist for the covered TreeCalc formula families
@@ -57,6 +59,7 @@ Replace planner-only dependency derivation with real dependency graph build and 
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
+  - this packet now widens beneath the landed `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` host-facing contract, but no broader host/session API widening has been executed yet
   - first OxFml bind-fact consumption now exists through the agreed direct-host translation and bind-preparation slice, but broader W026 bind/reference carrier intake is still open
   - replay-visible dependency identity is still open beyond deterministic local edge ids
   - runtime-derived dynamic dependency overlay closure remains open

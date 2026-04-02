@@ -9,19 +9,41 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
 - `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`
 - `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+- `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
 - `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md`
 - `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
 - `docs/spec/core-engine/CORE_ENGINE_REALIZATION_ROADMAP.md`
 - `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
 
+## Actual Runtime Consumer Rule
+If a host such as `DNA TreeCalc` intends to consume the OxCalc runtime directly:
+1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `CURRENT_BLOCKERS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
+2. then read `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` as the host-facing OxCalc tree-runtime contract,
+3. then read `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` as the canonical OxCalc-local seam companion,
+4. then read `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md` as the TreeCalc-first execution and widening plan,
+5. use `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as an implementation-backed packet companion, not as the primary OxCalc consumer contract.
+
 ## Downstream Host Seam-Reference Rule
 If a downstream host such as `DNA OneCalc` needs OxCalc as seam-reference material only:
 1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `CURRENT_BLOCKERS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
-2. then use `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` as the local authority filter,
+2. then use `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` as the local authority filter — this is the single entry point for downstream hosts,
 3. read `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` as the canonical OxCalc-local seam companion,
-4. read `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as the first deterministic upstream-host packet companion,
-5. treat `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` as a temporary narrower-topic tracker rather than as seam authority.
+4. read `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as the first deterministic upstream-host packet companion — reference material for understanding the exercised packet shape, not a host API to adopt verbatim,
+5. treat `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` as a temporary narrower-topic tracker rather than as seam authority,
+6. treat `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md` as a planning companion for the consumed OxFml seam pipeline, not as seam authority.
+
+### Document Classification For Downstream Hosts
+Every OxCalc doc that a downstream host might encounter falls into one of these classes:
+
+| Class | Meaning | Downstream host rule |
+|---|---|---|
+| **canonical-local-reference** | Authoritative OxCalc-owned spec text that defines local coordinator-facing seam requirements. | Read and use as seam-reference material. |
+| **supporting-companion** | Implementation-backed or planning companion that supports the canonical set with narrower detail. | Read for context; do not treat as seam authority. |
+| **temporary-planning** | Active negotiation, note-exchange, or planning material that will be superseded or retired. | Read only for narrower open topics and non-assumptions; never cite as stable seam authority. |
+| **historical/non-authority** | Archives, mirrors, snapshots, handoff records, and note-exchange docs. | Do not read as current seam-reference truth. |
+
+The classification of each individual document is stated in `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Sections 4–6.
 
 ## Supporting Realization and Test Docs
 - `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`
@@ -37,7 +59,7 @@ If a downstream host such as `DNA OneCalc` needs OxCalc as seam-reference materi
 - `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`
   - supporting planning companion defining the topic-by-topic TreeCalc seam negotiation shape for the next OxCalc↔OxFml note rounds and W026 intake work; not canonical seam authority.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
-  - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding; reference material for downstream hosts, but not a production API freeze.
+  - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

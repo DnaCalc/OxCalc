@@ -2,6 +2,7 @@
 
 ## Purpose
 Refresh the assurance, replay, and residual planning surfaces around the first live TreeCalc engine path so the proving surfaces no longer bind only to the older proving substrate.
+This packet refreshes assurance and residual planning around the engine that sits beneath the existing `OxCalcTree` host-facing consumer contract.
 
 ## Position and Dependencies
 - **Depends on**: W030
@@ -30,6 +31,7 @@ Refresh the assurance, replay, and residual planning surfaces around the first l
 ### Entry gate
 - W030 has produced the first checked-in sequential TreeCalc-ready baseline
 - any material object-model or transition changes from the proving substrate are known
+- the `OxCalcTree` consumer contract remains the host-facing contract to preserve while assurance and residual packetization are refreshed underneath it
 
 ### Exit gate
 - no major semantic clause remains bound only to the older proving substrate
@@ -54,6 +56,7 @@ Refresh the assurance, replay, and residual planning surfaces around the first l
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
+  - this packet has not yet refreshed assurance and replay bindings around the landed `OxCalcTree` host-facing contract and the engine beneath it
   - assurance and replay bindings are still centered on the proving substrate
   - no TreeCalc-ready assurance refresh has been executed yet
   - residual TreeCalc semantic gaps have not been packetized yet

@@ -18,8 +18,14 @@ The purpose here is to make the next target explicit:
 4. what work sequence gives real line of sight to that target,
 5. what must remain true so later optimization waves do not require semantic redesign.
 
+Classification: **supporting-companion** per `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Section 4.1.
+
 For downstream hosts that use OxCalc as seam-reference material only, this document is a supporting consumer-model companion.
-Read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` and `CORE_ENGINE_OXFML_SEAM.md` first, then use this document to understand how the consumed OxFml seam is expected to participate in the first TreeCalc-ready execution pipeline.
+Read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` first (the single entry point and authority filter for downstream hosts), then `CORE_ENGINE_OXFML_SEAM.md`, then use this document to understand how the consumed OxFml seam is expected to participate in the first TreeCalc-ready execution pipeline.
+This document does not define seam authority — it describes how OxCalc intends to consume the seam that OxFml owns.
+
+For actual runtime consumers such as `DNA TreeCalc`, read `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` first.
+This document then serves as the TreeCalc-first execution, widening, and residual-planning companion for that consumer contract.
 
 ## 2. Target Outcome
 The target defined by this document is:
@@ -68,7 +74,8 @@ OxCalc already has meaningful executable foundations:
 2. sequential candidate/reject/publish coordinator logic,
 3. invalidation and overlay lifecycle state,
 4. planner-driven DAG/SCC handling in the `TraceCalc` proving lane,
-5. deterministic replay, diff, explain, retained-witness, and replay-appliance artifact emission.
+5. deterministic replay, diff, explain, retained-witness, and replay-appliance artifact emission,
+6. a first live OxFml V1 consumer-facade intake for the deterministic upstream-host runtime/replay slice through `consumer::runtime` and `consumer::replay`.
 
 These are real assets and should be preserved.
 
@@ -77,7 +84,7 @@ The following are still absent from the live TreeCalc engine path:
 1. real node-bound formula artifact ownership as the driver of evaluation,
 2. real OxFml bind products as the driver of reference meaning,
 3. automatic dependency-graph build from formulas and bind facts,
-4. actual evaluator-produced candidate results as the active execution path,
+4. actual evaluator-produced candidate results as the active execution path for the broader TreeCalc dependency-driven scope beyond the current first local slice,
 5. real tree-relative and direct-node reference support beyond the test-only `TraceCalc` calc-space,
 6. end-to-end structure -> formula -> bind -> dependency -> evaluation -> publication execution over the real engine substrate.
 
@@ -219,6 +226,14 @@ But the first TreeCalc-ready engine phase is not satisfied by improving `TraceCa
 It must move actual engine execution onto real formula/bind/candidate-result flows.
 
 ## 8. Engine Surfaces To Realize In OxCalc
+
+### 8.0 Consumer-Facing Runtime Surface
+The intended host-facing OxCalc runtime surface for this phase is now packetized separately in `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`.
+
+Current working rule:
+1. hosts should consume OxCalc through that explicit environment/document/request/result/facade object set,
+2. this document explains how the underlying TreeCalc-first engine must widen beneath that host-facing contract,
+3. narrower seam and dependency-preparation details may remain below the consumer contract until later widening closes them honestly.
 
 ### 8.1 Structural Model
 OxCalc needs a richer structural model than the current proving-floor root-with-children shape.
@@ -545,6 +560,11 @@ The current recommended packetization of this sequence is:
 
 This decomposition is the intended line-of-sight sequence after the current replay-pack residual lane.
 
+Current host-contract interpretation:
+1. `W025` through `W031` now widen the engine beneath the OxCalc-owned TreeCalc-first consumer contract in `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`,
+2. actual runtime consumers should prefer that explicit `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` object set over local proving-floor engine types,
+3. narrower seam-intake, dependency-preparation, replay, and assurance details remain packetized below that host-facing contract until later widening closes them honestly.
+
 ## 15. Non-Negotiable Guardrails For Later Performance Work
 The following must remain true so later ultraperformance work still lands on the right semantic base:
 1. no scheduler or caching shortcut may redefine stabilized semantic truth,
@@ -578,13 +598,13 @@ It does:
 3. define the execution line needed to close that gap.
 
 ## 18. Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - this document defines the target and sequence, but no new TreeCalc-ready engine workset has been executed yet
-  - real TreeCalc formula/bind/evaluation flow is still absent from the live engine path
-  - narrower TreeCalc-specific OxFml seam intake still needs to be packetized from this plan
+  - this document defines the broader target and sequence, but only the first narrow TreeCalc local slice plus the ordinary runtime/replay V1 facade intake are currently exercised
+  - broader TreeCalc bind/reference intake, dependency build, and candidate-result consumption still remain open beyond the current local slice
+  - narrower TreeCalc-specific OxFml seam intake still needs to be carried through the remaining W026 packets from this plan
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note consumed as seam baseline; no new immediate handoff trigger exists yet

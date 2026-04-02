@@ -1,17 +1,24 @@
 # CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md
 
 ## 1. Purpose and Status
+
+**This document is NOT canonical seam authority.**
+
+Classification: **temporary-planning** per `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Section 4.1.
+
 This document turns the TreeCalc-facing OxCalc↔OxFml seam into a negotiation-ready matrix for the next `NOTES_FOR_*` passes.
 
 Status:
-1. active planning companion,
+1. active planning and intake companion,
 2. intended bridge between the canonical local seam doc and W026,
-3. note-exchange oriented rather than implementation-oriented,
-4. explicitly pre-handoff unless a narrower trigger is reached.
+3. note-exchange oriented with the first implementation-backed intake now underway,
+4. explicitly pre-handoff unless a narrower trigger is reached,
+5. will be superseded or retired when the topics it tracks are consumed into executed seam intake work.
 
 This document exists so the next seam passes are structured around concrete consumed-carrier questions, not broad prose uncertainty.
 It is not the canonical local seam-reference source of truth for downstream hosts.
-Use `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` and `CORE_ENGINE_OXFML_SEAM.md` first, and then use this matrix only for narrower open topics and explicit non-assumptions.
+Downstream hosts such as `DNA OneCalc` must read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` first (the single entry point), then `CORE_ENGINE_OXFML_SEAM.md`, and only then use this matrix for narrower open topics and explicit non-assumptions.
+Actual runtime consumers such as `DNA TreeCalc` should read `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` first and treat this matrix only as the narrower residual tracker beneath that host-facing contract.
 
 ## 2. Working Rule
 For the first TreeCalc-ready engine phase:
@@ -286,6 +293,17 @@ Current practical consequence:
 2. all three now have explicit consumed-now carriers rather than only abstract residual labels,
 3. no narrower handoff is justified unless live TreeCalc evidence later exposes a concrete insufficiency in one of those carried families.
 
+### 6.2 Current Executed Intake Floor
+The matrix is no longer purely prospective.
+
+Current executed intake on the OxCalc side is:
+1. the minimal upstream-host runtime/replay path is now migrated onto the landed OxFml V1 public consumer surface:
+   - `consumer::runtime`
+   - `consumer::replay`
+2. this means the host/runtime baseline in Topic `4.9` is now consumed in live OxCalc code for the deterministic scaffolding packet,
+3. this does not yet close the narrower TreeCalc bind/reference intake topics that still rely on direct consumed OxFml parse/bind products in the current local TreeCalc dependency-preparation slice,
+4. this therefore narrows the live open lane to TreeCalc-specific bind/reference and transport-breadth questions rather than to the ordinary runtime/replay entry surface.
+
 ## 7. Exit Condition For The Planning Phase
 This planning companion has served its purpose when:
 1. W026 has a consumed-now topic ledger for all in-scope TreeCalc seam topics,
@@ -293,7 +311,7 @@ This planning companion has served its purpose when:
 3. no major TreeCalc engine implementation decision still depends on compressed seam assumptions.
 
 ## 8. Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
@@ -301,7 +319,7 @@ This planning companion has served its purpose when:
   - relative-reference descriptor carriage remains canonical but narrower beyond the first explicitly consumed subset
   - unresolved and host-sensitive reference carriers remain canonical but narrower beyond the first explicitly named families
   - runtime-derived effect transport and semantic-format-display reading remain canonical but narrower beyond the current semantics-first floor
-  - W026 has not yet consumed this matrix into executed seam intake work; the current live residual packet is the three-sequence caller-context / execution-restriction / publication-topology narrowing lane
+  - W026 has now consumed the ordinary runtime/replay entry surface into executed seam intake work, but the current live residual packet still carries the three-sequence caller-context / execution-restriction / publication-topology narrowing lane plus TreeCalc-specific bind/reference intake
   - no narrower handoff has been justified yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note and returned classifications consumed as the starting baseline

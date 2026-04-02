@@ -11,8 +11,17 @@ use crate::structural::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RuntimeEffectFamily {
+    DynamicDependency,
+    ExecutionRestriction,
+    CapabilitySensitive,
+    ShapeTopology,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeEffect {
     pub kind: String,
+    pub family: RuntimeEffectFamily,
     pub detail: String,
 }
 

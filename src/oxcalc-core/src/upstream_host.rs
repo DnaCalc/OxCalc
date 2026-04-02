@@ -5,13 +5,20 @@
 use std::collections::BTreeMap;
 
 use oxfml_core::binding::{BindContext, NameKind};
-use oxfml_core::host::{FirstHostReplayCapturePacket, HostRecalcOutput, SingleFormulaHost};
+use oxfml_core::consumer::replay::{
+    ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService,
+};
+use oxfml_core::consumer::runtime::{
+    RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
+};
+use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::{
-    InMemoryLibraryContextProvider, LibraryContextProvider, TableCallerRegion, TableDescriptor,
-    TableRef, TypedContextQueryBundle,
+    TableCallerRegion, TableDescriptor, TableRef, TypedContextQueryBundle,
 };
 use oxfml_core::semantics::LibraryContextSnapshot;
-use oxfml_core::source::{FormulaChannelKind, FormulaToken, StructureContextVersion};
+use oxfml_core::source::{
+    FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
+};
 use oxfml_core::EvaluationBackend;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
@@ -149,42 +156,58 @@ impl MinimalUpstreamHostPacket {
     }
 
     #[must_use]
-    pub fn build_host(&self) -> SingleFormulaHost {
-        let mut host = SingleFormulaHost::new(
-            self.formula_slot.formula_stable_id.clone(),
-            self.formula_slot.formula_text.clone(),
-        );
-        host.formula_text_version = self.formula_slot.formula_text_version;
-        host.set_formula_channel_kind(self.formula_slot.formula_channel_kind);
-        host.structure_context_version = self.formula_slot.structure_context_version.clone();
-        host.caller_row = self.formula_slot.caller_anchor.row;
-        host.caller_col = self.formula_slot.caller_anchor.col;
-        host.table_catalog = self.binding_world.table_catalog.clone();
-        host.enclosing_table_ref = self.binding_world.enclosing_table_ref.clone();
-        host.caller_table_region = self.binding_world.caller_table_region.clone();
-        host.now_serial = self.typed_query_facts.now_serial;
-        host.random_value = self.typed_query_facts.random_value;
+    pub fn build_runtime_environment(&self) -> RuntimeEnvironment<'static> {
+        let defined_names = self
+            .binding_world
+            .defined_name_bindings
+            .iter()
+            .map(|(name, binding)| {
+                let binding = match binding {
+                    UpstreamDefinedNameBinding::Value(value) => {
+                        DefinedNameBinding::Value(value.clone())
+                    }
+                    UpstreamDefinedNameBinding::Reference(reference) => {
+                        DefinedNameBinding::Reference(reference.clone())
+                    }
+                };
+                (name.clone(), binding)
+            })
+            .collect();
 
-        for (name, binding) in &self.binding_world.defined_name_bindings {
-            match binding {
-                UpstreamDefinedNameBinding::Value(value) => {
-                    host.set_defined_name_value(name.clone(), value.clone());
-                }
-                UpstreamDefinedNameBinding::Reference(reference) => {
-                    host.set_defined_name_reference(name.clone(), reference.clone());
-                }
-            }
+        let mut environment = RuntimeEnvironment::new()
+            .with_structure_context_version(StructureContextVersion(
+                self.formula_slot.structure_context_version.clone(),
+            ))
+            .with_caller_position(
+                self.formula_slot.caller_anchor.row,
+                self.formula_slot.caller_anchor.col,
+            )
+            .with_defined_names(defined_names)
+            .with_cell_values(self.binding_world.cell_fixture.clone())
+            .with_table_context(
+                self.binding_world.table_catalog.clone(),
+                self.binding_world.enclosing_table_ref.clone(),
+                self.binding_world.caller_table_region.clone(),
+            );
+
+        if let Some(snapshot) = &self.runtime_catalog.library_context_snapshot {
+            environment = environment.with_inline_library_context_snapshot(snapshot.clone());
         }
 
-        for (target, value) in &self.binding_world.cell_fixture {
-            host.set_cell_value(target.clone(), value.clone());
-        }
-
-        host
+        environment
     }
 
-    pub fn recalc(&self, backend: EvaluationBackend) -> Result<HostRecalcOutput, String> {
-        let mut host = self.build_host();
+    #[must_use]
+    pub fn build_formula_source_record(&self) -> FormulaSourceRecord {
+        FormulaSourceRecord::new(
+            self.formula_slot.formula_stable_id.clone(),
+            self.formula_slot.formula_text_version,
+            self.formula_slot.formula_text.clone(),
+        )
+        .with_formula_channel_kind(self.formula_slot.formula_channel_kind)
+    }
+
+    pub fn recalc(&self, backend: EvaluationBackend) -> Result<RuntimeFormulaResult, String> {
         let host_info_provider = PacketHostInfoProvider {
             mode: self.typed_query_facts.host_info_mode.clone(),
         };
@@ -205,28 +228,21 @@ impl MinimalUpstreamHostPacket {
             self.typed_query_facts.random_value,
         );
 
-        let library_context_provider = self
-            .runtime_catalog
-            .library_context_snapshot
-            .as_ref()
-            .map(|snapshot| InMemoryLibraryContextProvider::new(snapshot.clone()));
-
-        host.recalc_with_interfaces(
-            backend,
-            query_bundle,
-            library_context_provider
-                .as_ref()
-                .map(|provider| provider as &dyn LibraryContextProvider),
+        self.build_runtime_environment().execute(
+            RuntimeFormulaRequest::new(self.build_formula_source_record(), query_bundle)
+                .with_backend(backend),
         )
     }
 
-    pub fn recalc_with_capture_packet(
+    pub fn recalc_with_replay_projection(
         &self,
         backend: EvaluationBackend,
-    ) -> Result<(HostRecalcOutput, FirstHostReplayCapturePacket), String> {
+    ) -> Result<(RuntimeFormulaResult, ReplayProjectionResult), String> {
         let output = self.recalc(backend)?;
-        let packet = output.to_first_host_replay_capture_packet();
-        Ok((output, packet))
+        let projection = ReplayProjectionService::project(ReplayProjectionRequest::runtime_result(
+            &output,
+        ));
+        Ok((output, projection))
     }
 }
 
@@ -519,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn minimal_upstream_host_packet_supports_host_info_values_and_capture_packets() {
+    fn minimal_upstream_host_packet_supports_host_info_values_and_replay_projection() {
         let mut packet = packet("=INFO(\"directory\")");
         packet.typed_query_facts.host_info_mode =
             MinimalHostInfoMode::DirectoryValueAndFilenameProviderFailure {
@@ -528,8 +544,8 @@ mod tests {
             };
         packet.runtime_catalog.library_context_snapshot = Some(snapshot_with_entry("INFO"));
 
-        let (output, capture_packet) = packet
-            .recalc_with_capture_packet(EvaluationBackend::OxFuncBacked)
+        let (output, replay_projection) = packet
+            .recalc_with_replay_projection(EvaluationBackend::OxFuncBacked)
             .unwrap();
 
         assert_eq!(
@@ -537,10 +553,10 @@ mod tests {
             ReturnedValueSurfaceKind::OrdinaryValue
         );
         assert_eq!(
-            capture_packet.library_context_snapshot_ref,
+            replay_projection.library_context_snapshot_ref,
             Some(LibraryContextSnapshotRef::new("snapshot:test", "v1"))
         );
-        assert_eq!(capture_packet.formula_stable_id, "formula:host:001");
+        assert_eq!(replay_projection.formula_stable_id, "formula:host:001");
     }
 
     #[test]

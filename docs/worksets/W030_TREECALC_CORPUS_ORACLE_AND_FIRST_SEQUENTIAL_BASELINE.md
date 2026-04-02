@@ -2,6 +2,7 @@
 
 ## Purpose
 Turn the real TreeCalc engine path into an exercised and comparable runtime by widening corpus, oracle, replay, and baseline evidence until the first sequential TreeCalc-ready engine can be observed directly.
+This packet widens evidence beneath the existing `OxCalcTree` host-facing consumer contract so TreeCalc-first consumers can rely on comparable runtime behavior without reaching into proving-floor internals.
 
 ## Position and Dependencies
 - **Depends on**: W028, W029
@@ -31,6 +32,7 @@ Turn the real TreeCalc engine path into an exercised and comparable runtime by w
 ### Entry gate
 - W028 and W029 have made the real TreeCalc engine pipeline executable
 - the TreeCalc corpus boundary for first-phase scope is explicit
+- the `OxCalcTree` consumer contract remains the current host-facing entry surface, with oracle and baseline widening still pending beneath it
 
 ### Exit gate
 - the live engine path can run the first TreeCalc corpus without `TraceCalc` scripted semantics standing in for real formula execution
@@ -55,6 +57,7 @@ Turn the real TreeCalc engine path into an exercised and comparable runtime by w
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
+  - this packet is still widening evidence beneath the landed `OxCalcTree` host-facing contract; host-facing replay/baseline convenience surfaces are not yet part of that contract
   - a local TreeCalc corpus, oracle, conformance, trace, explain, and baseline root now exist, but they are still local-floor evidence rather than the later live TreeCalc-ready lane
   - TreeCalc local baseline comparison discipline now exists, but replay/diff/explain widening to the later live lane is still open
   - the first sequential TreeCalc-ready baseline does not exist yet beyond `w025-treecalc-local-baseline`

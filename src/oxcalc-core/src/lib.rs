@@ -8,6 +8,7 @@
 //! of any older non-Rust object model.
 
 pub mod coordinator;
+pub mod consumer;
 pub mod dependency;
 pub mod formula;
 pub mod recalc;

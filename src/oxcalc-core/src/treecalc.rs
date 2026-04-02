@@ -15,7 +15,7 @@ use thiserror::Error;
 
 use crate::coordinator::{
     AcceptedCandidateResult, CoordinatorError, PublicationBundle, RejectDetail, RejectKind,
-    RuntimeEffect, TreeCalcCoordinator,
+    RuntimeEffect, RuntimeEffectFamily, TreeCalcCoordinator,
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
@@ -438,7 +438,7 @@ fn build_runtime_effect_overlays(
         .map(|(index, runtime_effect)| OverlayEntry {
             key: OverlayKey {
                 owner_node_id,
-                overlay_kind: OverlayKind::DynamicDependency,
+                overlay_kind: runtime_effect_overlay_kind(runtime_effect),
                 structural_snapshot_id: input.structural_snapshot.snapshot_id(),
                 compatibility_basis: input.compatibility_basis.clone(),
                 payload_identity: Some(format!(
@@ -451,6 +451,15 @@ fn build_runtime_effect_overlays(
             detail: format!("{}|{}", runtime_effect.kind, runtime_effect.detail),
         })
         .collect()
+}
+
+fn runtime_effect_overlay_kind(runtime_effect: &RuntimeEffect) -> OverlayKind {
+    match runtime_effect.family {
+        RuntimeEffectFamily::DynamicDependency => OverlayKind::DynamicDependency,
+        RuntimeEffectFamily::ExecutionRestriction
+        | RuntimeEffectFamily::CapabilitySensitive => OverlayKind::ExecutionRestriction,
+        RuntimeEffectFamily::ShapeTopology => OverlayKind::ShapeTopology,
+    }
 }
 
 fn seed_working_values(
@@ -1087,12 +1096,19 @@ fn value_payload_to_string(payload: &oxfml_core::seam::ValuePayload) -> String {
 }
 
 fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
-    let kind = match residual.kind {
-        ResidualCarrierKind::HostSensitive => "runtime_effect.host_sensitive_reference",
-        ResidualCarrierKind::DynamicPotential => "runtime_effect.dynamic_reference",
+    let (kind, family) = match residual.kind {
+        ResidualCarrierKind::HostSensitive => (
+            "runtime_effect.host_sensitive_reference",
+            RuntimeEffectFamily::ExecutionRestriction,
+        ),
+        ResidualCarrierKind::DynamicPotential => (
+            "runtime_effect.dynamic_reference",
+            RuntimeEffectFamily::DynamicDependency,
+        ),
     };
     RuntimeEffect {
         kind: kind.to_string(),
+        family,
         detail: format!(
             "owner_node:{};carrier_id:{};detail:{}",
             residual.owner_node_id, residual.carrier_id, residual.detail
@@ -1334,6 +1350,10 @@ mod tests {
             run.runtime_effects[0].kind,
             "runtime_effect.host_sensitive_reference"
         );
+        assert_eq!(
+            run.runtime_effects[0].family,
+            RuntimeEffectFamily::ExecutionRestriction
+        );
         assert!(run.runtime_effects[0]
             .detail
             .contains("carrier_id:carrier:host"));
@@ -1346,7 +1366,7 @@ mod tests {
         );
         assert_eq!(
             run.runtime_effect_overlays[0].key.overlay_kind,
-            OverlayKind::DynamicDependency
+            OverlayKind::ExecutionRestriction
         );
         assert!(run.runtime_effect_overlays[0]
             .detail
@@ -1382,6 +1402,10 @@ mod tests {
         assert_eq!(
             run.runtime_effects[0].kind,
             "runtime_effect.dynamic_reference"
+        );
+        assert_eq!(
+            run.runtime_effects[0].family,
+            RuntimeEffectFamily::DynamicDependency
         );
         assert!(run.runtime_effects[0]
             .detail

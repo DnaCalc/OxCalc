@@ -148,4 +148,5 @@ The current realized continuation after `W017` is:
 
 `W024` is now the next residual lane after W023 for broader program-grade pack promotion beyond the currently exercised host-sensitive `TraceCalc` family.
 `W025` through `W031` are the now-packetized TreeCalc semantic-completion sequence. Together they are the line-of-sight plan from the current proving substrate to the first semantically-complete sequential TreeCalc engine.
+Actual OxCalc runtime consumers should read `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` first; `W025` through `W031` are the widening packets that sit beneath that host-facing contract for the TreeCalc-first phase.
 Later widening must use successor worksets rather than silently reopening `W016`, `W018`, `W019`, or W005.

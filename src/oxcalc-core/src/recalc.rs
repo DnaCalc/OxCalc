@@ -24,6 +24,8 @@ pub enum NodeCalcState {
 pub enum OverlayKind {
     InvalidationExecutionState,
     DynamicDependency,
+    ExecutionRestriction,
+    ShapeTopology,
     CapabilityFenceAttachment,
     ObserverPriorityMetadata,
 }

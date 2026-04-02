@@ -26,6 +26,11 @@ For the current rewrite, the engine mission is:
 ## 3. Immediate Target: DNA TreeCalc
 The first serious OxCalc target is the engine needed for DNA TreeCalc.
 
+The intended host-facing consumer packaging for that target now lives in:
+1. `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`
+
+This architecture document remains the semantic and structural authority behind that host-facing contract.
+
 This target deliberately constrains immediate scope:
 1. tree-based structure,
 2. no grid substrate,

@@ -2,6 +2,7 @@
 
 ## Purpose
 Lock and consume the first real OxFml bind/reference package required for the TreeCalc-ready engine so OxCalc stops depending on proving-lane-only reference semantics.
+This packet now operates beneath the landed `OxCalcTree` host-facing consumer contract and the landed OxFml V1 runtime/replay consumer surface; it must fold those cleaner entry surfaces into the TreeCalc seam lane without letting packaging imply broader seam closure than the evidence supports.
 
 ## Position and Dependencies
 - **Depends on**: W020, W025
@@ -15,6 +16,8 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 3. candidate-result, reject-context, and runtime-derived fact categories that the TreeCalc path needs from OxFml
 4. explicit local resolution of what OxCalc consumes versus what OxFml continues to own semantically
 5. explicit narrowing of any residual seam uncertainty before engine implementation proceeds
+6. explicit placement of the consumed-now TreeCalc seam facts beneath the `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` contract so hosts do not need to reach into proving-floor engine types to understand W026 truth
+7. explicit incorporation of the current runtime-derived effect family split where the local engine already distinguishes dynamic-dependency versus execution-restriction facts
 
 ### Out of scope
 1. full evaluator-backed execution
@@ -71,12 +74,13 @@ Lock and consume the first real OxFml bind/reference package required for the Tr
 
 ### Coupled Widening Rule
 - engine surfaces widened in this packet:
-  - consumed-seam assumptions only
-  - no new executable engine semantics in the current residual pass
+  - consumed-seam assumptions
+  - the host-facing `OxCalcTree` contract truth that depends on those assumptions
+  - bounded executable seam-intake evidence where the current TreeCalc local runtime or upstream-host scaffolding already exercises the consumed-now packet
 - oracle/conformance surfaces widened in the same slice:
-  - none
+  - targeted fixture or emitted-artifact checks where W026 claims a carried family is now explicit rather than implicit
 - widened comparison artifact:
-  - none
+  - use `w026-*` naming if new emitted evidence is added to prove the narrowed packet
 
 ## Sequences
 ### Sequence 1: Caller-Anchor And Address-Mode Packet
@@ -130,6 +134,38 @@ Exit condition:
 1. `value_delta`, `shape_delta`, and `topology_delta` are explicitly preserved as distinct consumed categories for the first TreeCalc coordinator path
 2. optional `format_delta` and `display_delta` handling is explicit and non-collapsed
 3. the remaining publication/topology breadth residual is narrow enough to stay note-level unless live evidence later shows insufficiency
+
+## Explicit W026 Closure Work List
+This is the full W026 closure list. No scope growth is expected beyond these items; if every item below is closed with evidence, W026 should not need to revisit the same seam area again.
+
+### Group A: Sequence 1 Caller-Context And Reference Intake
+1. `Document update` Define the first closed TreeCalc reference subset. Name the exact direct-reference, relative-reference, unresolved-reference, host-sensitive, and dynamic-potential families that W026 closes now, and state explicitly which broader TreeCalc reference families remain outside this packet rather than being implicitly deferred.
+2. `Document update + code review and update` Lock the per-formula identity and compatibility packet for that subset. Record the required floor for `formula_stable_id`, `formula_token`, bind identity or compatibility handle, structure-context identity, and artifact-token or compatibility basis, then verify the current TreeCalc and upstream-host intake paths carry those values honestly and patch them if they do not.
+3. `Document update + code review and update` Lock the carried caller-context packet for the first relative-reference subset. Record `caller_anchor`, formula-channel context, address-mode context, and structure-context identity as the first-class carried inputs where meaning depends on them, then verify and update the local intake code so that those inputs are preserved explicitly rather than inferred or silently dropped.
+4. `Document update + code review and update` Close the rebind-versus-recalc rule for caller-sensitive forms. State exactly which structural edit families force rebind and which remain recalc-only when caller-context matters, then verify the current structural-edit and TreeCalc local execution path matches that rule and patch any mismatch.
+5. `Document update + code review and update` Close the dependency-descriptor mapping for the Sequence 1 reference families. Record the mapping from OxFml bind/reference products into OxCalc dependency descriptors for direct, unresolved, host-sensitive, and dynamic-potential carriers, then verify the current mapping in the TreeCalc local intake and patch it so W027 can rely on it without rereading seam notes.
+
+### Group B: Sequence 2 Candidate, Reject, And Runtime-Derived Transport
+6. `Document update` Lock the candidate/reject/correlation packet. Record the exact consumed-now correlation and consequence identifiers for W026 scope, including `candidate_result_id`, `commit_attempt_id` where present, `reject_record_id` where present, optional `fence_snapshot_ref`, and the first-phase typed reject families that must stay reachable rather than being collapsed into generic failure.
+7. `Document update + code review and update` Close the distinction between canonical OxFml object families and local OxCalc projection labels. For each current reject and runtime-facing family, state whether OxCalc is consuming a canonical object family or projecting a local label, then review the current code and emitted artifacts so that naming and interpretation are consistent and do not blur ownership.
+8. `Document update + code review and update` Lock the semantic minimum runtime-derived packet. Record the exact dynamic-dependency, execution-restriction, and capability-sensitive facts OxCalc consumes now, including the non-assumption that OxFml has not frozen one final merged carrier, then verify and patch the local TreeCalc runtime and result surfaces so those families are structurally distinguishable where W026 claims they are explicit.
+9. `Document update + code review and update` Close the runtime-effect and overlay reachability rule. Record which runtime-derived families must remain reachable from `OxCalcTreeRecalcResult` and which may stay below the host-facing contract, then review and patch result serialization, explain output, and overlay projection so the declared families are actually observable without drilling into unrelated internals.
+10. `Document update + code review and update` Close the W026-to-W029 boundary. State exactly where W026 ends for runtime-derived and execution-restriction transport truth, and where W029 begins for broader runtime-derived realization, then patch any docs or code comments that currently blur that line.
+
+### Group C: Sequence 3 Publication And Topology Consequence Breadth
+11. `Document update` Lock the first TreeCalc publication-consequence packet. Record `value_delta`, `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta`, and state the exact absence/presence semantics so the first TreeCalc coordinator path does not silently collapse optional consequence families.
+12. `Document update + code review and update` Close the publish-critical versus replay-only distinction. State which consequence families are publish-critical now, which are replay-visible but not publish-critical yet, and which are only local-floor evidence today, then review the current coordinator/result/explain surfaces and patch any place where those categories are mixed or implied rather than explicit.
+13. `Document update + code review and update` Close the execution-restriction versus publication/topology interaction rule. State whether any current execution-restriction observations must already be treated as publication-sensitive or topology-sensitive consequences rather than only runtime-effect sidecars, then verify the local path and patch it if the declared rule is not represented honestly.
+
+### Group D: Host-Facing Contract And Canonical Packet Sync
+14. `Document update` Close the `OxCalcTree` contract reachability wording for W026. Record exactly which W026 seam facts must remain directly reachable from `OxCalcTreeRecalcResult`, which may remain below the host-facing contract for now, and explicitly state that W026 does not authorize a second host-facing OxCalc seam layer.
+15. `Document update` Synchronize the canonical packet text across the W026 authority set. Update this workset, `CORE_ENGINE_OXFML_SEAM.md`, the TreeCalc seam-negotiation companion, the TreeCalc semantic-completion companion, and the active upstream note record so the same Sequence 1/2/3 packet truth appears everywhere with no drift in consumed-now versus `canonical but narrower` wording.
+
+### Group E: Evidence, Handoff Decision, And W026 Closure
+16. `Code review and update` Attach deterministic exercised evidence for every family W026 claims is explicit. Review the current upstream-host scaffolding, TreeCalc fixtures, and emitted replay/explain artifacts, add or patch cases where needed, and ensure each consumed-now family in Sequences 1, 2, and 3 is actually exercised rather than only named in prose.
+17. `Document update + code review and update` Make replay and explain visibility explicit for the carried families. Verify that caller-context-sensitive behavior, execution-restriction/runtime-derived families, and publication/topology consequence categories are visible in emitted artifacts where W026 claims they are explicit, and patch either the artifacts or the W026 claim until they match exactly.
+18. `Document update` Make the narrower handoff decision final for W026. Record either that no narrower `HANDOFF-CALC-002` is required because the exercised packet is sufficient, or record the exact insufficiency and the exact missing family that forces the handoff; this item does not close by leaving an unspecified future decision.
+19. `Document update` Perform the final W026 closure audit. Confirm that all three sequences have been converted from note-level residual summaries into one executed consumed-seam intake packet, that no hidden formula-language reinterpretation obligation remains on OxCalc for the declared first TreeCalc subset, and that W027, W028, and W029 can proceed without relying on seam assumptions that exist only in prose.
 
 ## Pre-Closure Verification Checklist
 1. Spec text and realization notes updated for all in-scope items: no

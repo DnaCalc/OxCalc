@@ -2,6 +2,7 @@
 
 ## Purpose
 Make dynamic dependency, capability-sensitive, execution-restriction-sensitive, and shape-sensitive runtime effects real in the live TreeCalc engine path rather than leaving them as proving-lane-only constructs.
+This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-facing consumer contract.
 
 ## Position and Dependencies
 - **Depends on**: W027, W028
@@ -31,6 +32,7 @@ Make dynamic dependency, capability-sensitive, execution-restriction-sensitive, 
 ### Entry gate
 - W028 has established real evaluator-backed candidate intake
 - W027 has established the structural dependency and invalidation substrate
+- the `OxCalcTree` consumer contract remains the host-facing contract, with runtime-derived effect closure still below that surface
 
 ### Exit gate
 - runtime-derived facts that affect recalc or publication are explicit, replay-visible, and no longer proving-lane-only constructs
@@ -50,13 +52,15 @@ Make dynamic dependency, capability-sensitive, execution-restriction-sensitive, 
 10. `CURRENT_BLOCKERS.md` updated if needed: no
 
 ## Status
-- execution_state: planned
+- execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - runtime-derived effect closure over the live TreeCalc path is not realized yet
-  - dynamic dependency overlay is not realized yet
-  - execution-restriction-sensitive runtime handling is not realized yet
+  - the first live implementation slice now exists beneath the landed `OxCalcTree` host-facing contract: runtime effects carry an explicit family classification and the runtime-effect overlay projection now preserves dynamic-dependency versus execution-restriction distinction
+  - host-facing replay or session widening has not been executed here yet
+  - runtime-derived effect closure over the live TreeCalc path remains partial beyond the current dynamic-dependency versus execution-restriction subset
+  - capability-sensitive and shape/topology-sensitive runtime handling are not realized yet
+  - runtime-derived overlays on the published-success path are still narrower than the reject/fallback-side local floor
 - claim_confidence: draft
-- reviewed_inbound_observations: current OxFml seam baseline consumed; execution-restriction transport remains a watch lane
+- reviewed_inbound_observations: current OxFml seam baseline consumed; execution-restriction transport remains a watch lane, but the local TreeCalc floor now preserves the current dynamic-dependency versus execution-restriction distinction explicitly in runtime-effect and overlay projection

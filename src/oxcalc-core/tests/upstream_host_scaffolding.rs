@@ -65,7 +65,7 @@ fn snapshot_with_entry(surface_name: &str) -> LibraryContextSnapshot {
 }
 
 #[test]
-fn scaffolding_packet_drives_capture_from_runtime_catalog_snapshot() {
+fn scaffolding_packet_projects_replay_from_runtime_catalog_snapshot() {
     let mut packet = packet("=INFO(\"directory\")");
     packet.typed_query_facts = MinimalTypedQueryFacts {
         host_info_mode: MinimalHostInfoMode::DirectoryValueAndFilenameProviderFailure {
@@ -79,8 +79,8 @@ fn scaffolding_packet_drives_capture_from_runtime_catalog_snapshot() {
         library_context_snapshot: Some(snapshot_with_entry("INFO")),
     };
 
-    let (output, capture_packet) = packet
-        .recalc_with_capture_packet(EvaluationBackend::OxFuncBacked)
+    let (output, replay_projection) = packet
+        .recalc_with_replay_projection(EvaluationBackend::OxFuncBacked)
         .unwrap();
 
     assert_eq!(
@@ -88,10 +88,10 @@ fn scaffolding_packet_drives_capture_from_runtime_catalog_snapshot() {
         ReturnedValueSurfaceKind::OrdinaryValue
     );
     assert_eq!(
-        capture_packet.library_context_snapshot_ref,
+        replay_projection.library_context_snapshot_ref,
         Some(LibraryContextSnapshotRef::new("snapshot:integration", "v1"))
     );
-    assert_eq!(capture_packet.formula_stable_id, "formula:host:integration");
+    assert_eq!(replay_projection.formula_stable_id, "formula:host:integration");
 }
 
 #[test]

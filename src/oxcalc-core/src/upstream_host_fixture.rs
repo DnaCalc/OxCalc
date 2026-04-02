@@ -218,8 +218,8 @@ pub struct UpstreamHostFixtureSnapshotRef {
 pub struct UpstreamHostFixtureExecution {
     pub packet: MinimalUpstreamHostPacket,
     pub bind_context: oxfml_core::binding::BindContext,
-    pub recalc_output: oxfml_core::host::HostRecalcOutput,
-    pub capture_packet: Option<oxfml_core::host::FirstHostReplayCapturePacket>,
+    pub recalc_output: oxfml_core::consumer::runtime::RuntimeFormulaResult,
+    pub replay_projection: Option<oxfml_core::consumer::replay::ReplayProjectionResult>,
 }
 
 #[derive(Debug, Error)]
@@ -297,15 +297,15 @@ pub fn execute_fixture_case(
     let packet = build_packet(case)?;
     let bind_context = packet.build_bind_context();
     let backend = parse_backend(&case.evaluation_backend)?;
-    let (recalc_output, capture_packet) = if case.expected.capture_snapshot_ref.is_some() {
-        let (output, capture_packet) =
+    let (recalc_output, replay_projection) = if case.expected.capture_snapshot_ref.is_some() {
+        let (output, replay_projection) =
             packet
-                .recalc_with_capture_packet(backend)
+                .recalc_with_replay_projection(backend)
                 .map_err(|detail| UpstreamHostFixtureError::Runtime {
                     case_id: case.case_id.clone(),
                     detail,
                 })?;
-        (output, Some(capture_packet))
+        (output, Some(replay_projection))
     } else {
         let output =
             packet
@@ -321,7 +321,7 @@ pub fn execute_fixture_case(
         packet,
         bind_context,
         recalc_output,
-        capture_packet,
+        replay_projection,
     })
 }
 
@@ -675,7 +675,7 @@ mod tests {
             if let Some(expected_capture_snapshot_ref) = &case.expected.capture_snapshot_ref {
                 assert_eq!(
                     execution
-                        .capture_packet
+                        .replay_projection
                         .as_ref()
                         .and_then(|packet| packet.library_context_snapshot_ref.clone()),
                     Some(LibraryContextSnapshotRef::new(

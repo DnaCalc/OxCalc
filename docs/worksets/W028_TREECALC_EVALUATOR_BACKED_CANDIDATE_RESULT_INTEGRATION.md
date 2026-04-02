@@ -2,6 +2,7 @@
 
 ## Purpose
 Move the live engine path from synthetic or proving-lane candidate intake to real OxFml-backed evaluator outputs for the first TreeCalc-ready formula families.
+This packet widens execution truth beneath the existing `OxCalcTree` host-facing consumer contract rather than changing host ownership of the runtime contract.
 
 ## Position and Dependencies
 - **Depends on**: W026, W027
@@ -31,6 +32,7 @@ Move the live engine path from synthetic or proving-lane candidate intake to rea
 ### Entry gate
 - W027 has produced the real dependency and invalidation substrate
 - W026 has defined the candidate and reject seam floor for TreeCalc scope
+- the `OxCalcTree` consumer contract remains the preferred host-facing entry surface while evaluator-backed candidate flow widens underneath it
 
 ### Exit gate
 - the coordinator consumes real seam-produced candidate results and typed rejects for the covered TreeCalc scope
@@ -55,6 +57,7 @@ Move the live engine path from synthetic or proving-lane candidate intake to rea
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
+  - this packet now sits beneath the landed `OxCalcTree` host-facing contract, but the current facade still wraps only the first local sequential engine slice rather than a broader TreeCalc-ready lifecycle API
   - the first direct-host OxFml slice now drives local candidate adaptation and typed reject handling, but broader W026 bind/reference intake is still open
   - verified-clean semantics are evidenced only for the current local TreeCalc subset, not yet for the broader first TreeCalc-ready family set
   - publication, reject, and candidate artifacts are still local-floor TreeCalc evidence rather than the later live oracle/replay lane

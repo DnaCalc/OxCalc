@@ -9,14 +9,17 @@ Status:
 3. coordinator-facing in emphasis,
 4. partially aligned to OxFml canonical seam updates from `HANDOFF-CALC-001`.
 
-This document does not claim canonical ownership of the shared evaluator protocol.
+**This document does not claim canonical ownership of the shared evaluator protocol.**
 OxFml remains the canonical owner of shared FEC/F3E seam specification.
+OxCalc docs must not be cited as permission to invent a private evaluator contract when OxFml has not frozen the shared meaning.
 
 This document exists to make OxCalc's coordinator-facing requirements explicit.
-For downstream hosts that use OxCalc as seam-reference material only, read this document together with:
-1. `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md`
-2. `CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
-3. `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` only for narrower residual topics and non-assumptions
+Actual OxCalc runtime consumers such as `DNA TreeCalc` should read `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` before this seam companion.
+For downstream hosts that use OxCalc as seam-reference material only:
+1. read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` first — it is the single entry point and authority filter for downstream hosts, including the document classification summary and host-packet interpretation model,
+2. then read this document as the canonical OxCalc-local seam companion,
+3. then read `CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` as the first deterministic upstream-host packet companion — reference material only, not a host API to adopt verbatim (see `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Section 7.1),
+4. read `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md` only for narrower residual topics and non-assumptions; it is temporary-planning material and not seam authority
 
 ## 2. Ownership Rule
 The seam is shared, but ownership is split.
@@ -39,6 +42,12 @@ OxCalc owns:
 
 ### 2.3 Shared-Clause Rule
 Where a clause is shared but canonical in OxFml, OxCalc must express its requirement locally and then hand off canonical text changes rather than silently diverging.
+
+### 2.4 Consumer-Contract Alignment Rule
+For actual OxCalc runtime consumers:
+1. `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` defines the OxCalc-facing tree-host object set,
+2. this seam companion defines the consumed evaluator/coordinator boundary that object set must preserve,
+3. consumer packaging must not be read as permission to collapse or reinterpret OxFml-owned artifact meaning.
 
 ## 3. Why This Seam Must Be Explicit
 The seam must be explicit because:
@@ -527,6 +536,13 @@ Current local read:
    - `RegisteredExternalCatalogMutation*` and `RegisteredExternalCatalogController` remain OxFml-owned host/coordinator funnel packets for the current phase,
    - bind-visible register or unregister implies new `LibraryContextSnapshot` generation plus bind invalidation where the visible function or name world changes, while `CALL` / `REGISTER.ID`-only descriptor mutation may remain targeted reevaluation by default.
 
+### 21.2A Current V1 Public-Entry Read
+After the landed OxFml consumer-interface refactor, the current local runtime-facing read is:
+1. ordinary OxCalc runtime consumption should target `oxfml_core::consumer::runtime`,
+2. ordinary OxCalc replay projection should target `oxfml_core::consumer::replay`,
+3. the current minimal upstream-host packet in OxCalc is now realized on that public surface through `RuntimeEnvironment`, `RuntimeFormulaRequest`, `RuntimeFormulaResult`, and `ReplayProjectionService`,
+4. direct parse and bind intake in the current TreeCalc dependency-preparation lane remains explicit local seam-consumption work under `W026` and is not yet being described as facade-only.
+
 ### 21.3 Consumed-now local narrowing for the remaining residuals
 OxCalc is now treating the remaining residuals as bounded consume-now topics rather than general seam uncertainty.
 
@@ -558,9 +574,7 @@ The latest OxFml residual reply further sharpens this local narrowing:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - replay artifacts not yet attached for candidate-result versus publication boundaries,
+  - replay artifacts for broader candidate-result versus publication boundaries beyond the current minimal runtime-result projection are not yet attached,
   - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but broader TreeCalc descriptor and transport questions remain open beyond the first consumed subset,
   - W026 now has a clear consume-now versus refine-in-notes split, but the topic-matrix pass is not yet converted into executed seam intake work,
   - a narrower follow-on handoff is not required yet, but remains an explicit later decision if W019 evidence creates stronger coordinator pressure
-
-

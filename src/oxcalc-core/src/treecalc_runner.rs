@@ -735,6 +735,7 @@ fn build_explain_notes(
 fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
     json!({
         "kind": runtime_effect.kind,
+        "family": format!("{:?}", runtime_effect.family),
         "detail": runtime_effect.detail,
     })
 }

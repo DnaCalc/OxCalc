@@ -520,6 +520,7 @@ mod tests {
                 assert_artifacts_match_expected(
                     &post_edit_execution.rerun_artifacts,
                     &post_edit.expected,
+                    &format!("{}:post_edit", case.case_id),
                 );
             }
         }
@@ -528,6 +529,7 @@ mod tests {
     fn assert_artifacts_match_expected(
         artifacts: &LocalTreeCalcRunArtifacts,
         expected: &TreeCalcFixtureExpected,
+        context: &str,
     ) {
         assert_eq!(
             match artifacts.result_state {
@@ -535,7 +537,8 @@ mod tests {
                 LocalTreeCalcRunState::VerifiedClean => "verified_clean",
                 LocalTreeCalcRunState::Rejected => "rejected",
             },
-            expected.result_state
+            expected.result_state,
+            "fixture context: {context}"
         );
 
         if let Some(expected_values) = &expected.published_values {
@@ -553,10 +556,11 @@ mod tests {
             assert_eq!(
                 artifacts
                     .evaluation_order
-                    .iter()
-                    .map(|node_id| node_id.0)
-                    .collect::<Vec<_>>(),
-                *expected_order
+                .iter()
+                .map(|node_id| node_id.0)
+                .collect::<Vec<_>>(),
+                *expected_order,
+                "fixture context: {context}"
             );
         }
 
@@ -565,7 +569,11 @@ mod tests {
                 .reject_detail
                 .as_ref()
                 .map(|detail| format!("{:?}", detail.kind));
-            assert_eq!(observed_reject_kind.as_ref(), Some(expected_reject_kind));
+            assert_eq!(
+                observed_reject_kind.as_ref(),
+                Some(expected_reject_kind),
+                "fixture context: {context}"
+            );
         }
 
         if let Some(expected_runtime_effect_kinds) = &expected.runtime_effect_kinds {
@@ -576,7 +584,8 @@ mod tests {
                 .collect::<Vec<_>>();
             assert_eq!(
                 observed_runtime_effect_kinds,
-                *expected_runtime_effect_kinds
+                *expected_runtime_effect_kinds,
+                "fixture context: {context}"
             );
         }
     }

@@ -105,6 +105,10 @@ pub enum LocalTreeCalcError {
     UnsupportedFunction { function_name: String },
     #[error("formula family contains a cycle; local sequential runtime cannot yet evaluate it")]
     CycleDetected,
+    #[error("dependency graph for formula node {node_id} is incompatible with reevaluation: {detail}")]
+    DependencyGraphIncompatible { node_id: TreeNodeId, detail: String },
+    #[error("formula node {node_id} requires rebind before reevaluation")]
+    StructuralRebindRequired { node_id: TreeNodeId },
     #[error("division by zero")]
     DivisionByZero,
     #[error("OxFml host run for node {owner_node_id} failed: {detail}")]
@@ -167,13 +171,15 @@ impl LocalTreeCalcEngine {
                     .map(|prepared| (binding.owner_node_id, prepared))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
-        let dependency_graph = DependencyGraph::build(
-            &input.structural_snapshot,
-            &prepared_formulas
-                .values()
-                .flat_map(oxfml_dependency_descriptors)
-                .collect::<Vec<_>>(),
-        );
+        let dependency_descriptors = prepared_formulas
+            .values()
+            .flat_map(oxfml_dependency_descriptors)
+            .collect::<Vec<_>>();
+        let dependency_descriptor_owners = dependency_descriptors
+            .iter()
+            .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor.owner_node_id))
+            .collect::<BTreeMap<_, _>>();
+        let dependency_graph = DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
         let invalidation_seeds = if input.invalidation_seeds.is_empty() {
             default_invalidation_seeds(&formula_owner_ids)
@@ -227,6 +233,61 @@ impl LocalTreeCalcEngine {
                     );
                 }
             };
+
+        if let Some(node_id) = evaluation_order.iter().copied().find(|node_id| {
+            invalidation_closure
+                .records
+                .get(node_id)
+                .is_some_and(|record| record.requires_rebind)
+        }) {
+            return reject_run(
+                &input,
+                &mut coordinator,
+                &mut recalc_tracker,
+                dependency_graph,
+                invalidation_closure,
+                evaluation_order,
+                Vec::new(),
+                Vec::new(),
+                diagnostics,
+                &formula_owner_ids,
+                None,
+                LocalTreeCalcError::StructuralRebindRequired { node_id },
+            );
+        }
+
+        if let Some((node_id, detail)) = dependency_graph.diagnostics.iter().find_map(|diagnostic| {
+            match diagnostic.kind {
+                crate::dependency::DependencyDiagnosticKind::MissingOwner
+                | crate::dependency::DependencyDiagnosticKind::MissingTarget => {
+                    dependency_descriptor_owners
+                        .get(&diagnostic.descriptor_id)
+                        .copied()
+                        .map(|owner_node_id| {
+                            (
+                                owner_node_id,
+                                format!("{:?}: {}", diagnostic.kind, diagnostic.detail),
+                            )
+                        })
+                }
+                _ => None,
+            }
+        }) {
+            return reject_run(
+                &input,
+                &mut coordinator,
+                &mut recalc_tracker,
+                dependency_graph,
+                invalidation_closure,
+                evaluation_order,
+                Vec::new(),
+                Vec::new(),
+                diagnostics,
+                &formula_owner_ids,
+                None,
+                LocalTreeCalcError::DependencyGraphIncompatible { node_id, detail },
+            );
+        }
 
         for node_id in &evaluation_order {
             recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
@@ -508,6 +569,8 @@ fn map_local_error_to_reject_kind(error: &LocalTreeCalcError) -> RejectKind {
         | LocalTreeCalcError::MissingReferencedValue { .. } => RejectKind::DynamicDependencyFailure,
         LocalTreeCalcError::UnresolvedReference { .. }
         | LocalTreeCalcError::HostSensitiveReference { .. }
+        | LocalTreeCalcError::DependencyGraphIncompatible { .. }
+        | LocalTreeCalcError::StructuralRebindRequired { .. }
         | LocalTreeCalcError::UnsupportedNumericValue { .. }
         | LocalTreeCalcError::UnsupportedFunction { .. }
         | LocalTreeCalcError::DivisionByZero
@@ -1531,6 +1594,93 @@ mod tests {
                 .payload_identity
                 .as_deref(),
             Some("cand:dynamic:runtime_effect:0")
+        );
+    }
+
+    #[test]
+    fn local_treecalc_engine_rejects_rerun_when_invalidation_requires_rebind() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                    owner_node_id: TreeNodeId(3),
+                    formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                    expression: TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    }),
+                }]),
+                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                invalidation_seeds: vec![InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::StructuralRebindRequired,
+                }],
+                candidate_result_id: "cand:rebind".to_string(),
+                publication_id: "pub:rebind".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+            })
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
+        assert!(run.publication_bundle.is_none());
+        assert_eq!(
+            run.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::HostInjectedFailure)
+        );
+        assert_eq!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.contains("requires rebind before reevaluation")),
+            true
+        );
+    }
+
+    #[test]
+    fn local_treecalc_engine_rejects_rerun_when_dependency_target_is_missing() {
+        let engine = LocalTreeCalcEngine;
+        let rerun_snapshot = snapshot()
+            .apply_edit(
+                crate::structural::StructuralSnapshotId(2),
+                crate::structural::StructuralEdit::RemoveNode {
+                    node_id: TreeNodeId(2),
+                },
+            )
+            .unwrap()
+            .snapshot;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: rerun_snapshot,
+                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                    owner_node_id: TreeNodeId(3),
+                    formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                    expression: TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    }),
+                }]),
+                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                invalidation_seeds: vec![InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::StructuralRecalcOnly,
+                }],
+                candidate_result_id: "cand:missing_target".to_string(),
+                publication_id: "pub:missing_target".to_string(),
+                compatibility_basis: "snapshot:2".to_string(),
+                artifact_token_basis: "snapshot:2".to_string(),
+            })
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
+        assert!(run.publication_bundle.is_none());
+        assert_eq!(
+            run.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::HostInjectedFailure)
+        );
+        assert_eq!(
+            run.diagnostics.iter().any(|diagnostic| diagnostic.contains("MissingTarget")),
+            true
         );
     }
 

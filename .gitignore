@@ -1,3 +1,6 @@
 tools/tla/
 formal/tla/states/
 target/
+
+# bv (beads viewer) local config and caches
+.bv/

@@ -523,4 +523,75 @@ mod tests {
         );
         assert!(!closure.records[&TreeNodeId(4)].requires_rebind);
     }
+
+    #[test]
+    fn invalidation_closure_records_upstream_publication_for_seed_and_dependents() {
+        let graph = DependencyGraph::build(
+            &snapshot(),
+            &[DependencyDescriptor {
+                descriptor_id: "dep-c-a".to_string(),
+                owner_node_id: TreeNodeId(4),
+                target_node_id: Some(TreeNodeId(2)),
+                kind: DependencyDescriptorKind::StaticDirect,
+                carrier_detail: "C->A".to_string(),
+                requires_rebind_on_structural_change: false,
+            }],
+        );
+
+        let closure = graph.derive_invalidation_closure(&[InvalidationSeed {
+            node_id: TreeNodeId(2),
+            reason: InvalidationReasonKind::UpstreamPublication,
+        }]);
+
+        assert_eq!(
+            closure.records[&TreeNodeId(2)].calc_state,
+            NodeCalcState::Needed
+        );
+        assert_eq!(
+            closure.records[&TreeNodeId(2)].reasons,
+            vec![InvalidationReasonKind::UpstreamPublication]
+        );
+        assert_eq!(
+            closure.records[&TreeNodeId(4)].reasons,
+            vec![InvalidationReasonKind::UpstreamPublication]
+        );
+        assert_eq!(
+            closure.impacted_order,
+            vec![TreeNodeId(2), TreeNodeId(4)]
+        );
+    }
+
+    #[test]
+    fn invalidation_closure_marks_dependency_change_reasons_as_rebind_required() {
+        let graph = DependencyGraph::build(&snapshot(), &[]);
+
+        let closure = graph.derive_invalidation_closure(&[
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DependencyRemoved,
+            },
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DependencyAdded,
+            },
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DependencyReclassified,
+            },
+        ]);
+
+        assert_eq!(
+            closure.records[&TreeNodeId(4)].calc_state,
+            NodeCalcState::DirtyPending
+        );
+        assert!(closure.records[&TreeNodeId(4)].requires_rebind);
+        assert_eq!(
+            closure.records[&TreeNodeId(4)].reasons,
+            vec![
+                InvalidationReasonKind::DependencyAdded,
+                InvalidationReasonKind::DependencyRemoved,
+                InvalidationReasonKind::DependencyReclassified,
+            ]
+        );
+    }
 }

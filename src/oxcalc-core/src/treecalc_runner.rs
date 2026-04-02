@@ -982,9 +982,64 @@ fn relative_case_artifact_path(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     use super::*;
+    use crate::dependency::{InvalidationReasonKind, NodeInvalidationRecord};
+    use crate::recalc::NodeCalcState;
+    use crate::structural::TreeNodeId;
+
+    #[test]
+    fn invalidation_closure_json_preserves_non_structural_reasons() {
+        let closure = InvalidationClosure {
+            impacted_order: vec![TreeNodeId(2), TreeNodeId(4)],
+            records: BTreeMap::from([
+                (
+                    TreeNodeId(2),
+                    NodeInvalidationRecord {
+                        node_id: TreeNodeId(2),
+                        calc_state: NodeCalcState::Needed,
+                        requires_rebind: false,
+                        reasons: vec![InvalidationReasonKind::UpstreamPublication],
+                    },
+                ),
+                (
+                    TreeNodeId(4),
+                    NodeInvalidationRecord {
+                        node_id: TreeNodeId(4),
+                        calc_state: NodeCalcState::DirtyPending,
+                        requires_rebind: true,
+                        reasons: vec![
+                            InvalidationReasonKind::DependencyAdded,
+                            InvalidationReasonKind::DependencyRemoved,
+                            InvalidationReasonKind::DependencyReclassified,
+                        ],
+                    },
+                ),
+            ]),
+        };
+
+        let json = invalidation_closure_json(&closure);
+        let records = json.as_array().expect("closure json should be an array");
+
+        assert_eq!(records[0]["reasons"][0], "UpstreamPublication");
+        assert_eq!(records[1]["requires_rebind"], true);
+        assert_eq!(records[1]["reasons"][0], "DependencyAdded");
+        assert_eq!(records[1]["reasons"][1], "DependencyRemoved");
+        assert_eq!(records[1]["reasons"][2], "DependencyReclassified");
+    }
+
+    #[test]
+    fn invalidation_seed_json_preserves_non_structural_reason() {
+        let json = invalidation_seed_json(&InvalidationSeed {
+            node_id: TreeNodeId(4),
+            reason: InvalidationReasonKind::DependencyReclassified,
+        });
+
+        assert_eq!(json["node_id"], 4);
+        assert_eq!(json["reason"], "DependencyReclassified");
+    }
 
     #[test]
     fn treecalc_runner_emits_local_run_artifacts() {

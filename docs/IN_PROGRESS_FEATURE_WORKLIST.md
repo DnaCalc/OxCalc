@@ -31,7 +31,7 @@ Supersession note:
 - Canonical owner: [W020_OXFML_DOWNSTREAM_INTEGRATION_ROUND_01.md](C:\Work\DnaCalc\OxCalc\docs\worksets\W020_OXFML_DOWNSTREAM_INTEGRATION_ROUND_01.md) and [CORE_ENGINE_OXFML_SEAM.md](C:\Work\DnaCalc\OxCalc\docs\spec\core-engine\CORE_ENGINE_OXFML_SEAM.md).
 
 ### IP-03 TreeCalc Semantic Completion
-- Current state: active; `W025` and `W026` reached gate for the first TreeCalc structural and consumed-seam packet floors, and `W027` through `W031` are the active widening line.
+- Current state: active; `W025` and `W026` reached gate for the first TreeCalc structural and consumed-seam packet floors, `W027` now has a first exercised dependency/invalidation substrate floor, and `W028` through `W031` remain the active widening line.
 - Canonical owner: [CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md](C:\Work\DnaCalc\OxCalc\docs\spec\core-engine\CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md), [W025_TREECALC_STRUCTURAL_AND_FORMULA_SUBSTRATE_WIDENING.md](C:\Work\DnaCalc\OxCalc\docs\worksets\W025_TREECALC_STRUCTURAL_AND_FORMULA_SUBSTRATE_WIDENING.md), [W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md](C:\Work\DnaCalc\OxCalc\docs\worksets\W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md), and the active successor worksets in `W027` through `W031`.
 
 ### IP-04 Formalization And Assurance

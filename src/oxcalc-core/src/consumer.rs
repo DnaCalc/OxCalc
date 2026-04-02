@@ -99,6 +99,7 @@ impl OxCalcTreeRuntimeFacade {
             structural_snapshot: document.structural_snapshot,
             formula_catalog: document.formula_catalog,
             seeded_published_values: document.seeded_published_values,
+            invalidation_seeds: Vec::new(),
             candidate_result_id: request.candidate_result_id,
             publication_id: request.publication_id,
             compatibility_basis: request.compatibility_basis,
@@ -140,7 +141,9 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeRecalcResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coordinator::{RejectKind, RuntimeEffectFamily};
     use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaBinding};
+    use crate::recalc::OverlayKind;
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshot,
         StructuralSnapshotId,
@@ -224,5 +227,100 @@ mod tests {
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values[&TreeNodeId(3)], "5");
         assert!(result.publication_bundle.is_some());
+    }
+
+    #[test]
+    fn treecalc_runtime_facade_exposes_execution_restriction_family_directly() {
+        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Reference(
+                            crate::formula::TreeReference::HostSensitive {
+                                carrier_id: "carrier:host".to_string(),
+                                detail: "active_selection".to_string(),
+                            },
+                        ),
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:host".to_string(),
+                    publication_id: "pub:host".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(result.publication_bundle.is_none());
+        assert_eq!(
+            result.reject_detail.map(|detail| detail.kind),
+            Some(RejectKind::HostInjectedFailure)
+        );
+        assert_eq!(result.runtime_effects.len(), 1);
+        assert_eq!(
+            result.runtime_effects[0].family,
+            RuntimeEffectFamily::ExecutionRestriction
+        );
+        assert_eq!(result.runtime_effect_overlays.len(), 1);
+        assert_eq!(
+            result.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::ExecutionRestriction
+        );
+    }
+
+    #[test]
+    fn treecalc_runtime_facade_exposes_dynamic_dependency_family_directly() {
+        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Reference(
+                            crate::formula::TreeReference::DynamicPotential {
+                                carrier_id: "carrier:dynamic".to_string(),
+                                detail: "late_bound_projection".to_string(),
+                            },
+                        ),
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:dynamic".to_string(),
+                    publication_id: "pub:dynamic".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert_eq!(
+            result.reject_detail.map(|detail| detail.kind),
+            Some(RejectKind::DynamicDependencyFailure)
+        );
+        assert_eq!(result.runtime_effects.len(), 1);
+        assert_eq!(
+            result.runtime_effects[0].family,
+            RuntimeEffectFamily::DynamicDependency
+        );
+        assert_eq!(result.runtime_effect_overlays.len(), 1);
+        assert_eq!(
+            result.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::DynamicDependency
+        );
     }
 }

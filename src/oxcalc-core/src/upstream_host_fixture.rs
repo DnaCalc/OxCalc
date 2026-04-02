@@ -10,17 +10,17 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::upstream_host::{
-    MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalLocaleContextKind, MinimalRtdMode,
-    MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
+    MinimalAddressMode, MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalLocaleContextKind,
+    MinimalRtdMode, MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
     UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
+use oxfml_core::EvaluationBackend;
 use oxfml_core::interface::{TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef};
 use oxfml_core::semantics::{
     LibraryAvailabilityState, LibraryContextSnapshot, LibraryContextSnapshotEntry,
     RegistrationSourceKind,
 };
 use oxfml_core::source::FormulaChannelKind;
-use oxfml_core::EvaluationBackend;
 use oxfunc_core::value::{ArrayCellValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode};
 
 const UPSTREAM_HOST_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_manifest.v1";
@@ -64,9 +64,15 @@ pub struct UpstreamHostFixtureFormulaSlot {
     pub fixture_input_id: String,
     pub formula_slot_id: Option<String>,
     pub formula_stable_id: String,
+    #[serde(default)]
+    pub formula_token: Option<String>,
+    #[serde(default)]
+    pub bind_artifact_id: Option<String>,
     pub formula_text: String,
     pub formula_text_version: u64,
     pub formula_channel_kind: String,
+    #[serde(default)]
+    pub address_mode: Option<String>,
     pub caller_anchor: UpstreamHostFixtureAnchor,
     pub active_selection_anchor: Option<UpstreamHostFixtureAnchor>,
     pub structure_context_version: String,
@@ -203,6 +209,8 @@ pub struct UpstreamHostFixtureExpected {
     pub capture_snapshot_ref: Option<UpstreamHostFixtureSnapshotRef>,
     #[serde(default)]
     pub bind_name_kinds: BTreeMap<String, String>,
+    pub formula_token: Option<String>,
+    pub bind_artifact_id: Option<String>,
     pub table_catalog_len: Option<usize>,
     pub enclosing_table_ref: Option<String>,
     pub caller_table_region: Option<UpstreamHostFixtureCallerTableRegion>,
@@ -333,11 +341,19 @@ fn build_packet(
             fixture_input_id: case.formula_slot.fixture_input_id.clone(),
             formula_slot_id: case.formula_slot.formula_slot_id.clone(),
             formula_stable_id: case.formula_slot.formula_stable_id.clone(),
+            formula_token: case.formula_slot.formula_token.clone().unwrap_or_else(|| {
+                format!(
+                    "{}:{}",
+                    case.formula_slot.formula_stable_id, case.formula_slot.formula_text_version
+                )
+            }),
+            bind_artifact_id: case.formula_slot.bind_artifact_id.clone(),
             formula_text: case.formula_slot.formula_text.clone(),
             formula_text_version: case.formula_slot.formula_text_version,
             formula_channel_kind: parse_formula_channel_kind(
                 &case.formula_slot.formula_channel_kind,
             )?,
+            address_mode: parse_address_mode(case.formula_slot.address_mode.as_deref())?,
             caller_anchor: UpstreamHostAnchor {
                 row: case.formula_slot.caller_anchor.row,
                 col: case.formula_slot.caller_anchor.col,
@@ -431,6 +447,15 @@ fn parse_formula_channel_kind(kind: &str) -> Result<FormulaChannelKind, Upstream
         "worksheet_a1" => Ok(FormulaChannelKind::WorksheetA1),
         _ => Err(UpstreamHostFixtureError::UnsupportedFormulaChannelKind {
             kind: kind.to_string(),
+        }),
+    }
+}
+
+fn parse_address_mode(mode: Option<&str>) -> Result<MinimalAddressMode, UpstreamHostFixtureError> {
+    match mode.unwrap_or("a1") {
+        "a1" => Ok(MinimalAddressMode::A1),
+        _ => Err(UpstreamHostFixtureError::UnsupportedFormulaChannelKind {
+            kind: mode.unwrap_or_default().to_string(),
         }),
     }
 }

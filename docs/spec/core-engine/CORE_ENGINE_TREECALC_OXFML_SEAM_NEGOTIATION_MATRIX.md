@@ -304,6 +304,45 @@ Current executed intake on the OxCalc side is:
 3. this does not yet close the narrower TreeCalc bind/reference intake topics that still rely on direct consumed OxFml parse/bind products in the current local TreeCalc dependency-preparation slice,
 4. this therefore narrows the live open lane to TreeCalc-specific bind/reference and transport-breadth questions rather than to the ordinary runtime/replay entry surface.
 
+### 6.3 Current Executed W026 Packet Floor
+W026 is now no longer just a residual topic ledger. The first executed packet floor is:
+1. Sequence 1 caller-context and reference intake:
+   - closed first subset: `DirectNode`, admitted `RelativePath` (`ParentNode` and `Ancestor(n >= 1)` descendant lookup), `SiblingOffset`, `Unresolved`, `HostSensitive`, `DynamicPotential`
+   - explicit per-formula and caller-context packet:
+     - `formula_stable_id`
+     - `formula_token`
+     - optional `bind_artifact_id`
+     - `structure_context_version`
+     - `caller_anchor`
+     - `formula_channel_kind`
+     - `address_mode`
+   - rebind-versus-recalc and dependency-descriptor mapping are now executed for that subset
+2. Sequence 2 execution-restriction and runtime-derived transport:
+   - current explicit correlation floor:
+     - `candidate_result_id`
+     - `publication_id`
+   - explicit current absences:
+     - `commit_attempt_id`
+     - `reject_record_id`
+     - `fence_snapshot_ref`
+   - current emitted runtime-derived families:
+     - `DynamicDependency`
+     - `ExecutionRestriction`
+   - `CapabilitySensitive` remains admitted but unexercised
+   - current family reachability is now explicit on `OxCalcTreeRecalcResult`, `result.json`, and `explain.json`
+3. Sequence 3 publication/topology breadth:
+   - `value_delta` is the only currently published consequence family
+   - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences
+   - current carriage split is explicit:
+     - publish-critical: `value_delta`
+     - replay-visible but not publish-critical: `published_runtime_effects`, `trace_markers`
+     - local-floor-only evidence: `dependency_shape_updates`
+   - current execution-restriction observations are runtime-effect-plus-typed-no-publish context, not publication-sensitive or topology-sensitive consequence families
+
+Current non-overclaim remains:
+1. Sequence 1, Sequence 2, and Sequence 3 all remain `canonical but narrower` beyond this executed first floor,
+2. this planning companion should now treat broader residual breadth as later evidence-driven widening rather than as ambiguity about the current consumed-now packet.
+
 ## 7. Exit Condition For The Planning Phase
 This planning companion has served its purpose when:
 1. W026 has a consumed-now topic ledger for all in-scope TreeCalc seam topics,
@@ -318,8 +357,9 @@ This planning companion has served its purpose when:
 - open_lanes:
   - relative-reference descriptor carriage remains canonical but narrower beyond the first explicitly consumed subset
   - unresolved and host-sensitive reference carriers remain canonical but narrower beyond the first explicitly named families
-  - runtime-derived effect transport and semantic-format-display reading remain canonical but narrower beyond the current semantics-first floor
-  - W026 has now consumed the ordinary runtime/replay entry surface into executed seam intake work, but the current live residual packet still carries the three-sequence caller-context / execution-restriction / publication-topology narrowing lane plus TreeCalc-specific bind/reference intake
+  - runtime-derived effect transport remains canonical but narrower beyond the current `DynamicDependency` / `ExecutionRestriction` emitted floor
+  - publication/topology breadth remains canonical but narrower beyond the current `value_delta`-only published floor and explicit current absences
+  - W026 has now consumed the ordinary runtime/replay entry surface plus the first executed three-sequence residual floor, but broader TreeCalc-specific bind/reference and transport-breadth widening still remains
   - no narrower handoff has been justified yet
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note and returned classifications consumed as the starting baseline

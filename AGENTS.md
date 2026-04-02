@@ -7,13 +7,14 @@ On session start, read in this order:
 1. `README.md`
 2. `CHARTER.md`
 3. `OPERATIONS.md`
-4. `docs/spec/README.md`
-5. `CURRENT_BLOCKERS.md`
-6. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
-7. `docs/worksets/README.md`
-8. Inbound observation ledgers from consumer repos (see OPERATIONS.md Section 12.2):
+4. `docs/WORKSET_REGISTER.md`
+5. `docs/BEADS.md`
+6. `docs/worksets/README.md`
+7. `docs/spec/README.md`
+8. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
+9. Inbound observation ledgers from consumer repos (see OPERATIONS.md Section 12.2):
    - `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
-9. Foundation doctrine docs (`../Foundation/CHARTER.md`, `../Foundation/ARCHITECTURE_AND_REQUIREMENTS.md`, `../Foundation/OPERATIONS.md`)
+10. Foundation doctrine docs (`../Foundation/CHARTER.md`, `../Foundation/ARCHITECTURE_AND_REQUIREMENTS.md`, `../Foundation/OPERATIONS.md`)
 
 ## 2. Source-of-Truth Precedence
 
@@ -27,6 +28,8 @@ When guidance conflicts, precedence is:
 
 For OxCalc-local work, treat `CHARTER.md` in this directory as the working charter.
 For cross-program doctrine and architecture constraints, treat Foundation docs as authoritative.
+Treat `docs/WORKSET_REGISTER.md` as the canonical ordered workset surface.
+Treat `docs/BEADS.md` as the canonical local bead-method surface.
 For mutable core-engine and coordinator spec work, use `docs/spec/*` in this repo.
 FEC/F3E files in this repo are mirrors, not canonical — canonical source is `../OxFml/docs/spec/`.
 
@@ -75,7 +78,7 @@ A coordinator policy or scheduling change is not complete unless a semantic-equi
 
 ## 4. Continuation Behavior
 
-Mode: **checkpoint-at-gates** (conservative).
+Mode: **checkpoint-at-gates** with light bead-doctrine execution.
 
 1. Agent must pause and report status at each workset gate boundary.
 2. AutoRun is disabled by default.
@@ -88,19 +91,25 @@ Mode: **checkpoint-at-gates** (conservative).
 2. The most recent temporary AutoRun scope was `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`.
 3. After that gate was reached, control returned to the default checkpoint-at-gates mode.
 
-Rationale: conservative gate-pausing remains the default unless the user explicitly authorizes continuous execution for a named workset scope.
+Transition note:
+1. OxCalc now uses `docs/WORKSET_REGISTER.md` plus `.beads/` as the ordinary execution-state model.
+2. `.beads/` is now bootstrapped as the ordinary blocker surface.
+3. `CURRENT_BLOCKERS.md` no longer owns live blocker truth.
 
 ## 5. Blocker Handling
 
 When a blocker is encountered:
 
-1. Create or update `CURRENT_BLOCKERS.md` with a structured `BLK-CALC-NNN` entry.
+1. Record the blocker in `.beads/` through the ordinary bead graph.
 2. Continue with other non-blocked work within scope.
 3. If all paths are blocked, emit a structured summary:
    - blocked items with `BLK-*` identifiers,
    - current state of each,
    - exact unblock steps required,
    - recommendation (wait / escalate / workaround).
+
+Post-bootstrap rule:
+1. ordinary blockers belong in the bead graph rather than in new prose blocker notes.
 
 ## 6. Public Attribution Doctrine
 

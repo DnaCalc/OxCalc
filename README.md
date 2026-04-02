@@ -17,9 +17,20 @@ OxCalc is the multi-node core calculation engine lane for DNA Calc.
 ## Startup Docs
 - `CHARTER.md`
 - `OPERATIONS.md`
+- `docs/WORKSET_REGISTER.md`
+- `docs/BEADS.md`
+- `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
 - `docs/spec/README.md`
 - `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` for downstream hosts that use OxCalc as seam-reference material only
 - `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` for hosts that consume the OxCalc tree-first runtime directly
+
+## Execution Surfaces
+1. `docs/WORKSET_REGISTER.md` owns ordered workset truth.
+2. `docs/BEADS.md` owns the local `workset -> epic -> bead` execution method.
+3. `.beads/` owns live execution-state truth.
+4. `docs/IN_PROGRESS_FEATURE_WORKLIST.md` is now a high-level feature map only.
+5. `docs/worksets/README.md` is now a compact workset/provenance index, not a live status tracker.
+6. `docs/HISTORY.md` is the compact pointer for retired execution-surface ownership.
 
 ## Dependency Constitution
 - May depend on: `OxFml`, `OxFunc`.

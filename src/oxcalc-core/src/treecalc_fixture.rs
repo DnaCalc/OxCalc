@@ -16,6 +16,7 @@ use crate::structural::{
 };
 use crate::treecalc::{
     LocalTreeCalcEngine, LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts,
+    derive_structural_invalidation_seeds,
 };
 
 const TREECALC_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.fixture_manifest.v1";
@@ -133,6 +134,7 @@ pub struct TreeCalcFixtureExecution {
 #[derive(Debug, Clone)]
 pub struct TreeCalcFixturePostEditExecution {
     pub edit_outcomes: Vec<StructuralEditOutcome>,
+    pub invalidation_seeds: Vec<crate::dependency::InvalidationSeed>,
     pub rerun_artifacts: LocalTreeCalcRunArtifacts,
 }
 
@@ -230,6 +232,7 @@ pub fn execute_fixture_case(
             structural_snapshot: structural_snapshot.clone(),
             formula_catalog: formula_catalog.clone(),
             seeded_published_values,
+            invalidation_seeds: Vec::new(),
             candidate_result_id: format!("fixture:{}:candidate", case.case_id),
             publication_id: format!("fixture:{}:publication", case.case_id),
             compatibility_basis: format!("snapshot:{}", case.snapshot_id),
@@ -292,11 +295,24 @@ fn execute_post_edit_plan(
         .map(|(node_id, value)| (*node_id, value.clone()))
         .collect::<BTreeMap<_, _>>();
 
+    let rerun_snapshot = edit_outcomes
+        .last()
+        .map(|outcome| outcome.snapshot.clone())
+        .unwrap_or_else(|| structural_snapshot.clone());
+
+    let invalidation_seeds = derive_structural_invalidation_seeds(
+        structural_snapshot,
+        &rerun_snapshot,
+        formula_catalog,
+        &edit_outcomes,
+    );
+
     let rerun_artifacts = engine
         .execute(LocalTreeCalcInput {
-            structural_snapshot: current_snapshot,
+            structural_snapshot: rerun_snapshot.clone(),
             formula_catalog: formula_catalog.clone(),
             seeded_published_values,
+            invalidation_seeds: invalidation_seeds.clone(),
             candidate_result_id: format!("fixture:{}:candidate:post_edit", case.case_id),
             publication_id: format!("fixture:{}:publication:post_edit", case.case_id),
             compatibility_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),
@@ -309,6 +325,7 @@ fn execute_post_edit_plan(
 
     Ok(TreeCalcFixturePostEditExecution {
         edit_outcomes,
+        invalidation_seeds,
         rerun_artifacts,
     })
 }

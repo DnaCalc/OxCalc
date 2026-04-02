@@ -374,6 +374,34 @@ mod tests {
     }
 
     #[test]
+    fn formula_catalog_lowers_parent_and_ancestor_relative_references() {
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:leaf".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:leaf".to_string())),
+            expression: TreeFormula::Binary {
+                op: FormulaBinaryOp::Add,
+                left: Box::new(TreeFormula::Reference(TreeReference::RelativePath {
+                    base: RelativeReferenceBase::ParentNode,
+                    path_segments: vec!["Neighbor".to_string()],
+                })),
+                right: Box::new(TreeFormula::Reference(TreeReference::RelativePath {
+                    base: RelativeReferenceBase::Ancestor(2),
+                    path_segments: vec!["Sibling".to_string()],
+                })),
+            },
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot());
+
+        assert_eq!(descriptors.len(), 2);
+        assert_eq!(descriptors[0].kind, DependencyDescriptorKind::RelativeBound);
+        assert_eq!(descriptors[0].target_node_id, Some(TreeNodeId(5)));
+        assert_eq!(descriptors[1].kind, DependencyDescriptorKind::RelativeBound);
+        assert_eq!(descriptors[1].target_node_id, Some(TreeNodeId(3)));
+    }
+
+    #[test]
     fn formula_catalog_surfaces_host_sensitive_and_unresolved_references() {
         let snapshot = snapshot();
         let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
@@ -406,6 +434,57 @@ mod tests {
         assert_eq!(
             graph.diagnostics[1].kind,
             DependencyDiagnosticKind::UnresolvedReference
+        );
+    }
+
+    #[test]
+    fn first_closed_subset_rebind_flags_match_w026_floor() {
+        assert!(
+            !TreeReference::DirectNode {
+                target_node_id: TreeNodeId(2)
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::RelativePath {
+                base: RelativeReferenceBase::ParentNode,
+                path_segments: vec!["A".to_string()],
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::RelativePath {
+                base: RelativeReferenceBase::Ancestor(2),
+                path_segments: vec!["A".to_string(), "Leaf".to_string()],
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::SiblingOffset {
+                offset: 1,
+                tail_segments: vec![],
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::HostSensitive {
+                carrier_id: "host.selection".to_string(),
+                detail: "active branch".to_string(),
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            !TreeReference::DynamicPotential {
+                carrier_id: "runtime.topic".to_string(),
+                detail: "late bound".to_string(),
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::Unresolved {
+                token: "../Missing".to_string(),
+            }
+            .requires_rebind_on_structural_change()
         );
     }
 }

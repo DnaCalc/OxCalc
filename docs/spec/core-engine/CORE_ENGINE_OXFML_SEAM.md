@@ -536,6 +536,44 @@ Current local read:
    - `RegisteredExternalCatalogMutation*` and `RegisteredExternalCatalogController` remain OxFml-owned host/coordinator funnel packets for the current phase,
    - bind-visible register or unregister implies new `LibraryContextSnapshot` generation plus bind invalidation where the visible function or name world changes, while `CALL` / `REGISTER.ID`-only descriptor mutation may remain targeted reevaluation by default.
 
+### 21.2C Current Executed W026 Residual Floor
+The W026 residual lane is no longer only a note-level planning split.
+The current executed OxCalc floor is now:
+1. Sequence 1 caller-context and reference intake:
+   - first closed subset is `DirectNode`, admitted `RelativePath` (`ParentNode` and `Ancestor(n >= 1)` descendant lookup), `SiblingOffset`, `Unresolved`, `HostSensitive`, and `DynamicPotential`
+   - explicit carried identity and caller-context floor is now recorded and exercised:
+     - `formula_stable_id`
+     - `formula_token`
+     - optional `bind_artifact_id`
+     - `structure_context_version`
+     - `caller_anchor`
+     - `formula_channel_kind`
+     - `address_mode`
+   - rebind-versus-recalc and dependency-descriptor mapping are now explicit for that subset
+2. Sequence 2 candidate/reject/runtime-derived transport:
+   - current correlation floor is explicit:
+     - `candidate_result_id`
+     - `publication_id`
+   - `commit_attempt_id`, `reject_record_id`, and `fence_snapshot_ref` remain explicit current absences in the first TreeCalc lane
+   - current emitted runtime-derived families are only:
+     - `DynamicDependency`
+     - `ExecutionRestriction`
+   - `CapabilitySensitive` remains admitted but currently unexercised
+   - those emitted families are now directly reachable on `OxCalcTreeRecalcResult` and in emitted `result.json` / `explain.json`
+3. Sequence 3 publication/topology breadth:
+   - `value_delta` is the only currently published consequence family on the first local TreeCalc floor
+   - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences rather than silent members of `value_delta`
+   - current publication sidecars are classified explicitly:
+     - publish-critical now: `value_delta`
+     - replay-visible but not publish-critical yet: `published_runtime_effects`, `trace_markers`
+     - local-floor-only evidence: `dependency_shape_updates`
+   - current execution-restriction observations remain runtime-effect-plus-typed-no-publish context rather than publication-sensitive or topology-sensitive consequences
+
+Current non-overclaim remains:
+1. all three residual lanes remain `canonical but narrower` beyond the executed first floor above,
+2. the executed first floor is sufficient for continued TreeCalc seam intake and host-contract sync,
+3. broader relative-reference closure, broader runtime-derived family realization, and broader publication/topology consequence breadth still require later evidence rather than inference.
+
 ### 21.2A Current V1 Public-Entry Read
 After the landed OxFml consumer-interface refactor, the current local runtime-facing read is:
 1. ordinary OxCalc runtime consumption should target `oxfml_core::consumer::runtime`,

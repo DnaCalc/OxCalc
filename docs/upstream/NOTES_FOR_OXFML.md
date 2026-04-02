@@ -1033,3 +1033,63 @@ Current non-claim remains:
 1. this does not claim the broader TreeCalc bind/reference seam is now closed,
 2. this does not claim OxCalc has migrated every OxFml-facing callsite to facade-only surfaces,
 3. this does not collapse note-level W026 residuals into broader shared seam closure.
+
+## 67. Current OxCalc Sync After The Executed W026 First Floor
+OxCalc has now carried the first W026 Sequence 1 / Sequence 2 / Sequence 3 floor into executed local packet truth.
+
+Current executed OxCalc read is:
+1. Sequence 1 caller-context and reference intake is now explicit for the first closed subset:
+   - `DirectNode`
+   - admitted `RelativePath` (`ParentNode` and `Ancestor(n >= 1)` descendant lookup)
+   - `SiblingOffset`
+   - `Unresolved`
+   - `HostSensitive`
+   - `DynamicPotential`
+2. the explicit carried identity and caller-context floor for that subset is now exercised locally:
+   - `formula_stable_id`
+   - `formula_token`
+   - optional `bind_artifact_id`
+   - `structure_context_version`
+   - `caller_anchor`
+   - `formula_channel_kind`
+   - `address_mode`
+3. Sequence 2 runtime-derived transport is now explicit on the current emitted floor:
+   - correlation floor:
+     - `candidate_result_id`
+     - `publication_id`
+   - explicit current absences:
+     - `commit_attempt_id`
+     - `reject_record_id`
+     - `fence_snapshot_ref`
+   - emitted runtime-derived families:
+     - `DynamicDependency`
+     - `ExecutionRestriction`
+   - `CapabilitySensitive` remains admitted but unexercised
+4. those emitted runtime-derived families are now directly reachable in OxCalc on:
+   - `OxCalcTreeRecalcResult`
+   - emitted `result.json`
+   - emitted `explain.json`
+5. Sequence 3 publication/topology breadth is now explicit on the current first floor:
+   - `value_delta` is the only currently published consequence family
+   - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences
+   - current carriage split is explicit:
+     - publish-critical now: `value_delta`
+     - replay-visible but not publish-critical yet: `published_runtime_effects`, `trace_markers`
+     - local-floor-only evidence: `dependency_shape_updates`
+   - current execution-restriction observations remain runtime-effect-plus-typed-no-publish context rather than publication-sensitive or topology-sensitive consequence families
+
+Current OxCalc non-assumption remains:
+1. this does not treat broader relative-reference closure as executed,
+2. this does not treat broader runtime-derived family realization as executed,
+3. this does not treat broader publication/topology breadth as executed,
+4. all three W026 residual lanes remain `canonical but narrower` beyond the first executed floor above.
+
+Current OxCalc consequence for note sync is:
+1. the local W026 authority set now uses the same Sequence 1 / Sequence 2 / Sequence 3 packet truth,
+2. no narrower `HANDOFF-CALC-002` is implied by this sync alone,
+3. any future handoff trigger should now be driven by live insufficiency beyond the executed first floor rather than by ambiguity about what OxCalc currently consumes.
+
+Current OxCalc consequence after the W026 handoff-decision pass is:
+1. OxCalc now treats the exercised W026 first packet as sufficient without filing `HANDOFF-CALC-002`,
+2. the remaining `canonical but narrower` topics are broader-breadth residuals beyond that exercised first packet rather than missing first-packet seam clauses,
+3. any future narrower handoff trigger must name the exact missing family or carried fact exposed by later live TreeCalc or coordinator-facing work.

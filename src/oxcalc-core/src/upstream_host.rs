@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::{BindContext, NameKind};
 use oxfml_core::consumer::replay::{
     ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService,
@@ -19,16 +20,20 @@ use oxfml_core::semantics::LibraryContextSnapshot;
 use oxfml_core::source::{
     FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
 };
-use oxfml_core::EvaluationBackend;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
-use oxfunc_core::locale_format::{current_excel_host_context, en_us_context, LocaleFormatContext};
+use oxfunc_core::locale_format::{LocaleFormatContext, current_excel_host_context, en_us_context};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UpstreamHostAnchor {
     pub row: u32,
     pub col: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MinimalAddressMode {
+    A1,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,9 +47,12 @@ pub struct MinimalFormulaSlotFacts {
     pub fixture_input_id: String,
     pub formula_slot_id: Option<String>,
     pub formula_stable_id: String,
+    pub formula_token: String,
+    pub bind_artifact_id: Option<String>,
     pub formula_text: String,
     pub formula_text_version: u64,
     pub formula_channel_kind: FormulaChannelKind,
+    pub address_mode: MinimalAddressMode,
     pub caller_anchor: UpstreamHostAnchor,
     pub active_selection_anchor: Option<UpstreamHostAnchor>,
     pub structure_context_version: String,
@@ -129,10 +137,7 @@ impl MinimalUpstreamHostPacket {
         BindContext {
             caller_row: self.formula_slot.caller_anchor.row,
             caller_col: self.formula_slot.caller_anchor.col,
-            formula_token: FormulaToken(format!(
-                "{}:{}",
-                self.formula_slot.formula_stable_id, self.formula_slot.formula_text_version
-            )),
+            formula_token: FormulaToken(self.formula_slot.formula_token.clone()),
             structure_context_version: StructureContextVersion(
                 self.formula_slot.structure_context_version.clone(),
             ),
@@ -239,9 +244,8 @@ impl MinimalUpstreamHostPacket {
         backend: EvaluationBackend,
     ) -> Result<(RuntimeFormulaResult, ReplayProjectionResult), String> {
         let output = self.recalc(backend)?;
-        let projection = ReplayProjectionService::project(ReplayProjectionRequest::runtime_result(
-            &output,
-        ));
+        let projection =
+            ReplayProjectionService::project(ReplayProjectionRequest::runtime_result(&output));
         Ok((output, projection))
     }
 }
@@ -341,9 +345,12 @@ mod tests {
                 fixture_input_id: "fixture:host:001".to_string(),
                 formula_slot_id: Some("node:slot:1".to_string()),
                 formula_stable_id: "formula:host:001".to_string(),
+                formula_token: "formula:host:001:1".to_string(),
+                bind_artifact_id: Some("bind:host:001".to_string()),
                 formula_text: formula_text.to_string(),
                 formula_text_version: 1,
                 formula_channel_kind: FormulaChannelKind::WorksheetA1,
+                address_mode: MinimalAddressMode::A1,
                 caller_anchor: UpstreamHostAnchor { row: 1, col: 1 },
                 active_selection_anchor: Some(UpstreamHostAnchor { row: 1, col: 1 }),
                 structure_context_version: "treecalc.struct:v1".to_string(),
@@ -419,8 +426,27 @@ mod tests {
         let bind_context = packet.build_bind_context();
 
         assert_eq!(bind_context.caller_row, 1);
+        assert_eq!(bind_context.caller_col, 1);
+        assert_eq!(bind_context.formula_token.0, "formula:host:001:1");
+        assert_eq!(
+            bind_context.structure_context_version.0,
+            "treecalc.struct:v1"
+        );
+        assert_eq!(
+            packet.formula_slot.formula_stable_id,
+            "formula:host:001".to_string()
+        );
+        assert_eq!(
+            packet.formula_slot.formula_channel_kind,
+            FormulaChannelKind::WorksheetA1
+        );
+        assert_eq!(packet.formula_slot.address_mode, MinimalAddressMode::A1);
         assert_eq!(bind_context.names["InputValue"], NameKind::ValueLike);
         assert_eq!(bind_context.table_catalog.len(), 1);
+        assert_eq!(
+            packet.formula_slot.bind_artifact_id.as_deref(),
+            Some("bind:host:001")
+        );
         assert_eq!(
             bind_context.enclosing_table_ref,
             Some(TableRef {
@@ -483,22 +509,30 @@ mod tests {
             output.returned_value_surface.kind,
             ReturnedValueSurfaceKind::TypedHostProviderOutcome
         );
-        assert!(output
-            .typed_query_bundle_spec
-            .families
-            .contains(&TypedContextQueryFamily::Info));
-        assert!(output
-            .typed_query_bundle_spec
-            .families
-            .contains(&TypedContextQueryFamily::LocaleFormatContext));
-        assert!(output
-            .typed_query_bundle_spec
-            .families
-            .contains(&TypedContextQueryFamily::NowSerial));
-        assert!(output
-            .typed_query_bundle_spec
-            .families
-            .contains(&TypedContextQueryFamily::RandomValue));
+        assert!(
+            output
+                .typed_query_bundle_spec
+                .families
+                .contains(&TypedContextQueryFamily::Info)
+        );
+        assert!(
+            output
+                .typed_query_bundle_spec
+                .families
+                .contains(&TypedContextQueryFamily::LocaleFormatContext)
+        );
+        assert!(
+            output
+                .typed_query_bundle_spec
+                .families
+                .contains(&TypedContextQueryFamily::NowSerial)
+        );
+        assert!(
+            output
+                .typed_query_bundle_spec
+                .families
+                .contains(&TypedContextQueryFamily::RandomValue)
+        );
         assert!(packet.typed_query_facts.registered_external_present);
     }
 

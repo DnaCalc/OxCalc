@@ -2,12 +2,34 @@
 
 ## 1. Purpose
 Define day-to-day execution rules for core multi-node recalc and coordinator policy.
+This now includes the lighter OxCalc execution split:
+1. `docs/WORKSET_REGISTER.md` for ordered workset truth,
+2. `docs/BEADS.md` for the local bead method,
+3. `.beads/` for live execution-state truth.
 
 ## 2. Operating Principles
 1. Semantic stability is invariant under strategy changes.
 2. Coordinator is single publisher at baseline.
 3. Overlay lifecycle must be deterministic and epoch-safe.
 4. Visibility-priority optimization must preserve stabilized semantic equivalence.
+
+## 2A. Execution Model
+OxCalc now executes through:
+1. `docs/WORKSET_REGISTER.md`
+2. `workset -> epic -> bead`
+3. the coupled evidence lanes required by each active workset
+
+Execution-state rule:
+1. worksets are planning units, not execution-state objects,
+2. epics are the main execution lanes under a workset,
+3. beads are the unit of executable progress,
+4. `.beads/` owns readiness, blockers, in-progress state, and closure.
+
+Transition rule:
+1. `W032` established the bead-model doctrine shift in OxCalc,
+2. `.beads/` is now bootstrapped as the live execution-state surface,
+3. `CURRENT_BLOCKERS.md` no longer owns ordinary blocker truth,
+4. `docs/worksets/README.md` and `docs/IN_PROGRESS_FEATURE_WORKLIST.md` are no longer live execution-status surfaces.
 
 ## 3. Staged Realization
 1. Stage 1:
@@ -60,8 +82,9 @@ All items must be "yes" for a completion claim. Any "no" means the item is `in_p
 | 6 | All required tests pass? | |
 | 7 | No known semantic gaps remain in declared scope? | |
 | 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | |
-| 9 | IN_PROGRESS_FEATURE_WORKLIST.md updated? | |
-| 10 | CURRENT_BLOCKERS.md updated (new/resolved)? | |
+| 9 | `WORKSET_REGISTER.md` updated when ordered workset truth changed? | |
+| 10 | `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed? | |
+| 11 | execution-state blocker surface updated (`.beads/` for ordinary blockers; prose blocker surface only for exceptional narrative blockers)? | |
 
 ## 8. Expanded Definition of Done
 
@@ -285,7 +308,8 @@ Execution packets and feature-register items have different closure semantics.
 Rule:
 1. a workset may reach `complete` for its declared scope while the broader feature area remains `in-progress`,
 2. later widening must use a successor workset or explicit extension lane rather than silently reopening a completed workset,
-3. completion reports should state this distinction whenever a broader feature area remains active.
+3. completion reports should state this distinction whenever a broader feature area remains active,
+4. ordered workset truth belongs in `docs/WORKSET_REGISTER.md` while live execution state belongs in `.beads/`.
 
 ## 15. Local Doctrine Reference
 OxCalc-local execution lessons now live at `docs/LOCAL_EXECUTION_DOCTRINE.md`.

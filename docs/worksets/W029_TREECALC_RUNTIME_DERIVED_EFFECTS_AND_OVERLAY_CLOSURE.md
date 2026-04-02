@@ -9,6 +9,21 @@ This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-
 - **Blocks**: W030, W031
 - **Cross-repo**: may justify a narrower handoff only if execution-restriction or runtime-derived effect transport is still too narrow for the live TreeCalc path
 
+## Boundary With W026
+W026 is the consumed-seam intake packet for the current TreeCalc-first runtime-derived floor.
+It owns:
+1. the current emitted family subset consumed now,
+2. the ownership split between canonical OxFml families and OxCalc-local projection labels for that subset,
+3. the direct host-facing and replay-facing reachability rule for that subset.
+
+W029 begins after that floor.
+It owns:
+1. realizing additional emitted runtime-derived families,
+2. widening overlay closure beneath the existing `OxCalcTree` contract,
+3. hardening runtime-derived behavior across more live runtime states than the current W026 minimum.
+
+This means W029 does not renegotiate the current W026 transport truth unless live implementation evidence proves the W026 floor insufficient or false.
+
 ## Scope
 ### In scope
 1. dynamic dependency activation and release over the live TreeCalc path
@@ -21,6 +36,7 @@ This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-
 1. broader display semantics
 2. async or concurrent overlay strategy
 3. broader grid or host program semantics outside first-phase TreeCalc scope
+4. reopening the current W026 semantic minimum family split or direct reachability rule unless live evidence proves them insufficient
 
 ## Deliverables
 1. runtime-derived effect handling in the Rust TreeCalc path with replay-visible state
@@ -32,6 +48,7 @@ This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-
 ### Entry gate
 - W028 has established real evaluator-backed candidate intake
 - W027 has established the structural dependency and invalidation substrate
+- W026 has locked the current consumed-now transport and reachability floor for the emitted TreeCalc-first runtime-derived subset
 - the `OxCalcTree` consumer contract remains the host-facing contract, with runtime-derived effect closure still below that surface
 
 ### Exit gate
@@ -58,6 +75,7 @@ This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-
 - integration_completeness: partial
 - open_lanes:
   - the first live implementation slice now exists beneath the landed `OxCalcTree` host-facing contract: runtime effects carry an explicit family classification and the runtime-effect overlay projection now preserves dynamic-dependency versus execution-restriction distinction
+  - W026 now owns the consumed-now transport and reachability floor for that subset; W029 still owns any wider family realization or broader overlay closure beneath it
   - host-facing replay or session widening has not been executed here yet
   - runtime-derived effect closure over the live TreeCalc path remains partial beyond the current dynamic-dependency versus execution-restriction subset
   - capability-sensitive and shape/topology-sensitive runtime handling are not realized yet

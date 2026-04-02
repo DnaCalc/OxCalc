@@ -18,7 +18,7 @@ The rewritten canonical core-engine set is:
 
 ## Actual Runtime Consumer Rule
 If a host such as `DNA TreeCalc` intends to consume the OxCalc runtime directly:
-1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `CURRENT_BLOCKERS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
+1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `docs/WORKSET_REGISTER.md`, `docs/BEADS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
 2. then read `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md` as the host-facing OxCalc tree-runtime contract,
 3. then read `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` as the canonical OxCalc-local seam companion,
 4. then read `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md` as the TreeCalc-first execution and widening plan,
@@ -26,7 +26,7 @@ If a host such as `DNA TreeCalc` intends to consume the OxCalc runtime directly:
 
 ## Downstream Host Seam-Reference Rule
 If a downstream host such as `DNA OneCalc` needs OxCalc as seam-reference material only:
-1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `CURRENT_BLOCKERS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
+1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `docs/WORKSET_REGISTER.md`, `docs/BEADS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,
 2. then use `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` as the local authority filter — this is the single entry point for downstream hosts,
 3. read `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` as the canonical OxCalc-local seam companion,
 4. read `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as the first deterministic upstream-host packet companion — reference material for understanding the exercised packet shape, not a host API to adopt verbatim,

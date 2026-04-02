@@ -37,20 +37,21 @@ The authoritative local seam-reference set for downstream hosts is:
 1. `README.md`
 2. `CHARTER.md`
 3. `OPERATIONS.md`
-4. `CURRENT_BLOCKERS.md`
-5. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
-6. `docs/spec/README.md`
-7. `docs/spec/core-engine/CORE_ENGINE_ARCHITECTURE.md`
-8. `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
-9. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-10. this document
+4. `docs/WORKSET_REGISTER.md`
+5. `docs/BEADS.md`
+6. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
+7. `docs/spec/README.md`
+8. `docs/spec/core-engine/CORE_ENGINE_ARCHITECTURE.md`
+9. `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+10. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+11. this document
 
 Classification: **canonical-local-reference**.
 
 These files are the local authority set because they define:
 1. repo scope and ownership,
 2. handoff and completion discipline,
-3. current blocker and active-work status,
+3. current workset order and execution-method ownership,
 4. canonical spec filtering,
 5. the coordinator-facing seam requirements that OxCalc expects to consume.
 
@@ -63,8 +64,9 @@ See `docs/spec/README.md` for the classification vocabulary.
 | `README.md` | canonical-local-reference | Repo scope, dependency constitution, entry point. |
 | `CHARTER.md` | canonical-local-reference | Scope, ownership split, co-definition rule. |
 | `OPERATIONS.md` | canonical-local-reference | Handoff and completion discipline. |
-| `CURRENT_BLOCKERS.md` | canonical-local-reference | Current blocker truth. |
-| `docs/IN_PROGRESS_FEATURE_WORKLIST.md` | canonical-local-reference | Current seam, TreeCalc, and replay status. |
+| `docs/WORKSET_REGISTER.md` | canonical-local-reference | Ordered workset truth and rollout shape. |
+| `docs/BEADS.md` | canonical-local-reference | Local bead-method and execution-state ownership. |
+| `docs/IN_PROGRESS_FEATURE_WORKLIST.md` | canonical-local-reference | High-level seam, TreeCalc, and replay feature map. |
 | `docs/spec/README.md` | canonical-local-reference | Spec filter and reading order. |
 | `docs/spec/core-engine/CORE_ENGINE_ARCHITECTURE.md` | canonical-local-reference | Core-engine architecture and evaluator boundary. |
 | `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md` | canonical-local-reference | Candidate-versus-publication and coordinator rules. |
@@ -77,6 +79,7 @@ See `docs/spec/README.md` for the classification vocabulary.
 | `docs/spec/fec-f3e/*` | historical/non-authority | OxFml-owned mirror set; not OxCalc authority. |
 | `docs/upstream/*` | historical/non-authority | Note-exchange and observation docs; not canonical seam text. |
 | `docs/handoffs/*` | historical/non-authority | State records; not stable seam-reference docs. |
+| `CURRENT_BLOCKERS.md` | historical/non-authority | Retired active blocker surface; kept only as a historical pointer. |
 | `docs/spec/core-engine/archive/*` | historical/non-authority | Historical by design. |
 | `docs/spec/core-engine/FOUNDATION_*_SNAPSHOT.md` | historical/non-authority | Local Foundation snapshots; not OxCalc-owned. |
 

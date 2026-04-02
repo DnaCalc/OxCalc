@@ -52,12 +52,15 @@ The first minimal upstream host interface package is:
 1. `fixture_input_id`
 2. optional `formula_slot_id`
 3. `formula_stable_id`
-4. `formula_text`
-5. `formula_text_version`
-6. `formula_channel_kind`
-7. `caller_anchor`
-8. optional `active_selection_anchor`
-9. `structure_context_version`
+4. `formula_token`
+5. optional `bind_artifact_id`
+6. `formula_text`
+7. `formula_text_version`
+8. `formula_channel_kind`
+9. `address_mode`
+10. `caller_anchor`
+11. optional `active_selection_anchor`
+12. `structure_context_version`
 
 ### 4.2 Binding-world facts
 1. `cell_fixture`
@@ -88,19 +91,20 @@ Its current ordinary execution path uses the landed `OxFml_V1` consumer facade r
 It supports:
 1. direct OxFml recalculation through `consumer::runtime::{ RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult }`,
 2. deterministic bind-context projection for test scaffolding,
-3. defined-name value and reference bindings,
-4. cell fixtures,
-5. first table-context carriage through `table_catalog`, `enclosing_table_ref`, and `caller_table_region`,
-6. multiple bounded evaluator-facing structured-reference families on top of that same table-context packet, currently:
+3. explicit carriage of `formula_stable_id`, `formula_token`, optional `bind_artifact_id`, `formula_channel_kind`, `address_mode`, and `structure_context_version` in the formula-slot packet,
+4. defined-name value and reference bindings,
+5. cell fixtures,
+6. first table-context carriage through `table_catalog`, `enclosing_table_ref`, and `caller_table_region`,
+7. multiple bounded evaluator-facing structured-reference families on top of that same table-context packet, currently:
    - current-row structured reference
    - explicit-column aggregate
    - headers-section return
    - data-qualified multi-column aggregate
-7. typed host-info stand-ins, including unsupported-query, provider-failure, directory-value, and mixed directory-value-plus-filename-provider-failure outcomes,
-8. typed RTD stand-ins,
-9. locale-context selection,
-10. in-memory library-context snapshot carriage,
-11. first replay projection through `consumer::replay::{ ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService }` from the same deterministic host packet.
+8. typed host-info stand-ins, including unsupported-query, provider-failure, directory-value, and mixed directory-value-plus-filename-provider-failure outcomes,
+9. typed RTD stand-ins,
+10. locale-context selection,
+11. in-memory library-context snapshot carriage,
+12. first replay projection through `consumer::replay::{ ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService }` from the same deterministic host packet.
 
 It does not yet widen to:
 1. production coordinator API freeze,

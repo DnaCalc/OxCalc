@@ -4,12 +4,12 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use oxfml_core::binding::{bind_formula, BindContext, BindRequest, NameKind};
+use oxfml_core::EvaluationBackend;
+use oxfml_core::binding::{BindContext, BindRequest, NameKind, bind_formula};
 use oxfml_core::interface::ReturnedValueSurfaceKind;
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
-use oxfml_core::syntax::parser::{parse_formula, ParseRequest};
-use oxfml_core::EvaluationBackend;
+use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use thiserror::Error;
 
@@ -25,11 +25,13 @@ use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaCatalog, TreeRefer
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
 };
-use crate::structural::{StructuralSnapshot, TreeNodeId};
+use crate::structural::{
+    StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
+};
 use crate::upstream_host::{
-    MinimalBindingWorld, MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalRuntimeCatalogFacts,
-    MinimalTypedQueryFacts, MinimalUpstreamHostPacket, UpstreamDefinedNameBinding,
-    UpstreamHostAnchor,
+    MinimalAddressMode, MinimalBindingWorld, MinimalFormulaSlotFacts, MinimalHostInfoMode,
+    MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
+    UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +46,7 @@ pub struct LocalTreeCalcInput {
     pub structural_snapshot: StructuralSnapshot,
     pub formula_catalog: TreeFormulaCatalog,
     pub seeded_published_values: BTreeMap<TreeNodeId, String>,
+    pub invalidation_seeds: Vec<InvalidationSeed>,
     pub candidate_result_id: String,
     pub publication_id: String,
     pub compatibility_basis: String,
@@ -172,16 +175,13 @@ impl LocalTreeCalcEngine {
                 .collect::<Vec<_>>(),
         );
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
-        let invalidation_closure = dependency_graph.derive_invalidation_closure(
-            &formula_owner_ids
-                .iter()
-                .copied()
-                .map(|node_id| InvalidationSeed {
-                    node_id,
-                    reason: InvalidationReasonKind::StructuralRecalcOnly,
-                })
-                .collect::<Vec<_>>(),
-        );
+        let invalidation_seeds = if input.invalidation_seeds.is_empty() {
+            default_invalidation_seeds(&formula_owner_ids)
+        } else {
+            input.invalidation_seeds.clone()
+        };
+        let invalidation_closure =
+            dependency_graph.derive_invalidation_closure(&invalidation_seeds);
 
         let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot.clone());
         coordinator.seed_published_view(&input.seeded_published_values, None, &[]);
@@ -330,6 +330,99 @@ impl LocalTreeCalcEngine {
     }
 }
 
+fn default_invalidation_seeds(formula_owner_ids: &[TreeNodeId]) -> Vec<InvalidationSeed> {
+    formula_owner_ids
+        .iter()
+        .copied()
+        .map(|node_id| InvalidationSeed {
+            node_id,
+            reason: InvalidationReasonKind::StructuralRecalcOnly,
+        })
+        .collect()
+}
+
+pub(crate) fn derive_structural_invalidation_seeds(
+    predecessor_snapshot: &StructuralSnapshot,
+    structural_snapshot: &StructuralSnapshot,
+    formula_catalog: &TreeFormulaCatalog,
+    edit_outcomes: &[StructuralEditOutcome],
+) -> Vec<InvalidationSeed> {
+    let formula_owner_ids = formula_catalog.owner_node_ids();
+    if edit_outcomes.is_empty() {
+        return default_invalidation_seeds(&formula_owner_ids);
+    }
+
+    let rebind_pressure_present = edit_outcomes.iter().any(|outcome| {
+        matches!(
+            outcome.impact,
+            StructuralEditImpact::RebindRequired | StructuralEditImpact::Removal
+        )
+    });
+    if !rebind_pressure_present {
+        return default_invalidation_seeds(&formula_owner_ids);
+    }
+
+    let affected_node_ids = edit_outcomes
+        .iter()
+        .flat_map(|outcome| outcome.affected_node_ids.iter().copied())
+        .collect::<BTreeSet<_>>();
+    let predecessor_descriptors = formula_catalog.to_dependency_descriptors(predecessor_snapshot);
+    let successor_descriptors = formula_catalog.to_dependency_descriptors(structural_snapshot);
+    let descriptors_by_owner = predecessor_descriptors
+        .into_iter()
+        .chain(successor_descriptors)
+        .fold(
+            BTreeMap::<TreeNodeId, Vec<DependencyDescriptor>>::new(),
+            |mut grouped, descriptor| {
+                grouped
+                    .entry(descriptor.owner_node_id)
+                    .or_default()
+                    .push(descriptor);
+                grouped
+            },
+        );
+
+    formula_owner_ids
+        .into_iter()
+        .map(|owner_node_id| {
+            let owner_context = structural_snapshot
+                .describe_relative_context(owner_node_id)
+                .ok();
+            let caller_context_affected = owner_context.as_ref().is_some_and(|context| {
+                context
+                    .parent_id
+                    .is_some_and(|node_id| affected_node_ids.contains(&node_id))
+                    || context
+                        .ancestor_ids
+                        .iter()
+                        .any(|node_id| affected_node_ids.contains(node_id))
+            });
+            let owner_directly_affected = affected_node_ids.contains(&owner_node_id);
+            let requires_rebind = owner_directly_affected
+                || descriptors_by_owner
+                    .get(&owner_node_id)
+                    .into_iter()
+                    .flatten()
+                    .any(|descriptor| {
+                        descriptor.requires_rebind_on_structural_change
+                            && (descriptor
+                                .target_node_id
+                                .is_some_and(|node_id| affected_node_ids.contains(&node_id))
+                                || caller_context_affected)
+                    });
+
+            InvalidationSeed {
+                node_id: owner_node_id,
+                reason: if requires_rebind {
+                    InvalidationReasonKind::StructuralRebindRequired
+                } else {
+                    InvalidationReasonKind::StructuralRecalcOnly
+                },
+            }
+        })
+        .collect()
+}
+
 fn adapt_local_candidate(
     input: &LocalTreeCalcInput,
     local_candidate: &LocalEvaluatorCandidate,
@@ -456,8 +549,9 @@ fn build_runtime_effect_overlays(
 fn runtime_effect_overlay_kind(runtime_effect: &RuntimeEffect) -> OverlayKind {
     match runtime_effect.family {
         RuntimeEffectFamily::DynamicDependency => OverlayKind::DynamicDependency,
-        RuntimeEffectFamily::ExecutionRestriction
-        | RuntimeEffectFamily::CapabilitySensitive => OverlayKind::ExecutionRestriction,
+        RuntimeEffectFamily::ExecutionRestriction | RuntimeEffectFamily::CapabilitySensitive => {
+            OverlayKind::ExecutionRestriction
+        }
         RuntimeEffectFamily::ShapeTopology => OverlayKind::ShapeTopology,
     }
 }
@@ -532,10 +626,23 @@ fn topological_formula_order(
     Ok(order)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResidualCarrierKind {
     HostSensitive,
     DynamicPotential,
+}
+
+impl ResidualCarrierKind {
+    fn dependency_descriptor_kind(self) -> DependencyDescriptorKind {
+        match self {
+            Self::HostSensitive => DependencyDescriptorKind::HostSensitive,
+            Self::DynamicPotential => DependencyDescriptorKind::DynamicPotential,
+        }
+    }
+
+    fn requires_rebind_on_structural_change(self) -> bool {
+        matches!(self, Self::HostSensitive)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -627,22 +734,11 @@ fn prepare_oxfml_formula(
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
-    let bound_name_tokens = prepared
-        .bound_formula
-        .normalized_references
-        .iter()
-        .filter_map(|reference| match reference {
-            oxfml_core::binding::NormalizedReference::Name(name) => Some(name.name.as_str()),
-            _ => None,
-        })
-        .collect::<BTreeSet<_>>();
-
     let mut descriptors = prepared
         .translated
         .reference_bindings
         .iter()
         .enumerate()
-        .filter(|(_, reference)| bound_name_tokens.contains(reference.token.as_str()))
         .map(|(index, reference)| DependencyDescriptor {
             descriptor_id: format!(
                 "bind:{}:oxfml_ref:{index}",
@@ -684,15 +780,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             ),
             owner_node_id: prepared.binding.owner_node_id,
             target_node_id: None,
-            kind: match residual.kind {
-                ResidualCarrierKind::HostSensitive => DependencyDescriptorKind::HostSensitive,
-                ResidualCarrierKind::DynamicPotential => DependencyDescriptorKind::DynamicPotential,
-            },
+            kind: residual.kind.dependency_descriptor_kind(),
             carrier_detail: format!("residual:{}:{}", residual.carrier_id, residual.detail),
-            requires_rebind_on_structural_change: matches!(
-                residual.kind,
-                ResidualCarrierKind::HostSensitive
-            ),
+            requires_rebind_on_structural_change:
+                residual.kind.requires_rebind_on_structural_change(),
         },
     ));
 
@@ -843,9 +934,16 @@ fn build_upstream_host_packet(
             fixture_input_id: format!("fixture:{}", prepared.source.formula_stable_id.0),
             formula_slot_id: Some(prepared.binding.owner_node_id.0.to_string()),
             formula_stable_id: prepared.source.formula_stable_id.0.clone(),
+            formula_token: prepared.source.formula_token().0,
+            bind_artifact_id: prepared
+                .binding
+                .bind_artifact_id
+                .as_ref()
+                .map(|id| id.0.clone()),
             formula_text: prepared.source.entered_formula_text.clone(),
             formula_text_version: prepared.source.formula_text_version.0,
             formula_channel_kind: prepared.source.formula_channel_kind,
+            address_mode: MinimalAddressMode::A1,
             caller_anchor: UpstreamHostAnchor {
                 row: synthetic_cell_row(prepared.binding.owner_node_id),
                 col: 1,
@@ -1096,6 +1194,8 @@ fn value_payload_to_string(payload: &oxfml_core::seam::ValuePayload) -> String {
 }
 
 fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
+    // W026 owns only the current emitted transport floor for host-sensitive and
+    // dynamic-potential residuals. Broader emitted family realization belongs to W029.
     let (kind, family) = match residual.kind {
         ResidualCarrierKind::HostSensitive => (
             "runtime_effect.host_sensitive_reference",
@@ -1216,6 +1316,7 @@ mod tests {
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:local".to_string(),
                 publication_id: "pub:local".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -1258,6 +1359,7 @@ mod tests {
                     },
                 }]),
                 seeded_published_values: seeded,
+                invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:verified".to_string(),
                 publication_id: "pub:verified".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -1302,6 +1404,7 @@ mod tests {
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:cycle".to_string(),
                 publication_id: "pub:cycle".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -1336,6 +1439,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:host".to_string(),
                 publication_id: "pub:host".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -1354,9 +1458,11 @@ mod tests {
             run.runtime_effects[0].family,
             RuntimeEffectFamily::ExecutionRestriction
         );
-        assert!(run.runtime_effects[0]
-            .detail
-            .contains("carrier_id:carrier:host"));
+        assert!(
+            run.runtime_effects[0]
+                .detail
+                .contains("carrier_id:carrier:host")
+        );
         assert_eq!(
             run.local_candidate
                 .as_ref()
@@ -1368,9 +1474,11 @@ mod tests {
             run.runtime_effect_overlays[0].key.overlay_kind,
             OverlayKind::ExecutionRestriction
         );
-        assert!(run.runtime_effect_overlays[0]
-            .detail
-            .contains("runtime_effect.host_sensitive_reference"));
+        assert!(
+            run.runtime_effect_overlays[0]
+                .detail
+                .contains("runtime_effect.host_sensitive_reference")
+        );
     }
 
     #[test]
@@ -1389,6 +1497,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:dynamic".to_string(),
                 publication_id: "pub:dynamic".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -1407,9 +1516,11 @@ mod tests {
             run.runtime_effects[0].family,
             RuntimeEffectFamily::DynamicDependency
         );
-        assert!(run.runtime_effects[0]
-            .detail
-            .contains("carrier_id:carrier:dynamic"));
+        assert!(
+            run.runtime_effects[0]
+                .detail
+                .contains("carrier_id:carrier:dynamic")
+        );
         assert_eq!(
             run.reject_detail.as_ref().map(|detail| detail.kind),
             Some(RejectKind::DynamicDependencyFailure)
@@ -1420,6 +1531,189 @@ mod tests {
                 .payload_identity
                 .as_deref(),
             Some("cand:dynamic:runtime_effect:0")
+        );
+    }
+
+    #[test]
+    fn oxfml_dependency_descriptors_preserve_sequence_one_carrier_mapping() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
+            expression: TreeFormula::FunctionCall {
+                function_name: "SUM".to_string(),
+                arguments: vec![
+                    TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    }),
+                    TreeFormula::Reference(TreeReference::SiblingOffset {
+                        offset: -1,
+                        tail_segments: vec![],
+                    }),
+                    TreeFormula::Reference(TreeReference::RelativePath {
+                        base: RelativeReferenceBase::ParentNode,
+                        path_segments: vec!["Missing".to_string()],
+                    }),
+                    TreeFormula::Reference(TreeReference::Unresolved {
+                        token: "../Missing".to_string(),
+                    }),
+                    TreeFormula::Reference(TreeReference::HostSensitive {
+                        carrier_id: "host.selection".to_string(),
+                        detail: "active branch".to_string(),
+                    }),
+                    TreeFormula::Reference(TreeReference::DynamicPotential {
+                        carrier_id: "runtime.topic".to_string(),
+                        detail: "late bound".to_string(),
+                    }),
+                ],
+                may_introduce_dynamic_dependencies: true,
+            },
+        };
+
+        let prepared = prepare_oxfml_formula(&structural_snapshot, &binding).unwrap();
+        let descriptors = oxfml_dependency_descriptors(&prepared)
+            .into_iter()
+            .map(|descriptor| (descriptor.carrier_detail.clone(), descriptor))
+            .collect::<BTreeMap<_, _>>();
+        let descriptor_keys = descriptors.keys().cloned().collect::<Vec<_>>();
+
+        let direct = descriptors
+            .get("direct_node:node:2")
+            .unwrap_or_else(|| panic!("missing direct_node:node:2 in {:?}", descriptor_keys));
+        assert_eq!(direct.kind, DependencyDescriptorKind::StaticDirect);
+        assert_eq!(direct.target_node_id, Some(TreeNodeId(2)));
+        assert!(!direct.requires_rebind_on_structural_change);
+
+        let sibling = descriptors
+            .get("sibling_offset:-1:")
+            .unwrap_or_else(|| panic!("missing sibling_offset:-1: in {:?}", descriptor_keys));
+        assert_eq!(sibling.kind, DependencyDescriptorKind::RelativeBound);
+        assert_eq!(sibling.target_node_id, Some(TreeNodeId(3)));
+        assert!(sibling.requires_rebind_on_structural_change);
+
+        let unresolved_relative = descriptors
+            .get("relative_path:ParentNode:Missing")
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing relative_path:ParentNode:Missing in {:?}",
+                    descriptor_keys
+                )
+            });
+        assert_eq!(
+            unresolved_relative.kind,
+            DependencyDescriptorKind::RelativeBound
+        );
+        assert_eq!(unresolved_relative.target_node_id, None);
+        assert!(unresolved_relative.requires_rebind_on_structural_change);
+
+        let unresolved_token = descriptors
+            .get("unresolved:../Missing")
+            .unwrap_or_else(|| panic!("missing unresolved:../Missing in {:?}", descriptor_keys));
+        assert_eq!(unresolved_token.kind, DependencyDescriptorKind::Unresolved);
+        assert_eq!(unresolved_token.target_node_id, None);
+        assert!(unresolved_token.requires_rebind_on_structural_change);
+
+        let host_sensitive = descriptors
+            .get("residual:host.selection:active branch")
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing residual:host.selection:active branch in {:?}",
+                    descriptor_keys
+                )
+            });
+        assert_eq!(host_sensitive.kind, DependencyDescriptorKind::HostSensitive);
+        assert_eq!(host_sensitive.target_node_id, None);
+        assert!(host_sensitive.requires_rebind_on_structural_change);
+
+        let dynamic = descriptors
+            .get("residual:runtime.topic:late bound")
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing residual:runtime.topic:late bound in {:?}",
+                    descriptor_keys
+                )
+            });
+        assert_eq!(dynamic.kind, DependencyDescriptorKind::DynamicPotential);
+        assert_eq!(dynamic.target_node_id, None);
+        assert!(!dynamic.requires_rebind_on_structural_change);
+    }
+
+    #[test]
+    fn structural_invalidation_seeds_mark_relative_reference_rebind_after_rename() {
+        let outcome = snapshot()
+            .apply_edit(
+                crate::structural::StructuralSnapshotId(2),
+                crate::structural::StructuralEdit::RenameNode {
+                    node_id: TreeNodeId(2),
+                    new_symbol: "A_renamed".to_string(),
+                },
+            )
+            .unwrap();
+        let formula_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
+            expression: TreeFormula::Reference(TreeReference::RelativePath {
+                base: RelativeReferenceBase::ParentNode,
+                path_segments: vec!["A".to_string()],
+            }),
+        }]);
+
+        let predecessor_snapshot = snapshot();
+        let successor_snapshot = outcome.snapshot.clone();
+        let seeds = derive_structural_invalidation_seeds(
+            &predecessor_snapshot,
+            &successor_snapshot,
+            &formula_catalog,
+            &[outcome],
+        );
+
+        assert_eq!(
+            seeds,
+            vec![InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::StructuralRebindRequired,
+            }]
+        );
+    }
+
+    #[test]
+    fn structural_invalidation_seeds_keep_direct_reference_recalc_only_after_target_move() {
+        let outcome = snapshot()
+            .apply_edit(
+                crate::structural::StructuralSnapshotId(2),
+                crate::structural::StructuralEdit::MoveNode {
+                    node_id: TreeNodeId(2),
+                    new_parent_id: TreeNodeId(1),
+                    new_index: Some(0),
+                },
+            )
+            .unwrap();
+        let formula_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DirectNode {
+                target_node_id: TreeNodeId(2),
+            }),
+        }]);
+
+        let predecessor_snapshot = snapshot();
+        let successor_snapshot = outcome.snapshot.clone();
+        let seeds = derive_structural_invalidation_seeds(
+            &predecessor_snapshot,
+            &successor_snapshot,
+            &formula_catalog,
+            &[outcome],
+        );
+
+        assert_eq!(
+            seeds,
+            vec![InvalidationSeed {
+                node_id: TreeNodeId(3),
+                reason: InvalidationReasonKind::StructuralRecalcOnly,
+            }]
         );
     }
 }

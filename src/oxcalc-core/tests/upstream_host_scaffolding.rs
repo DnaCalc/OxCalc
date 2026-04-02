@@ -1,11 +1,12 @@
 #![forbid(unsafe_code)]
 
 use oxcalc_core::upstream_host::{
-    MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalLocaleContextKind, MinimalRtdMode,
-    MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
+    MinimalAddressMode, MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalLocaleContextKind,
+    MinimalRtdMode, MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
     UpstreamHostAnchor,
 };
 use oxcalc_core::upstream_host_fixture;
+use oxfml_core::EvaluationBackend;
 use oxfml_core::interface::{
     HostProviderOutcomeKind, LibraryContextSnapshotRef, ReturnedValueSurfaceKind,
 };
@@ -14,7 +15,6 @@ use oxfml_core::semantics::{
     RegistrationSourceKind,
 };
 use oxfml_core::source::FormulaChannelKind;
-use oxfml_core::EvaluationBackend;
 use oxfunc_core::value::{EvalValue, WorksheetErrorCode};
 use std::path::PathBuf;
 
@@ -24,9 +24,12 @@ fn packet(formula_text: &str) -> MinimalUpstreamHostPacket {
             fixture_input_id: "fixture:host:integration".to_string(),
             formula_slot_id: Some("node:slot:integration".to_string()),
             formula_stable_id: "formula:host:integration".to_string(),
+            formula_token: "formula:host:integration:1".to_string(),
+            bind_artifact_id: Some("bind:host:integration".to_string()),
             formula_text: formula_text.to_string(),
             formula_text_version: 1,
             formula_channel_kind: FormulaChannelKind::WorksheetA1,
+            address_mode: MinimalAddressMode::A1,
             caller_anchor: UpstreamHostAnchor { row: 2, col: 2 },
             active_selection_anchor: Some(UpstreamHostAnchor { row: 2, col: 2 }),
             structure_context_version: "treecalc.struct:integration:v1".to_string(),
@@ -91,7 +94,10 @@ fn scaffolding_packet_projects_replay_from_runtime_catalog_snapshot() {
         replay_projection.library_context_snapshot_ref,
         Some(LibraryContextSnapshotRef::new("snapshot:integration", "v1"))
     );
-    assert_eq!(replay_projection.formula_stable_id, "formula:host:integration");
+    assert_eq!(
+        replay_projection.formula_stable_id,
+        "formula:host:integration"
+    );
 }
 
 #[test]
@@ -189,6 +195,40 @@ fn public_fixture_loader_executes_checked_in_upstream_host_corpus() {
         assert_eq!(
             execution.packet.formula_slot.formula_stable_id,
             case.formula_slot.formula_stable_id
+        );
+        assert_eq!(
+            execution.packet.formula_slot.formula_token,
+            case.formula_slot
+                .formula_token
+                .clone()
+                .unwrap_or_else(|| format!(
+                    "{}:{}",
+                    case.formula_slot.formula_stable_id, case.formula_slot.formula_text_version
+                ))
+        );
+        assert_eq!(
+            execution.packet.formula_slot.address_mode,
+            MinimalAddressMode::A1
+        );
+        assert_eq!(
+            execution.packet.formula_slot.formula_channel_kind,
+            FormulaChannelKind::WorksheetA1
+        );
+        assert_eq!(
+            execution.packet.formula_slot.caller_anchor.row,
+            case.formula_slot.caller_anchor.row
+        );
+        assert_eq!(
+            execution.packet.formula_slot.caller_anchor.col,
+            case.formula_slot.caller_anchor.col
+        );
+        assert_eq!(
+            execution.packet.formula_slot.structure_context_version,
+            case.formula_slot.structure_context_version
+        );
+        assert_eq!(
+            execution.packet.formula_slot.bind_artifact_id,
+            case.expected.bind_artifact_id
         );
     }
 }

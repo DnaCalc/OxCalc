@@ -174,6 +174,39 @@ It must preserve:
 3. replay-visible runtime-derived effects, including explicit runtime-effect family classification where the current engine can distinguish dynamic-dependency versus execution-restriction truth,
 4. explicit diagnostics rather than opaque success or failure.
 
+Current direct reachability rule:
+1. emitted runtime-derived families in the current TreeCalc-first lane must be directly reachable on `OxCalcTreeRecalcResult.runtime_effects`
+2. the corresponding overlay projection must be directly reachable on `OxCalcTreeRecalcResult.runtime_effect_overlays`
+3. hosts must not be forced to inspect narrower local engine internals just to discover whether the current run emitted `DynamicDependency` or `ExecutionRestriction`
+4. admitted but currently unexercised families such as `CapabilitySensitive` or `ShapeTopology` do not need to appear on the host-facing result until the live TreeCalc-first lane emits them as distinct families
+
+Current W026 reachability boundary:
+1. the current W026 coordinator-facing consequence floor must remain directly reachable on `OxCalcTreeRecalcResult` through:
+   - `run_state`
+   - `runtime_effects`
+   - `runtime_effect_overlays`
+   - `candidate_result`
+   - `publication_bundle`
+   - `reject_detail`
+   - `dependency_graph`
+   - `invalidation_closure`
+   - `evaluation_order`
+   - `published_values`
+   - `diagnostics`
+2. this direct host-facing boundary is required because W026 now treats runtime-derived family reachability, candidate/publication/reject distinction, no-publish rejection, and the first publication-consequence split as consumed-now host-visible truth rather than as replay-only or implementation-local detail
+3. narrower W026 seam facts may remain below the host-facing contract for now, including:
+   - per-formula identity and compatibility carriage
+   - caller-context carriage
+   - structural invalidation seeds and rebind-versus-recalc lowering
+   - dependency-descriptor mapping
+   - residual-carrier lowering and other internal TreeCalc preparation details
+4. hosts may consume emitted replay artifacts for evidence and diagnosis, but the contract in this document is still the primary host-facing OxCalc surface for the current TreeCalc-first phase
+
+No second seam layer rule:
+1. W026 is a consumed-seam packet that explains what this host-facing contract must preserve; it is not a second host API that hosts should bind to independently
+2. hosts should not reach around `OxCalcTreeRuntimeFacade` and `OxCalcTreeRecalcResult` to depend on proving-floor engine types or packet-companion structs merely because W026 names narrower seam facts beneath this contract
+3. future W026 or successor packet widening may require this contract to expose additional facts directly, but it does not authorize a parallel host-facing OxCalc seam layer beside this contract
+
 ### 6.5 OxCalcTreeRuntimeFacade
 `OxCalcTreeRuntimeFacade` is the ordinary host-facing runtime service.
 
@@ -235,13 +268,15 @@ For an actual OxCalc runtime consumer such as `DNA TreeCalc`, the intended readi
 1. `README.md`
 2. `CHARTER.md`
 3. `OPERATIONS.md`
-4. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
-5. `docs/spec/README.md`
-6. `CORE_ENGINE_ARCHITECTURE.md`
-7. `CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
-8. this document
-9. `CORE_ENGINE_OXFML_SEAM.md`
-10. `CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
+4. `docs/WORKSET_REGISTER.md`
+5. `docs/BEADS.md`
+6. `docs/IN_PROGRESS_FEATURE_WORKLIST.md`
+7. `docs/spec/README.md`
+8. `CORE_ENGINE_ARCHITECTURE.md`
+9. `CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+10. this document
+11. `CORE_ENGINE_OXFML_SEAM.md`
+12. `CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
 
 Use `CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as an implementation-backed packet companion after the consumer contract is understood.
 

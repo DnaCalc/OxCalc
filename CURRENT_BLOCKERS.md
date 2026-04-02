@@ -1,33 +1,13 @@
 # CURRENT_BLOCKERS.md — OxCalc
 
-Status: no active blockers.
+This file is a retired active surface.
 
-Last reviewed: 2026-03-15.
+Ordinary blocker truth now belongs in `.beads/` under the bead workflow defined by [docs/BEADS.md](/C:/Work/DnaCalc/OxCalc/docs/BEADS.md).
 
----
+Use these surfaces instead:
 
-## Active Blockers
+1. [docs/WORKSET_REGISTER.md](/C:/Work/DnaCalc/OxCalc/docs/WORKSET_REGISTER.md) for ordered workset truth.
+2. [docs/BEADS.md](/C:/Work/DnaCalc/OxCalc/docs/BEADS.md) for execution method.
+3. `.beads/` for live blocker, readiness, and in-progress state.
 
-(none)
-
----
-
-## Resolved Blockers
-
-(none)
-
----
-
-## Entry Template
-
-```
-### BLK-CALC-NNN: <title>
-
-- **Status**: active | resolved | closed
-- **Impact**: <which worksets/features are blocked>
-- **Current state**: <what has been attempted, what failed>
-- **Exact unblock steps**: <specific actions needed>
-- **Recommendation**: wait | escalate | workaround
-- **Opened**: YYYY-MM-DD
-- **Resolved**: YYYY-MM-DD (if applicable)
-```
+This file is kept only as a historical pointer so older documents that mention `CURRENT_BLOCKERS.md` do not lose referential meaning.

@@ -9,13 +9,15 @@ use std::path::Path;
 use serde_json::json;
 use thiserror::Error;
 
-use crate::coordinator::{RejectDetail, RuntimeEffect};
-use crate::dependency::{DependencyDiagnostic, DependencyEdge, InvalidationClosure};
+use crate::coordinator::{RejectDetail, RuntimeEffect, RuntimeEffectFamily};
+use crate::dependency::{
+    DependencyDiagnostic, DependencyEdge, InvalidationClosure, InvalidationSeed,
+};
 use crate::recalc::OverlayEntry;
 use crate::treecalc::{LocalTreeCalcRunArtifacts, LocalTreeCalcRunState};
 use crate::treecalc_fixture::{
-    execute_fixture_case, load_case, load_manifest, TreeCalcFixtureError, TreeCalcFixtureExecution,
-    TreeCalcFixtureExpected, TreeCalcFixturePostEditExecution,
+    TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
+    TreeCalcFixturePostEditExecution, execute_fixture_case, load_case, load_manifest,
 };
 
 const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifest.v1";
@@ -343,32 +345,38 @@ fn write_case_artifacts(
     )?;
     write_json(
         case_directory.join("published_values.json").as_path(),
-        &json!(artifacts
-            .published_values
-            .iter()
-            .map(|(node_id, value)| json!({
-                "node_id": node_id.0,
-                "value": value,
-            }))
-            .collect::<Vec<_>>()),
+        &json!(
+            artifacts
+                .published_values
+                .iter()
+                .map(|(node_id, value)| json!({
+                    "node_id": node_id.0,
+                    "value": value,
+                }))
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         case_directory.join("runtime_effects.json").as_path(),
-        &json!(artifacts
-            .runtime_effects
-            .iter()
-            .map(runtime_effect_json)
-            .collect::<Vec<_>>()),
+        &json!(
+            artifacts
+                .runtime_effects
+                .iter()
+                .map(runtime_effect_json)
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         case_directory
             .join("runtime_effect_overlays.json")
             .as_path(),
-        &json!(artifacts
-            .runtime_effect_overlays
-            .iter()
-            .map(overlay_json)
-            .collect::<Vec<_>>()),
+        &json!(
+            artifacts
+                .runtime_effect_overlays
+                .iter()
+                .map(overlay_json)
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         case_directory.join("dependency_graph.json").as_path(),
@@ -386,14 +394,16 @@ fn write_case_artifacts(
     )?;
     write_json(
         case_directory.join("node_states.json").as_path(),
-        &json!(artifacts
-            .node_states
-            .iter()
-            .map(|(node_id, state)| json!({
-                "node_id": node_id.0,
-                "state": format!("{state:?}"),
-            }))
-            .collect::<Vec<_>>()),
+        &json!(
+            artifacts
+                .node_states
+                .iter()
+                .map(|(node_id, state)| json!({
+                    "node_id": node_id.0,
+                    "state": format!("{state:?}"),
+                }))
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         case_directory.join("result.json").as_path(),
@@ -410,18 +420,24 @@ fn write_case_artifacts(
             "node_states_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "node_states.json"),
             "reject_detail": artifacts.reject_detail.as_ref().map(reject_detail_json),
             "candidate_result": artifacts.candidate_result.as_ref().map(|candidate_result| json!({
+                "aligned_canonical_family": "AcceptedCandidateResult",
+                "projection_owner": "oxcalc_local",
                 "candidate_result_id": candidate_result.candidate_result_id,
                 "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
                 "value_updates": candidate_result.value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
                 "runtime_effects": candidate_result.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             })),
             "publication_bundle": artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
+                "aligned_canonical_family": "CommitBundle",
+                "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
                 "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
                 "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
                 "trace_markers": publication_bundle.trace_markers,
+                "carriage_classification": publication_carriage_classification_json(artifacts),
             })),
+            "execution_restriction_interaction": execution_restriction_interaction_json(artifacts),
         }),
     )?;
 
@@ -476,23 +492,39 @@ fn write_post_edit_artifacts(
     )?;
     write_json(
         post_edit_directory.join("runtime_effects.json").as_path(),
-        &json!(execution
-            .rerun_artifacts
-            .runtime_effects
-            .iter()
-            .map(runtime_effect_json)
-            .collect::<Vec<_>>()),
+        &json!(
+            execution
+                .rerun_artifacts
+                .runtime_effects
+                .iter()
+                .map(runtime_effect_json)
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         post_edit_directory
             .join("runtime_effect_overlays.json")
             .as_path(),
-        &json!(execution
-            .rerun_artifacts
-            .runtime_effect_overlays
-            .iter()
-            .map(overlay_json)
-            .collect::<Vec<_>>()),
+        &json!(
+            execution
+                .rerun_artifacts
+                .runtime_effect_overlays
+                .iter()
+                .map(overlay_json)
+                .collect::<Vec<_>>()
+        ),
+    )?;
+    write_json(
+        post_edit_directory
+            .join("invalidation_seeds.json")
+            .as_path(),
+        &json!(
+            execution
+                .invalidation_seeds
+                .iter()
+                .map(invalidation_seed_json)
+                .collect::<Vec<_>>()
+        ),
     )?;
     write_json(
         post_edit_directory.join("result.json").as_path(),
@@ -501,6 +533,7 @@ fn write_post_edit_artifacts(
             "result_state": result_state_name(&execution.rerun_artifacts.result_state),
             "evaluation_order": execution.rerun_artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
+            "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
             "published_values": execution.rerun_artifacts.published_values.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
@@ -526,6 +559,7 @@ fn write_post_edit_artifacts(
             "edit_impacts": execution.edit_outcomes.iter().map(|outcome| format!("{:?}", outcome.impact)).collect::<Vec<_>>(),
             "diagnostic_events": execution.edit_outcomes.iter().flat_map(|outcome| outcome.diagnostic_events.iter().cloned()).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
+            "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
         }),
@@ -533,6 +567,7 @@ fn write_post_edit_artifacts(
 
     Ok(json!({
         "edit_outcomes": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/edit_outcomes.json"),
+        "invalidation_seeds": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_seeds.json"),
         "runtime_effects": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effects.json"),
         "runtime_effect_overlays": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effect_overlays.json"),
         "result": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/result.json"),
@@ -603,10 +638,16 @@ fn write_case_trace_and_explain_artifacts(
             "runtime_effects": artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
             "publication_bundle": artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
+                "aligned_canonical_family": "CommitBundle",
+                "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
+                "published_value_delta_node_count": publication_bundle.published_view_delta.len(),
                 "published_runtime_effect_count": publication_bundle.published_runtime_effects.len(),
+                "trace_marker_count": publication_bundle.trace_markers.len(),
+                "carriage_classification": publication_carriage_classification_json(artifacts),
             })),
+            "execution_restriction_interaction": execution_restriction_interaction_json(artifacts),
             "notes": build_explain_notes(artifacts, expectation_mismatches),
         }),
     )?;
@@ -647,6 +688,9 @@ fn build_trace_events(
             "step_id": step_id,
             "label": "runtime_effect_observed",
             "kind": runtime_effect.kind,
+            "kind_owner": "oxcalc_local_projection",
+            "family": format!("{:?}", runtime_effect.family),
+            "family_owner": "oxcalc_local_projection",
             "detail": runtime_effect.detail,
         }));
         step_id += 1;
@@ -667,6 +711,8 @@ fn build_trace_events(
         events.push(json!({
             "step_id": step_id,
             "label": "candidate_adapted",
+            "aligned_canonical_family": "AcceptedCandidateResult",
+            "projection_owner": "oxcalc_local",
             "candidate_result_id": candidate_result.candidate_result_id,
             "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
         }));
@@ -677,6 +723,8 @@ fn build_trace_events(
         events.push(json!({
             "step_id": step_id,
             "label": "publication_committed",
+            "aligned_canonical_family": "CommitBundle",
+            "projection_owner": "oxcalc_local",
             "publication_id": publication_bundle.publication_id,
             "candidate_result_id": publication_bundle.candidate_result_id,
         }));
@@ -687,8 +735,11 @@ fn build_trace_events(
         events.push(json!({
             "step_id": step_id,
             "label": "candidate_rejected",
+            "aligned_canonical_family": "RejectRecord",
+            "projection_owner": "oxcalc_local",
             "candidate_result_id": reject_detail.candidate_result_id,
             "kind": format!("{:?}", reject_detail.kind),
+            "kind_owner": "oxcalc_local_projection",
             "detail": reject_detail.detail,
         }));
         step_id += 1;
@@ -735,8 +786,67 @@ fn build_explain_notes(
 fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
     json!({
         "kind": runtime_effect.kind,
+        "kind_owner": "oxcalc_local_projection",
         "family": format!("{:?}", runtime_effect.family),
+        "family_owner": "oxcalc_local_projection",
         "detail": runtime_effect.detail,
+    })
+}
+
+fn publication_carriage_classification_json(
+    artifacts: &LocalTreeCalcRunArtifacts,
+) -> serde_json::Value {
+    let dependency_shape_update_count = artifacts
+        .candidate_result
+        .as_ref()
+        .map(|candidate_result| candidate_result.dependency_shape_updates.len())
+        .unwrap_or(0);
+
+    json!({
+        "publish_critical_categories": ["value_delta"],
+        "replay_visible_non_publish_critical_categories": [
+            "published_runtime_effects",
+            "trace_markers",
+        ],
+        "local_floor_only_categories": ["dependency_shape_updates"],
+        "explicit_current_absence_categories": [
+            "shape_delta",
+            "topology_delta",
+            "format_delta",
+            "display_delta",
+        ],
+        "dependency_shape_update_count": dependency_shape_update_count,
+    })
+}
+
+fn execution_restriction_interaction_json(
+    artifacts: &LocalTreeCalcRunArtifacts,
+) -> serde_json::Value {
+    let execution_restriction_count = artifacts
+        .runtime_effects
+        .iter()
+        .filter(|runtime_effect| {
+            matches!(
+                runtime_effect.family,
+                RuntimeEffectFamily::ExecutionRestriction
+            )
+        })
+        .count();
+
+    let publication_outcome = if execution_restriction_count == 0 {
+        "none_observed"
+    } else if artifacts.publication_bundle.is_some() {
+        "published_sidecar_only"
+    } else {
+        "rejected_no_publication"
+    };
+
+    json!({
+        "execution_restriction_observed": execution_restriction_count > 0,
+        "execution_restriction_count": execution_restriction_count,
+        "publication_outcome": publication_outcome,
+        "publication_sensitive_consequence": false,
+        "topology_sensitive_consequence": false,
     })
 }
 
@@ -784,10 +894,20 @@ fn invalidation_closure_json(closure: &InvalidationClosure) -> serde_json::Value
         .collect::<Vec<_>>())
 }
 
+fn invalidation_seed_json(seed: &InvalidationSeed) -> serde_json::Value {
+    json!({
+        "node_id": seed.node_id.0,
+        "reason": format!("{:?}", seed.reason),
+    })
+}
+
 fn reject_detail_json(reject_detail: &RejectDetail) -> serde_json::Value {
     json!({
+        "aligned_canonical_family": "RejectRecord",
+        "projection_owner": "oxcalc_local",
         "candidate_result_id": reject_detail.candidate_result_id,
         "kind": format!("{:?}", reject_detail.kind),
+        "kind_owner": "oxcalc_local_projection",
         "detail": reject_detail.detail,
     })
 }
@@ -887,40 +1007,67 @@ mod tests {
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
-        assert!(artifact_root
-            .join("conformance/oracle_baseline.json")
-            .exists());
+        assert!(
+            artifact_root
+                .join("conformance/oracle_baseline.json")
+                .exists()
+        );
         assert!(artifact_root.join("conformance/engine_diff.json").exists());
-        assert!(artifact_root
-            .join("cases/tc_local_publish_001/result.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_publish_001/oracle.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_publish_001/engine_diff.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_publish_001/trace.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_publish_001/explain.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_rebind_after_rename_001/post_edit/result.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_move_direct_target_rebind_001/post_edit/result.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_remove_direct_target_001/post_edit/result.json")
-            .exists());
-        assert!(artifact_root
-            .join("cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json")
-            .exists());
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/result.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/oracle.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/engine_diff.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/trace.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/explain.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_rebind_after_rename_001/post_edit/result.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_rebind_after_rename_001/post_edit/invalidation_seeds.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_move_direct_target_rebind_001/post_edit/result.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_remove_direct_target_001/post_edit/result.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json")
+                .exists()
+        );
         assert!(
             artifact_root
                 .join("cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effect_overlays.json")
@@ -931,9 +1078,373 @@ mod tests {
                 .join("cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json")
                 .exists()
         );
-        assert!(artifact_root
-            .join("conformance/explain_index.json")
-            .exists());
+        assert!(
+            artifact_root
+                .join("conformance/explain_index.json")
+                .exists()
+        );
+
+        let rename_post_edit_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_rebind_after_rename_001/post_edit/result.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            rename_post_edit_result["invalidation_seeds"]
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| { seed["reason"] == "StructuralRebindRequired" }))
+        );
+
+        let rename_post_edit_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_rebind_after_rename_001/post_edit/explain.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            rename_post_edit_explain["invalidation_seeds"]
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| { seed["reason"] == "StructuralRebindRequired" }))
+        );
+
+        let direct_move_post_edit_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root
+                    .join("cases/tc_local_move_direct_target_rebind_001/post_edit/result.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            direct_move_post_edit_result["invalidation_seeds"]
+                .as_array()
+                .is_some_and(|seeds| {
+                    !seeds.is_empty()
+                        && seeds
+                            .iter()
+                            .all(|seed| seed["reason"] == "StructuralRecalcOnly")
+                })
+        );
+
+        let direct_move_post_edit_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root
+                    .join("cases/tc_local_move_direct_target_rebind_001/post_edit/explain.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            direct_move_post_edit_explain["invalidation_seeds"]
+                .as_array()
+                .is_some_and(|seeds| {
+                    !seeds.is_empty()
+                        && seeds
+                            .iter()
+                            .all(|seed| seed["reason"] == "StructuralRecalcOnly")
+                })
+        );
+
+        let published_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("cases/tc_local_publish_001/result.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            published_result["candidate_result"]["aligned_canonical_family"],
+            "AcceptedCandidateResult"
+        );
+        assert_eq!(
+            published_result["candidate_result"]["projection_owner"],
+            "oxcalc_local"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["aligned_canonical_family"],
+            "CommitBundle"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["projection_owner"],
+            "oxcalc_local"
+        );
+        assert_eq!(
+            published_result["candidate_result"]["candidate_result_id"],
+            published_result["publication_bundle"]["candidate_result_id"]
+        );
+        assert!(
+            published_result["publication_bundle"]["publication_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert_eq!(
+            published_result["candidate_result"]["candidate_result_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty()),
+            true
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["published_view_delta"]
+                .as_object()
+                .map(|entries| entries.len()),
+            Some(1)
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["trace_markers"][0],
+            "publication_committed"
+        );
+        assert!(
+            published_result["publication_bundle"]
+                .get("commit_attempt_id")
+                .is_none()
+        );
+        assert!(published_result["reject_detail"].is_null());
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["publish_critical_categories"]
+                [0],
+            "value_delta"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["replay_visible_non_publish_critical_categories"]
+                [0],
+            "published_runtime_effects"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["replay_visible_non_publish_critical_categories"]
+                [1],
+            "trace_markers"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["local_floor_only_categories"]
+                [0],
+            "dependency_shape_updates"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [0],
+            "shape_delta"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [1],
+            "topology_delta"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [2],
+            "format_delta"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [3],
+            "display_delta"
+        );
+        assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["dependency_shape_update_count"],
+            0
+        );
+        assert_eq!(
+            published_result["execution_restriction_interaction"]["publication_sensitive_consequence"],
+            false
+        );
+
+        let published_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("cases/tc_local_publish_001/explain.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            published_explain["publication_bundle"]["published_value_delta_node_count"],
+            1
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["published_runtime_effect_count"],
+            0
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["trace_marker_count"],
+            1
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["publish_critical_categories"]
+                [0],
+            "value_delta"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["replay_visible_non_publish_critical_categories"]
+                [0],
+            "published_runtime_effects"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["local_floor_only_categories"]
+                [0],
+            "dependency_shape_updates"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [0],
+            "shape_delta"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [1],
+            "topology_delta"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [2],
+            "format_delta"
+        );
+        assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
+                [3],
+            "display_delta"
+        );
+        assert_eq!(
+            published_explain["execution_restriction_interaction"]["publication_outcome"],
+            "none_observed"
+        );
+
+        let rejected_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_host_sensitive_reject_001/result.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            rejected_result["reject_detail"]["aligned_canonical_family"],
+            "RejectRecord"
+        );
+        assert_eq!(
+            rejected_result["reject_detail"]["projection_owner"],
+            "oxcalc_local"
+        );
+        assert_eq!(
+            rejected_result["reject_detail"]["kind_owner"],
+            "oxcalc_local_projection"
+        );
+        assert!(
+            rejected_result["reject_detail"]["candidate_result_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert!(rejected_result.get("publication_id").is_none());
+        assert!(
+            rejected_result["reject_detail"]
+                .get("reject_record_id")
+                .is_none()
+        );
+        assert!(rejected_result["publication_bundle"].is_null());
+        assert_eq!(
+            rejected_result["execution_restriction_interaction"]["publication_outcome"],
+            "rejected_no_publication"
+        );
+        assert_eq!(
+            rejected_result["execution_restriction_interaction"]["publication_sensitive_consequence"],
+            false
+        );
+        assert_eq!(
+            rejected_result["execution_restriction_interaction"]["topology_sensitive_consequence"],
+            false
+        );
+        assert!(
+            rejected_result["runtime_effects_path"]
+                .as_str()
+                .unwrap()
+                .ends_with("cases/tc_local_host_sensitive_reject_001/runtime_effects.json")
+        );
+        assert!(
+            rejected_result["runtime_effect_overlays_path"]
+                .as_str()
+                .unwrap()
+                .ends_with("cases/tc_local_host_sensitive_reject_001/runtime_effect_overlays.json")
+        );
+
+        let runtime_effects = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_host_sensitive_reject_001/runtime_effects.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(runtime_effects[0]["kind_owner"], "oxcalc_local_projection");
+        assert_eq!(
+            runtime_effects[0]["family_owner"],
+            "oxcalc_local_projection"
+        );
+        assert_eq!(runtime_effects[0]["family"], "ExecutionRestriction");
+
+        let dynamic_runtime_effects = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_dynamic_reject_001/runtime_effects.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            dynamic_runtime_effects[0]["kind_owner"],
+            "oxcalc_local_projection"
+        );
+        assert_eq!(
+            dynamic_runtime_effects[0]["family_owner"],
+            "oxcalc_local_projection"
+        );
+        assert_eq!(dynamic_runtime_effects[0]["family"], "DynamicDependency");
+
+        let host_sensitive_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_host_sensitive_reject_001/explain.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            host_sensitive_explain["runtime_effects"][0]["family"],
+            "ExecutionRestriction"
+        );
+        assert_eq!(
+            host_sensitive_explain["runtime_effect_overlays"][0]["overlay_kind"],
+            "ExecutionRestriction"
+        );
+        assert_eq!(
+            host_sensitive_explain["execution_restriction_interaction"]["publication_outcome"],
+            "rejected_no_publication"
+        );
+        assert_eq!(
+            host_sensitive_explain["execution_restriction_interaction"]["publication_sensitive_consequence"],
+            false
+        );
+        assert_eq!(
+            host_sensitive_explain["execution_restriction_interaction"]["topology_sensitive_consequence"],
+            false
+        );
+        assert!(host_sensitive_explain["publication_bundle"].is_null());
+
+        let dynamic_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_dynamic_reject_001/explain.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            dynamic_explain["runtime_effects"][0]["family"],
+            "DynamicDependency"
+        );
+        assert_eq!(
+            dynamic_explain["runtime_effect_overlays"][0]["overlay_kind"],
+            "DynamicDependency"
+        );
+        assert_eq!(
+            dynamic_explain["execution_restriction_interaction"]["publication_outcome"],
+            "none_observed"
+        );
 
         fs::remove_dir_all(&artifact_root).unwrap();
     }

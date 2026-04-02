@@ -565,6 +565,26 @@ Current host-contract interpretation:
 2. actual runtime consumers should prefer that explicit `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` object set over local proving-floor engine types,
 3. narrower seam-intake, dependency-preparation, replay, and assurance details remain packetized below that host-facing contract until later widening closes them honestly.
 
+Current W026 packet floor under this plan:
+1. Sequence 1 now has an executed first caller-context/reference floor:
+   - first closed subset is `DirectNode`, admitted `RelativePath` (`ParentNode` and `Ancestor(n >= 1)` descendant lookup), `SiblingOffset`, `Unresolved`, `HostSensitive`, and `DynamicPotential`
+   - explicit per-formula identity and caller-context carriage is now part of the consumed seam floor for that subset
+   - rebind-versus-recalc and dependency-descriptor lowering are now explicit beneath the host-facing contract
+2. Sequence 2 now has an executed first runtime-derived transport floor:
+   - current explicit correlation floor is `candidate_result_id` plus `publication_id`
+   - current emitted runtime-derived families are only `DynamicDependency` and `ExecutionRestriction`
+   - `CapabilitySensitive` remains admitted but unexercised
+   - direct host-facing and replay-facing reachability for that emitted subset is now locked
+3. Sequence 3 now has an executed first publication/topology floor:
+   - `value_delta` is the only currently published consequence family
+   - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences
+   - current execution-restriction observations remain runtime-effect-plus-typed-no-publish context rather than published consequence families
+4. this plan should therefore treat broader caller-context, broader runtime-derived family realization, and broader publication/topology consequence breadth as later widening work rather than as ambiguity about the current first floor
+5. W026 has now reached its declared gate for that first packet:
+   - W027 may proceed on executed dependency-descriptor and invalidation-seed truth
+   - W028 may proceed on executed candidate/reject/correlation and publication-consequence truth
+   - W029 may proceed on the explicit W026-to-W029 boundary and current emitted runtime-derived family floor
+
 ## 15. Non-Negotiable Guardrails For Later Performance Work
 The following must remain true so later ultraperformance work still lands on the right semantic base:
 1. no scheduler or caching shortcut may redefine stabilized semantic truth,
@@ -605,6 +625,6 @@ It does:
 - open_lanes:
   - this document defines the broader target and sequence, but only the first narrow TreeCalc local slice plus the ordinary runtime/replay V1 facade intake are currently exercised
   - broader TreeCalc bind/reference intake, dependency build, and candidate-result consumption still remain open beyond the current local slice
-  - narrower TreeCalc-specific OxFml seam intake still needs to be carried through the remaining W026 packets from this plan
+  - W026 is now reached-gate for the first executed Sequence 1/2/3 packet floor, while broader caller-context, runtime-derived family, and publication/topology breadth widening now belongs to later packets rather than to unresolved first-floor seam ambiguity
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note consumed as seam baseline; no new immediate handoff trigger exists yet

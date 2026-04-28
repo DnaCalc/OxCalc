@@ -98,6 +98,20 @@
     "trace": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_shape_topology_reject_001/trace.json"
   },
   {
+    "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+    "conformance_state": "matches_expected",
+    "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_capability_sensitive_overlay_001/explain.json",
+    "result_state": "rejected",
+    "trace": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_capability_sensitive_overlay_001/trace.json"
+  },
+  {
+    "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+    "conformance_state": "matches_expected",
+    "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_shape_topology_overlay_001/explain.json",
+    "result_state": "rejected",
+    "trace": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_shape_topology_overlay_001/trace.json"
+  },
+  {
     "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
     "conformance_state": "matches_expected",
     "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/explain.json",

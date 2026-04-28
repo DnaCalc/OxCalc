@@ -14,7 +14,7 @@ Current emitted root:
 - `w025-treecalc-local-baseline`
 
 Current local corpus floor:
-- 15 cases
+- 17 cases
 - direct publish
 - verified-clean
 - ancestor-relative dependency ordering
@@ -27,6 +27,8 @@ Current local corpus floor:
 - recalc-only constant edit consequence with post-edit rerun artifacts
 - recalc-only dependency-chain consequence with deterministic downstream rerun order
 - recalc-only post-edit host-sensitive runtime-effect and overlay consequence
+- recalc-only post-edit capability-sensitive runtime-effect and overlay consequence
+- recalc-only post-edit shape/topology-sensitive runtime-effect and overlay consequence
 - mixed publication-then-post-edit overlay consequence with preserved published view and successor-snapshot runtime effects
 - move-triggered rebind consequence with preserved publication on the successor snapshot
 - removal consequence with typed post-edit rejection on missing direct dependency

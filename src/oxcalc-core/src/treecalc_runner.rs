@@ -1072,7 +1072,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 15);
+        assert_eq!(summary.case_count, 17);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -1145,6 +1145,16 @@ mod tests {
         assert!(
             artifact_root
                 .join("cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/runtime_effect_overlays.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/runtime_effect_overlays.json")
                 .exists()
         );
         assert!(

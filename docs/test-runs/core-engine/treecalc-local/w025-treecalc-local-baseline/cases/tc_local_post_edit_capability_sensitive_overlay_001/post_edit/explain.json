@@ -1,0 +1,47 @@
+{
+  "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+  "diagnostic_events": [
+    "constant_value_changed:node:2:7"
+  ],
+  "edit_impacts": [
+    "RecalcOnly"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit",
+    "detail": "reference owned by node:3 is capability-sensitive and cannot be locally evaluated: host_function_availability",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:23",
+      "detail": "runtime_effect.capability_sensitive_reference|owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "ExecutionRestriction",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit:runtime_effect:0",
+      "structural_snapshot_id": 23
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "CapabilitySensitive",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.capability_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection"
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

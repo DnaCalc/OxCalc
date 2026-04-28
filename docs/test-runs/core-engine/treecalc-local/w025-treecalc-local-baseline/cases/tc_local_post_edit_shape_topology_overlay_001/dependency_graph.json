@@ -1,0 +1,37 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:shape_leaf:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "residual:carrier:shape:range_shape_projection",
+      "descriptor_id": "bind:formula:shape_leaf:oxfml_residual:0",
+      "kind": "ShapeTopology",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:shape_leaf:oxfml_residual:0",
+      "detail": "residual:carrier:shape:range_shape_projection",
+      "kind": "ShapeTopologyReference"
+    }
+  ],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:shape_leaf:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:shape_leaf:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    }
+  ]
+}

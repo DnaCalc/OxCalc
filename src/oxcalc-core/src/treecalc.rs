@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::{BindContext, BindRequest, NameKind, bind_formula};
+use oxfml_core::consumer::runtime::RuntimeFormulaResult;
 use oxfml_core::interface::ReturnedValueSurfaceKind;
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
@@ -137,6 +138,12 @@ pub struct LocalEvaluatorCandidate {
     pub value_updates: BTreeMap<TreeNodeId, String>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub diagnostic_events: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct LocalFormulaEvaluationSuccess {
+    value: String,
+    diagnostics: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -301,7 +308,10 @@ impl LocalTreeCalcEngine {
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
             let computed_value = match evaluate_via_oxfml(prepared, &working_values) {
-                Ok(value) => value,
+                Ok(success) => {
+                    diagnostics.extend(success.diagnostics);
+                    success.value
+                }
                 Err(failure) => {
                     runtime_effects.extend(failure.runtime_effects.clone());
                     diagnostics.extend(failure.diagnostics.clone());
@@ -904,7 +914,7 @@ fn formula_allows_lazy_residual_publication(formula: &TreeFormula) -> bool {
 fn evaluate_via_oxfml(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
-) -> Result<String, LocalFormulaEvaluationFailure> {
+) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
     if let Some(unresolved) = prepared.bound_formula.unresolved_references.first() {
         return Err(LocalFormulaEvaluationFailure {
             error: LocalTreeCalcError::OxfmlBindUnresolved {
@@ -955,18 +965,69 @@ fn evaluate_via_oxfml(
         return Err(failure);
     }
 
+    adapt_oxfml_runtime_candidate(prepared, &run)
+}
+
+fn adapt_oxfml_runtime_candidate(
+    prepared: &PreparedOxfmlFormula,
+    run: &RuntimeFormulaResult,
+) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
+    let candidate = &run.candidate_result;
+    let candidate_value = value_payload_to_string(&candidate.value_delta.published_payload);
+    let mut diagnostics = vec![
+        format!(
+            "oxfml_candidate_result_id:{}",
+            candidate.candidate_result_id
+        ),
+        format!(
+            "oxfml_candidate_formula_stable_id:{}",
+            candidate.formula_stable_id
+        ),
+        format!(
+            "oxfml_candidate_trace_correlation_id:{}",
+            candidate.trace_correlation_id
+        ),
+    ];
+
     match &run.commit_decision {
-        oxfml_core::seam::AcceptDecision::Accepted(bundle) => Ok(value_payload_to_string(
-            &bundle.value_delta.published_payload,
-        )),
-        oxfml_core::seam::AcceptDecision::Rejected(reject) => Err(LocalFormulaEvaluationFailure {
-            error: LocalTreeCalcError::OxfmlCommitRejected {
-                owner_node_id: prepared.binding.owner_node_id,
-                detail: format!("{:?}", reject.reject_code),
-            },
-            runtime_effects: Vec::new(),
-            diagnostics: vec![format!("oxfml_reject:{:?}", reject.reject_code)],
-        }),
+        oxfml_core::seam::AcceptDecision::Accepted(bundle) => {
+            diagnostics.push(format!(
+                "oxfml_commit_candidate_result_id:{}",
+                bundle.candidate_result_id
+            ));
+            diagnostics.push(format!(
+                "oxfml_commit_attempt_id:{}",
+                bundle.commit_attempt_id
+            ));
+            if bundle.candidate_result_id != candidate.candidate_result_id {
+                return Err(LocalFormulaEvaluationFailure {
+                    error: LocalTreeCalcError::OxfmlCommitRejected {
+                        owner_node_id: prepared.binding.owner_node_id,
+                        detail: format!(
+                            "candidate_result_id_mismatch:{}:{}",
+                            candidate.candidate_result_id, bundle.candidate_result_id
+                        ),
+                    },
+                    runtime_effects: Vec::new(),
+                    diagnostics,
+                });
+            }
+            Ok(LocalFormulaEvaluationSuccess {
+                value: candidate_value,
+                diagnostics,
+            })
+        }
+        oxfml_core::seam::AcceptDecision::Rejected(reject) => {
+            diagnostics.push(format!("oxfml_reject:{:?}", reject.reject_code));
+            Err(LocalFormulaEvaluationFailure {
+                error: LocalTreeCalcError::OxfmlCommitRejected {
+                    owner_node_id: prepared.binding.owner_node_id,
+                    detail: format!("{:?}", reject.reject_code),
+                },
+                runtime_effects: Vec::new(),
+                diagnostics,
+            })
+        }
     }
 }
 
@@ -1394,6 +1455,16 @@ mod tests {
         assert_eq!(run.published_values[&TreeNodeId(3)], "5");
         assert_eq!(run.published_values[&TreeNodeId(4)], "7");
         assert!(run.publication_bundle.is_some());
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with("oxfml_candidate_result_id:"))
+        );
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
+        );
     }
 
     #[test]

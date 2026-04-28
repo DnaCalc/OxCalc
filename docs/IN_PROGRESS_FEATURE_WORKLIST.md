@@ -42,6 +42,10 @@ Supersession note:
 - Current state: active; the workset register, bead method, validator, and `.beads/` bootstrap now exist, and active repo-level docs now defer live execution truth to the bead graph.
 - Canonical owner: [W032_OXCALC_BEADS_MIGRATION_AND_LIGHT_DOCTRINE_REORIENTATION.md](C:\Work\DnaCalc\OxCalc\docs\worksets\W032_OXCALC_BEADS_MIGRATION_AND_LIGHT_DOCTRINE_REORIENTATION.md), [WORKSET_REGISTER.md](C:\Work\DnaCalc\OxCalc\docs\WORKSET_REGISTER.md), and [BEADS.md](C:\Work\DnaCalc\OxCalc\docs\BEADS.md).
 
+### IP-06 Operation Model, Undo/Redo, And Collaboration Positioning
+- Current state: planned; OxCalc now has a single architecture/design/work-plan packet that positions the `OpLog` realization, undo/redo, live-editing substrate, and OxReplay replay-export relation as OxCalc-owned execution concerns rather than Foundation code or OxReplay scope.
+- Canonical owner: [CORE_ENGINE_OPLOG_UNDO_REDO_AND_COLLAB_ARCHITECTURE_PLAN.md](C:\Work\DnaCalc\OxCalc\docs\spec\core-engine\CORE_ENGINE_OPLOG_UNDO_REDO_AND_COLLAB_ARCHITECTURE_PLAN.md).
+
 ## Status Vocabulary
 - `planned`: accepted lane, no active execution claim implied here.
 - `active`: live lane with current owner surfaces.
@@ -49,3 +53,4 @@ Supersession note:
 
 Current reading:
 1. `IP-01` through `IP-05` are `active`.
+2. `IP-06` is `planned`.

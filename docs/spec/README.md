@@ -9,6 +9,7 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
 - `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`
 - `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+- `docs/spec/core-engine/CORE_ENGINE_OPLOG_UNDO_REDO_AND_COLLAB_ARCHITECTURE_PLAN.md`
 - `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
 - `docs/spec/core-engine/CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md`
@@ -44,6 +45,10 @@ Every OxCalc doc that a downstream host might encounter falls into one of these 
 | **historical/non-authority** | Archives, mirrors, snapshots, handoff records, and note-exchange docs. | Do not read as current seam-reference truth. |
 
 The classification of each individual document is stated in `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` Sections 4–6.
+
+## Operation-Model And Collaboration Positioning
+- `docs/spec/core-engine/CORE_ENGINE_OPLOG_UNDO_REDO_AND_COLLAB_ARCHITECTURE_PLAN.md`
+  - canonical companion defining OxCalc's intended ownership and staged realization path for the operation model, undo/redo, collaboration substrate, and replay-export relation to `OxReplay`.
 
 ## Supporting Realization and Test Docs
 - `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`

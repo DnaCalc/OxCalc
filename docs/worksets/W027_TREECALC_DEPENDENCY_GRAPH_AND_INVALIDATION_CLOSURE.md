@@ -99,29 +99,31 @@ Current non-overclaim:
 3. broader runtime-derived dependency closure still belongs to `W029`, not to this packet
 
 ## Pre-Closure Verification Checklist
-1. Spec text and realization notes updated for all in-scope items: no
-2. Pack expectations updated for affected packs: no
-3. At least one deterministic replay artifact exists per in-scope behavior: no
-4. Semantic-equivalence statement provided for policy or strategy changes: no
-5. FEC/F3E cross-repo impact assessed and handoff filed if needed: no
-6. All required tests pass: no
-7. No known semantic gaps remain in declared scope: no
-8. Completion language audit passed: no
-9. `WORKSET_REGISTER.md` updated when ordered workset truth changed: no
-10. `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed: no
-11. execution-state blocker surface updated (`.beads/` for ordinary blockers; prose blocker surface only for exceptional narrative blockers): no
+Audit bead: `calc-8gw`.
+
+1. Spec text and realization notes updated for all in-scope items: yes — this workset packet records the current executed floor, and the supporting TreeCalc semantic plan remains the governing phase-scope companion.
+2. Pack expectations updated for affected packs: yes — no new pack family was introduced; W027 evidence remains bound to the existing TreeCalc local runner, dependency artifact, and validation surfaces.
+3. At least one deterministic replay artifact exists per in-scope behavior: yes — checked-in TreeCalc local run artifacts include `dependency_graph.json`, `invalidation_closure.json`, and `post_edit/invalidation_seeds.json` for the covered phase scope.
+4. Semantic-equivalence statement provided for policy or strategy changes: yes / not applicable — W027 does not promote a scheduler or coordinator strategy change; it realizes dependency graph and invalidation state beneath the existing sequential TreeCalc path, so observable formula results are unchanged except for intentional deterministic reject/diagnostic behavior when dependency state is invalid.
+5. FEC/F3E cross-repo impact assessed and handoff filed if needed: yes — no new OxFml-owned FEC/F3E clause change was required; OxFml remains owner of parse/bind/evaluator meaning and W027 consumes the already admitted W026 bind/reference floor.
+6. All required tests pass: yes — `cargo test --workspace`, scoped OxCalc `cargo fmt -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `scripts/check-worksets.ps1` pass for the audit run; clippy reports only a non-fatal warning in sibling `OxFunc`.
+7. No known semantic gaps remain in declared scope: yes — remaining runtime-derived overlay, evaluator-backed candidate, and broader corpus/oracle lanes are explicitly outside W027 and belong to W028-W030.
+8. Completion language audit passed: yes — closure language is limited to the declared W027 phase scope and does not claim W028-W031 semantics.
+9. `WORKSET_REGISTER.md` updated when ordered workset truth changed: yes / not applicable — ordered workset truth did not change.
+10. `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed: yes / not applicable — feature-map truth did not change for this W027 closure audit.
+11. execution-state blocker surface updated (`.beads/` for ordinary blockers; prose blocker surface only for exceptional narrative blockers): yes — `calc-8gw` records the closure audit; no W027 follow-up blocker bead is required by this audit.
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - the first executed W027 floor now exists for graph build, reverse edges, cycle groups, diagnostics, structural invalidation seeds, and invalidation closure beneath `OxCalcTreeRecalcResult`
-  - the first stronger replay-visible dependency identity floor now exists through explicit descriptor records beneath `DependencyGraph` and in emitted `dependency_graph.json`
-  - any later identity widening would need to justify pressure beyond the current descriptor packet
-  - broader invalidation-cause widening beyond the current first non-structural reason set remains open
-  - runtime-derived dynamic dependency closure remains open and belongs to `W029`
-  - broader sequential corpus/oracle baseline evidence remains open and belongs to `W030`
-- claim_confidence: moderate
+- execution_state: closure_recommended
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: []
+- closure_audit_result: pass for declared W027 phase scope
+- next_ready_if_closed: `calc-g4q` / `W028 TreeCalc evaluator-backed candidate result integration`
+- non_scope_successors:
+  - runtime-derived dynamic dependency and overlay closure belongs to `W029`
+  - broader sequential corpus/oracle baseline evidence belongs to `W030`
+  - assurance refresh and residual packetization belongs to `W031`
+- claim_confidence: high for W027 declared phase scope
 - reviewed_inbound_observations: latest OxFml seam baseline consumed; no new active trigger beyond declared dependency-projection watch points

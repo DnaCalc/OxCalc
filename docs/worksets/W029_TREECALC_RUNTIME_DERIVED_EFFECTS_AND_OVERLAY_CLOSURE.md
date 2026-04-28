@@ -85,4 +85,4 @@ This means W029 does not renegotiate the current W026 transport truth unless liv
   - capability-sensitive and shape/topology-sensitive runtime handling are not realized yet
   - runtime-derived overlays on the published-success path are still narrower than the reject/fallback-side local floor
 - claim_confidence: draft
-- reviewed_inbound_observations: current OxFml seam baseline consumed; execution-restriction transport remains a watch lane, but the local TreeCalc floor now preserves the current dynamic-dependency versus execution-restriction distinction explicitly in runtime-effect and overlay projection
+- reviewed_inbound_observations: current OxFml seam baseline consumed; OxFml W066 resolved the historical W028 baseline quarantine guard, and normal clean `../OxFml` HEAD `487a5cfedc342f3983576d553cfc798941ab96bd` is the current validated baseline for successor planning; execution-restriction transport remains a watch lane, but the local TreeCalc floor now preserves the current dynamic-dependency versus execution-restriction distinction explicitly in runtime-effect and overlay projection

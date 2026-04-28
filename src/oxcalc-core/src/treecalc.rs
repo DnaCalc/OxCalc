@@ -349,6 +349,7 @@ impl LocalTreeCalcEngine {
             if published_value.is_some_and(|value| value == &computed_value) {
                 recalc_tracker.verify_clean(*node_id)?;
                 diagnostics.push(format!("verified_clean:{node_id}"));
+                diagnostics.push(format!("verified_clean_publication_suppressed:{node_id}"));
             } else {
                 recalc_tracker.produce_candidate_result(
                     *node_id,
@@ -1598,6 +1599,20 @@ mod tests {
         assert_eq!(
             run.node_states[&TreeNodeId(3)],
             NodeCalcState::VerifiedClean
+        );
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with("oxfml_candidate_result_id:"))
+        );
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
+        );
+        assert!(
+            run.diagnostics
+                .contains(&"verified_clean_publication_suppressed:node:3".to_string())
         );
     }
 

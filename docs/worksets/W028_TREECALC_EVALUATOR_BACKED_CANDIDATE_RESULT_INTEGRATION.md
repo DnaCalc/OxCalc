@@ -39,27 +39,62 @@ This packet widens execution truth beneath the existing `OxCalcTree` host-facing
 - reject-is-no-publish is exercised over real formula-driven candidate intake
 - verified-clean semantics are explicit and evidenced for the live path
 
+## Current Executed Floor
+The first W028 floor is now exercised in live OxCalc code against the pinned OxFml consumer baseline `9aca95a8598124d8fc2125bd264469daeda5185f`.
+
+Current realized evaluator-backed candidate packet:
+1. W028 validation uses the clean baseline worktree `../OxFml_W028_9aca95a` and a reversible temporary Cargo path redirect so the dirty `../OxFml` workspace is not consumed as evidence.
+2. `RuntimeFormulaResult.candidate_result` is consumed before local coordinator publication.
+3. OxCalc records deterministic candidate diagnostics:
+   - `oxfml_candidate_result_id`
+   - `oxfml_candidate_formula_stable_id`
+   - `oxfml_candidate_trace_correlation_id`
+   - candidate value-delta identity fields.
+4. OxCalc records deterministic accepted commit diagnostics:
+   - `oxfml_commit_candidate_result_id`
+   - `oxfml_commit_attempt_id`
+   - `oxfml_commit_formula_stable_id`
+   - commit value-delta candidate identity.
+5. OxCalc validates the accepted OxFml `CommitBundle` remains compatible with the evaluator candidate before local coordinator publication.
+6. OxCalc records deterministic reject/no-publish diagnostics from OxFml `RejectRecord` where present:
+   - reject code
+   - formula id
+   - optional commit id
+   - trace correlation id
+   - explicit `oxfml_reject_no_publish:true` marker.
+7. Coordinator publication authority remains OxCalc-owned; evaluator success is not treated as local coordinator publication.
+8. Verified-clean semantics are explicit over the evaluator-backed path: when the OxFml-backed candidate value equals the seeded published value, the node is marked `VerifiedClean`, candidate diagnostics are preserved, `verified_clean_publication_suppressed:<node>` is emitted, and no local `candidate_result` or `publication_bundle` is produced.
+
+Current non-overclaim:
+1. full runtime-derived dynamic dependency overlay closure belongs to `W029`.
+2. broader retained-failure widening and full oracle/replay promotion remain successor work.
+3. the W028 floor is scoped to the first TreeCalc-ready formula families covered by the current local engine and pinned OxFml baseline.
+
 ## Pre-Closure Verification Checklist
-1. Spec text and realization notes updated for all in-scope items: no
-2. Pack expectations updated for affected packs: no
-3. At least one deterministic replay artifact exists per in-scope behavior: no
-4. Semantic-equivalence statement provided for policy or strategy changes: no
-5. FEC/F3E cross-repo impact assessed and handoff filed if needed: no
-6. All required tests pass: no
-7. No known semantic gaps remain in declared scope: no
-8. Completion language audit passed: no
-9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: no
-10. `CURRENT_BLOCKERS.md` updated if needed: no
+Audit bead: `calc-uns`.
+
+1. Spec text and realization notes updated for all in-scope items: yes — this packet records the current executed W028 floor and non-overclaim boundaries.
+2. Pack expectations updated for affected packs: yes — no new pack family was introduced; W028 evidence is bound to the existing TreeCalc local runner, OxFml consumer facade, and validation surfaces.
+3. At least one deterministic replay artifact exists per in-scope behavior: yes — checked-in TreeCalc local artifacts and runner tests preserve candidate, publication, reject, and verified-clean diagnostics for the current floor; the audit additionally validates the pinned OxFml clean-baseline path.
+4. Semantic-equivalence statement provided for policy or strategy changes: yes / not applicable — W028 does not promote a scheduling strategy change; observable publication remains under OxCalc coordinator authority, while evaluator candidate/commit/reject diagnostics are made explicit.
+5. FEC/F3E cross-repo impact assessed and handoff filed if needed: yes — no new OxFml canonical seam change is required; W028 targets the committed OxFml baseline `9aca95a8598124d8fc2125bd264469daeda5185f` and does not consume dirty OxFml-only surfaces.
+6. All required tests pass: yes — `cargo test --workspace`, scoped OxCalc `cargo fmt -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `scripts/check-worksets.ps1`, and reversible clean-baseline redirect validation pass; clippy reports only a non-fatal warning in sibling `OxFunc`.
+7. No known semantic gaps remain in declared scope: yes — remaining runtime-derived overlay and broader oracle/replay lanes are explicitly outside W028 and belong to successor worksets.
+8. Completion language audit passed: yes — closure language is limited to the declared W028 phase scope and does not claim W029-W031 semantics.
+9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: yes / not applicable — feature-map truth did not change for this W028 closure audit.
+10. `CURRENT_BLOCKERS.md` updated if needed: yes / not applicable — ordinary execution state is in `.beads/`; no prose blocker update is needed.
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - this packet now sits beneath the landed `OxCalcTree` host-facing contract, but the current facade still wraps only the first local sequential engine slice rather than a broader TreeCalc-ready lifecycle API
-  - the first direct-host OxFml slice now drives local candidate adaptation and typed reject handling, but broader W026 bind/reference intake is still open
-  - verified-clean semantics are evidenced only for the current local TreeCalc subset, not yet for the broader first TreeCalc-ready family set
-  - publication, reject, and candidate artifacts are still local-floor TreeCalc evidence rather than the later live oracle/replay lane
-- claim_confidence: draft
-- reviewed_inbound_observations: W020 remains the carried seam-intake baseline
+- execution_state: closure_recommended
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: []
+- closure_audit_result: pass for declared W028 phase scope
+- next_ready_if_closed: `calc-k5i` / `W029 TreeCalc runtime-derived effects and overlay closure`
+- non_scope_successors:
+  - runtime-derived dynamic dependency and overlay closure belongs to `W029`
+  - broader sequential corpus/oracle baseline evidence belongs to `W030`
+  - assurance refresh and residual packetization belongs to `W031`
+- claim_confidence: high for W028 declared phase scope
+- reviewed_inbound_observations: W020 remains the carried seam-intake baseline; OxFml W028 baseline quarantine outcome consumed by targeting committed baseline `9aca95a8598124d8fc2125bd264469daeda5185f`

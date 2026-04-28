@@ -61,28 +61,29 @@ This means W029 does not renegotiate the current W026 transport truth unless liv
 - any still-narrow execution-restriction seam issue is packetized explicitly rather than left implicit
 
 ## Pre-Closure Verification Checklist
-1. Spec text and realization notes updated for all in-scope items: no
-2. Pack expectations updated for affected packs: no
-3. At least one deterministic replay artifact exists per in-scope behavior: no
-4. Semantic-equivalence statement provided for policy or strategy changes: no
-5. FEC/F3E cross-repo impact assessed and handoff filed if needed: no
-6. All required tests pass: no
-7. No known semantic gaps remain in declared scope: no
-8. Completion language audit passed: no
-9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: no
-10. `CURRENT_BLOCKERS.md` updated if needed: no
+Audit bead: `calc-k5i.7`.
+
+1. Spec text and realization notes updated for all in-scope items: yes — this packet records the W029 realized floor beneath the `OxCalcTree` host-facing contract.
+2. Pack expectations updated for affected packs: yes — TreeCalc fixture expectations now assert runtime-effect overlay kinds where in scope, and the local TreeCalc baseline was regenerated to 15 cases.
+3. At least one deterministic replay artifact exists per in-scope behavior: yes — checked-in artifacts under `docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/` cover dynamic dependency, execution restriction, capability-sensitive, shape/topology, publish, verified-clean, reject/no-publish, and post-edit overlay paths.
+4. Semantic-equivalence statement provided for policy or strategy changes: yes — environment context and overlay-projection policy affect diagnostics and overlay sidecars only; candidate acceptance, reject/no-publish, and coordinator publication authority remain invariant for existing published and verified-clean paths.
+5. FEC/F3E cross-repo impact assessed and handoff filed if needed: yes — no new OxFml canonical seam change is required; W029 uses OxCalc-local TreeCalc projection labels while preserving OxFml ownership of formula-language semantics.
+6. All required tests pass: yes — `cargo run -p oxcalc-tracecalc-cli -- treecalc w025-treecalc-local-baseline`, scoped OxCalc `cargo fmt -- --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, and `scripts/check-worksets.ps1` pass.
+7. No known semantic gaps remain in declared scope: yes — remaining broader corpus/oracle work belongs to W030 and assurance/residual packetization belongs to W031.
+8. Completion language audit passed: yes — closure language is limited to W029 declared runtime-derived effects/environment widening scope and does not claim W030/W031 closure.
+9. `IN_PROGRESS_FEATURE_WORKLIST.md` updated: yes / not applicable — feature-map truth did not change for this W029 closure audit.
+10. `CURRENT_BLOCKERS.md` updated if needed: yes / not applicable — ordinary execution state is in `.beads/`; no prose blocker update is needed.
 
 ## Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - the first live implementation slice now exists beneath the landed `OxCalcTree` host-facing contract: runtime effects carry an explicit family classification and the runtime-effect overlay projection now preserves dynamic-dependency versus execution-restriction distinction
-  - W026 now owns the consumed-now transport and reachability floor for that subset; W029 still owns any wider family realization or broader overlay closure beneath it
-  - host-facing replay or session widening has not been executed here yet
-  - runtime-derived effect closure over the live TreeCalc path remains partial beyond the current dynamic-dependency versus execution-restriction subset
-  - capability-sensitive and shape/topology-sensitive runtime handling are not realized yet
-  - runtime-derived overlays on the published-success path are still narrower than the reject/fallback-side local floor
-- claim_confidence: draft
-- reviewed_inbound_observations: current OxFml seam baseline consumed; OxFml W066 resolved the historical W028 baseline quarantine guard, and normal clean `../OxFml` HEAD `487a5cfedc342f3983576d553cfc798941ab96bd` is the current validated baseline for successor planning; execution-restriction transport remains a watch lane, but the local TreeCalc floor now preserves the current dynamic-dependency versus execution-restriction distinction explicitly in runtime-effect and overlay projection
+- execution_state: closure_recommended
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- open_lanes: []
+- closure_audit_result: pass for declared W029 phase scope
+- next_ready_if_closed: W030 first corpus/oracle bead under `calc-lb1`
+- non_scope_successors:
+  - broader TreeCalc corpus/oracle and first sequential baseline belongs to `W030`
+  - assurance refresh and residual packetization belongs to `W031`
+- claim_confidence: high for W029 declared phase scope
+- reviewed_inbound_observations: current OxFml seam baseline consumed; OxFml W066 resolved the historical W028 baseline quarantine guard, and normal clean `../OxFml` HEAD `487a5cfedc342f3983576d553cfc798941ab96bd` is the current validated baseline; execution-restriction, capability-sensitive, dynamic-dependency, and shape/topology runtime-derived facts now have OxCalc-local live TreeCalc evidence and deterministic overlay/replay projection without a new OxFml handoff trigger.

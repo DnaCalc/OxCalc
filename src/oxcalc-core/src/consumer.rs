@@ -12,8 +12,8 @@ use crate::formula::TreeFormulaCatalog;
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 use crate::treecalc::{
-    LocalTreeCalcEngine, LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts,
-    LocalTreeCalcRunState,
+    LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext, LocalTreeCalcError, LocalTreeCalcInput,
+    LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -159,6 +159,21 @@ impl OxCalcTreeEnvironment {
     }
 
     #[must_use]
+    pub fn runtime_context(&self) -> LocalTreeCalcEnvironmentContext {
+        LocalTreeCalcEnvironmentContext {
+            runtime_lane: self.runtime_lane.as_diagnostic_value().to_string(),
+            session_id: self.session_id.clone(),
+            capability_profile_id: self.host_capabilities.capability_profile_id.clone(),
+            dynamic_dependency_effects: self.host_capabilities.dynamic_dependency_effects,
+            execution_restriction_effects: self.host_capabilities.execution_restriction_effects,
+            capability_sensitive_effects: self.host_capabilities.capability_sensitive_effects,
+            shape_topology_effects: self.host_capabilities.shape_topology_effects,
+            runtime_policy_id: self.runtime_policy.policy_id.clone(),
+            project_runtime_effect_overlays: self.runtime_policy.project_runtime_effect_overlays,
+        }
+    }
+
+    #[must_use]
     pub fn diagnostics(&self) -> Vec<String> {
         if !self.runtime_policy.emit_environment_diagnostics {
             return Vec::new();
@@ -237,6 +252,7 @@ impl OxCalcTreeRuntimeFacade {
             publication_id: request.publication_id,
             compatibility_basis: request.compatibility_basis,
             artifact_token_basis: request.artifact_token_basis,
+            environment_context: self.environment.runtime_context(),
         })?;
         let mut result = OxCalcTreeRecalcResult::from(artifacts);
         result.diagnostics.extend(self.environment.diagnostics());
@@ -433,6 +449,86 @@ mod tests {
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == "oxcalc_tree_environment_runtime_policy_id:runtime-policy:diagnostic"
+        }));
+    }
+
+    #[test]
+    fn treecalc_runtime_derived_effects_use_environment_context() {
+        let facade = OxCalcTreeRuntimeFacade::new(
+            OxCalcTreeEnvironment::new()
+                .with_session_id("session:runtime-effects")
+                .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
+                    capability_profile_id: "capability-profile:runtime-effects".to_string(),
+                    dynamic_dependency_effects: true,
+                    execution_restriction_effects: true,
+                    capability_sensitive_effects: false,
+                    shape_topology_effects: false,
+                })
+                .with_runtime_policy(OxCalcTreeRuntimePolicy {
+                    policy_id: "runtime-policy:no-overlays".to_string(),
+                    emit_environment_diagnostics: true,
+                    project_runtime_effect_overlays: false,
+                }),
+        );
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Reference(
+                            crate::formula::TreeReference::DynamicPotential {
+                                carrier_id: "carrier:dynamic".to_string(),
+                                detail: "late_bound_projection".to_string(),
+                            },
+                        ),
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:environment-runtime".to_string(),
+                    publication_id: "pub:environment-runtime".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(result.publication_bundle.is_none());
+        assert!(result.runtime_effect_overlays.is_empty());
+        assert_eq!(result.runtime_effects.len(), 1);
+        assert_eq!(
+            result.runtime_effects[0].family,
+            RuntimeEffectFamily::DynamicDependency
+        );
+        assert!(
+            result.runtime_effects[0]
+                .detail
+                .contains("session_id:session:runtime-effects")
+        );
+        assert!(
+            result.runtime_effects[0]
+                .detail
+                .contains("capability_profile_id:capability-profile:runtime-effects")
+        );
+        assert!(
+            result.runtime_effects[0]
+                .detail
+                .contains("runtime_policy_id:runtime-policy:no-overlays")
+        );
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "runtime_effect_environment_session_id:session:runtime-effects"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == "runtime_effect_environment_capability_profile_id:capability-profile:runtime-effects"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "runtime_effect_environment_project_overlays:false"
         }));
     }
 

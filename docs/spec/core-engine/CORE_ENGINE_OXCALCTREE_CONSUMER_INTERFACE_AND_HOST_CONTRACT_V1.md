@@ -125,6 +125,7 @@ It carries the first non-narrow consumer inputs needed by TreeCalc-style hosts:
 
 These fields are consumer context, not formula-language semantics or coordinator publication state.
 They are projected into deterministic diagnostics so hosts can verify which environment basis was used for a run.
+Runtime-derived effect production also receives this environment context, allowing explicit policy such as runtime-effect overlay projection without changing candidate acceptance, reject/no-publish, or coordinator publication authority.
 
 It must not:
 1. hide OxFml-owned semantic inputs behind ambient mutable state,

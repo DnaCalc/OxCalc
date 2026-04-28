@@ -52,6 +52,36 @@ pub struct LocalTreeCalcInput {
     pub publication_id: String,
     pub compatibility_basis: String,
     pub artifact_token_basis: String,
+    pub environment_context: LocalTreeCalcEnvironmentContext,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalTreeCalcEnvironmentContext {
+    pub runtime_lane: String,
+    pub session_id: Option<String>,
+    pub capability_profile_id: String,
+    pub dynamic_dependency_effects: bool,
+    pub execution_restriction_effects: bool,
+    pub capability_sensitive_effects: bool,
+    pub shape_topology_effects: bool,
+    pub runtime_policy_id: String,
+    pub project_runtime_effect_overlays: bool,
+}
+
+impl Default for LocalTreeCalcEnvironmentContext {
+    fn default() -> Self {
+        Self {
+            runtime_lane: "local_sequential_treecalc".to_string(),
+            session_id: None,
+            capability_profile_id: "host-capabilities:default".to_string(),
+            dynamic_dependency_effects: true,
+            execution_restriction_effects: true,
+            capability_sensitive_effects: false,
+            shape_topology_effects: false,
+            runtime_policy_id: "runtime-policy:default".to_string(),
+            project_runtime_effect_overlays: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -318,10 +348,17 @@ impl LocalTreeCalcEngine {
                     success.value
                 }
                 Err(failure) => {
-                    runtime_effects.extend(failure.runtime_effects.clone());
+                    let failure_runtime_effects = annotate_runtime_effects_with_environment(
+                        &failure.runtime_effects,
+                        &input.environment_context,
+                    );
+                    runtime_effects.extend(failure_runtime_effects.clone());
                     diagnostics.extend(failure.diagnostics.clone());
+                    diagnostics.extend(runtime_effect_context_diagnostics(
+                        &input.environment_context,
+                    ));
                     let runtime_effect_overlays =
-                        build_runtime_effect_overlays(&input, *node_id, &failure.runtime_effects);
+                        build_runtime_effect_overlays(&input, *node_id, &failure_runtime_effects);
                     return reject_run(
                         &input,
                         &mut coordinator,
@@ -337,7 +374,7 @@ impl LocalTreeCalcEngine {
                             candidate_result_id: input.candidate_result_id.clone(),
                             target_set: formula_owner_ids.clone(),
                             value_updates,
-                            runtime_effects: failure.runtime_effects,
+                            runtime_effects: failure_runtime_effects,
                             diagnostic_events: vec![failure.error.to_string()],
                         }),
                         failure.error,
@@ -613,6 +650,10 @@ fn build_runtime_effect_overlays(
     owner_node_id: TreeNodeId,
     runtime_effects: &[RuntimeEffect],
 ) -> Vec<OverlayEntry> {
+    if !input.environment_context.project_runtime_effect_overlays {
+        return Vec::new();
+    }
+
     runtime_effects
         .iter()
         .enumerate()
@@ -632,6 +673,52 @@ fn build_runtime_effect_overlays(
             detail: format!("{}|{}", runtime_effect.kind, runtime_effect.detail),
         })
         .collect()
+}
+
+fn annotate_runtime_effects_with_environment(
+    runtime_effects: &[RuntimeEffect],
+    context: &LocalTreeCalcEnvironmentContext,
+) -> Vec<RuntimeEffect> {
+    runtime_effects
+        .iter()
+        .cloned()
+        .map(|mut runtime_effect| {
+            runtime_effect.detail = format!(
+                "{}|runtime_lane:{}|session_id:{}|capability_profile_id:{}|runtime_policy_id:{}",
+                runtime_effect.detail,
+                context.runtime_lane,
+                context.session_id.as_deref().unwrap_or("none"),
+                context.capability_profile_id,
+                context.runtime_policy_id
+            );
+            runtime_effect
+        })
+        .collect()
+}
+
+fn runtime_effect_context_diagnostics(context: &LocalTreeCalcEnvironmentContext) -> Vec<String> {
+    vec![
+        format!(
+            "runtime_effect_environment_runtime_lane:{}",
+            context.runtime_lane
+        ),
+        format!(
+            "runtime_effect_environment_session_id:{}",
+            context.session_id.as_deref().unwrap_or("none")
+        ),
+        format!(
+            "runtime_effect_environment_capability_profile_id:{}",
+            context.capability_profile_id
+        ),
+        format!(
+            "runtime_effect_environment_runtime_policy_id:{}",
+            context.runtime_policy_id
+        ),
+        format!(
+            "runtime_effect_environment_project_overlays:{}",
+            context.project_runtime_effect_overlays
+        ),
+    ]
 }
 
 fn runtime_effect_overlay_kind(runtime_effect: &RuntimeEffect) -> OverlayKind {
@@ -1534,6 +1621,7 @@ mod tests {
                 publication_id: "pub:local".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1587,6 +1675,7 @@ mod tests {
                 publication_id: "pub:verified".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1646,6 +1735,7 @@ mod tests {
                 publication_id: "pub:cycle".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1681,6 +1771,7 @@ mod tests {
                 publication_id: "pub:host".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1739,6 +1830,7 @@ mod tests {
                 publication_id: "pub:dynamic".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1794,6 +1886,7 @@ mod tests {
                 publication_id: "pub:rebind".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
                 artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 
@@ -1842,6 +1935,7 @@ mod tests {
                 publication_id: "pub:missing_target".to_string(),
                 compatibility_basis: "snapshot:2".to_string(),
                 artifact_token_basis: "snapshot:2".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
             })
             .unwrap();
 

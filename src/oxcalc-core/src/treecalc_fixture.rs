@@ -237,6 +237,7 @@ pub fn execute_fixture_case(
             publication_id: format!("fixture:{}:publication", case.case_id),
             compatibility_basis: format!("snapshot:{}", case.snapshot_id),
             artifact_token_basis: format!("snapshot:{}", case.snapshot_id),
+            environment_context: crate::treecalc::LocalTreeCalcEnvironmentContext::default(),
         })
         .map_err(|source| TreeCalcFixtureError::Runtime {
             case_id: case.case_id.clone(),
@@ -317,6 +318,7 @@ fn execute_post_edit_plan(
             publication_id: format!("fixture:{}:publication:post_edit", case.case_id),
             compatibility_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),
             artifact_token_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),
+            environment_context: crate::treecalc::LocalTreeCalcEnvironmentContext::default(),
         })
         .map_err(|source| TreeCalcFixtureError::Runtime {
             case_id: case.case_id.clone(),

@@ -3,6 +3,11 @@
 ## 1. Purpose and Status
 This document defines the design and execution-planning target for the first semantically-complete TreeCalc engine phase.
 
+Terminology rule:
+1. `DNA TreeCalc` is the future separate repo/product and primary OxCalc consumer after `DNA OneCalc`.
+2. `OxCalcTree` is the OxCalc-owned tree-runtime consumer contract/API surface used for that integration.
+3. Unqualified `TreeCalc` in this document means OxCalc's internal tree-substrate/runtime/reference preparation lane for eventual `DNA TreeCalc` integration, not the `DNA TreeCalc` product itself, unless explicitly prefixed with `DNA`.
+
 Status:
 1. active planning companion,
 2. intended canonical bridge between the current `TraceCalc` proving substrate and the first TreeCalc-ready engine,
@@ -31,6 +36,8 @@ This document then serves as the TreeCalc-first execution, widening, and residua
 The target defined by this document is:
 
 **the first semantically-complete, sequential, TreeCalc-ready core engine**
+
+Here `TreeCalc-ready` means ready as an OxCalc engine substrate for `DNA TreeCalc` consumption; it is not a claim that the separate `DNA TreeCalc` product/repo exists or is specified here.
 
 For this repo, that means an engine that can:
 1. hold a tree-structured calculation substrate of named nodes,

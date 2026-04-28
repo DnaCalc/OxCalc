@@ -3,6 +3,12 @@
 ## 1. Purpose and Status
 This document defines the OxCalc-owned tree-runtime consumer contract for hosts that actually consume the OxCalc runtime, with `DNA TreeCalc` as the first target consumer.
 
+Terminology rule:
+1. `DNA TreeCalc` is the future separate repo/product and host after `DNA OneCalc`: a large-scale incremental calculation test-bed and product with explicit nodes/names as formula holders and no grid-structure ownership in OxCalc.
+2. `OxCalcTree` and the `OxCalcTree*` object names in this document are OxCalc-owned tree-runtime consumer contract/API surfaces for that integration.
+3. This document is not the `DNA TreeCalc` product specification; it defines what OxCalc exposes to such a product.
+4. Unqualified `TreeCalc` in this document refers to the OxCalc tree-runtime/substrate lane unless explicitly prefixed with `DNA`.
+
 Status:
 1. active canonical local consumer-facing contract for the TreeCalc-first phase,
 2. intended to do for OxCalc what the OxFml V1 consumer packet now does for OxFml:
@@ -25,6 +31,8 @@ OxCalc already has:
 5. implementation-backed local runtime code.
 
 What it did not have was one explicit OxCalc-owned tree-runtime contract that a host such as `DNA TreeCalc` could read as the intended OxCalc entry surface.
+
+This keeps the boundary explicit: `DNA TreeCalc` owns product/host concerns, while OxCalc owns the `OxCalcTree` engine contract and the internal tree-substrate/runtime implementation that backs it.
 
 The result was too much spread across:
 1. architecture and seam docs,

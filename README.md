@@ -14,6 +14,11 @@ OxCalc is the multi-node core calculation engine lane for DNA Calc.
 3. Historical baseline runs remain valuable as carried evidence, but the repo no longer carries a parallel prior-language implementation tree.
 4. New implementation design should be idiomatic Rust rather than a line-by-line or pattern-by-pattern transfer of older non-Rust shapes.
 
+## TreeCalc Terminology
+1. `DNA TreeCalc` names the future separate repo/product and host after `DNA OneCalc`: a large-scale incremental calculation test-bed and product that consumes OxCalc as its primary calculation engine without owning OxCalc internals.
+2. `OxCalcTree` names the OxCalc-owned tree-runtime consumer contract/API surface exposed for tree-style hosts, including future `DNA TreeCalc` integration.
+3. Unqualified `TreeCalc` in OxCalc-local specs, worksets, fixtures, and code usually means OxCalc's internal tree-substrate/runtime/reference preparation lane for that future integration, not the `DNA TreeCalc` product itself.
+
 ## Startup Docs
 - `CHARTER.md`
 - `OPERATIONS.md`

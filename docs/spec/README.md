@@ -17,6 +17,11 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_REALIZATION_ROADMAP.md`
 - `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`
 
+## TreeCalc Terminology Rule
+1. `DNA TreeCalc` is the future separate repo/product and host: a large-scale incremental calculation test-bed and product, with explicit nodes/names as formula holders and no grid-structure ownership in OxCalc.
+2. `OxCalcTree` is the OxCalc-owned tree-runtime consumer contract/API surface that such a host should consume.
+3. Unqualified `TreeCalc` in OxCalc specs, worksets, fixtures, and local runtime code usually means the internal tree-substrate/runtime/reference preparation lane beneath `OxCalcTree`, not the `DNA TreeCalc` product itself.
+
 ## Actual Runtime Consumer Rule
 If a host such as `DNA TreeCalc` intends to consume the OxCalc runtime directly:
 1. start with `README.md`, `CHARTER.md`, `OPERATIONS.md`, `docs/WORKSET_REGISTER.md`, `docs/BEADS.md`, and `docs/IN_PROGRESS_FEATURE_WORKLIST.md`,

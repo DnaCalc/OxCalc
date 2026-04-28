@@ -4,6 +4,10 @@
 Make dynamic dependency, capability-sensitive, execution-restriction-sensitive, and shape-sensitive runtime effects real in the live TreeCalc engine path rather than leaving them as proving-lane-only constructs.
 This packet widens runtime-derived truth beneath the existing `OxCalcTree` host-facing consumer contract.
 
+Terminology note:
+1. `TreeCalc` in this workset means OxCalc's internal tree-substrate/runtime/reference preparation lane beneath the `OxCalcTree` contract.
+2. It does not name the future separate `DNA TreeCalc` repo/product, although that product is the intended primary consumer of this lane.
+
 ## Position and Dependencies
 - **Depends on**: W027, W028
 - **Blocks**: W030, W031

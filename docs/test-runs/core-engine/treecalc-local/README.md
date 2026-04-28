@@ -7,6 +7,7 @@ Current role:
 - deterministic local run artifacts for the first seam-backed TreeCalc local floor
 - first local oracle and conformance sidecars against fixture-declared expectations
 - first local trace and explain sidecars against the emitted local runtime artifacts
+- explicit `replay_artifact_manifest.json` inventory for root, per-case, conformance, trace, and explain artifacts
 - first local run-comparison discipline through `scripts/compare-treecalc-local-run.ps1`
 - precursor to the first sequential TreeCalc baseline lane in `W030`
 

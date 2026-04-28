@@ -24,6 +24,8 @@ const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifes
 const TREECALC_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_summary.v1";
 const TREECALC_LOCAL_TRACE_SCHEMA_V1: &str = "oxcalc.treecalc.local_trace.v1";
 const TREECALC_LOCAL_EXPLAIN_SCHEMA_V1: &str = "oxcalc.treecalc.local_explain.v1";
+const TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1: &str =
+    "oxcalc.treecalc.replay_artifact_manifest.v1";
 
 #[derive(Debug, Error)]
 pub enum TreeCalcRunnerError {
@@ -212,6 +214,15 @@ impl TreeCalcRunner {
             &artifact_root.join("conformance/explain_index.json"),
             &json!(explain_index),
         )?;
+        write_json(
+            &artifact_root.join("replay_artifact_manifest.json"),
+            &replay_artifact_manifest_json(
+                run_id,
+                &relative_artifact_root,
+                manifest.cases.len(),
+                &case_results,
+            ),
+        )?;
 
         let summary = TreeCalcRunSummary {
             run_id: run_id.to_string(),
@@ -236,6 +247,58 @@ impl TreeCalcRunner {
 
         Ok(summary)
     }
+}
+
+fn replay_artifact_manifest_json(
+    run_id: &str,
+    relative_artifact_root: &str,
+    case_count: usize,
+    case_results: &[serde_json::Value],
+) -> serde_json::Value {
+    json!({
+        "schema_version": TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "case_count": case_count,
+        "required_root_artifacts": [
+            "manifest_selection.json",
+            "run_summary.json",
+            "case_index.json",
+            "replay_artifact_manifest.json",
+            "conformance/oracle_baseline.json",
+            "conformance/engine_diff.json",
+            "conformance/conformance_summary.json",
+            "conformance/explain_index.json"
+        ],
+        "case_artifact_families": [
+            "input_case",
+            "result",
+            "published_values",
+            "dependency_graph",
+            "invalidation_closure",
+            "runtime_effects",
+            "runtime_effect_overlays",
+            "node_states",
+            "oracle",
+            "engine_diff",
+            "trace",
+            "explain"
+        ],
+        "cases": case_results
+            .iter()
+            .map(|case_result| {
+                json!({
+                    "case_id": case_result["case_id"],
+                    "result_state": case_result["result_state"],
+                    "conformance_state": case_result["conformance_state"],
+                    "artifact_paths": case_result["artifact_paths"],
+                    "conformance_artifact_paths": case_result["conformance_artifact_paths"],
+                    "supporting_artifact_paths": case_result["supporting_artifact_paths"],
+                    "post_edit_artifact_paths": case_result["artifact_paths"]["post_edit"],
+                })
+            })
+            .collect::<Vec<_>>(),
+    })
 }
 
 fn compare_expected(
@@ -1076,6 +1139,7 @@ mod tests {
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
+        assert!(artifact_root.join("replay_artifact_manifest.json").exists());
         assert!(
             artifact_root
                 .join("conformance/oracle_baseline.json")
@@ -1161,6 +1225,30 @@ mod tests {
             artifact_root
                 .join("conformance/explain_index.json")
                 .exists()
+        );
+
+        let replay_manifest = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("replay_artifact_manifest.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            replay_manifest["schema_version"],
+            TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
+        );
+        assert_eq!(replay_manifest["case_count"], 17);
+        assert!(
+            replay_manifest["required_root_artifacts"]
+                .as_array()
+                .is_some_and(|artifacts| artifacts
+                    .iter()
+                    .any(|artifact| { artifact == "conformance/explain_index.json" }))
+        );
+        assert!(
+            replay_manifest["case_artifact_families"]
+                .as_array()
+                .is_some_and(|families| families
+                    .iter()
+                    .any(|family| { family == "runtime_effect_overlays" }))
         );
 
         let rename_post_edit_result = serde_json::from_str::<serde_json::Value>(

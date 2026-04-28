@@ -1,0 +1,12 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline",
+  "case_count": 17,
+  "expectation_mismatch_count": 0,
+  "result_counts": {
+    "published": 9,
+    "rejected": 7,
+    "verified_clean": 1
+  },
+  "run_id": "w030-treecalc-oracle-baseline",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

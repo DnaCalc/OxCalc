@@ -1,0 +1,19 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "published_values": {
+    "3": "10"
+  },
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays": [],
+  "runtime_effects": []
+}

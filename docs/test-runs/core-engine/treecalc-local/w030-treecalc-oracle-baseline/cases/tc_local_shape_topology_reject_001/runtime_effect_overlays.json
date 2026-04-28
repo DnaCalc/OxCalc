@@ -1,0 +1,12 @@
+[
+  {
+    "compatibility_basis": "snapshot:21",
+    "detail": "runtime_effect.shape_topology_reference|owner_node:node:2;carrier_id:carrier:shape;detail:range_shape_projection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+    "is_eviction_eligible": false,
+    "is_protected": true,
+    "overlay_kind": "ShapeTopology",
+    "owner_node_id": 2,
+    "payload_identity": "fixture:tc_local_shape_topology_reject_001:candidate:runtime_effect:0",
+    "structural_snapshot_id": 21
+  }
+]

@@ -10,8 +10,9 @@ Current role:
 - first local run-comparison discipline through `scripts/compare-treecalc-local-run.ps1`
 - precursor to the first sequential TreeCalc baseline lane in `W030`
 
-Current emitted root:
-- `w025-treecalc-local-baseline`
+Current emitted roots:
+- `w025-treecalc-local-baseline` — carried local baseline from the W025/W029 widening floor
+- `w030-treecalc-oracle-baseline` — first broader W030 TreeCalc oracle baseline over the 17-case runtime-derived corpus
 
 Current local corpus floor:
 - 17 cases
@@ -37,5 +38,6 @@ Current limits:
 - the current lane is seam-backed for the first direct-host slice, but still has W029/W030 successor breadth beyond the currently exercised dynamic-dependency, execution-restriction, capability-sensitive, and shape/topology floors
 - oracle and conformance are local fixture-expectation floors only, not the later live TreeCalc oracle lane
 
-Current compare command:
-- `pwsh ./scripts/compare-treecalc-local-run.ps1 -CandidateRunId w025-treecalc-local-baseline`
+Current compare commands:
+- `pwsh ./scripts/compare-treecalc-local-run.ps1 -CandidateRunId w030-treecalc-oracle-baseline`
+- `pwsh ./scripts/compare-treecalc-local-run.ps1 -CandidateRunId w030-treecalc-oracle-baseline -BaselineRunId w030-treecalc-oracle-baseline`

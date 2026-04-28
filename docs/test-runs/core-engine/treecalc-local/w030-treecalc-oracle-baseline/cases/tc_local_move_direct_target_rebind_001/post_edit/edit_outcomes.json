@@ -1,0 +1,13 @@
+[
+  {
+    "affected_node_ids": [
+      2,
+      4
+    ],
+    "diagnostic_events": [
+      "node_moved:node:2:node:4"
+    ],
+    "impact": "RebindRequired",
+    "snapshot_id": 11
+  }
+]

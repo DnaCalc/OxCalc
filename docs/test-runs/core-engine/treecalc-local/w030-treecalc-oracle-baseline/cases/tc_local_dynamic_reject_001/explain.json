@@ -1,0 +1,49 @@
+{
+  "case_id": "tc_local_dynamic_reject_001",
+  "conformance_state": "matches_expected",
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "mismatch_count": 0,
+  "mismatches": [],
+  "notes": [
+    "local fixture expectation floor matched observed artifacts",
+    "runtime-derived effects were emitted in the local sequential runtime",
+    "result ended in conservative local rejection"
+  ],
+  "publication_bundle": null,
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_dynamic_reject_001:candidate",
+    "detail": "reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection",
+    "kind": "DynamicDependencyFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:5",
+      "detail": "runtime_effect.dynamic_reference|owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 2,
+      "payload_identity": "fixture:tc_local_dynamic_reject_001:candidate:runtime_effect:0",
+      "structural_snapshot_id": 5
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection"
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

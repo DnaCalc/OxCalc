@@ -1,0 +1,21 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "diagnostic_events": [
+    "constant_value_changed:node:2:7"
+  ],
+  "edit_impacts": [
+    "RecalcOnly"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

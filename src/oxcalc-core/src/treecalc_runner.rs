@@ -1282,11 +1282,10 @@ mod tests {
                 .as_str()
                 .is_some_and(|value| !value.is_empty())
         );
-        assert_eq!(
+        assert!(
             published_result["candidate_result"]["candidate_result_id"]
                 .as_str()
-                .is_some_and(|value| !value.is_empty()),
-            true
+                .is_some_and(|value| !value.is_empty())
         );
         assert_eq!(
             published_result["publication_bundle"]["published_view_delta"]

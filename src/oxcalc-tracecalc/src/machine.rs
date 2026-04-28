@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use oxcalc_core::coordinator::{
     AcceptedCandidateResult, CoordinatorError, DependencyShapeUpdate, RejectKind, RuntimeEffect,
-    TreeCalcCoordinator,
+    RuntimeEffectFamily, TreeCalcCoordinator,
 };
 use oxcalc_core::recalc::{NodeCalcState, OverlayKey, OverlayKind, Stage1RecalcTracker};
 use oxcalc_core::structural::{
@@ -703,6 +703,25 @@ fn map_reject_kind(reject_kind: &str) -> RejectKind {
     }
 }
 
+fn runtime_effect_family(effect_kind: &str) -> RuntimeEffectFamily {
+    match effect_kind {
+        "dynamic_ref_activated" | "dynamic_ref_released" | "runtime_effect.dynamic_reference" => {
+            RuntimeEffectFamily::DynamicDependency
+        }
+        "runtime_effect.host_sensitive_reference" => RuntimeEffectFamily::ExecutionRestriction,
+        _ if effect_kind.contains("capability") => RuntimeEffectFamily::CapabilitySensitive,
+        _ if effect_kind.contains("shape") || effect_kind.contains("topology") => {
+            RuntimeEffectFamily::ShapeTopology
+        }
+        _ if effect_kind.contains("host_sensitive")
+            || effect_kind.contains("execution_restriction") =>
+        {
+            RuntimeEffectFamily::ExecutionRestriction
+        }
+        _ => RuntimeEffectFamily::ExecutionRestriction,
+    }
+}
+
 struct MachineState {
     snapshot: StructuralSnapshot,
     external_snapshot_id: String,
@@ -751,6 +770,7 @@ impl MachineState {
             .iter()
             .map(|effect| RuntimeEffect {
                 kind: effect.effect_kind.clone(),
+                family: runtime_effect_family(&effect.effect_kind),
                 detail: effect
                     .payload
                     .as_ref()
@@ -927,6 +947,7 @@ impl MachineState {
             .iter()
             .map(|effect| RuntimeEffect {
                 kind: effect.effect_kind.clone(),
+                family: runtime_effect_family(&effect.effect_kind),
                 detail: effect
                     .payload
                     .as_ref()

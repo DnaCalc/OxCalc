@@ -572,10 +572,7 @@ mod tests {
             closure.records[&TreeNodeId(4)].reasons,
             vec![InvalidationReasonKind::UpstreamPublication]
         );
-        assert_eq!(
-            closure.impacted_order,
-            vec![TreeNodeId(2), TreeNodeId(4)]
-        );
+        assert_eq!(closure.impacted_order, vec![TreeNodeId(2), TreeNodeId(4)]);
     }
 
     #[test]

@@ -556,9 +556,9 @@ mod tests {
             assert_eq!(
                 artifacts
                     .evaluation_order
-                .iter()
-                .map(|node_id| node_id.0)
-                .collect::<Vec<_>>(),
+                    .iter()
+                    .map(|node_id| node_id.0)
+                    .collect::<Vec<_>>(),
                 *expected_order,
                 "fixture context: {context}"
             );
@@ -583,8 +583,7 @@ mod tests {
                 .map(|runtime_effect| runtime_effect.kind.clone())
                 .collect::<Vec<_>>();
             assert_eq!(
-                observed_runtime_effect_kinds,
-                *expected_runtime_effect_kinds,
+                observed_runtime_effect_kinds, *expected_runtime_effect_kinds,
                 "fixture context: {context}"
             );
         }

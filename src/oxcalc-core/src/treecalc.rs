@@ -105,7 +105,9 @@ pub enum LocalTreeCalcError {
     UnsupportedFunction { function_name: String },
     #[error("formula family contains a cycle; local sequential runtime cannot yet evaluate it")]
     CycleDetected,
-    #[error("dependency graph for formula node {node_id} is incompatible with reevaluation: {detail}")]
+    #[error(
+        "dependency graph for formula node {node_id} is incompatible with reevaluation: {detail}"
+    )]
     DependencyGraphIncompatible { node_id: TreeNodeId, detail: String },
     #[error("formula node {node_id} requires rebind before reevaluation")]
     StructuralRebindRequired { node_id: TreeNodeId },
@@ -179,7 +181,8 @@ impl LocalTreeCalcEngine {
             .iter()
             .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor.owner_node_id))
             .collect::<BTreeMap<_, _>>();
-        let dependency_graph = DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
+        let dependency_graph =
+            DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
         let invalidation_seeds = if input.invalidation_seeds.is_empty() {
             default_invalidation_seeds(&formula_owner_ids)
@@ -256,23 +259,26 @@ impl LocalTreeCalcEngine {
             );
         }
 
-        if let Some((node_id, detail)) = dependency_graph.diagnostics.iter().find_map(|diagnostic| {
-            match diagnostic.kind {
-                crate::dependency::DependencyDiagnosticKind::MissingOwner
-                | crate::dependency::DependencyDiagnosticKind::MissingTarget => {
-                    dependency_descriptor_owners
-                        .get(&diagnostic.descriptor_id)
-                        .copied()
-                        .map(|owner_node_id| {
-                            (
-                                owner_node_id,
-                                format!("{:?}: {}", diagnostic.kind, diagnostic.detail),
-                            )
-                        })
-                }
-                _ => None,
-            }
-        }) {
+        if let Some((node_id, detail)) =
+            dependency_graph
+                .diagnostics
+                .iter()
+                .find_map(|diagnostic| match diagnostic.kind {
+                    crate::dependency::DependencyDiagnosticKind::MissingOwner
+                    | crate::dependency::DependencyDiagnosticKind::MissingTarget => {
+                        dependency_descriptor_owners
+                            .get(&diagnostic.descriptor_id)
+                            .copied()
+                            .map(|owner_node_id| {
+                                (
+                                    owner_node_id,
+                                    format!("{:?}: {}", diagnostic.kind, diagnostic.detail),
+                                )
+                            })
+                    }
+                    _ => None,
+                })
+        {
             return reject_run(
                 &input,
                 &mut coordinator,
@@ -854,6 +860,47 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
     descriptors
 }
 
+fn residual_evaluation_failure(
+    prepared: &PreparedOxfmlFormula,
+    extra_diagnostics: Vec<String>,
+) -> Option<LocalFormulaEvaluationFailure> {
+    let residual = prepared.translated.residuals.first()?;
+    let runtime_effects = prepared
+        .translated
+        .residuals
+        .iter()
+        .map(residual_runtime_effect)
+        .collect::<Vec<_>>();
+    let error = match residual.kind {
+        ResidualCarrierKind::HostSensitive => LocalTreeCalcError::HostSensitiveReference {
+            owner_node_id: residual.owner_node_id,
+            detail: residual.detail.clone(),
+        },
+        ResidualCarrierKind::DynamicPotential => LocalTreeCalcError::DynamicReference {
+            owner_node_id: residual.owner_node_id,
+            detail: residual.detail.clone(),
+        },
+    };
+
+    Some(LocalFormulaEvaluationFailure {
+        error,
+        runtime_effects,
+        diagnostics: prepared
+            .bind_diagnostics
+            .iter()
+            .cloned()
+            .chain(extra_diagnostics)
+            .collect(),
+    })
+}
+
+fn formula_allows_lazy_residual_publication(formula: &TreeFormula) -> bool {
+    matches!(
+        formula,
+        TreeFormula::FunctionCall { function_name, .. } if function_name.eq_ignore_ascii_case("IF")
+    )
+}
+
 fn evaluate_via_oxfml(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
@@ -874,36 +921,10 @@ fn evaluate_via_oxfml(
     {
         Ok(run) => run,
         Err(detail) => {
-            if let Some(residual) = prepared.translated.residuals.first() {
-                let runtime_effects = prepared
-                    .translated
-                    .residuals
-                    .iter()
-                    .map(residual_runtime_effect)
-                    .collect::<Vec<_>>();
-                let error = match residual.kind {
-                    ResidualCarrierKind::HostSensitive => {
-                        LocalTreeCalcError::HostSensitiveReference {
-                            owner_node_id: residual.owner_node_id,
-                            detail: residual.detail.clone(),
-                        }
-                    }
-                    ResidualCarrierKind::DynamicPotential => LocalTreeCalcError::DynamicReference {
-                        owner_node_id: residual.owner_node_id,
-                        detail: residual.detail.clone(),
-                    },
-                };
-
-                return Err(LocalFormulaEvaluationFailure {
-                    error,
-                    runtime_effects,
-                    diagnostics: prepared
-                        .bind_diagnostics
-                        .iter()
-                        .cloned()
-                        .chain(std::iter::once(format!("oxfml_host_error:{detail}")))
-                        .collect(),
-                });
+            if let Some(failure) =
+                residual_evaluation_failure(prepared, vec![format!("oxfml_host_error:{detail}")])
+            {
+                return Err(failure);
             }
 
             return Err(LocalFormulaEvaluationFailure {
@@ -917,44 +938,21 @@ fn evaluate_via_oxfml(
         }
     };
 
-    if matches!(
+    let should_reject_residual = matches!(
         run.returned_value_surface.kind,
         ReturnedValueSurfaceKind::TypedHostProviderOutcome
-    ) {
-        let runtime_effects = prepared
-            .translated
-            .residuals
-            .iter()
-            .map(residual_runtime_effect)
-            .collect::<Vec<_>>();
-
-        if let Some(residual) = prepared.translated.residuals.first() {
-            let error = match residual.kind {
-                ResidualCarrierKind::HostSensitive => LocalTreeCalcError::HostSensitiveReference {
-                    owner_node_id: residual.owner_node_id,
-                    detail: residual.detail.clone(),
-                },
-                ResidualCarrierKind::DynamicPotential => LocalTreeCalcError::DynamicReference {
-                    owner_node_id: residual.owner_node_id,
-                    detail: residual.detail.clone(),
-                },
-            };
-
-            return Err(LocalFormulaEvaluationFailure {
-                error,
-                runtime_effects,
-                diagnostics: prepared
-                    .bind_diagnostics
-                    .iter()
-                    .cloned()
-                    .chain(
-                        run.trace_events
-                            .iter()
-                            .map(|event| format!("oxfml_trace:{:?}", event.event_kind)),
-                    )
-                    .collect(),
-            });
-        }
+    ) || (!prepared.translated.residuals.is_empty()
+        && !formula_allows_lazy_residual_publication(&prepared.binding.expression));
+    if should_reject_residual
+        && let Some(failure) = residual_evaluation_failure(
+            prepared,
+            run.trace_events
+                .iter()
+                .map(|event| format!("oxfml_trace:{:?}", event.event_kind))
+                .collect(),
+        )
+    {
+        return Err(failure);
     }
 
     match &run.commit_decision {
@@ -1629,11 +1627,10 @@ mod tests {
             run.reject_detail.as_ref().map(|detail| detail.kind),
             Some(RejectKind::HostInjectedFailure)
         );
-        assert_eq!(
+        assert!(
             run.diagnostics
                 .iter()
-                .any(|diagnostic| diagnostic.contains("requires rebind before reevaluation")),
-            true
+                .any(|diagnostic| diagnostic.contains("requires rebind before reevaluation"))
         );
     }
 
@@ -1678,9 +1675,10 @@ mod tests {
             run.reject_detail.as_ref().map(|detail| detail.kind),
             Some(RejectKind::HostInjectedFailure)
         );
-        assert_eq!(
-            run.diagnostics.iter().any(|diagnostic| diagnostic.contains("MissingTarget")),
-            true
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.contains("MissingTarget"))
         );
     }
 

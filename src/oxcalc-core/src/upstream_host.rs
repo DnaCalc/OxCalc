@@ -13,6 +13,7 @@ use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
 };
 use oxfml_core::eval::DefinedNameBinding;
+use oxfml_core::format::{current_excel_host_context, en_us_context};
 use oxfml_core::interface::{
     TableCallerRegion, TableDescriptor, TableRef, TypedContextQueryBundle,
 };
@@ -22,7 +23,7 @@ use oxfml_core::source::{
 };
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
-use oxfunc_core::locale_format::{LocaleFormatContext, current_excel_host_context, en_us_context};
+use oxfunc_core::locale_format::LocaleFormatContext;
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

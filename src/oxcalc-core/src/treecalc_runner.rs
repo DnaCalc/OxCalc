@@ -1072,7 +1072,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 14);
+        assert_eq!(summary.case_count, 15);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -1541,6 +1541,23 @@ mod tests {
             "ExecutionRestriction"
         );
         assert!(capability_explain["publication_bundle"].is_null());
+
+        let shape_explain = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_shape_topology_reject_001/explain.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            shape_explain["runtime_effects"][0]["family"],
+            "ShapeTopology"
+        );
+        assert_eq!(
+            shape_explain["runtime_effect_overlays"][0]["overlay_kind"],
+            "ShapeTopology"
+        );
+        assert!(shape_explain["publication_bundle"].is_null());
 
         let dynamic_explain = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(

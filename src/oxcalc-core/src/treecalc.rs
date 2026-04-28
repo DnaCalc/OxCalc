@@ -135,6 +135,13 @@ pub enum LocalTreeCalcError {
         owner_node_id: TreeNodeId,
         detail: String,
     },
+    #[error(
+        "reference owned by {owner_node_id} is shape/topology-sensitive and cannot be locally evaluated: {detail}"
+    )]
+    ShapeTopologyReference {
+        owner_node_id: TreeNodeId,
+        detail: String,
+    },
     #[error("no value is available for referenced node {node_id}")]
     MissingReferencedValue { node_id: TreeNodeId },
     #[error("value '{value}' for node {node_id} is not a supported local integer")]
@@ -648,6 +655,7 @@ fn map_local_error_to_reject_kind(error: &LocalTreeCalcError) -> RejectKind {
         LocalTreeCalcError::UnresolvedReference { .. }
         | LocalTreeCalcError::HostSensitiveReference { .. }
         | LocalTreeCalcError::CapabilitySensitiveReference { .. }
+        | LocalTreeCalcError::ShapeTopologyReference { .. }
         | LocalTreeCalcError::DependencyGraphIncompatible { .. }
         | LocalTreeCalcError::StructuralRebindRequired { .. }
         | LocalTreeCalcError::UnsupportedNumericValue { .. }
@@ -839,6 +847,7 @@ enum ResidualCarrierKind {
     HostSensitive,
     DynamicPotential,
     CapabilitySensitive,
+    ShapeTopology,
 }
 
 impl ResidualCarrierKind {
@@ -847,11 +856,15 @@ impl ResidualCarrierKind {
             Self::HostSensitive => DependencyDescriptorKind::HostSensitive,
             Self::DynamicPotential => DependencyDescriptorKind::DynamicPotential,
             Self::CapabilitySensitive => DependencyDescriptorKind::CapabilitySensitive,
+            Self::ShapeTopology => DependencyDescriptorKind::ShapeTopology,
         }
     }
 
     fn requires_rebind_on_structural_change(self) -> bool {
-        matches!(self, Self::HostSensitive | Self::CapabilitySensitive)
+        matches!(
+            self,
+            Self::HostSensitive | Self::CapabilitySensitive | Self::ShapeTopology
+        )
     }
 }
 
@@ -1027,6 +1040,10 @@ fn residual_evaluation_failure(
                 detail: residual.detail.clone(),
             }
         }
+        ResidualCarrierKind::ShapeTopology => LocalTreeCalcError::ShapeTopologyReference {
+            owner_node_id: residual.owner_node_id,
+            detail: residual.detail.clone(),
+        },
     };
 
     Some(LocalFormulaEvaluationFailure {
@@ -1442,6 +1459,15 @@ impl TranslationState<'_> {
                 });
                 "INFO(\"osversion\")".to_string()
             }
+            TreeReference::ShapeTopology { carrier_id, detail } => {
+                self.residuals.push(ResidualCarrier {
+                    kind: ResidualCarrierKind::ShapeTopology,
+                    owner_node_id: self.owner_node_id,
+                    carrier_id: carrier_id.clone(),
+                    detail: detail.clone(),
+                });
+                "ROWS(A1:A1)".to_string()
+            }
             TreeReference::DynamicPotential { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::DynamicPotential,
@@ -1558,6 +1584,10 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
         ResidualCarrierKind::CapabilitySensitive => (
             "runtime_effect.capability_sensitive_reference",
             RuntimeEffectFamily::CapabilitySensitive,
+        ),
+        ResidualCarrierKind::ShapeTopology => (
+            "runtime_effect.shape_topology_reference",
+            RuntimeEffectFamily::ShapeTopology,
         ),
     };
     RuntimeEffect {

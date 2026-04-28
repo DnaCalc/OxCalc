@@ -14,6 +14,7 @@ pub enum DependencyDescriptorKind {
     DynamicPotential,
     HostSensitive,
     CapabilitySensitive,
+    ShapeTopology,
     Unresolved,
 }
 
@@ -44,6 +45,7 @@ pub enum DependencyDiagnosticKind {
     HostSensitiveReference,
     DynamicPotentialReference,
     CapabilitySensitiveReference,
+    ShapeTopologyReference,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -154,6 +156,9 @@ impl DependencyGraph {
                         }
                         DependencyDescriptorKind::CapabilitySensitive => {
                             DependencyDiagnosticKind::CapabilitySensitiveReference
+                        }
+                        DependencyDescriptorKind::ShapeTopology => {
+                            DependencyDiagnosticKind::ShapeTopologyReference
                         }
                         _ => DependencyDiagnosticKind::UnresolvedReference,
                     };

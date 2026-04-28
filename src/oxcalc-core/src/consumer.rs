@@ -755,6 +755,50 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_runtime_facade_exposes_shape_topology_family_directly() {
+        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Reference(
+                            crate::formula::TreeReference::ShapeTopology {
+                                carrier_id: "carrier:shape".to_string(),
+                                detail: "range_shape_projection".to_string(),
+                            },
+                        ),
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:shape".to_string(),
+                    publication_id: "pub:shape".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(result.publication_bundle.is_none());
+        assert_eq!(result.runtime_effects.len(), 1);
+        assert_eq!(
+            result.runtime_effects[0].family,
+            RuntimeEffectFamily::ShapeTopology
+        );
+        assert_eq!(result.runtime_effect_overlays.len(), 1);
+        assert_eq!(
+            result.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::ShapeTopology
+        );
+    }
+
+    #[test]
     fn treecalc_runtime_facade_exposes_dynamic_dependency_family_directly() {
         let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
 

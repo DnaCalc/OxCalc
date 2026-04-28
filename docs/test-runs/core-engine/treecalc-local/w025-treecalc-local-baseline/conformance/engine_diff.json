@@ -78,6 +78,12 @@
     "observed_result_state": "rejected"
   },
   {
+    "case_id": "tc_local_shape_topology_reject_001",
+    "conformance_state": "matches_expected",
+    "mismatches": [],
+    "observed_result_state": "rejected"
+  },
+  {
     "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
     "conformance_state": "matches_expected",
     "mismatches": [],

@@ -1,0 +1,56 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_shape_topology_reject_001",
+  "description": "A shape/topology-sensitive reference emits shape-topology runtime effect and overlay without publishing.",
+  "snapshot_id": 21,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "Shape",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:shape",
+      "bind_artifact_id": "bind:shape",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:shape",
+      "bind_artifact_id": "bind:shape",
+      "expression": {
+        "Reference": {
+          "ShapeTopology": {
+            "carrier_id": "carrier:shape",
+            "detail": "range_shape_projection"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "rejected",
+    "evaluation_order": [2],
+    "reject_kind": "HostInjectedFailure",
+    "runtime_effect_kinds": [
+      "runtime_effect.shape_topology_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ShapeTopology"
+    ]
+  }
+}

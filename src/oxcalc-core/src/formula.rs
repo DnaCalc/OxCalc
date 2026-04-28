@@ -40,6 +40,10 @@ pub enum TreeReference {
         carrier_id: String,
         detail: String,
     },
+    ShapeTopology {
+        carrier_id: String,
+        detail: String,
+    },
     DynamicPotential {
         carrier_id: String,
         detail: String,
@@ -223,6 +227,7 @@ impl TreeReference {
             }
             TreeReference::HostSensitive { .. }
             | TreeReference::CapabilitySensitive { .. }
+            | TreeReference::ShapeTopology { .. }
             | TreeReference::DynamicPotential { .. }
             | TreeReference::Unresolved { .. } => None,
         }
@@ -241,6 +246,7 @@ impl TreeReference {
             TreeReference::CapabilitySensitive { .. } => {
                 DependencyDescriptorKind::CapabilitySensitive
             }
+            TreeReference::ShapeTopology { .. } => DependencyDescriptorKind::ShapeTopology,
             TreeReference::DynamicPotential { .. } => DependencyDescriptorKind::DynamicPotential,
             TreeReference::Unresolved { .. } => DependencyDescriptorKind::Unresolved,
         }
@@ -254,6 +260,7 @@ impl TreeReference {
                 | TreeReference::SiblingOffset { .. }
                 | TreeReference::HostSensitive { .. }
                 | TreeReference::CapabilitySensitive { .. }
+                | TreeReference::ShapeTopology { .. }
                 | TreeReference::Unresolved { .. }
         )
     }
@@ -282,6 +289,9 @@ impl TreeReference {
             }
             TreeReference::CapabilitySensitive { carrier_id, detail } => {
                 format!("capability_sensitive:{carrier_id}:{detail}")
+            }
+            TreeReference::ShapeTopology { carrier_id, detail } => {
+                format!("shape_topology:{carrier_id}:{detail}")
             }
             TreeReference::DynamicPotential { carrier_id, detail } => {
                 format!("dynamic_potential:{carrier_id}:{detail}")

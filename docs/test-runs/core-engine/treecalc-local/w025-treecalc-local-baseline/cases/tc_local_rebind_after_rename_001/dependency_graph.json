@@ -1,5 +1,15 @@
 {
   "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "relative_path:ParentNode:A",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    }
+  ],
   "diagnostics": [],
   "edges": [
     {

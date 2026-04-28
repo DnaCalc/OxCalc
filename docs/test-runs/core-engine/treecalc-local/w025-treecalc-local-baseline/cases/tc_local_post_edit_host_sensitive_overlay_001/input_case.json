@@ -10,6 +10,9 @@
     "result_state": "rejected",
     "runtime_effect_kinds": [
       "runtime_effect.host_sensitive_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ExecutionRestriction"
     ]
   },
   "formulas": [
@@ -94,6 +97,9 @@
       "result_state": "rejected",
       "runtime_effect_kinds": [
         "runtime_effect.host_sensitive_reference"
+      ],
+      "runtime_effect_overlay_kinds": [
+        "ExecutionRestriction"
       ]
     },
     "expected_affected_node_ids": [

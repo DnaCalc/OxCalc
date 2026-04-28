@@ -10,7 +10,8 @@
     },
     "reject_kind": null,
     "result_state": "published",
-    "runtime_effect_kinds": null
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
   },
   "formulas": [
     {
@@ -88,7 +89,8 @@
       },
       "reject_kind": null,
       "result_state": "published",
-      "runtime_effect_kinds": null
+      "runtime_effect_kinds": null,
+      "runtime_effect_overlay_kinds": null
     },
     "expected_affected_node_ids": [
       [

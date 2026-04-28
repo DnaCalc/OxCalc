@@ -185,6 +185,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effects.json",
@@ -223,6 +224,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effects.json",
@@ -261,6 +263,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effects.json",
@@ -300,6 +303,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_remove_direct_target_001/post_edit/runtime_effects.json",
@@ -339,6 +343,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effects.json",
@@ -378,6 +383,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effects.json",
@@ -418,6 +424,7 @@
       "post_edit": {
         "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/edit_outcomes.json",
         "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/invalidation_seeds.json",
         "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/result.json",
         "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json",
         "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effects.json",

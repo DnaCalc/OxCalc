@@ -10,7 +10,8 @@
     "result_state": "rejected",
     "runtime_effect_kinds": [
       "runtime_effect.dynamic_reference"
-    ]
+    ],
+    "runtime_effect_overlay_kinds": null
   },
   "formulas": [
     {

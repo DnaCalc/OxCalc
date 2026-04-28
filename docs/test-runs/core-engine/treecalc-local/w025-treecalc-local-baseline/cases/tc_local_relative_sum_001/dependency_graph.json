@@ -1,5 +1,31 @@
 {
   "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:b:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "relative_path:Ancestor(2):A",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "direct_node:node:3",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:1",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 3
+    }
+  ],
   "diagnostics": [],
   "edges": [
     {

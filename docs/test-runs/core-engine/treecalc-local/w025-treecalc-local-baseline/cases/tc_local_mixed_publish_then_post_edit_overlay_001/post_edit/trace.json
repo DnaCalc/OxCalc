@@ -19,8 +19,10 @@
       "step_id": 3
     },
     {
+      "aligned_canonical_family": "AcceptedCandidateResult",
       "candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
       "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
       "step_id": 4,
       "target_set": [
         4,
@@ -28,8 +30,10 @@
       ]
     },
     {
+      "aligned_canonical_family": "CommitBundle",
       "candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
       "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
       "publication_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:publication:post_edit",
       "step_id": 5
     },

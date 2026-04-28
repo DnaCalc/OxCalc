@@ -1,6 +1,13 @@
 {
   "case_id": "tc_local_verified_clean_001",
   "conformance_state": "matches_expected",
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
   "mismatch_count": 0,
   "mismatches": [],
   "notes": [

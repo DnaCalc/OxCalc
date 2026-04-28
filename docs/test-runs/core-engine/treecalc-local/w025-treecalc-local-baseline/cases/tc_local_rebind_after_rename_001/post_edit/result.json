@@ -3,13 +3,22 @@
   "evaluation_order": [
     3
   ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRebindRequired"
+    }
+  ],
   "published_values": {
     "3": "5"
   },
   "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
     "candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
-    "detail": "OxFml bind for node node:3 is unresolved: TREE_UNRESOLVED_3_0 (unknown identifier or name)",
-    "kind": "HostInjectedFailure"
+    "detail": "formula node node:3 requires rebind before reevaluation",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
   },
   "result_state": "rejected",
   "runtime_effect_overlays": [],

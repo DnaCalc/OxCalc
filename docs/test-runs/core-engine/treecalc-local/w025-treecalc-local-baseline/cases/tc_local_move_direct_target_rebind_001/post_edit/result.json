@@ -3,6 +3,12 @@
   "evaluation_order": [
     3
   ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
   "published_values": {
     "3": "5"
   },

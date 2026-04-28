@@ -3,13 +3,22 @@
   "evaluation_order": [
     3
   ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
   "published_values": {
     "3": "5"
   },
   "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
     "candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate:post_edit",
-    "detail": "OxFml host run for node node:3 failed: reference resolution failed: UnresolvedReference { target: \"A2\" }",
-    "kind": "HostInjectedFailure"
+    "detail": "dependency graph for formula node node:3 is incompatible with reevaluation: MissingTarget: target node:2 is not present in snapshot",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
   },
   "result_state": "rejected",
   "runtime_effect_overlays": [],

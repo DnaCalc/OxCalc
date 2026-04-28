@@ -1,7 +1,7 @@
 [
   {
     "compatibility_basis": "snapshot:5",
-    "detail": "runtime_effect.dynamic_reference|owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection",
+    "detail": "runtime_effect.dynamic_reference|owner_node:node:2;carrier_id:carrier:dynamic;detail:late_bound_projection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
     "is_eviction_eligible": false,
     "is_protected": true,
     "overlay_kind": "DynamicDependency",

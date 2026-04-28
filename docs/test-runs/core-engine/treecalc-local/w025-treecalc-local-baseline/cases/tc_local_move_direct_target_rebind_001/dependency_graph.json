@@ -1,5 +1,15 @@
 {
   "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:leaf:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    }
+  ],
   "diagnostics": [],
   "edges": [
     {

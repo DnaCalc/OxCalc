@@ -530,6 +530,90 @@ mod tests {
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == "runtime_effect_environment_project_overlays:false"
         }));
+        assert!(
+            result.diagnostics.iter().any(|diagnostic| {
+                diagnostic == "runtime_effect_overlay_projection_enabled:false"
+            })
+        );
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic == "runtime_effect_overlay_projection_count:0" })
+        );
+    }
+
+    #[test]
+    fn treecalc_runtime_overlay_projection_is_explicit_on_publish_and_verified_clean() {
+        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
+        let document = OxCalcTreeDocument {
+            structural_snapshot: snapshot(),
+            formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                expression: TreeFormula::Literal {
+                    value: "7".to_string(),
+                },
+            }]),
+            seeded_published_values: BTreeMap::new(),
+        };
+
+        let published = facade
+            .execute(
+                document.clone(),
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:publish-overlay-projection".to_string(),
+                    publication_id: "pub:publish-overlay-projection".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(published.run_state, OxCalcTreeRunState::Published);
+        assert!(published.runtime_effect_overlays.is_empty());
+        assert!(
+            published.diagnostics.iter().any(|diagnostic| {
+                diagnostic == "runtime_effect_overlay_projection_enabled:true"
+            })
+        );
+        assert!(
+            published
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic == "runtime_effect_overlay_projection_count:0" })
+        );
+
+        let verified_clean = facade
+            .execute(
+                OxCalcTreeDocument {
+                    seeded_published_values: BTreeMap::from([(TreeNodeId(3), "7".to_string())]),
+                    ..document
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:verified-clean-overlay-projection".to_string(),
+                    publication_id: "pub:verified-clean-overlay-projection".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(verified_clean.run_state, OxCalcTreeRunState::VerifiedClean);
+        assert!(verified_clean.runtime_effect_overlays.is_empty());
+        assert!(verified_clean.publication_bundle.is_none());
+        assert!(
+            verified_clean.diagnostics.iter().any(|diagnostic| {
+                diagnostic == "runtime_effect_overlay_projection_enabled:true"
+            })
+        );
+        assert!(
+            verified_clean
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic == "runtime_effect_overlay_projection_count:0" })
+        );
     }
 
     #[test]

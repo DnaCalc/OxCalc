@@ -6,6 +6,12 @@
   "edit_impacts": [
     "RecalcOnly"
   ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
   "phase": "post_edit",
   "reject_detail": null,
   "result_state": "published",

@@ -123,6 +123,8 @@ pub struct TreeCalcFixtureExpected {
     pub reject_kind: Option<String>,
     #[serde(default)]
     pub runtime_effect_kinds: Option<Vec<String>>,
+    #[serde(default)]
+    pub runtime_effect_overlay_kinds: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -586,6 +588,19 @@ mod tests {
                 .collect::<Vec<_>>();
             assert_eq!(
                 observed_runtime_effect_kinds, *expected_runtime_effect_kinds,
+                "fixture context: {context}"
+            );
+        }
+
+        if let Some(expected_runtime_effect_overlay_kinds) = &expected.runtime_effect_overlay_kinds
+        {
+            let observed_runtime_effect_overlay_kinds = artifacts
+                .runtime_effect_overlays
+                .iter()
+                .map(|overlay| format!("{:?}", overlay.key.overlay_kind))
+                .collect::<Vec<_>>();
+            assert_eq!(
+                observed_runtime_effect_overlay_kinds, *expected_runtime_effect_overlay_kinds,
                 "fixture context: {context}"
             );
         }

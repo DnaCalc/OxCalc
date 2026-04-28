@@ -1,6 +1,13 @@
 {
   "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
   "conformance_state": "matches_expected",
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 1,
+    "execution_restriction_observed": true,
+    "publication_outcome": "rejected_no_publication",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
   "mismatch_count": 0,
   "mismatches": [],
   "notes": [
@@ -10,17 +17,20 @@
   ],
   "publication_bundle": null,
   "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
     "candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate",
     "detail": "reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection",
-    "kind": "HostInjectedFailure"
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
   },
   "runtime_effect_overlays": [
     {
       "compatibility_basis": "snapshot:16",
-      "detail": "runtime_effect.host_sensitive_reference|owner_node:node:3;carrier_id:carrier:host;detail:active_selection",
+      "detail": "runtime_effect.host_sensitive_reference|owner_node:node:3;carrier_id:carrier:host;detail:active_selection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
       "is_eviction_eligible": false,
       "is_protected": true,
-      "overlay_kind": "DynamicDependency",
+      "overlay_kind": "ExecutionRestriction",
       "owner_node_id": 3,
       "payload_identity": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate:runtime_effect:0",
       "structural_snapshot_id": 16
@@ -28,8 +38,11 @@
   ],
   "runtime_effects": [
     {
-      "detail": "owner_node:node:3;carrier_id:carrier:host;detail:active_selection",
-      "kind": "runtime_effect.host_sensitive_reference"
+      "detail": "owner_node:node:3;carrier_id:carrier:host;detail:active_selection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "ExecutionRestriction",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.host_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection"
     }
   ],
   "schema_version": "oxcalc.treecalc.local_explain.v1"

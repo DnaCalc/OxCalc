@@ -86,6 +86,9 @@
       "reject_kind": "HostInjectedFailure",
       "runtime_effect_kinds": [
         "runtime_effect.host_sensitive_reference"
+      ],
+      "runtime_effect_overlay_kinds": [
+        "ExecutionRestriction"
       ]
     }
   },
@@ -95,6 +98,9 @@
     "reject_kind": "HostInjectedFailure",
     "runtime_effect_kinds": [
       "runtime_effect.host_sensitive_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ExecutionRestriction"
     ]
   }
 }

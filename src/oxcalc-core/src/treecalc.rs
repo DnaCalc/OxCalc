@@ -399,6 +399,10 @@ impl LocalTreeCalcEngine {
         }
 
         if value_updates.is_empty() {
+            diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
+                &input.environment_context,
+                0,
+            ));
             return Ok(LocalTreeCalcRunArtifacts {
                 result_state: LocalTreeCalcRunState::VerifiedClean,
                 dependency_graph,
@@ -431,6 +435,10 @@ impl LocalTreeCalcEngine {
         for node_id in local_candidate.value_updates.keys().copied() {
             recalc_tracker.publish_and_clear(node_id)?;
         }
+        diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
+            &input.environment_context,
+            0,
+        ));
 
         Ok(LocalTreeCalcRunArtifacts {
             result_state: LocalTreeCalcRunState::Published,
@@ -576,6 +584,10 @@ fn reject_run(
     error: LocalTreeCalcError,
 ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
     diagnostics.push(format!("candidate_rejected:{}", error));
+    diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
+        &input.environment_context,
+        runtime_effect_overlays.len(),
+    ));
     let placeholder_candidate = AcceptedCandidateResult {
         candidate_result_id: input.candidate_result_id.clone(),
         structural_snapshot_id: input.structural_snapshot.snapshot_id(),
@@ -694,6 +706,19 @@ fn annotate_runtime_effects_with_environment(
             runtime_effect
         })
         .collect()
+}
+
+fn runtime_effect_overlay_projection_diagnostics(
+    context: &LocalTreeCalcEnvironmentContext,
+    overlay_count: usize,
+) -> Vec<String> {
+    vec![
+        format!(
+            "runtime_effect_overlay_projection_enabled:{}",
+            context.project_runtime_effect_overlays
+        ),
+        format!("runtime_effect_overlay_projection_count:{overlay_count}"),
+    ]
 }
 
 fn runtime_effect_context_diagnostics(context: &LocalTreeCalcEnvironmentContext) -> Vec<String> {

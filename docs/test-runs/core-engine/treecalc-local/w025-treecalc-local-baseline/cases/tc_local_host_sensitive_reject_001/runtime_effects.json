@@ -1,6 +1,9 @@
 [
   {
-    "detail": "owner_node:node:2;carrier_id:carrier:host;detail:active_selection",
-    "kind": "runtime_effect.host_sensitive_reference"
+    "detail": "owner_node:node:2;carrier_id:carrier:host;detail:active_selection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+    "family": "ExecutionRestriction",
+    "family_owner": "oxcalc_local_projection",
+    "kind": "runtime_effect.host_sensitive_reference",
+    "kind_owner": "oxcalc_local_projection"
   }
 ]

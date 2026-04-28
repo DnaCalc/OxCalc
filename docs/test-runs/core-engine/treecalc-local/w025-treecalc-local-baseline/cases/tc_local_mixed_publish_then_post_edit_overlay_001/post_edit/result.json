@@ -4,6 +4,16 @@
     4,
     5
   ],
+  "invalidation_seeds": [
+    {
+      "node_id": 4,
+      "reason": "StructuralRecalcOnly"
+    },
+    {
+      "node_id": 5,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
   "published_values": {
     "4": "5",
     "5": "Value"

@@ -1,5 +1,15 @@
 {
   "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "residual:carrier:dynamic:late_bound_projection",
+      "descriptor_id": "bind:formula:dynamic:oxfml_residual:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": null
+    }
+  ],
   "diagnostics": [
     {
       "descriptor_id": "bind:formula:dynamic:oxfml_residual:0",

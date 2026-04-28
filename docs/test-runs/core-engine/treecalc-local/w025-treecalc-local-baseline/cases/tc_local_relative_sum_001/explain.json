@@ -1,6 +1,13 @@
 {
   "case_id": "tc_local_relative_sum_001",
   "conformance_state": "matches_expected",
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
   "mismatch_count": 0,
   "mismatches": [],
   "notes": [
@@ -8,9 +15,32 @@
     "result reached candidate adaptation and publication"
   ],
   "publication_bundle": {
+    "aligned_canonical_family": "CommitBundle",
     "candidate_result_id": "fixture:tc_local_relative_sum_001:candidate",
+    "carriage_classification": {
+      "dependency_shape_update_count": 0,
+      "explicit_current_absence_categories": [
+        "shape_delta",
+        "topology_delta",
+        "format_delta",
+        "display_delta"
+      ],
+      "local_floor_only_categories": [
+        "dependency_shape_updates"
+      ],
+      "publish_critical_categories": [
+        "value_delta"
+      ],
+      "replay_visible_non_publish_critical_categories": [
+        "published_runtime_effects",
+        "trace_markers"
+      ]
+    },
+    "projection_owner": "oxcalc_local",
     "publication_id": "fixture:tc_local_relative_sum_001:publication",
-    "published_runtime_effect_count": 0
+    "published_runtime_effect_count": 0,
+    "published_value_delta_node_count": 2,
+    "trace_marker_count": 1
   },
   "reject_detail": null,
   "runtime_effect_overlays": [],

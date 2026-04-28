@@ -116,11 +116,15 @@ Working rule:
 ### 6.1 OxCalcTreeEnvironment
 `OxCalcTreeEnvironment` is the stable host-facing environment object for the current TreeCalc-first phase.
 
-In the current phase it is intentionally narrow.
-It represents:
-1. the selected OxCalc runtime lane,
-2. the consumer-facing execution boundary,
-3. the point where later policy or session widening can attach without rewriting host packaging.
+In the current phase it is no longer an empty placeholder.
+It carries the first non-narrow consumer inputs needed by TreeCalc-style hosts:
+1. selected OxCalc runtime lane,
+2. optional host/session identity,
+3. host capability snapshot for runtime-derived effect families,
+4. runtime policy inputs for diagnostics and overlay projection.
+
+These fields are consumer context, not formula-language semantics or coordinator publication state.
+They are projected into deterministic diagnostics so hosts can verify which environment basis was used for a run.
 
 It must not:
 1. hide OxFml-owned semantic inputs behind ambient mutable state,

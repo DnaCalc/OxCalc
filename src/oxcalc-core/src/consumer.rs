@@ -60,13 +60,146 @@ pub enum OxCalcTreeRuntimeError {
     Runtime(#[from] LocalTreeCalcError),
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct OxCalcTreeEnvironment;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeRuntimeLane {
+    LocalSequentialTreeCalc,
+}
+
+impl OxCalcTreeRuntimeLane {
+    #[must_use]
+    pub fn as_diagnostic_value(&self) -> &'static str {
+        match self {
+            Self::LocalSequentialTreeCalc => "local_sequential_treecalc",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeHostCapabilitySnapshot {
+    pub capability_profile_id: String,
+    pub dynamic_dependency_effects: bool,
+    pub execution_restriction_effects: bool,
+    pub capability_sensitive_effects: bool,
+    pub shape_topology_effects: bool,
+}
+
+impl Default for OxCalcTreeHostCapabilitySnapshot {
+    fn default() -> Self {
+        Self {
+            capability_profile_id: "host-capabilities:default".to_string(),
+            dynamic_dependency_effects: true,
+            execution_restriction_effects: true,
+            capability_sensitive_effects: false,
+            shape_topology_effects: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeRuntimePolicy {
+    pub policy_id: String,
+    pub emit_environment_diagnostics: bool,
+    pub project_runtime_effect_overlays: bool,
+}
+
+impl Default for OxCalcTreeRuntimePolicy {
+    fn default() -> Self {
+        Self {
+            policy_id: "runtime-policy:default".to_string(),
+            emit_environment_diagnostics: true,
+            project_runtime_effect_overlays: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeEnvironment {
+    pub runtime_lane: OxCalcTreeRuntimeLane,
+    pub session_id: Option<String>,
+    pub host_capabilities: OxCalcTreeHostCapabilitySnapshot,
+    pub runtime_policy: OxCalcTreeRuntimePolicy,
+}
+
+impl Default for OxCalcTreeEnvironment {
+    fn default() -> Self {
+        Self {
+            runtime_lane: OxCalcTreeRuntimeLane::LocalSequentialTreeCalc,
+            session_id: None,
+            host_capabilities: OxCalcTreeHostCapabilitySnapshot::default(),
+            runtime_policy: OxCalcTreeRuntimePolicy::default(),
+        }
+    }
+}
 
 impl OxCalcTreeEnvironment {
     #[must_use]
     pub fn new() -> Self {
-        Self
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_capabilities(
+        mut self,
+        host_capabilities: OxCalcTreeHostCapabilitySnapshot,
+    ) -> Self {
+        self.host_capabilities = host_capabilities;
+        self
+    }
+
+    #[must_use]
+    pub fn with_runtime_policy(mut self, runtime_policy: OxCalcTreeRuntimePolicy) -> Self {
+        self.runtime_policy = runtime_policy;
+        self
+    }
+
+    #[must_use]
+    pub fn diagnostics(&self) -> Vec<String> {
+        if !self.runtime_policy.emit_environment_diagnostics {
+            return Vec::new();
+        }
+
+        let session_id = self.session_id.as_deref().unwrap_or("none");
+        vec![
+            format!(
+                "oxcalc_tree_environment_runtime_lane:{}",
+                self.runtime_lane.as_diagnostic_value()
+            ),
+            format!("oxcalc_tree_environment_session_id:{session_id}"),
+            format!(
+                "oxcalc_tree_environment_capability_profile_id:{}",
+                self.host_capabilities.capability_profile_id
+            ),
+            format!(
+                "oxcalc_tree_environment_capability_dynamic_dependency:{}",
+                self.host_capabilities.dynamic_dependency_effects
+            ),
+            format!(
+                "oxcalc_tree_environment_capability_execution_restriction:{}",
+                self.host_capabilities.execution_restriction_effects
+            ),
+            format!(
+                "oxcalc_tree_environment_capability_sensitive:{}",
+                self.host_capabilities.capability_sensitive_effects
+            ),
+            format!(
+                "oxcalc_tree_environment_capability_shape_topology:{}",
+                self.host_capabilities.shape_topology_effects
+            ),
+            format!(
+                "oxcalc_tree_environment_runtime_policy_id:{}",
+                self.runtime_policy.policy_id
+            ),
+            format!(
+                "oxcalc_tree_environment_project_runtime_effect_overlays:{}",
+                self.runtime_policy.project_runtime_effect_overlays
+            ),
+        ]
     }
 }
 
@@ -105,7 +238,9 @@ impl OxCalcTreeRuntimeFacade {
             compatibility_basis: request.compatibility_basis,
             artifact_token_basis: request.artifact_token_basis,
         })?;
-        Ok(OxCalcTreeRecalcResult::from(artifacts))
+        let mut result = OxCalcTreeRecalcResult::from(artifacts);
+        result.diagnostics.extend(self.environment.diagnostics());
+        Ok(result)
     }
 }
 
@@ -187,6 +322,118 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn treecalc_environment_carries_non_narrow_consumer_inputs() {
+        let environment = OxCalcTreeEnvironment::new()
+            .with_session_id("session:tree-host")
+            .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
+                capability_profile_id: "capability-profile:tree-host".to_string(),
+                dynamic_dependency_effects: true,
+                execution_restriction_effects: true,
+                capability_sensitive_effects: true,
+                shape_topology_effects: true,
+            })
+            .with_runtime_policy(OxCalcTreeRuntimePolicy {
+                policy_id: "runtime-policy:tree-host".to_string(),
+                emit_environment_diagnostics: true,
+                project_runtime_effect_overlays: true,
+            });
+        let facade = OxCalcTreeRuntimeFacade::new(environment.clone());
+
+        assert_eq!(facade.environment(), &environment);
+        assert_eq!(
+            facade.environment().runtime_lane,
+            OxCalcTreeRuntimeLane::LocalSequentialTreeCalc
+        );
+        assert_eq!(
+            facade.environment().session_id.as_deref(),
+            Some("session:tree-host")
+        );
+        assert_eq!(
+            facade.environment().host_capabilities.capability_profile_id,
+            "capability-profile:tree-host"
+        );
+        assert!(
+            facade
+                .environment()
+                .host_capabilities
+                .capability_sensitive_effects
+        );
+        assert!(
+            facade
+                .environment()
+                .host_capabilities
+                .shape_topology_effects
+        );
+        assert_eq!(
+            facade.environment().runtime_policy.policy_id,
+            "runtime-policy:tree-host"
+        );
+    }
+
+    #[test]
+    fn treecalc_runtime_facade_projects_environment_diagnostics() {
+        let facade = OxCalcTreeRuntimeFacade::new(
+            OxCalcTreeEnvironment::new()
+                .with_session_id("session:diagnostic")
+                .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
+                    capability_profile_id: "capability-profile:diagnostic".to_string(),
+                    dynamic_dependency_effects: true,
+                    execution_restriction_effects: true,
+                    capability_sensitive_effects: true,
+                    shape_topology_effects: false,
+                })
+                .with_runtime_policy(OxCalcTreeRuntimePolicy {
+                    policy_id: "runtime-policy:diagnostic".to_string(),
+                    emit_environment_diagnostics: true,
+                    project_runtime_effect_overlays: true,
+                }),
+        );
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Literal {
+                            value: "7".to_string(),
+                        },
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:environment".to_string(),
+                    publication_id: "pub:environment".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "oxcalc_tree_environment_runtime_lane:local_sequential_treecalc"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "oxcalc_tree_environment_session_id:session:diagnostic"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == "oxcalc_tree_environment_capability_profile_id:capability-profile:diagnostic"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "oxcalc_tree_environment_capability_sensitive:true"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "oxcalc_tree_environment_capability_shape_topology:false"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == "oxcalc_tree_environment_runtime_policy_id:runtime-policy:diagnostic"
+        }));
     }
 
     #[test]

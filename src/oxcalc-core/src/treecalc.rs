@@ -128,6 +128,13 @@ pub enum LocalTreeCalcError {
         owner_node_id: TreeNodeId,
         detail: String,
     },
+    #[error(
+        "reference owned by {owner_node_id} is capability-sensitive and cannot be locally evaluated: {detail}"
+    )]
+    CapabilitySensitiveReference {
+        owner_node_id: TreeNodeId,
+        detail: String,
+    },
     #[error("no value is available for referenced node {node_id}")]
     MissingReferencedValue { node_id: TreeNodeId },
     #[error("value '{value}' for node {node_id} is not a supported local integer")]
@@ -640,6 +647,7 @@ fn map_local_error_to_reject_kind(error: &LocalTreeCalcError) -> RejectKind {
         | LocalTreeCalcError::MissingReferencedValue { .. } => RejectKind::DynamicDependencyFailure,
         LocalTreeCalcError::UnresolvedReference { .. }
         | LocalTreeCalcError::HostSensitiveReference { .. }
+        | LocalTreeCalcError::CapabilitySensitiveReference { .. }
         | LocalTreeCalcError::DependencyGraphIncompatible { .. }
         | LocalTreeCalcError::StructuralRebindRequired { .. }
         | LocalTreeCalcError::UnsupportedNumericValue { .. }
@@ -830,6 +838,7 @@ fn topological_formula_order(
 enum ResidualCarrierKind {
     HostSensitive,
     DynamicPotential,
+    CapabilitySensitive,
 }
 
 impl ResidualCarrierKind {
@@ -837,11 +846,12 @@ impl ResidualCarrierKind {
         match self {
             Self::HostSensitive => DependencyDescriptorKind::HostSensitive,
             Self::DynamicPotential => DependencyDescriptorKind::DynamicPotential,
+            Self::CapabilitySensitive => DependencyDescriptorKind::CapabilitySensitive,
         }
     }
 
     fn requires_rebind_on_structural_change(self) -> bool {
-        matches!(self, Self::HostSensitive)
+        matches!(self, Self::HostSensitive | Self::CapabilitySensitive)
     }
 }
 
@@ -1011,6 +1021,12 @@ fn residual_evaluation_failure(
             owner_node_id: residual.owner_node_id,
             detail: residual.detail.clone(),
         },
+        ResidualCarrierKind::CapabilitySensitive => {
+            LocalTreeCalcError::CapabilitySensitiveReference {
+                owner_node_id: residual.owner_node_id,
+                detail: residual.detail.clone(),
+            }
+        }
     };
 
     Some(LocalFormulaEvaluationFailure {
@@ -1417,6 +1433,15 @@ impl TranslationState<'_> {
                 });
                 "INFO(\"system\")".to_string()
             }
+            TreeReference::CapabilitySensitive { carrier_id, detail } => {
+                self.residuals.push(ResidualCarrier {
+                    kind: ResidualCarrierKind::CapabilitySensitive,
+                    owner_node_id: self.owner_node_id,
+                    carrier_id: carrier_id.clone(),
+                    detail: detail.clone(),
+                });
+                "INFO(\"osversion\")".to_string()
+            }
             TreeReference::DynamicPotential { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::DynamicPotential,
@@ -1529,6 +1554,10 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
         ResidualCarrierKind::DynamicPotential => (
             "runtime_effect.dynamic_reference",
             RuntimeEffectFamily::DynamicDependency,
+        ),
+        ResidualCarrierKind::CapabilitySensitive => (
+            "runtime_effect.capability_sensitive_reference",
+            RuntimeEffectFamily::CapabilitySensitive,
         ),
     };
     RuntimeEffect {

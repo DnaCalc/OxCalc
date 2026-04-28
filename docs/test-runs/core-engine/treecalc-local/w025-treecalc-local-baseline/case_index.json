@@ -417,6 +417,37 @@
   },
   {
     "artifact_paths": {
+      "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/dependency_graph.json",
+      "input_case": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/input_case.json",
+      "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/invalidation_closure.json",
+      "node_states": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/node_states.json",
+      "published_values": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/published_values.json",
+      "result": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/result.json",
+      "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/runtime_effect_overlays.json",
+      "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/runtime_effects.json"
+    },
+    "case_id": "tc_local_capability_sensitive_reject_001",
+    "conformance_artifact_paths": {
+      "engine_diff": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/engine_diff.json",
+      "oracle": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/oracle.json"
+    },
+    "conformance_state": "matches_expected",
+    "description": "A capability-sensitive reference emits a capability-sensitive runtime effect and overlay without publishing.",
+    "expectation_mismatches": [],
+    "result_state": "rejected",
+    "supporting_artifact_paths": {
+      "explain": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/explain.json",
+      "trace": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_capability_sensitive_reject_001/trace.json"
+    },
+    "tags": [
+      "local-sequential",
+      "capability-sensitive",
+      "rejected",
+      "runtime-effect-overlay"
+    ]
+  },
+  {
+    "artifact_paths": {
       "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/dependency_graph.json",
       "input_case": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/input_case.json",
       "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/cases/tc_local_mixed_publish_then_post_edit_overlay_001/invalidation_closure.json",

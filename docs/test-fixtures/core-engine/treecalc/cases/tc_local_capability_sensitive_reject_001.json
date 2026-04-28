@@ -1,0 +1,56 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_capability_sensitive_reject_001",
+  "description": "A capability-sensitive reference emits a capability-sensitive runtime effect and overlay without publishing.",
+  "snapshot_id": 20,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "Cap",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:cap",
+      "bind_artifact_id": "bind:cap",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:cap",
+      "bind_artifact_id": "bind:cap",
+      "expression": {
+        "Reference": {
+          "CapabilitySensitive": {
+            "carrier_id": "carrier:capability",
+            "detail": "host_function_availability"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "rejected",
+    "evaluation_order": [2],
+    "reject_kind": "HostInjectedFailure",
+    "runtime_effect_kinds": [
+      "runtime_effect.capability_sensitive_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ExecutionRestriction"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "case_count": 13,
-  "conformance_pass_count": 13,
+  "case_count": 14,
+  "conformance_pass_count": 14,
   "engine_diff_path": "docs/test-runs/core-engine/treecalc-local/w025-treecalc-local-baseline/conformance/engine_diff.json",
   "expectation_mismatch_count": 0,
   "mismatch_case_count": 0,

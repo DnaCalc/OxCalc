@@ -14,12 +14,13 @@ Current emitted root:
 - `w025-treecalc-local-baseline`
 
 Current local corpus floor:
-- 13 cases
+- 14 cases
 - direct publish
 - verified-clean
 - ancestor-relative dependency ordering
 - sibling-offset dependency ordering
 - host-sensitive rejection with emitted runtime effects
+- capability-sensitive rejection with emitted runtime effects
 - dynamic-reference rejection with emitted runtime effects
 - rename-triggered rebind consequence with post-edit rerun artifacts
 - recalc-only constant edit consequence with post-edit rerun artifacts
@@ -30,7 +31,7 @@ Current local corpus floor:
 - removal consequence with typed post-edit rejection on missing direct dependency
 
 Current limits:
-- the current lane is seam-backed for the first direct-host slice, but not yet widened to the broader W026/W029 carrier breadth
+- the current lane is seam-backed for the first direct-host slice, but still has W029/W030 successor breadth beyond the currently exercised dynamic-dependency, execution-restriction, and capability-sensitive floors
 - oracle and conformance are local fixture-expectation floors only, not the later live TreeCalc oracle lane
 
 Current compare command:

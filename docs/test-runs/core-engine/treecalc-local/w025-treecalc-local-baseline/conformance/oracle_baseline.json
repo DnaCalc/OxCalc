@@ -150,6 +150,18 @@
     ]
   },
   {
+    "case_id": "tc_local_capability_sensitive_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.capability_sensitive_reference"
+    ]
+  },
+  {
     "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
     "expected_evaluation_order": [
       4,

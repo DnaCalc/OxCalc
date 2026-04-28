@@ -13,6 +13,7 @@ pub enum DependencyDescriptorKind {
     RelativeBound,
     DynamicPotential,
     HostSensitive,
+    CapabilitySensitive,
     Unresolved,
 }
 
@@ -42,6 +43,7 @@ pub enum DependencyDiagnosticKind {
     UnresolvedReference,
     HostSensitiveReference,
     DynamicPotentialReference,
+    CapabilitySensitiveReference,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +151,9 @@ impl DependencyGraph {
                         }
                         DependencyDescriptorKind::DynamicPotential => {
                             DependencyDiagnosticKind::DynamicPotentialReference
+                        }
+                        DependencyDescriptorKind::CapabilitySensitive => {
+                            DependencyDiagnosticKind::CapabilitySensitiveReference
                         }
                         _ => DependencyDiagnosticKind::UnresolvedReference,
                     };

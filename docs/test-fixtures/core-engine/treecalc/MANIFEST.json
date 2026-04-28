@@ -114,6 +114,16 @@
       ]
     },
     {
+      "case_id": "tc_local_capability_sensitive_reject_001",
+      "path": "cases/tc_local_capability_sensitive_reject_001.json",
+      "tags": [
+        "local-sequential",
+        "capability-sensitive",
+        "rejected",
+        "runtime-effect-overlay"
+      ]
+    },
+    {
       "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
       "path": "cases/tc_local_mixed_publish_then_post_edit_overlay_001.json",
       "tags": [

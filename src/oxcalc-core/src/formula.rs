@@ -36,6 +36,10 @@ pub enum TreeReference {
         carrier_id: String,
         detail: String,
     },
+    CapabilitySensitive {
+        carrier_id: String,
+        detail: String,
+    },
     DynamicPotential {
         carrier_id: String,
         detail: String,
@@ -218,6 +222,7 @@ impl TreeReference {
                 })
             }
             TreeReference::HostSensitive { .. }
+            | TreeReference::CapabilitySensitive { .. }
             | TreeReference::DynamicPotential { .. }
             | TreeReference::Unresolved { .. } => None,
         }
@@ -233,6 +238,9 @@ impl TreeReference {
                 DependencyDescriptorKind::RelativeBound
             }
             TreeReference::HostSensitive { .. } => DependencyDescriptorKind::HostSensitive,
+            TreeReference::CapabilitySensitive { .. } => {
+                DependencyDescriptorKind::CapabilitySensitive
+            }
             TreeReference::DynamicPotential { .. } => DependencyDescriptorKind::DynamicPotential,
             TreeReference::Unresolved { .. } => DependencyDescriptorKind::Unresolved,
         }
@@ -245,6 +253,7 @@ impl TreeReference {
             TreeReference::RelativePath { .. }
                 | TreeReference::SiblingOffset { .. }
                 | TreeReference::HostSensitive { .. }
+                | TreeReference::CapabilitySensitive { .. }
                 | TreeReference::Unresolved { .. }
         )
     }
@@ -270,6 +279,9 @@ impl TreeReference {
             } => format!("sibling_offset:{offset}:{}", tail_segments.join("/")),
             TreeReference::HostSensitive { carrier_id, detail } => {
                 format!("host_sensitive:{carrier_id}:{detail}")
+            }
+            TreeReference::CapabilitySensitive { carrier_id, detail } => {
+                format!("capability_sensitive:{carrier_id}:{detail}")
             }
             TreeReference::DynamicPotential { carrier_id, detail } => {
                 format!("dynamic_potential:{carrier_id}:{detail}")

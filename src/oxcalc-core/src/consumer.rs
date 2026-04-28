@@ -705,6 +705,56 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_runtime_facade_exposes_capability_sensitive_family_directly() {
+        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
+
+        let result = facade
+            .execute(
+                OxCalcTreeDocument {
+                    structural_snapshot: snapshot(),
+                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Reference(
+                            crate::formula::TreeReference::CapabilitySensitive {
+                                carrier_id: "carrier:capability".to_string(),
+                                detail: "host_function_availability".to_string(),
+                            },
+                        ),
+                    }]),
+                    seeded_published_values: BTreeMap::new(),
+                },
+                OxCalcTreeRecalcRequest {
+                    candidate_result_id: "cand:capability".to_string(),
+                    publication_id: "pub:capability".to_string(),
+                    compatibility_basis: "snapshot:1".to_string(),
+                    artifact_token_basis: "snapshot:1".to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(result.publication_bundle.is_none());
+        assert_eq!(result.runtime_effects.len(), 1);
+        assert_eq!(
+            result.runtime_effects[0].family,
+            RuntimeEffectFamily::CapabilitySensitive
+        );
+        assert_eq!(result.runtime_effect_overlays.len(), 1);
+        assert_eq!(
+            result.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::ExecutionRestriction
+        );
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic == "runtime_effect_overlay_projection_count:1" })
+        );
+    }
+
+    #[test]
     fn treecalc_runtime_facade_exposes_dynamic_dependency_family_directly() {
         let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
 

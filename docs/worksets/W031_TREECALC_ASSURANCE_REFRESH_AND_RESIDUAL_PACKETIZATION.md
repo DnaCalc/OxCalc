@@ -29,14 +29,31 @@ This packet refreshes assurance and residual planning around the engine that sit
 
 ## Gate Model
 ### Entry gate
-- W030 has produced the first checked-in sequential TreeCalc-ready baseline
+- W030 has produced the first checked-in broader local TreeCalc corpus/oracle baseline: `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline`
 - any material object-model or transition changes from the proving substrate are known
 - the `OxCalcTree` consumer contract remains the host-facing contract to preserve while assurance and residual packetization are refreshed underneath it
 
 ### Exit gate
-- no major semantic clause remains bound only to the older proving substrate
+- no major semantic clause in the declared TreeCalc-first sequential floor remains bound only to the older proving substrate
 - later optimization and concurrency packets have a refreshed semantic authority to depend on
 - remaining gaps are packetized explicitly rather than left as prose ambiguity
+
+## Execution Packet Refresh
+### Environment Preconditions
+- Rust workspace tooling available for `cargo fmt`, `cargo test`, and `cargo clippy`.
+- PowerShell available for `scripts/check-worksets.ps1` and TreeCalc comparison scripts.
+- No sibling repo patches are expected; OxFml handoff is required only if assurance review finds a new consumed-seam insufficiency.
+
+### Evidence Layout
+- Canonical checked-in baseline for this wave: `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline`.
+- Validation should use transient run ids unless the checked-in baseline is intentionally regenerated as a separate evidence act.
+- Residual packetization should point to existing worksets/spec sections or create new repo-local successor beads rather than reopening W030 evidence.
+
+### Planned Bead Sequence
+1. Assurance authority inventory: map W008/W009/W010/W012 assurance assumptions and TreeCalc semantic-plan clauses to the W030 baseline and current `OxCalcTree` contract.
+2. Replay and pack-binding refresh: update only the affected repo-local assurance/replay notes, pack references, or guardrails where terminology or authority changed.
+3. Residual packetization: create explicit successor or blocker beads for remaining TreeCalc semantic gaps, including cross-repo handoff only if a concrete seam insufficiency is found.
+4. Closure audit: rerun validation, attach OPERATIONS checklist/self-audit, and report W031 status without starting successor implementation.
 
 ## Pre-Closure Verification Checklist
 1. Spec text and realization notes updated for all in-scope items: no

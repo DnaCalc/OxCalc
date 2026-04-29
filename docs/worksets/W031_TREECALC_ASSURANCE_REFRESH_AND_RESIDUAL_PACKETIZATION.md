@@ -52,7 +52,7 @@ This packet refreshes assurance and residual planning around the engine that sit
 ### Planned Bead Sequence
 1. Assurance authority inventory: map W008/W009/W010/W012 assurance assumptions and TreeCalc semantic-plan clauses to the W030 baseline and current `OxCalcTree` contract. Current inventory artifact: `docs/spec/core-engine/CORE_ENGINE_TREECALC_ASSURANCE_AUTHORITY_MAP.md`.
 2. Replay and pack-binding refresh: update only the affected repo-local assurance/replay notes, pack references, or guardrails where terminology or authority changed.
-3. Residual packetization: create explicit successor or blocker beads for remaining TreeCalc semantic gaps, including cross-repo handoff only if a concrete seam insufficiency is found.
+3. Residual packetization: create explicit successor or blocker beads for remaining TreeCalc semantic gaps, including cross-repo handoff only if a concrete seam insufficiency is found. Current packetized successor beads: `calc-kka`, `calc-fg0`, `calc-ud7`, `calc-v3m`, `calc-yfo`, and `calc-e8e`.
 4. Closure audit: rerun validation, attach OPERATIONS checklist/self-audit, and report W031 status without starting successor implementation.
 
 ## Pre-Closure Verification Checklist

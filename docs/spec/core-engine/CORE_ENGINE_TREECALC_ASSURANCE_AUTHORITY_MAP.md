@@ -110,18 +110,19 @@ Residual contract candidates:
 4. pinned-reader/session lifecycle packaging beyond one-shot execution,
 5. aggregate counter surfaces if W010 measurement moves from planning into runtime evidence.
 
-## 9. W031 Residual Packetization Candidates
+## 9. W031 Residual Packetization
 
-The following candidates should be considered by `calc-ukb.3`; they are not new implementation started by this inventory bead.
+The residual candidates identified by `calc-ukb.1` and the replay/pack guardrail refresh have been packetized into explicit successor beads by `calc-ukb.3`.
+These successor beads depend on W031 parent closure and are not implementation started by W031 planning itself.
 
-| Candidate | Why it remains residual | Suggested packet shape |
-|---|---|---|
-| TreeCalc pinned-reader and retention corpus | W008/W009 pinned-reader and overlay-retention safety were not widened by W030. | Future corpus/evidence bead before concurrency promotion. |
-| TreeCalc measurement counter schema | W010 counters remain planning-level; W030 supplies artifacts but not runtime counter emission. | Future measurement/instrumentation bead. |
-| Broader typed reject taxonomy | W030 covers current local reject families, not all future OxFml/provider/callable cases. | Watch lane; handoff only on concrete seam mismatch. |
-| Replay-appliance projection for TreeCalc baseline | W030 emits local replay artifacts and manifest, not necessarily pack-grade appliance bundles. | Future replay projection bead if pack promotion requires it. |
-| Broader caller/table/host context | OxFml notes identify table and caller-context watch lanes beyond current TreeCalc floor. | Future seam-review/handoff candidate only if admitted into TreeCalc scope. |
-| Overlay economics/fallback re-entry | Overlay artifacts exist; economic counters and retention policy evidence do not. | Future W010-linked experiment/counter bead. |
+| Successor bead | Residual | Why it remains residual | Packet shape |
+|---|---|---|---|
+| `calc-kka` | TreeCalc pinned-reader and retention corpus | W008/W009 pinned-reader and overlay-retention safety were not widened by W030. | Future corpus/evidence bead before concurrency promotion. |
+| `calc-fg0` | TreeCalc measurement counter schema | W010 counters remain planning-level; W030 supplies artifacts but not runtime counter emission. | Future measurement/instrumentation bead. |
+| `calc-ud7` | Broader typed reject taxonomy | W030 covers current local reject families, not all future OxFml/provider/callable cases. | Watch lane; handoff only on concrete seam mismatch. |
+| `calc-v3m` | Replay-appliance projection for TreeCalc baseline | W030 emits local replay artifacts and manifest, not necessarily pack-grade appliance bundles. | Future replay projection bead if pack promotion requires it. |
+| `calc-yfo` | Broader caller/table/host context | OxFml notes identify table and caller-context watch lanes beyond current TreeCalc floor. | Future seam-review/handoff candidate only if admitted into TreeCalc scope. |
+| `calc-e8e` | Overlay economics/fallback re-entry | Overlay artifacts exist; economic counters and retention policy evidence do not. | Future W010-linked experiment/counter bead. |
 
 ## 10. Current W031 Inventory Reading
 

@@ -232,6 +232,33 @@ This matrix should be extended as new replay artifacts and emitted runs are prom
 | `PACK.dag.dynamic_dependency_bind_semantics` | `R8` plus dynamic-shape publish path | `tc_dynamic_dep_switch_001`, `tc_fallback_reentry_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
 | `PACK.stage1.scc_bounded_handling` | local W014 SCC lane | `tc_cycle_region_reject_001` | `docs/test-runs/core-engine/tracecalc-reference-machine/w014-stage1-widening-baseline/` |
 
+## W031 TreeCalc Replay And Pack Guardrail Refresh
+
+The W030 TreeCalc local baseline refreshes the replay/pack guardrails for the declared local sequential TreeCalc corpus without replacing the older `TraceCalc` reference-machine lane or promoting concurrency/economics claims.
+
+Authority anchors:
+1. authority inventory: `docs/spec/core-engine/CORE_ENGINE_TREECALC_ASSURANCE_AUTHORITY_MAP.md`
+2. checked-in TreeCalc baseline: `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline/`
+3. replay inventory: `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline/replay_artifact_manifest.json`
+4. conformance summary: `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline/conformance/conformance_summary.json`
+
+Guardrail rule:
+1. W030 TreeCalc artifacts are additive authority for the `OxCalcTree` local sequential floor.
+2. They do not silently supersede the `TraceCalc` reference-machine artifacts for older Stage 1 proof obligations.
+3. They do not widen `PACK.concurrent.epochs`, pinned-reader retention, overlay economics, or Stage 2 promotion evidence.
+4. W029 invariants remain preserved: candidate acceptance, reject/no-publish, and coordinator publication authority are unchanged by replay/pack guardrail refresh.
+
+| Pack or replay class | W031 TreeCalc refresh | Current guardrail |
+|---|---|---|
+| `R1` candidate-result versus publication / `PACK.fec.commit_atomicity` | W030 published TreeCalc cases carry result, trace, explain, candidate/publication fields, and published values under the `OxCalcTree` contract. | Refreshed for local sequential TreeCalc corpus only; multi-node atomic bundle stress remains successor assurance work. |
+| `R2` reject-is-no-publish / `PACK.fec.reject_detail_replay` | W030 rejected TreeCalc cases pass conformance with no expectation mismatches and preserve no-publish behavior. | Broader provider-failure, callable-publication, and future OxFml reject taxonomy breadth remain residual/watch lanes. |
+| `R3` fence-compatible accept/reject split | Compatibility and artifact-token basis are preserved through `OxCalcTreeRecalcRequest` and result diagnostics. | Explicit incompatible-fence TreeCalc corpus breadth remains future if promotion pressure requires it. |
+| `R4` pinned-reader stability / `PACK.concurrent.epochs` | No W030 widening. | Stage 2 or retention-policy promotion remains blocked on explicit TreeCalc pinned-reader/epoch replay. |
+| `R5` overlay retention and release / `PACK.fec.overlay_lifecycle` | Runtime-effect overlay sidecars and replay manifest make covered overlay projections visible. | Retention/release safety and economics counters remain future W031 residual packetization candidates. |
+| `R6` typed reject taxonomy | Current local TreeCalc reject/runtime-effect families are covered by W030 rejected cases. | Taxonomy is not globally closed; handoff only if a concrete seam insufficiency appears. |
+| `R7` verified-clean without publication | W030 includes a verified-clean case with zero expectation mismatch. | Equality breadth for richer future value/format surfaces remains future widening. |
+| `R8` fallback and overlay re-entry / `PACK.dag.dynamic_dependency_bind_semantics` | Dependency graph, invalidation closure, runtime effects, and overlays are emitted for covered dynamic/runtime-derived cases. | Fallback economics and conservative re-entry measurement remain W010-linked residuals. |
+
 ## First Trace Schema Pressure List
 W009 should make explicit which trace fields are now required by the accepted seam and W008 model shape.
 

@@ -631,6 +631,12 @@ The following must remain true so later ultraperformance work still lands on the
 7. structural truth remains immutable and versioned,
 8. concurrency arrives only after the sequential TreeCalc engine path is semantically real.
 
+W031 TreeCalc assurance refresh adds these current replay/pack guardrails:
+1. `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline/` is the checked-in TreeCalc local baseline for the declared W030 sequential corpus.
+2. `docs/test-runs/core-engine/treecalc-local/w030-treecalc-oracle-baseline/replay_artifact_manifest.json` is the replay inventory for that baseline, not a replacement for the host-facing `OxCalcTree` contract.
+3. W030 artifacts refresh local sequential TreeCalc evidence, but do not promote concurrency, pinned-reader retention, overlay-economics, or broader host/product claims.
+4. W029 invariants remain binding for later performance work: candidate acceptance, reject/no-publish behavior, and coordinator publication authority must remain unchanged unless a future packet explicitly proves semantic equivalence.
+
 ## 16. Immediate Design Questions To Resolve Early
 The following questions should be resolved early in the next work sequence rather than deferred:
 1. exact first TreeCalc reference-family subset,

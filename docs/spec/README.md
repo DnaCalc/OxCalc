@@ -68,6 +68,8 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
   - supporting companion defining how OxCalc-owned `TraceCalc`, runner, oracle, and diff artifacts project into the Foundation Replay appliance rollout.
 - `docs/spec/core-engine/CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`
   - supporting planning companion defining the topic-by-topic TreeCalc seam negotiation shape for the next OxCalc↔OxFml note rounds and W026 intake work; not canonical seam authority.
+- `docs/spec/core-engine/CORE_ENGINE_TREECALC_ASSURANCE_AUTHORITY_MAP.md`
+  - supporting companion for W031, mapping older assurance/replay/pack planning surfaces to the W030 TreeCalc local baseline and identifying residual packetization candidates; not a host-facing API or seam authority.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 

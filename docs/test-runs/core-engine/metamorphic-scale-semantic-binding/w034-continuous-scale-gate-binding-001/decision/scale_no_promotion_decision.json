@@ -1,0 +1,21 @@
+{
+  "continuous_scale_assurance_promoted": false,
+  "decision_status": "semantic_binding_recorded_without_performance_promotion",
+  "evidence_profile": "w034_continuous_scale_gate_binding",
+  "no_promotion_reason_ids": [
+    "scale.performance.measurement_not_a_correctness_proof",
+    "scale.performance.single_day_baseline_not_continuous_assurance",
+    "scale.performance.semantic_binding_not_scheduler_policy_promotion",
+    "scale.performance.not_pack_grade_replay",
+    "scale.performance.stage2_contention_not_promoted",
+    "scale.continuous.no_scheduled_regression_suite",
+    "scale.continuous.no_cross_engine_continuous_diff_service",
+    "scale.continuous.formal_gates_bounded_smoke_only"
+  ],
+  "pack_capability_promoted": false,
+  "performance_claim_promoted": false,
+  "run_id": "w034-continuous-scale-gate-binding-001",
+  "scale_semantic_evidence_recorded": true,
+  "schema_version": "oxcalc.scale_semantic_binding.no_promotion_decision.v1",
+  "semantic_equivalence_statement": "This runner reads existing scale, replay, conformance, and pack-decision artifacts and emits binding evidence only. It does not change coordinator scheduling, invalidation, recalc, publication, reject, or evaluator behavior."
+}

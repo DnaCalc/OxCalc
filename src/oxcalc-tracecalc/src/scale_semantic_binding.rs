@@ -18,6 +18,8 @@ const SCALE_NO_PROMOTION_SCHEMA_V1: &str = "oxcalc.scale_semantic_binding.no_pro
 const SCALE_BUNDLE_MANIFEST_SCHEMA_V1: &str = "oxcalc.scale_semantic_binding.bundle_manifest.v1";
 const SCALE_BUNDLE_VALIDATION_SCHEMA_V1: &str =
     "oxcalc.scale_semantic_binding.bundle_validation.v1";
+const SCALE_CONTINUOUS_CRITERIA_SCHEMA_V1: &str =
+    "oxcalc.scale_semantic_binding.continuous_criteria.v1";
 
 const SCALE_RUN_IDS: &[&str] = &[
     "million_grid_r1",
@@ -28,10 +30,24 @@ const SCALE_RUN_IDS: &[&str] = &[
     "million_relative_rebind_f8_r1",
     "million_fanout_f16_r1",
 ];
-const TRACECALC_RUN_ID: &str = "post-w033-let-lambda-carrier-witness-001";
+const POST_W033_TRACECALC_RUN_ID: &str = "post-w033-let-lambda-carrier-witness-001";
 const TRACECALC_SCALE_SCENARIO_ID: &str = "tc_scale_chain_seed_001";
-const INDEPENDENT_CONFORMANCE_RUN_ID: &str = "post-w033-independent-conformance-001";
-const PACK_CAPABILITY_RUN_ID: &str = "post-w033-pack-capability-decision-001";
+const POST_W033_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "post-w033-independent-conformance-001";
+const POST_W033_PACK_CAPABILITY_RUN_ID: &str = "post-w033-pack-capability-decision-001";
+const W034_TRACECALC_RUN_ID: &str = "w034-tracecalc-oracle-deepening-001";
+const W034_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "w034-independent-conformance-001";
+const W034_PACK_CAPABILITY_RUN_ID: &str = "w034-pack-capability-gate-binding-001";
+const W034_FORMAL_GATE_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md",
+    "docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md",
+    "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+    "formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean",
+    "formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean",
+    "formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean",
+    "formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean",
+    "formal/tla/CoreEngineW034Interleavings.tla",
+    "formal/tla/CoreEngineW034Interleavings.smoke.cfg",
+];
 
 #[derive(Debug, Error)]
 pub enum ScaleSemanticBindingError {
@@ -105,6 +121,18 @@ struct Evaluation {
     validated_scale_runs: usize,
 }
 
+#[derive(Debug, Clone)]
+struct ScaleSemanticProfile {
+    profile_id: &'static str,
+    family_packet: &'static str,
+    tracecalc_run_id: &'static str,
+    tracecalc_scale_scenario_id: &'static str,
+    independent_conformance_run_id: &'static str,
+    pack_capability_run_id: &'static str,
+    formal_gate_artifacts: &'static [&'static str],
+    additional_no_promotion_reasons: &'static [&'static str],
+}
+
 impl ScaleSemanticBindingRunner {
     #[must_use]
     pub fn new() -> Self {
@@ -143,15 +171,17 @@ impl ScaleSemanticBindingRunner {
         create_directory(&artifact_root.join("replay-appliance"))?;
         create_directory(&artifact_root.join("replay-appliance/validation"))?;
 
-        let evaluation = evaluate(repo_root)?;
+        let profile = scale_semantic_profile(run_id);
+        let evaluation = evaluate(repo_root, &profile)?;
 
         write_json(
             &artifact_root.join("evidence/scale_semantic_evidence_index.json"),
             &json!({
                 "schema_version": SCALE_SEMANTIC_EVIDENCE_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "artifact_root": relative_artifact_root,
-                "w033_family_packet": "docs/spec/core-engine/w033-formalization/W033_METAMORPHIC_DIFFERENTIAL_TEST_FAMILIES.md",
+                "family_packet": profile.family_packet,
                 "scale_run_row_count": evaluation.scale_rows.len(),
                 "validated_scale_run_count": evaluation.validated_scale_runs,
                 "missing_artifact_count": evaluation.missing_artifacts.len(),
@@ -165,6 +195,7 @@ impl ScaleSemanticBindingRunner {
             &json!({
                 "schema_version": SCALE_SIGNATURE_DIFF_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "row_count": evaluation.signature_rows.len(),
                 "unexpected_mismatch_count": count_failure_rows(&evaluation.signature_rows),
                 "rows": evaluation.signature_rows,
@@ -176,10 +207,11 @@ impl ScaleSemanticBindingRunner {
             &json!({
                 "schema_version": SCALE_REPLAY_BINDING_SCHEMA_V1,
                 "run_id": run_id,
-                "tracecalc_reference_run_id": TRACECALC_RUN_ID,
-                "tracecalc_scale_scenario_id": TRACECALC_SCALE_SCENARIO_ID,
-                "independent_conformance_run_id": INDEPENDENT_CONFORMANCE_RUN_ID,
-                "pack_capability_run_id": PACK_CAPABILITY_RUN_ID,
+                "evidence_profile": profile.profile_id,
+                "tracecalc_reference_run_id": profile.tracecalc_run_id,
+                "tracecalc_scale_scenario_id": profile.tracecalc_scale_scenario_id,
+                "independent_conformance_run_id": profile.independent_conformance_run_id,
+                "pack_capability_run_id": profile.pack_capability_run_id,
                 "row_count": evaluation.replay_rows.len(),
                 "unexpected_mismatch_count": count_failure_rows(&evaluation.replay_rows),
                 "rows": evaluation.replay_rows,
@@ -191,6 +223,7 @@ impl ScaleSemanticBindingRunner {
             &json!({
                 "schema_version": SCALE_NO_PROMOTION_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "decision_status": if evaluation.missing_artifacts.is_empty() && evaluation.unexpected_mismatches.is_empty() {
                     "semantic_binding_recorded_without_performance_promotion"
                 } else {
@@ -205,12 +238,18 @@ impl ScaleSemanticBindingRunner {
             }),
         )?;
 
-        let required_artifacts = required_artifacts(run_id);
+        write_json(
+            &artifact_root.join("decision/continuous_scale_assurance_criteria.json"),
+            &continuous_scale_criteria(run_id, &relative_artifact_root, &profile, &evaluation),
+        )?;
+
+        let required_artifacts = required_artifacts(run_id, &profile);
         write_json(
             &artifact_root.join("replay-appliance/bundle_manifest.json"),
             &json!({
                 "schema_version": SCALE_BUNDLE_MANIFEST_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "artifact_root": relative_artifact_root,
                 "claimed_capability": "scale_semantic_binding_packet",
                 "excluded_capabilities": [
@@ -240,6 +279,7 @@ impl ScaleSemanticBindingRunner {
             &json!({
                 "schema_version": summary.schema_version,
                 "run_id": summary.run_id,
+                "evidence_profile": profile.profile_id,
                 "scale_run_row_count": summary.scale_run_row_count,
                 "validated_scale_run_count": summary.validated_scale_run_count,
                 "scale_signature_row_count": summary.scale_signature_row_count,
@@ -252,6 +292,7 @@ impl ScaleSemanticBindingRunner {
                 "scale_signature_differential_path": format!("{relative_artifact_root}/differentials/scale_signature_differential.json"),
                 "replay_conformance_bindings_path": format!("{relative_artifact_root}/replay_conformance_bindings.json"),
                 "decision_path": format!("{relative_artifact_root}/decision/scale_no_promotion_decision.json"),
+                "continuous_scale_criteria_path": format!("{relative_artifact_root}/decision/continuous_scale_assurance_criteria.json"),
                 "bundle_validation_path": format!("{relative_artifact_root}/replay-appliance/validation/bundle_validation.json"),
             }),
         )?;
@@ -288,7 +329,10 @@ impl ScaleSemanticBindingRunner {
     }
 }
 
-fn evaluate(repo_root: &Path) -> Result<Evaluation, ScaleSemanticBindingError> {
+fn evaluate(
+    repo_root: &Path,
+    profile: &ScaleSemanticProfile,
+) -> Result<Evaluation, ScaleSemanticBindingError> {
     let observations = SCALE_RUN_IDS
         .iter()
         .map(|run_id| scale_run_observation(repo_root, run_id))
@@ -324,7 +368,7 @@ fn evaluate(repo_root: &Path) -> Result<Evaluation, ScaleSemanticBindingError> {
         collect_row_failures(row, &mut evaluation.unexpected_mismatches);
     }
 
-    evaluation.replay_rows = replay_binding_rows(repo_root)?;
+    evaluation.replay_rows = replay_binding_rows(repo_root, profile)?;
     for row in &evaluation.replay_rows {
         collect_row_failures(row, &mut evaluation.unexpected_mismatches);
         collect_row_missing(row, &mut evaluation.missing_artifacts);
@@ -337,6 +381,12 @@ fn evaluate(repo_root: &Path) -> Result<Evaluation, ScaleSemanticBindingError> {
         "scale.performance.not_pack_grade_replay".to_string(),
         "scale.performance.stage2_contention_not_promoted".to_string(),
     ];
+    evaluation.no_promotion_reasons.extend(
+        profile
+            .additional_no_promotion_reasons
+            .iter()
+            .map(|reason| (*reason).to_string()),
+    );
 
     Ok(evaluation)
 }
@@ -696,10 +746,17 @@ fn signature_row(
     })
 }
 
-fn replay_binding_rows(repo_root: &Path) -> Result<Vec<Value>, ScaleSemanticBindingError> {
+fn replay_binding_rows(
+    repo_root: &Path,
+    profile: &ScaleSemanticProfile,
+) -> Result<Vec<Value>, ScaleSemanticBindingError> {
     let trace_result = read_artifact(
         repo_root,
-        trace_scenario_artifact_path(TRACECALC_SCALE_SCENARIO_ID, "result.json"),
+        trace_scenario_artifact_path(
+            profile.tracecalc_run_id,
+            profile.tracecalc_scale_scenario_id,
+            "result.json",
+        ),
     )?;
     let trace_bundle = read_artifact(
         repo_root,
@@ -708,7 +765,7 @@ fn replay_binding_rows(repo_root: &Path) -> Result<Vec<Value>, ScaleSemanticBind
             "test-runs",
             "core-engine",
             "tracecalc-reference-machine",
-            TRACECALC_RUN_ID,
+            profile.tracecalc_run_id,
             "replay-appliance",
             "validation",
             "bundle_validation.json",
@@ -721,7 +778,7 @@ fn replay_binding_rows(repo_root: &Path) -> Result<Vec<Value>, ScaleSemanticBind
             "test-runs",
             "core-engine",
             "independent-conformance",
-            INDEPENDENT_CONFORMANCE_RUN_ID,
+            profile.independent_conformance_run_id,
             "run_summary.json",
         ]),
     )?;
@@ -732,7 +789,7 @@ fn replay_binding_rows(repo_root: &Path) -> Result<Vec<Value>, ScaleSemanticBind
             "test-runs",
             "core-engine",
             "independent-conformance",
-            INDEPENDENT_CONFORMANCE_RUN_ID,
+            profile.independent_conformance_run_id,
             "replay-appliance",
             "validation",
             "bundle_validation.json",
@@ -745,16 +802,20 @@ fn replay_binding_rows(repo_root: &Path) -> Result<Vec<Value>, ScaleSemanticBind
             "test-runs",
             "core-engine",
             "pack-capability",
-            PACK_CAPABILITY_RUN_ID,
+            profile.pack_capability_run_id,
             "run_summary.json",
         ]),
     )?;
 
-    Ok(vec![
+    let mut rows = vec![
         trace_scale_seed_binding_row(trace_result, trace_bundle),
         independent_conformance_binding_row(independent_summary, independent_bundle),
         pack_no_promotion_binding_row(pack_summary),
-    ])
+    ];
+    if let Some(row) = formal_gate_binding_row(repo_root, profile) {
+        rows.push(row);
+    }
+    Ok(rows)
 }
 
 fn trace_scale_seed_binding_row(result: ArtifactRead, bundle: ArtifactRead) -> Value {
@@ -855,6 +916,30 @@ fn pack_no_promotion_binding_row(summary: ArtifactRead) -> Value {
     )
 }
 
+fn formal_gate_binding_row(repo_root: &Path, profile: &ScaleSemanticProfile) -> Option<Value> {
+    if profile.formal_gate_artifacts.is_empty() {
+        return None;
+    }
+
+    let missing_artifacts = profile
+        .formal_gate_artifacts
+        .iter()
+        .filter(|relative_path| !repo_root.join(relative_path).exists())
+        .map(|relative_path| (*relative_path).to_string())
+        .collect::<Vec<_>>();
+
+    Some(replay_row(
+        "w034_formal_gate_binding",
+        "Continuous scale evidence is bound to W034 Lean/TLA/pack gate artifacts as bounded evidence, not proof of performance correctness.",
+        missing_artifacts,
+        Vec::new(),
+        json!({
+            "formal_gate_artifacts": profile.formal_gate_artifacts,
+            "capability_consequence": "bounded_formal_and_scale_evidence_does_not_promote_continuous_scale_assurance",
+        }),
+    ))
+}
+
 fn replay_row(
     row_id: &str,
     purpose: &str,
@@ -876,6 +961,105 @@ fn replay_row(
         "failures": failures,
         "details": details,
     })
+}
+
+fn continuous_scale_criteria(
+    run_id: &str,
+    artifact_root: &str,
+    profile: &ScaleSemanticProfile,
+    evaluation: &Evaluation,
+) -> Value {
+    let semantic_binding_valid =
+        evaluation.missing_artifacts.is_empty() && evaluation.unexpected_mismatches.is_empty();
+    let formal_gate_missing = profile.formal_gate_artifacts.iter().any(|artifact| {
+        evaluation
+            .missing_artifacts
+            .iter()
+            .any(|missing| missing == artifact)
+    });
+
+    json!({
+        "schema_version": SCALE_CONTINUOUS_CRITERIA_SCHEMA_V1,
+        "run_id": run_id,
+        "evidence_profile": profile.profile_id,
+        "artifact_root": artifact_root,
+        "continuous_scale_assurance_promoted": false,
+        "performance_claim_promoted": false,
+        "criteria": [
+            {
+                "criterion_id": "scale.semantic.closed_form_validation",
+                "state": if evaluation.validated_scale_runs == SCALE_RUN_IDS.len() { "satisfied" } else { "partial" },
+                "validated_scale_run_count": evaluation.validated_scale_runs,
+                "required_scale_run_count": SCALE_RUN_IDS.len(),
+                "capability_consequence": "semantic_input_only"
+            },
+            {
+                "criterion_id": "scale.semantic.metamorphic_signature_binding",
+                "state": if count_failure_rows(&evaluation.signature_rows) == 0 { "satisfied" } else { "unexpected_mismatch" },
+                "signature_row_count": evaluation.signature_rows.len(),
+                "capability_consequence": "semantic_input_only"
+            },
+            {
+                "criterion_id": "scale.semantic.replay_conformance_pack_binding",
+                "state": if semantic_binding_valid { "satisfied" } else { "partial" },
+                "replay_binding_row_count": evaluation.replay_rows.len(),
+                "capability_consequence": "prevents_timing_only_correctness_claim"
+            },
+            {
+                "criterion_id": "scale.formal.w034_gate_binding",
+                "state": if profile.formal_gate_artifacts.is_empty() {
+                    "not_applicable_to_profile"
+                } else if formal_gate_missing {
+                    "missing_artifact"
+                } else {
+                    "bounded_no_promotion"
+                },
+                "capability_consequence": "Lean/TLA smoke and proof slices support review but do not promote full verification or continuous scale assurance"
+            },
+            {
+                "criterion_id": "scale.continuous.scheduled_regression_floor",
+                "state": "missing",
+                "capability_consequence": "continuous_scale_assurance_not_promoted"
+            },
+            {
+                "criterion_id": "scale.continuous.cross_engine_diff_service",
+                "state": "missing",
+                "capability_consequence": "continuous_scale_assurance_not_promoted"
+            }
+        ],
+        "no_promotion_reason_ids": evaluation.no_promotion_reasons,
+        "semantic_equivalence_statement": "The criteria packet classifies already-emitted evidence and does not change runtime scheduling, invalidation, recalc, publication, reject, or evaluator behavior.",
+    })
+}
+
+fn scale_semantic_profile(run_id: &str) -> ScaleSemanticProfile {
+    if run_id.starts_with("w034-") {
+        ScaleSemanticProfile {
+            profile_id: "w034_continuous_scale_gate_binding",
+            family_packet: "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+            tracecalc_run_id: W034_TRACECALC_RUN_ID,
+            tracecalc_scale_scenario_id: TRACECALC_SCALE_SCENARIO_ID,
+            independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
+            pack_capability_run_id: W034_PACK_CAPABILITY_RUN_ID,
+            formal_gate_artifacts: W034_FORMAL_GATE_ARTIFACTS,
+            additional_no_promotion_reasons: &[
+                "scale.continuous.no_scheduled_regression_suite",
+                "scale.continuous.no_cross_engine_continuous_diff_service",
+                "scale.continuous.formal_gates_bounded_smoke_only",
+            ],
+        }
+    } else {
+        ScaleSemanticProfile {
+            profile_id: "post_w033_metamorphic_scale_semantic_binding",
+            family_packet: "docs/spec/core-engine/w033-formalization/W033_METAMORPHIC_DIFFERENTIAL_TEST_FAMILIES.md",
+            tracecalc_run_id: POST_W033_TRACECALC_RUN_ID,
+            tracecalc_scale_scenario_id: TRACECALC_SCALE_SCENARIO_ID,
+            independent_conformance_run_id: POST_W033_INDEPENDENT_CONFORMANCE_RUN_ID,
+            pack_capability_run_id: POST_W033_PACK_CAPABILITY_RUN_ID,
+            formal_gate_artifacts: &[],
+            additional_no_promotion_reasons: &[],
+        }
+    }
 }
 
 fn observation_value<'a>(
@@ -1030,26 +1214,31 @@ fn scale_run_summary_path(run_id: &str) -> String {
     ])
 }
 
-fn trace_scenario_artifact_path(scenario_id: &str, artifact_name: &str) -> String {
+fn trace_scenario_artifact_path(
+    tracecalc_run_id: &str,
+    scenario_id: &str,
+    artifact_name: &str,
+) -> String {
     relative_artifact_path([
         "docs",
         "test-runs",
         "core-engine",
         "tracecalc-reference-machine",
-        TRACECALC_RUN_ID,
+        tracecalc_run_id,
         "scenarios",
         scenario_id,
         artifact_name,
     ])
 }
 
-fn required_artifacts(run_id: &str) -> Vec<String> {
+fn required_artifacts(run_id: &str, profile: &ScaleSemanticProfile) -> Vec<String> {
     [
         "run_summary.json",
         "evidence/scale_semantic_evidence_index.json",
         "differentials/scale_signature_differential.json",
         "replay_conformance_bindings.json",
         "decision/scale_no_promotion_decision.json",
+        "decision/continuous_scale_assurance_criteria.json",
         "replay-appliance/bundle_manifest.json",
         "replay-appliance/validation/bundle_validation.json",
     ]
@@ -1070,24 +1259,54 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
             .map(|run_id| scale_run_summary_path(run_id)),
     )
     .chain([
-        trace_scenario_artifact_path(TRACECALC_SCALE_SCENARIO_ID, "result.json"),
+        trace_scenario_artifact_path(
+            profile.tracecalc_run_id,
+            profile.tracecalc_scale_scenario_id,
+            "result.json",
+        ),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            profile.tracecalc_run_id,
+            "replay-appliance",
+            "validation",
+            "bundle_validation.json",
+        ]),
         relative_artifact_path([
             "docs",
             "test-runs",
             "core-engine",
             "independent-conformance",
-            INDEPENDENT_CONFORMANCE_RUN_ID,
+            profile.independent_conformance_run_id,
             "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "independent-conformance",
+            profile.independent_conformance_run_id,
+            "replay-appliance",
+            "validation",
+            "bundle_validation.json",
         ]),
         relative_artifact_path([
             "docs",
             "test-runs",
             "core-engine",
             "pack-capability",
-            PACK_CAPABILITY_RUN_ID,
+            profile.pack_capability_run_id,
             "run_summary.json",
         ]),
     ])
+    .chain(
+        profile
+            .formal_gate_artifacts
+            .iter()
+            .map(|artifact| (*artifact).to_string()),
+    )
     .collect()
 }
 
@@ -1130,6 +1349,41 @@ mod tests {
             "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/scale-binding-test/decision/scale_no_promotion_decision.json",
         );
         assert_eq!(decision["performance_claim_promoted"], false);
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn scale_semantic_binding_runner_writes_w034_continuous_gate_packet() {
+        let repo_root = unique_temp_repo();
+        create_w034_source_artifacts(&repo_root);
+
+        let summary = ScaleSemanticBindingRunner::new()
+            .execute(&repo_root, "w034-scale-binding-test")
+            .expect("W034 scale binding packet should write");
+
+        assert_eq!(summary.scale_run_row_count, 7);
+        assert_eq!(summary.validated_scale_run_count, 7);
+        assert_eq!(summary.scale_signature_row_count, 5);
+        assert_eq!(summary.replay_binding_row_count, 4);
+        assert_eq!(summary.missing_artifact_count, 0);
+        assert_eq!(summary.unexpected_mismatch_count, 0);
+
+        let criteria = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-scale-binding-test/decision/continuous_scale_assurance_criteria.json",
+        );
+        assert_eq!(
+            criteria["evidence_profile"],
+            "w034_continuous_scale_gate_binding"
+        );
+        assert_eq!(criteria["continuous_scale_assurance_promoted"], false);
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-scale-binding-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
 
         fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
     }
@@ -1292,7 +1546,11 @@ mod tests {
 
         write_json_test(
             repo_root,
-            &trace_scenario_artifact_path(TRACECALC_SCALE_SCENARIO_ID, "result.json"),
+            &trace_scenario_artifact_path(
+                POST_W033_TRACECALC_RUN_ID,
+                TRACECALC_SCALE_SCENARIO_ID,
+                "result.json",
+            ),
             json!({
                 "result_state": "passed",
                 "assertion_failures": [],
@@ -1326,6 +1584,53 @@ mod tests {
                 "highest_honest_capability": "cap.C4.distill_valid",
             }),
         );
+    }
+
+    fn create_w034_source_artifacts(repo_root: &Path) {
+        create_source_artifacts(repo_root);
+        write_json_test(
+            repo_root,
+            &trace_scenario_artifact_path(
+                W034_TRACECALC_RUN_ID,
+                TRACECALC_SCALE_SCENARIO_ID,
+                "result.json",
+            ),
+            json!({
+                "result_state": "passed",
+                "assertion_failures": [],
+                "validation_failures": [],
+                "conformance_mismatches": [],
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/validation/bundle_validation.json",
+            json!({ "status": "bundle_valid" }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+            json!({
+                "unexpected_mismatch_count": 0,
+                "missing_artifact_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+            json!({ "status": "bundle_valid" }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/run_summary.json",
+            json!({
+                "decision_status": "capability_not_promoted",
+                "highest_honest_capability": "cap.C4.distill_valid",
+            }),
+        );
+        for artifact in W034_FORMAL_GATE_ARTIFACTS {
+            write_text_test(repo_root, artifact, "W034 formal gate artifact\n");
+        }
     }
 
     struct ScaleFixture {
@@ -1398,6 +1703,12 @@ mod tests {
         let path = repo_root.join(relative_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, serde_json::to_string_pretty(&value).unwrap() + "\n").unwrap();
+    }
+
+    fn write_text_test(repo_root: &Path, relative_path: &str, value: &str) {
+        let path = repo_root.join(relative_path);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, value).unwrap();
     }
 
     fn read_required_json(repo_root: &Path, relative_path: &str) -> Value {

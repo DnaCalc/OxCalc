@@ -73,6 +73,15 @@ Current W034 TLA state after `calc-e77.5`:
 3. `CoreEngineStage1`, `CoreEnginePostW033`, and `CoreEngineW034Interleavings` smoke configs check locally with TLC.
 4. The slice does not promote full TLA+ verification, Stage 2 policy, pack-grade replay, continuous scale assurance, or production scheduler equivalence.
 
+Current W034 pack/scale gate state after `calc-e77.6`:
+
+1. The W034 pack-capability gate packet is recorded at `docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md`.
+2. `w034-pack-capability-gate-binding-001` emits 7 satisfied inputs, 12 blockers, 0 missing artifacts, `capability_not_promoted`, and highest honest capability `cap.C4.distill_valid`.
+3. `w034-continuous-scale-gate-binding-001` validates 7 scale rows, 5 scale signature rows, and 4 replay/conformance/pack binding rows with 0 missing artifacts and 0 unexpected mismatches.
+4. Continuous-scale criteria record closed-form and metamorphic semantic evidence as satisfied inputs, but scheduled regression and continuous cross-engine differential gates remain missing.
+5. OxFml W073 typed conditional-formatting payload direction is carried as a watch/input-contract row; no W034 OxCalc request construction path exercises those payloads.
+6. The slice does not promote `cap.C5.pack_valid`, continuous scale assurance, full Lean/TLA verification, or Stage 2 policy.
+
 ## 4. Bead-To-Artifact Plan
 
 | Bead | Primary artifact outcome |
@@ -96,13 +105,12 @@ Current W034 TLA state after `calc-e77.5`:
 
 ## 6. Current Status
 
-- execution_state: `calc-e77.5_tla_model_family_authored`
+- execution_state: `calc-e77.6_pack_scale_gate_binding_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.6` through `calc-e77.7`
+  - `calc-e77.7`
   - broader non-routine TLA exploration and full concurrency proof
   - broader Lean theorem depth and imported OxFml formal linkage
-  - pack/capability and continuous scale gate binding
   - W034 closure audit

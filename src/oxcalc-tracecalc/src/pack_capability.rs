@@ -15,11 +15,29 @@ const PACK_CAPABILITY_BUNDLE_SCHEMA_V1: &str = "oxcalc.pack_capability.bundle_ma
 const PACK_CAPABILITY_VALIDATION_SCHEMA_V1: &str = "oxcalc.pack_capability.validation.v1";
 
 const TRACE_RETAINED_W023_RUN_ID: &str = "w023-sequence3-program-decision";
-const OXFML_BRIDGE_RUN_ID: &str = "post-w033-direct-oxfml-fixture-bridge-001";
-const LET_LAMBDA_TRACECALC_RUN_ID: &str = "post-w033-let-lambda-carrier-witness-001";
-const LET_LAMBDA_TREECALC_RUN_ID: &str = "post-w033-let-lambda-treecalc-witness-001";
-const INDEPENDENT_TREECALC_RUN_ID: &str = "post-w033-independent-conformance-treecalc-001";
-const INDEPENDENT_CONFORMANCE_RUN_ID: &str = "post-w033-independent-conformance-001";
+const POST_W033_OXFML_BRIDGE_RUN_ID: &str = "post-w033-direct-oxfml-fixture-bridge-001";
+const POST_W033_LET_LAMBDA_TRACECALC_RUN_ID: &str = "post-w033-let-lambda-carrier-witness-001";
+const POST_W033_LET_LAMBDA_TREECALC_RUN_ID: &str = "post-w033-let-lambda-treecalc-witness-001";
+const POST_W033_INDEPENDENT_TREECALC_RUN_ID: &str =
+    "post-w033-independent-conformance-treecalc-001";
+const POST_W033_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "post-w033-independent-conformance-001";
+const W034_TRACECALC_RUN_ID: &str = "w034-tracecalc-oracle-deepening-001";
+const W034_TREECALC_RUN_ID: &str = "w034-independent-conformance-treecalc-001";
+const W034_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "w034-independent-conformance-001";
+const W034_FORMAL_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md",
+    "docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md",
+    "formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean",
+    "formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean",
+    "formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean",
+    "formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean",
+    "formal/tla/CoreEngineW034Interleavings.tla",
+    "formal/tla/CoreEngineW034Interleavings.smoke.cfg",
+];
+const W034_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md",
+    "docs/spec/core-engine/w034-formalization/W034_FORMALIZATION_DEEPENING_PLAN.md",
+];
 
 #[derive(Debug, Error)]
 pub enum PackCapabilityError {
@@ -82,6 +100,20 @@ struct EvidenceEvaluation {
     satisfied_inputs: Vec<String>,
 }
 
+#[derive(Debug, Clone)]
+struct PackCapabilityProfile {
+    profile_id: &'static str,
+    oxfml_bridge_run_id: &'static str,
+    let_lambda_tracecalc_run_id: &'static str,
+    let_lambda_treecalc_run_id: &'static str,
+    independent_treecalc_run_id: &'static str,
+    independent_conformance_run_id: &'static str,
+    program_governance_artifact: &'static str,
+    formal_artifacts: &'static [&'static str],
+    formatting_watch_artifacts: &'static [&'static str],
+    additional_static_blockers: &'static [&'static str],
+}
+
 impl PackCapabilityRunner {
     #[must_use]
     pub fn new() -> Self {
@@ -119,7 +151,8 @@ impl PackCapabilityRunner {
         create_directory(&artifact_root.join("replay-appliance"))?;
         create_directory(&artifact_root.join("replay-appliance/validation"))?;
 
-        let evaluation = evaluate_evidence(repo_root)?;
+        let profile = pack_capability_profile(run_id);
+        let evaluation = evaluate_evidence(repo_root, &profile)?;
         let decision_status =
             if evaluation.missing_paths.is_empty() && !evaluation.blockers.is_empty() {
                 "capability_not_promoted"
@@ -135,6 +168,7 @@ impl PackCapabilityRunner {
             &json!({
                 "schema_version": PACK_CAPABILITY_EVIDENCE_INDEX_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "target_capability": "cap.C5.pack_valid",
                 "highest_honest_capability": highest_honest_capability,
                 "missing_artifact_count": evaluation.missing_paths.len(),
@@ -149,6 +183,7 @@ impl PackCapabilityRunner {
             &json!({
                 "schema_version": PACK_CAPABILITY_DECISION_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "target_capability": "cap.C5.pack_valid",
                 "decision_status": decision_status,
                 "highest_honest_capability": highest_honest_capability,
@@ -162,7 +197,8 @@ impl PackCapabilityRunner {
                     "calc-rcr",
                     "calc-8lg",
                     "future_program_grade_pack_scope",
-                    "future_continuous_cross_engine_diff_suite"
+                    "future_continuous_cross_engine_diff_suite",
+                    "w034_closure_audit"
                 ],
                 "handoff_decision": {
                     "status": "handoff_not_required",
@@ -174,12 +210,13 @@ impl PackCapabilityRunner {
             }),
         )?;
 
-        let required_artifacts = required_artifacts(run_id);
+        let required_artifacts = required_artifacts(run_id, &profile);
         write_json(
             &artifact_root.join("replay-appliance/bundle_manifest.json"),
             &json!({
                 "schema_version": PACK_CAPABILITY_BUNDLE_SCHEMA_V1,
                 "run_id": run_id,
+                "evidence_profile": profile.profile_id,
                 "artifact_root": relative_artifact_root,
                 "target_capability": "cap.C5.pack_valid",
                 "highest_honest_capability": highest_honest_capability,
@@ -208,6 +245,7 @@ impl PackCapabilityRunner {
             &json!({
                 "schema_version": summary.schema_version,
                 "run_id": summary.run_id,
+                "evidence_profile": profile.profile_id,
                 "target_capability": "cap.C5.pack_valid",
                 "decision_status": summary.decision_status,
                 "highest_honest_capability": summary.highest_honest_capability,
@@ -253,14 +291,19 @@ impl PackCapabilityRunner {
     }
 }
 
-fn evaluate_evidence(repo_root: &Path) -> Result<EvidenceEvaluation, PackCapabilityError> {
+fn evaluate_evidence(
+    repo_root: &Path,
+    profile: &PackCapabilityProfile,
+) -> Result<EvidenceEvaluation, PackCapabilityError> {
     let mut evaluation = EvidenceEvaluation::default();
     evaluate_retained_decision(repo_root, &mut evaluation)?;
-    evaluate_bridge(repo_root, &mut evaluation)?;
-    evaluate_let_lambda(repo_root, &mut evaluation)?;
-    evaluate_independent_conformance(repo_root, &mut evaluation)?;
-    evaluate_treecalc_capability(repo_root, &mut evaluation)?;
-    add_static_program_blockers(&mut evaluation);
+    evaluate_bridge(repo_root, profile, &mut evaluation)?;
+    evaluate_let_lambda(repo_root, profile, &mut evaluation)?;
+    evaluate_independent_conformance(repo_root, profile, &mut evaluation)?;
+    evaluate_treecalc_capability(repo_root, profile, &mut evaluation)?;
+    evaluate_w034_formal_artifacts(repo_root, profile, &mut evaluation);
+    evaluate_formatting_watch_artifacts(repo_root, profile, &mut evaluation);
+    add_static_program_blockers(profile, &mut evaluation);
     Ok(evaluation)
 }
 
@@ -319,6 +362,7 @@ fn evaluate_retained_decision(
 
 fn evaluate_bridge(
     repo_root: &Path,
+    profile: &PackCapabilityProfile,
     evaluation: &mut EvidenceEvaluation,
 ) -> Result<(), PackCapabilityError> {
     let summary_path = relative_artifact_path([
@@ -326,7 +370,7 @@ fn evaluate_bridge(
         "test-runs",
         "core-engine",
         "oxfml-fixture-bridge",
-        OXFML_BRIDGE_RUN_ID,
+        profile.oxfml_bridge_run_id,
         "run_summary.json",
     ]);
     let validation_path = relative_artifact_path([
@@ -334,7 +378,7 @@ fn evaluate_bridge(
         "test-runs",
         "core-engine",
         "oxfml-fixture-bridge",
-        OXFML_BRIDGE_RUN_ID,
+        profile.oxfml_bridge_run_id,
         "replay-appliance",
         "validation",
         "bundle_validation.json",
@@ -386,11 +430,15 @@ fn evaluate_bridge(
 
 fn evaluate_let_lambda(
     repo_root: &Path,
+    profile: &PackCapabilityProfile,
     evaluation: &mut EvidenceEvaluation,
 ) -> Result<(), PackCapabilityError> {
-    let trace_validation_path =
-        bundle_validation_path("tracecalc-reference-machine", LET_LAMBDA_TRACECALC_RUN_ID);
-    let tree_validation_path = bundle_validation_path("treecalc-local", LET_LAMBDA_TREECALC_RUN_ID);
+    let trace_validation_path = bundle_validation_path(
+        "tracecalc-reference-machine",
+        profile.let_lambda_tracecalc_run_id,
+    );
+    let tree_validation_path =
+        bundle_validation_path("treecalc-local", profile.let_lambda_treecalc_run_id);
     let trace_validation = read_json(repo_root, &trace_validation_path)?;
     let tree_validation = read_json(repo_root, &tree_validation_path)?;
     add_missing_if_absent(evaluation, &trace_validation_path, &trace_validation);
@@ -436,6 +484,7 @@ fn evaluate_let_lambda(
 
 fn evaluate_independent_conformance(
     repo_root: &Path,
+    profile: &PackCapabilityProfile,
     evaluation: &mut EvidenceEvaluation,
 ) -> Result<(), PackCapabilityError> {
     let summary_path = relative_artifact_path([
@@ -443,7 +492,7 @@ fn evaluate_independent_conformance(
         "test-runs",
         "core-engine",
         "independent-conformance",
-        INDEPENDENT_CONFORMANCE_RUN_ID,
+        profile.independent_conformance_run_id,
         "run_summary.json",
     ]);
     let validation_path = relative_artifact_path([
@@ -451,7 +500,7 @@ fn evaluate_independent_conformance(
         "test-runs",
         "core-engine",
         "independent-conformance",
-        INDEPENDENT_CONFORMANCE_RUN_ID,
+        profile.independent_conformance_run_id,
         "replay-appliance",
         "validation",
         "bundle_validation.json",
@@ -503,6 +552,7 @@ fn evaluate_independent_conformance(
 
 fn evaluate_treecalc_capability(
     repo_root: &Path,
+    profile: &PackCapabilityProfile,
     evaluation: &mut EvidenceEvaluation,
 ) -> Result<(), PackCapabilityError> {
     let capability_path = relative_artifact_path([
@@ -510,7 +560,7 @@ fn evaluate_treecalc_capability(
         "test-runs",
         "core-engine",
         "treecalc-local",
-        INDEPENDENT_TREECALC_RUN_ID,
+        profile.independent_treecalc_run_id,
         "replay-appliance",
         "adapter_capabilities",
         "oxcalc_treecalc.json",
@@ -555,22 +605,149 @@ fn evaluate_treecalc_capability(
     Ok(())
 }
 
-fn add_static_program_blockers(evaluation: &mut EvidenceEvaluation) {
+fn evaluate_w034_formal_artifacts(
+    repo_root: &Path,
+    profile: &PackCapabilityProfile,
+    evaluation: &mut EvidenceEvaluation,
+) {
+    if profile.formal_artifacts.is_empty() {
+        return;
+    }
+
+    let missing_paths = profile
+        .formal_artifacts
+        .iter()
+        .filter(|relative_path| !repo_root.join(relative_path).exists())
+        .map(|relative_path| (*relative_path).to_string())
+        .collect::<Vec<_>>();
+    evaluation.missing_paths.extend(missing_paths.clone());
+
     let reason_ids = vec![
-        "pack.grade.program_grade_replay_governance_not_reached".to_string(),
-        "pack.grade.retained_witness_promotion_not_shared_program_grade".to_string(),
+        "pack.grade.w034_formal_slices_bounded_not_full_verification".to_string(),
+        "pack.grade.stage2_contention_preconditions_unpromoted".to_string(),
     ];
-    evaluation.blockers.extend(reason_ids.clone());
+    if missing_paths.is_empty() {
+        evaluation
+            .satisfied_inputs
+            .push("w034_lean_tla_packets_present".to_string());
+        evaluation.blockers.extend(reason_ids.clone());
+    }
+
     evaluation.rows.push(EvidenceRow {
-        input_id: "post_w033_program_grade_governance",
-        artifact_path: "docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md"
-            .to_string(),
-        evidence_state: "policy_blocker_retained".to_string(),
+        input_id: "w034_lean_tla_formal_gate_packets",
+        artifact_path: profile.formal_artifacts.join(";"),
+        evidence_state: if missing_paths.is_empty() {
+            "formal_gate_packets_present_bounded_no_promotion".to_string()
+        } else {
+            "missing_artifact".to_string()
+        },
         observations: vec![
-            "W033 and successor evidence widen local proof/replay/conformance but do not establish cap.C5.pack_valid.".to_string(),
+            "W034 Lean/TLA artifacts are checked bounded proof/model slices, not full Lean/TLA verification."
+                .to_string(),
+            "Stage 2 contention is modeled as blocked precondition evidence, not promoted scheduler policy."
+                .to_string(),
         ],
         reason_ids,
     });
+}
+
+fn evaluate_formatting_watch_artifacts(
+    repo_root: &Path,
+    profile: &PackCapabilityProfile,
+    evaluation: &mut EvidenceEvaluation,
+) {
+    if profile.formatting_watch_artifacts.is_empty() {
+        return;
+    }
+
+    let missing_paths = profile
+        .formatting_watch_artifacts
+        .iter()
+        .filter(|relative_path| !repo_root.join(relative_path).exists())
+        .map(|relative_path| (*relative_path).to_string())
+        .collect::<Vec<_>>();
+    evaluation.missing_paths.extend(missing_paths.clone());
+    if missing_paths.is_empty() {
+        evaluation
+            .satisfied_inputs
+            .push("oxfml_w073_formatting_watch_classified".to_string());
+    }
+
+    evaluation.rows.push(EvidenceRow {
+        input_id: "oxfml_w073_typed_conditional_formatting_watch",
+        artifact_path: profile.formatting_watch_artifacts.join(";"),
+        evidence_state: if missing_paths.is_empty() {
+            "watch_classified_no_current_oxcalc_request_path".to_string()
+        } else {
+            "missing_artifact".to_string()
+        },
+        observations: vec![
+            "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only."
+                .to_string(),
+            "OxCalc W034 artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
+                .to_string(),
+        ],
+        reason_ids: Vec::new(),
+    });
+}
+
+fn add_static_program_blockers(
+    profile: &PackCapabilityProfile,
+    evaluation: &mut EvidenceEvaluation,
+) {
+    let mut reason_ids = vec![
+        "pack.grade.program_grade_replay_governance_not_reached".to_string(),
+        "pack.grade.retained_witness_promotion_not_shared_program_grade".to_string(),
+    ];
+    reason_ids.extend(
+        profile
+            .additional_static_blockers
+            .iter()
+            .map(|reason| (*reason).to_string()),
+    );
+    evaluation.blockers.extend(reason_ids.clone());
+    evaluation.rows.push(EvidenceRow {
+        input_id: "program_grade_governance",
+        artifact_path: profile.program_governance_artifact.to_string(),
+        evidence_state: "policy_blocker_retained".to_string(),
+        observations: vec![
+            "W033/W034 successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid.".to_string(),
+        ],
+        reason_ids,
+    });
+}
+
+fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
+    if run_id.starts_with("w034-") {
+        PackCapabilityProfile {
+            profile_id: "w034_formalization_gate_binding",
+            oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
+            let_lambda_tracecalc_run_id: W034_TRACECALC_RUN_ID,
+            let_lambda_treecalc_run_id: W034_TREECALC_RUN_ID,
+            independent_treecalc_run_id: W034_TREECALC_RUN_ID,
+            independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
+            program_governance_artifact: "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+            formal_artifacts: W034_FORMAL_ARTIFACTS,
+            formatting_watch_artifacts: W034_FORMATTING_WATCH_ARTIFACTS,
+            additional_static_blockers: &[
+                "pack.grade.continuous_scale_assurance_unpromoted",
+                "pack.grade.w034_closure_audit_not_yet_recorded",
+            ],
+        }
+    } else {
+        PackCapabilityProfile {
+            profile_id: "post_w033_pack_capability_decision",
+            oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
+            let_lambda_tracecalc_run_id: POST_W033_LET_LAMBDA_TRACECALC_RUN_ID,
+            let_lambda_treecalc_run_id: POST_W033_LET_LAMBDA_TREECALC_RUN_ID,
+            independent_treecalc_run_id: POST_W033_INDEPENDENT_TREECALC_RUN_ID,
+            independent_conformance_run_id: POST_W033_INDEPENDENT_CONFORMANCE_RUN_ID,
+            program_governance_artifact: "docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md",
+            formal_artifacts: &[],
+            formatting_watch_artifacts: &[],
+            additional_static_blockers: &[],
+        }
+    }
 }
 
 fn evidence_row_json(row: &EvidenceRow) -> Value {
@@ -664,7 +841,7 @@ fn write_json(path: &Path, value: &Value) -> Result<(), PackCapabilityError> {
     })
 }
 
-fn required_artifacts(run_id: &str) -> Vec<String> {
+fn required_artifacts(run_id: &str, profile: &PackCapabilityProfile) -> Vec<String> {
     [
         "run_summary.json",
         "decision/pack_capability_decision.json",
@@ -691,7 +868,30 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
             "test-runs",
             "core-engine",
             "oxfml-fixture-bridge",
-            OXFML_BRIDGE_RUN_ID,
+            profile.oxfml_bridge_run_id,
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "oxfml-fixture-bridge",
+            profile.oxfml_bridge_run_id,
+            "replay-appliance",
+            "validation",
+            "bundle_validation.json",
+        ]),
+        bundle_validation_path(
+            "tracecalc-reference-machine",
+            profile.let_lambda_tracecalc_run_id,
+        ),
+        bundle_validation_path("treecalc-local", profile.let_lambda_treecalc_run_id),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "independent-conformance",
+            profile.independent_conformance_run_id,
             "run_summary.json",
         ]),
         relative_artifact_path([
@@ -699,10 +899,35 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
             "test-runs",
             "core-engine",
             "independent-conformance",
-            INDEPENDENT_CONFORMANCE_RUN_ID,
-            "run_summary.json",
+            profile.independent_conformance_run_id,
+            "replay-appliance",
+            "validation",
+            "bundle_validation.json",
         ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            profile.independent_treecalc_run_id,
+            "replay-appliance",
+            "adapter_capabilities",
+            "oxcalc_treecalc.json",
+        ]),
+        profile.program_governance_artifact.to_string(),
     ])
+    .chain(
+        profile
+            .formal_artifacts
+            .iter()
+            .map(|artifact| (*artifact).to_string()),
+    )
+    .chain(
+        profile
+            .formatting_watch_artifacts
+            .iter()
+            .map(|artifact| (*artifact).to_string()),
+    )
     .collect()
 }
 
@@ -740,6 +965,45 @@ mod tests {
         let validation = read_required_json(
             &repo_root,
             "docs/test-runs/core-engine/pack-capability/pack-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn pack_capability_runner_binds_w034_formal_gate_inputs() {
+        let repo_root = unique_temp_repo();
+        create_w034_source_artifacts(&repo_root);
+
+        let summary = PackCapabilityRunner::new()
+            .execute(&repo_root, "w034-pack-test")
+            .expect("W034 pack capability packet should write");
+
+        assert_eq!(summary.decision_status, "capability_not_promoted");
+        assert_eq!(summary.highest_honest_capability, "cap.C4.distill_valid");
+        assert_eq!(summary.missing_artifact_count, 0);
+
+        let decision = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w034-pack-test/decision/pack_capability_decision.json",
+        );
+        assert_eq!(
+            decision["evidence_profile"],
+            "w034_formalization_gate_binding"
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w034_formal_slices_bounded_not_full_verification"))
+        );
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w034-pack-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -837,12 +1101,83 @@ mod tests {
                 ]
             }),
         );
+        write_text_test(
+            repo_root,
+            "docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md",
+            "post-W033 pack capability binding\n",
+        );
+    }
+
+    fn create_w034_source_artifacts(repo_root: &Path) {
+        create_source_artifacts(repo_root);
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/validation/bundle_validation.json",
+            json!({
+                "status": "bundle_valid",
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+            json!({
+                "status": "bundle_valid",
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+            json!({
+                "unexpected_mismatch_count": 0,
+                "declared_gap_count": 6,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+            json!({
+                "status": "bundle_valid",
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            json!({
+                "claimed_capability_levels": [
+                    "cap.C0.ingest_valid",
+                    "cap.C1.replay_valid",
+                    "cap.C2.diff_valid",
+                    "cap.C3.explain_valid"
+                ],
+                "target_capability_levels": [
+                    "cap.C4.distill_valid",
+                    "cap.C5.pack_valid"
+                ]
+            }),
+        );
+        write_text_test(
+            repo_root,
+            "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+            "W034 pack capability and continuous scale gate binding\n",
+        );
+        for artifact in W034_FORMAL_ARTIFACTS
+            .iter()
+            .chain(W034_FORMATTING_WATCH_ARTIFACTS.iter())
+        {
+            write_text_test(repo_root, artifact, "W034 gate artifact\n");
+        }
     }
 
     fn write_json_test(repo_root: &Path, relative_path: &str, value: Value) {
         let path = repo_root.join(relative_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, serde_json::to_string_pretty(&value).unwrap() + "\n").unwrap();
+    }
+
+    fn write_text_test(repo_root: &Path, relative_path: &str, value: &str) {
+        let path = repo_root.join(relative_path);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, value).unwrap();
     }
 
     fn read_required_json(repo_root: &Path, relative_path: &str) -> Value {

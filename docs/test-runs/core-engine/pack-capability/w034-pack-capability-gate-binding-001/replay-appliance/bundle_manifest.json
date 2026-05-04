@@ -1,0 +1,41 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001",
+  "claimed_capability": "pack_governance_decision_packet",
+  "evidence_profile": "w034_formalization_gate_binding",
+  "excluded_capabilities": [
+    "cap.C5.pack_valid",
+    "continuous_cross_engine_diff_suite",
+    "fully_independent_evaluator_implementation"
+  ],
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "required_artifacts": [
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/run_summary.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/decision/pack_capability_decision.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/evidence/evidence_index.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+    "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+    "docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md",
+    "docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md",
+    "formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean",
+    "formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean",
+    "formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean",
+    "formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean",
+    "formal/tla/CoreEngineW034Interleavings.tla",
+    "formal/tla/CoreEngineW034Interleavings.smoke.cfg",
+    "docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md",
+    "docs/spec/core-engine/w034-formalization/W034_FORMALIZATION_DEEPENING_PLAN.md"
+  ],
+  "run_id": "w034-pack-capability-gate-binding-001",
+  "schema_version": "oxcalc.pack_capability.bundle_manifest.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

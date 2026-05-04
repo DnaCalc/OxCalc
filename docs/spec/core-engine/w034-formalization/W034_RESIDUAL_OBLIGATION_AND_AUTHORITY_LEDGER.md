@@ -44,9 +44,9 @@ Reviewed inbound observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`.
 | Optimized/core-engine implementation verified | W033 independent conformance emits first comparison rows and declared gaps; `calc-e77.3` widens this to W034 with 15 comparison rows, 0 missing artifacts, and 0 unexpected mismatches. | Partial at W034 scope; Lean/TLA, pack/capability, continuous scale, and full independent evaluator diversity remain open. |
 | Full TLA verification | `CoreEngineStage1` and `CoreEnginePostW033` smoke models pass, with Stage 2 unpromoted. | Partial; `calc-e77.5` owns deeper TLA and contention preconditions. |
 | Full Lean verification | `Stage1State`, `W033FirstSlice`, and `W033PostSlice` check; broader module split remains open. | Partial; `calc-e77.4` owns deeper Lean proof family. |
-| Pack-grade replay and capability claims | `W033_PACK_CAPABILITY_POST_W033_DECISION.md` records `cap.C5.pack_valid` not promoted and eight blockers. | Partial/no-promotion; `calc-e77.6` owns next pack gate binding. |
-| Scaling and performance as correctness evidence | `W033_METAMORPHIC_SCALE_SEMANTIC_BINDING.md` binds scale rows semantically but keeps continuous scale and performance proof unpromoted. | Partial/no-promotion; `calc-e77.6` owns continuous scale criteria. |
-| OxFml updates related to formatting incorporated if needed | W034 plan and this ledger record `format_delta`/`display_delta`, formatting-sensitive facts, and W073 typed conditional-formatting input direction as seam-watch input. | Watch lane; no OxCalc patch or handoff now. |
+| Pack-grade replay and capability claims | `W033_PACK_CAPABILITY_POST_W033_DECISION.md` records `cap.C5.pack_valid` not promoted; W034 gate binding adds `w034-pack-capability-gate-binding-001` with 7 satisfied inputs, 12 blockers, and no missing artifacts. | Partial/no-promotion; C5 remains unpromoted and closure audit remains in `calc-e77.7`. |
+| Scaling and performance as correctness evidence | W034 gate binding adds `w034-continuous-scale-gate-binding-001` with 7 validated scale rows, 5 scale signature rows, 4 replay/conformance/pack binding rows, 0 missing artifacts, and 0 unexpected mismatches. | Partial/no-promotion; continuous scale assurance remains unpromoted because scheduled regression and continuous cross-engine differential criteria are missing. |
+| OxFml updates related to formatting incorporated if needed | W034 plan, this ledger, and the gate-binding packet record `format_delta`/`display_delta`, formatting-sensitive facts, and W073 typed-only conditional-formatting input direction as seam-watch/input-contract evidence. | Watch lane; no OxCalc patch or handoff now because no W034 artifact constructs those payloads. |
 
 ## 4. Residual Obligation Matrix
 
@@ -112,6 +112,24 @@ Relevant residual effects:
 2. `W034-OBL-008`: checked W034 TLA artifacts now cover stale-fence, dependency-update, overlay, and contention-precondition invariants.
 3. `W034-OBL-009`: Stage 2 contention remains explicitly blocked by missing evidence preconditions and is not promoted.
 4. Full TLA+ verification, pack-grade replay, continuous scale assurance, production scheduler equivalence, and any Stage 2 policy promotion remain open lanes.
+
+## 5D. Post-`calc-e77.6` Pack And Scale Gate-Binding Update
+
+The W034 pack/scale gate-binding packet is now recorded at `docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md`.
+
+Generated evidence roots:
+
+1. `docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/`
+2. `docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/`
+
+Relevant residual effects:
+
+1. `W034-OBL-006`: fully independent evaluator diversity remains a no-promotion blocker.
+2. `W034-OBL-009`: Stage 2 contention remains blocked by bounded precondition evidence and is not promoted.
+3. `W034-OBL-010`: W034 pack gate emits `capability_not_promoted`, highest honest capability `cap.C4.distill_valid`, 7 satisfied inputs, 12 blockers, and 0 missing artifacts.
+4. `W034-OBL-011`: W034 scale gate records 7 validated scale rows, 5 metamorphic signature rows, 4 replay/conformance/pack binding rows, and 0 unexpected mismatches, while scheduled regression and continuous cross-engine differential criteria remain missing.
+5. `W034-OBL-013` and `W034-OBL-014`: OxFml formatting/display and W073 typed-only conditional-formatting input direction are carried into the gate packet as watch/input-contract evidence; no OxCalc request-construction path or handoff trigger is exercised.
+6. Pack-grade replay, continuous scale assurance, full Lean/TLA verification, production scheduler equivalence, and Stage 2 policy promotion remain open lanes for audit/successor packetization.
 
 ## 6. Bead Mapping
 

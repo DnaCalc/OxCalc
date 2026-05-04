@@ -1,0 +1,113 @@
+{
+  "blocker_count": 12,
+  "evidence_profile": "w034_formalization_gate_binding",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "rows": [
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json;docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+      "evidence_state": "evidence_present",
+      "input_id": "retained_pack_program_decisions",
+      "observations": [
+        "pack_decision_status:capability_not_promoted",
+        "pack_highest_honest_capability:cap.C4.distill_valid",
+        "program_decision_status:capability_not_promoted"
+      ],
+      "reason_ids": [
+        "pack.grade.program_scope.unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json;docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "projection_valid_no_pack_promotion",
+      "input_id": "direct_oxfml_fixture_bridge",
+      "observations": [
+        "fixture_case_count:45",
+        "mismatch_count:0",
+        "handoff_triggered:false",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.direct_oxfml_evaluator_reexecution_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/validation/bundle_validation.json;docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "witness_bundles_validated",
+      "input_id": "let_lambda_carrier_witnesses",
+      "observations": [
+        "tracecalc_bundle_status:bundle_valid",
+        "treecalc_bundle_status:bundle_valid"
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json;docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "widened_conformance_present_with_gaps",
+      "input_id": "independent_conformance_widening",
+      "observations": [
+        "unexpected_mismatch_count:0",
+        "declared_gap_count:6",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.independent_conformance_declared_gaps",
+        "pack.grade.continuous_diff_suite_absent",
+        "pack.grade.fully_independent_evaluator_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+      "evidence_state": "capability_ceiling_snapshot_present",
+      "input_id": "treecalc_capability_snapshot",
+      "observations": [
+        "claimed_capability_levels:4",
+        "target_capability_levels:2"
+      ],
+      "reason_ids": [
+        "pack.grade.treecalc_c4_c5_unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md;docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md;formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean;formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean;formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean;formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean;formal/tla/CoreEngineW034Interleavings.tla;formal/tla/CoreEngineW034Interleavings.smoke.cfg",
+      "evidence_state": "formal_gate_packets_present_bounded_no_promotion",
+      "input_id": "w034_lean_tla_formal_gate_packets",
+      "observations": [
+        "W034 Lean/TLA artifacts are checked bounded proof/model slices, not full Lean/TLA verification.",
+        "Stage 2 contention is modeled as blocked precondition evidence, not promoted scheduler policy."
+      ],
+      "reason_ids": [
+        "pack.grade.w034_formal_slices_bounded_not_full_verification",
+        "pack.grade.stage2_contention_preconditions_unpromoted"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md;docs/spec/core-engine/w034-formalization/W034_FORMALIZATION_DEEPENING_PLAN.md",
+      "evidence_state": "watch_classified_no_current_oxcalc_request_path",
+      "input_id": "oxfml_w073_typed_conditional_formatting_watch",
+      "observations": [
+        "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only.",
+        "OxCalc W034 artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
+      "evidence_state": "policy_blocker_retained",
+      "input_id": "program_grade_governance",
+      "observations": [
+        "W033/W034 successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid."
+      ],
+      "reason_ids": [
+        "pack.grade.program_grade_replay_governance_not_reached",
+        "pack.grade.retained_witness_promotion_not_shared_program_grade",
+        "pack.grade.continuous_scale_assurance_unpromoted",
+        "pack.grade.w034_closure_audit_not_yet_recorded"
+      ]
+    }
+  ],
+  "run_id": "w034-pack-capability-gate-binding-001",
+  "satisfied_input_count": 7,
+  "schema_version": "oxcalc.pack_capability.evidence_index.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

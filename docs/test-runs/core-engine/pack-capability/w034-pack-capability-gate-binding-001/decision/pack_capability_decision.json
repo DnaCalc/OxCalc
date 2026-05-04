@@ -1,0 +1,49 @@
+{
+  "capability_promoted": false,
+  "decision_status": "capability_not_promoted",
+  "evidence_index_path": "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/evidence/evidence_index.json",
+  "evidence_profile": "w034_formalization_gate_binding",
+  "handoff_decision": {
+    "reason_ids": [
+      "oxfml.seam.no_new_trigger_from_pack_governance_packet",
+      "oxfml.seam.watch_lanes_only"
+    ],
+    "status": "handoff_not_required"
+  },
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "missing_paths": [],
+  "no_promotion_reason_ids": [
+    "pack.grade.program_scope.unproven",
+    "pack.grade.direct_oxfml_evaluator_reexecution_absent",
+    "pack.grade.independent_conformance_declared_gaps",
+    "pack.grade.continuous_diff_suite_absent",
+    "pack.grade.fully_independent_evaluator_absent",
+    "pack.grade.treecalc_c4_c5_unproven",
+    "pack.grade.w034_formal_slices_bounded_not_full_verification",
+    "pack.grade.stage2_contention_preconditions_unpromoted",
+    "pack.grade.program_grade_replay_governance_not_reached",
+    "pack.grade.retained_witness_promotion_not_shared_program_grade",
+    "pack.grade.continuous_scale_assurance_unpromoted",
+    "pack.grade.w034_closure_audit_not_yet_recorded"
+  ],
+  "run_id": "w034-pack-capability-gate-binding-001",
+  "satisfied_inputs": [
+    "retained_semantic_pack_decision_present",
+    "direct_oxfml_fixture_projection_has_no_mismatch",
+    "let_lambda_carrier_witness_bundles_valid",
+    "independent_conformance_has_no_unexpected_mismatch",
+    "treecalc_capability_snapshot_present",
+    "w034_lean_tla_packets_present",
+    "oxfml_w073_formatting_watch_classified"
+  ],
+  "schema_version": "oxcalc.pack_capability.decision.v1",
+  "successor_lanes": [
+    "calc-rcr",
+    "calc-8lg",
+    "future_program_grade_pack_scope",
+    "future_continuous_cross_engine_diff_suite",
+    "w034_closure_audit"
+  ],
+  "target_capability": "cap.C5.pack_valid"
+}

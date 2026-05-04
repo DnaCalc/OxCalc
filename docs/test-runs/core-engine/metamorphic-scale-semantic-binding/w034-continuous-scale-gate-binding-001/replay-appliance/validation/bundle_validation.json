@@ -1,0 +1,9 @@
+{
+  "missing_paths": [],
+  "run_id": "w034-continuous-scale-gate-binding-001",
+  "schema_version": "oxcalc.scale_semantic_binding.bundle_validation.v1",
+  "source_missing_artifact_count": 0,
+  "status": "bundle_valid",
+  "unexpected_mismatch_count": 0,
+  "validated_required_artifact_count": 29
+}

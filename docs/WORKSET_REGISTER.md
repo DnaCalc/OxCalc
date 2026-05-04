@@ -220,3 +220,19 @@ It does mean:
    assurance refresh, residual narrowing, closure evidence
 7. rollout_mode:
    `execution_target`
+
+### W033 OxCalc + OxFml Core Formalization Pass
+1. purpose:
+   plan and execute a comprehensive OxCalc-owned formalization and spec-evolution pass over OxCalc core-engine semantics plus the OxFml evaluator/FEC/F3E surfaces consumed by OxCalc; treat current implementation behavior and current specs as evidence surfaces rather than immutable final targets; include the narrow `LET`/`LAMBDA` OxFml/OxFunc carrier fragment while keeping general OxFunc semantic kernels out of scope.
+2. depends_on:
+   `W031`, `W032`, `W020`, `W026`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W033_OXCALC_OXFML_CORE_FORMALIZATION_PASS.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALC_OXFML_FORMALIZATION_PASS_PLAN.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_REALIZATION_ROADMAP.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   the cross-lane formalization scope is decomposed into explicit epics and beads, current core-engine specs are reviewed and corrected or deferred, spec-evolution decisions are classified, original formal/theory ideas have no-loss coverage, OxCalc-owned/OxFml-owned/shared/OxFunc-opaque/`LET`-`LAMBDA` carrier clauses are mapped, TraceCalc oracle claims are separated from production/core-engine conformance claims, first-pass Lean/TLA+/replay/pack obligations are explicit, and any OxFml seam pressure is packetized as handoff or watch-lane work.
+6. initial_epic_lanes:
+   core spec review and correction ledger, spec-evolution decision ledger, historical no-loss crosswalk, authority inventory, vocabulary alignment, formal leverage mapping, observable-surface/refinement packet, Lean model widening, TLA+ model widening, replay and witness bridge, pack and capability binding, OxFml handoff/watch lane, closure audit
+7. rollout_mode:
+   `execution_target`

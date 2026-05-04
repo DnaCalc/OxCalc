@@ -13,6 +13,8 @@ Status:
 3. intended to bridge spec, formalization, corpus, and implementation,
 4. limited initially to the self-contained Stage 1 harness and `TraceCalc` corpus.
 
+In the formalization path, both TraceCalc and the production/core-engine surface may be checked. They do not have the same role. TraceCalc is checked as the executable reference machine for the behavior it covers; production and optimized implementations are checked for conformance to TraceCalc on covered observable semantics.
+
 ## 2. Why This Exists
 OxCalc now has:
 1. architectural semantics,
@@ -76,7 +78,8 @@ That means:
 1. production strategies may differ internally,
 2. scheduling strategies may differ internally,
 3. storage representation may differ internally,
-4. observable results must still match the oracle on the covered corpus.
+4. observable results must still match the oracle on the covered corpus,
+5. TraceCalc oracle authority expands only when the reference-machine semantics, corpus, and comparison artifacts expand together.
 
 No strategy lane should be promoted if it changes covered observable semantics without an explicit spec change and semantic-equivalence statement.
 

@@ -28,6 +28,20 @@ The core-engine assurance mission is to maintain a near-formal model that couple
 This is not optional polish.
 It is part of the core-engine design itself.
 
+### 2.1 Highest-Level Goal
+
+The formalization effort exists to make the core calculation engine trustworthy under change.
+
+The practical purpose is to prevent semantic drift when the engine widens from simple sequential execution toward richer TreeCalc behavior, replay promotion, optimization, scaling, and later concurrency. Formalization should make the dangerous cases explicit and checkable: stale publication, torn publication, missed dependency invalidation, unsafe overlay reuse, reject paths that publish by accident, and scheduling or performance strategies that change stabilized observable results.
+
+For the OxCalc + OxFml boundary, this means formalizing the engine/seam contract rather than proving every function. OxFml produces typed evaluator facts such as candidate results, commit bundles, rejects, fences, traces, and runtime-derived effects. OxCalc consumes those facts to maintain dependency, invalidation, overlay, coordinator, and publication state. OxFunc semantic kernels remain outside this OxCalc assurance surface except as opaque packet assumptions already surfaced through OxFml.
+
+`LET` and `LAMBDA` are the named exception at the boundary-carrier level. Their local binding, lambda value, call identity, prepared-call shape, and dependency/runtime-effect visibility should be captured because the fragment threads through OxFml, OxFunc, and OxCalc-visible engine behavior. This does not turn the assurance surface into a general OxFunc semantics project.
+
+The intended assurance result is a coupled stack where prose specs, Lean/TLA+ models, deterministic replay witnesses, tests, pack mappings, and capability claims all describe the same behavior at their appropriate precision.
+
+Within that stack, TraceCalc has a specific authority role. Both the TraceCalc reference-machine surface and the production/core-engine surface may receive formal and replay checking, but TraceCalc stands as the executable correctness oracle for the behavior it covers. Production and optimized implementations must then show conformance to TraceCalc for covered observable semantics.
+
 ## 3. Assurance Surfaces
 The rewritten core-engine spec set uses four assurance surfaces.
 
@@ -49,7 +63,8 @@ Used for:
 1. deterministic operational evidence,
 2. cross-engine differential reasoning where needed,
 3. minimized failure and regression artifacts,
-4. evidence for seam and publication behavior.
+4. evidence for seam and publication behavior,
+5. TraceCalc reference-machine oracle checks and production/core-engine conformance comparisons for covered behavior.
 
 ### 3.4 Pack and Empirical Surface
 Used for:

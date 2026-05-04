@@ -96,13 +96,12 @@ The child path is intentionally sequential for the first tranche. Later W034 chi
 
 ## Current Status
 
-- execution_state: `calc-e77.6_pack_scale_gate_binding_authored`
+- execution_state: `calc-e77.7_closure_audit_authored`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - W034 child bead `calc-e77.7` remains open
-  - closure audit evidence remains future W034 child work
+  - W035 successor tranche remains open
   - broader Lean theorem depth and imported OxFml formal linkage remain open beyond the checked W034 proof-family slice
   - broader non-routine TLA exploration and full concurrency proof remain open beyond the checked W034 smoke slice
   - pack-grade replay, continuous scale assurance, and Stage 2 policy remain unpromoted beyond the W034 gate-binding packet

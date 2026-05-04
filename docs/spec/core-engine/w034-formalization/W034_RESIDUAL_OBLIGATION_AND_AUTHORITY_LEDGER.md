@@ -131,6 +131,17 @@ Relevant residual effects:
 5. `W034-OBL-013` and `W034-OBL-014`: OxFml formatting/display and W073 typed-only conditional-formatting input direction are carried into the gate packet as watch/input-contract evidence; no OxCalc request-construction path or handoff trigger is exercised.
 6. Pack-grade replay, continuous scale assurance, full Lean/TLA verification, production scheduler equivalence, and Stage 2 policy promotion remain open lanes for audit/successor packetization.
 
+## 5E. Post-`calc-e77.7` Closure And Successor Update
+
+The W034 closure audit and successor packet is now recorded at `docs/spec/core-engine/w034-formalization/W034_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`.
+
+Relevant residual effects:
+
+1. W034 residuals are no longer left only in prose; the remaining active objective lanes are assigned to W035.
+2. W035 is registered in `docs/WORKSET_REGISTER.md` and `docs/worksets/W035_CORE_FORMALIZATION_PROOF_AND_ASSURANCE_HARDENING.md`.
+3. W035 parent epic `calc-tkq` and child beads `calc-tkq.1` through `calc-tkq.8` exist in `.beads/`.
+4. Full formalization, full Lean/TLA verification, full TraceCalc oracle coverage, optimized/core-engine verification, pack-grade replay, continuous scale assurance, and Stage 2 policy remain partial and continue under W035 rather than being claimed by W034.
+
 ## 6. Bead Mapping
 
 | Bead | Obligations owned |

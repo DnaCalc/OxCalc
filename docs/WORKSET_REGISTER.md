@@ -252,3 +252,19 @@ It does mean:
    residual obligation and authority ledger, TraceCalc oracle deepening, optimized/core-engine conformance widening, Lean proof-family deepening, TLA model-family and contention preconditions, pack/capability and continuous scale gate binding, closure audit and successor packetization
 7. rollout_mode:
    `execution_target`
+
+### W035 Core Formalization Proof And Assurance Hardening
+1. purpose:
+   continue after W034 by converting bounded proof/model/replay/conformance evidence into stronger formal proof, continuous assurance, implementation hardening, and promotion-gate evidence without overclaiming full verification.
+2. depends_on:
+   `W034`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W035_CORE_FORMALIZATION_PROOF_AND_ASSURANCE_HARDENING.md`, `docs/spec/core-engine/w034-formalization/W034_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W034 residuals are assigned to executable evidence or implementation work, TraceCalc oracle matrices are widened, implementation conformance gaps are hardened or reclassified, Lean assumptions are discharged or explicitly mapped, TLA exploration moves beyond routine smoke where practical, continuous assurance criteria are stronger than single-run timing, pack/Stage 2 readiness is reassessed with machine-readable decisions, and no promotion claim is made without direct gate evidence.
+6. initial_epic_lanes:
+   residual proof-obligation ledger, TraceCalc oracle matrix expansion, implementation conformance hardening, Lean assumption discharge, TLA non-routine exploration, continuous assurance and cross-engine differential gate, pack/Stage 2 readiness reassessment, closure audit
+7. rollout_mode:
+   `execution_target`

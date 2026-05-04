@@ -82,6 +82,13 @@ Current W034 pack/scale gate state after `calc-e77.6`:
 5. OxFml W073 typed conditional-formatting payload direction is carried as a watch/input-contract row; no W034 OxCalc request construction path exercises those payloads.
 6. The slice does not promote `cap.C5.pack_valid`, continuous scale assurance, full Lean/TLA verification, or Stage 2 policy.
 
+Current W034 closure state after `calc-e77.7`:
+
+1. The W034 closure audit and successor packet is recorded at `docs/spec/core-engine/w034-formalization/W034_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`.
+2. W034 target evidence is audited as a bounded tranche, not as full formalization.
+3. W035 is registered as the next successor workset with parent epic `calc-tkq` and child beads `calc-tkq.1` through `calc-tkq.8`.
+4. The broader active objective remains `scope_partial`; W035 carries proof hardening, oracle matrix expansion, conformance hardening, continuous assurance, and pack/Stage 2 reassessment.
+
 ## 4. Bead-To-Artifact Plan
 
 | Bead | Primary artifact outcome |
@@ -105,12 +112,11 @@ Current W034 pack/scale gate state after `calc-e77.6`:
 
 ## 6. Current Status
 
-- execution_state: `calc-e77.6_pack_scale_gate_binding_authored`
+- execution_state: `calc-e77.7_closure_audit_authored`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-e77.7`
+  - W035 successor tranche
   - broader non-routine TLA exploration and full concurrency proof
   - broader Lean theorem depth and imported OxFml formal linkage
-  - W034 closure audit

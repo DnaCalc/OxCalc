@@ -1,0 +1,42 @@
+{
+  "cycle_group_count": 0,
+  "dependency_descriptor_count": 15999728,
+  "dependency_diagnostic_count": 0,
+  "dependency_edge_count": 15999728,
+  "descriptor_kind_counts": {
+    "StaticDirect": 15999728
+  },
+  "diagnostic_kind_counts": {},
+  "expected": {
+    "dependency_descriptor_count": 15999728,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 15999728,
+    "dynamic_descriptor_count": 0,
+    "formula_count": 999983,
+    "invalidation_impacted_count": 999984,
+    "node_count": 1000000,
+    "soft_update_rebind_seed_count": 0,
+    "static_direct_descriptor_count": 15999728
+  },
+  "formula_count": 999983,
+  "invalidation_impacted_count": 999984,
+  "invalidation_seed_count": 1,
+  "node_count": 1000000,
+  "profile_details": {
+    "closed_form_after_edit": "formula_count * sum(anchor_after)",
+    "fanout": 16,
+    "formula_count": 999983,
+    "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+    "kind": "fanout_bands",
+    "node_count": 1000000,
+    "recalc_rounds": 1
+  },
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
+  }
+}

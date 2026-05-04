@@ -5,6 +5,9 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
+use oxcalc_core::treecalc_scale::{
+    TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
+};
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
 
@@ -22,10 +25,45 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id>"
+            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
+    if first_arg == "treecalc-scale" {
+        let Some(profile_arg) = args.next() else {
+            return Err(treecalc_scale_usage());
+        };
+        let Some(run_id) = args.next() else {
+            return Err(treecalc_scale_usage());
+        };
+        let Some(profile) = TreeCalcScaleProfile::parse(&profile_arg) else {
+            return Err(format!(
+                "unknown treecalc-scale profile '{profile_arg}'. {}",
+                treecalc_scale_usage()
+            ));
+        };
+        let options = parse_treecalc_scale_options(profile, run_id, args)?;
+        let repo_root = env::current_dir()
+            .map_err(|error| format!("failed to read current directory: {error}"))?
+            .canonicalize()
+            .map_err(|error| format!("failed to canonicalize repo root: {error}"))?;
+        ensure_treecalc_root(&repo_root)?;
+        let runner = TreeCalcScaleRunner::new();
+        let summary = runner
+            .execute(&repo_root, options)
+            .map_err(|error| format!("treecalc scale run failed: {error}"))?;
+        println!(
+            "TreeCalc scale run '{}' ({}) wrote {} formulas, {} descriptors, {} edges to {}.",
+            summary.run_id,
+            summary.profile,
+            summary.formula_count,
+            summary.descriptor_count,
+            summary.edge_count,
+            summary.artifact_root
+        );
+        return Ok(());
+    }
+
     let (mode, run_id) = match first_arg.as_str() {
         "treecalc" => {
             let Some(run_id) = args.next() else {
@@ -135,4 +173,61 @@ fn ensure_treecalc_root(repo_root: &Path) -> Result<(), String> {
             manifest_path.display()
         ))
     }
+}
+
+fn parse_treecalc_scale_options(
+    profile: TreeCalcScaleProfile,
+    run_id: String,
+    mut args: impl Iterator<Item = String>,
+) -> Result<TreeCalcScaleOptions, String> {
+    let mut options = TreeCalcScaleOptions::default_for(profile, run_id);
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--rows" => options.rows = parse_usize_flag(&arg, &mut args)?,
+            "--cols" => options.cols = parse_usize_flag(&arg, &mut args)?,
+            "--nodes" | "--node-count" => options.node_count = parse_usize_flag(&arg, &mut args)?,
+            "--fanout" => options.fanout = parse_usize_flag(&arg, &mut args)?,
+            "--left-delta" => options.left_delta = parse_i64_flag(&arg, &mut args)?,
+            "--top-delta" => options.top_delta = parse_i64_flag(&arg, &mut args)?,
+            "--selector-period" => options.selector_period = parse_usize_flag(&arg, &mut args)?,
+            "--recalc-rounds" => options.recalc_rounds = parse_usize_flag(&arg, &mut args)?,
+            _ => {
+                return Err(format!(
+                    "unknown treecalc-scale option '{arg}'. {}",
+                    treecalc_scale_usage()
+                ));
+            }
+        }
+    }
+
+    Ok(options)
+}
+
+fn parse_usize_flag(flag: &str, args: &mut impl Iterator<Item = String>) -> Result<usize, String> {
+    let Some(value) = args.next() else {
+        return Err(format!(
+            "missing value for {flag}. {}",
+            treecalc_scale_usage()
+        ));
+    };
+    value
+        .parse::<usize>()
+        .map_err(|error| format!("invalid value for {flag}: {value} ({error})"))
+}
+
+fn parse_i64_flag(flag: &str, args: &mut impl Iterator<Item = String>) -> Result<i64, String> {
+    let Some(value) = args.next() else {
+        return Err(format!(
+            "missing value for {flag}. {}",
+            treecalc_scale_usage()
+        ));
+    };
+    value
+        .parse::<i64>()
+        .map_err(|error| format!("invalid value for {flag}: {value} ({error})"))
+}
+
+fn treecalc_scale_usage() -> String {
+    "usage: oxcalc-tracecalc-cli treecalc-scale <grid-cross-sum|fanout-bands|dynamic-indirect-stripes|relative-rebind-churn> <run-id> [--rows N] [--cols N] [--nodes N] [--fanout N] [--left-delta N] [--top-delta N] [--selector-period N] [--recalc-rounds N]".to_string()
 }

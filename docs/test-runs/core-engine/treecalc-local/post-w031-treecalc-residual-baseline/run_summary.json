@@ -1,0 +1,12 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/post-w031-treecalc-residual-baseline",
+  "case_count": 17,
+  "expectation_mismatch_count": 0,
+  "result_counts": {
+    "published": 9,
+    "rejected": 7,
+    "verified_clean": 1
+  },
+  "run_id": "post-w031-treecalc-residual-baseline",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

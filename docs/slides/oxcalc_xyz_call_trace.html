@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OxCalc X/Y/Z Recalc Call Trace</title>
+  <style>
+    :root {
+      --page: #f5f7f9;
+      --ink: #17202a;
+      --muted: #5f6975;
+      --line: #c9d2db;
+      --panel: #ffffff;
+      --teal: #007d7e;
+      --rust: #b64e2e;
+      --gold: #bd8b00;
+      --green: #367a36;
+      --blue: #356e9f;
+      --shadow: 0 18px 40px rgba(23, 32, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 16px/1.48 "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    main {
+      scroll-snap-type: y mandatory;
+    }
+
+    .slide {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: grid;
+      align-items: center;
+      padding: 40px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wrap {
+      width: min(1160px, 100%);
+      margin: 0 auto;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--teal);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.06;
+    }
+
+    h1 {
+      max-width: 920px;
+      font-size: clamp(2.8rem, 7vw, 5.8rem);
+    }
+
+    h2 {
+      max-width: 940px;
+      font-size: clamp(2.1rem, 4.4vw, 4.2rem);
+    }
+
+    .subtitle {
+      max-width: 850px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(1.05rem, 2vw, 1.45rem);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+      margin-top: 30px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .span-4 {
+      grid-column: span 4;
+    }
+
+    .span-5 {
+      grid-column: span 5;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    .span-7 {
+      grid-column: span 7;
+    }
+
+    .span-12 {
+      grid-column: 1 / -1;
+    }
+
+    .panel h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .formula {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: clamp(1.3rem, 2.6vw, 2.05rem);
+      line-height: 1.25;
+    }
+
+    .formula div {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    .formula div:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .result {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcfd;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      font-size: clamp(1.6rem, 3vw, 2.55rem);
+      font-weight: 800;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .step {
+      min-height: 142px;
+      border-top: 6px solid var(--teal);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .step:nth-child(2) {
+      border-color: var(--blue);
+    }
+
+    .step:nth-child(3) {
+      border-color: var(--gold);
+    }
+
+    .step:nth-child(4) {
+      border-color: var(--rust);
+    }
+
+    .step:nth-child(5) {
+      border-color: var(--green);
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.02rem;
+    }
+
+    .step p,
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .list li + li {
+      margin-top: 8px;
+    }
+
+    code {
+      border-radius: 6px;
+      background: #edf1f5;
+      padding: 2px 6px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.92em;
+      color: #18212b;
+    }
+
+    .trace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 26px;
+    }
+
+    .trace-box {
+      background: #161b22;
+      color: #f3f6f9;
+      border-radius: 8px;
+      padding: 18px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      min-height: 250px;
+      box-shadow: var(--shadow);
+    }
+
+    .trace-box h3 {
+      color: #9ce0da;
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .trace-box pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font: inherit;
+    }
+
+    .diagram {
+      display: grid;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .node-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .node {
+      border-radius: 8px;
+      border: 2px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .node strong {
+      display: block;
+      font-size: 1.4rem;
+    }
+
+    .node span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .edge-note {
+      color: var(--muted);
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .phase:last-child {
+      border-bottom: 0;
+    }
+
+    .phase strong {
+      color: var(--ink);
+    }
+
+    .phase p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .scope {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .ok {
+      border-top: 6px solid var(--green);
+    }
+
+    .limit {
+      border-top: 6px solid var(--rust);
+    }
+
+    @media (max-width: 860px) {
+      .slide {
+        min-height: auto;
+        padding: 26px 18px;
+      }
+
+      .grid,
+      .trace,
+      .scope,
+      .node-row,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .span-4,
+      .span-5,
+      .span-6,
+      .span-7,
+      .span-12 {
+        grid-column: auto;
+      }
+
+      .phase {
+        grid-template-columns: 1fr;
+      }
+
+      .result {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .slide {
+        min-height: 100vh;
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">OxCalc local sequential TreeCalc</p>
+        <h1>X/Y/Z recalculation is evaluable on the current local path</h1>
+        <p class="subtitle">The exercised path now evaluates direct TreeCalc references through OxFml/OxFunc, builds the dependency graph in OxCalc, and publishes the recalculated values through the Stage 1 coordinator.</p>
+        <div class="grid">
+          <div class="panel span-6">
+            <h3>Input</h3>
+            <div class="formula">
+              <div><span>X</span><span>2</span></div>
+              <div><span>Y</span><span>X * 20</span></div>
+              <div><span>Z</span><span>X + Y</span></div>
+            </div>
+          </div>
+          <div class="panel span-6">
+            <h3>Observed values</h3>
+            <div class="result">
+              <div class="metric"><b>X</b><span>2 -> 3</span></div>
+              <div class="metric"><b>Y</b><span>40 -> 60</span></div>
+              <div class="metric"><b>Z</b><span>42 -> 63</span></div>
+            </div>
+            <p class="subtitle">Probe trace: initial state <code>Published</code>, rerun state <code>Published</code>, evaluation order <code>[Y, Z]</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">Call Structure</p>
+        <h2>OxCalc owns graph, invalidation, scheduling, and publication</h2>
+        <div class="flow">
+          <div class="step">
+            <b>1. Load tree substrate</b>
+            <p><code>StructuralSnapshot</code> carries nodes X, Y, Z. <code>TreeFormulaCatalog</code> carries formulas for Y and Z.</p>
+          </div>
+          <div class="step">
+            <b>2. Prepare formulas</b>
+            <p><code>prepare_oxfml_formula</code> translates TreeCalc formulas into OxFml formula text and synthetic reference names.</p>
+          </div>
+          <div class="step">
+            <b>3. Build graph</b>
+            <p><code>DependencyGraph::build</code> lowers bind facts into descriptors, forward edges, reverse edges, and diagnostics.</p>
+          </div>
+          <div class="step">
+            <b>4. Evaluate locally</b>
+            <p><code>evaluate_via_oxfml</code> builds a minimal upstream host packet and calls OxFml with <code>OxFuncBacked</code>.</p>
+          </div>
+          <div class="step">
+            <b>5. Publish</b>
+            <p><code>TreeCalcCoordinator</code> admits the accepted candidate and publishes one atomic value delta.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">Graph Shape</p>
+        <h2>The formula dependencies are explicit before evaluation</h2>
+        <div class="diagram">
+          <div class="node-row">
+            <div class="node"><strong>X</strong><span>constant value</span></div>
+            <div class="node"><strong>Y</strong><span>=X*20</span></div>
+            <div class="node"><strong>Z</strong><span>=X+Y</span></div>
+          </div>
+          <div class="edge-note">Dependency edges: <code>Y -> X</code>, <code>Z -> X</code>, <code>Z -> Y</code></div>
+          <div class="panel span-12">
+            <h3>Scheduling consequence</h3>
+            <p>Because Z depends on Y, the local topological formula order is <code>[Y, Z]</code>. The direct X edit produces invalidation closure <code>[X, Y, Z]</code>; only Y and Z are formula nodes to reevaluate.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">Trace</p>
+        <h2>The call trace separates evaluation from publication</h2>
+        <div class="trace">
+          <div class="trace-box">
+            <h3>Initial run</h3>
+            <pre>LocalTreeCalcEngine::execute
+  prepare_oxfml_formula(Y)
+  prepare_oxfml_formula(Z)
+  DependencyGraph::build
+    edges: 3->2, 4->2, 4->3
+  topological_formula_order: [3, 4]
+  evaluate_via_oxfml(Y) => 40
+  evaluate_via_oxfml(Z) => 42
+  coordinator.accept_and_publish
+    trace: publication_committed</pre>
+          </div>
+          <div class="trace-box">
+            <h3>After X := 3</h3>
+            <pre>StructuralEdit::SetConstantValue(X, 3)
+LocalTreeCalcEngine::execute
+  seed published view: Y=40, Z=42
+  invalidation seed: X upstream publication
+  invalidation closure: [2, 3, 4]
+  topological_formula_order: [3, 4]
+  evaluate_via_oxfml(Y) => 60
+  evaluate_via_oxfml(Z) => 63
+  coordinator.accept_and_publish
+    trace: publication_committed</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">Main Phases</p>
+        <h2>The current evaluation path has five important phases</h2>
+        <div class="panel">
+          <div class="phase">
+            <strong>Prepare</strong>
+            <p>Tree formulas are rendered as formula entries, parsed by OxFml, bound with caller and structure context, and mapped to synthetic reference carriers.</p>
+          </div>
+          <div class="phase">
+            <strong>Derive dependencies</strong>
+            <p>OxCalc lowers bound references into dependency descriptors, forward edges, reverse edges, cycle groups, and replay-visible diagnostics.</p>
+          </div>
+          <div class="phase">
+            <strong>Close invalidation</strong>
+            <p>Seeds flow through reverse edges. In this example, X invalidates Y and then Z; rebind is not required for direct references.</p>
+          </div>
+          <div class="phase">
+            <strong>Evaluate candidates</strong>
+            <p>OxCalc creates a minimal upstream host packet. OxFml executes the formula with OxFunc-backed semantics and returns candidate/commit information.</p>
+          </div>
+          <div class="phase">
+            <strong>Publish or reject</strong>
+            <p>Accepted candidates become one coordinator publication bundle. Rejects publish no derived value delta and remain diagnostic/replay-visible.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="wrap">
+        <p class="kicker">Scope Boundary</p>
+        <h2>What this proves, and what it does not claim</h2>
+        <div class="scope">
+          <div class="panel ok">
+            <h3>Supported here</h3>
+            <ul class="list">
+              <li>Tree-only local sequential recalculation.</li>
+              <li>Direct node dependencies with arithmetic formulas.</li>
+              <li>OxFml/OxFunc-backed formula evaluation via the minimal host packet.</li>
+              <li>Explicit dependency graph, invalidation closure, candidate adaptation, and coordinator publication.</li>
+            </ul>
+          </div>
+          <div class="panel limit">
+            <h3>Not claimed by this slide</h3>
+            <ul class="list">
+              <li>Full grid/workbook semantics.</li>
+              <li>All relative, dynamic, host-sensitive, shape, topology, format, or display families.</li>
+              <li>Stage 2 parallel publication or broad scheduler policy promotion.</li>
+              <li>Full cross-repo seam closure beyond the exercised direct-reference slice.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

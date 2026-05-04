@@ -1,0 +1,12 @@
+[
+  {
+    "affected_node_ids": [
+      2
+    ],
+    "diagnostic_events": [
+      "node_renamed:node:2:A_renamed"
+    ],
+    "impact": "RebindRequired",
+    "snapshot_id": 7
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "handoff_basis": "No concrete coordinator-visible seam insufficiency is exposed by this TreeCalc-local run.",
+  "handoff_triggered": false,
+  "observed_reject_kinds": [
+    "dynamic_dependency_failure",
+    "host_injected_failure"
+  ],
+  "schema_version": "oxcalc.treecalc.typed_reject_taxonomy.v1",
+  "source": "treecalc_local_run_counter_artifacts",
+  "unobserved_declared_reject_kinds": [
+    "snapshot_mismatch",
+    "artifact_token_mismatch",
+    "profile_version_mismatch",
+    "capability_mismatch",
+    "publication_fence_mismatch",
+    "synthetic_cycle_reject"
+  ],
+  "watch_lanes": [
+    {
+      "handoff_required": false,
+      "lane_id": "provider_failure",
+      "status": "watch_no_treecalc_local_evidence"
+    },
+    {
+      "handoff_required": false,
+      "lane_id": "callable_publication",
+      "status": "watch_no_treecalc_local_evidence"
+    },
+    {
+      "handoff_required": false,
+      "lane_id": "future_oxfml_runtime_reject_family",
+      "status": "watch_no_treecalc_local_evidence"
+    }
+  ]
+}

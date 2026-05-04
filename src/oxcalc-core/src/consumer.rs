@@ -51,6 +51,7 @@ pub struct OxCalcTreeRecalcResult {
     pub reject_detail: Option<RejectDetail>,
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
+    pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
 }
 
@@ -284,6 +285,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeRecalcResult {
             reject_detail: value.reject_detail,
             published_values: value.published_values,
             node_states: value.node_states,
+            phase_timings_micros: value.phase_timings_micros,
             diagnostics: value.diagnostics,
         }
     }

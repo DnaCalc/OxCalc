@@ -1,0 +1,35 @@
+{
+  "cycle_group_count": 0,
+  "dependency_descriptor_count": 3000000,
+  "dependency_diagnostic_count": 1000000,
+  "dependency_edge_count": 2000000,
+  "descriptor_kind_counts": {
+    "DynamicPotential": 1000000,
+    "StaticDirect": 2000000
+  },
+  "diagnostic_kind_counts": {
+    "DynamicPotentialReference": 1000000
+  },
+  "expected": {
+    "dependency_descriptor_count": 3000000,
+    "dependency_diagnostic_count": 1000000,
+    "dependency_edge_count": 2000000,
+    "dynamic_descriptor_count": 1000000,
+    "formula_count": 1000000,
+    "invalidation_impacted_count": 2001,
+    "node_count": 1002001,
+    "static_direct_descriptor_count": 2000000
+  },
+  "formula_count": 1000000,
+  "invalidation_impacted_count": 2001,
+  "invalidation_seed_count": 2,
+  "node_count": 1002001,
+  "profile_details": {
+    "cols": 1000,
+    "dynamic_reference_policy": "DynamicPotential residual carriers are expected to surface as dependency diagnostics/runtime effects; static base references remain checkable.",
+    "formula_shape": "(left_row + top_col) + INDIRECT(dynamic_potential_selector)",
+    "kind": "dynamic_indirect_stripes",
+    "rows": 1000,
+    "selector_period": 64
+  }
+}

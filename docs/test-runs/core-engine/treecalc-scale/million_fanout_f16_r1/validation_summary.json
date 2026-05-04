@@ -1,0 +1,86 @@
+{
+  "checks": [
+    {
+      "expected": "15999728",
+      "name": "descriptor_count",
+      "observed": "15999728",
+      "passed": true
+    },
+    {
+      "expected": "15999728",
+      "name": "dependency_edge_count",
+      "observed": "15999728",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "dependency_diagnostic_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "999984",
+      "name": "invalidation_impacted_count",
+      "observed": "999984",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "cycle_group_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "15999728",
+      "name": "static_direct_descriptor_count",
+      "observed": "15999728",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "dynamic_potential_descriptor_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "soft_reference_update_rebind_seed_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "142997569",
+      "name": "synthetic_after_sum",
+      "observed": "142997569",
+      "passed": true
+    },
+    {
+      "expected": "6999881",
+      "name": "synthetic_delta_sum",
+      "observed": "6999881",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "profile": "fanout-bands",
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
+  },
+  "synthetic_recalc": {
+    "baseline_sum": "135997688",
+    "dynamic_slots": 0,
+    "expected_after_sum": "142997569",
+    "expected_delta_sum": "6999881",
+    "formula_evaluations": 999983,
+    "lane": "fanout_sum_bands",
+    "observed_after_sum": "142997569",
+    "observed_delta_sum": "6999881",
+    "recalc_rounds": 1,
+    "reference_visits": 15999728
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "dependency_descriptor_lowering": 1362.3477,
+  "dependency_graph_build_and_cycle_scan": 3531.8116,
+  "invalidation_closure_derivation": 0.5624,
+  "model_build_structural_snapshot_and_formula_catalog": 1947.7590999999998,
+  "synthetic_closed_form_recalc": 1.1282,
+  "validation_checks": 44.831500000000005
+}

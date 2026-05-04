@@ -1,0 +1,125 @@
+{
+  "artifact_paths": {
+    "model_profile": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/model_profile.json",
+    "phase_timings": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/phase_timings.json",
+    "run_summary": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/run_summary.json",
+    "validation_summary": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/validation_summary.json"
+  },
+  "model": {
+    "cycle_group_count": 0,
+    "dependency_descriptor_count": 7999928,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 7999928,
+    "descriptor_kind_counts": {
+      "StaticDirect": 7999928
+    },
+    "diagnostic_kind_counts": {},
+    "expected": {
+      "dependency_descriptor_count": 7999928,
+      "dependency_diagnostic_count": 0,
+      "dependency_edge_count": 7999928,
+      "dynamic_descriptor_count": 0,
+      "formula_count": 999991,
+      "invalidation_impacted_count": 999992,
+      "node_count": 1000000,
+      "static_direct_descriptor_count": 7999928
+    },
+    "formula_count": 999991,
+    "invalidation_impacted_count": 999992,
+    "invalidation_seed_count": 1,
+    "node_count": 1000000,
+    "profile_details": {
+      "closed_form_after_edit": "formula_count * sum(anchor_after)",
+      "fanout": 8,
+      "formula_count": 999991,
+      "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+      "kind": "fanout_bands",
+      "node_count": 1000000,
+      "recalc_rounds": 1024
+    }
+  },
+  "phase_timings_ms": {
+    "dependency_descriptor_lowering": 3746.8186,
+    "dependency_graph_build_and_cycle_scan": 14410.3949,
+    "invalidation_closure_derivation": 370.64009999999996,
+    "model_build_structural_snapshot_and_formula_catalog": 1966.0076,
+    "synthetic_closed_form_recalc": 3704.6215,
+    "validation_checks": 152.0739
+  },
+  "profile": "fanout-bands",
+  "run_id": "million_fanout_f8_calc1024_r1",
+  "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
+  "total_elapsed_ms": 24350.5949,
+  "validation": {
+    "checks": [
+      {
+        "expected": "7999928",
+        "name": "descriptor_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "7999928",
+        "name": "dependency_edge_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dependency_diagnostic_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "999992",
+        "name": "invalidation_impacted_count",
+        "observed": "999992",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "cycle_group_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "7999928",
+        "name": "static_direct_descriptor_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dynamic_potential_descriptor_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "44031603712",
+        "name": "synthetic_after_sum",
+        "observed": "44031603712",
+        "passed": true
+      },
+      {
+        "expected": "7167935488",
+        "name": "synthetic_delta_sum",
+        "observed": "7167935488",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "profile": "fanout-bands",
+    "synthetic_recalc": {
+      "baseline_sum": "36863668224",
+      "dynamic_slots": 0,
+      "expected_after_sum": "44031603712",
+      "expected_delta_sum": "7167935488",
+      "formula_evaluations": 1023990784,
+      "lane": "fanout_sum_bands",
+      "observed_after_sum": "44031603712",
+      "observed_delta_sum": "7167935488",
+      "recalc_rounds": 1024,
+      "reference_visits": 8191926272
+    }
+  }
+}

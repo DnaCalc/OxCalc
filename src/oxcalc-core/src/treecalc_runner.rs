@@ -2,18 +2,24 @@
 
 //! Local TreeCalc fixture runner and artifact emission.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
-use serde_json::json;
+use serde_json::{Value, json};
 use thiserror::Error;
 
-use crate::coordinator::{RejectDetail, RuntimeEffect, RuntimeEffectFamily};
+use crate::coordinator::{
+    AcceptedCandidateResult, DependencyShapeUpdate, RejectDetail, RuntimeEffect,
+    RuntimeEffectFamily, TreeCalcCoordinator,
+};
 use crate::dependency::{
     DependencyDiagnostic, DependencyEdge, InvalidationClosure, InvalidationSeed,
 };
-use crate::recalc::OverlayEntry;
+use crate::recalc::{NodeCalcState, OverlayEntry, OverlayKind, Stage1RecalcTracker};
+use crate::structural::{
+    StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
+};
 use crate::treecalc::{LocalTreeCalcRunArtifacts, LocalTreeCalcRunState};
 use crate::treecalc_fixture::{
     TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
@@ -26,6 +32,19 @@ const TREECALC_LOCAL_TRACE_SCHEMA_V1: &str = "oxcalc.treecalc.local_trace.v1";
 const TREECALC_LOCAL_EXPLAIN_SCHEMA_V1: &str = "oxcalc.treecalc.local_explain.v1";
 const TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1: &str =
     "oxcalc.treecalc.replay_artifact_manifest.v1";
+const TREECALC_MEASUREMENT_COUNTER_SUMMARY_SCHEMA_V1: &str =
+    "oxcalc.treecalc.measurement_counter_summary.v1";
+const TREECALC_RETENTION_GUARDRAIL_SCHEMA_V1: &str = "oxcalc.treecalc.retention_guardrail.v1";
+const TREECALC_TYPED_REJECT_TAXONOMY_SCHEMA_V1: &str = "oxcalc.treecalc.typed_reject_taxonomy.v1";
+const TREECALC_HOST_CONTEXT_WATCH_SCHEMA_V1: &str = "oxcalc.treecalc.host_context_watch.v1";
+const TREECALC_OVERLAY_ECONOMICS_SCHEMA_V1: &str = "oxcalc.treecalc.overlay_economics.v1";
+const TREECALC_REPLAY_APPLIANCE_BUNDLE_SCHEMA_V1: &str =
+    "oxcalc.treecalc.replay_appliance_bundle.v1";
+const TREECALC_REPLAY_APPLIANCE_RUN_SCHEMA_V1: &str = "oxcalc.treecalc.replay_appliance_run.v1";
+const TREECALC_REPLAY_APPLIANCE_VALIDATION_SCHEMA_V1: &str =
+    "oxcalc.treecalc.replay_appliance_validation.v1";
+const TREECALC_REPLAY_ADAPTER_CAPABILITY_SCHEMA_V1: &str =
+    "oxcalc.treecalc.replay_adapter_capability.v1";
 
 #[derive(Debug, Error)]
 pub enum TreeCalcRunnerError {
@@ -46,6 +65,8 @@ pub enum TreeCalcRunnerError {
         path: String,
         source: std::io::Error,
     },
+    #[error("failed to build residual evidence: {0}")]
+    ResidualEvidence(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,6 +140,8 @@ impl TreeCalcRunner {
         let mut oracle_baseline = Vec::new();
         let mut engine_diff = Vec::new();
         let mut explain_index = Vec::new();
+        let mut case_counter_sets = Vec::new();
+        let mut case_phase_timing_sets = Vec::new();
 
         for entry in &manifest.cases {
             let case_path = repo_root
@@ -127,10 +150,29 @@ impl TreeCalcRunner {
             let case = load_case(&case_path)?;
             let execution = execute_fixture_case(&engine, &case)?;
             let artifacts = &execution.initial_artifacts;
+            case_phase_timing_sets.push((
+                format!("{}:initial", case.case_id),
+                artifacts.phase_timings_micros.clone(),
+            ));
+            if let Some(post_edit_execution) = &execution.post_edit {
+                case_phase_timing_sets.push((
+                    format!("{}:post_edit", case.case_id),
+                    post_edit_execution
+                        .rerun_artifacts
+                        .phase_timings_micros
+                        .clone(),
+                ));
+            }
+            let case_counters = treecalc_case_counters(artifacts);
             let case_directory = artifact_root.join("cases").join(&entry.case_id);
             create_directory(&case_directory)?;
-            let case_artifact_paths =
-                write_case_artifacts(&case_directory, &relative_artifact_root, &case, &execution)?;
+            let case_artifact_paths = write_case_artifacts(
+                &case_directory,
+                &relative_artifact_root,
+                &case,
+                &execution,
+                &case_counters,
+            )?;
             let expectation_mismatches = compare_expected(&case.expected, artifacts);
             let conformance_artifacts = write_case_conformance_artifacts(
                 &case_directory,
@@ -145,6 +187,7 @@ impl TreeCalcRunner {
                 &case,
                 artifacts,
                 &expectation_mismatches,
+                &case_counters,
             )?;
             oracle_baseline.push(case_oracle_baseline_object(&case));
             engine_diff.push(case_engine_diff_object(
@@ -168,7 +211,9 @@ impl TreeCalcRunner {
                 "artifact_paths": case_artifact_paths,
                 "conformance_artifact_paths": conformance_artifacts,
                 "supporting_artifact_paths": support_artifacts,
+                "counters": counter_entries_json(&case_counters),
             }));
+            case_counter_sets.push((case.case_id.clone(), case_counters));
         }
 
         let mut result_counts = BTreeMap::new();
@@ -214,6 +259,40 @@ impl TreeCalcRunner {
             &artifact_root.join("conformance/explain_index.json"),
             &json!(explain_index),
         )?;
+
+        let (retention_guardrail, retention_counters) = retention_guardrail_evidence_json()?;
+        write_json(
+            &artifact_root.join("retention_guardrail.json"),
+            &retention_guardrail,
+        )?;
+        write_json(
+            &artifact_root.join("measurement_counter_summary.json"),
+            &measurement_counter_summary_json(&case_counter_sets, &retention_counters),
+        )?;
+        write_json(
+            &artifact_root.join("phase_timing_summary.json"),
+            &phase_timing_summary_json(&case_phase_timing_sets),
+        )?;
+        write_json(
+            &artifact_root.join("typed_reject_taxonomy.json"),
+            &typed_reject_taxonomy_json(&case_counter_sets),
+        )?;
+        write_json(
+            &artifact_root.join("host_context_watch.json"),
+            &host_context_watch_json(),
+        )?;
+        write_json(
+            &artifact_root.join("overlay_economics_summary.json"),
+            &overlay_economics_summary_json(&case_counter_sets, &retention_counters),
+        )?;
+        write_replay_appliance_projection(
+            repo_root,
+            &artifact_root,
+            run_id,
+            &relative_artifact_root,
+            &case_results,
+        )?;
+
         write_json(
             &artifact_root.join("replay_artifact_manifest.json"),
             &replay_artifact_manifest_json(
@@ -242,6 +321,7 @@ impl TreeCalcRunner {
                 "result_counts": BTreeMap::from_iter(summary.result_counts.clone()),
                 "expectation_mismatch_count": summary.expectation_mismatch_count,
                 "artifact_root": relative_artifact_root,
+                "phase_timing_summary_path": format!("{relative_artifact_root}/phase_timing_summary.json"),
             }),
         )?;
 
@@ -265,6 +345,16 @@ fn replay_artifact_manifest_json(
             "run_summary.json",
             "case_index.json",
             "replay_artifact_manifest.json",
+            "measurement_counter_summary.json",
+            "phase_timing_summary.json",
+            "retention_guardrail.json",
+            "typed_reject_taxonomy.json",
+            "host_context_watch.json",
+            "overlay_economics_summary.json",
+            "replay-appliance/bundle_manifest.json",
+            "replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "replay-appliance/validation/bundle_validation.json",
+            format!("replay-appliance/runs/{run_id}/run_manifest.json"),
             "conformance/oracle_baseline.json",
             "conformance/engine_diff.json",
             "conformance/conformance_summary.json",
@@ -278,7 +368,9 @@ fn replay_artifact_manifest_json(
             "invalidation_closure",
             "runtime_effects",
             "runtime_effect_overlays",
+            "counters",
             "node_states",
+            "phase_timings",
             "oracle",
             "engine_diff",
             "trace",
@@ -400,6 +492,7 @@ fn write_case_artifacts(
     relative_artifact_root: &str,
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     execution: &TreeCalcFixtureExecution,
+    case_counters: &[(String, i64)],
 ) -> Result<serde_json::Value, TreeCalcRunnerError> {
     let artifacts = &execution.initial_artifacts;
     write_json(
@@ -428,6 +521,15 @@ fn write_case_artifacts(
                 .map(runtime_effect_json)
                 .collect::<Vec<_>>()
         ),
+    )?;
+    write_json(
+        case_directory.join("counters.json").as_path(),
+        &json!({
+            "case_id": case.case_id,
+            "schema_ref": "formal/measurement/stage1_counter_schema.json",
+            "counter_scope": "treecalc_local_case",
+            "counters": counter_entries_json(case_counters),
+        }),
     )?;
     write_json(
         case_directory
@@ -470,6 +572,10 @@ fn write_case_artifacts(
         ),
     )?;
     write_json(
+        case_directory.join("phase_timings.json").as_path(),
+        &phase_timings_json(artifacts),
+    )?;
+    write_json(
         case_directory.join("result.json").as_path(),
         &json!({
             "case_id": case.case_id,
@@ -479,9 +585,11 @@ fn write_case_artifacts(
             "published_values_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "published_values.json"),
             "runtime_effects_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effects.json"),
             "runtime_effect_overlays_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effect_overlays.json"),
+            "counters_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "counters.json"),
             "dependency_graph_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "dependency_graph.json"),
             "invalidation_closure_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "invalidation_closure.json"),
             "node_states_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "node_states.json"),
+            "phase_timings_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "phase_timings.json"),
             "reject_detail": artifacts.reject_detail.as_ref().map(reject_detail_json),
             "candidate_result": artifacts.candidate_result.as_ref().map(|candidate_result| json!({
                 "aligned_canonical_family": "AcceptedCandidateResult",
@@ -511,9 +619,11 @@ fn write_case_artifacts(
         "published_values": relative_case_artifact_path(relative_artifact_root, &case.case_id, "published_values.json"),
         "runtime_effects": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effects.json"),
         "runtime_effect_overlays": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effect_overlays.json"),
+        "counters": relative_case_artifact_path(relative_artifact_root, &case.case_id, "counters.json"),
         "dependency_graph": relative_case_artifact_path(relative_artifact_root, &case.case_id, "dependency_graph.json"),
         "invalidation_closure": relative_case_artifact_path(relative_artifact_root, &case.case_id, "invalidation_closure.json"),
         "node_states": relative_case_artifact_path(relative_artifact_root, &case.case_id, "node_states.json"),
+        "phase_timings": relative_case_artifact_path(relative_artifact_root, &case.case_id, "phase_timings.json"),
     });
 
     if let Some(post_edit_execution) = &execution.post_edit {
@@ -540,6 +650,7 @@ fn write_post_edit_artifacts(
 ) -> Result<serde_json::Value, TreeCalcRunnerError> {
     let post_edit_directory = case_directory.join("post_edit");
     create_directory(&post_edit_directory)?;
+    let post_edit_counters = treecalc_case_counters(&execution.rerun_artifacts);
 
     write_json(
         post_edit_directory.join("edit_outcomes.json").as_path(),
@@ -564,6 +675,16 @@ fn write_post_edit_artifacts(
                 .map(runtime_effect_json)
                 .collect::<Vec<_>>()
         ),
+    )?;
+    write_json(
+        post_edit_directory.join("counters.json").as_path(),
+        &json!({
+            "case_id": case.case_id,
+            "phase": "post_edit",
+            "schema_ref": "formal/measurement/stage1_counter_schema.json",
+            "counter_scope": "treecalc_local_post_edit_case",
+            "counters": counter_entries_json(&post_edit_counters),
+        }),
     )?;
     write_json(
         post_edit_directory
@@ -591,6 +712,10 @@ fn write_post_edit_artifacts(
         ),
     )?;
     write_json(
+        post_edit_directory.join("phase_timings.json").as_path(),
+        &phase_timings_json(&execution.rerun_artifacts),
+    )?;
+    write_json(
         post_edit_directory.join("result.json").as_path(),
         &json!({
             "case_id": case.case_id,
@@ -598,9 +723,11 @@ fn write_post_edit_artifacts(
             "evaluation_order": execution.rerun_artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
             "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
+            "counters": counter_entries_json(&post_edit_counters),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
             "published_values": execution.rerun_artifacts.published_values.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+            "phase_timings_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/phase_timings.json"),
         }),
     )?;
     write_json(
@@ -624,16 +751,20 @@ fn write_post_edit_artifacts(
             "diagnostic_events": execution.edit_outcomes.iter().flat_map(|outcome| outcome.diagnostic_events.iter().cloned()).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
             "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
+            "counters": counter_entries_json(&post_edit_counters),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
+            "phase_timings": phase_timings_json(&execution.rerun_artifacts),
         }),
     )?;
 
     Ok(json!({
         "edit_outcomes": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/edit_outcomes.json"),
         "invalidation_seeds": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_seeds.json"),
+        "counters": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/counters.json"),
         "runtime_effects": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effects.json"),
         "runtime_effect_overlays": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effect_overlays.json"),
+        "phase_timings": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/phase_timings.json"),
         "result": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/result.json"),
         "trace": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/trace.json"),
         "explain": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/explain.json"),
@@ -680,6 +811,7 @@ fn write_case_trace_and_explain_artifacts(
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     artifacts: &LocalTreeCalcRunArtifacts,
     expectation_mismatches: &[String],
+    case_counters: &[(String, i64)],
 ) -> Result<serde_json::Value, TreeCalcRunnerError> {
     write_json(
         case_directory.join("trace.json").as_path(),
@@ -699,6 +831,7 @@ fn write_case_trace_and_explain_artifacts(
             "mismatch_count": expectation_mismatches.len(),
             "mismatches": expectation_mismatches,
             "reject_detail": artifacts.reject_detail.as_ref().map(reject_detail_json),
+            "counters": counter_entries_json(case_counters),
             "runtime_effects": artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
             "publication_bundle": artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
@@ -854,6 +987,20 @@ fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
         "family": format!("{:?}", runtime_effect.family),
         "family_owner": "oxcalc_local_projection",
         "detail": runtime_effect.detail,
+    })
+}
+
+fn phase_timings_json(artifacts: &LocalTreeCalcRunArtifacts) -> serde_json::Value {
+    json!({
+        "unit": "microseconds",
+        "timings_micros": &artifacts.phase_timings_micros,
+        "timings_ms": artifacts
+            .phase_timings_micros
+            .iter()
+            .map(|(phase_name, micros)| {
+                (phase_name.clone(), (*micros as f64) / 1_000.0)
+            })
+            .collect::<BTreeMap<_, _>>(),
     })
 }
 
@@ -1030,6 +1177,790 @@ fn case_explain_index_object(
     })
 }
 
+fn treecalc_case_counters(artifacts: &LocalTreeCalcRunArtifacts) -> Vec<(String, i64)> {
+    let mut counters = BTreeMap::new();
+
+    if artifacts.local_candidate.is_some() || artifacts.reject_detail.is_some() {
+        increment_counter(&mut counters, "candidate_admissions");
+    }
+    if artifacts.candidate_result.is_some() {
+        increment_counter(&mut counters, "accepted_candidate_results");
+    }
+    if artifacts.publication_bundle.is_some() {
+        increment_counter(&mut counters, "publications_committed");
+    }
+    if let Some(reject_detail) = &artifacts.reject_detail {
+        increment_counter(&mut counters, "abandoned_candidates");
+        let reject_kind = to_snake_case(&format!("{:?}", reject_detail.kind));
+        increment_counter(&mut counters, &format!("rejects_by_class.{reject_kind}"));
+        increment_counter(&mut counters, &format!("fallback_by_reason.{reject_kind}"));
+        let affected = artifacts
+            .local_candidate
+            .as_ref()
+            .map(|candidate| candidate.target_set.len())
+            .unwrap_or_else(|| artifacts.evaluation_order.len());
+        add_to_counter(
+            &mut counters,
+            "fallback_affected_work_volume",
+            i64::try_from(affected).unwrap_or(0),
+        );
+    }
+
+    let work_count = i64::try_from(artifacts.evaluation_order.len()).unwrap_or(0);
+    if work_count > 0 {
+        add_to_counter(&mut counters, "nodes_marked_dirty", work_count);
+        add_to_counter(&mut counters, "nodes_marked_needed", work_count);
+    }
+
+    let verified_clean_count = artifacts
+        .node_states
+        .values()
+        .filter(|state| matches!(state, NodeCalcState::VerifiedClean))
+        .count();
+    if verified_clean_count > 0 {
+        add_to_counter(
+            &mut counters,
+            "verified_clean_nodes",
+            i64::try_from(verified_clean_count).unwrap_or(0),
+        );
+    }
+
+    let overlay_count = i64::try_from(artifacts.runtime_effect_overlays.len()).unwrap_or(0);
+    if overlay_count > 0 {
+        add_to_counter(&mut counters, "overlay_lookups", overlay_count);
+        add_to_counter(&mut counters, "overlay_misses", overlay_count);
+        add_to_counter(&mut counters, "overlay_creations", overlay_count);
+    }
+
+    counters.into_iter().collect()
+}
+
+fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), TreeCalcRunnerError> {
+    let snapshot = StructuralSnapshot::create(
+        StructuralSnapshotId(9_031),
+        TreeNodeId(1),
+        [
+            StructuralNode {
+                node_id: TreeNodeId(1),
+                kind: StructuralNodeKind::Root,
+                symbol: "Root".to_string(),
+                parent_id: None,
+                child_ids: vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+            StructuralNode {
+                node_id: TreeNodeId(2),
+                kind: StructuralNodeKind::Constant,
+                symbol: "X".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some("2".to_string()),
+            },
+            StructuralNode {
+                node_id: TreeNodeId(3),
+                kind: StructuralNodeKind::Calculation,
+                symbol: "Y".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+            StructuralNode {
+                node_id: TreeNodeId(4),
+                kind: StructuralNodeKind::Calculation,
+                symbol: "Z".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+        ],
+    )
+    .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+
+    let mut coordinator = TreeCalcCoordinator::new(snapshot.clone());
+    let initial_values = BTreeMap::from([
+        (TreeNodeId(2), "2".to_string()),
+        (TreeNodeId(3), "40".to_string()),
+        (TreeNodeId(4), "42".to_string()),
+    ]);
+    coordinator.seed_published_view(
+        &initial_values,
+        Some("treecalc_retention:publication:initial"),
+        &[],
+    );
+
+    let mut counters = BTreeMap::new();
+    let mut events = Vec::new();
+    let pinned = coordinator.pin_reader("reader:treecalc-retention");
+    increment_counter(&mut counters, "reader.pinned");
+    set_counter(
+        &mut counters,
+        "pinned_reader_count",
+        i64::try_from(coordinator.pinned_readers().len()).unwrap_or(0),
+    );
+    events.push(json!({
+        "label": "reader_pinned",
+        "reader_id": pinned.reader_id,
+        "publication_id": pinned.publication_id,
+    }));
+
+    let mut tracker = Stage1RecalcTracker::new(snapshot.clone());
+    let owner_node_id = TreeNodeId(4);
+    tracker.mark_dirty(owner_node_id);
+    increment_counter(&mut counters, "nodes_marked_dirty");
+    tracker
+        .mark_needed(owner_node_id)
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "nodes_marked_needed");
+    tracker
+        .begin_evaluate(owner_node_id, "snapshot:9031")
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "overlay_lookups");
+    increment_counter(&mut counters, "overlay_misses");
+    tracker
+        .produce_dependency_shape_update(
+            owner_node_id,
+            "snapshot:9031",
+            "treecalc_retention:candidate:updated-z",
+        )
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "overlay_creations");
+
+    let value_updates = BTreeMap::from([(owner_node_id, "63".to_string())]);
+    coordinator
+        .admit_candidate_work(AcceptedCandidateResult {
+            candidate_result_id: "treecalc_retention:candidate:updated-z".to_string(),
+            structural_snapshot_id: snapshot.snapshot_id(),
+            artifact_token_basis: "snapshot:9031".to_string(),
+            compatibility_basis: "snapshot:9031".to_string(),
+            target_set: vec![owner_node_id],
+            value_updates,
+            dependency_shape_updates: vec![DependencyShapeUpdate {
+                kind: "retained_dynamic_dependency_guardrail".to_string(),
+                affected_node_ids: vec![owner_node_id],
+            }],
+            runtime_effects: vec![RuntimeEffect {
+                kind: "dynamic_ref_activated".to_string(),
+                family: RuntimeEffectFamily::DynamicDependency,
+                detail: "retention_guardrail".to_string(),
+            }],
+            diagnostic_events: vec!["treecalc_retention_guardrail".to_string()],
+        })
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    coordinator
+        .record_accepted_candidate_result("treecalc_retention:candidate:updated-z")
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "accepted_candidate_results");
+    let publication = coordinator
+        .accept_and_publish("treecalc_retention:publication:updated-z")
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "publications_committed");
+    tracker
+        .publish_and_clear(owner_node_id)
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    events.push(json!({
+        "label": "publication_committed",
+        "publication_id": publication.publication_id,
+        "candidate_result_id": publication.candidate_result_id,
+    }));
+
+    let pinned_after_publication = coordinator
+        .pinned_readers()
+        .into_iter()
+        .find(|view| view.reader_id == "reader:treecalc-retention")
+        .ok_or_else(|| {
+            TreeCalcRunnerError::ResidualEvidence("retention pin disappeared before release".into())
+        })?;
+    let published_after = coordinator.published_view().values.clone();
+    let pinned_stable = pinned_after_publication.values == initial_values
+        && published_after.get(&owner_node_id) == Some(&"63".to_string());
+    events.push(json!({
+        "label": "pinned_view_stability_checked",
+        "stable": pinned_stable,
+    }));
+
+    let retained_dynamic_overlays = tracker
+        .overlays()
+        .values()
+        .filter(|entry| {
+            entry.key.overlay_kind == OverlayKind::DynamicDependency
+                && entry.is_protected
+                && !entry.is_eviction_eligible
+        })
+        .count();
+    if retained_dynamic_overlays > 0 && !coordinator.pinned_readers().is_empty() {
+        increment_counter(&mut counters, "retention_blocked_cleanup");
+        add_to_counter(
+            &mut counters,
+            "overlay.retained",
+            i64::try_from(retained_dynamic_overlays).unwrap_or(0),
+        );
+        events.push(json!({
+            "label": "retention_blocked_cleanup",
+            "protected_dynamic_overlay_count": retained_dynamic_overlays,
+        }));
+    }
+
+    if coordinator.unpin_reader("reader:treecalc-retention") {
+        increment_counter(&mut counters, "reader.unpinned");
+        increment_counter(&mut counters, "release_events");
+        set_counter(
+            &mut counters,
+            "pinned_reader_count",
+            i64::try_from(coordinator.pinned_readers().len()).unwrap_or(0),
+        );
+        events.push(json!({
+            "label": "reader_unpinned",
+            "reader_id": "reader:treecalc-retention",
+        }));
+    }
+
+    tracker
+        .release_and_evict_eligible(owner_node_id)
+        .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    increment_counter(&mut counters, "eviction_eligibility_opened");
+    events.push(json!({
+        "label": "eviction_eligibility_opened",
+        "owner_node_id": owner_node_id.0,
+    }));
+    let evicted_count = tracker.evict_eligible_overlays();
+    if evicted_count > 0 {
+        add_to_counter(
+            &mut counters,
+            "overlay_evictions",
+            i64::try_from(evicted_count).unwrap_or(0),
+        );
+        events.push(json!({
+            "label": "overlay_released",
+            "evicted_count": evicted_count,
+        }));
+    }
+
+    let counter_entries = counters.into_iter().collect::<Vec<_>>();
+    Ok((
+        json!({
+            "schema_version": TREECALC_RETENTION_GUARDRAIL_SCHEMA_V1,
+            "evidence_id": "tc_local_pinned_reader_retention_001",
+            "description": "TreeCalc-local guardrail over pinned-reader stability, retained dynamic overlays, release, and eviction eligibility.",
+            "source_scope": "runner_generated_from_core_coordinator_and_recalc_apis",
+            "pinned_reader_stability": {
+                "reader_id": "reader:treecalc-retention",
+                "stable": pinned_stable,
+                "pinned_values_before_publication": value_map_json(&initial_values),
+                "pinned_values_after_publication": value_map_json(&pinned_after_publication.values),
+                "published_values_after_publication": value_map_json(&published_after),
+            },
+            "retention": {
+                "protected_dynamic_overlay_count_before_release": retained_dynamic_overlays,
+                "evicted_overlay_count_after_release": evicted_count,
+                "cleanup_blocked_while_reader_pinned": retained_dynamic_overlays > 0,
+            },
+            "events": events,
+            "counters": counter_entries_json(&counter_entries),
+            "claims_exercised": [
+                "R4.pinned_reader_stability",
+                "R5.overlay_retention_release",
+                "C2.pinned_reader_and_retention",
+                "C4.overlay_economics_eviction"
+            ],
+        }),
+        counter_entries,
+    ))
+}
+
+fn measurement_counter_summary_json(
+    case_counter_sets: &[(String, Vec<(String, i64)>)],
+    retention_counters: &[(String, i64)],
+) -> Value {
+    let aggregate = aggregate_counters(
+        case_counter_sets
+            .iter()
+            .map(|(_, counters)| counters.as_slice())
+            .chain(std::iter::once(retention_counters)),
+    );
+    json!({
+        "schema_version": TREECALC_MEASUREMENT_COUNTER_SUMMARY_SCHEMA_V1,
+        "schema_ref": "formal/measurement/stage1_counter_schema.json",
+        "counter_scope": "treecalc_local_run",
+        "case_count": case_counter_sets.len(),
+        "counter_families": [
+            {
+                "family_id": "C1",
+                "name": "candidate_and_publication",
+                "status": "exercised_by_case_artifacts",
+                "counters": counters_with_prefixes(&aggregate, &["candidate_", "accepted_", "publications_", "rejects_by_class", "abandoned_"]),
+            },
+            {
+                "family_id": "C2",
+                "name": "pinned_reader_and_retention",
+                "status": "exercised_by_retention_guardrail",
+                "counters": counters_with_prefixes(&aggregate, &["pinned_reader_", "reader.", "release_events", "retention_blocked_cleanup", "eviction_eligibility_opened"]),
+            },
+            {
+                "family_id": "C3",
+                "name": "invalidation_and_fallback",
+                "status": "exercised_by_case_artifacts",
+                "counters": counters_with_prefixes(&aggregate, &["nodes_marked_", "verified_clean_nodes", "fallback_"]),
+            },
+            {
+                "family_id": "C4",
+                "name": "overlay_economics",
+                "status": "exercised_by_runtime_effect_and_retention_artifacts",
+                "counters": counters_with_prefixes(&aggregate, &["overlay_lookups", "overlay_hits", "overlay_misses", "overlay_creations", "overlay_evictions", "overlay.retained", "overlay_reuse_after_retention"]),
+            },
+            {
+                "family_id": "C5",
+                "name": "stage2_reserved",
+                "status": "reserved_not_emitted",
+                "counters": [],
+            }
+        ],
+        "aggregate_counters": counter_entries_json(&aggregate),
+        "case_counter_sets": case_counter_sets.iter().map(|(case_id, counters)| json!({
+            "case_id": case_id,
+            "counters": counter_entries_json(counters),
+        })).collect::<Vec<_>>(),
+        "retention_guardrail_counters": counter_entries_json(retention_counters),
+    })
+}
+
+fn phase_timing_summary_json(case_phase_timing_sets: &[(String, BTreeMap<String, u128>)]) -> Value {
+    let mut values_by_phase = BTreeMap::<String, Vec<(String, u128)>>::new();
+    for (case_phase_id, timings) in case_phase_timing_sets {
+        for (phase_name, micros) in timings {
+            values_by_phase
+                .entry(phase_name.clone())
+                .or_default()
+                .push((case_phase_id.clone(), *micros));
+        }
+    }
+
+    let phases = values_by_phase
+        .into_iter()
+        .map(|(phase_name, values)| {
+            let count = values.len();
+            let total_micros = values.iter().map(|(_, micros)| *micros).sum::<u128>();
+            let min = values
+                .iter()
+                .min_by_key(|(_, micros)| *micros)
+                .expect("phase values are non-empty");
+            let max = values
+                .iter()
+                .max_by_key(|(_, micros)| *micros)
+                .expect("phase values are non-empty");
+            json!({
+                "phase_name": phase_name,
+                "count": count,
+                "total_micros": total_micros,
+                "total_ms": total_micros as f64 / 1_000.0,
+                "min_micros": min.1,
+                "min_case_phase": min.0,
+                "max_micros": max.1,
+                "max_case_phase": max.0,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    json!({
+        "schema_version": "oxcalc.treecalc.phase_timing_summary.v1",
+        "unit": "microseconds",
+        "case_phase_count": case_phase_timing_sets.len(),
+        "phases": phases,
+        "case_phase_timings": case_phase_timing_sets.iter().map(|(case_phase_id, timings)| json!({
+            "case_phase_id": case_phase_id,
+            "timings_micros": timings,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn typed_reject_taxonomy_json(case_counter_sets: &[(String, Vec<(String, i64)>)]) -> Value {
+    let aggregate = aggregate_counters(
+        case_counter_sets
+            .iter()
+            .map(|(_, counters)| counters.as_slice()),
+    );
+    let observed_reject_kinds = aggregate
+        .iter()
+        .map(|(counter, _)| counter)
+        .filter_map(|counter| counter.strip_prefix("rejects_by_class."))
+        .map(str::to_string)
+        .collect::<BTreeSet<_>>();
+    let declared_reject_kinds = [
+        "snapshot_mismatch",
+        "artifact_token_mismatch",
+        "profile_version_mismatch",
+        "capability_mismatch",
+        "publication_fence_mismatch",
+        "dynamic_dependency_failure",
+        "synthetic_cycle_reject",
+        "host_injected_failure",
+    ];
+    let unobserved_declared = declared_reject_kinds
+        .iter()
+        .filter(|kind| !observed_reject_kinds.contains(**kind))
+        .copied()
+        .collect::<Vec<_>>();
+
+    json!({
+        "schema_version": TREECALC_TYPED_REJECT_TAXONOMY_SCHEMA_V1,
+        "source": "treecalc_local_run_counter_artifacts",
+        "observed_reject_kinds": observed_reject_kinds.into_iter().collect::<Vec<_>>(),
+        "unobserved_declared_reject_kinds": unobserved_declared,
+        "watch_lanes": [
+            {
+                "lane_id": "provider_failure",
+                "status": "watch_no_treecalc_local_evidence",
+                "handoff_required": false,
+            },
+            {
+                "lane_id": "callable_publication",
+                "status": "watch_no_treecalc_local_evidence",
+                "handoff_required": false,
+            },
+            {
+                "lane_id": "future_oxfml_runtime_reject_family",
+                "status": "watch_no_treecalc_local_evidence",
+                "handoff_required": false,
+            }
+        ],
+        "handoff_triggered": false,
+        "handoff_basis": "No concrete coordinator-visible seam insufficiency is exposed by this TreeCalc-local run.",
+    })
+}
+
+fn host_context_watch_json() -> Value {
+    json!({
+        "schema_version": TREECALC_HOST_CONTEXT_WATCH_SCHEMA_V1,
+        "source": "treecalc_local_scope_review",
+        "treecalc_local_current_context": {
+            "address_modes": ["direct_node", "relative_sibling_offset"],
+            "caller_context": "local_structural_parent_and_sibling_context_only",
+            "table_context": "not_admitted_to_treecalc_local_runtime_scope",
+            "host_sensitive_behavior": "conservative_reject_with_runtime_effect_overlay",
+        },
+        "related_existing_evidence": [
+            "docs/test-fixtures/core-engine/upstream-host/README.md",
+            "docs/test-fixtures/core-engine/upstream-host/cases/uh_table_context_bind_001.json",
+            "docs/test-fixtures/core-engine/upstream-host/cases/uh_structured_reference_eval_001.json",
+            "src/oxcalc-core/tests/upstream_host_scaffolding.rs"
+        ],
+        "watch_lanes": [
+            {
+                "lane_id": "caller_table_context",
+                "status": "covered_on_upstream_host_surface_not_treecalc_local_formula_scope",
+                "handoff_required": false,
+            },
+            {
+                "lane_id": "structured_reference_breadth",
+                "status": "watch_until_treecalc_scope_admits_table_semantics",
+                "handoff_required": false,
+            },
+            {
+                "lane_id": "host_sensitive_direct_binding",
+                "status": "current_treecalc_floor_rejects_conservatively",
+                "handoff_required": false,
+            }
+        ],
+        "handoff_triggered": false,
+    })
+}
+
+fn overlay_economics_summary_json(
+    case_counter_sets: &[(String, Vec<(String, i64)>)],
+    retention_counters: &[(String, i64)],
+) -> Value {
+    let aggregate = aggregate_counters(
+        case_counter_sets
+            .iter()
+            .map(|(_, counters)| counters.as_slice())
+            .chain(std::iter::once(retention_counters)),
+    );
+    json!({
+        "schema_version": TREECALC_OVERLAY_ECONOMICS_SCHEMA_V1,
+        "source": "treecalc_local_counter_and_retention_guardrail_artifacts",
+        "overlay_counters": counters_with_prefixes(&aggregate, &[
+            "overlay_lookups",
+            "overlay_hits",
+            "overlay_misses",
+            "overlay_creations",
+            "overlay_evictions",
+            "overlay.retained",
+            "overlay_reuse_after_retention",
+        ]),
+        "fallback_counters": counters_with_prefixes(&aggregate, &[
+            "fallback_by_reason",
+            "fallback_affected_work_volume",
+        ]),
+        "retention_counters": counters_with_prefixes(&aggregate, &[
+            "retention_blocked_cleanup",
+            "eviction_eligibility_opened",
+            "release_events",
+        ]),
+        "economics_reading": {
+            "overlay_hits_observed": counter_value(&aggregate, "overlay_hits") > 0,
+            "overlay_misses_observed": counter_value(&aggregate, "overlay_misses") > 0,
+            "overlay_evictions_observed": counter_value(&aggregate, "overlay_evictions") > 0,
+            "fallback_observed": aggregate.iter().any(|(counter, _)| counter.starts_with("fallback_by_reason.")),
+            "optimization_claim": "not_promoted",
+        },
+        "guardrail_artifacts": [
+            "retention_guardrail.json",
+            "measurement_counter_summary.json"
+        ],
+    })
+}
+
+fn write_replay_appliance_projection(
+    repo_root: &Path,
+    artifact_root: &Path,
+    run_id: &str,
+    relative_artifact_root: &str,
+    case_results: &[Value],
+) -> Result<(), TreeCalcRunnerError> {
+    create_directory(&artifact_root.join("replay-appliance"))?;
+    create_directory(&artifact_root.join("replay-appliance/adapter_capabilities"))?;
+    create_directory(&artifact_root.join("replay-appliance/runs").join(run_id))?;
+    create_directory(&artifact_root.join("replay-appliance/validation"))?;
+
+    let adapter_path = relative_artifact_path([
+        relative_artifact_root,
+        "replay-appliance",
+        "adapter_capabilities",
+        "oxcalc_treecalc.json",
+    ]);
+    let run_manifest_path = relative_artifact_path([
+        relative_artifact_root,
+        "replay-appliance",
+        "runs",
+        run_id,
+        "run_manifest.json",
+    ]);
+    let bundle_manifest_path = relative_artifact_path([
+        relative_artifact_root,
+        "replay-appliance",
+        "bundle_manifest.json",
+    ]);
+    let validation_path = relative_artifact_path([
+        relative_artifact_root,
+        "replay-appliance",
+        "validation",
+        "bundle_validation.json",
+    ]);
+
+    write_json(
+        &artifact_root.join("replay-appliance/adapter_capabilities/oxcalc_treecalc.json"),
+        &json!({
+            "schema_version": TREECALC_REPLAY_ADAPTER_CAPABILITY_SCHEMA_V1,
+            "adapter_id": "oxcalc-treecalc-local-replay-adapter",
+            "lane_id": "oxcalc_treecalc_local",
+            "run_id": run_id,
+            "projection_scope": "treecalc_local_run_snapshot",
+            "claimed_capability_levels": [
+                "cap.C0.ingest_valid",
+                "cap.C1.replay_valid",
+                "cap.C2.diff_valid",
+                "cap.C3.explain_valid"
+            ],
+            "target_capability_levels": ["cap.C4.distill_valid", "cap.C5.pack_valid"],
+            "known_limits": [
+                "treecalc.local.limit.no_stage2_concurrency",
+                "treecalc.local.limit.host_table_context_watch_only",
+                "treecalc.local.limit.performance_not_promoted"
+            ],
+        }),
+    )?;
+
+    let case_projection = case_results
+        .iter()
+        .map(|case_result| {
+            json!({
+                "case_id": case_result["case_id"],
+                "result_state": case_result["result_state"],
+                "conformance_state": case_result["conformance_state"],
+                "source_artifact_paths": {
+                    "result": case_result["artifact_paths"]["result"],
+                    "trace": case_result["supporting_artifact_paths"]["trace"],
+                    "explain": case_result["supporting_artifact_paths"]["explain"],
+                    "counters": case_result["artifact_paths"]["counters"],
+                    "published_values": case_result["artifact_paths"]["published_values"],
+                    "runtime_effect_overlays": case_result["artifact_paths"]["runtime_effect_overlays"],
+                    "reject_detail": case_result["artifact_paths"]["result"],
+                },
+                "required_equality_surfaces": [
+                    "published_values",
+                    "result_state",
+                    "reject_detail",
+                    "counter_set",
+                    "trace_labels",
+                    "runtime_effect_overlays"
+                ],
+            })
+        })
+        .collect::<Vec<_>>();
+
+    write_json(
+        &artifact_root
+            .join("replay-appliance/runs")
+            .join(run_id)
+            .join("run_manifest.json"),
+        &json!({
+            "schema_version": TREECALC_REPLAY_APPLIANCE_RUN_SCHEMA_V1,
+            "run_kind": "treecalc_local_run",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "source_run_summary_path": relative_artifact_path([relative_artifact_root, "run_summary.json"]),
+            "source_replay_artifact_manifest_path": relative_artifact_path([relative_artifact_root, "replay_artifact_manifest.json"]),
+            "source_measurement_counter_summary_path": relative_artifact_path([relative_artifact_root, "measurement_counter_summary.json"]),
+            "source_retention_guardrail_path": relative_artifact_path([relative_artifact_root, "retention_guardrail.json"]),
+            "cases": case_projection,
+        }),
+    )?;
+
+    write_json(
+        &artifact_root.join("replay-appliance/bundle_manifest.json"),
+        &json!({
+            "schema_version": TREECALC_REPLAY_APPLIANCE_BUNDLE_SCHEMA_V1,
+            "bundle_kind": "treecalc_local_run",
+            "lane_id": "oxcalc_treecalc_local",
+            "run_id": run_id,
+            "source_artifact_root": relative_artifact_root,
+            "run_manifest_path": run_manifest_path.clone(),
+            "adapter_capabilities_path": adapter_path.clone(),
+            "validation_path": validation_path,
+            "preserved_view_families": [
+                "published_values",
+                "reject_set",
+                "counter_set",
+                "runtime_effect_overlay_set",
+                "retention_guardrail"
+            ],
+            "projection_status": "local_projection_validated",
+        }),
+    )?;
+
+    let checked_paths = case_results
+        .iter()
+        .flat_map(|case_result| {
+            [
+                case_result["artifact_paths"]["result"].as_str(),
+                case_result["artifact_paths"]["counters"].as_str(),
+                case_result["supporting_artifact_paths"]["trace"].as_str(),
+                case_result["supporting_artifact_paths"]["explain"].as_str(),
+            ]
+        })
+        .flatten()
+        .map(str::to_string)
+        .chain([
+            adapter_path,
+            run_manifest_path,
+            bundle_manifest_path,
+            relative_artifact_path([relative_artifact_root, "measurement_counter_summary.json"]),
+            relative_artifact_path([relative_artifact_root, "retention_guardrail.json"]),
+            relative_artifact_path([relative_artifact_root, "typed_reject_taxonomy.json"]),
+            relative_artifact_path([relative_artifact_root, "host_context_watch.json"]),
+            relative_artifact_path([relative_artifact_root, "overlay_economics_summary.json"]),
+        ])
+        .collect::<Vec<_>>();
+    let missing_paths = checked_paths
+        .iter()
+        .filter(|path| !repo_root.join(path).exists())
+        .cloned()
+        .collect::<Vec<_>>();
+
+    write_json(
+        &artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+        &json!({
+            "schema_version": TREECALC_REPLAY_APPLIANCE_VALIDATION_SCHEMA_V1,
+            "bundle_kind": "treecalc_local_run",
+            "run_id": run_id,
+            "status": if missing_paths.is_empty() { "bundle_valid" } else { "bundle_degraded" },
+            "checked_paths": checked_paths,
+            "missing_paths": missing_paths,
+        }),
+    )
+}
+
+fn aggregate_counters<'a>(
+    counter_sets: impl IntoIterator<Item = &'a [(String, i64)]>,
+) -> Vec<(String, i64)> {
+    let mut aggregate = BTreeMap::new();
+    for counters in counter_sets {
+        for (counter, value) in counters {
+            add_to_counter(&mut aggregate, counter, *value);
+        }
+    }
+    aggregate.into_iter().collect()
+}
+
+fn counters_with_prefixes(counters: &[(String, i64)], prefixes: &[&str]) -> Vec<Value> {
+    counter_entries_json(
+        &counters
+            .iter()
+            .filter(|(counter, _)| prefixes.iter().any(|prefix| counter.starts_with(prefix)))
+            .cloned()
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn counter_value(counters: &[(String, i64)], counter: &str) -> i64 {
+    counters
+        .iter()
+        .find_map(|(candidate, value)| (candidate == counter).then_some(*value))
+        .unwrap_or(0)
+}
+
+fn counter_entries_json(entries: &[(String, i64)]) -> Vec<Value> {
+    let mut ordered = entries.to_vec();
+    ordered.sort_by(|left, right| left.0.cmp(&right.0));
+    ordered
+        .into_iter()
+        .map(|(counter, value)| json!({ "counter": counter, "value": value }))
+        .collect()
+}
+
+fn value_map_json(values: &BTreeMap<TreeNodeId, String>) -> Vec<Value> {
+    values
+        .iter()
+        .map(|(node_id, value)| json!({ "node_id": node_id.0, "value": value }))
+        .collect()
+}
+
+fn increment_counter(counters: &mut BTreeMap<String, i64>, counter: &str) {
+    add_to_counter(counters, counter, 1);
+}
+
+fn add_to_counter(counters: &mut BTreeMap<String, i64>, counter: &str, value: i64) {
+    *counters.entry(counter.to_string()).or_insert(0) += value;
+}
+
+fn set_counter(counters: &mut BTreeMap<String, i64>, counter: &str, value: i64) {
+    counters.insert(counter.to_string(), value);
+}
+
+fn to_snake_case(input: &str) -> String {
+    let mut result = String::new();
+    for (index, character) in input.chars().enumerate() {
+        if character.is_uppercase() {
+            if index > 0 {
+                result.push('_');
+            }
+            for lower in character.to_lowercase() {
+                result.push(lower);
+            }
+        } else {
+            result.push(character);
+        }
+    }
+    result
+}
+
 fn create_directory(path: &Path) -> Result<(), TreeCalcRunnerError> {
     fs::create_dir_all(path).map_err(|source| TreeCalcRunnerError::CreateDirectory {
         path: path.display().to_string(),
@@ -1142,6 +2073,34 @@ mod tests {
         assert!(artifact_root.join("replay_artifact_manifest.json").exists());
         assert!(
             artifact_root
+                .join("measurement_counter_summary.json")
+                .exists()
+        );
+        assert!(artifact_root.join("retention_guardrail.json").exists());
+        assert!(artifact_root.join("typed_reject_taxonomy.json").exists());
+        assert!(artifact_root.join("host_context_watch.json").exists());
+        assert!(
+            artifact_root
+                .join("overlay_economics_summary.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/bundle_manifest.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/adapter_capabilities/oxcalc_treecalc.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("replay-appliance/validation/bundle_validation.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
                 .join("conformance/oracle_baseline.json")
                 .exists()
         );
@@ -1169,6 +2128,11 @@ mod tests {
         assert!(
             artifact_root
                 .join("cases/tc_local_publish_001/explain.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
+                .join("cases/tc_local_publish_001/counters.json")
                 .exists()
         );
         assert!(
@@ -1244,12 +2208,95 @@ mod tests {
                     .any(|artifact| { artifact == "conformance/explain_index.json" }))
         );
         assert!(
+            replay_manifest["required_root_artifacts"]
+                .as_array()
+                .is_some_and(|artifacts| artifacts
+                    .iter()
+                    .any(|artifact| { artifact == "measurement_counter_summary.json" }))
+        );
+        assert!(
+            replay_manifest["required_root_artifacts"]
+                .as_array()
+                .is_some_and(|artifacts| artifacts
+                    .iter()
+                    .any(|artifact| { artifact == "retention_guardrail.json" }))
+        );
+        assert!(
             replay_manifest["case_artifact_families"]
                 .as_array()
                 .is_some_and(|families| families
                     .iter()
                     .any(|family| { family == "runtime_effect_overlays" }))
         );
+        assert!(
+            replay_manifest["case_artifact_families"]
+                .as_array()
+                .is_some_and(|families| families.iter().any(|family| { family == "counters" }))
+        );
+
+        let measurement_summary = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("measurement_counter_summary.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            measurement_summary["schema_version"],
+            TREECALC_MEASUREMENT_COUNTER_SUMMARY_SCHEMA_V1
+        );
+        assert!(
+            measurement_summary["counter_families"]
+                .as_array()
+                .is_some_and(
+                    |families| families.iter().any(|family| family["family_id"] == "C2"
+                        && family["status"] == "exercised_by_retention_guardrail")
+                )
+        );
+
+        let retention_guardrail = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("retention_guardrail.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            retention_guardrail["schema_version"],
+            TREECALC_RETENTION_GUARDRAIL_SCHEMA_V1
+        );
+        assert_eq!(
+            retention_guardrail["pinned_reader_stability"]["stable"],
+            true
+        );
+        assert!(
+            retention_guardrail["retention"]["evicted_overlay_count_after_release"]
+                .as_u64()
+                .is_some_and(|count| count > 0)
+        );
+
+        let typed_reject_taxonomy = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("typed_reject_taxonomy.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            typed_reject_taxonomy["schema_version"],
+            TREECALC_TYPED_REJECT_TAXONOMY_SCHEMA_V1
+        );
+        assert_eq!(typed_reject_taxonomy["handoff_triggered"], false);
+
+        let replay_bundle = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("replay-appliance/bundle_manifest.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            replay_bundle["schema_version"],
+            TREECALC_REPLAY_APPLIANCE_BUNDLE_SCHEMA_V1
+        );
+
+        let replay_validation = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("replay-appliance/validation/bundle_validation.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(replay_validation["status"], "bundle_valid");
 
         let rename_post_edit_result = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(

@@ -16,5 +16,6 @@ pub mod structural;
 pub mod treecalc;
 pub mod treecalc_fixture;
 pub mod treecalc_runner;
+pub mod treecalc_scale;
 pub mod upstream_host;
 pub mod upstream_host_fixture;

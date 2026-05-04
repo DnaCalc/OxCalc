@@ -1,0 +1,119 @@
+{
+  "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+  "description": "A recalc-only structural edit is followed by a capability-sensitive rerun that emits runtime effects and overlay sidecars on the successor snapshot.",
+  "expected": {
+    "evaluation_order": [
+      3
+    ],
+    "published_values": null,
+    "reject_kind": "HostInjectedFailure",
+    "result_state": "rejected",
+    "runtime_effect_kinds": [
+      "runtime_effect.capability_sensitive_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ExecutionRestriction"
+    ]
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:cap_leaf",
+      "expression": {
+        "FunctionCall": {
+          "arguments": [
+            {
+              "Reference": {
+                "DirectNode": {
+                  "target_node_id": 2
+                }
+              }
+            },
+            {
+              "Reference": {
+                "CapabilitySensitive": {
+                  "carrier_id": "carrier:capability",
+                  "detail": "host_function_availability"
+                }
+              }
+            }
+          ],
+          "function_name": "SUM",
+          "may_introduce_dynamic_dependencies": false
+        }
+      },
+      "formula_artifact_id": "formula:cap_leaf",
+      "owner_node_id": 3
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "2",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "A"
+    },
+    {
+      "bind_artifact_id": "bind:cap_leaf",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:cap_leaf",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "CapLeaf"
+    }
+  ],
+  "post_edit": {
+    "edits": [
+      {
+        "constant_value": "7",
+        "kind": "set_constant_value",
+        "node_id": 2
+      }
+    ],
+    "expected": {
+      "evaluation_order": [
+        3
+      ],
+      "published_values": null,
+      "reject_kind": "HostInjectedFailure",
+      "result_state": "rejected",
+      "runtime_effect_kinds": [
+        "runtime_effect.capability_sensitive_reference"
+      ],
+      "runtime_effect_overlay_kinds": [
+        "ExecutionRestriction"
+      ]
+    },
+    "expected_affected_node_ids": [
+      [
+        2
+      ]
+    ],
+    "expected_impacts": [
+      "RecalcOnly"
+    ],
+    "successor_snapshot_start_id": 23
+  },
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 22
+}

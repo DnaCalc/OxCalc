@@ -1,0 +1,132 @@
+{
+  "artifact_paths": {
+    "model_profile": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/model_profile.json",
+    "phase_timings": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/phase_timings.json",
+    "run_summary": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json",
+    "validation_summary": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/validation_summary.json"
+  },
+  "model": {
+    "cycle_group_count": 0,
+    "dependency_descriptor_count": 3000000,
+    "dependency_diagnostic_count": 1000000,
+    "dependency_edge_count": 2000000,
+    "descriptor_kind_counts": {
+      "DynamicPotential": 1000000,
+      "StaticDirect": 2000000
+    },
+    "diagnostic_kind_counts": {
+      "DynamicPotentialReference": 1000000
+    },
+    "expected": {
+      "dependency_descriptor_count": 3000000,
+      "dependency_diagnostic_count": 1000000,
+      "dependency_edge_count": 2000000,
+      "dynamic_descriptor_count": 1000000,
+      "formula_count": 1000000,
+      "invalidation_impacted_count": 2001,
+      "node_count": 1002001,
+      "static_direct_descriptor_count": 2000000
+    },
+    "formula_count": 1000000,
+    "invalidation_impacted_count": 2001,
+    "invalidation_seed_count": 2,
+    "node_count": 1002001,
+    "profile_details": {
+      "cols": 1000,
+      "dynamic_reference_policy": "DynamicPotential residual carriers are expected to surface as dependency diagnostics/runtime effects; static base references remain checkable.",
+      "formula_shape": "(left_row + top_col) + INDIRECT(dynamic_potential_selector)",
+      "kind": "dynamic_indirect_stripes",
+      "rows": 1000,
+      "selector_period": 64
+    }
+  },
+  "phase_timings_ms": {
+    "dependency_descriptor_lowering": 4479.3697,
+    "dependency_graph_build_and_cycle_scan": 4624.5664,
+    "invalidation_closure_derivation": 0.5561,
+    "model_build_structural_snapshot_and_formula_catalog": 3440.2977,
+    "synthetic_closed_form_recalc": 1.2065000000000001,
+    "validation_checks": 62.2746
+  },
+  "profile": "dynamic-indirect-stripes",
+  "run_id": "million_indirect_r1",
+  "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
+  "total_elapsed_ms": 12608.3419,
+  "validation": {
+    "checks": [
+      {
+        "expected": "3000000",
+        "name": "descriptor_count",
+        "observed": "3000000",
+        "passed": true
+      },
+      {
+        "expected": "2000000",
+        "name": "dependency_edge_count",
+        "observed": "2000000",
+        "passed": true
+      },
+      {
+        "expected": "1000000",
+        "name": "dependency_diagnostic_count",
+        "observed": "1000000",
+        "passed": true
+      },
+      {
+        "expected": "2001",
+        "name": "invalidation_impacted_count",
+        "observed": "2001",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "cycle_group_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "2000000",
+        "name": "static_direct_descriptor_count",
+        "observed": "2000000",
+        "passed": true
+      },
+      {
+        "expected": "1000000",
+        "name": "dynamic_potential_descriptor_count",
+        "observed": "1000000",
+        "passed": true
+      },
+      {
+        "expected": "92299000",
+        "name": "synthetic_after_sum",
+        "observed": "92299000",
+        "passed": true
+      },
+      {
+        "expected": "18000",
+        "name": "synthetic_delta_sum",
+        "observed": "18000",
+        "passed": true
+      },
+      {
+        "expected": "1000000",
+        "name": "dynamic_potential_diagnostic_count",
+        "observed": "1000000",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "profile": "dynamic-indirect-stripes",
+    "synthetic_recalc": {
+      "baseline_sum": "92281000",
+      "dynamic_slots": 1000000,
+      "expected_after_sum": "92299000",
+      "expected_delta_sum": "18000",
+      "formula_evaluations": 1000000,
+      "lane": "static_base_with_dynamic_indirect_residuals",
+      "observed_after_sum": "92299000",
+      "observed_delta_sum": "18000",
+      "reference_visits": 3000000
+    }
+  }
+}

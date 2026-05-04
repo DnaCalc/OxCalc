@@ -1,0 +1,72 @@
+{
+  "checks": [
+    {
+      "expected": "7999928",
+      "name": "descriptor_count",
+      "observed": "7999928",
+      "passed": true
+    },
+    {
+      "expected": "7999928",
+      "name": "dependency_edge_count",
+      "observed": "7999928",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "dependency_diagnostic_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "999992",
+      "name": "invalidation_impacted_count",
+      "observed": "999992",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "cycle_group_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "7999928",
+      "name": "static_direct_descriptor_count",
+      "observed": "7999928",
+      "passed": true
+    },
+    {
+      "expected": "0",
+      "name": "dynamic_potential_descriptor_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
+      "expected": "5503950464",
+      "name": "synthetic_after_sum",
+      "observed": "5503950464",
+      "passed": true
+    },
+    {
+      "expected": "895991936",
+      "name": "synthetic_delta_sum",
+      "observed": "895991936",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "profile": "fanout-bands",
+  "synthetic_recalc": {
+    "baseline_sum": "4607958528",
+    "dynamic_slots": 0,
+    "expected_after_sum": "5503950464",
+    "expected_delta_sum": "895991936",
+    "formula_evaluations": 127998848,
+    "lane": "fanout_sum_bands",
+    "observed_after_sum": "5503950464",
+    "observed_delta_sum": "895991936",
+    "recalc_rounds": 128,
+    "reference_visits": 1023990784
+  }
+}

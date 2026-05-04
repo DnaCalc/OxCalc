@@ -1,0 +1,123 @@
+{
+  "artifact_paths": {
+    "model_profile": "docs/test-runs/core-engine/treecalc-scale/perf_smoke_fanout/model_profile.json",
+    "phase_timings": "docs/test-runs/core-engine/treecalc-scale/perf_smoke_fanout/phase_timings.json",
+    "run_summary": "docs/test-runs/core-engine/treecalc-scale/perf_smoke_fanout/run_summary.json",
+    "validation_summary": "docs/test-runs/core-engine/treecalc-scale/perf_smoke_fanout/validation_summary.json"
+  },
+  "model": {
+    "cycle_group_count": 0,
+    "dependency_descriptor_count": 7928,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 7928,
+    "descriptor_kind_counts": {
+      "StaticDirect": 7928
+    },
+    "diagnostic_kind_counts": {},
+    "expected": {
+      "dependency_descriptor_count": 7928,
+      "dependency_diagnostic_count": 0,
+      "dependency_edge_count": 7928,
+      "dynamic_descriptor_count": 0,
+      "formula_count": 991,
+      "invalidation_impacted_count": 992,
+      "node_count": 1000,
+      "static_direct_descriptor_count": 7928
+    },
+    "formula_count": 991,
+    "invalidation_impacted_count": 992,
+    "invalidation_seed_count": 1,
+    "node_count": 1000,
+    "profile_details": {
+      "closed_form_after_edit": "formula_count * sum(anchor_after)",
+      "fanout": 8,
+      "formula_count": 991,
+      "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+      "kind": "fanout_bands",
+      "node_count": 1000
+    }
+  },
+  "phase_timings_ms": {
+    "dependency_descriptor_lowering": 3.8283,
+    "dependency_graph_build_and_cycle_scan": 24.0613,
+    "invalidation_closure_derivation": 1.5428,
+    "model_build_structural_snapshot_and_formula_catalog": 5.027399999999999,
+    "synthetic_closed_form_recalc": 0.07490000000000001,
+    "validation_checks": 0.3729
+  },
+  "profile": "fanout-bands",
+  "run_id": "perf_smoke_fanout",
+  "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
+  "total_elapsed_ms": 34.9273,
+  "validation": {
+    "checks": [
+      {
+        "expected": "7928",
+        "name": "descriptor_count",
+        "observed": "7928",
+        "passed": true
+      },
+      {
+        "expected": "7928",
+        "name": "dependency_edge_count",
+        "observed": "7928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dependency_diagnostic_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "992",
+        "name": "invalidation_impacted_count",
+        "observed": "992",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "cycle_group_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "7928",
+        "name": "static_direct_descriptor_count",
+        "observed": "7928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dynamic_potential_descriptor_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "42613",
+        "name": "synthetic_after_sum",
+        "observed": "42613",
+        "passed": true
+      },
+      {
+        "expected": "6937",
+        "name": "synthetic_delta_sum",
+        "observed": "6937",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "profile": "fanout-bands",
+    "synthetic_recalc": {
+      "baseline_sum": "35676",
+      "dynamic_slots": 0,
+      "expected_after_sum": "42613",
+      "expected_delta_sum": "6937",
+      "formula_evaluations": 991,
+      "lane": "fanout_sum_bands",
+      "observed_after_sum": "42613",
+      "observed_delta_sum": "6937",
+      "reference_visits": 7928
+    }
+  }
+}

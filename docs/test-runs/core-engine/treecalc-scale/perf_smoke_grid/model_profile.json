@@ -1,0 +1,31 @@
+{
+  "cycle_group_count": 0,
+  "dependency_descriptor_count": 1200,
+  "dependency_diagnostic_count": 0,
+  "dependency_edge_count": 1200,
+  "descriptor_kind_counts": {
+    "StaticDirect": 1200
+  },
+  "diagnostic_kind_counts": {},
+  "expected": {
+    "dependency_descriptor_count": 1200,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 1200,
+    "dynamic_descriptor_count": 0,
+    "formula_count": 600,
+    "invalidation_impacted_count": 51,
+    "node_count": 651,
+    "static_direct_descriptor_count": 1200
+  },
+  "formula_count": 600,
+  "invalidation_impacted_count": 51,
+  "invalidation_seed_count": 2,
+  "node_count": 651,
+  "profile_details": {
+    "closed_form_after_edit": "cols * sum(left_after) + rows * sum(top_after)",
+    "cols": 30,
+    "formula_shape": "left_row + top_col",
+    "kind": "grid_cross_sum",
+    "rows": 20
+  }
+}

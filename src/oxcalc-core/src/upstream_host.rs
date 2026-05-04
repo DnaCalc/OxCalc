@@ -13,7 +13,7 @@ use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
 };
 use oxfml_core::eval::DefinedNameBinding;
-use oxfml_core::format::{current_excel_host_context, en_us_context};
+use oxfml_core::format::{oxfml_current_excel_host_locale_context, oxfml_en_us_locale_context};
 use oxfml_core::interface::{
     TableCallerRegion, TableDescriptor, TableRef, TypedContextQueryBundle,
 };
@@ -324,8 +324,10 @@ impl RtdProvider for PacketRtdProvider {
 fn locale_context(kind: MinimalLocaleContextKind) -> Option<LocaleFormatContext<'static>> {
     match kind {
         MinimalLocaleContextKind::Disabled => None,
-        MinimalLocaleContextKind::EnUs => Some(en_us_context()),
-        MinimalLocaleContextKind::CurrentExcelHost => Some(current_excel_host_context()),
+        MinimalLocaleContextKind::EnUs => Some(oxfml_en_us_locale_context()),
+        MinimalLocaleContextKind::CurrentExcelHost => {
+            Some(oxfml_current_excel_host_locale_context())
+        }
     }
 }
 
@@ -378,7 +380,6 @@ mod tests {
                 admission_interface_kind: Some("ordinary".to_string()),
                 preparation_owner: Some("oxfunc".to_string()),
                 runtime_boundary_kind: Some("host_query".to_string()),
-                arity_shape_note: None,
                 interface_contract_ref: Some("iface:v1".to_string()),
                 registration_source_kind: RegistrationSourceKind::BuiltIn,
                 parse_bind_state: oxfml_core::semantics::LibraryAvailabilityState::CatalogKnown,

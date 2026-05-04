@@ -1,0 +1,123 @@
+{
+  "artifact_paths": {
+    "model_profile": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/model_profile.json",
+    "phase_timings": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/phase_timings.json",
+    "run_summary": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json",
+    "validation_summary": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/validation_summary.json"
+  },
+  "model": {
+    "cycle_group_count": 0,
+    "dependency_descriptor_count": 7999928,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 7999928,
+    "descriptor_kind_counts": {
+      "StaticDirect": 7999928
+    },
+    "diagnostic_kind_counts": {},
+    "expected": {
+      "dependency_descriptor_count": 7999928,
+      "dependency_diagnostic_count": 0,
+      "dependency_edge_count": 7999928,
+      "dynamic_descriptor_count": 0,
+      "formula_count": 999991,
+      "invalidation_impacted_count": 999992,
+      "node_count": 1000000,
+      "static_direct_descriptor_count": 7999928
+    },
+    "formula_count": 999991,
+    "invalidation_impacted_count": 999992,
+    "invalidation_seed_count": 1,
+    "node_count": 1000000,
+    "profile_details": {
+      "closed_form_after_edit": "formula_count * sum(anchor_after)",
+      "fanout": 8,
+      "formula_count": 999991,
+      "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+      "kind": "fanout_bands",
+      "node_count": 1000000
+    }
+  },
+  "phase_timings_ms": {
+    "dependency_descriptor_lowering": 3022.0055,
+    "dependency_graph_build_and_cycle_scan": 19333.8537,
+    "invalidation_closure_derivation": 279.2679,
+    "model_build_structural_snapshot_and_formula_catalog": 1891.7431,
+    "synthetic_closed_form_recalc": 2.9661,
+    "validation_checks": 84.66
+  },
+  "profile": "fanout-bands",
+  "run_id": "million_fanout_f8_r1",
+  "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
+  "total_elapsed_ms": 24614.5303,
+  "validation": {
+    "checks": [
+      {
+        "expected": "7999928",
+        "name": "descriptor_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "7999928",
+        "name": "dependency_edge_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dependency_diagnostic_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "999992",
+        "name": "invalidation_impacted_count",
+        "observed": "999992",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "cycle_group_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "7999928",
+        "name": "static_direct_descriptor_count",
+        "observed": "7999928",
+        "passed": true
+      },
+      {
+        "expected": "0",
+        "name": "dynamic_potential_descriptor_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "expected": "42999613",
+        "name": "synthetic_after_sum",
+        "observed": "42999613",
+        "passed": true
+      },
+      {
+        "expected": "6999937",
+        "name": "synthetic_delta_sum",
+        "observed": "6999937",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "profile": "fanout-bands",
+    "synthetic_recalc": {
+      "baseline_sum": "35999676",
+      "dynamic_slots": 0,
+      "expected_after_sum": "42999613",
+      "expected_delta_sum": "6999937",
+      "formula_evaluations": 999991,
+      "lane": "fanout_sum_bands",
+      "observed_after_sum": "42999613",
+      "observed_delta_sum": "6999937",
+      "reference_visits": 7999928
+    }
+  }
+}

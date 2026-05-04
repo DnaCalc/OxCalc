@@ -1,0 +1,53 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "sibling_offset:-1:",
+      "descriptor_id": "bind:formula:mid:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "sibling_offset:-1:",
+      "descriptor_id": "bind:formula:right:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 4,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 3
+    },
+    {
+      "carrier_detail": "sibling_offset:-2:",
+      "descriptor_id": "bind:formula:right:oxfml_ref:1",
+      "kind": "RelativeBound",
+      "owner_node_id": 4,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:mid:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:mid:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:right:oxfml_ref:1",
+      "edge_id": "dep:4:2:bind:formula:right:oxfml_ref:1",
+      "kind": "RelativeBound",
+      "owner_node_id": 4,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:right:oxfml_ref:0",
+      "edge_id": "dep:4:3:bind:formula:right:oxfml_ref:0",
+      "kind": "RelativeBound",
+      "owner_node_id": 4,
+      "target_node_id": 3
+    }
+  ]
+}

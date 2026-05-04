@@ -1,0 +1,673 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke",
+  "case_artifact_families": [
+    "input_case",
+    "result",
+    "published_values",
+    "dependency_graph",
+    "invalidation_closure",
+    "runtime_effects",
+    "runtime_effect_overlays",
+    "counters",
+    "node_states",
+    "oracle",
+    "engine_diff",
+    "trace",
+    "explain"
+  ],
+  "case_count": 17,
+  "cases": [
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_publish_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_publish_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_verified_clean_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "verified_clean",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_verified_clean_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_relative_sum_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_relative_sum_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_sibling_offset_publish_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_sibling_offset_publish_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_host_sensitive_reject_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_dynamic_reject_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_dynamic_reject_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_rebind_after_rename_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_rebind_after_rename_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_after_constant_edit_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_move_direct_target_rebind_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_remove_direct_target_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_remove_direct_target_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_recalc_chain_after_constant_edit_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/trace.json"
+      },
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_host_sensitive_overlay_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_capability_sensitive_reject_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_capability_sensitive_reject_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/phase_timings.json",
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_shape_topology_reject_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": null,
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_shape_topology_reject_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/trace.json"
+      },
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_capability_sensitive_overlay_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/trace.json"
+      },
+      "result_state": "rejected",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_post_edit_shape_topology_overlay_001/trace.json"
+      }
+    },
+    {
+      "artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/counters.json",
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/dependency_graph.json",
+        "input_case": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/input_case.json",
+        "invalidation_closure": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/invalidation_closure.json",
+        "node_states": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/node_states.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/phase_timings.json",
+        "post_edit": {
+          "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/counters.json",
+          "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/edit_outcomes.json",
+          "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/explain.json",
+          "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/invalidation_seeds.json",
+          "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/phase_timings.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/result.json",
+          "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effects.json",
+          "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/trace.json"
+        },
+        "published_values": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/published_values.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/runtime_effects.json"
+      },
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "conformance_artifact_paths": {
+        "engine_diff": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/engine_diff.json",
+        "oracle": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/oracle.json"
+      },
+      "conformance_state": "matches_expected",
+      "post_edit_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/counters.json",
+        "edit_outcomes": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/edit_outcomes.json",
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/explain.json",
+        "invalidation_seeds": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/invalidation_seeds.json",
+        "phase_timings": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/phase_timings.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/result.json",
+        "runtime_effect_overlays": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effect_overlays.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/runtime_effects.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/trace.json"
+      },
+      "result_state": "published",
+      "supporting_artifact_paths": {
+        "explain": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/explain.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/phase-instrumentation-smoke/cases/tc_local_mixed_publish_then_post_edit_overlay_001/trace.json"
+      }
+    }
+  ],
+  "required_root_artifacts": [
+    "manifest_selection.json",
+    "run_summary.json",
+    "case_index.json",
+    "replay_artifact_manifest.json",
+    "measurement_counter_summary.json",
+    "retention_guardrail.json",
+    "typed_reject_taxonomy.json",
+    "host_context_watch.json",
+    "overlay_economics_summary.json",
+    "replay-appliance/bundle_manifest.json",
+    "replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+    "replay-appliance/validation/bundle_validation.json",
+    "replay-appliance/runs/phase-instrumentation-smoke/run_manifest.json",
+    "conformance/oracle_baseline.json",
+    "conformance/engine_diff.json",
+    "conformance/conformance_summary.json",
+    "conformance/explain_index.json"
+  ],
+  "run_id": "phase-instrumentation-smoke",
+  "schema_version": "oxcalc.treecalc.replay_artifact_manifest.v1"
+}

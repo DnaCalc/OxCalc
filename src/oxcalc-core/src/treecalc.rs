@@ -3,6 +3,7 @@
 //! Local sequential TreeCalc runtime facade.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::time::{Duration, Instant};
 
 use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::{BindContext, BindRequest, NameKind, bind_formula};
@@ -98,6 +99,7 @@ pub struct LocalTreeCalcRunArtifacts {
     pub reject_detail: Option<RejectDetail>,
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
+    pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
 }
 
@@ -220,6 +222,9 @@ impl LocalTreeCalcEngine {
         &self,
         input: LocalTreeCalcInput,
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+        let mut phase_timer = LocalTreeCalcPhaseTimer::new();
+
+        let phase_start = Instant::now();
         let prepared_formulas = input
             .formula_catalog
             .bindings_by_owner()
@@ -229,16 +234,31 @@ impl LocalTreeCalcEngine {
                     .map(|prepared| (binding.owner_node_id, prepared))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
+        phase_timer.record_duration("oxfml_prepare_formulas", phase_start.elapsed());
+
+        let phase_start = Instant::now();
         let dependency_descriptors = prepared_formulas
             .values()
             .flat_map(oxfml_dependency_descriptors)
             .collect::<Vec<_>>();
+        phase_timer.record_duration("dependency_descriptor_lowering", phase_start.elapsed());
+
+        let phase_start = Instant::now();
         let dependency_descriptor_owners = dependency_descriptors
             .iter()
             .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor.owner_node_id))
             .collect::<BTreeMap<_, _>>();
+        phase_timer.record_duration("dependency_descriptor_owner_index", phase_start.elapsed());
+
+        let phase_start = Instant::now();
         let dependency_graph =
             DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
+        phase_timer.record_duration(
+            "dependency_graph_build_and_cycle_scan",
+            phase_start.elapsed(),
+        );
+
+        let phase_start = Instant::now();
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
         let invalidation_seeds = if input.invalidation_seeds.is_empty() {
             default_invalidation_seeds(&formula_owner_ids)
@@ -247,13 +267,17 @@ impl LocalTreeCalcEngine {
         };
         let invalidation_closure =
             dependency_graph.derive_invalidation_closure(&invalidation_seeds);
+        phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
 
+        let phase_start = Instant::now();
         let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot.clone());
         coordinator.seed_published_view(&input.seeded_published_values, None, &[]);
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot.clone());
         let mut working_values =
             seed_working_values(&input.structural_snapshot, &input.seeded_published_values);
+        phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
+        let phase_start = Instant::now();
         let mut value_updates = BTreeMap::new();
         let mut runtime_effects = Vec::new();
         let mut diagnostics = dependency_graph
@@ -266,39 +290,49 @@ impl LocalTreeCalcEngine {
                 .values()
                 .flat_map(|prepared| prepared.bind_diagnostics.iter().cloned()),
         );
+        phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
+        let phase_start = Instant::now();
         for node_id in &formula_owner_ids {
             recalc_tracker.mark_dirty(*node_id);
             recalc_tracker.mark_needed(*node_id)?;
         }
+        phase_timer.record_duration("recalc_tracker_mark_dirty_needed", phase_start.elapsed());
 
-        let evaluation_order =
-            match topological_formula_order(&dependency_graph, &formula_owner_ids) {
-                Ok(order) => order,
-                Err(error) => {
-                    return reject_run(
-                        &input,
-                        &mut coordinator,
-                        &mut recalc_tracker,
-                        dependency_graph,
-                        invalidation_closure,
-                        Vec::new(),
-                        Vec::new(),
-                        Vec::new(),
-                        diagnostics,
-                        &formula_owner_ids,
-                        None,
-                        error,
-                    );
-                }
-            };
+        let phase_start = Instant::now();
+        let evaluation_order_result =
+            topological_formula_order(&dependency_graph, &formula_owner_ids);
+        phase_timer.record_duration("topological_formula_order", phase_start.elapsed());
+        let evaluation_order = match evaluation_order_result {
+            Ok(order) => order,
+            Err(error) => {
+                return reject_run(
+                    &input,
+                    &mut coordinator,
+                    &mut recalc_tracker,
+                    dependency_graph,
+                    invalidation_closure,
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    diagnostics,
+                    phase_timer,
+                    &formula_owner_ids,
+                    None,
+                    error,
+                );
+            }
+        };
 
-        if let Some(node_id) = evaluation_order.iter().copied().find(|node_id| {
+        let phase_start = Instant::now();
+        let rebind_blocked_node = evaluation_order.iter().copied().find(|node_id| {
             invalidation_closure
                 .records
                 .get(node_id)
                 .is_some_and(|record| record.requires_rebind)
-        }) {
+        });
+        phase_timer.record_duration("rebind_gate_scan", phase_start.elapsed());
+        if let Some(node_id) = rebind_blocked_node {
             return reject_run(
                 &input,
                 &mut coordinator,
@@ -309,13 +343,15 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 Vec::new(),
                 diagnostics,
+                phase_timer,
                 &formula_owner_ids,
                 None,
                 LocalTreeCalcError::StructuralRebindRequired { node_id },
             );
         }
 
-        if let Some((node_id, detail)) =
+        let phase_start = Instant::now();
+        let incompatible_dependency =
             dependency_graph
                 .diagnostics
                 .iter()
@@ -333,8 +369,9 @@ impl LocalTreeCalcEngine {
                             })
                     }
                     _ => None,
-                })
-        {
+                });
+        phase_timer.record_duration("dependency_diagnostic_reject_scan", phase_start.elapsed());
+        if let Some((node_id, detail)) = incompatible_dependency {
             return reject_run(
                 &input,
                 &mut coordinator,
@@ -345,23 +382,30 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 Vec::new(),
                 diagnostics,
+                phase_timer,
                 &formula_owner_ids,
                 None,
                 LocalTreeCalcError::DependencyGraphIncompatible { node_id, detail },
             );
         }
 
+        let evaluation_loop_start = Instant::now();
         for node_id in &evaluation_order {
             recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
             let prepared = prepared_formulas
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
-            let computed_value = match evaluate_via_oxfml(prepared, &working_values) {
+            let phase_start = Instant::now();
+            let evaluation_result = evaluate_via_oxfml(prepared, &working_values);
+            phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
+            let computed_value = match evaluation_result {
                 Ok(success) => {
                     diagnostics.extend(success.diagnostics);
                     success.value
                 }
                 Err(failure) => {
+                    phase_timer
+                        .record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
                     let failure_runtime_effects = annotate_runtime_effects_with_environment(
                         &failure.runtime_effects,
                         &input.environment_context,
@@ -383,6 +427,7 @@ impl LocalTreeCalcEngine {
                         runtime_effects,
                         runtime_effect_overlays,
                         diagnostics,
+                        phase_timer,
                         &formula_owner_ids,
                         Some(LocalEvaluatorCandidate {
                             candidate_result_id: input.candidate_result_id.clone(),
@@ -411,12 +456,16 @@ impl LocalTreeCalcEngine {
                 value_updates.insert(*node_id, computed_value);
             }
         }
+        phase_timer.record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
 
         if value_updates.is_empty() {
+            let phase_start = Instant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
                 0,
             ));
+            phase_timer.record_duration("verified_clean_finalize", phase_start.elapsed());
+            let phase_timings_micros = phase_timer.finish();
             return Ok(LocalTreeCalcRunArtifacts {
                 result_state: LocalTreeCalcRunState::VerifiedClean,
                 dependency_graph,
@@ -430,10 +479,12 @@ impl LocalTreeCalcEngine {
                 reject_detail: None,
                 published_values: coordinator.published_view().values.clone(),
                 node_states: recalc_tracker.node_states().clone(),
+                phase_timings_micros,
                 diagnostics,
             });
         }
 
+        let phase_start = Instant::now();
         let local_candidate = LocalEvaluatorCandidate {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
@@ -453,6 +504,8 @@ impl LocalTreeCalcEngine {
             &input.environment_context,
             0,
         ));
+        phase_timer.record_duration("candidate_publication", phase_start.elapsed());
+        let phase_timings_micros = phase_timer.finish();
 
         Ok(LocalTreeCalcRunArtifacts {
             result_state: LocalTreeCalcRunState::Published,
@@ -467,8 +520,41 @@ impl LocalTreeCalcEngine {
             reject_detail: None,
             published_values: coordinator.published_view().values.clone(),
             node_states: recalc_tracker.node_states().clone(),
+            phase_timings_micros,
             diagnostics,
         })
+    }
+}
+
+#[derive(Debug)]
+struct LocalTreeCalcPhaseTimer {
+    started_at: Instant,
+    timings_micros: BTreeMap<String, u128>,
+}
+
+impl LocalTreeCalcPhaseTimer {
+    fn new() -> Self {
+        Self {
+            started_at: Instant::now(),
+            timings_micros: BTreeMap::new(),
+        }
+    }
+
+    fn record_duration(&mut self, phase_name: &str, duration: Duration) {
+        self.timings_micros
+            .insert(phase_name.to_string(), duration.as_micros());
+    }
+
+    fn add_duration(&mut self, phase_name: &str, duration: Duration) {
+        *self
+            .timings_micros
+            .entry(phase_name.to_string())
+            .or_default() += duration.as_micros();
+    }
+
+    fn finish(mut self) -> BTreeMap<String, u128> {
+        self.record_duration("total_engine_execute", self.started_at.elapsed());
+        self.timings_micros
     }
 }
 
@@ -593,10 +679,12 @@ fn reject_run(
     runtime_effects: Vec<RuntimeEffect>,
     runtime_effect_overlays: Vec<OverlayEntry>,
     mut diagnostics: Vec<String>,
+    mut phase_timer: LocalTreeCalcPhaseTimer,
     formula_owner_ids: &[TreeNodeId],
     local_candidate: Option<LocalEvaluatorCandidate>,
     error: LocalTreeCalcError,
 ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+    let phase_start = Instant::now();
     diagnostics.push(format!("candidate_rejected:{}", error));
     diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
         &input.environment_context,
@@ -629,6 +717,8 @@ fn reject_run(
             recalc_tracker.reject_or_fallback(node_id, &error.to_string())?;
         }
     }
+    phase_timer.record_duration("rejection_recording", phase_start.elapsed());
+    let phase_timings_micros = phase_timer.finish();
 
     Ok(LocalTreeCalcRunArtifacts {
         result_state: LocalTreeCalcRunState::Rejected,
@@ -643,6 +733,7 @@ fn reject_run(
         reject_detail: Some(reject_detail),
         published_values: coordinator.published_view().values.clone(),
         node_states: recalc_tracker.node_states().clone(),
+        phase_timings_micros,
         diagnostics,
     })
 }
@@ -1361,7 +1452,7 @@ fn translate_formula(
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
-    let source_text = state.translate(formula);
+    let source_text = format!("={}", state.translate(formula));
     TranslatedFormula {
         source_text,
         reference_bindings: state.reference_bindings,
@@ -1604,7 +1695,8 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
 mod tests {
     use crate::formula::{RelativeReferenceBase, TreeFormulaBinding};
     use crate::structural::{
-        BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshotId,
+        BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
+        StructuralSnapshotId,
     };
 
     use super::*;
@@ -1728,6 +1820,96 @@ mod tests {
                 .iter()
                 .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
         );
+    }
+
+    #[test]
+    fn local_treecalc_engine_recalculates_direct_multiply_chain_after_constant_edit() {
+        let engine = LocalTreeCalcEngine;
+        let formula_catalog = TreeFormulaCatalog::new([
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:y".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:y".to_string())),
+                expression: TreeFormula::Binary {
+                    op: FormulaBinaryOp::Multiply,
+                    left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    })),
+                    right: Box::new(TreeFormula::Literal {
+                        value: "20".to_string(),
+                    }),
+                },
+            },
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(4),
+                formula_artifact_id: FormulaArtifactId("formula:z".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:z".to_string())),
+                expression: TreeFormula::Binary {
+                    op: FormulaBinaryOp::Add,
+                    left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    })),
+                    right: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(3),
+                    })),
+                },
+            },
+        ]);
+
+        let initial = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: formula_catalog.clone(),
+                seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
+                candidate_result_id: "cand:xyz:initial".to_string(),
+                publication_id: "pub:xyz:initial".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .unwrap();
+
+        assert_eq!(initial.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(initial.evaluation_order, vec![TreeNodeId(3), TreeNodeId(4)]);
+        assert_eq!(initial.published_values[&TreeNodeId(3)], "40");
+        assert_eq!(initial.published_values[&TreeNodeId(4)], "42");
+
+        let edited_snapshot = snapshot()
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetConstantValue {
+                    node_id: TreeNodeId(2),
+                    constant_value: Some("3".to_string()),
+                },
+            )
+            .unwrap()
+            .snapshot;
+        let rerun = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: edited_snapshot,
+                formula_catalog,
+                seeded_published_values: initial.published_values.clone(),
+                invalidation_seeds: vec![InvalidationSeed {
+                    node_id: TreeNodeId(2),
+                    reason: InvalidationReasonKind::UpstreamPublication,
+                }],
+                candidate_result_id: "cand:xyz:rerun".to_string(),
+                publication_id: "pub:xyz:rerun".to_string(),
+                compatibility_basis: "snapshot:2".to_string(),
+                artifact_token_basis: "snapshot:2".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .unwrap();
+
+        assert_eq!(rerun.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(rerun.evaluation_order, vec![TreeNodeId(3), TreeNodeId(4)]);
+        assert_eq!(
+            rerun.invalidation_closure.impacted_order,
+            vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)]
+        );
+        assert_eq!(rerun.published_values[&TreeNodeId(3)], "60");
+        assert_eq!(rerun.published_values[&TreeNodeId(4)], "63");
     }
 
     #[test]

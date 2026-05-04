@@ -1,0 +1,91 @@
+{
+  "case_id": "tc_local_remove_direct_target_001",
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.host_injected_failure",
+      "value": 1
+    }
+  ],
+  "diagnostic_events": [
+    "node_removed:node:2"
+  ],
+  "edit_impacts": [
+    "Removal"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "phase_timings": {
+    "timings_micros": {
+      "dependency_descriptor_lowering": 7,
+      "dependency_descriptor_owner_index": 3,
+      "dependency_diagnostic_reject_scan": 1,
+      "dependency_graph_build_and_cycle_scan": 14,
+      "diagnostic_seed_collection": 2,
+      "invalidation_closure_derivation": 7,
+      "oxfml_prepare_formulas": 78,
+      "rebind_gate_scan": 1,
+      "recalc_tracker_mark_dirty_needed": 3,
+      "rejection_recording": 9,
+      "runtime_setup": 13,
+      "topological_formula_order": 8,
+      "total_engine_execute": 160
+    },
+    "timings_ms": {
+      "dependency_descriptor_lowering": 0.007,
+      "dependency_descriptor_owner_index": 0.003,
+      "dependency_diagnostic_reject_scan": 0.001,
+      "dependency_graph_build_and_cycle_scan": 0.014,
+      "diagnostic_seed_collection": 0.002,
+      "invalidation_closure_derivation": 0.007,
+      "oxfml_prepare_formulas": 0.078,
+      "rebind_gate_scan": 0.001,
+      "recalc_tracker_mark_dirty_needed": 0.003,
+      "rejection_recording": 0.009,
+      "runtime_setup": 0.013,
+      "topological_formula_order": 0.008,
+      "total_engine_execute": 0.16
+    },
+    "unit": "microseconds"
+  },
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate:post_edit",
+    "detail": "dependency graph for formula node node:3 is incompatible with reevaluation: MissingTarget: target node:2 is not present in snapshot",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

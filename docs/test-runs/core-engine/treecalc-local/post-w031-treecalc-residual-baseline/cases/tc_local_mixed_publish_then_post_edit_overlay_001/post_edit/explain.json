@@ -1,0 +1,51 @@
+{
+  "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 2
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "diagnostic_events": [
+    "constant_value_changed:node:2:1"
+  ],
+  "edit_impacts": [
+    "RecalcOnly"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 4,
+      "reason": "StructuralRecalcOnly"
+    },
+    {
+      "node_id": 5,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

@@ -1,0 +1,41 @@
+{
+  "cycle_group_count": 0,
+  "dependency_descriptor_count": 2000000,
+  "dependency_diagnostic_count": 0,
+  "dependency_edge_count": 2000000,
+  "descriptor_kind_counts": {
+    "StaticDirect": 2000000
+  },
+  "diagnostic_kind_counts": {},
+  "expected": {
+    "dependency_descriptor_count": 2000000,
+    "dependency_diagnostic_count": 0,
+    "dependency_edge_count": 2000000,
+    "dynamic_descriptor_count": 0,
+    "formula_count": 1000000,
+    "invalidation_impacted_count": 2001,
+    "node_count": 1002001,
+    "soft_update_rebind_seed_count": 0,
+    "static_direct_descriptor_count": 2000000
+  },
+  "formula_count": 1000000,
+  "invalidation_impacted_count": 2001,
+  "invalidation_seed_count": 2,
+  "node_count": 1002001,
+  "profile_details": {
+    "closed_form_after_edit": "cols * sum(left_after) + rows * sum(top_after)",
+    "cols": 1000,
+    "formula_shape": "left_row + top_col",
+    "kind": "grid_cross_sum",
+    "recalc_rounds": 1,
+    "rows": 1000
+  },
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
+  }
+}

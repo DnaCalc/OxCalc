@@ -152,6 +152,26 @@ function Get-ExplainProjection($explain) {
     }
 }
 
+function Get-PostEditResultProjection($result) {
+    $rejectProjection = $null
+    if ($null -ne $result.reject_detail) {
+        $rejectProjection = [ordered]@{
+            kind = $result.reject_detail.kind
+            detail = $result.reject_detail.detail
+        }
+    }
+
+    return [ordered]@{
+        result_state = $result.result_state
+        evaluation_order = @($result.evaluation_order)
+        invalidation_seeds = Normalize-Object $result.invalidation_seeds
+        published_values = Normalize-Object $result.published_values
+        reject_detail = $rejectProjection
+        runtime_effects = Normalize-Object $result.runtime_effects
+        runtime_effect_overlays = Normalize-Object $result.runtime_effect_overlays
+    }
+}
+
 function Compare-CaseArtifacts([string]$labelPrefix, [string]$baselineCaseRoot, [string]$candidateCaseRoot, [ref]$failures) {
     Compare-Projection "$labelPrefix.result" `
         (Get-ResultProjection (Read-JsonFile (Join-Path $baselineCaseRoot "result.json"))) `
@@ -293,8 +313,8 @@ foreach ($baselineEntry in $baselineCaseIndex) {
             ([ref]$failures)
 
         Compare-Projection "$caseId.post_edit.result" `
-            (Read-JsonFile (Join-Path $baselinePostEditRoot "result.json")) `
-            (Read-JsonFile (Join-Path $candidatePostEditRoot "result.json")) `
+            (Get-PostEditResultProjection (Read-JsonFile (Join-Path $baselinePostEditRoot "result.json"))) `
+            (Get-PostEditResultProjection (Read-JsonFile (Join-Path $candidatePostEditRoot "result.json"))) `
             ([ref]$failures)
 
         Compare-Projection "$caseId.post_edit.runtime_effects" `

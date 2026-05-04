@@ -12,4 +12,5 @@ pub mod planner;
 pub mod replay_mappings;
 pub mod retained_failures;
 pub mod runner;
+pub mod scale_semantic_binding;
 pub mod witness;

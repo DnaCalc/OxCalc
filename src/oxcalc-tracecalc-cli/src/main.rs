@@ -13,6 +13,7 @@ use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
 use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
+use oxcalc_tracecalc::scale_semantic_binding::ScaleSemanticBindingRunner;
 
 fn main() -> ExitCode {
     match run() {
@@ -28,7 +29,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -117,6 +118,19 @@ fn run() -> Result<(), String> {
             }
             ("pack-capability", run_id)
         }
+        "scale-semantic-binding" => {
+            let Some(run_id) = args.next() else {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli scale-semantic-binding <run-id>".to_string(),
+                );
+            };
+            if args.next().is_some() {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli scale-semantic-binding <run-id>".to_string(),
+                );
+            }
+            ("scale-semantic-binding", run_id)
+        }
         run_id => {
             if args.next().is_some() {
                 return Err("usage: oxcalc-tracecalc-cli <run-id>".to_string());
@@ -136,6 +150,7 @@ fn run() -> Result<(), String> {
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
         "independent-conformance" => ensure_independent_conformance_root(&repo_root)?,
         "pack-capability" => ensure_pack_capability_root(&repo_root)?,
+        "scale-semantic-binding" => ensure_scale_semantic_binding_root(&repo_root)?,
         _ => ensure_repo_root(&repo_root)?,
     }
 
@@ -188,6 +203,19 @@ fn run() -> Result<(), String> {
             println!(
                 "Pack capability run '{run_id}' wrote decision '{}' with {} blockers to {}.",
                 summary.decision_status, summary.blocker_count, summary.artifact_root
+            );
+        }
+        "scale-semantic-binding" => {
+            let runner = ScaleSemanticBindingRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("scale semantic binding run failed: {error}"))?;
+            println!(
+                "Scale semantic binding run '{run_id}' validated {} scale rows, {} signature rows, {} replay binding rows to {}.",
+                summary.validated_scale_run_count,
+                summary.scale_signature_row_count,
+                summary.replay_binding_row_count,
+                summary.artifact_root
             );
         }
         _ => {
@@ -287,6 +315,23 @@ fn ensure_pack_capability_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for pack capability decision: missing {} or {}",
             retained_decision.display(),
             independent_summary.display()
+        ))
+    }
+}
+
+fn ensure_scale_semantic_binding_root(repo_root: &Path) -> Result<(), String> {
+    let scale_summary = repo_root
+        .join("docs/test-runs/core-engine/treecalc-scale/million_grid_r1/run_summary.json");
+    let trace_scale_seed = repo_root.join(
+        "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_scale_chain_seed_001/result.json",
+    );
+    if scale_summary.exists() && trace_scale_seed.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for scale semantic binding: missing {} or {}",
+            scale_summary.display(),
+            trace_scale_seed.display()
         ))
     }
 }

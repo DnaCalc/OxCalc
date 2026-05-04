@@ -1,0 +1,48 @@
+{
+  "independent_conformance_run_id": "post-w033-independent-conformance-001",
+  "pack_capability_run_id": "post-w033-pack-capability-decision-001",
+  "row_count": 3,
+  "rows": [
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "bundle_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/replay-appliance/validation/bundle_validation.json",
+        "required_scale_classes": [
+          "oxcalc.local.scale_seed"
+        ],
+        "result_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_scale_chain_seed_001/result.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "TraceCalc scale seed replay binds generated scale lanes to an oracle scenario.",
+      "row_id": "tracecalc_scale_seed_replay_binding"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "bundle_artifact": "docs/test-runs/core-engine/independent-conformance/post-w033-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+        "summary_artifact": "docs/test-runs/core-engine/independent-conformance/post-w033-independent-conformance-001/run_summary.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "Scale evidence is tied to the post-W033 TreeCalc/TraceCalc projection comparison rather than timing alone.",
+      "row_id": "independent_conformance_projection_binding"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "expected_decision_status": "capability_not_promoted",
+        "summary_artifact": "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/run_summary.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "Scale semantic binding does not override pack-capability no-promotion.",
+      "row_id": "pack_capability_no_promotion_binding"
+    }
+  ],
+  "run_id": "post-w033-metamorphic-scale-semantic-binding-001",
+  "schema_version": "oxcalc.scale_semantic_binding.replay_conformance_bindings.v1",
+  "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+  "tracecalc_scale_scenario_id": "tc_scale_chain_seed_001",
+  "unexpected_mismatch_count": 0
+}

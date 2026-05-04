@@ -95,6 +95,6 @@ Every promoted metamorphic/differential test must state:
 - integration_completeness: `partial`
 - open_lanes:
   - no new generated metamorphic scenarios are emitted by this packet
-  - no TreeCalc-scale semantic promotion is made by this packet
+  - the successor packet `W033_METAMORPHIC_SCALE_SEMANTIC_BINDING.md` records the first TreeCalc-scale semantic-binding slice without promoting performance correctness, continuous scale assurance, pack-grade replay, or Stage 2 contention
   - LET/LAMBDA metamorphic families are deferred until the replay/witness bridge maps carrier facts
   - cross-engine TraceCalc-to-TreeCalc projection remains deferred until a shared observable projection exists

@@ -46,6 +46,12 @@ W034 starts with these relevant readings:
 4. The W073 conditional-formatting typed payload direction changes OxFml input metadata expectations for aggregate and visualization CF families; OxCalc has no current local request-construction path for those payloads.
 5. The formatting update is therefore a W034 seam-watch input unless a later W034 artifact exercises that path and finds concrete mismatch.
 
+Current W034 intake after `calc-e77.2`:
+
+1. OxFml now treats `VerificationConditionalFormattingRule.typed_rule` as the active input contract for the W073 aggregate and visualization families.
+2. The W034 TraceCalc oracle-deepening slice does not construct those conditional-formatting packets.
+3. No OxCalc code-path patch or OxFml handoff is required by this TraceCalc slice.
+
 ## 4. Bead-To-Artifact Plan
 
 | Bead | Primary artifact outcome |
@@ -67,15 +73,14 @@ W034 starts with these relevant readings:
 5. Passing tests, model checks, or manifests are not sufficient by themselves unless their coverage maps to the declared target.
 6. Pack, performance, and Stage 2 claims require direct evidence at the stated gate.
 
-## 6. Initial Status
+## 6. Current Status
 
-- execution_state: `planned`
+- execution_state: `calc-e77.2_tracecalc_oracle_deepening_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.2` through `calc-e77.7`
-  - widened TraceCalc oracle evidence
+  - `calc-e77.3` through `calc-e77.7`
   - optimized/core-engine conformance evidence
   - deeper Lean and TLA artifacts
   - pack/capability and continuous scale gate binding

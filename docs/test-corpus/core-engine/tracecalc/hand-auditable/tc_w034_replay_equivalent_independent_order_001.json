@@ -1,0 +1,246 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+  "description": "independent edits publish the same observable view when their candidate boundary is replayed as one deterministic batch",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w034",
+    "replay-equivalence",
+    "independent-order",
+    "batch-publication"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w034",
+    "replay-equivalent-history"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Left",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 1
+        }
+      },
+      {
+        "node_id": "Top",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 2
+        }
+      },
+      {
+        "node_id": "Check",
+        "kind": "value",
+        "expr": {
+          "op": "sum",
+          "deps": [
+            "Left",
+            "Top"
+          ]
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Left",
+        "value": 1
+      },
+      {
+        "node_id": "Top",
+        "value": 2
+      },
+      {
+        "node_id": "Check",
+        "value": 3
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Left",
+        "Top"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-independent-order",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Check"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-independent-order",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Top",
+          "value": 5
+        },
+        {
+          "node_id": "Left",
+          "value": 4
+        },
+        {
+          "node_id": "Check",
+          "value": 9
+        }
+      ],
+      "dependency_shape_updates": [],
+      "runtime_effects": [],
+      "diagnostic_events": [
+        "replay_equivalence:independent_inputs_commute",
+        "history_projection:batch_candidate_boundary"
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-independent-order",
+      "publication_id": "pub-independent-order"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Left",
+          "value": 4
+        },
+        {
+          "node_id": "Top",
+          "value": 5
+        },
+        {
+          "node_id": "Check",
+          "value": 9
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "node_marked_dirty",
+        "count": 3
+      },
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "topo_group_scheduled",
+        "count": 3
+      },
+      {
+        "label": "node_marked_needed",
+        "count": 3
+      },
+      {
+        "label": "evaluation_started",
+        "count": 3
+      },
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "candidate_admissions",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R3",
+      "R8"
+    ],
+    "pack_bindings": [
+      "PACK.fec.commit_atomicity",
+      "PACK.replay.history_projection"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "candidate_publication_boundary",
+      "replay_history_projection"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S4"
+    ],
+    "transition_labels": [
+      "I1",
+      "I2",
+      "I3",
+      "C1",
+      "C2",
+      "C4"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_w034_replay_equivalent_independent_order_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "independent-order-batch",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "candidate-boundary-history-projection",
+        "step_ids": [
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

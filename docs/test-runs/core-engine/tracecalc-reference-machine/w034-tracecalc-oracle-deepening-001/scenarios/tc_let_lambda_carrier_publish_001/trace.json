@@ -1,0 +1,106 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-let-lambda",
+        "compatibility_basis": "s0",
+        "target_count": "1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "candidate_shape_update_produced",
+      "normalized_event_family": "oxcalc.local.event.candidate_shape_update_produced",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
+      "payload": {
+        "candidate_result_id": "cand-let-lambda",
+        "target_count": "1"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "overlay_retained",
+      "normalized_event_family": "overlay.retained",
+      "payload": {
+        "publication_id": "pub-let-lambda"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
+      "payload": {
+        "candidate_result_id": "cand-let-lambda",
+        "publication_id": "pub-let-lambda"
+      },
+      "step_id": "st4"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "R7"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates",
+      "callable_carrier_identity"
+    ]
+  },
+  "run_id": "w034-tracecalc-oracle-deepening-001",
+  "scenario_id": "tc_let_lambda_carrier_publish_001"
+}

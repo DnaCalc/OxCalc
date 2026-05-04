@@ -1,0 +1,207 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w034_capability_fence_reject_001",
+  "description": "capability-view incompatibility rejects admitted work and preserves the old publication",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w034",
+    "reject",
+    "capability-fence",
+    "no-publish"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w034",
+    "r3-incompatible-branch",
+    "r6-reject-taxonomy"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Source",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 7
+        }
+      },
+      {
+        "node_id": "Secure",
+        "kind": "value",
+        "expr": {
+          "op": "cap_gate",
+          "dep": "Source",
+          "capability": "cap.exec.host_query"
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Source",
+        "value": 7
+      },
+      {
+        "node_id": "Secure",
+        "value": 7
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Secure"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-capability-fence",
+      "compatibility_basis": "capability-view:old",
+      "targets": [
+        "Secure"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-capability-fence",
+      "reject_kind": "capability_mismatch",
+      "reject_detail": {
+        "required_capability": "cap.exec.host_query",
+        "expected_capability_view": "capability-view:old",
+        "observed_capability_view": "capability-view:restricted"
+      },
+      "diagnostic_events": []
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Source",
+          "value": 7
+        },
+        {
+          "node_id": "Secure",
+          "value": 7
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "node_marked_dirty",
+        "count": 1
+      },
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "node_marked_needed",
+        "count": 1
+      },
+      {
+        "label": "evaluation_started",
+        "count": 1
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "rejects_by_class.capability_mismatch",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "fallback_by_reason.capability_mismatch",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "abandoned_candidates",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-capability-fence",
+        "reject_kind": "capability_mismatch",
+        "detail_contains": "observed_capability_view"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R3",
+      "R6"
+    ],
+    "pack_bindings": [
+      "PACK.fec.reject_detail_replay",
+      "PACK.fence.capability_view"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters",
+      "capability_view_key"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2",
+      "S4"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_w034_capability_fence_reject_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "capability-fence-reject",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "reject-no-publish",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [
+      {
+        "reject_record_id": "rej-capability-fence/record",
+        "reject_id": "rej-capability-fence"
+      }
+    ],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

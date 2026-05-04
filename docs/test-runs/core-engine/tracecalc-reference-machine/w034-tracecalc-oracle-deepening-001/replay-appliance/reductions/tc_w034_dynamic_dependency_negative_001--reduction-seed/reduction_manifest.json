@@ -1,0 +1,93 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_w034_dynamic_dependency_negative_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters",
+    "dependency_shape_updates"
+  ],
+  "run_id": "w034-tracecalc-oracle-deepening-001",
+  "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_w034_dynamic_dependency_negative_001/scenario",
+      "closure_unit_ids": [
+        "phase:dynamic-negative-reject",
+        "events:unresolved-dynamic-reference",
+        "reject:rej-dynamic-negative/record",
+        "view:published/current"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "dynamic-negative-reject",
+      "closure_unit_ids": [
+        "events:unresolved-dynamic-reference"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "phase:dynamic-negative-reject",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "unresolved-dynamic-reference",
+      "closure_unit_ids": [
+        "reject:rej-dynamic-negative/record"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "events:unresolved-dynamic-reference",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "rej-dynamic-negative/record",
+      "closure_unit_ids": [],
+      "reject_id": "rej-dynamic-negative",
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "reject:rej-dynamic-negative/record",
+      "unit_kind": "reject_record",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_w034_dynamic_dependency_negative_001--witness-seed"
+}

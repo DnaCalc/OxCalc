@@ -197,6 +197,92 @@
         "w033",
         "let-lambda"
       ]
+    },
+    {
+      "scenario_id": "tc_w034_snapshot_fence_reject_001",
+      "path": "hand-auditable/tc_w034_snapshot_fence_reject_001.json",
+      "focus": [
+        "snapshot-fence-reject",
+        "typed-reject",
+        "no-publication"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034"
+      ]
+    },
+    {
+      "scenario_id": "tc_w034_capability_fence_reject_001",
+      "path": "hand-auditable/tc_w034_capability_fence_reject_001.json",
+      "focus": [
+        "capability-fence-reject",
+        "typed-reject",
+        "no-publication"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034"
+      ]
+    },
+    {
+      "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "path": "hand-auditable/tc_w034_dynamic_dependency_negative_001.json",
+      "focus": [
+        "dynamic-dependency-negative",
+        "soft-reference-resolution",
+        "typed-reject"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034",
+        "dynamic-dependency"
+      ]
+    },
+    {
+      "scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "path": "hand-auditable/tc_w034_overlay_eviction_after_unpin_001.json",
+      "focus": [
+        "overlay-retention",
+        "overlay-eviction",
+        "pinned-reader-release"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034"
+      ]
+    },
+    {
+      "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "path": "hand-auditable/tc_w034_let_lambda_higher_order_replay_001.json",
+      "focus": [
+        "let-lambda-carrier",
+        "higher-order-callable",
+        "replay-identity"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034",
+        "let-lambda"
+      ]
+    },
+    {
+      "scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+      "path": "hand-auditable/tc_w034_replay_equivalent_independent_order_001.json",
+      "focus": [
+        "replay-equivalent-history",
+        "independent-order",
+        "candidate-publication-boundary"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w034"
+      ]
     }
   ]
 }

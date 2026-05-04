@@ -1,0 +1,18 @@
+{
+  "adapter_capabilities_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/adapter_capabilities/oxcalc.json",
+  "bundle_kind": "tracecalc_reference_run",
+  "lane_id": "oxcalc",
+  "preserved_view_families": [
+    "published_view",
+    "pinned_view",
+    "reject_set",
+    "assertion_result_set",
+    "counter_set"
+  ],
+  "projection_status": "projection_validated_with_explain",
+  "registry_version_ref": "foundation.replay.authoritative-pass-01.2026-03-15",
+  "run_id": "w034-tracecalc-oracle-deepening-001",
+  "run_manifest_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/replay-appliance/runs/w034-tracecalc-oracle-deepening-001/run_manifest.json",
+  "schema_version": "oxcalc.local.replay_bundle_manifest.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001"
+}

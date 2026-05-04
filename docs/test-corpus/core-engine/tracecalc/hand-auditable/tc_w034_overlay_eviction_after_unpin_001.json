@@ -1,0 +1,284 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+  "description": "a protected dynamic-dependency overlay is retained while a reader is pinned and becomes eviction-eligible after unpin",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w034",
+    "overlay",
+    "pinned-view",
+    "eviction"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w034",
+    "overlay-retention",
+    "pinned-reader-release"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Mode",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": "left"
+        }
+      },
+      {
+        "node_id": "Left",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 10
+        }
+      },
+      {
+        "node_id": "Pick",
+        "kind": "value",
+        "expr": {
+          "op": "dyn_select",
+          "selector": "Mode",
+          "candidates": {
+            "left": "Left"
+          }
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Left",
+        "value": 10
+      },
+      {
+        "node_id": "Pick",
+        "value": 10
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "pin_view",
+      "view_id": "view-pick",
+      "observed_nodes": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-overlay",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-overlay",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "Pick",
+          "kind": "activate_dynamic_dep",
+          "dep_id": "Left",
+          "payload": {
+            "selector_node": "Mode",
+            "selector_value": "left",
+            "retention_reason": "pinned_reader"
+          }
+        }
+      ],
+      "runtime_effects": [
+        {
+          "effect_kind": "dynamic_ref_activated",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Left"
+          }
+        }
+      ],
+      "diagnostic_events": []
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-overlay",
+      "publication_id": "pub-overlay"
+    },
+    {
+      "step_id": "st5",
+      "kind": "unpin_view",
+      "view_id": "view-pick"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Mode",
+          "value": "left"
+        },
+        {
+          "node_id": "Left",
+          "value": 10
+        },
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "reader_pinned",
+        "count": 1
+      },
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 1
+      },
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "overlay_retained",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      },
+      {
+        "label": "reader_unpinned",
+        "count": 1
+      },
+      {
+        "label": "eviction_eligibility_opened",
+        "count": 1
+      },
+      {
+        "label": "overlay_released",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "reader.pinned",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "reader.unpinned",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "retention_blocked_cleanup",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "overlay.retained",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "overlay.eviction_eligible",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "overlay_evictions",
+        "comparison": "ge",
+        "value": 1
+      },
+      {
+        "counter": "pinned_reader_count",
+        "comparison": "eq",
+        "value": 0
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.fec.overlay_lifecycle",
+      "PACK.concurrent.epochs"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "overlay_lifecycle"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S5",
+      "S6"
+    ],
+    "transition_labels": [
+      "C4",
+      "A9",
+      "A10"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_w034_overlay_eviction_after_unpin_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "overlay-retain-release",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4",
+          "st5"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "pinned-reader-overlay-lifecycle",
+        "step_ids": [
+          "st1",
+          "st4",
+          "st5"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

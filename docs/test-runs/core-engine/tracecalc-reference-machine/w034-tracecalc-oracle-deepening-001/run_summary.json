@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001",
+  "result_counts": {
+    "passed": 21
+  },
+  "run_id": "w034-tracecalc-oracle-deepening-001",
+  "scenario_count": 21,
+  "schema_version": "tracecalc-corpus-s1"
+}

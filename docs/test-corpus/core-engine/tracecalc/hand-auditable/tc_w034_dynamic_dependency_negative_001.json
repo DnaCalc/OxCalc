@@ -1,0 +1,226 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+  "description": "a dynamic reference switch to an unresolved runtime dependency is rejected as no-publish",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w034",
+    "dynamic-dependency",
+    "negative",
+    "no-publish"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w034",
+    "r5-dynamic-dependency",
+    "r6-reject-taxonomy"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Mode",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": "left"
+        }
+      },
+      {
+        "node_id": "Left",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 10
+        }
+      },
+      {
+        "node_id": "Pick",
+        "kind": "value",
+        "expr": {
+          "op": "dyn_select",
+          "selector": "Mode",
+          "candidates": {
+            "left": "Left"
+          }
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Left",
+        "value": 10
+      },
+      {
+        "node_id": "Pick",
+        "value": 10
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Mode"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-dynamic-negative",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-dynamic-negative",
+      "reject_kind": "dynamic_dependency_failure",
+      "reject_detail": {
+        "selector_node": "Mode",
+        "selector_value": "missing",
+        "missing_dependency": "MissingTarget",
+        "failure_class": "runtime_dependency_resolution"
+      },
+      "diagnostic_events": []
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Mode",
+          "value": "left"
+        },
+        {
+          "node_id": "Left",
+          "value": 10
+        },
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "node_marked_dirty",
+        "count": 2
+      },
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "node_marked_needed",
+        "count": 2
+      },
+      {
+        "label": "evaluation_started",
+        "count": 2
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "rejects_by_class.dynamic_dependency_failure",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "fallback_by_reason.dynamic_dependency_failure",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "fallback_affected_work_volume",
+        "comparison": "eq",
+        "value": 2
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-dynamic-negative",
+        "reject_kind": "dynamic_dependency_failure",
+        "detail_contains": "MissingTarget"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5",
+      "R6"
+    ],
+    "pack_bindings": [
+      "PACK.fec.dynamic_dependency",
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2",
+      "S5"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_w034_dynamic_dependency_negative_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "dynamic-negative-reject",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "unresolved-dynamic-reference",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [
+      {
+        "reject_record_id": "rej-dynamic-negative/record",
+        "reject_id": "rej-dynamic-negative"
+      }
+    ],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

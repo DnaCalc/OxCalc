@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001",
+  "case_count": 21,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 12,
+    "rejected": 8,
+    "verified_clean": 1
+  },
+  "run_id": "post-w033-independent-conformance-treecalc-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

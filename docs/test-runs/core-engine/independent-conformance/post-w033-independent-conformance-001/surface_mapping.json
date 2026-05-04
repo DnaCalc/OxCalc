@@ -1,0 +1,94 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/post-w033-independent-conformance-001",
+  "declared_gap_rows": [
+    {
+      "expected_tree_state": "rejected",
+      "gap_classification": "treecalc_local_dynamic_dependency_projection_gap",
+      "observable_class": "dynamic_dependency_current_local_gap",
+      "required_tree_runtime_effect_family": "DynamicDependency",
+      "row_id": "ic_gap_dynamic_dependency_001",
+      "tracecalc_scenario_id": "tc_dynamic_dep_switch_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "gap_classification": "treecalc_local_host_sensitive_lambda_projection_gap",
+      "observable_class": "lambda_host_sensitive_current_local_gap",
+      "required_tree_runtime_effect_family": "ExecutionRestriction",
+      "row_id": "ic_gap_lambda_host_effect_001",
+      "tracecalc_scenario_id": "tc_let_lambda_runtime_effect_001",
+      "treecalc_case_id": "tc_local_lambda_host_sensitive_reject_001"
+    }
+  ],
+  "no_publication_rows": [
+    {
+      "expected_tree_state": "verified_clean",
+      "observable_class": "verified_clean_no_publication",
+      "require_trace_reject": false,
+      "required_trace_event_family": "candidate.verified_clean",
+      "row_id": "ic_no_publish_verified_clean_001",
+      "tracecalc_scenario_id": "tc_verify_clean_no_publish_001",
+      "treecalc_case_id": "tc_local_verified_clean_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "observable_class": "reject_no_publication",
+      "require_trace_reject": true,
+      "required_trace_event_family": null,
+      "row_id": "ic_no_publish_reject_001",
+      "tracecalc_scenario_id": "tc_reject_no_publish_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001"
+    }
+  ],
+  "observable_surface_authority": "docs/spec/core-engine/w033-formalization/W033_TRACECALC_REFINEMENT_PACKET.md",
+  "run_id": "post-w033-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.surface_mapping.v1",
+  "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+  "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001",
+  "value_rows": [
+    {
+      "observable_class": "accepted_publication_value_delta",
+      "row_id": "ic_exact_accept_publish_001",
+      "tracecalc_scenario_id": "tc_accept_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        }
+      ]
+    },
+    {
+      "observable_class": "multi_node_dag_value_delta",
+      "row_id": "ic_exact_multinode_dag_001",
+      "tracecalc_scenario_id": "tc_multinode_dag_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        },
+        {
+          "trace_node_id": "C",
+          "tree_node_id": 4
+        },
+        {
+          "trace_node_id": "D",
+          "tree_node_id": 5
+        }
+      ]
+    },
+    {
+      "observable_class": "let_lambda_capture_value_delta",
+      "row_id": "ic_exact_let_lambda_capture_001",
+      "tracecalc_scenario_id": "tc_let_lambda_carrier_publish_001",
+      "treecalc_case_id": "tc_local_let_lambda_capture_publish_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        }
+      ]
+    }
+  ]
+}

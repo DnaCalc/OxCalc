@@ -4,6 +4,7 @@
 
 pub mod assertions;
 pub mod contracts;
+pub mod independent_conformance;
 pub mod machine;
 pub mod oxfml_fixture_bridge;
 pub mod planner;

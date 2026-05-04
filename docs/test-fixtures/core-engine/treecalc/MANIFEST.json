@@ -188,6 +188,25 @@
         "runtime-effect-overlay",
         "rejected"
       ]
+    },
+    {
+      "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "path": "cases/tc_local_tracecalc_accept_publish_equiv_001.json",
+      "tags": [
+        "local-sequential",
+        "tracecalc-equivalence",
+        "publish"
+      ]
+    },
+    {
+      "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "path": "cases/tc_local_tracecalc_multinode_dag_equiv_001.json",
+      "tags": [
+        "local-sequential",
+        "tracecalc-equivalence",
+        "dependency-chain",
+        "publish"
+      ]
     }
   ]
 }

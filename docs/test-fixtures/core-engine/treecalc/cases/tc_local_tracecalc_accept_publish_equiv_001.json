@@ -1,0 +1,61 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+  "description": "TreeCalc-local counterpart for the TraceCalc accept/publish value surface.",
+  "snapshot_id": 20,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "A",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "2"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "B",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:tracecalc-accept-b",
+      "bind_artifact_id": "bind:tracecalc-accept-b",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:tracecalc-accept-b",
+      "bind_artifact_id": "bind:tracecalc-accept-b",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "2"
+    },
+    "evaluation_order": [3]
+  }
+}

@@ -2066,7 +2066,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 19);
+        assert_eq!(summary.case_count, 21);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2199,7 +2199,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 19);
+        assert_eq!(replay_manifest["case_count"], 21);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()

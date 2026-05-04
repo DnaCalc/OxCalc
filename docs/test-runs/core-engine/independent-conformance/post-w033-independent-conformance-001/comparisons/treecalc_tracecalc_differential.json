@@ -1,0 +1,252 @@
+{
+  "comparison_row_count": 7,
+  "declared_gap_count": 2,
+  "exact_value_match_count": 3,
+  "missing_artifact_count": 0,
+  "no_publication_match_count": 2,
+  "rows": [
+    {
+      "comparison_state": "matched_exact_value_surface",
+      "details": {
+        "asserted_surfaces": [
+          "assertion_result_set",
+          "published_value_delta",
+          "candidate_publication_boundary"
+        ],
+        "trace_artifacts": {
+          "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_accept_publish_001/published_view.json",
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_accept_publish_001/result.json"
+        },
+        "tree_artifacts": {
+          "published_values": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_tracecalc_accept_publish_equiv_001/published_values.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_tracecalc_accept_publish_equiv_001/result.json"
+        },
+        "value_pairs": [
+          {
+            "matched": true,
+            "trace_node_id": "B",
+            "trace_value": "2",
+            "tree_node_id": 3,
+            "tree_value": "2"
+          }
+        ]
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "accepted_publication_value_delta",
+      "row_id": "ic_exact_accept_publish_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_accept_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "matched_exact_value_surface",
+      "details": {
+        "asserted_surfaces": [
+          "assertion_result_set",
+          "published_value_delta",
+          "candidate_publication_boundary"
+        ],
+        "trace_artifacts": {
+          "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_multinode_dag_publish_001/published_view.json",
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_multinode_dag_publish_001/result.json"
+        },
+        "tree_artifacts": {
+          "published_values": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/published_values.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/result.json"
+        },
+        "value_pairs": [
+          {
+            "matched": true,
+            "trace_node_id": "B",
+            "trace_value": "3",
+            "tree_node_id": 3,
+            "tree_value": "3"
+          },
+          {
+            "matched": true,
+            "trace_node_id": "C",
+            "trace_value": "3",
+            "tree_node_id": 4,
+            "tree_value": "3"
+          },
+          {
+            "matched": true,
+            "trace_node_id": "D",
+            "trace_value": "6",
+            "tree_node_id": 5,
+            "tree_value": "6"
+          }
+        ]
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "multi_node_dag_value_delta",
+      "row_id": "ic_exact_multinode_dag_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_multinode_dag_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "matched_exact_value_surface",
+      "details": {
+        "asserted_surfaces": [
+          "assertion_result_set",
+          "published_value_delta",
+          "candidate_publication_boundary"
+        ],
+        "trace_artifacts": {
+          "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_let_lambda_carrier_publish_001/published_view.json",
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_let_lambda_carrier_publish_001/result.json"
+        },
+        "tree_artifacts": {
+          "published_values": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/published_values.json",
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/result.json"
+        },
+        "value_pairs": [
+          {
+            "matched": true,
+            "trace_node_id": "B",
+            "trace_value": "15",
+            "tree_node_id": 3,
+            "tree_value": "15"
+          }
+        ]
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "let_lambda_capture_value_delta",
+      "row_id": "ic_exact_let_lambda_capture_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_let_lambda_carrier_publish_001",
+      "treecalc_case_id": "tc_local_let_lambda_capture_publish_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "matched_no_publication_surface",
+      "details": {
+        "asserted_surfaces": [
+          "assertion_result_set",
+          "candidate_publication_boundary",
+          "reject_is_no_publish_or_verified_clean_is_no_publish"
+        ],
+        "require_trace_reject": false,
+        "required_trace_event_family": "candidate.verified_clean",
+        "trace_artifacts": {
+          "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/rejects.json",
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/result.json",
+          "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/trace.json"
+        },
+        "trace_reject_count": 0,
+        "tree_artifacts": {
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_verified_clean_001/result.json"
+        },
+        "tree_publication_bundle_present": false
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "verified_clean_no_publication",
+      "row_id": "ic_no_publish_verified_clean_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_verify_clean_no_publish_001",
+      "treecalc_case_id": "tc_local_verified_clean_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "matched_no_publication_surface",
+      "details": {
+        "asserted_surfaces": [
+          "assertion_result_set",
+          "candidate_publication_boundary",
+          "reject_is_no_publish_or_verified_clean_is_no_publish"
+        ],
+        "require_trace_reject": true,
+        "required_trace_event_family": null,
+        "trace_artifacts": {
+          "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_reject_no_publish_001/rejects.json",
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_reject_no_publish_001/result.json",
+          "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_reject_no_publish_001/trace.json"
+        },
+        "trace_reject_count": 1,
+        "tree_artifacts": {
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json"
+        },
+        "tree_publication_bundle_present": false
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "reject_no_publication",
+      "row_id": "ic_no_publish_reject_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_reject_no_publish_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "declared_capability_gap",
+      "details": {
+        "gap_classification": "treecalc_local_dynamic_dependency_projection_gap",
+        "observed_tree_runtime_effect_families": [
+          "DynamicDependency"
+        ],
+        "promotion_policy": "gap_row_is_not_a_conformance_match",
+        "required_tree_runtime_effect_family": "DynamicDependency",
+        "trace_artifacts": {
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_dynamic_dep_switch_001/result.json"
+        },
+        "tree_artifacts": {
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/runtime_effects.json"
+        }
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "dynamic_dependency_current_local_gap",
+      "row_id": "ic_gap_dynamic_dependency_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_dynamic_dep_switch_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    },
+    {
+      "comparison_state": "declared_capability_gap",
+      "details": {
+        "gap_classification": "treecalc_local_host_sensitive_lambda_projection_gap",
+        "observed_tree_runtime_effect_families": [
+          "ExecutionRestriction"
+        ],
+        "promotion_policy": "gap_row_is_not_a_conformance_match",
+        "required_tree_runtime_effect_family": "ExecutionRestriction",
+        "trace_artifacts": {
+          "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_let_lambda_runtime_effect_001/result.json"
+        },
+        "tree_artifacts": {
+          "result": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+          "runtime_effects": "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/runtime_effects.json"
+        }
+      },
+      "failures": [],
+      "independence_note": "TraceCalc and TreeCalc artifacts are produced by different runners and input schemata; this is not a fully independent evaluator implementation.",
+      "missing_artifacts": [],
+      "observable_class": "lambda_host_sensitive_current_local_gap",
+      "row_id": "ic_gap_lambda_host_effect_001",
+      "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+      "tracecalc_scenario_id": "tc_let_lambda_runtime_effect_001",
+      "treecalc_case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001"
+    }
+  ],
+  "run_id": "post-w033-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.treecalc_tracecalc_diff.v1",
+  "tracecalc_reference_run_id": "post-w033-let-lambda-carrier-witness-001",
+  "treecalc_reference_run_id": "post-w033-independent-conformance-treecalc-001",
+  "unexpected_mismatch_count": 0
+}

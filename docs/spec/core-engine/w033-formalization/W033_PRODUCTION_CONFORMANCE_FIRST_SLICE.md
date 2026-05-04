@@ -119,3 +119,11 @@ Future non-empty `engine_diff.json` rows must be classified as follows before ch
   - OxFml fixture bridge remains open
   - LET/LAMBDA carrier comparison remains open
   - pack/capability binding has not yet consumed this evidence
+
+## 9. Post-W033 Successor Note
+
+The successor packet `W033_INDEPENDENT_CONFORMANCE_WIDENING.md` partially addresses the TreeCalc local-to-TraceCalc differential lane for `calc-y0r`.
+
+That successor evidence adds TreeCalc counterpart fixtures, emits an independent conformance packet, and reports 3 exact value matches, 2 no-publication matches, 2 declared local capability gaps, 0 missing artifacts, and 0 unexpected mismatches.
+
+The successor packet still does not promote pack-grade replay, a fully independent evaluator implementation, or continuous differential coverage.

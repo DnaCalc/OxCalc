@@ -1,0 +1,119 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+  "description": "TreeCalc-local counterpart for the TraceCalc multi-node DAG publish surface.",
+  "snapshot_id": 21,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3, 4, 5],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "A",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "3"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "B",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:tracecalc-dag-b",
+      "bind_artifact_id": "bind:tracecalc-dag-b",
+      "constant_value": null
+    },
+    {
+      "node_id": 4,
+      "kind": "calculation",
+      "symbol": "C",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:tracecalc-dag-c",
+      "bind_artifact_id": "bind:tracecalc-dag-c",
+      "constant_value": null
+    },
+    {
+      "node_id": 5,
+      "kind": "calculation",
+      "symbol": "D",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:tracecalc-dag-d",
+      "bind_artifact_id": "bind:tracecalc-dag-d",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:tracecalc-dag-b",
+      "bind_artifact_id": "bind:tracecalc-dag-b",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 4,
+      "formula_artifact_id": "formula:tracecalc-dag-c",
+      "bind_artifact_id": "bind:tracecalc-dag-c",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 5,
+      "formula_artifact_id": "formula:tracecalc-dag-d",
+      "bind_artifact_id": "bind:tracecalc-dag-d",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 3
+              }
+            }
+          },
+          "right": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 4
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "3",
+      "4": "3",
+      "5": "6"
+    },
+    "evaluation_order": [3, 4, 5]
+  }
+}

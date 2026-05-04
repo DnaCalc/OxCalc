@@ -8,6 +8,7 @@ use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
+use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
@@ -26,7 +27,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -93,6 +94,19 @@ fn run() -> Result<(), String> {
             }
             ("oxfml-bridge", run_id)
         }
+        "independent-conformance" => {
+            let Some(run_id) = args.next() else {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli independent-conformance <run-id>".to_string(),
+                );
+            };
+            if args.next().is_some() {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli independent-conformance <run-id>".to_string(),
+                );
+            }
+            ("independent-conformance", run_id)
+        }
         run_id => {
             if args.next().is_some() {
                 return Err("usage: oxcalc-tracecalc-cli <run-id>".to_string());
@@ -110,6 +124,7 @@ fn run() -> Result<(), String> {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
+        "independent-conformance" => ensure_independent_conformance_root(&repo_root)?,
         _ => ensure_repo_root(&repo_root)?,
     }
 
@@ -142,6 +157,16 @@ fn run() -> Result<(), String> {
             println!(
                 "OxFml fixture bridge run '{run_id}' projected {} fixture cases across {} families to {}.",
                 summary.fixture_case_count, summary.family_count, summary.artifact_root
+            );
+        }
+        "independent-conformance" => {
+            let runner = IndependentConformanceRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("independent conformance run failed: {error}"))?;
+            println!(
+                "Independent conformance run '{run_id}' wrote {} comparison rows to {}.",
+                summary.comparison_row_count, summary.artifact_root
             );
         }
         _ => {
@@ -205,6 +230,24 @@ fn ensure_oxfml_bridge_root(repo_root: &Path) -> Result<(), String> {
         Err(format!(
             "current directory is not the OxCalc repo root for OxFml fixture bridge runs: missing {}",
             fixture_path.display()
+        ))
+    }
+}
+
+fn ensure_independent_conformance_root(repo_root: &Path) -> Result<(), String> {
+    let trace_run = repo_root.join(
+        "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/run_summary.json",
+    );
+    let tree_run = repo_root.join(
+        "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/run_summary.json",
+    );
+    if trace_run.exists() && tree_run.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for independent conformance: missing {} or {}",
+            trace_run.display(),
+            tree_run.display()
         ))
     }
 }

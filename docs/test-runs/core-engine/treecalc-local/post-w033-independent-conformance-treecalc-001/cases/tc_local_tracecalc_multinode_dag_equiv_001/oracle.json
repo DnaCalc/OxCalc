@@ -1,0 +1,16 @@
+{
+  "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+  "expected_evaluation_order": [
+    3,
+    4,
+    5
+  ],
+  "expected_published_values": {
+    "3": "3",
+    "4": "3",
+    "5": "6"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "tc_local_verified_clean_001",
+  "counter_scope": "treecalc_local_case",
+  "counters": [
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "schema_ref": "formal/measurement/stage1_counter_schema.json"
+}

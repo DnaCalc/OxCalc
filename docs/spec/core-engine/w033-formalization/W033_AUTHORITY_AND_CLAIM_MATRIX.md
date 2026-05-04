@@ -77,7 +77,7 @@ The first downstream use of this matrix is:
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - downstream W033 packets have not yet consumed the matrix
+  - replay/witness and pack/capability packets have consumed the matrix
   - most claim rows are `source_only`, `planned`, or `existing_floor` rather than evidence-bound W033 promotions
   - no OxFml handoff is filed by this matrix
-  - Lean, TLA+, TraceCalc, production conformance, replay/witness, metamorphic, pack, handoff/watch, and closure packets remain later W033 lanes
+  - handoff/watch and closure packets remain later W033 lanes

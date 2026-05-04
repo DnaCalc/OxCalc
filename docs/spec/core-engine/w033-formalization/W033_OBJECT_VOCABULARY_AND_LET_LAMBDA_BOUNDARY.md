@@ -101,7 +101,7 @@ W033 does not claim:
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - handoff/watch rows still need `calc-uri.15` packetization
-  - Lean, TLA+, replay, conformance, and pack packets have not yet consumed these carrier facts
-  - no OxFml handoff is filed by this packet
+  - handoff/watch rows are classified by `W033_OXFML_HANDOFF_WATCH_PACKET.md`
+  - Lean, TLA+, replay, conformance, and pack packets consume carrier facts as abstract/watch inputs only
+  - no OxFml handoff is filed by this packet or by the W033 handoff/watch packet
   - no general OxFunc semantic-kernel claim is added by this packet

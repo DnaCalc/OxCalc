@@ -142,6 +142,10 @@ W033 should deliberately use several complementary formal tools rather than trea
 - W033 metamorphic and differential test-family packet: `docs/spec/core-engine/w033-formalization/W033_METAMORPHIC_DIFFERENTIAL_TEST_FAMILIES.md`
 - W033 Lean first-slice packet: `docs/spec/core-engine/w033-formalization/W033_LEAN_MODULE_FAMILY_FIRST_SLICE.md`
 - W033 TLA bridge first-slice packet: `docs/spec/core-engine/w033-formalization/W033_TLA_BRIDGE_FIRST_SLICE.md`
+- W033 replay/witness bridge packet: `docs/spec/core-engine/w033-formalization/W033_REPLAY_WITNESS_BRIDGE.md`
+- W033 pack/capability binding packet: `docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md`
+- W033 OxFml handoff/watch packet: `docs/spec/core-engine/w033-formalization/W033_OXFML_HANDOFF_WATCH_PACKET.md`
+- W033 closure audit and successor packet: `docs/spec/core-engine/w033-formalization/W033_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`
 - Existing OxCalc formal root: `formal/`
 - Existing OxCalc Lean root with W033 first slice: `formal/lean/OxCalc/CoreEngine/W033FirstSlice.lean`
 - Existing OxCalc replay/test roots:
@@ -206,10 +210,9 @@ Child bead path:
 16. `calc-uri.16` - closure audit and successor packetization.
 
 Current ready path:
-1. `calc-uri.1` is the first ready bead.
-2. `calc-uri.2`, `calc-uri.3`, and `calc-uri.4` depend on `calc-uri.1`.
-3. `calc-uri.5` depends on the first three inventory/ledger lanes.
-4. Formal, replay, conformance, pack, handoff, and closure beads remain blocked by their declared predecessor evidence.
+1. W033 child beads `calc-uri.1` through `calc-uri.16` have closure evidence.
+2. Successor beads are open and blocked on parent epic `calc-uri` until W033 parent closure.
+3. No successor bead is started by this workset closure.
 
 ## Open Guardrails
 
@@ -226,26 +229,32 @@ Current ready path:
 
 ## Pre-Closure Verification Checklist
 
-1. Spec text and realization notes updated for all in-scope items: no
-2. Pack expectations updated for affected packs: no
-3. At least one deterministic replay artifact exists per in-scope behavior: no
-4. Semantic-equivalence statement provided for policy or strategy changes: no
-5. FEC/F3E cross-repo impact assessed and handoff filed if needed: no
-6. All required tests pass: no
-7. No known semantic gaps remain in declared scope: no
-8. Completion language audit passed: no
-9. `WORKSET_REGISTER.md` updated when ordered workset truth changed: no
-10. `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed: no
-11. execution-state blocker surface updated if needed: no
+1. Spec text and realization notes updated for all in-scope items: yes
+2. Pack expectations updated for affected packs: yes
+3. At least one deterministic replay artifact exists per in-scope behavior: yes for declared W033 first-pass behavior; future behavior is successor-scoped
+4. Semantic-equivalence statement provided for policy or strategy changes: yes
+5. FEC/F3E cross-repo impact assessed and handoff filed if needed: yes; no new handoff required
+6. All required tests pass: yes
+7. No known semantic gaps remain in declared scope: yes; successor gaps are packetized
+8. Completion language audit passed: yes
+9. `WORKSET_REGISTER.md` updated when ordered workset truth changed: yes; no ordered workset truth change required
+10. `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed: yes; no feature-map truth changed
+11. execution-state blocker surface updated if needed: yes; successor beads exist in `.beads/`
 
 ## Status
 
-- execution_state: bead_rollout_created
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - parent epic `calc-uri` is open
+- execution_state: complete
+- scope_completeness: scope_complete
+- target_completeness: target_complete
+- integration_completeness: integrated
+- successor_lanes:
+  - `calc-8pe` Post-W033 direct OxFml fixture replay bridge
+  - `calc-688` Post-W033 LET LAMBDA carrier witness widening
+  - `calc-y0r` Post-W033 independent conformance widening
+  - `calc-lwh` Post-W033 pack-grade replay capability promotion
+  - `calc-rcr` Post-W033 formal model family widening
+  - `calc-8lg` Post-W033 metamorphic scale semantic binding
+- evidence:
   - source authority and artifact layout packet exists under `docs/spec/core-engine/w033-formalization/`
   - core-engine spec review ledger exists under `docs/spec/core-engine/w033-formalization/`
   - spec-evolution decision ledger exists under `docs/spec/core-engine/w033-formalization/`
@@ -258,8 +267,12 @@ Current ready path:
   - metamorphic and differential test-family packet exists under `docs/spec/core-engine/w033-formalization/`
   - Lean first-slice packet and checked Lean artifact exist
   - TLA bridge first-slice packet exists and Stage 1 smoke model was checked
-  - no new pack or handoff artifacts exist for W033
-  - broad independent production conformance remains open beyond the first W033 artifact
+  - replay/witness bridge packet exists under `docs/spec/core-engine/w033-formalization/`
+  - TraceCalc replay evidence exists under `docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/`
+  - TreeCalc replay/witness bridge evidence exists under `docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/`
+  - pack/capability binding packet exists under `docs/spec/core-engine/w033-formalization/`
+  - OxFml handoff/watch packet exists under `docs/spec/core-engine/w033-formalization/`
+  - closure audit and successor packet exists under `docs/spec/core-engine/w033-formalization/`
   - OxFml is in formalization scope as a read-only upstream/seam input
   - OxFunc semantic kernels remain out of scope except for the narrow `LET`/`LAMBDA` boundary carrier fragment
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`

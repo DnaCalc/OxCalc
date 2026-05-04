@@ -467,8 +467,9 @@ Child bead sequence:
 15. `calc-uri.15` - OxFml handoff and watch candidate packetization.
 16. `calc-uri.16` - closure audit and successor packetization.
 
-Current ready bead:
-1. `calc-uri.1`.
+Current execution state:
+1. W033 child bead artifacts are authored through `calc-uri.16`.
+2. Successor beads are blocked on parent epic `calc-uri` until parent closure.
 
 ## 8. Status
 
@@ -491,8 +492,13 @@ Current ready bead:
   - Lean first-slice packet exists at `docs/spec/core-engine/w033-formalization/W033_LEAN_MODULE_FAMILY_FIRST_SLICE.md`
   - Lean artifact exists at `formal/lean/OxCalc/CoreEngine/W033FirstSlice.lean`
   - TLA bridge first-slice packet exists at `docs/spec/core-engine/w033-formalization/W033_TLA_BRIDGE_FIRST_SLICE.md`
-  - no new replay bridge or pack artifacts have been authored by this plan
+  - replay/witness bridge packet exists at `docs/spec/core-engine/w033-formalization/W033_REPLAY_WITNESS_BRIDGE.md`
+  - TraceCalc replay evidence exists at `docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/`
+  - TreeCalc replay/witness bridge evidence exists at `docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/`
+  - pack/capability binding packet exists at `docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md`
+  - OxFml handoff/watch packet exists at `docs/spec/core-engine/w033-formalization/W033_OXFML_HANDOFF_WATCH_PACKET.md`
+  - closure audit and successor packet exists at `docs/spec/core-engine/w033-formalization/W033_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`
   - OxFml is included as a consumed formal/seam surface, but direct OxFml repo edits remain out of scope for this OxCalc pass
   - OxFunc semantic kernels are explicitly excluded, with only the narrow `LET`/`LAMBDA` carrier fragment admitted as an opaque boundary obligation
-  - the refinement relation, graph/dataflow obligations, and metamorphic test families are planning-level only
+  - successor beads exist for direct OxFml fixture replay, LET/LAMBDA carrier witnesses, independent conformance, pack-grade replay/capability promotion, formal model-family widening, and metamorphic/scale semantic binding
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`

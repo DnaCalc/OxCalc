@@ -81,10 +81,10 @@ Observed TreeCalc parity outcome:
 
 - execution_state: `replay_witness_bridge_authored`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
   - no direct OxFml fixture replay is executed inside OxCalc by this packet
   - LET/LAMBDA carrier witnesses remain watch/deferred
-  - pack/capability binding has not yet consumed this bridge
-  - handoff/watch packet has not yet consumed this bridge
+  - pack/capability binding consumes this bridge and caps replay/pack claims
+  - handoff/watch packet consumes this bridge and keeps upstream-sensitive gaps in watch/deferred lanes

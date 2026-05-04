@@ -27,7 +27,7 @@ W035 is not a promotion workset by default. It may produce a promotion candidate
 5. Deepen TLA+ exploration beyond routine smoke checks and state scheduler/Stage 2 equivalence preconditions.
 6. Define a continuous assurance and cross-engine differential gate that is stronger than single-run scale evidence.
 7. Reassess pack capability and Stage 2 readiness with machine-readable no-promotion or promotion decisions.
-8. Preserve the OxFml W073 typed conditional-formatting direction as a watch/input-contract guardrail until a concrete OxCalc request path exercises it.
+8. Preserve the OxFml W073 typed conditional-formatting direction as a watch/input-contract guardrail until a concrete OxCalc request path exercises it: `typed_rule` is required for `colorScale`, `dataBar`, `iconSet`, `top`, `bottom`, `aboveAverage`, and `belowAverage`, while W072 bounded `thresholds` strings are not interpreted for those families.
 
 ### Out Of Scope
 
@@ -81,15 +81,16 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 3. Lean/TLA artifacts must state which obligations are proved locally, assumed, bounded by model size, or external to OxCalc.
 4. Continuous assurance requires recurring evidence and cross-engine differential criteria; single-run scale timing is not correctness proof.
 5. OxFml-owned semantic or FEC/F3E changes require handoff packets rather than direct sibling-repo edits.
+6. Any W035 artifact that constructs W073 conditional-formatting aggregate or visualization payloads must emit `VerificationConditionalFormattingRule.typed_rule`; `thresholds` is retained only for scalar/operator/expression rule families where threshold text is the actual input.
 
 ## Current Status
 
-- execution_state: `planned_successor`
+- execution_state: `calc-tkq.1_residual_ledger_validated`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - all W035 child beads remain open
+  - `calc-tkq.2` through `calc-tkq.8` remain open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - optimized/core-engine verification remains open beyond W034 conformance

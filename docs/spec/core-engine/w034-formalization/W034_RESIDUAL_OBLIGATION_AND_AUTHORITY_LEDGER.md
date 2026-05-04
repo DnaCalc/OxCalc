@@ -102,6 +102,17 @@ Relevant residual effects:
 3. `W034-OBL-013` and `W034-OBL-014`: OxFml formatting/display and W073 typed-only conditional-formatting input direction remain watch rows, not local OxCalc code patches in this bead.
 4. Full Lean verification, imported OxFml formal linkage, TLA contention modeling, pack-grade replay, and Stage 2 promotion remain open lanes.
 
+## 5C. Post-`calc-e77.5` TLA Model-Family Update
+
+The W034 TLA model-family packet is now recorded at `docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md`.
+
+Relevant residual effects:
+
+1. `W034-OBL-003`: protected overlay retention and release/eviction safety now has a W034 checked TLA interleaving slice.
+2. `W034-OBL-008`: checked W034 TLA artifacts now cover stale-fence, dependency-update, overlay, and contention-precondition invariants.
+3. `W034-OBL-009`: Stage 2 contention remains explicitly blocked by missing evidence preconditions and is not promoted.
+4. Full TLA+ verification, pack-grade replay, continuous scale assurance, production scheduler equivalence, and any Stage 2 policy promotion remain open lanes.
+
 ## 6. Bead Mapping
 
 | Bead | Obligations owned |

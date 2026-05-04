@@ -42,13 +42,17 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - post-W033 smoke model for imported candidate facts, dependency closure, callable carrier visibility, protected overlays, compatible-fence publication, reject/no-publish decisions, and no Stage 2 contention promotion.
 12. `formal/tla/CoreEnginePostW033.smoke.cfg`
    - bounded smoke-model configuration for `CoreEnginePostW033`.
-13. `formal/replay/stage1-hand-authored/`
+13. `formal/tla/CoreEngineW034Interleavings.tla`
+   - W034 interleaving model for stale fences, dependency update interleavings, pinned overlay retention/release, and Stage 2 contention-precondition blocking.
+14. `formal/tla/CoreEngineW034Interleavings.smoke.cfg`
+   - bounded routine smoke-model configuration for `CoreEngineW034Interleavings`.
+15. `formal/replay/stage1-hand-authored/`
    - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
-14. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+16. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
    - first emitted harness and oracle baseline run covering `R1`, `R2`, `R7`, `R4`, and `R5` through the `TraceCalc` corpus.
-15. `formal/measurement/stage1_counter_schema.json`
+17. `formal/measurement/stage1_counter_schema.json`
    - first machine-readable Stage 1 counter schema.
-16. `formal/measurement/stage1_experiment_register.json`
+18. `formal/measurement/stage1_experiment_register.json`
    - first machine-readable Stage 1 experiment register.
 
 ## Status
@@ -60,7 +64,7 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
   - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, and W034 adds checked adjacent proof-family slices for fences, dependencies, overlays, LET/LAMBDA carriers, replay equivalence, and refinement classification
   - the broader Lean theorem backlog remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
-  - `formal/tla/CoreEngineStage1.tla` and `formal/tla/CoreEnginePostW033.tla` have bounded smoke configs for routine TLC checks
+  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, and `formal/tla/CoreEngineW034Interleavings.tla` have bounded smoke configs for routine TLC checks
   - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - wider model-check coverage and stronger TLA+ property inventory remain open
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open

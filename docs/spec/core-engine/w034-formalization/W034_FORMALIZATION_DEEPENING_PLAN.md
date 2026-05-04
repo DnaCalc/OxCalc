@@ -66,6 +66,13 @@ Current W034 Lean state after `calc-e77.4`:
 3. The four W034 Lean files and the existing Stage 1/W033 Lean files check locally.
 4. The slice does not promote full Lean verification, imported OxFml formal linkage, Stage 2 contention, pack-grade replay, or full independent evaluator diversity.
 
+Current W034 TLA state after `calc-e77.5`:
+
+1. W034 TLA interleaving artifacts now exist for stale-fence decisions, dependency updates, pinned overlay retention/release, and Stage 2 contention-precondition blocking.
+2. The W034 TLA packet is recorded at `docs/spec/core-engine/w034-formalization/W034_TLA_MODEL_FAMILY_AND_CONTENTION_PRECONDITIONS.md`.
+3. `CoreEngineStage1`, `CoreEnginePostW033`, and `CoreEngineW034Interleavings` smoke configs check locally with TLC.
+4. The slice does not promote full TLA+ verification, Stage 2 policy, pack-grade replay, continuous scale assurance, or production scheduler equivalence.
+
 ## 4. Bead-To-Artifact Plan
 
 | Bead | Primary artifact outcome |
@@ -89,13 +96,13 @@ Current W034 Lean state after `calc-e77.4`:
 
 ## 6. Current Status
 
-- execution_state: `calc-e77.4_lean_proof_family_authored`
+- execution_state: `calc-e77.5_tla_model_family_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.5` through `calc-e77.7`
-  - deeper TLA artifacts
+  - `calc-e77.6` through `calc-e77.7`
+  - broader non-routine TLA exploration and full concurrency proof
   - broader Lean theorem depth and imported OxFml formal linkage
   - pack/capability and continuous scale gate binding
   - W034 closure audit

@@ -77,6 +77,13 @@ pub enum TreeFormula {
         arguments: Vec<TreeFormula>,
         may_introduce_dynamic_dependencies: bool,
     },
+    /// Fixture-facing source carriage for OxFml helper-carrier witnesses whose
+    /// syntax cannot be represented by the structured TreeFormula subset yet.
+    RawOxfml {
+        source_text: String,
+        #[serde(default)]
+        reference_carriers: Vec<TreeReference>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -159,6 +166,14 @@ fn collect_descriptors(
         TreeFormula::FunctionCall { arguments, .. } => {
             for argument in arguments {
                 collect_descriptors(snapshot, binding, argument, next_index, descriptors);
+            }
+        }
+        TreeFormula::RawOxfml {
+            reference_carriers, ..
+        } => {
+            for reference in reference_carriers {
+                descriptors.push(lower_reference(snapshot, binding, reference, *next_index));
+                *next_index += 1;
             }
         }
     }
@@ -507,6 +522,42 @@ mod tests {
                 token: "../Missing".to_string(),
             }
             .requires_rebind_on_structural_change()
+        );
+    }
+
+    #[test]
+    fn raw_oxfml_formula_lowers_declared_reference_carriers() {
+        let snapshot = snapshot();
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:raw-let-lambda".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:raw-let-lambda".to_string())),
+            expression: TreeFormula::RawOxfml {
+                source_text: "LET(base,TREE_REF_4_0,LAMBDA(delta,base+delta)(5))".to_string(),
+                reference_carriers: vec![
+                    TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(3),
+                    },
+                    TreeReference::HostSensitive {
+                        carrier_id: "carrier:lambda.host".to_string(),
+                        detail: "call_argument_host_query".to_string(),
+                    },
+                ],
+            },
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+
+        assert_eq!(descriptors.len(), 2);
+        assert_eq!(descriptors[0].kind, DependencyDescriptorKind::StaticDirect);
+        assert_eq!(
+            descriptors[0].carrier_detail,
+            "direct_node:node:3".to_string()
+        );
+        assert_eq!(descriptors[1].kind, DependencyDescriptorKind::HostSensitive);
+        assert_eq!(
+            descriptors[1].carrier_detail,
+            "host_sensitive:carrier:lambda.host:call_argument_host_query".to_string()
         );
     }
 }

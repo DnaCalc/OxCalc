@@ -1,0 +1,89 @@
+{
+  "case_id": "tc_local_rebind_after_rename_001",
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.host_injected_failure",
+      "value": 1
+    }
+  ],
+  "diagnostic_events": [
+    "node_renamed:node:2:A_renamed"
+  ],
+  "edit_impacts": [
+    "RebindRequired"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRebindRequired"
+    }
+  ],
+  "phase": "post_edit",
+  "phase_timings": {
+    "timings_micros": {
+      "dependency_descriptor_lowering": 16,
+      "dependency_descriptor_owner_index": 6,
+      "dependency_graph_build_and_cycle_scan": 28,
+      "diagnostic_seed_collection": 6,
+      "invalidation_closure_derivation": 13,
+      "oxfml_prepare_formulas": 158,
+      "rebind_gate_scan": 1,
+      "recalc_tracker_mark_dirty_needed": 7,
+      "rejection_recording": 16,
+      "runtime_setup": 31,
+      "topological_formula_order": 16,
+      "total_engine_execute": 317
+    },
+    "timings_ms": {
+      "dependency_descriptor_lowering": 0.016,
+      "dependency_descriptor_owner_index": 0.006,
+      "dependency_graph_build_and_cycle_scan": 0.028,
+      "diagnostic_seed_collection": 0.006,
+      "invalidation_closure_derivation": 0.013,
+      "oxfml_prepare_formulas": 0.158,
+      "rebind_gate_scan": 0.001,
+      "recalc_tracker_mark_dirty_needed": 0.007,
+      "rejection_recording": 0.016,
+      "runtime_setup": 0.031,
+      "topological_formula_order": 0.016,
+      "total_engine_execute": 0.317
+    },
+    "unit": "microseconds"
+  },
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
+    "detail": "formula node node:3 requires rebind before reevaluation",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

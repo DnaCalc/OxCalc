@@ -1,0 +1,61 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_lambda_host_sensitive_reject_001",
+  "description": "A raw OxFml LAMBDA invocation with a host-sensitive argument surfaces runtime-effect visibility and rejects locally.",
+  "snapshot_id": 19,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "LambdaHost",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:lambda-host-sensitive",
+      "bind_artifact_id": "bind:lambda-host-sensitive",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:lambda-host-sensitive",
+      "bind_artifact_id": "bind:lambda-host-sensitive",
+      "expression": {
+        "RawOxfml": {
+          "source_text": "LET(f,LAMBDA(x,x),f(INFO(\"system\")))",
+          "reference_carriers": [
+            {
+              "HostSensitive": {
+                "carrier_id": "carrier:lambda.host",
+                "detail": "call_argument_host_query"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "rejected",
+    "evaluation_order": [2],
+    "reject_kind": "HostInjectedFailure",
+    "runtime_effect_kinds": [
+      "runtime_effect.host_sensitive_reference"
+    ],
+    "runtime_effect_overlay_kinds": [
+      "ExecutionRestriction"
+    ]
+  }
+}

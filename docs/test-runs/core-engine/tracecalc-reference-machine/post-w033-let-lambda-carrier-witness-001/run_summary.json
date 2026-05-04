@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001",
+  "result_counts": {
+    "passed": 15
+  },
+  "run_id": "post-w033-let-lambda-carrier-witness-001",
+  "scenario_count": 15,
+  "schema_version": "tracecalc-corpus-s1"
+}

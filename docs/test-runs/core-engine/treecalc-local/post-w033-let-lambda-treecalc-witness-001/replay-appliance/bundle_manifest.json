@@ -1,0 +1,18 @@
+{
+  "adapter_capabilities_path": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+  "bundle_kind": "treecalc_local_run",
+  "lane_id": "oxcalc_treecalc_local",
+  "preserved_view_families": [
+    "published_values",
+    "reject_set",
+    "counter_set",
+    "runtime_effect_overlay_set",
+    "retention_guardrail"
+  ],
+  "projection_status": "local_projection_validated",
+  "run_id": "post-w033-let-lambda-treecalc-witness-001",
+  "run_manifest_path": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001/replay-appliance/runs/post-w033-let-lambda-treecalc-witness-001/run_manifest.json",
+  "schema_version": "oxcalc.treecalc.replay_appliance_bundle.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001",
+  "validation_path": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001/replay-appliance/validation/bundle_validation.json"
+}

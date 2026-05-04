@@ -166,6 +166,28 @@
         "host-sensitive",
         "runtime-effect-overlay"
       ]
+    },
+    {
+      "case_id": "tc_local_let_lambda_capture_publish_001",
+      "path": "cases/tc_local_let_lambda_capture_publish_001.json",
+      "tags": [
+        "local-sequential",
+        "let-lambda",
+        "capture",
+        "dependency-visibility",
+        "publish"
+      ]
+    },
+    {
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "path": "cases/tc_local_lambda_host_sensitive_reject_001.json",
+      "tags": [
+        "local-sequential",
+        "let-lambda",
+        "host-sensitive",
+        "runtime-effect-overlay",
+        "rejected"
+      ]
     }
   ]
 }

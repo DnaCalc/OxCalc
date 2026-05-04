@@ -1,0 +1,12 @@
+[
+  {
+    "affected_node_ids": [
+      2
+    ],
+    "diagnostic_events": [
+      "node_removed:node:2"
+    ],
+    "impact": "Removal",
+    "snapshot_id": 13
+  }
+]

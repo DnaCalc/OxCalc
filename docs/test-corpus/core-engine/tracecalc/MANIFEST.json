@@ -152,6 +152,51 @@
         "hand-auditable",
         "w014"
       ]
+    },
+    {
+      "scenario_id": "tc_let_lambda_carrier_publish_001",
+      "path": "hand-auditable/tc_let_lambda_carrier_publish_001.json",
+      "focus": [
+        "let-lambda-carrier",
+        "capture",
+        "dependency-visibility"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w033",
+        "let-lambda"
+      ]
+    },
+    {
+      "scenario_id": "tc_let_lambda_invocation_reject_001",
+      "path": "hand-auditable/tc_let_lambda_invocation_reject_001.json",
+      "focus": [
+        "let-lambda-carrier",
+        "arity",
+        "invocation-contract"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w033",
+        "let-lambda"
+      ]
+    },
+    {
+      "scenario_id": "tc_let_lambda_runtime_effect_001",
+      "path": "hand-auditable/tc_let_lambda_runtime_effect_001.json",
+      "focus": [
+        "let-lambda-carrier",
+        "runtime-effect-visibility",
+        "replay-identity"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w033",
+        "let-lambda"
+      ]
     }
   ]
 }

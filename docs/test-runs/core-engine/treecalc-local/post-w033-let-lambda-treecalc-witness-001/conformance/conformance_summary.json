@@ -1,0 +1,8 @@
+{
+  "case_count": 19,
+  "conformance_pass_count": 19,
+  "engine_diff_path": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001/conformance/engine_diff.json",
+  "expectation_mismatch_count": 0,
+  "mismatch_case_count": 0,
+  "oracle_baseline_path": "docs/test-runs/core-engine/treecalc-local/post-w033-let-lambda-treecalc-witness-001/conformance/oracle_baseline.json"
+}

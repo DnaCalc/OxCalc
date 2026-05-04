@@ -1,0 +1,40 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.commit_atomicity"
+    ],
+    "replay_classes": [
+      "R7"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "assertion_result_set"
+    ],
+    "safety_properties": [
+      "S3"
+    ],
+    "transition_labels": [
+      "I1",
+      "I2",
+      "I4"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_verify_clean_no_publish_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/replay-appliance/reductions/tc_verify_clean_no_publish_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/scenarios/tc_verify_clean_no_publish_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/replay-appliance/witnesses/tc_verify_clean_no_publish_001--witness-seed/lifecycle.json"
+  },
+  "validation_failures": []
+}

@@ -1501,6 +1501,15 @@ impl TranslationState<'_> {
                     arguments.join(",")
                 )
             }
+            TreeFormula::RawOxfml {
+                source_text,
+                reference_carriers,
+            } => {
+                for reference in reference_carriers {
+                    let _ = self.translate_reference(reference);
+                }
+                source_text.trim_start_matches('=').to_string()
+            }
         }
     }
 

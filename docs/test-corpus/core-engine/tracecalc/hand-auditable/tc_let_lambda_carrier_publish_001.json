@@ -1,0 +1,225 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_let_lambda_carrier_publish_001",
+  "description": "LET-bound helper lambda captures a visible dependency and publishes through a stable carrier identity",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "let-lambda",
+    "capture",
+    "dependency-visibility",
+    "publication"
+  ],
+  "pack_tags": [
+    "stage1",
+    "let-lambda-carrier"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "A",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 10
+        }
+      },
+      {
+        "node_id": "B",
+        "kind": "value",
+        "expr": {
+          "op": "let_lambda_invoke",
+          "carrier_id": "carrier:lambda:add_base",
+          "origin_kind": "HelperLambda",
+          "capture_names": [
+            "base"
+          ],
+          "parameter_names": [
+            "delta"
+          ],
+          "invocation_contract_ref": "oxfml.helper_lambda.invoke.v1",
+          "deps": [
+            "A"
+          ]
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": 10
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "B"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-let-lambda",
+      "compatibility_basis": "s0",
+      "targets": [
+        "B"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-let-lambda",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "B",
+          "value": 15
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "B",
+          "kind": "let_lambda_capture_dependency",
+          "dep_id": "A",
+          "payload": {
+            "callable_id": "carrier:lambda:add_base",
+            "origin_kind": "HelperLambda",
+            "capture_names": [
+              "base"
+            ],
+            "parameter_names": [
+              "delta"
+            ],
+            "arity": 1,
+            "required_arity": 1,
+            "invocation_contract_ref": "oxfml.helper_lambda.invoke.v1",
+            "dependency_visible": true,
+            "runtime_effect_visible": false
+          }
+        }
+      ],
+      "runtime_effects": [],
+      "diagnostic_events": [
+        "callable_carrier_origin:HelperLambda",
+        "callable_profile:arity=1;required_arity=1;captures=base;params=delta;body=Binary",
+        "callable_replay_identity:carrier:lambda:add_base"
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-let-lambda",
+      "publication_id": "pub-let-lambda"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "A",
+          "value": 10
+        },
+        {
+          "node_id": "B",
+          "value": 15
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 1
+      },
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R7"
+    ],
+    "pack_bindings": [
+      "PACK.let_lambda.carrier_identity",
+      "PACK.dag.dependency_bind_semantics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates",
+      "callable_carrier_identity"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S3"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3",
+      "I8"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_let_lambda_carrier_publish_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "callable-carrier-publish",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "carrier-origin-capture-dependency",
+        "step_ids": [
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_let_lambda_runtime_effect_001",
+  "description": "helper lambda invocation carries runtime-effect visibility and replay identity",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "let-lambda",
+    "runtime-effect",
+    "replay-identity"
+  ],
+  "pack_tags": [
+    "stage1",
+    "let-lambda-carrier"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "H",
+        "kind": "value",
+        "expr": {
+          "op": "let_lambda_invoke",
+          "carrier_id": "carrier:lambda:host_sensitive_arg",
+          "origin_kind": "HelperLambda",
+          "invocation_contract_ref": "oxfml.helper_lambda.invoke.v1",
+          "runtime_effect_visible": true
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": []
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "H"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-lambda-runtime-effect",
+      "compatibility_basis": "s0",
+      "targets": [
+        "H"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-lambda-runtime-effect",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "H",
+          "value": 1
+        }
+      ],
+      "dependency_shape_updates": [],
+      "runtime_effects": [
+        {
+          "effect_kind": "callable_runtime_effect_visible",
+          "owner_node_id": "H",
+          "payload": {
+            "callable_id": "carrier:lambda:host_sensitive_arg",
+            "origin_kind": "HelperLambda",
+            "invocation_contract_ref": "oxfml.helper_lambda.invoke.v1",
+            "runtime_effect_family": "ExecutionRestriction",
+            "runtime_effect_visible": true,
+            "replay_identity": "carrier:lambda:host_sensitive_arg#runtime-effect"
+          }
+        }
+      ],
+      "diagnostic_events": [
+        "callable_runtime_effect_visible:true",
+        "callable_replay_identity:carrier:lambda:host_sensitive_arg#runtime-effect"
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-lambda-runtime-effect",
+      "publication_id": "pub-lambda-runtime-effect"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "H",
+          "value": 1
+        }
+      ]
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R9"
+    ],
+    "pack_bindings": [
+      "PACK.let_lambda.runtime_effect_visibility",
+      "PACK.fec.commit_atomicity"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "runtime_effects",
+      "callable_carrier_identity"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S3"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3",
+      "I8"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_let_lambda_runtime_effect_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "callable-runtime-effect-publish",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3",
+          "st4"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "runtime-effect-visibility",
+        "step_ids": [
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [],
+    "view_slices": [
+      {
+        "view_slice_id": "published/current",
+        "view_kind": "published_view",
+        "view_id": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_let_lambda_capture_publish_001",
+  "description": "A raw OxFml LET/LAMBDA formula captures a direct dependency and publishes through the local TreeCalc runtime.",
+  "snapshot_id": 18,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "Base",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "10"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "LambdaCapture",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:let-lambda-capture",
+      "bind_artifact_id": "bind:let-lambda-capture",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:let-lambda-capture",
+      "bind_artifact_id": "bind:let-lambda-capture",
+      "expression": {
+        "RawOxfml": {
+          "source_text": "LET(base,TREE_REF_3_0,LAMBDA(delta,base+delta)(5))",
+          "reference_carriers": [
+            {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "15"
+    },
+    "evaluation_order": [3]
+  }
+}

@@ -1,0 +1,197 @@
+[
+  {
+    "focus": [
+      "candidate-publication-boundary",
+      "accept-publish"
+    ],
+    "path": "hand-auditable/tc_accept_publish_001.json",
+    "scenario_id": "tc_accept_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "reject-is-no-publish",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_reject_no_publish_001.json",
+    "scenario_id": "tc_reject_no_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "pinned-view",
+      "stable-reader"
+    ],
+    "path": "hand-auditable/tc_pinned_view_stability_001.json",
+    "scenario_id": "tc_pinned_view_stability_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "dynamic-dependency",
+      "runtime-effects"
+    ],
+    "path": "hand-auditable/tc_dynamic_dep_switch_001.json",
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "overlay-retention",
+      "runtime-effects"
+    ],
+    "path": "hand-auditable/tc_overlay_retention_001.json",
+    "scenario_id": "tc_overlay_retention_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "scale-seed",
+      "generator-metadata"
+    ],
+    "path": "hand-auditable/tc_scale_chain_seed_001.json",
+    "scenario_id": "tc_scale_chain_seed_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "scale"
+    ]
+  },
+  {
+    "focus": [
+      "verify-clean",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_verify_clean_no_publish_001.json",
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "multi-node-dag",
+      "topo-scheduling"
+    ],
+    "path": "hand-auditable/tc_multinode_dag_publish_001.json",
+    "scenario_id": "tc_multinode_dag_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "publication-fence-reject",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_publication_fence_reject_001.json",
+    "scenario_id": "tc_publication_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "artifact-token-reject",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_artifact_token_reject_001.json",
+    "scenario_id": "tc_artifact_token_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "fallback-reentry",
+      "overlay-reuse"
+    ],
+    "path": "hand-auditable/tc_fallback_reentry_001.json",
+    "scenario_id": "tc_fallback_reentry_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "cycle-region",
+      "scc-handling"
+    ],
+    "path": "hand-auditable/tc_cycle_region_reject_001.json",
+    "scenario_id": "tc_cycle_region_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "capture",
+      "dependency-visibility"
+    ],
+    "path": "hand-auditable/tc_let_lambda_carrier_publish_001.json",
+    "scenario_id": "tc_let_lambda_carrier_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "arity",
+      "invocation-contract"
+    ],
+    "path": "hand-auditable/tc_let_lambda_invocation_reject_001.json",
+    "scenario_id": "tc_let_lambda_invocation_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "runtime-effect-visibility",
+      "replay-identity"
+    ],
+    "path": "hand-auditable/tc_let_lambda_runtime_effect_001.json",
+    "scenario_id": "tc_let_lambda_runtime_effect_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  }
+]

@@ -1,0 +1,156 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_let_lambda_invocation_reject_001",
+  "description": "helper lambda invocation arity mismatch rejects without publishing",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "let-lambda",
+    "arity",
+    "invocation-contract",
+    "rejected"
+  ],
+  "pack_tags": [
+    "stage1",
+    "let-lambda-carrier"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "L",
+        "kind": "value",
+        "expr": {
+          "op": "lambda_value",
+          "carrier_id": "carrier:lambda:requires_one_arg",
+          "origin_kind": "HelperLambda",
+          "arity": 1,
+          "required_arity": 1,
+          "invocation_contract_ref": "oxfml.helper_lambda.invoke.v1"
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": []
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "L"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-lambda-arity",
+      "compatibility_basis": "s0",
+      "targets": [
+        "L"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-lambda-arity",
+      "reject_kind": "lambda_invocation_contract_mismatch",
+      "reject_detail_text": "callable carrier carrier:lambda:requires_one_arg expected required_arity=1 observed_arity=0 under oxfml.helper_lambda.invoke.v1",
+      "diagnostic_events": [
+        "callable_carrier_origin:HelperLambda",
+        "callable_required_arity:1",
+        "callable_observed_arity:0"
+      ]
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": []
+    },
+    "pinned_views": [],
+    "trace_labels": [
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "rejects_by_class.lambda_invocation_contract_mismatch",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "fallback_affected_work_volume",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-lambda-arity",
+        "reject_kind": "lambda_invocation_contract_mismatch",
+        "detail_contains": "required_arity=1 observed_arity=0"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R8"
+    ],
+    "pack_bindings": [
+      "PACK.let_lambda.invocation_contract",
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "callable_carrier_identity",
+      "assertion_result_set"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6",
+      "I8"
+    ]
+  },
+  "witness_anchors": {
+    "scenario_anchor_id": "tc_let_lambda_invocation_reject_001/scenario",
+    "phase_blocks": [
+      {
+        "phase_block_id": "callable-invocation-reject",
+        "step_ids": [
+          "st1",
+          "st2",
+          "st3"
+        ]
+      }
+    ],
+    "event_groups": [
+      {
+        "event_group_id": "arity-contract",
+        "step_ids": [
+          "st3"
+        ]
+      }
+    ],
+    "reject_records": [
+      {
+        "reject_record_id": "reject/lambda-arity",
+        "reject_id": "rej-lambda-arity"
+      }
+    ],
+    "view_slices": []
+  }
+}

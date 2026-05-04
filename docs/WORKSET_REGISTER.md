@@ -236,3 +236,19 @@ It does mean:
    core spec review and correction ledger, spec-evolution decision ledger, historical no-loss crosswalk, authority inventory, vocabulary alignment, formal leverage mapping, observable-surface/refinement packet, Lean model widening, TLA+ model widening, replay and witness bridge, pack and capability binding, OxFml handoff/watch lane, closure audit
 7. rollout_mode:
    `execution_target`
+
+### W034 Core Formalization Deepening And Implementation Verification
+1. purpose:
+   deepen the post-W033 formalization from first-pass and successor-slice evidence into a broader proof/model/replay/conformance tranche that can support later implementation improvement, pack-gate decisions, and Stage 2 precondition assessment without treating the current specs or current implementation as immutable targets.
+2. depends_on:
+   `W033`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W034_CORE_FORMALIZATION_DEEPENING_AND_IMPLEMENTATION_VERIFICATION.md`, `docs/spec/core-engine/w034-formalization/W034_FORMALIZATION_DEEPENING_PLAN.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALC_OXFML_FORMALIZATION_PASS_PLAN.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W034 residual obligations are explicitly mapped from W033 and current inbound OxFml notes, TraceCalc oracle coverage is widened for the declared tranche, optimized/core-engine conformance is checked against that oracle surface, Lean and TLA model families are deepened with checked artifacts, pack/capability and continuous scale gates state their actual evidence consequence, Stage 2 contention remains unpromoted unless its gates are satisfied, and any spec evolution, implementation fault, OxFml handoff pressure, or successor lane is recorded rather than left as prose memory.
+6. initial_epic_lanes:
+   residual obligation and authority ledger, TraceCalc oracle deepening, optimized/core-engine conformance widening, Lean proof-family deepening, TLA model-family and contention preconditions, pack/capability and continuous scale gate binding, closure audit and successor packetization
+7. rollout_mode:
+   `execution_target`

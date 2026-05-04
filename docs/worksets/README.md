@@ -45,7 +45,9 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 5. `W029` TreeCalc runtime-derived effects and overlay closure,
 6. `W030` TreeCalc corpus/oracle and first sequential baseline,
 7. `W031` TreeCalc assurance refresh and residual packetization,
-8. `W032` OxCalc beads migration and light doctrine reorientation.
+8. `W032` OxCalc beads migration and light doctrine reorientation,
+9. `W033` OxCalc + OxFml core formalization pass,
+10. `W034` core formalization deepening and implementation verification.
 
 ## Historical Note
 

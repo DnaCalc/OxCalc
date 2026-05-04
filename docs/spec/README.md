@@ -74,6 +74,8 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
   - active planning companion for W033, defining the OxCalc-local formalization and spec-evolution pass over OxCalc plus read-only OxFml evaluator/FEC/F3E seam surfaces; treats current implementation behavior and current spec text as evidence surfaces rather than immutable final targets, includes TraceCalc-as-oracle refinement planning, historical no-loss review, and the narrow `LET`/`LAMBDA` boundary carrier fragment while excluding general OxFunc semantic kernels.
 - `docs/spec/core-engine/w033-formalization/`
   - active W033 spec-evidence artifact root for source-freeze, review-ledger, authority-matrix, refinement, formal, replay, pack, handoff/watch, and closure-audit packets.
+- `docs/spec/core-engine/w034-formalization/`
+  - active W034 planning and evidence artifact root for post-W033 formalization deepening, TraceCalc oracle widening, optimized/core-engine conformance widening, Lean/TLA model-family deepening, pack/capability gate binding, and OxFml seam-watch intake.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 

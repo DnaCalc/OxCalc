@@ -111,6 +111,11 @@ OxFunc may appear only as an opaque provider of prepared-call outcomes and funct
 
 ## 3. Source Authority Set
 
+The W033 entry source freeze and artifact layout are recorded in
+`docs/spec/core-engine/w033-formalization/W033_SOURCE_AUTHORITY_AND_ARTIFACT_LAYOUT.md`.
+That packet pins the OxCalc, OxFml, and Foundation source bases used by the pass,
+declares the W033 artifact root, and records local tool availability.
+
 ### 3.1 OxCalc Sources
 
 1. `README.md`
@@ -423,15 +428,19 @@ Each pack row must identify whether the claim is:
 2. Whether Lean and TLA artifacts stay only in OxCalc or are later proposed for Green-owned promotion.
 3. Cross-lane trace-schema split between OxCalc and OxFml.
 4. Cross-lane fixture selection for the first minimal witness set.
-5. Whether existing OxFml formal artifacts should be referenced by path only or mirrored into OxCalc as non-authoritative snapshots.
-6. Replay capability claim target for the first pass.
-7. Pack rows that remain planning-only versus locally exercised.
-8. Exact first artifact shape for the `LET`/`LAMBDA` OxFml/OxFunc boundary fragment.
-9. Core-engine spec review ledger format and first document sweep order.
-10. First refinement relation shape between TraceCalc and production/core-engine behavior.
-11. First metamorphic test families that should graduate into TraceCalc or TreeCalc evidence.
-12. Historical no-loss crosswalk format and first recovered/deferred idea set.
-13. Spec-evolution decision ledger format and first classification taxonomy.
+5. Replay capability claim target for the first pass.
+6. Pack rows that remain planning-only versus locally exercised.
+7. Exact first artifact shape for the `LET`/`LAMBDA` OxFml/OxFunc boundary fragment.
+8. Core-engine spec review ledger format and first document sweep order.
+9. First refinement relation shape between TraceCalc and production/core-engine behavior.
+10. First metamorphic test families that should graduate into TraceCalc or TreeCalc evidence.
+11. Historical no-loss crosswalk format and first recovered/deferred idea set.
+12. Spec-evolution decision ledger format and first classification taxonomy.
+
+Resolved entry-layout decisions:
+1. W033 spec-evidence packets live under `docs/spec/core-engine/w033-formalization/`.
+2. Existing OxFml formal artifacts are referenced by path and upstream revision, not mirrored into OxCalc by default.
+3. Existing OxCalc formal/replay roots remain the target for Lean, TLA+, replay, measurement, and run artifacts unless a later bead declares a more specific root first.
 
 ## 7A. Bead Rollout
 
@@ -469,11 +478,20 @@ Current ready bead:
 - integration_completeness: partial
 - open_lanes:
   - parent epic `calc-uri` is open
-  - first ready child bead is `calc-uri.1`
-  - no core-engine spec review ledger has been authored yet
-  - no spec-evolution decision ledger has been authored yet
-  - no historical no-loss crosswalk has been authored yet
-  - no new Lean, TLA+, replay, or pack artifacts have been authored by this plan
+  - source authority and artifact layout packet exists under `docs/spec/core-engine/w033-formalization/`
+  - core-engine spec review ledger exists at `docs/spec/core-engine/w033-formalization/W033_CORE_SPEC_REVIEW_LEDGER.md`
+  - spec-evolution decision ledger exists at `docs/spec/core-engine/w033-formalization/W033_SPEC_EVOLUTION_DECISION_LEDGER.md`
+  - historical no-loss crosswalk exists at `docs/spec/core-engine/w033-formalization/W033_HISTORICAL_NO_LOSS_CROSSWALK.md`
+  - authority and claim matrix exists at `docs/spec/core-engine/w033-formalization/W033_AUTHORITY_AND_CLAIM_MATRIX.md`
+  - object vocabulary and `LET`/`LAMBDA` boundary packet exists at `docs/spec/core-engine/w033-formalization/W033_OBJECT_VOCABULARY_AND_LET_LAMBDA_BOUNDARY.md`
+  - TraceCalc observable-surface/refinement packet exists at `docs/spec/core-engine/w033-formalization/W033_TRACECALC_REFINEMENT_PACKET.md`
+  - TraceCalc oracle self-check first slice exists at `docs/spec/core-engine/w033-formalization/W033_TRACECALC_ORACLE_SELF_CHECK_FIRST_SLICE.md`
+  - production/core-engine conformance first slice exists at `docs/spec/core-engine/w033-formalization/W033_PRODUCTION_CONFORMANCE_FIRST_SLICE.md`
+  - metamorphic and differential test-family packet exists at `docs/spec/core-engine/w033-formalization/W033_METAMORPHIC_DIFFERENTIAL_TEST_FAMILIES.md`
+  - Lean first-slice packet exists at `docs/spec/core-engine/w033-formalization/W033_LEAN_MODULE_FAMILY_FIRST_SLICE.md`
+  - Lean artifact exists at `formal/lean/OxCalc/CoreEngine/W033FirstSlice.lean`
+  - TLA bridge first-slice packet exists at `docs/spec/core-engine/w033-formalization/W033_TLA_BRIDGE_FIRST_SLICE.md`
+  - no new replay bridge or pack artifacts have been authored by this plan
   - OxFml is included as a consumed formal/seam surface, but direct OxFml repo edits remain out of scope for this OxCalc pass
   - OxFunc semantic kernels are explicitly excluded, with only the narrow `LET`/`LAMBDA` carrier fragment admitted as an opaque boundary obligation
   - the refinement relation, graph/dataflow obligations, and metamorphic test families are planning-level only

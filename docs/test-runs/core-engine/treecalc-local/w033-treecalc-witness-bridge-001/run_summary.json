@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001",
+  "case_count": 17,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 9,
+    "rejected": 7,
+    "verified_clean": 1
+  },
+  "run_id": "w033-treecalc-witness-bridge-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

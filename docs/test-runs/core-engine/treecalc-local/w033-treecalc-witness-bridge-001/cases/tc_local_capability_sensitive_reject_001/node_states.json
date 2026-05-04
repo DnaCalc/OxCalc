@@ -1,0 +1,10 @@
+[
+  {
+    "node_id": 1,
+    "state": "Clean"
+  },
+  {
+    "node_id": 2,
+    "state": "RejectedPendingRepair"
+  }
+]

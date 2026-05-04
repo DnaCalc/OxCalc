@@ -1,0 +1,21 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "residual:carrier:capability:host_function_availability",
+      "descriptor_id": "bind:formula:cap:oxfml_residual:0",
+      "kind": "CapabilitySensitive",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:cap:oxfml_residual:0",
+      "detail": "residual:carrier:capability:host_function_availability",
+      "kind": "CapabilitySensitiveReference"
+    }
+  ],
+  "edges": []
+}

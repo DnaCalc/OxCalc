@@ -129,7 +129,21 @@ W033 should deliberately use several complementary formal tools rather than trea
 ### Evidence Layout
 
 - Canonical planning artifact: `docs/spec/core-engine/CORE_ENGINE_OXCALC_OXFML_FORMALIZATION_PASS_PLAN.md`
+- W033 spec-evidence artifact root: `docs/spec/core-engine/w033-formalization/`
+- W033 source freeze and layout packet: `docs/spec/core-engine/w033-formalization/W033_SOURCE_AUTHORITY_AND_ARTIFACT_LAYOUT.md`
+- W033 core spec review ledger: `docs/spec/core-engine/w033-formalization/W033_CORE_SPEC_REVIEW_LEDGER.md`
+- W033 spec-evolution decision ledger: `docs/spec/core-engine/w033-formalization/W033_SPEC_EVOLUTION_DECISION_LEDGER.md`
+- W033 historical no-loss crosswalk: `docs/spec/core-engine/w033-formalization/W033_HISTORICAL_NO_LOSS_CROSSWALK.md`
+- W033 authority and claim matrix: `docs/spec/core-engine/w033-formalization/W033_AUTHORITY_AND_CLAIM_MATRIX.md`
+- W033 object vocabulary and `LET`/`LAMBDA` boundary packet: `docs/spec/core-engine/w033-formalization/W033_OBJECT_VOCABULARY_AND_LET_LAMBDA_BOUNDARY.md`
+- W033 TraceCalc refinement packet: `docs/spec/core-engine/w033-formalization/W033_TRACECALC_REFINEMENT_PACKET.md`
+- W033 TraceCalc oracle self-check first slice: `docs/spec/core-engine/w033-formalization/W033_TRACECALC_ORACLE_SELF_CHECK_FIRST_SLICE.md`
+- W033 production/core-engine conformance first slice: `docs/spec/core-engine/w033-formalization/W033_PRODUCTION_CONFORMANCE_FIRST_SLICE.md`
+- W033 metamorphic and differential test-family packet: `docs/spec/core-engine/w033-formalization/W033_METAMORPHIC_DIFFERENTIAL_TEST_FAMILIES.md`
+- W033 Lean first-slice packet: `docs/spec/core-engine/w033-formalization/W033_LEAN_MODULE_FAMILY_FIRST_SLICE.md`
+- W033 TLA bridge first-slice packet: `docs/spec/core-engine/w033-formalization/W033_TLA_BRIDGE_FIRST_SLICE.md`
 - Existing OxCalc formal root: `formal/`
+- Existing OxCalc Lean root with W033 first slice: `formal/lean/OxCalc/CoreEngine/W033FirstSlice.lean`
 - Existing OxCalc replay/test roots:
   - `formal/replay/`
   - `docs/test-corpus/core-engine/tracecalc/`
@@ -232,14 +246,20 @@ Current ready path:
 - integration_completeness: partial
 - open_lanes:
   - parent epic `calc-uri` is open
-  - first ready child bead is `calc-uri.1`
-  - the authority matrix is not yet authored
-  - the core-engine spec review ledger is not yet authored
-  - the spec-evolution decision ledger is not yet authored
-  - the historical no-loss crosswalk is not yet authored
-  - the observable-surface/refinement-relation packet is not yet authored
-  - no new Lean, TLA+, replay, pack, or handoff artifacts exist for W033
-  - TraceCalc oracle and production/core-engine conformance lanes have not yet been separated into first W033 artifacts
+  - source authority and artifact layout packet exists under `docs/spec/core-engine/w033-formalization/`
+  - core-engine spec review ledger exists under `docs/spec/core-engine/w033-formalization/`
+  - spec-evolution decision ledger exists under `docs/spec/core-engine/w033-formalization/`
+  - historical no-loss crosswalk exists under `docs/spec/core-engine/w033-formalization/`
+  - authority and claim matrix exists under `docs/spec/core-engine/w033-formalization/`
+  - object vocabulary and `LET`/`LAMBDA` boundary packet exists under `docs/spec/core-engine/w033-formalization/`
+  - TraceCalc observable-surface/refinement-relation packet exists under `docs/spec/core-engine/w033-formalization/`
+  - TraceCalc oracle self-check first slice exists under `docs/spec/core-engine/w033-formalization/`
+  - production/core-engine conformance first slice exists under `docs/spec/core-engine/w033-formalization/`
+  - metamorphic and differential test-family packet exists under `docs/spec/core-engine/w033-formalization/`
+  - Lean first-slice packet and checked Lean artifact exist
+  - TLA bridge first-slice packet exists and Stage 1 smoke model was checked
+  - no new pack or handoff artifacts exist for W033
+  - broad independent production conformance remains open beyond the first W033 artifact
   - OxFml is in formalization scope as a read-only upstream/seam input
   - OxFunc semantic kernels remain out of scope except for the narrow `LET`/`LAMBDA` boundary carrier fragment
 - reviewed_inbound_observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`

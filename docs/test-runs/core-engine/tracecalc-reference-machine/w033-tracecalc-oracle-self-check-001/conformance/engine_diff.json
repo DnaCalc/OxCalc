@@ -1,0 +1,74 @@
+[
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_accept_publish_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_reject_no_publish_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_pinned_view_stability_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_dynamic_dep_switch_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_overlay_retention_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_scale_chain_seed_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_verify_clean_no_publish_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_multinode_dag_publish_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_publication_fence_reject_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_artifact_token_reject_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_fallback_reentry_001"
+  },
+  {
+    "engine_result_state": "passed",
+    "mismatches": [],
+    "oracle_result_state": "passed",
+    "scenario_id": "tc_cycle_region_reject_001"
+  }
+]

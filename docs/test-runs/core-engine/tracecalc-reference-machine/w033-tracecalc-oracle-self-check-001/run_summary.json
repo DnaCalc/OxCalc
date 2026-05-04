@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001",
+  "result_counts": {
+    "passed": 12
+  },
+  "run_id": "w033-tracecalc-oracle-self-check-001",
+  "scenario_count": 12,
+  "schema_version": "tracecalc-corpus-s1"
+}

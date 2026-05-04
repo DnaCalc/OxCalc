@@ -1,0 +1,7 @@
+{
+  "missing_paths": [],
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.bundle_validation.v1",
+  "status": "bundle_valid",
+  "validated_required_artifact_count": 10
+}

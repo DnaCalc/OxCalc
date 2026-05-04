@@ -1,0 +1,297 @@
+{
+  "case_count": 9,
+  "cases": [
+    {
+      "action": "execute_commit",
+      "case_id": "session_001_commit",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "accepted",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(7)",
+        "phase": "Committed",
+        "prepared_function_ids": [],
+        "reject_code": null,
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "AcceptedCandidateResultBuilt",
+          "CommitAccepted"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "capability_only",
+      "case_id": "session_002_capability_denied",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Rejected",
+        "prepared_function_ids": [],
+        "reject_code": "CapabilityDenied",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "RejectIssued"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=INFO(\"directory\")",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "abort_before_execute",
+      "case_id": "session_003_abort",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Aborted",
+        "prepared_function_ids": [],
+        "reject_code": "SessionTerminated",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "SessionAborted"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "expire_before_execute",
+      "case_id": "session_004_expire",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Expired",
+        "prepared_function_ids": [],
+        "reject_code": "SessionTerminated",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "SessionExpired"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "execute_twice",
+      "case_id": "session_005_execute_twice",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Rejected",
+        "prepared_function_ids": [],
+        "reject_code": "StructuralConflict",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "AcceptedCandidateResultBuilt",
+          "RejectIssued"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "commit_without_execute",
+      "case_id": "session_006_commit_without_execute",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Rejected",
+        "prepared_function_ids": [],
+        "reject_code": "StructuralConflict",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "CommitRejected"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "contention_execute_rejected",
+      "case_id": "session_008_contention_execute_rejected",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Rejected",
+        "prepared_function_ids": [],
+        "reject_code": "StructuralConflict",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "RejectIssued"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=INFO(\"directory\")",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "execute_commit_rejected",
+      "case_id": "session_007_commit_stale_fence",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": "Rejected",
+        "prepared_function_ids": [],
+        "reject_code": "FenceMismatch",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "AcceptedCandidateResultBuilt",
+          "CommitRejected"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "action": "execute_commit",
+      "case_id": "session_009_external_provider_execute_commit",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "accepted",
+        "dependency_consequence_evidence_classes": [
+          "dynamic_reference_deferred"
+        ],
+        "dynamic_reference_failure_classes": [
+          "external_reference_deferred"
+        ],
+        "evaluation_error_contains": null,
+        "overlay_families": [
+          "dependency_overlay",
+          "runtime_async_overlay"
+        ],
+        "payload_summary": "ErrorCode(Ref)",
+        "phase": "Committed",
+        "prepared_function_ids": [],
+        "reject_code": null,
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": [
+          "SessionOpened",
+          "CapabilityViewEstablished",
+          "AcceptedCandidateResultBuilt",
+          "CommitAccepted"
+        ]
+      },
+      "family_id": "session_lifecycle",
+      "formula": "=[Book.xlsx]Sheet2!A1",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    }
+  ],
+  "comparison_scope": "current outcome comparison for shared accept/reject/fence classes",
+  "family_id": "session_lifecycle",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.family_projection.v1",
+  "semantic_surface": "session phase, capability, contention, and commit lifecycle facts",
+  "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+}

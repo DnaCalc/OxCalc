@@ -1,0 +1,476 @@
+{
+  "comparison_row_count": 45,
+  "deferred_comparison_count": 39,
+  "matched_comparison_count": 6,
+  "mismatch_count": 0,
+  "missing_evidence_count": 0,
+  "rows": [
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_accept_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_accept_publish_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        },
+        {
+          "artifact_path": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/cases/tc_local_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_local_publish_001",
+          "current_run_id": "w033-treecalc-witness-bridge-001",
+          "engine": "treecalc",
+          "expected_result_state": "published",
+          "observed_result_state": "published"
+        }
+      ],
+      "family_id": "fec_commit",
+      "fixture_case_id": "fec_001_accept",
+      "handoff_trigger": false,
+      "observable_class": "accepted_publication",
+      "rationale": "FEC accepted candidate/commit aligns with current TraceCalc publish and TreeCalc local publication witnesses"
+    },
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_artifact_token_reject_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_artifact_token_reject_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        }
+      ],
+      "family_id": "fec_commit",
+      "fixture_case_id": "fec_002_formula_token_reject",
+      "handoff_trigger": false,
+      "observable_class": "formula_token_reject_no_publish",
+      "rationale": "OxFml formula-token fence reject aligns with current TraceCalc artifact-token reject; TreeCalc has no token-fence counterpart yet"
+    },
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_reject_no_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_reject_no_publish_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        },
+        {
+          "artifact_path": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_local_capability_sensitive_reject_001",
+          "current_run_id": "w033-treecalc-witness-bridge-001",
+          "engine": "treecalc",
+          "expected_result_state": "rejected",
+          "observed_result_state": "rejected"
+        }
+      ],
+      "family_id": "fec_commit",
+      "fixture_case_id": "fec_003_capability_view_reject",
+      "handoff_trigger": false,
+      "observable_class": "capability_view_reject_no_publish",
+      "rationale": "OxFml capability-view fence reject aligns with TraceCalc reject/no-publish and TreeCalc capability-sensitive reject witnesses"
+    },
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_accept_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_accept_publish_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        },
+        {
+          "artifact_path": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/cases/tc_local_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_local_publish_001",
+          "current_run_id": "w033-treecalc-witness-bridge-001",
+          "engine": "treecalc",
+          "expected_result_state": "published",
+          "observed_result_state": "published"
+        }
+      ],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_001_commit",
+      "handoff_trigger": false,
+      "observable_class": "session_commit_accepted_publication",
+      "rationale": "OxFml committed session path aligns with current accepted-publication witnesses"
+    },
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_reject_no_publish_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_reject_no_publish_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        },
+        {
+          "artifact_path": "docs/test-runs/core-engine/treecalc-local/w033-treecalc-witness-bridge-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_local_capability_sensitive_reject_001",
+          "current_run_id": "w033-treecalc-witness-bridge-001",
+          "engine": "treecalc",
+          "expected_result_state": "rejected",
+          "observed_result_state": "rejected"
+        }
+      ],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_002_capability_denied",
+      "handoff_trigger": false,
+      "observable_class": "session_capability_denied_no_publish",
+      "rationale": "OxFml capability denial aligns with current reject/no-publish and capability-sensitive local rejection witnesses"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_003_abort",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_004_expire",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_005_execute_twice",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_006_commit_without_execute",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_008_contention_execute_rejected",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "matched_current_evidence",
+      "current_outcomes": [
+        {
+          "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w033-tracecalc-oracle-self-check-001/scenarios/tc_publication_fence_reject_001/result.json",
+          "comparison_state": "matched",
+          "current_case_id": "tc_publication_fence_reject_001",
+          "current_run_id": "w033-tracecalc-oracle-self-check-001",
+          "engine": "tracecalc",
+          "expected_result_state": "passed",
+          "observed_result_state": "passed"
+        }
+      ],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_007_commit_stale_fence",
+      "handoff_trigger": false,
+      "observable_class": "session_stale_fence_reject_no_publish",
+      "rationale": "OxFml stale-fence commit rejection aligns with the current TraceCalc publication-fence reject witness"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "session_lifecycle",
+      "fixture_case_id": "session_009_external_provider_execute_commit",
+      "handoff_trigger": false,
+      "rationale": "no current TraceCalc/TreeCalc scenario is a specific counterpart for this fixture case"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_001_sum_name",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_002_text_locale",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_003_info_host_query",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_004_cell_reference_visible",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_005_let_helper_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_006_legacy_single_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_007_lambda_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_008_lambda_invoke_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_009_let_lambda_invoke_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_011_row_caller_context",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_012_column_area_reference",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_013_indirect_reference_result",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_014_offset_reference_result",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_015_iferror_fallback",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_010_lambda_capture_trace",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_016_external_reference_deferred",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_017_lambda_ignores_unused_helper_binding",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_018_lambda_parameter_shadowing",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_019_nested_returned_lambda_invoke",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_020_helper_bound_returned_lambda_value",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_021_if_branch_laziness_local",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "prepared_call",
+      "fixture_case_id": "prepared_022_iferror_fallback_laziness_local",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_001_map_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_002_map_defined_name_callable",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_003_reduce_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_004_scan_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_005_byrow_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_006_bycol_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_007_makearray_inline_lambda",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_008_isomitted_top_level_present_arg",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_009_isomitted_lambda_present_arg",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_010_isomitted_underapplication_is_value_error",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    },
+    {
+      "comparison_state": "deferred_no_current_counterpart",
+      "current_outcomes": [],
+      "family_id": "higher_order_callable",
+      "fixture_case_id": "higher_order_011_map_isomitted_present_args",
+      "handoff_trigger": false,
+      "rationale": "direct OxCalc prepared-call/callable-carrier witnesses are successor-scoped"
+    }
+  ],
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.comparison_summary.v1",
+  "source_fixture_index_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/fixture_index.json",
+  "tracecalc_reference_run_id": "w033-tracecalc-oracle-self-check-001",
+  "treecalc_reference_run_id": "w033-treecalc-witness-bridge-001"
+}

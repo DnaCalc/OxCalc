@@ -1,0 +1,24 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001",
+  "claimed_capability": "projection_and_current_evidence_comparison",
+  "excluded_capabilities": [
+    "direct_evaluator_reexecution",
+    "pack_grade_replay",
+    "general_oxfunc_kernel_validation"
+  ],
+  "required_root_artifacts": [
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/fixture_index.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/fec_commit.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/session_lifecycle.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/prepared_call.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/higher_order_callable.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/comparisons/comparison_summary.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/handoff/handoff_watch.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json"
+  ],
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.bundle_manifest.v1",
+  "source_fixture_root": "../OxFml/crates/oxfml_core/tests/fixtures"
+}

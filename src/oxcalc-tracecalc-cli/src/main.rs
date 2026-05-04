@@ -8,6 +8,7 @@ use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
+use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
 
@@ -25,7 +26,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -83,6 +84,15 @@ fn run() -> Result<(), String> {
             }
             ("retained-failures", run_id)
         }
+        "oxfml-bridge" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli oxfml-bridge <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli oxfml-bridge <run-id>".to_string());
+            }
+            ("oxfml-bridge", run_id)
+        }
         run_id => {
             if args.next().is_some() {
                 return Err("usage: oxcalc-tracecalc-cli <run-id>".to_string());
@@ -99,6 +109,7 @@ fn run() -> Result<(), String> {
     match mode {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
+        "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
         _ => ensure_repo_root(&repo_root)?,
     }
 
@@ -121,6 +132,16 @@ fn run() -> Result<(), String> {
             println!(
                 "TraceCalc retained-failure run '{run_id}' wrote {} cases to {}.",
                 summary.case_count, summary.artifact_root
+            );
+        }
+        "oxfml-bridge" => {
+            let runner = OxFmlFixtureBridgeRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("OxFml fixture bridge run failed: {error}"))?;
+            println!(
+                "OxFml fixture bridge run '{run_id}' projected {} fixture cases across {} families to {}.",
+                summary.fixture_case_count, summary.family_count, summary.artifact_root
             );
         }
         _ => {
@@ -171,6 +192,19 @@ fn ensure_treecalc_root(repo_root: &Path) -> Result<(), String> {
         Err(format!(
             "current directory is not the OxCalc repo root for treecalc runs: missing {}",
             manifest_path.display()
+        ))
+    }
+}
+
+fn ensure_oxfml_bridge_root(repo_root: &Path) -> Result<(), String> {
+    let fixture_path =
+        repo_root.join("../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json");
+    if fixture_path.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not the OxCalc repo root for OxFml fixture bridge runs: missing {}",
+            fixture_path.display()
         ))
     }
 }

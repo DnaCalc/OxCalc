@@ -1,0 +1,33 @@
+{
+  "comparison_summary_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/comparisons/comparison_summary.json",
+  "concrete_upstream_mismatch_count": 0,
+  "decision": "no_new_handoff_required",
+  "deferred_successor_beads": [
+    "calc-688",
+    "calc-y0r",
+    "calc-lwh",
+    "calc-rcr",
+    "calc-8lg"
+  ],
+  "handoff_register_update_required": false,
+  "handoff_triggered": false,
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.handoff_watch.v1",
+  "watch_rows": [
+    {
+      "classification_after_bridge": "no_new_handoff_required",
+      "surface": "FEC candidate/commit/reject/fence facts",
+      "watch_id": "W033-HW-001"
+    },
+    {
+      "classification_after_bridge": "projection_bridge_present_no_upstream_mismatch",
+      "surface": "Direct OxFml fixture replay inside OxCalc",
+      "watch_id": "W033-HW-009"
+    },
+    {
+      "classification_after_bridge": "successor_scoped_to_calc-688",
+      "surface": "LET/LAMBDA minimum callable carrier",
+      "watch_id": "W033-HW-002"
+    }
+  ]
+}

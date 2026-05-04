@@ -1,0 +1,42 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001",
+  "families": [
+    {
+      "case_count": 3,
+      "comparison_scope": "direct current TraceCalc/TreeCalc outcome comparison where mapped",
+      "family_id": "fec_commit",
+      "projection_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/fec_commit.json",
+      "semantic_surface": "FEC candidate, commit, fence, and reject facts",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json"
+    },
+    {
+      "case_count": 9,
+      "comparison_scope": "current outcome comparison for shared accept/reject/fence classes",
+      "family_id": "session_lifecycle",
+      "projection_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/session_lifecycle.json",
+      "semantic_surface": "session phase, capability, contention, and commit lifecycle facts",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/session_lifecycle_replay_cases.json"
+    },
+    {
+      "case_count": 22,
+      "comparison_scope": "projection-only until OxCalc has direct prepared-call witnesses",
+      "family_id": "prepared_call",
+      "projection_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/prepared_call.json",
+      "semantic_surface": "OxFml prepared-call argument and result-carrier facts",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "case_count": 11,
+      "comparison_scope": "projection-only; successor LET/LAMBDA bead owns exercised carrier widening",
+      "family_id": "higher_order_callable",
+      "projection_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/family-projections/higher_order_callable.json",
+      "semantic_surface": "higher-order callable result and array payload facts",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/higher_order_callable_cases.json"
+    }
+  ],
+  "family_count": 4,
+  "fixture_case_count": 45,
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.fixture_index.v1",
+  "source_fixture_root": "../OxFml/crates/oxfml_core/tests/fixtures"
+}

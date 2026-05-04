@@ -1,0 +1,17 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001",
+  "bundle_validation_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json",
+  "comparison_row_count": 45,
+  "comparison_summary_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/comparisons/comparison_summary.json",
+  "deferred_comparison_count": 39,
+  "family_count": 4,
+  "fixture_case_count": 45,
+  "fixture_index_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/fixture_index.json",
+  "handoff_triggered": false,
+  "handoff_watch_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/handoff/handoff_watch.json",
+  "matched_comparison_count": 6,
+  "mismatch_count": 0,
+  "missing_evidence_count": 0,
+  "run_id": "post-w033-direct-oxfml-fixture-bridge-001",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.run_summary.v1"
+}

@@ -1,0 +1,91 @@
+{
+  "case_count": 3,
+  "cases": [
+    {
+      "action": null,
+      "case_id": "fec_001_accept",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "accepted",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(42)",
+        "phase": null,
+        "prepared_function_ids": [],
+        "reject_code": null,
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": []
+      },
+      "family_id": "fec_commit",
+      "formula": null,
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "fec_002_formula_token_reject",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": null,
+        "prepared_function_ids": [],
+        "reject_code": "FenceMismatch",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": []
+      },
+      "family_id": "fec_commit",
+      "formula": null,
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "fec_003_capability_view_reject",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": null,
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": "rejected",
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": null,
+        "phase": null,
+        "prepared_function_ids": [],
+        "reject_code": "FenceMismatch",
+        "result_class": null,
+        "result_structure_class": null,
+        "trace_event_kinds": []
+      },
+      "family_id": "fec_commit",
+      "formula": null,
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json"
+    }
+  ],
+  "comparison_scope": "direct current TraceCalc/TreeCalc outcome comparison where mapped",
+  "family_id": "fec_commit",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.family_projection.v1",
+  "semantic_surface": "FEC candidate, commit, fence, and reject facts",
+  "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/fec_commit_replay_cases.json"
+}

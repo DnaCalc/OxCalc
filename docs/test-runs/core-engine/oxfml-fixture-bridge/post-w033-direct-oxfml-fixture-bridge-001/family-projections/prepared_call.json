@@ -1,0 +1,725 @@
+{
+  "case_count": 22,
+  "cases": [
+    {
+      "action": null,
+      "case_id": "prepared_001_sum_name",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(7)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.SUM"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=SUM(InputValue,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_002_text_locale",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "locale_format_context"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Text(1234.57)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.TEXT"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=TEXT(1234.567,\"0.00\")",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_003_info_host_query",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "host_query"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Text(C:\\Work)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.INFO"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=INFO(\"directory\")",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_004_cell_reference_visible",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context",
+          "host_query"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Text([Book1]Sheet1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.CELL"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=CELL(\"filename\",A1)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_005_let_helper_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(3)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.OP_ADD",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(x,1,x+2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_006_legacy_single_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context",
+          "legacy_single_compat"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(7)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LEGACY_SINGLE"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=_xlfn.SINGLE(A1)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_007_lambda_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": {
+          "arity": 1,
+          "capture_mode": "NoCapture",
+          "invocation_model": "TypedInvocationOnly",
+          "origin_kind": "HelperLambda"
+        },
+        "callable_profile": "arity=1;required_arity=1;params=x;optional_params=-;captures=-;body=Binary",
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Lambda(arity=1;required_arity=1;params=x;optional_params=-;captures=-;body=Binary)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LAMBDA(x,x+1)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_008_lambda_invoke_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(3)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA_INVOKE",
+          "FUNC.OP_ADD"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LAMBDA(x,x+1)(2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_009_let_lambda_invoke_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(3)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LAMBDA_INVOKE",
+          "FUNC.OP_ADD",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(f,LAMBDA(x,x+1),f(2))",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_011_row_caller_context",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.ROW"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=ROW()",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_012_column_area_reference",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Array(1x2)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.COLUMN"
+        ],
+        "reject_code": null,
+        "result_class": "Array",
+        "result_structure_class": "ArrayLike",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=COLUMN(A1:B2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_013_indirect_reference_result",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Reference(A1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.INDIRECT"
+        ],
+        "reject_code": null,
+        "result_class": "Reference",
+        "result_structure_class": "ReferenceVisible",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=INDIRECT(\"A1\")",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_014_offset_reference_result",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "caller_context"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Reference(A1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.OFFSET"
+        ],
+        "reject_code": null,
+        "result_class": "Reference",
+        "result_structure_class": "ReferenceVisible",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=OFFSET(A1,0,0)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_015_iferror_fallback",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(2)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.IFERROR"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=IFERROR(UnknownName,2)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_010_lambda_capture_trace",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": {
+          "arity": 1,
+          "capture_mode": "LexicalCapture",
+          "invocation_model": "TypedInvocationOnly",
+          "origin_kind": "HelperLambda"
+        },
+        "callable_profile": "arity=1;required_arity=1;params=y;optional_params=-;captures=x;body=Binary",
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Lambda(arity=1;required_arity=1;params=y;optional_params=-;captures=x;body=Binary)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(x,10,LAMBDA(y,x+y))",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_016_external_reference_deferred",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "external_reference"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Error(Ref)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.EXTERNAL_REFERENCE_DEFERRED"
+        ],
+        "reject_code": null,
+        "result_class": "Error",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=[Book.xlsx]Sheet2!A1",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_017_lambda_ignores_unused_helper_binding",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": {
+          "arity": 1,
+          "capture_mode": "LexicalCapture",
+          "invocation_model": "TypedInvocationOnly",
+          "origin_kind": "HelperLambda"
+        },
+        "callable_profile": "arity=1;required_arity=1;params=y;optional_params=-;captures=x;body=Binary",
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Lambda(arity=1;required_arity=1;params=y;optional_params=-;captures=x;body=Binary)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(x,10,unused,99,LAMBDA(y,x+y))",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_018_lambda_parameter_shadowing",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": {
+          "arity": 1,
+          "capture_mode": "NoCapture",
+          "invocation_model": "TypedInvocationOnly",
+          "origin_kind": "HelperLambda"
+        },
+        "callable_profile": "arity=1;required_arity=1;params=x;optional_params=-;captures=-;body=Binary",
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Lambda(arity=1;required_arity=1;params=x;optional_params=-;captures=-;body=Binary)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(x,10,LAMBDA(x,x+1))",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_019_nested_returned_lambda_invoke",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(15)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA_INVOKE",
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LAMBDA_INVOKE",
+          "FUNC.OP_ADD"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LAMBDA(n,LAMBDA(x,x+n))(5)(10)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_020_helper_bound_returned_lambda_value",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": {
+          "arity": 1,
+          "capture_mode": "LexicalCapture",
+          "invocation_model": "TypedInvocationOnly",
+          "origin_kind": "HelperLambda"
+        },
+        "callable_profile": "arity=1;required_arity=1;params=x;optional_params=-;captures=n;body=Binary",
+        "capability_dependencies": [
+          "helper_environment"
+        ],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Lambda(arity=1;required_arity=1;params=x;optional_params=-;captures=n;body=Binary)",
+        "phase": null,
+        "prepared_function_ids": [
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LAMBDA_INVOKE",
+          "SPECIAL.LAMBDA",
+          "SPECIAL.LET"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=LET(adder,LAMBDA(n,LAMBDA(x,x+n)),adder(5))",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_021_if_branch_laziness_local",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.IF"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=IF(TRUE,1,1/0)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    },
+    {
+      "action": null,
+      "case_id": "prepared_022_iferror_fallback_laziness_local",
+      "expected": {
+        "array_logicals": null,
+        "array_numbers": null,
+        "blankness_class": "NonBlank",
+        "callable_carrier": null,
+        "callable_profile": null,
+        "capability_dependencies": [],
+        "decision": null,
+        "dependency_consequence_evidence_classes": [],
+        "dynamic_reference_failure_classes": [],
+        "evaluation_error_contains": null,
+        "overlay_families": [],
+        "payload_summary": "Number(1)",
+        "phase": null,
+        "prepared_function_ids": [
+          "FUNC.IFERROR"
+        ],
+        "reject_code": null,
+        "result_class": "Scalar",
+        "result_structure_class": "DirectScalar",
+        "trace_event_kinds": []
+      },
+      "family_id": "prepared_call",
+      "formula": "=IFERROR(1,1/0)",
+      "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+    }
+  ],
+  "comparison_scope": "projection-only until OxCalc has direct prepared-call witnesses",
+  "family_id": "prepared_call",
+  "schema_version": "oxcalc.oxfml_fixture_bridge.family_projection.v1",
+  "semantic_surface": "OxFml prepared-call argument and result-carrier facts",
+  "source_fixture_path": "../OxFml/crates/oxfml_core/tests/fixtures/prepared_call_replay_cases.json"
+}

@@ -50,7 +50,7 @@ W034 starts with these relevant readings:
 
 | Bead | Primary artifact outcome |
 |---|---|
-| `calc-e77.1` | W034 residual obligation and authority ledger under this directory. |
+| `calc-e77.1` | W034 residual obligation and authority ledger under this directory: `W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md`. |
 | `calc-e77.2` | Widened TraceCalc scenarios, deterministic run root, and oracle self-check packet. |
 | `calc-e77.3` | Optimized/core-engine conformance comparison runner or widened runner output, with mismatch classification. |
 | `calc-e77.4` | Checked Lean artifacts and proof-obligation map. |
@@ -74,8 +74,7 @@ W034 starts with these relevant readings:
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.1` through `calc-e77.7`
-  - detailed residual obligation ledger
+  - `calc-e77.2` through `calc-e77.7`
   - widened TraceCalc oracle evidence
   - optimized/core-engine conformance evidence
   - deeper Lean and TLA artifacts

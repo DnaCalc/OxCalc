@@ -96,11 +96,10 @@ The child path is intentionally sequential for the first tranche. Later W034 chi
 
 ## Current Status
 
-- execution_state: `planned`
+- execution_state: `in_progress`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - W034 child beads are open
-  - W034 residual obligation ledger has not yet reached its gate
+  - W034 child beads `calc-e77.2` through `calc-e77.7` remain open
   - TraceCalc, conformance, Lean, TLA, pack/scale, and audit evidence remain future W034 child work

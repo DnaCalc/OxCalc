@@ -91,6 +91,17 @@ Relevant residual effects:
 3. `W034-OBL-006`: the widened comparison still does not promote fully independent evaluator implementation diversity.
 4. `W034-OBL-012`: a W034 Raw OxFml higher-order value fixture exists locally; broader direct OxFml fixture bridge depth remains open.
 
+## 5B. Post-`calc-e77.4` Lean Proof-Family Update
+
+The W034 Lean proof-family packet is now recorded at `docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md`.
+
+Relevant residual effects:
+
+1. `W034-OBL-004`: the Lean surface now separates value-surface refinement from full callable metadata refinement for the higher-order `LET`/`LAMBDA` carrier lane.
+2. `W034-OBL-007`: checked adjacent Lean files now cover publication fences, dependency closure, overlay safety, LET/LAMBDA carrier/replay facts, and refinement classification.
+3. `W034-OBL-013` and `W034-OBL-014`: OxFml formatting/display and W073 typed-only conditional-formatting input direction remain watch rows, not local OxCalc code patches in this bead.
+4. Full Lean verification, imported OxFml formal linkage, TLA contention modeling, pack-grade replay, and Stage 2 promotion remain open lanes.
+
 ## 6. Bead Mapping
 
 | Bead | Obligations owned |

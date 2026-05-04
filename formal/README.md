@@ -20,23 +20,35 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 3. `formal/lean/OxCalc/CoreEngine/W033PostSlice.lean`
    - post-W033 Lean widening for FEC bridge/fence compatibility, dependency closure, overlay retention, callable carrier visibility, replay equivalence, and no Stage 2 contention promotion.
    - exercised with a local `lean formal/lean/OxCalc/CoreEngine/W033PostSlice.lean` typecheck run.
-4. `formal/tla/CoreEngineStage1.tla`
+4. `formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean`
+   - W034 publication-fence proof slice for snapshot, compatibility, capability-view, reject/no-publish, and atomic-publication facts.
+   - exercised with a local `lean formal/lean/OxCalc/CoreEngine/W034PublicationFences.lean` typecheck run.
+5. `formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean`
+   - W034 dependency-closure and protected-overlay proof slice for static, runtime, dynamic-shape update, retention, and safety facts.
+   - exercised with a local `lean formal/lean/OxCalc/CoreEngine/W034DependenciesOverlays.lean` typecheck run.
+6. `formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean`
+   - W034 `LET`/`LAMBDA` callable-carrier and replay-equivalent independent-order proof slice.
+   - exercised with a local `lean formal/lean/OxCalc/CoreEngine/W034LetLambdaReplay.lean` typecheck run.
+7. `formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean`
+   - W034 conformance-classification and refinement-obligation proof slice.
+   - exercised with a local `lean formal/lean/OxCalc/CoreEngine/W034RefinementObligations.lean` typecheck run.
+8. `formal/tla/CoreEngineStage1.tla`
    - first TLA+ skeleton for Stage 1 coordinator, publication, reject, pin, and recalc actions.
-5. `formal/tla/CoreEngineStage1.cfg`
+9. `formal/tla/CoreEngineStage1.cfg`
    - deeper exploration configuration for the Stage 1 TLA+ module.
-6. `formal/tla/CoreEngineStage1.smoke.cfg`
+10. `formal/tla/CoreEngineStage1.smoke.cfg`
    - bounded smoke-model configuration for quick local TLC verification.
-7. `formal/tla/CoreEnginePostW033.tla`
+11. `formal/tla/CoreEnginePostW033.tla`
    - post-W033 smoke model for imported candidate facts, dependency closure, callable carrier visibility, protected overlays, compatible-fence publication, reject/no-publish decisions, and no Stage 2 contention promotion.
-8. `formal/tla/CoreEnginePostW033.smoke.cfg`
+12. `formal/tla/CoreEnginePostW033.smoke.cfg`
    - bounded smoke-model configuration for `CoreEnginePostW033`.
-9. `formal/replay/stage1-hand-authored/`
+13. `formal/replay/stage1-hand-authored/`
    - first hand-authored replay artifact slice for `R1`, `R2`, and `R7`.
-10. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
+14. `docs/test-runs/core-engine/tracecalc-reference-machine/w013-sequence-a-baseline/`
    - first emitted harness and oracle baseline run covering `R1`, `R2`, `R7`, `R4`, and `R5` through the `TraceCalc` corpus.
-11. `formal/measurement/stage1_counter_schema.json`
+15. `formal/measurement/stage1_counter_schema.json`
    - first machine-readable Stage 1 counter schema.
-12. `formal/measurement/stage1_experiment_register.json`
+16. `formal/measurement/stage1_experiment_register.json`
    - first machine-readable Stage 1 experiment register.
 
 ## Status
@@ -45,7 +57,7 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, and the post-W033 successor slice widens checked theorem coverage
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, and W034 adds checked adjacent proof-family slices for fences, dependencies, overlays, LET/LAMBDA carriers, replay equivalence, and refinement classification
   - the broader Lean theorem backlog remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
   - `formal/tla/CoreEngineStage1.tla` and `formal/tla/CoreEnginePostW033.tla` have bounded smoke configs for routine TLC checks

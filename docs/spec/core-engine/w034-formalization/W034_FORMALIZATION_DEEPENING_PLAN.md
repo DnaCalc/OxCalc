@@ -48,7 +48,7 @@ W034 starts with these relevant readings:
 
 Current W034 intake after `calc-e77.2`:
 
-1. OxFml now treats `VerificationConditionalFormattingRule.typed_rule` as the active input contract for the W073 aggregate and visualization families.
+1. OxFml now treats `VerificationConditionalFormattingRule.typed_rule` as the typed-only input contract for the W073 aggregate and visualization families, and intentionally ignores bounded `thresholds` strings for those families.
 2. The W034 TraceCalc oracle-deepening slice does not construct those conditional-formatting packets.
 3. No OxCalc code-path patch or OxFml handoff is required by this TraceCalc slice.
 
@@ -58,6 +58,13 @@ Current W034 conformance state after `calc-e77.3`:
 2. Independent conformance now targets `w034-tracecalc-oracle-deepening-001` and `w034-independent-conformance-treecalc-001`.
 3. The W034 comparison packet emits 15 rows: 5 exact value matches, 3 no-publication matches, 1 lifecycle match, 6 declared local gaps, 0 missing artifacts, and 0 unexpected mismatches.
 4. Declared gaps remain non-promoting rows; fully independent evaluator diversity, pack-grade replay, Lean/TLA proof depth, continuous scale gates, and Stage 2 promotion remain later W034 lanes.
+
+Current W034 Lean state after `calc-e77.4`:
+
+1. W034 adjacent Lean proof-family slices now exist for publication fences, dependency closure, overlay safety, LET/LAMBDA carrier/replay facts, and refinement classification.
+2. The W034 Lean packet is recorded at `docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md`.
+3. The four W034 Lean files and the existing Stage 1/W033 Lean files check locally.
+4. The slice does not promote full Lean verification, imported OxFml formal linkage, Stage 2 contention, pack-grade replay, or full independent evaluator diversity.
 
 ## 4. Bead-To-Artifact Plan
 
@@ -82,12 +89,13 @@ Current W034 conformance state after `calc-e77.3`:
 
 ## 6. Current Status
 
-- execution_state: `calc-e77.3_independent_conformance_widening_authored`
+- execution_state: `calc-e77.4_lean_proof_family_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.4` through `calc-e77.7`
-  - deeper Lean and TLA artifacts
+  - `calc-e77.5` through `calc-e77.7`
+  - deeper TLA artifacts
+  - broader Lean theorem depth and imported OxFml formal linkage
   - pack/capability and continuous scale gate binding
   - W034 closure audit

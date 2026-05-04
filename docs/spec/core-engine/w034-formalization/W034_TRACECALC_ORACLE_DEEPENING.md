@@ -26,7 +26,7 @@ Current inbound OxFml formatting changes were reviewed before this run:
 
 1. `format_delta` and `display_delta` remain distinct canonical seam categories.
 2. Broader display-facing closure remains deferred unless a concrete publication or replay mismatch appears.
-3. OxFml's W073 first slice now treats `VerificationConditionalFormattingRule.typed_rule` metadata as the active input contract for `colorScale`, `dataBar`, `iconSet`, `top`, `bottom`, `aboveAverage`, and `belowAverage` option families.
+3. OxFml's W073 slice now treats `VerificationConditionalFormattingRule.typed_rule` metadata as the typed-only input contract for `colorScale`, `dataBar`, `iconSet`, `top`, `bottom`, `aboveAverage`, and `belowAverage` option families; bounded `thresholds` strings are intentionally ignored for those families.
 4. The W034 TraceCalc scenarios in this bead do not construct `VerificationConditionalFormattingRule` or conditional-formatting payloads.
 
 Decision for this bead: `no_local_formatting_patch_required`.

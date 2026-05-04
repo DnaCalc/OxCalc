@@ -96,10 +96,11 @@ The child path is intentionally sequential for the first tranche. Later W034 chi
 
 ## Current Status
 
-- execution_state: `calc-e77.3_independent_conformance_widening_authored`
+- execution_state: `calc-e77.4_lean_proof_family_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - W034 child beads `calc-e77.4` through `calc-e77.7` remain open
-  - Lean, TLA, pack/scale, and audit evidence remain future W034 child work
+  - W034 child beads `calc-e77.5` through `calc-e77.7` remain open
+  - TLA, pack/scale, and audit evidence remain future W034 child work
+  - broader Lean theorem depth and imported OxFml formal linkage remain open beyond the checked W034 proof-family slice

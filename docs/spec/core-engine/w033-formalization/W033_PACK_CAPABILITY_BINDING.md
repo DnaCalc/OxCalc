@@ -99,3 +99,17 @@ Capability limit statement: W033 may cite local C0-C4 TraceCalc evidence and loc
   - OxFml handoff/watch packet consumes this binding and does not file a new handoff
   - closure audit has not yet consumed this binding
   - capability rows above current C3/C4 local evidence remain deferred
+
+## 9. Post-W033 Successor Note
+
+The successor packet `W033_PACK_CAPABILITY_POST_W033_DECISION.md` consumes post-W033 direct OxFml fixture projection, LET/LAMBDA carrier witnesses, and independent conformance widening evidence.
+
+The resulting decision remains conservative:
+
+1. target capability: `cap.C5.pack_valid`,
+2. decision status: `capability_not_promoted`,
+3. highest honest capability: `cap.C4.distill_valid`,
+4. missing artifacts: 0,
+5. no-promotion reasons: 8 machine-readable blocker ids.
+
+The successor packet therefore preserves this binding document's non-promotion rule rather than overriding it.

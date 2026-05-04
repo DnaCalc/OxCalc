@@ -1,0 +1,24 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001",
+  "claimed_capability": "pack_governance_decision_packet",
+  "excluded_capabilities": [
+    "cap.C5.pack_valid",
+    "continuous_cross_engine_diff_suite",
+    "fully_independent_evaluator_implementation"
+  ],
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "required_artifacts": [
+    "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/run_summary.json",
+    "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/decision/pack_capability_decision.json",
+    "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/evidence/evidence_index.json",
+    "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/pack-capability/post-w033-pack-capability-decision-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json",
+    "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+    "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/post-w033-independent-conformance-001/run_summary.json"
+  ],
+  "run_id": "post-w033-pack-capability-decision-001",
+  "schema_version": "oxcalc.pack_capability.bundle_manifest.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

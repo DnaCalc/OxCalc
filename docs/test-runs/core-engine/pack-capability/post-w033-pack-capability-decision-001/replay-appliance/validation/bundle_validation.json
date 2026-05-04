@@ -1,0 +1,9 @@
+{
+  "decision_status": "capability_not_promoted",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_paths": [],
+  "run_id": "post-w033-pack-capability-decision-001",
+  "schema_version": "oxcalc.pack_capability.validation.v1",
+  "status": "bundle_valid",
+  "validated_required_artifact_count": 9
+}

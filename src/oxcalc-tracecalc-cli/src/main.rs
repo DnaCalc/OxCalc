@@ -10,6 +10,7 @@ use oxcalc_core::treecalc_scale::{
 };
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
+use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
 
@@ -27,7 +28,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -107,6 +108,15 @@ fn run() -> Result<(), String> {
             }
             ("independent-conformance", run_id)
         }
+        "pack-capability" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli pack-capability <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli pack-capability <run-id>".to_string());
+            }
+            ("pack-capability", run_id)
+        }
         run_id => {
             if args.next().is_some() {
                 return Err("usage: oxcalc-tracecalc-cli <run-id>".to_string());
@@ -125,6 +135,7 @@ fn run() -> Result<(), String> {
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
         "independent-conformance" => ensure_independent_conformance_root(&repo_root)?,
+        "pack-capability" => ensure_pack_capability_root(&repo_root)?,
         _ => ensure_repo_root(&repo_root)?,
     }
 
@@ -167,6 +178,16 @@ fn run() -> Result<(), String> {
             println!(
                 "Independent conformance run '{run_id}' wrote {} comparison rows to {}.",
                 summary.comparison_row_count, summary.artifact_root
+            );
+        }
+        "pack-capability" => {
+            let runner = PackCapabilityRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("pack capability run failed: {error}"))?;
+            println!(
+                "Pack capability run '{run_id}' wrote decision '{}' with {} blockers to {}.",
+                summary.decision_status, summary.blocker_count, summary.artifact_root
             );
         }
         _ => {
@@ -248,6 +269,24 @@ fn ensure_independent_conformance_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for independent conformance: missing {} or {}",
             trace_run.display(),
             tree_run.display()
+        ))
+    }
+}
+
+fn ensure_pack_capability_root(repo_root: &Path) -> Result<(), String> {
+    let retained_decision = repo_root.join(
+        "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json",
+    );
+    let independent_summary = repo_root.join(
+        "docs/test-runs/core-engine/independent-conformance/post-w033-independent-conformance-001/run_summary.json",
+    );
+    if retained_decision.exists() && independent_summary.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for pack capability decision: missing {} or {}",
+            retained_decision.display(),
+            independent_summary.display()
         ))
     }
 }

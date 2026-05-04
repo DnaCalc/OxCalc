@@ -72,6 +72,14 @@ Future Lean module-family split, if W033 continues widening beyond this first sl
 
 The current checked artifact keeps these in one file to avoid introducing unproven import/build complexity before the first W033 slice typechecks.
 
+## 6.1 Post-W033 Successor Slice
+
+The successor packet `W033_FORMAL_MODEL_FAMILY_WIDENING.md` adds `formal/lean/OxCalc/CoreEngine/W033PostSlice.lean`.
+
+That artifact widens the checked Lean surface for FEC bridge and publication fence compatibility, reject/no-publish, dependency closure, protected overlay retention, `LET`/`LAMBDA` carrier visibility, replay-equivalent histories, and explicit no-promotion of Stage 2 contention.
+
+It remains additive to this first slice. It does not promote pack-grade replay, full OxFunc semantics, or Stage 2 concurrency policy.
+
 ## 7. Status
 
 - execution_state: `lean_first_slice_checked`
@@ -80,6 +88,6 @@ The current checked artifact keeps these in one file to avoid introducing unprov
 - integration_completeness: `partial`
 - open_lanes:
   - Lean module-family split remains future work
-  - most first-pass theorem families are backlog, not checked proof
+  - the post-W033 successor slice checks additional theorem families, but broader proof depth remains open
   - no OxFml formal artifact is modified by this packet
   - pack/capability binding has not yet consumed this Lean evidence

@@ -80,6 +80,17 @@ This packet does not yet model:
 5. broad concurrency/contention behavior,
 6. production scheduling-policy equivalence.
 
+## 6.1 Post-W033 Successor Slice
+
+The successor packet `W033_FORMAL_MODEL_FAMILY_WIDENING.md` adds:
+
+1. `formal/tla/CoreEnginePostW033.tla`,
+2. `formal/tla/CoreEnginePostW033.smoke.cfg`.
+
+The new smoke model covers imported candidate facts, static and runtime dependency closure, callable carrier visibility, protected overlay safety, compatible-fence publication, reject/no-publish decisions, candidate-not-publication, and explicit no-promotion of Stage 2 contention.
+
+It remains a bounded successor slice. It does not replace the planned deeper model families or promote Stage 2 concurrency policy.
+
 ## 7. Status
 
 - execution_state: `tla_bridge_first_slice_smoke_checked`
@@ -87,8 +98,7 @@ This packet does not yet model:
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - FEC bridge model remains planned
-  - dynamic dependency model remains planned
-  - LET/LAMBDA carrier model remains planned/deferred until carrier cases are selected
+  - full FEC bridge model family remains planned
+  - the post-W033 successor slice covers first smoke surfaces for FEC bridge, dynamic dependency, and LET/LAMBDA carrier facts, but deeper model families remain open
   - Stage 2 contention remains deferred
   - pack/capability binding has not yet consumed this TLA evidence

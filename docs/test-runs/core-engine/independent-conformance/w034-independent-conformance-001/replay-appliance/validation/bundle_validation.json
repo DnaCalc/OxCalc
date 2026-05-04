@@ -1,0 +1,9 @@
+{
+  "declared_gap_count": 6,
+  "missing_paths": [],
+  "run_id": "w034-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.bundle_validation.v1",
+  "status": "bundle_valid",
+  "unexpected_mismatch_count": 0,
+  "validated_required_artifact_count": 8
+}

@@ -1,0 +1,129 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_w034_independent_order_equiv_001",
+  "description": "TreeCalc-local value counterpart for the W034 replay-equivalent independent-order TraceCalc oracle surface.",
+  "snapshot_id": 23,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3, 4, 5, 6],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "LeftInput",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "4"
+    },
+    {
+      "node_id": 3,
+      "kind": "constant",
+      "symbol": "TopInput",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "5"
+    },
+    {
+      "node_id": 4,
+      "kind": "calculation",
+      "symbol": "Left",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w034-left",
+      "bind_artifact_id": "bind:w034-left",
+      "constant_value": null
+    },
+    {
+      "node_id": 5,
+      "kind": "calculation",
+      "symbol": "Top",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w034-top",
+      "bind_artifact_id": "bind:w034-top",
+      "constant_value": null
+    },
+    {
+      "node_id": 6,
+      "kind": "calculation",
+      "symbol": "Check",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w034-check",
+      "bind_artifact_id": "bind:w034-check",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 4,
+      "formula_artifact_id": "formula:w034-left",
+      "bind_artifact_id": "bind:w034-left",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 5,
+      "formula_artifact_id": "formula:w034-top",
+      "bind_artifact_id": "bind:w034-top",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 3
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 6,
+      "formula_artifact_id": "formula:w034-check",
+      "bind_artifact_id": "bind:w034-check",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 4
+              }
+            }
+          },
+          "right": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 5
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "4": "4",
+      "5": "5",
+      "6": "9"
+    },
+    "evaluation_order": [4, 5, 6]
+  }
+}

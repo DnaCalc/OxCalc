@@ -1,0 +1,23 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001",
+  "claimed_capability": "independent_treecalc_tracecalc_observable_surface_comparison",
+  "excluded_capabilities": [
+    "fully_independent_evaluator_implementation",
+    "pack_grade_replay",
+    "continuous_cross_engine_differential_suite"
+  ],
+  "required_artifacts": [
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/surface_mapping.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/run_summary.json"
+  ],
+  "run_id": "w034-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.bundle_manifest.v1",
+  "tracecalc_reference_run_id": "w034-tracecalc-oracle-deepening-001",
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001"
+}

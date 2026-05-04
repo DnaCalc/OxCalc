@@ -1,0 +1,254 @@
+{
+  "projection_row_count": 9,
+  "rows": [
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:cap:oxfml_residual:0",
+          "kind": "CapabilitySensitive",
+          "owner_node_id": 2,
+          "requires_rebind_on_structural_change": true,
+          "target_node_id": null
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": false,
+      "reject_kind": "HostInjectedFailure",
+      "result_state": "rejected",
+      "runtime_effect_families": [
+        "CapabilitySensitive"
+      ],
+      "tree_case_id": "tc_local_capability_sensitive_reject_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:dynamic:oxfml_residual:0",
+          "kind": "DynamicPotential",
+          "owner_node_id": 2,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": null
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": false,
+      "reject_kind": "DynamicDependencyFailure",
+      "result_state": "rejected",
+      "runtime_effect_families": [
+        "DynamicDependency"
+      ],
+      "tree_case_id": "tc_local_dynamic_reject_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+          "kind": "HostSensitive",
+          "owner_node_id": 2,
+          "requires_rebind_on_structural_change": true,
+          "target_node_id": null
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": false,
+      "reject_kind": "HostInjectedFailure",
+      "result_state": "rejected",
+      "runtime_effect_families": [
+        "ExecutionRestriction"
+      ],
+      "tree_case_id": "tc_local_lambda_host_sensitive_reject_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:let-lambda-capture:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": true,
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_let_lambda_capture_publish_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_accept_publish_equiv_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_accept_publish_equiv_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_accept_publish_equiv_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:tracecalc-accept-b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": true,
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_tracecalc_accept_publish_equiv_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:tracecalc-dag-b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        },
+        {
+          "descriptor_id": "bind:formula:tracecalc-dag-c:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 4,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        },
+        {
+          "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 5,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 3
+        },
+        {
+          "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:1",
+          "kind": "StaticDirect",
+          "owner_node_id": 5,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 4
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": true,
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_tracecalc_multinode_dag_equiv_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_verified_clean_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_verified_clean_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_verified_clean_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": false,
+      "reject_kind": null,
+      "result_state": "verified_clean",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_verified_clean_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:w034-higher-order-let-lambda:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": true,
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_w034_higher_order_let_lambda_publish_001"
+    },
+    {
+      "artifact_paths": {
+        "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/dependency_graph.json",
+        "result": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+        "runtime_effects": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/runtime_effects.json"
+      },
+      "dependency_descriptors": [
+        {
+          "descriptor_id": "bind:formula:w034-left:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 4,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 2
+        },
+        {
+          "descriptor_id": "bind:formula:w034-top:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 5,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 3
+        },
+        {
+          "descriptor_id": "bind:formula:w034-check:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 6,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 4
+        },
+        {
+          "descriptor_id": "bind:formula:w034-check:oxfml_ref:1",
+          "kind": "StaticDirect",
+          "owner_node_id": 6,
+          "requires_rebind_on_structural_change": false,
+          "target_node_id": 5
+        }
+      ],
+      "projection_state": "projection_present",
+      "publication_bundle_present": true,
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_families": [],
+      "tree_case_id": "tc_local_w034_independent_order_equiv_001"
+    }
+  ],
+  "run_id": "w034-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.core_projection_diff.v1",
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001"
+}

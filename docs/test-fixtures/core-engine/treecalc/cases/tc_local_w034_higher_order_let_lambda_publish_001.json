@@ -1,0 +1,66 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+  "description": "TreeCalc-local value counterpart for the W034 higher-order LET/LAMBDA TraceCalc oracle surface.",
+  "snapshot_id": 22,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "Base",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "12"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "Out",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w034-higher-order-let-lambda",
+      "bind_artifact_id": "bind:w034-higher-order-let-lambda",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:w034-higher-order-let-lambda",
+      "bind_artifact_id": "bind:w034-higher-order-let-lambda",
+      "expression": {
+        "RawOxfml": {
+          "source_text": "LET(make_adder,LAMBDA(base,LAMBDA(delta,base+delta)),make_adder(TREE_REF_3_0)(5))",
+          "reference_carriers": [
+            {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "17"
+    },
+    "evaluation_order": [3]
+  }
+}

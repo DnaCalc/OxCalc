@@ -52,6 +52,13 @@ Current W034 intake after `calc-e77.2`:
 2. The W034 TraceCalc oracle-deepening slice does not construct those conditional-formatting packets.
 3. No OxCalc code-path patch or OxFml handoff is required by this TraceCalc slice.
 
+Current W034 conformance state after `calc-e77.3`:
+
+1. TreeCalc-local fixture corpus now includes W034 value counterparts for higher-order `LET`/`LAMBDA` and replay-equivalent independent-order scenarios.
+2. Independent conformance now targets `w034-tracecalc-oracle-deepening-001` and `w034-independent-conformance-treecalc-001`.
+3. The W034 comparison packet emits 15 rows: 5 exact value matches, 3 no-publication matches, 1 lifecycle match, 6 declared local gaps, 0 missing artifacts, and 0 unexpected mismatches.
+4. Declared gaps remain non-promoting rows; fully independent evaluator diversity, pack-grade replay, Lean/TLA proof depth, continuous scale gates, and Stage 2 promotion remain later W034 lanes.
+
 ## 4. Bead-To-Artifact Plan
 
 | Bead | Primary artifact outcome |
@@ -75,13 +82,12 @@ Current W034 intake after `calc-e77.2`:
 
 ## 6. Current Status
 
-- execution_state: `calc-e77.2_tracecalc_oracle_deepening_authored`
+- execution_state: `calc-e77.3_independent_conformance_widening_authored`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-e77.3` through `calc-e77.7`
-  - optimized/core-engine conformance evidence
+  - `calc-e77.4` through `calc-e77.7`
   - deeper Lean and TLA artifacts
   - pack/capability and continuous scale gate binding
   - W034 closure audit

@@ -1,0 +1,294 @@
+[
+  {
+    "case_id": "tc_local_publish_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_verified_clean_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "verified_clean",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_relative_sum_001",
+    "expected_evaluation_order": [
+      3,
+      5
+    ],
+    "expected_published_values": {
+      "3": "5",
+      "5": "7"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_sibling_offset_publish_001",
+    "expected_evaluation_order": [
+      3,
+      4
+    ],
+    "expected_published_values": {
+      "3": "5",
+      "4": "9"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_host_sensitive_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.host_sensitive_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_dynamic_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "DynamicDependencyFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_rebind_after_rename_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_recalc_after_constant_edit_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_move_direct_target_rebind_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_remove_direct_target_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+    "expected_evaluation_order": [
+      3,
+      4
+    ],
+    "expected_published_values": {
+      "3": "5",
+      "4": "7"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.host_sensitive_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_capability_sensitive_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.capability_sensitive_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_shape_topology_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.shape_topology_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.capability_sensitive_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.shape_topology_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+    "expected_evaluation_order": [
+      4,
+      5
+    ],
+    "expected_published_values": {
+      "4": "5",
+      "5": "5"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_let_lambda_capture_publish_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "15"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_lambda_host_sensitive_reject_001",
+    "expected_evaluation_order": [
+      2
+    ],
+    "expected_published_values": null,
+    "expected_reject_kind": "HostInjectedFailure",
+    "expected_result_state": "rejected",
+    "expected_runtime_effect_kinds": [
+      "runtime_effect.host_sensitive_reference"
+    ]
+  },
+  {
+    "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "2"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+    "expected_evaluation_order": [
+      3,
+      4,
+      5
+    ],
+    "expected_published_values": {
+      "3": "3",
+      "4": "3",
+      "5": "6"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+    "expected_evaluation_order": [
+      3
+    ],
+    "expected_published_values": {
+      "3": "17"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  },
+  {
+    "case_id": "tc_local_w034_independent_order_equiv_001",
+    "expected_evaluation_order": [
+      4,
+      5,
+      6
+    ],
+    "expected_published_values": {
+      "4": "4",
+      "5": "5",
+      "6": "9"
+    },
+    "expected_reject_kind": null,
+    "expected_result_state": "published",
+    "expected_runtime_effect_kinds": null
+  }
+]

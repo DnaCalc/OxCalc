@@ -1,0 +1,195 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001",
+  "declared_gap_rows": [
+    {
+      "expected_tree_state": "rejected",
+      "gap_classification": "treecalc_local_dynamic_dependency_projection_gap",
+      "observable_class": "dynamic_dependency_current_local_gap",
+      "required_tree_runtime_effect_family": "DynamicDependency",
+      "row_id": "ic_gap_dynamic_dependency_001",
+      "tracecalc_scenario_id": "tc_dynamic_dep_switch_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "gap_classification": "treecalc_local_host_sensitive_lambda_projection_gap",
+      "observable_class": "lambda_host_sensitive_current_local_gap",
+      "required_tree_runtime_effect_family": "ExecutionRestriction",
+      "row_id": "ic_gap_lambda_host_effect_001",
+      "tracecalc_scenario_id": "tc_let_lambda_runtime_effect_001",
+      "treecalc_case_id": "tc_local_lambda_host_sensitive_reject_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "gap_classification": "treecalc_local_dynamic_dependency_shape_update_projection_gap",
+      "observable_class": "w034_dynamic_dependency_negative_current_local_gap",
+      "required_tree_runtime_effect_family": "DynamicDependency",
+      "row_id": "ic_gap_w034_dynamic_dependency_negative_001",
+      "tracecalc_scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001"
+    }
+  ],
+  "lifecycle_rows": [
+    {
+      "observable_class": "w034_overlay_retention_release_lifecycle",
+      "required_trace_event_families": [
+        "session.reader_pinned",
+        "overlay.retained",
+        "session.reader_unpinned",
+        "overlay.eviction_eligible",
+        "overlay.released"
+      ],
+      "required_tree_event_labels": [
+        "reader_pinned",
+        "retention_blocked_cleanup",
+        "reader_unpinned",
+        "eviction_eligibility_opened",
+        "overlay_released"
+      ],
+      "row_id": "ic_lifecycle_w034_overlay_release_001",
+      "tracecalc_scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "treecalc_root_artifact": "retention_guardrail.json"
+    }
+  ],
+  "no_publication_rows": [
+    {
+      "expected_tree_state": "verified_clean",
+      "observable_class": "verified_clean_no_publication",
+      "require_trace_reject": false,
+      "required_trace_event_family": "candidate.verified_clean",
+      "row_id": "ic_no_publish_verified_clean_001",
+      "tracecalc_scenario_id": "tc_verify_clean_no_publish_001",
+      "treecalc_case_id": "tc_local_verified_clean_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "observable_class": "reject_no_publication",
+      "require_trace_reject": true,
+      "required_trace_event_family": null,
+      "row_id": "ic_no_publish_reject_001",
+      "tracecalc_scenario_id": "tc_reject_no_publish_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001"
+    },
+    {
+      "expected_tree_state": "rejected",
+      "observable_class": "w034_capability_fence_reject_no_publication",
+      "require_trace_reject": true,
+      "required_trace_event_family": "reject.issued",
+      "row_id": "ic_no_publish_w034_capability_fence_reject_001",
+      "tracecalc_scenario_id": "tc_w034_capability_fence_reject_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001"
+    }
+  ],
+  "observable_surface_authority": "docs/spec/core-engine/w034-formalization/W034_TRACECALC_ORACLE_DEEPENING.md",
+  "run_id": "w034-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.surface_mapping.v1",
+  "trace_only_gap_rows": [
+    {
+      "gap_classification": "treecalc_local_snapshot_fence_projection_gap",
+      "gap_reason": "TraceCalc covers snapshot epoch fence mismatch; TreeCalc-local has no fixture-level snapshot fence admission counterpart yet.",
+      "observable_class": "w034_snapshot_fence_reject_current_local_gap",
+      "require_trace_reject": true,
+      "required_trace_event_family": "reject.issued",
+      "row_id": "ic_gap_w034_snapshot_fence_projection_001",
+      "tracecalc_scenario_id": "tc_w034_snapshot_fence_reject_001"
+    },
+    {
+      "gap_classification": "treecalc_local_capability_view_fence_projection_gap",
+      "gap_reason": "TreeCalc-local exercises capability-sensitive references, but not compatibility-fenced capability-view mismatch replay.",
+      "observable_class": "w034_capability_view_fence_reject_current_local_gap",
+      "require_trace_reject": true,
+      "required_trace_event_family": "reject.issued",
+      "row_id": "ic_gap_w034_capability_view_fence_projection_001",
+      "tracecalc_scenario_id": "tc_w034_capability_fence_reject_001"
+    },
+    {
+      "gap_classification": "treecalc_local_higher_order_callable_identity_projection_gap",
+      "gap_reason": "TreeCalc-local compares the published value, but does not yet project returned callable identity or callable-carrier metadata.",
+      "observable_class": "w034_let_lambda_callable_identity_current_local_gap",
+      "require_trace_reject": false,
+      "required_trace_event_family": null,
+      "row_id": "ic_gap_w034_higher_order_callable_metadata_001",
+      "tracecalc_scenario_id": "tc_w034_let_lambda_higher_order_replay_001"
+    }
+  ],
+  "tracecalc_reference_run_id": "w034-tracecalc-oracle-deepening-001",
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001",
+  "value_rows": [
+    {
+      "observable_class": "accepted_publication_value_delta",
+      "row_id": "ic_exact_accept_publish_001",
+      "tracecalc_scenario_id": "tc_accept_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        }
+      ]
+    },
+    {
+      "observable_class": "multi_node_dag_value_delta",
+      "row_id": "ic_exact_multinode_dag_001",
+      "tracecalc_scenario_id": "tc_multinode_dag_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        },
+        {
+          "trace_node_id": "C",
+          "tree_node_id": 4
+        },
+        {
+          "trace_node_id": "D",
+          "tree_node_id": 5
+        }
+      ]
+    },
+    {
+      "observable_class": "let_lambda_capture_value_delta",
+      "row_id": "ic_exact_let_lambda_capture_001",
+      "tracecalc_scenario_id": "tc_let_lambda_carrier_publish_001",
+      "treecalc_case_id": "tc_local_let_lambda_capture_publish_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "B",
+          "tree_node_id": 3
+        }
+      ]
+    },
+    {
+      "observable_class": "w034_let_lambda_higher_order_value_delta",
+      "row_id": "ic_exact_w034_higher_order_let_lambda_value_001",
+      "tracecalc_scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "treecalc_case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "Out",
+          "tree_node_id": 3
+        }
+      ]
+    },
+    {
+      "observable_class": "w034_replay_equivalent_independent_order_value_delta",
+      "row_id": "ic_exact_w034_independent_order_value_001",
+      "tracecalc_scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+      "treecalc_case_id": "tc_local_w034_independent_order_equiv_001",
+      "value_mappings": [
+        {
+          "trace_node_id": "Left",
+          "tree_node_id": 4
+        },
+        {
+          "trace_node_id": "Top",
+          "tree_node_id": 5
+        },
+        {
+          "trace_node_id": "Check",
+          "tree_node_id": 6
+        }
+      ]
+    }
+  ]
+}

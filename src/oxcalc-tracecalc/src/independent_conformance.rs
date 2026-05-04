@@ -22,8 +22,8 @@ const INDEPENDENT_CONFORMANCE_BUNDLE_SCHEMA_V1: &str =
 const INDEPENDENT_CONFORMANCE_VALIDATION_SCHEMA_V1: &str =
     "oxcalc.independent_conformance.bundle_validation.v1";
 
-const TRACECALC_REFERENCE_RUN_ID: &str = "post-w033-let-lambda-carrier-witness-001";
-const TREECALC_REFERENCE_RUN_ID: &str = "post-w033-independent-conformance-treecalc-001";
+const TRACECALC_REFERENCE_RUN_ID: &str = "w034-tracecalc-oracle-deepening-001";
+const TREECALC_REFERENCE_RUN_ID: &str = "w034-independent-conformance-treecalc-001";
 
 #[derive(Debug, Error)]
 pub enum IndependentConformanceError {
@@ -61,6 +61,7 @@ pub struct IndependentConformanceRunSummary {
     pub comparison_row_count: usize,
     pub exact_value_match_count: usize,
     pub no_publication_match_count: usize,
+    pub lifecycle_surface_match_count: usize,
     pub declared_gap_count: usize,
     pub missing_artifact_count: usize,
     pub unexpected_mismatch_count: usize,
@@ -107,10 +108,32 @@ struct DeclaredGapRowSpec {
     gap_classification: &'static str,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct TraceOnlyGapRowSpec {
+    row_id: &'static str,
+    observable_class: &'static str,
+    trace_scenario_id: &'static str,
+    required_trace_event_family: Option<&'static str>,
+    require_trace_reject: bool,
+    gap_classification: &'static str,
+    gap_reason: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LifecycleRowSpec {
+    row_id: &'static str,
+    observable_class: &'static str,
+    trace_scenario_id: &'static str,
+    tree_artifact_name: &'static str,
+    required_trace_event_families: &'static [&'static str],
+    required_tree_event_labels: &'static [&'static str],
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct ComparisonCounts {
     exact_value_matches: usize,
     no_publication_matches: usize,
+    lifecycle_surface_matches: usize,
     declared_gaps: usize,
     missing_artifacts: usize,
     unexpected_mismatches: usize,
@@ -120,7 +143,7 @@ struct BaseRow<'a> {
     row_id: &'a str,
     observable_class: &'a str,
     trace_scenario_id: &'a str,
-    tree_case_id: &'a str,
+    tree_case_id: Option<&'a str>,
     comparison_state: &'a str,
     missing_artifacts: Vec<String>,
     failures: Vec<String>,
@@ -149,6 +172,38 @@ const LET_LAMBDA_VALUE_MAPPINGS: &[NodeValueMapping] = &[NodeValueMapping {
     trace_node_id: "B",
     tree_node_id: 3,
 }];
+const W034_HIGHER_ORDER_VALUE_MAPPINGS: &[NodeValueMapping] = &[NodeValueMapping {
+    trace_node_id: "Out",
+    tree_node_id: 3,
+}];
+const W034_INDEPENDENT_ORDER_VALUE_MAPPINGS: &[NodeValueMapping] = &[
+    NodeValueMapping {
+        trace_node_id: "Left",
+        tree_node_id: 4,
+    },
+    NodeValueMapping {
+        trace_node_id: "Top",
+        tree_node_id: 5,
+    },
+    NodeValueMapping {
+        trace_node_id: "Check",
+        tree_node_id: 6,
+    },
+];
+const W034_OVERLAY_TRACE_FAMILIES: &[&str] = &[
+    "session.reader_pinned",
+    "overlay.retained",
+    "session.reader_unpinned",
+    "overlay.eviction_eligible",
+    "overlay.released",
+];
+const W034_OVERLAY_TREE_EVENT_LABELS: &[&str] = &[
+    "reader_pinned",
+    "retention_blocked_cleanup",
+    "reader_unpinned",
+    "eviction_eligibility_opened",
+    "overlay_released",
+];
 
 const VALUE_ROW_SPECS: &[ValueRowSpec] = &[
     ValueRowSpec {
@@ -172,6 +227,20 @@ const VALUE_ROW_SPECS: &[ValueRowSpec] = &[
         tree_case_id: "tc_local_let_lambda_capture_publish_001",
         value_mappings: LET_LAMBDA_VALUE_MAPPINGS,
     },
+    ValueRowSpec {
+        row_id: "ic_exact_w034_higher_order_let_lambda_value_001",
+        observable_class: "w034_let_lambda_higher_order_value_delta",
+        trace_scenario_id: "tc_w034_let_lambda_higher_order_replay_001",
+        tree_case_id: "tc_local_w034_higher_order_let_lambda_publish_001",
+        value_mappings: W034_HIGHER_ORDER_VALUE_MAPPINGS,
+    },
+    ValueRowSpec {
+        row_id: "ic_exact_w034_independent_order_value_001",
+        observable_class: "w034_replay_equivalent_independent_order_value_delta",
+        trace_scenario_id: "tc_w034_replay_equivalent_independent_order_001",
+        tree_case_id: "tc_local_w034_independent_order_equiv_001",
+        value_mappings: W034_INDEPENDENT_ORDER_VALUE_MAPPINGS,
+    },
 ];
 
 const NO_PUBLICATION_ROW_SPECS: &[NoPublicationRowSpec] = &[
@@ -193,6 +262,54 @@ const NO_PUBLICATION_ROW_SPECS: &[NoPublicationRowSpec] = &[
         required_trace_event_family: None,
         require_trace_reject: true,
     },
+    NoPublicationRowSpec {
+        row_id: "ic_no_publish_w034_capability_fence_reject_001",
+        observable_class: "w034_capability_fence_reject_no_publication",
+        trace_scenario_id: "tc_w034_capability_fence_reject_001",
+        tree_case_id: "tc_local_capability_sensitive_reject_001",
+        expected_tree_state: "rejected",
+        required_trace_event_family: Some("reject.issued"),
+        require_trace_reject: true,
+    },
+];
+
+const LIFECYCLE_ROW_SPECS: &[LifecycleRowSpec] = &[LifecycleRowSpec {
+    row_id: "ic_lifecycle_w034_overlay_release_001",
+    observable_class: "w034_overlay_retention_release_lifecycle",
+    trace_scenario_id: "tc_w034_overlay_eviction_after_unpin_001",
+    tree_artifact_name: "retention_guardrail.json",
+    required_trace_event_families: W034_OVERLAY_TRACE_FAMILIES,
+    required_tree_event_labels: W034_OVERLAY_TREE_EVENT_LABELS,
+}];
+
+const TRACE_ONLY_GAP_ROW_SPECS: &[TraceOnlyGapRowSpec] = &[
+    TraceOnlyGapRowSpec {
+        row_id: "ic_gap_w034_snapshot_fence_projection_001",
+        observable_class: "w034_snapshot_fence_reject_current_local_gap",
+        trace_scenario_id: "tc_w034_snapshot_fence_reject_001",
+        required_trace_event_family: Some("reject.issued"),
+        require_trace_reject: true,
+        gap_classification: "treecalc_local_snapshot_fence_projection_gap",
+        gap_reason: "TraceCalc covers snapshot epoch fence mismatch; TreeCalc-local has no fixture-level snapshot fence admission counterpart yet.",
+    },
+    TraceOnlyGapRowSpec {
+        row_id: "ic_gap_w034_capability_view_fence_projection_001",
+        observable_class: "w034_capability_view_fence_reject_current_local_gap",
+        trace_scenario_id: "tc_w034_capability_fence_reject_001",
+        required_trace_event_family: Some("reject.issued"),
+        require_trace_reject: true,
+        gap_classification: "treecalc_local_capability_view_fence_projection_gap",
+        gap_reason: "TreeCalc-local exercises capability-sensitive references, but not compatibility-fenced capability-view mismatch replay.",
+    },
+    TraceOnlyGapRowSpec {
+        row_id: "ic_gap_w034_higher_order_callable_metadata_001",
+        observable_class: "w034_let_lambda_callable_identity_current_local_gap",
+        trace_scenario_id: "tc_w034_let_lambda_higher_order_replay_001",
+        required_trace_event_family: None,
+        require_trace_reject: false,
+        gap_classification: "treecalc_local_higher_order_callable_identity_projection_gap",
+        gap_reason: "TreeCalc-local compares the published value, but does not yet project returned callable identity or callable-carrier metadata.",
+    },
 ];
 
 const DECLARED_GAP_ROW_SPECS: &[DeclaredGapRowSpec] = &[
@@ -213,6 +330,15 @@ const DECLARED_GAP_ROW_SPECS: &[DeclaredGapRowSpec] = &[
         expected_tree_state: "rejected",
         required_tree_runtime_effect_family: "ExecutionRestriction",
         gap_classification: "treecalc_local_host_sensitive_lambda_projection_gap",
+    },
+    DeclaredGapRowSpec {
+        row_id: "ic_gap_w034_dynamic_dependency_negative_001",
+        observable_class: "w034_dynamic_dependency_negative_current_local_gap",
+        trace_scenario_id: "tc_w034_dynamic_dependency_negative_001",
+        tree_case_id: "tc_local_dynamic_reject_001",
+        expected_tree_state: "rejected",
+        required_tree_runtime_effect_family: "DynamicDependency",
+        gap_classification: "treecalc_local_dynamic_dependency_shape_update_projection_gap",
     },
 ];
 
@@ -264,8 +390,14 @@ impl IndependentConformanceRunner {
         for spec in NO_PUBLICATION_ROW_SPECS {
             comparison_rows.push(no_publication_comparison_row(repo_root, spec)?);
         }
+        for spec in LIFECYCLE_ROW_SPECS {
+            comparison_rows.push(lifecycle_comparison_row(repo_root, spec)?);
+        }
         for spec in DECLARED_GAP_ROW_SPECS {
             comparison_rows.push(declared_gap_comparison_row(repo_root, spec)?);
+        }
+        for spec in TRACE_ONLY_GAP_ROW_SPECS {
+            comparison_rows.push(trace_only_gap_comparison_row(repo_root, spec)?);
         }
 
         let counts = comparison_counts(&comparison_rows);
@@ -279,6 +411,7 @@ impl IndependentConformanceRunner {
                 "comparison_row_count": comparison_rows.len(),
                 "exact_value_match_count": counts.exact_value_matches,
                 "no_publication_match_count": counts.no_publication_matches,
+                "lifecycle_surface_match_count": counts.lifecycle_surface_matches,
                 "declared_gap_count": counts.declared_gaps,
                 "missing_artifact_count": counts.missing_artifacts,
                 "unexpected_mismatch_count": counts.unexpected_mismatches,
@@ -323,6 +456,7 @@ impl IndependentConformanceRunner {
             comparison_row_count: comparison_rows.len(),
             exact_value_match_count: counts.exact_value_matches,
             no_publication_match_count: counts.no_publication_matches,
+            lifecycle_surface_match_count: counts.lifecycle_surface_matches,
             declared_gap_count: counts.declared_gaps,
             missing_artifact_count: counts.missing_artifacts,
             unexpected_mismatch_count: counts.unexpected_mismatches,
@@ -338,6 +472,7 @@ impl IndependentConformanceRunner {
                 "comparison_row_count": summary.comparison_row_count,
                 "exact_value_match_count": summary.exact_value_match_count,
                 "no_publication_match_count": summary.no_publication_match_count,
+                "lifecycle_surface_match_count": summary.lifecycle_surface_match_count,
                 "declared_gap_count": summary.declared_gap_count,
                 "missing_artifact_count": summary.missing_artifact_count,
                 "unexpected_mismatch_count": summary.unexpected_mismatch_count,
@@ -408,7 +543,7 @@ fn value_comparison_row(
             row_id: spec.row_id,
             observable_class: spec.observable_class,
             trace_scenario_id: spec.trace_scenario_id,
-            tree_case_id: spec.tree_case_id,
+            tree_case_id: Some(spec.tree_case_id),
             comparison_state: "missing_artifact",
             missing_artifacts,
             failures: Vec::new(),
@@ -458,7 +593,7 @@ fn value_comparison_row(
         row_id: spec.row_id,
         observable_class: spec.observable_class,
         trace_scenario_id: spec.trace_scenario_id,
-        tree_case_id: spec.tree_case_id,
+        tree_case_id: Some(spec.tree_case_id),
         comparison_state: if failures.is_empty() {
             "matched_exact_value_surface"
         } else {
@@ -510,7 +645,7 @@ fn no_publication_comparison_row(
             row_id: spec.row_id,
             observable_class: spec.observable_class,
             trace_scenario_id: spec.trace_scenario_id,
-            tree_case_id: spec.tree_case_id,
+            tree_case_id: Some(spec.tree_case_id),
             comparison_state: "missing_artifact",
             missing_artifacts,
             failures: Vec::new(),
@@ -546,7 +681,7 @@ fn no_publication_comparison_row(
         row_id: spec.row_id,
         observable_class: spec.observable_class,
         trace_scenario_id: spec.trace_scenario_id,
-        tree_case_id: spec.tree_case_id,
+        tree_case_id: Some(spec.tree_case_id),
         comparison_state: if failures.is_empty() {
             "matched_no_publication_surface"
         } else {
@@ -576,6 +711,129 @@ fn no_publication_comparison_row(
     }))
 }
 
+fn lifecycle_comparison_row(
+    repo_root: &Path,
+    spec: &LifecycleRowSpec,
+) -> Result<Value, IndependentConformanceError> {
+    let trace_result_path = trace_artifact_path(spec.trace_scenario_id, "result.json");
+    let trace_trace_path = trace_artifact_path(spec.trace_scenario_id, "trace.json");
+    let trace_counters_path = trace_artifact_path(spec.trace_scenario_id, "counters.json");
+    let tree_guardrail_path = tree_root_artifact_path(spec.tree_artifact_name);
+
+    let trace_result = read_json(repo_root, &trace_result_path)?;
+    let trace_trace = read_json(repo_root, &trace_trace_path)?;
+    let trace_counters = read_json(repo_root, &trace_counters_path)?;
+    let tree_guardrail = read_json(repo_root, &tree_guardrail_path)?;
+    let missing_artifacts = missing_artifacts([
+        (&trace_result_path, &trace_result),
+        (&trace_trace_path, &trace_trace),
+        (&trace_counters_path, &trace_counters),
+        (&tree_guardrail_path, &tree_guardrail),
+    ]);
+
+    if !missing_artifacts.is_empty() {
+        return Ok(base_row_json(BaseRow {
+            row_id: spec.row_id,
+            observable_class: spec.observable_class,
+            trace_scenario_id: spec.trace_scenario_id,
+            tree_case_id: None,
+            comparison_state: "missing_artifact",
+            missing_artifacts,
+            failures: Vec::new(),
+            details: json!({}),
+        }));
+    }
+
+    let trace_result = trace_result.as_ref().expect("missing checked above");
+    let trace_trace = trace_trace.as_ref().expect("missing checked above");
+    let trace_counters = trace_counters.as_ref().expect("missing checked above");
+    let tree_guardrail = tree_guardrail.as_ref().expect("missing checked above");
+    let mut failures = Vec::new();
+
+    if !trace_result_is_clean_pass(trace_result) {
+        failures.push("tracecalc_result_not_clean_pass".to_string());
+    }
+
+    let missing_trace_event_families = spec
+        .required_trace_event_families
+        .iter()
+        .copied()
+        .filter(|family| !trace_has_event_family(trace_trace, family))
+        .collect::<Vec<_>>();
+    for family in &missing_trace_event_families {
+        failures.push(format!("missing_trace_event_family:{family}"));
+    }
+
+    let missing_tree_event_labels = spec
+        .required_tree_event_labels
+        .iter()
+        .copied()
+        .filter(|label| !tree_has_event_label(tree_guardrail, label))
+        .collect::<Vec<_>>();
+    for label in &missing_tree_event_labels {
+        failures.push(format!("missing_tree_event_label:{label}"));
+    }
+
+    let trace_evicted_count = counter_value(trace_counters, "overlay_evictions");
+    let tree_evicted_count = tree_guardrail
+        .get("retention")
+        .and_then(|retention| retention.get("evicted_overlay_count_after_release"))
+        .and_then(Value::as_u64);
+    if trace_evicted_count != tree_evicted_count {
+        failures.push("overlay_eviction_count_mismatch".to_string());
+    }
+    if tree_guardrail
+        .get("pinned_reader_stability")
+        .and_then(|stability| stability.get("stable"))
+        .and_then(Value::as_bool)
+        != Some(true)
+    {
+        failures.push("tree_pinned_reader_stability_not_true".to_string());
+    }
+    if tree_guardrail
+        .get("retention")
+        .and_then(|retention| retention.get("cleanup_blocked_while_reader_pinned"))
+        .and_then(Value::as_bool)
+        != Some(true)
+    {
+        failures.push("tree_cleanup_not_blocked_while_reader_pinned".to_string());
+    }
+
+    Ok(base_row_json(BaseRow {
+        row_id: spec.row_id,
+        observable_class: spec.observable_class,
+        trace_scenario_id: spec.trace_scenario_id,
+        tree_case_id: None,
+        comparison_state: if failures.is_empty() {
+            "matched_lifecycle_surface"
+        } else {
+            "mismatch"
+        },
+        missing_artifacts: Vec::new(),
+        failures,
+        details: json!({
+            "asserted_surfaces": [
+                "overlay_lifecycle",
+                "pinned_reader_stability",
+                "retention_release",
+                "eviction_count"
+            ],
+            "trace_evicted_overlay_count": trace_evicted_count,
+            "tree_evicted_overlay_count": tree_evicted_count,
+            "missing_trace_event_families": missing_trace_event_families,
+            "missing_tree_event_labels": missing_tree_event_labels,
+            "trace_artifacts": {
+                "result": trace_result_path,
+                "trace": trace_trace_path,
+                "counters": trace_counters_path,
+            },
+            "tree_artifacts": {
+                "retention_guardrail": tree_guardrail_path,
+            },
+        }),
+    }))
+}
+
 fn declared_gap_comparison_row(
     repo_root: &Path,
     spec: &DeclaredGapRowSpec,
@@ -598,7 +856,7 @@ fn declared_gap_comparison_row(
             row_id: spec.row_id,
             observable_class: spec.observable_class,
             trace_scenario_id: spec.trace_scenario_id,
-            tree_case_id: spec.tree_case_id,
+            tree_case_id: Some(spec.tree_case_id),
             comparison_state: "missing_artifact",
             missing_artifacts,
             failures: Vec::new(),
@@ -634,7 +892,7 @@ fn declared_gap_comparison_row(
         row_id: spec.row_id,
         observable_class: spec.observable_class,
         trace_scenario_id: spec.trace_scenario_id,
-        tree_case_id: spec.tree_case_id,
+        tree_case_id: Some(spec.tree_case_id),
         comparison_state: if failures.is_empty() {
             "declared_capability_gap"
         } else {
@@ -653,6 +911,81 @@ fn declared_gap_comparison_row(
             "tree_artifacts": {
                 "result": tree_result_path,
                 "runtime_effects": tree_runtime_effects_path,
+            },
+        }),
+    }))
+}
+
+fn trace_only_gap_comparison_row(
+    repo_root: &Path,
+    spec: &TraceOnlyGapRowSpec,
+) -> Result<Value, IndependentConformanceError> {
+    let trace_result_path = trace_artifact_path(spec.trace_scenario_id, "result.json");
+    let trace_trace_path = trace_artifact_path(spec.trace_scenario_id, "trace.json");
+    let trace_rejects_path = trace_artifact_path(spec.trace_scenario_id, "rejects.json");
+
+    let trace_result = read_json(repo_root, &trace_result_path)?;
+    let trace_trace = read_json(repo_root, &trace_trace_path)?;
+    let trace_rejects = read_json(repo_root, &trace_rejects_path)?;
+    let missing_artifacts = missing_artifacts([
+        (&trace_result_path, &trace_result),
+        (&trace_trace_path, &trace_trace),
+        (&trace_rejects_path, &trace_rejects),
+    ]);
+
+    if !missing_artifacts.is_empty() {
+        return Ok(base_row_json(BaseRow {
+            row_id: spec.row_id,
+            observable_class: spec.observable_class,
+            trace_scenario_id: spec.trace_scenario_id,
+            tree_case_id: None,
+            comparison_state: "missing_artifact",
+            missing_artifacts,
+            failures: Vec::new(),
+            details: json!({}),
+        }));
+    }
+
+    let trace_result = trace_result.as_ref().expect("missing checked above");
+    let trace_trace = trace_trace.as_ref().expect("missing checked above");
+    let trace_rejects = trace_rejects.as_ref().expect("missing checked above");
+    let mut failures = Vec::new();
+
+    if !trace_result_is_clean_pass(trace_result) {
+        failures.push("tracecalc_result_not_clean_pass".to_string());
+    }
+    if let Some(required_family) = spec.required_trace_event_family
+        && !trace_has_event_family(trace_trace, required_family)
+    {
+        failures.push(format!("missing_trace_event_family:{required_family}"));
+    }
+    if spec.require_trace_reject && trace_reject_count(trace_rejects) == 0 {
+        failures.push("tracecalc_reject_missing".to_string());
+    }
+
+    Ok(base_row_json(BaseRow {
+        row_id: spec.row_id,
+        observable_class: spec.observable_class,
+        trace_scenario_id: spec.trace_scenario_id,
+        tree_case_id: None,
+        comparison_state: if failures.is_empty() {
+            "declared_capability_gap"
+        } else {
+            "mismatch"
+        },
+        missing_artifacts: Vec::new(),
+        failures,
+        details: json!({
+            "gap_classification": spec.gap_classification,
+            "gap_reason": spec.gap_reason,
+            "promotion_policy": "trace_only_gap_row_is_not_a_conformance_match",
+            "required_trace_event_family": spec.required_trace_event_family,
+            "require_trace_reject": spec.require_trace_reject,
+            "trace_reject_count": trace_reject_count(trace_rejects),
+            "trace_artifacts": {
+                "result": trace_result_path,
+                "trace": trace_trace_path,
+                "rejects": trace_rejects_path,
             },
         }),
     }))
@@ -756,7 +1089,7 @@ fn surface_mapping_json(run_id: &str, relative_artifact_root: &str) -> Value {
         "artifact_root": relative_artifact_root,
         "tracecalc_reference_run_id": TRACECALC_REFERENCE_RUN_ID,
         "treecalc_reference_run_id": TREECALC_REFERENCE_RUN_ID,
-        "observable_surface_authority": "docs/spec/core-engine/w033-formalization/W033_TRACECALC_REFINEMENT_PACKET.md",
+        "observable_surface_authority": "docs/spec/core-engine/w034-formalization/W034_TRACECALC_ORACLE_DEEPENING.md",
         "value_rows": VALUE_ROW_SPECS.iter().map(|spec| json!({
             "row_id": spec.row_id,
             "observable_class": spec.observable_class,
@@ -776,6 +1109,14 @@ fn surface_mapping_json(run_id: &str, relative_artifact_root: &str) -> Value {
             "required_trace_event_family": spec.required_trace_event_family,
             "require_trace_reject": spec.require_trace_reject,
         })).collect::<Vec<_>>(),
+        "lifecycle_rows": LIFECYCLE_ROW_SPECS.iter().map(|spec| json!({
+            "row_id": spec.row_id,
+            "observable_class": spec.observable_class,
+            "tracecalc_scenario_id": spec.trace_scenario_id,
+            "treecalc_root_artifact": spec.tree_artifact_name,
+            "required_trace_event_families": spec.required_trace_event_families,
+            "required_tree_event_labels": spec.required_tree_event_labels,
+        })).collect::<Vec<_>>(),
         "declared_gap_rows": DECLARED_GAP_ROW_SPECS.iter().map(|spec| json!({
             "row_id": spec.row_id,
             "observable_class": spec.observable_class,
@@ -784,6 +1125,15 @@ fn surface_mapping_json(run_id: &str, relative_artifact_root: &str) -> Value {
             "expected_tree_state": spec.expected_tree_state,
             "required_tree_runtime_effect_family": spec.required_tree_runtime_effect_family,
             "gap_classification": spec.gap_classification,
+        })).collect::<Vec<_>>(),
+        "trace_only_gap_rows": TRACE_ONLY_GAP_ROW_SPECS.iter().map(|spec| json!({
+            "row_id": spec.row_id,
+            "observable_class": spec.observable_class,
+            "tracecalc_scenario_id": spec.trace_scenario_id,
+            "required_trace_event_family": spec.required_trace_event_family,
+            "require_trace_reject": spec.require_trace_reject,
+            "gap_classification": spec.gap_classification,
+            "gap_reason": spec.gap_reason,
         })).collect::<Vec<_>>(),
     })
 }
@@ -794,6 +1144,7 @@ fn comparison_counts(rows: &[Value]) -> ComparisonCounts {
         match row.get("comparison_state").and_then(Value::as_str) {
             Some("matched_exact_value_surface") => counts.exact_value_matches += 1,
             Some("matched_no_publication_surface") => counts.no_publication_matches += 1,
+            Some("matched_lifecycle_surface") => counts.lifecycle_surface_matches += 1,
             Some("declared_capability_gap") => counts.declared_gaps += 1,
             Some("missing_artifact") => counts.missing_artifacts += 1,
             Some("mismatch") => counts.unexpected_mismatches += 1,
@@ -828,11 +1179,32 @@ fn trace_has_event_family(trace: &Value, required_family: &str) -> bool {
         })
 }
 
+fn tree_has_event_label(tree_guardrail: &Value, required_label: &str) -> bool {
+    tree_guardrail
+        .get("events")
+        .and_then(Value::as_array)
+        .is_some_and(|events| {
+            events
+                .iter()
+                .any(|event| event.get("label").and_then(Value::as_str) == Some(required_label))
+        })
+}
+
 fn trace_reject_count(rejects: &Value) -> usize {
     rejects
         .get("rejects")
         .and_then(Value::as_array)
         .map_or(0, std::vec::Vec::len)
+}
+
+fn counter_value(counters: &Value, counter_name: &str) -> Option<u64> {
+    counters
+        .get("counters")
+        .and_then(Value::as_array)?
+        .iter()
+        .find(|entry| entry.get("counter").and_then(Value::as_str) == Some(counter_name))?
+        .get("value")?
+        .as_u64()
 }
 
 fn trace_value_map(published_view: &Value) -> BTreeMap<String, String> {
@@ -957,6 +1329,17 @@ fn tree_artifact_path(case_id: &str, artifact_name: &str) -> String {
     ])
 }
 
+fn tree_root_artifact_path(artifact_name: &str) -> String {
+    relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "treecalc-local",
+        TREECALC_REFERENCE_RUN_ID,
+        artifact_name,
+    ])
+}
+
 fn required_artifacts(run_id: &str) -> Vec<String> {
     [
         "run_summary.json",
@@ -1019,10 +1402,11 @@ mod tests {
             .execute(&repo_root, "independent-test")
             .expect("independent conformance packet should write");
 
-        assert_eq!(summary.comparison_row_count, 7);
-        assert_eq!(summary.exact_value_match_count, 3);
-        assert_eq!(summary.no_publication_match_count, 2);
-        assert_eq!(summary.declared_gap_count, 2);
+        assert_eq!(summary.comparison_row_count, 15);
+        assert_eq!(summary.exact_value_match_count, 5);
+        assert_eq!(summary.no_publication_match_count, 3);
+        assert_eq!(summary.lifecycle_surface_match_count, 1);
+        assert_eq!(summary.declared_gap_count, 6);
         assert_eq!(summary.missing_artifact_count, 0);
         assert_eq!(summary.unexpected_mismatch_count, 0);
 
@@ -1091,6 +1475,51 @@ mod tests {
         trace_rejects(repo_root, "tc_reject_no_publish_001", &["reject"]);
         trace_result(repo_root, "tc_dynamic_dep_switch_001");
         trace_result(repo_root, "tc_let_lambda_runtime_effect_001");
+        trace_result(repo_root, "tc_w034_let_lambda_higher_order_replay_001");
+        trace_published(
+            repo_root,
+            "tc_w034_let_lambda_higher_order_replay_001",
+            &[("Base", "12"), ("Out", "17")],
+        );
+        trace_trace(repo_root, "tc_w034_let_lambda_higher_order_replay_001", &[]);
+        trace_rejects(repo_root, "tc_w034_let_lambda_higher_order_replay_001", &[]);
+        trace_result(repo_root, "tc_w034_replay_equivalent_independent_order_001");
+        trace_published(
+            repo_root,
+            "tc_w034_replay_equivalent_independent_order_001",
+            &[("Left", "4"), ("Top", "5"), ("Check", "9")],
+        );
+        trace_result(repo_root, "tc_w034_capability_fence_reject_001");
+        trace_trace(
+            repo_root,
+            "tc_w034_capability_fence_reject_001",
+            &["reject.issued"],
+        );
+        trace_rejects(
+            repo_root,
+            "tc_w034_capability_fence_reject_001",
+            &["reject"],
+        );
+        trace_result(repo_root, "tc_w034_overlay_eviction_after_unpin_001");
+        trace_trace(
+            repo_root,
+            "tc_w034_overlay_eviction_after_unpin_001",
+            W034_OVERLAY_TRACE_FAMILIES,
+        );
+        trace_rejects(repo_root, "tc_w034_overlay_eviction_after_unpin_001", &[]);
+        trace_counters(
+            repo_root,
+            "tc_w034_overlay_eviction_after_unpin_001",
+            &[("overlay_evictions", 3)],
+        );
+        trace_result(repo_root, "tc_w034_dynamic_dependency_negative_001");
+        trace_result(repo_root, "tc_w034_snapshot_fence_reject_001");
+        trace_trace(
+            repo_root,
+            "tc_w034_snapshot_fence_reject_001",
+            &["reject.issued"],
+        );
+        trace_rejects(repo_root, "tc_w034_snapshot_fence_reject_001", &["reject"]);
     }
 
     fn create_treecalc_artifacts(repo_root: &Path) {
@@ -1140,6 +1569,28 @@ mod tests {
         );
         tree_case(
             repo_root,
+            "tc_local_w034_higher_order_let_lambda_publish_001",
+            "published",
+            true,
+        );
+        tree_published(
+            repo_root,
+            "tc_local_w034_higher_order_let_lambda_publish_001",
+            &[(3, "17")],
+        );
+        tree_case(
+            repo_root,
+            "tc_local_w034_independent_order_equiv_001",
+            "published",
+            true,
+        );
+        tree_published(
+            repo_root,
+            "tc_local_w034_independent_order_equiv_001",
+            &[(4, "4"), (5, "5"), (6, "9")],
+        );
+        tree_case(
+            repo_root,
             "tc_local_verified_clean_001",
             "verified_clean",
             false,
@@ -1167,6 +1618,7 @@ mod tests {
             "tc_local_lambda_host_sensitive_reject_001",
             &["ExecutionRestriction"],
         );
+        tree_retention_guardrail(repo_root);
     }
 
     fn trace_result(repo_root: &Path, scenario_id: &str) {
@@ -1215,6 +1667,19 @@ mod tests {
             json!({
                 "rejects": reject_ids.iter().map(|reject_id| json!({
                     "reject_id": reject_id,
+                })).collect::<Vec<_>>(),
+            }),
+        );
+    }
+
+    fn trace_counters(repo_root: &Path, scenario_id: &str, counters: &[(&str, u64)]) {
+        write_json_test(
+            repo_root,
+            &trace_artifact_path(scenario_id, "counters.json"),
+            json!({
+                "counters": counters.iter().map(|(counter, value)| json!({
+                    "counter": counter,
+                    "value": value,
                 })).collect::<Vec<_>>(),
             }),
         );
@@ -1276,6 +1741,25 @@ mod tests {
                     .map(|family| json!({ "family": family }))
                     .collect::<Vec<_>>()
             ),
+        );
+    }
+
+    fn tree_retention_guardrail(repo_root: &Path) {
+        write_json_test(
+            repo_root,
+            &tree_root_artifact_path("retention_guardrail.json"),
+            json!({
+                "events": W034_OVERLAY_TREE_EVENT_LABELS.iter().map(|label| json!({
+                    "label": label,
+                })).collect::<Vec<_>>(),
+                "pinned_reader_stability": {
+                    "stable": true,
+                },
+                "retention": {
+                    "cleanup_blocked_while_reader_pinned": true,
+                    "evicted_overlay_count_after_release": 3,
+                },
+            }),
         );
     }
 

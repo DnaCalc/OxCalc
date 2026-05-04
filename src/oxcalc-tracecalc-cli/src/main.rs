@@ -285,10 +285,10 @@ fn ensure_oxfml_bridge_root(repo_root: &Path) -> Result<(), String> {
 
 fn ensure_independent_conformance_root(repo_root: &Path) -> Result<(), String> {
     let trace_run = repo_root.join(
-        "docs/test-runs/core-engine/tracecalc-reference-machine/post-w033-let-lambda-carrier-witness-001/run_summary.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/run_summary.json",
     );
     let tree_run = repo_root.join(
-        "docs/test-runs/core-engine/treecalc-local/post-w033-independent-conformance-treecalc-001/run_summary.json",
+        "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/run_summary.json",
     );
     if trace_run.exists() && tree_run.exists() {
         Ok(())

@@ -1,0 +1,10 @@
+[
+  {
+    "calc_state": "DirtyPending",
+    "node_id": 3,
+    "reasons": [
+      "StructuralRecalcOnly"
+    ],
+    "requires_rebind": false
+  }
+]

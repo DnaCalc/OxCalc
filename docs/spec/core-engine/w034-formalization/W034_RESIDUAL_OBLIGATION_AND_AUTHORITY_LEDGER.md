@@ -41,7 +41,7 @@ Reviewed inbound observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`.
 | Add follow-up beads until the formalization goal is reached | `calc-e77` and child beads `calc-e77.1` through `calc-e77.7` exist in `.beads/`. | Active W034 path. |
 | Full formalization of the core engine | Current Lean/TLA/proof/replay packets are bounded first slices and post-W033 slices. | Not reached; owned by `calc-e77.2` through `calc-e77.7`. |
 | TraceCalc verified as correctness oracle | W033 oracle self-check and LET/LAMBDA witness runs exist; coverage is explicitly bounded. | Partial; `calc-e77.2` widens oracle coverage. |
-| Optimized/core-engine implementation verified | W033 independent conformance emits first comparison rows and declared gaps. | Partial; `calc-e77.3` widens conformance. |
+| Optimized/core-engine implementation verified | W033 independent conformance emits first comparison rows and declared gaps; `calc-e77.3` widens this to W034 with 15 comparison rows, 0 missing artifacts, and 0 unexpected mismatches. | Partial at W034 scope; Lean/TLA, pack/capability, continuous scale, and full independent evaluator diversity remain open. |
 | Full TLA verification | `CoreEngineStage1` and `CoreEnginePostW033` smoke models pass, with Stage 2 unpromoted. | Partial; `calc-e77.5` owns deeper TLA and contention preconditions. |
 | Full Lean verification | `Stage1State`, `W033FirstSlice`, and `W033PostSlice` check; broader module split remains open. | Partial; `calc-e77.4` owns deeper Lean proof family. |
 | Pack-grade replay and capability claims | `W033_PACK_CAPABILITY_POST_W033_DECISION.md` records `cap.C5.pack_valid` not promoted and eight blockers. | Partial/no-promotion; `calc-e77.6` owns next pack gate binding. |
@@ -79,6 +79,17 @@ Reviewed inbound observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`.
 | `W034-HW-004` | OxFml W073 working state and handoff text | Aggregate and visualization conditional-formatting metadata is typed-only for current W073 families. | No current OxCalc patch; if later W034 code constructs those payloads, require typed metadata and do not rely on bounded threshold strings. |
 
 Current handoff state: no new OxFml handoff is filed by `calc-e77.1`, because no W034 artifact has exercised a concrete contradiction. The watch rows become handoff candidates only if later W034 evidence exposes a specific upstream insufficiency.
+
+## 5A. Post-`calc-e77.3` Conformance Update
+
+The W034 independent conformance widening packet is now recorded at `docs/spec/core-engine/w034-formalization/W034_INDEPENDENT_CONFORMANCE_WIDENING.md`.
+
+Relevant residual effects:
+
+1. `W034-OBL-004`: W034 higher-order `LET`/`LAMBDA` has a TreeCalc-local value counterpart; returned callable identity metadata remains a declared local projection gap.
+2. `W034-OBL-005`: W034 conformance artifacts classify 5 exact value matches, 3 no-publication matches, 1 lifecycle match, 6 declared local gaps, 0 missing artifacts, and 0 unexpected mismatches.
+3. `W034-OBL-006`: the widened comparison still does not promote fully independent evaluator implementation diversity.
+4. `W034-OBL-012`: a W034 Raw OxFml higher-order value fixture exists locally; broader direct OxFml fixture bridge depth remains open.
 
 ## 6. Bead Mapping
 

@@ -1,0 +1,19 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001",
+  "bundle_validation_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+  "comparison_row_count": 15,
+  "core_engine_projection_differential_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json",
+  "declared_gap_count": 6,
+  "exact_value_match_count": 5,
+  "handoff_triggered": false,
+  "lifecycle_surface_match_count": 1,
+  "missing_artifact_count": 0,
+  "no_publication_match_count": 3,
+  "run_id": "w034-independent-conformance-001",
+  "schema_version": "oxcalc.independent_conformance.run_summary.v1",
+  "surface_mapping_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/surface_mapping.json",
+  "tracecalc_reference_run_id": "w034-tracecalc-oracle-deepening-001",
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001",
+  "treecalc_tracecalc_differential_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+  "unexpected_mismatch_count": 0
+}

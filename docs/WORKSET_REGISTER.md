@@ -396,3 +396,19 @@ It does mean:
    residual release-grade proof-service obligation map, optimized core broad conformance and callable metadata closure, Rust totality refinement and panic-free core proof frontier, Lean/TLA full-verification and unbounded fairness discharge, Stage 2 production partition analyzer and scheduler equivalence, operated assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service, OxFml public migration formatting callable and registered-external seam, pack-grade replay governance and C5 release reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`
+
+### W044 Core Formalization Release-Grade Blocker Burn-Down And Service Proof Closure
+1. purpose:
+   continue after W043 by converting the remaining release-grade no-promotion blockers into direct implementation, proof/model, operated-service, independent-evaluator, OxFml migration, scaling, and pack-governance evidence where possible, while preserving exact blockers where direct evidence is still insufficient.
+2. depends_on:
+   `W043`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md`, `docs/spec/core-engine/w043-formalization/W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W043 residual blockers are mapped to W044 obligations; optimized/core dynamic transition breadth, callable metadata projection, Rust totality/refinement, panic-free core boundaries, Lean/TLA verification, unbounded fairness, Stage 2 production partition-analyzer soundness, scheduler equivalence, pack-grade replay equivalence, operated services, retained-history and retained-witness lifecycle, retention SLO, independent evaluator breadth, mismatch quarantine, OxFml W073 typed-rule request construction, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, release-scale replay/performance evidence, pack/C5, and release-grade decisions are evidenced, handed off, watched, blocked, or promoted only by direct evidence.
+6. initial_epic_lanes:
+   residual release-grade blocker reclassification and promotion-contract map, optimized core dynamic transition and callable metadata implementation tranche, Rust totality refinement and panic-surface proof expansion, Lean/TLA unbounded fairness and full-verification proof expansion, Stage 2 production partition analyzer and scheduler equivalence implementation, operated continuous assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service implementation, OxFml public migration typed formatting callable and registered-external uptake, release-scale replay performance and scaling evidence under semantic guards, pack-grade replay governance service and C5 reassessment, closure audit and release-grade verification decision
+7. rollout_mode:
+   `execution_target`

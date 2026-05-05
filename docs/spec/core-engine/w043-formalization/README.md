@@ -28,19 +28,20 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
 7. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
 8. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
 9. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
+10. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
 
 ## Planned Packets
 
-1. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
+1. None for W043 after the closure-audit checkpoint. W044 successor scope is packetized under `calc-b1t`.
 
 ## Current Status
 
-- execution_state: `calc-2p3.10_ready_closure_audit_and_release_grade_verification_decision`
+- execution_state: `calc-2p3.10_closure_audit_release_grade_verification_decision`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-2p3.10` closure audit and release-grade verification decision is next
+  - W044 successor scope is packetized under `calc-b1t`
   - full Lean verification remains blocked
   - full TLA verification remains blocked
   - scheduler fairness and unbounded model coverage remain exact blockers
@@ -64,3 +65,4 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
 2. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` records the `calc-2p3.7` diversity packet. The packet `w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001` records 17 source rows, 6 independent reference-model cases, 6 matches, 13 independent-evaluator rows, 12 cross-engine differential rows, 12 mismatch-authority rows, 21 accepted boundary rows, 9 service-blocked rows, 8 exact diversity/service blockers, and 0 failed rows. It extends the bounded independent reference-model slice with fan-in checksum and mismatch-routing control cases, binds W043 operated-assurance and Stage 2 service evidence, carries the current W073 typed-only formatting guard, and keeps full independent evaluator breadth, operated cross-engine differential service, mismatch quarantine service, retained-witness attachment service, broad OxFml display/publication, public migration, callable metadata projection, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, pack-grade replay, C5, Stage 2 policy, release-grade verification, and general OxFunc kernels unpromoted.
 3. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` records the `calc-2p3.8` OxFml seam packet. The packet `w043-oxfml-public-migration-formatting-callable-registered-external-001` adds a fresh 12-case upstream-host run plus a W043 OxFml seam runner branch, records 19 source rows, 13 consumed-surface rows, 12 publication/display rows, 11 callable rows, 9 registered-external/provider rows, 11 exact OxFml/callable/provider/W073 blockers, and 0 failed rows. It binds the current OxFml W073 typed-rule-only direct-replacement formatting update and downstream handoff text while keeping broad OxFml seam closure, public consumer-surface migration verification, W073 downstream request-construction uptake, callable metadata projection, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, broad display/publication closure, pack-grade replay, C5, Stage 2 policy, release-grade verification, and general OxFunc kernels unpromoted.
 4. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` records the `calc-2p3.9` pack/C5 packet. The packet `w043-pack-grade-replay-governance-c5-release-reassessment-001` adds a W043 pack-capability profile, records 16 satisfied inputs, 41 no-promotion blockers, 0 missing artifacts, 92 required artifacts validated, decision `capability_not_promoted`, and highest honest capability `cap.C4.distill_valid`. It binds the W043 direct evidence tranche into a no-promotion pack decision while keeping pack-grade replay, `cap.C5.pack_valid`, Stage 2 production policy, operated services, retained-history service, retained-witness lifecycle service, retention SLO enforcement, full independent evaluator breadth, mismatch quarantine service, broad OxFml display/publication, public migration, W073 downstream typed request construction, callable metadata projection, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, general OxFunc kernels, and release-grade verification unpromoted.
+5. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` records the `calc-2p3.10` closure audit. The packet `w043-closure-audit-release-grade-verification-decision-001` records 9 evidence packets, 36 W043 obligations, 16 promotion-target gates, 16 satisfied pack inputs, 41 no-promotion blockers, 92 validated required pack artifacts, no release-grade/full-formalization/C5/pack/Stage2/operated-service/retained-history/retained-witness/retention-SLO/independent-evaluator/mismatch-quarantine/OxFml-breadth/public-migration/W073-downstream-uptake/callable/registered-external/provider-publication/scaling-correctness/general-OxFunc promotion, no OxFml handoff trigger, and `cap.C4.distill_valid` as highest honest capability. It routes post-W043 release-grade successor scope to W044 under `calc-b1t`.

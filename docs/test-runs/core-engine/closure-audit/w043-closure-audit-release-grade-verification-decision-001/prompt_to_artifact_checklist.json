@@ -1,0 +1,105 @@
+{
+  "run_id": "w043-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w043.prompt_to_artifact_checklist.v1",
+  "row_count": 12,
+  "rows": [
+    {
+      "requirement": "include_oxcalc_plus_oxfml_with_narrow_let_lambda_oxfunc_carrier",
+      "coverage_result": "covered_as_boundary_classification_general_oxfunc_external",
+      "evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json",
+        "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
+        "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "incorporate_current_oxfml_formatting_updates_if_needed",
+      "coverage_result": "covered_w073_typed_rule_only_no_new_handoff",
+      "evidence": [
+        "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
+        "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+        "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+      ]
+    },
+    {
+      "requirement": "formalization_improves_specs_and_implementation_not_fixed_initial_spec",
+      "coverage_result": "covered_for_w043_target_exact_blockers_and_spec_evolution_hooks_remain_visible",
+      "evidence": [
+        "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/closure_obligation_map.json",
+        "docs/test-runs/core-engine/closure-audit/w043-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ]
+    },
+    {
+      "requirement": "tracecalc_stands_as_correctness_oracle_for_spec_purposes",
+      "coverage_result": "covered_for_current_oxcalc_owned_observable_profile_not_release_grade_promotion",
+      "evidence": [
+        "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/evidence/evidence_index.json"
+      ]
+    },
+    {
+      "requirement": "verify_tracecalc_and_optimized_implementations",
+      "coverage_result": "partial_optimized_core_exact_blockers_remain",
+      "evidence": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "deepen_lean_tla_and_formal_modelling_leverage",
+      "coverage_result": "partial_full_lean_tla_verification_and_rust_totality_unpromoted",
+      "evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "stage2_partition_and_semantic_equivalence_distinguish_declared_replay_from_production_policy",
+      "coverage_result": "covered_as_bounded_no_promotion_decision",
+      "evidence": [
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json"
+      ]
+    },
+    {
+      "requirement": "operated_assurance_and_performance_scaling_lanes_rest_on_semantic_evidence",
+      "coverage_result": "partial_operated_services_and_release_scale_correctness_absent",
+      "evidence": [
+        "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+        "docs/test-runs/core-engine/closure-audit/w043-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ]
+    },
+    {
+      "requirement": "independent_evaluator_diversity_requires_independent_implementation_authority",
+      "coverage_result": "covered_as_bounded_reference_model_evidence_plus_exact_blockers",
+      "evidence": [
+        "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "oxfml_formatting_update_remains_typed_only_for_aggregate_visualization_families",
+      "coverage_result": "covered_w072_threshold_strings_not_fallback",
+      "evidence": [
+        "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
+        "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json"
+      ]
+    },
+    {
+      "requirement": "make_pack_c5_and_release_grade_decisions_from_direct_evidence_only",
+      "coverage_result": "covered_as_no_promotion_decisions_cap_c4_retained",
+      "evidence": [
+        "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+        "docs/test-runs/core-engine/closure-audit/w043-closure-audit-release-grade-verification-decision-001/release_decision.json"
+      ]
+    },
+    {
+      "requirement": "keep_spec_documents_accurate_during_improvement_pass",
+      "coverage_result": "covered_for_w043_target_w044_successor_scope_packetized",
+      "evidence": [
+        "docs/spec/core-engine/w043-formalization/W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+        "docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md",
+        "docs/spec/core-engine/w044-formalization/README.md"
+      ]
+    }
+  ]
+}
+

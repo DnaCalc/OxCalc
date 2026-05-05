@@ -21,12 +21,12 @@ Current packets:
 2. `W042_OPTIMIZED_CORE_COUNTERPART_CONFORMANCE_AND_CALLABLE_METADATA_PROJECTION.md` - `calc-czd.2` optimized/core counterpart conformance and callable metadata projection.
 3. `W042_RUST_TOTALITY_REFINEMENT_AND_CORE_PANIC_BOUNDARY_CLOSURE.md` - `calc-czd.3` Rust totality/refinement and core panic-boundary closure.
 4. `W042_LEAN_TLA_FAIRNESS_AND_FULL_VERIFICATION_EXPANSION.md` - `calc-czd.4` Lean/TLA fairness and full-verification expansion.
+5. `W042_STAGE2_PRODUCTION_ANALYZER_AND_PACK_GRADE_EQUIVALENCE_CLOSURE.md` - `calc-czd.5` Stage 2 production analyzer and pack-grade equivalence closure.
 
 Planned packets:
 
-1. `W042_STAGE2_PRODUCTION_ANALYZER_AND_PACK_GRADE_EQUIVALENCE_CLOSURE.md` - `calc-czd.5` Stage 2 production analyzer and pack-grade equivalence closure.
-2. `W042_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_AND_ALERT_SERVICE_CLOSURE.md` - `calc-czd.6` operated assurance, retained-history, retained-witness, and alert service closure.
-3. `W042_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-czd.7` independent evaluator breadth, mismatch quarantine, and operated differential service.
-4. `W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md` - `calc-czd.8` OxFml public migration, callable carrier, and registered-external closure.
-5. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
-6. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.
+1. `W042_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_AND_ALERT_SERVICE_CLOSURE.md` - `calc-czd.6` operated assurance, retained-history, retained-witness, and alert service closure.
+2. `W042_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-czd.7` independent evaluator breadth, mismatch quarantine, and operated differential service.
+3. `W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md` - `calc-czd.8` OxFml public migration, callable carrier, and registered-external closure.
+4. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
+5. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.

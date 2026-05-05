@@ -1,0 +1,39 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001",
+  "run_id": "w042-stage2-production-analyzer-pack-grade-equivalence-closure-001",
+  "schema_version": "oxcalc.stage2_replay.w042.source_evidence_index.v1",
+  "source_artifacts": {
+    "w041_stage2_blockers": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
+    "w041_stage2_pack_equivalence": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_pack_equivalence_register.json",
+    "w041_stage2_policy_gate": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_policy_gate_register.json",
+    "w041_stage2_production_analyzer": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_production_analyzer_soundness_register.json",
+    "w041_stage2_promotion_decision": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json",
+    "w041_stage2_summary": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+    "w041_stage2_validation": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json",
+    "w042_formatting_intake": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w073_formatting_intake.json",
+    "w042_lean_tla_blockers": "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json",
+    "w042_lean_tla_summary": "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json",
+    "w042_lean_tla_validation": "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/validation.json",
+    "w042_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+    "w042_obligation_summary": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json",
+    "w042_optimized_core_blockers": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json",
+    "w042_optimized_core_counterpart": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
+    "w042_optimized_core_summary": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
+    "w042_promotion_target_gate_map": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json",
+    "w042_rust_refinement_register": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json",
+    "w042_rust_summary": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json",
+    "w042_rust_validation": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json",
+    "w042_stage2_lean_file": "formal/lean/OxCalc/CoreEngine/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean",
+    "w042_tla_model_register": "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json",
+    "w042_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/run_summary.json"
+  },
+  "source_counts": {
+    "w041_stage2_exact_remaining_blocker_count": 4,
+    "w041_stage2_policy_row_count": 14,
+    "w042_lean_tla_exact_remaining_blocker_count": 5,
+    "w042_obligation_count": 33,
+    "w042_optimized_exact_remaining_blocker_count": 3,
+    "w042_promotion_target_count": 14,
+    "w042_rust_exact_remaining_blocker_count": 4
+  }
+}

@@ -332,3 +332,19 @@ It does mean:
    residual successor obligation ledger and promotion-readiness map, optimized core exact blocker implementation closure, Lean/TLA totality and proof-model closure tranche, Stage 2 production partition policy and replay governance, operated assurance service and retained history substrate, independent evaluator row set and cross-engine diversity, OxFml seam breadth and callable metadata closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade decision
 7. rollout_mode:
    `execution_target`
+
+### W040 Core Formalization Release-Grade Direct Verification
+1. purpose:
+   continue after W039 by converting exact residual release-grade blockers into direct implementation, proof, model, service, diversity, OxFml/callable, pack/C5, and release-grade evidence where possible, while preserving exact blockers where direct evidence is still insufficient.
+2. depends_on:
+   `W039`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md`, `docs/spec/core-engine/w039-formalization/W039_CLOSURE_AUDIT_AND_RELEASE_GRADE_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W039 residuals are mapped to W040 direct-verification obligations; optimized/core exact blockers are fixed, directly evidenced, spec-evolved, or retained without declared-gap match promotion; Rust totality/refinement and Lean/TLA verification claims are checked or blocked; Stage 2 production policy claims have production-relevant partition soundness and observable-result invariance evidence; operated service claims use runnable service artifacts; independent evaluator claims use independent implementation authority; OxFml W073 typed-only formatting, broad seam breadth, public consumer surfaces, and callable metadata are evidenced, handed off, or blocked; pack/C5 and release-grade decisions state exact evidence consequence before any promotion claim.
+6. initial_epic_lanes:
+   residual direct-verification obligation map, optimized core exact blocker fixes and differentials, Rust totality and refinement proof tranche, Lean/TLA full-verification discharge tranche, Stage 2 production policy and equivalence implementation, operated assurance and retained-history service implementation, independent evaluator implementation and operated differential, OxFml seam breadth and callable metadata implementation, pack-grade replay governance and C5 promotion decision, closure audit and release-grade verification decision
+7. rollout_mode:
+   `execution_target`

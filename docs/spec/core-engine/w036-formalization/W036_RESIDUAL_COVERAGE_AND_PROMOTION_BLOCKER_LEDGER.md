@@ -149,6 +149,12 @@ Evidence run `w036-tracecalc-coverage-closure-001` emits 32 matrix rows, 30 cove
 
 Evidence run `w036-implementation-conformance-closure-001` emits 6 closure action rows, 2 harness first-fix rows, 4 blocker-routed rows, 0 match-promoted rows, and 0 failed rows. Dynamic dependency bind and dynamic negative/shape-update rows are bound to W036 harness evidence but remain non-matches. LET/LAMBDA host effect and callable metadata rows route to `calc-rqq.4`; snapshot-fence and capability-view fence rows route to `calc-rqq.5`. Full optimized/core-engine verification remains unpromoted.
 
+### calc-rqq.4 Disposition Update
+
+`calc-rqq.4` now records the W036 Lean theorem coverage expansion in `W036_LEAN_THEOREM_COVERAGE_EXPANSION.md`.
+
+Checked Lean files `formal/lean/OxCalc/CoreEngine/W036LeanCoverageExpansion.lean` and `formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean` add W036 proof-inventory rows for match guards, harness first-fix rows, callable carrier boundaries, callable metadata deferral, OxFml external seam assumptions, full OxFunc LAMBDA kernel opacity, and TLA/conformance deferrals. The W036 Lean inventory has zero explicit axioms, zero match-promoted rows, and no full Lean verification promotion.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

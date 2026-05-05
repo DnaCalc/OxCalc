@@ -25,8 +25,8 @@ Current packets:
 6. `W042_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_AND_ALERT_SERVICE_CLOSURE.md` - `calc-czd.6` operated assurance, retained-history, retained-witness, and alert service closure.
 7. `W042_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-czd.7` independent evaluator breadth, mismatch quarantine, and operated differential service.
 8. `W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md` - `calc-czd.8` OxFml public migration, callable carrier, and registered-external closure.
+9. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
 
 Planned packets:
 
-1. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
-2. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.
+1. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.

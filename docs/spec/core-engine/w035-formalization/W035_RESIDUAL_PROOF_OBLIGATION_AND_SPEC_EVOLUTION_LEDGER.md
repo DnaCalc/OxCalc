@@ -124,6 +124,16 @@ Current `calc-tkq.4` obligation disposition:
 | `W035-OBL-008` | imported OxFml/OxFunc facts are split into external seam assumptions and opaque kernel boundaries rather than promoted as OxCalc-local proofs |
 | `W035-OBL-013` | current OxFml W073 typed-only conditional-formatting metadata is carried as an OxFml-owned external seam assumption; no OxCalc request-construction path or handoff trigger is exercised |
 
+`calc-tkq.5` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, and the three `formal/tla/CoreEngineW035NonRoutineInterleavings.*.cfg` configs.
+
+Current `calc-tkq.5` obligation disposition:
+
+| Obligation id | `calc-tkq.5` disposition |
+|---|---|
+| `W035-OBL-003` | multi-reader overlay release ordering is checked in a two-reader/two-overlay TLA config; broader overlay economics and production GC policy remain later work |
+| `W035-OBL-009` | W035 adds non-routine TLA configs beyond W034 smoke and records exact state counts and model limits |
+| `W035-OBL-010` | Stage 2 scheduler promotion remains blocked unless evidence and partition preconditions are visible; no Stage 2 policy is promoted |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

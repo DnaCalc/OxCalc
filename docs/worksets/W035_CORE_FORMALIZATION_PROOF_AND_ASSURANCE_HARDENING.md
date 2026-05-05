@@ -85,12 +85,12 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 
 ## Current Status
 
-- execution_state: `calc-tkq.4_lean_assumption_discharge_validated`
+- execution_state: `calc-tkq.5_tla_non_routine_exploration_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tkq.5` through `calc-tkq.8` remain open
+  - `calc-tkq.6` through `calc-tkq.8` remain open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open beyond W035 conformance-hardening dispositions
@@ -105,3 +105,5 @@ Latest W035 evidence:
 5. `docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/` records the deterministic gap-disposition run: 6 W034 gap rows, 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows.
 6. `docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md` records the Lean assumption-discharge and seam proof-map packet for `calc-tkq.4`.
 7. `formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean` and `formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean` record the checked W035 Lean classification artifacts, including W073 as an OxFml-owned external seam assumption.
+8. `docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md` records the TLA non-routine exploration packet for `calc-tkq.5`.
+9. `formal/tla/CoreEngineW035NonRoutineInterleavings.tla` and its three W035 configs record the checked scheduler-gate, partition-gap, and multi-reader overlay exploration.

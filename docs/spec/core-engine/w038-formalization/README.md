@@ -9,7 +9,7 @@ The governing workset is `docs/worksets/W038_CORE_FORMALIZATION_RELEASE_GRADE_CL
 Packets:
 
 1. `W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md`
-2. W038 TraceCalc oracle authority and authority-exclusion discharge.
+2. `W038_TRACECALC_ORACLE_AUTHORITY_AND_AUTHORITY_EXCLUSION_DISCHARGE.md`
 3. W038 optimized core-engine conformance blocker closure and fixes.
 4. W038 proof-model assumption discharge and totality boundary hardening.
 5. W038 Stage 2 partition replay and semantic-equivalence execution.

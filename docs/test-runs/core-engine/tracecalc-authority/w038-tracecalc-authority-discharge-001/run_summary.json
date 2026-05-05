@@ -1,0 +1,22 @@
+{
+  "run_id": "w038-tracecalc-authority-discharge-001",
+  "workset": "W038",
+  "parent_epic": "calc-zsr",
+  "bead": "calc-zsr.2",
+  "artifact_kind": "tracecalc_authority_discharge",
+  "generated_on": "2026-05-05",
+  "source_tracecalc_run_id": "w037-tracecalc-observable-closure-001",
+  "source_matrix_row_count": 32,
+  "source_covered_row_count": 31,
+  "source_uncovered_row_count": 0,
+  "source_excluded_row_count": 1,
+  "accepted_external_exclusion_count": 1,
+  "remaining_tracecalc_authority_blocker_count": 0,
+  "tracecalc_current_oxcalc_observable_profile_authority_disposition": "discharged_for_current_scope",
+  "release_grade_verification_promoted": false,
+  "general_oxfunc_kernel_promoted": false,
+  "next_ready_after_closure": "calc-zsr.3",
+  "scope_completeness": "scope_partial",
+  "target_completeness": "target_complete",
+  "integration_completeness": "integrated"
+}

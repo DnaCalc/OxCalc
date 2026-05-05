@@ -1,0 +1,41 @@
+{
+  "run_id": "w038-tracecalc-authority-discharge-001",
+  "schema_version": "oxcalc.tracecalc_authority.w038.authority_map.v1",
+  "covered_reference_behavior": {
+    "source_run_id": "w037-tracecalc-observable-closure-001",
+    "matrix_row_count": 32,
+    "covered_row_count": 31,
+    "uncovered_row_count": 0,
+    "missing_or_failed_row_count": 0,
+    "meaning": "TraceCalc has deterministic replay coverage for all current OxCalc-owned observable reference rows in the W037 matrix."
+  },
+  "accepted_authority_exclusions": [
+    {
+      "row_id": "w035_callable_full_oxfunc_semantics",
+      "owner": "external:OxFunc",
+      "meaning": "General OxFunc LAMBDA kernel semantics are not part of the OxCalc TraceCalc authority profile."
+    }
+  ],
+  "superseded_prior_tracecalc_promotion_blockers": [
+    {
+      "blocker_id": "tracecalc.direct_oxfml_evaluator_reexecution_not_yet_exercised",
+      "superseding_evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "disposition": "superseded_for_exercised_upstream_host_slice"
+    }
+  ],
+  "remaining_non_tracecalc_gates": [
+    "optimized_core_engine_conformance_closure",
+    "full_lean_tla_verification",
+    "stage2_partition_replay_and_semantic_equivalence",
+    "operated_continuous_assurance_service",
+    "operated_cross_engine_differential_service",
+    "fully_independent_evaluator_diversity",
+    "pack_grade_replay_governance",
+    "c5_release_decision"
+  ],
+  "promotion_decision": {
+    "tracecalc_authority_disposition": "discharged_for_current_oxcalc_observable_scope",
+    "release_grade_verification_promoted": false,
+    "reason": "TraceCalc authority is clean for current scoped reference rows, but non-TraceCalc release gates remain open."
+  }
+}

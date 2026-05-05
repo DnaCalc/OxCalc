@@ -1,0 +1,25 @@
+{
+  "run_id": "w038-tracecalc-authority-discharge-001",
+  "schema_version": "oxcalc.tracecalc_authority.w038.discharge_ledger.v1",
+  "source_run_id": "w037-tracecalc-observable-closure-001",
+  "rows": [
+    {
+      "row_id": "w035_callable_full_oxfunc_semantics",
+      "surface": "full OxFunc LAMBDA semantic kernel",
+      "w037_classification": "classified_out_of_scope_oxfunc_kernel",
+      "w037_coverage_class": "excluded",
+      "w037_owner": "external:OxFunc; calc-ubd.4/calc-ubd.5 record boundary",
+      "w038_disposition": "accepted_external_authority_exclusion",
+      "w038_owner": "external:OxFunc; calc-zsr.4/calc-zsr.7 preserve boundary",
+      "required_future_action": "none inside OxCalc unless a future narrow carrier artifact exposes a concrete OxCalc/OxFml/OxFunc seam mismatch",
+      "promotion_consequence": "General OxFunc kernel semantics are excluded from OxCalc release-grade claims; the narrow LET/LAMBDA carrier remains in scope only where exercised.",
+      "handoff_required": false
+    }
+  ],
+  "summary": {
+    "accepted_external_exclusion_count": 1,
+    "remaining_tracecalc_authority_blocker_count": 0,
+    "uncovered_row_count": 0,
+    "missing_or_failed_row_count": 0
+  }
+}

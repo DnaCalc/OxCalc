@@ -91,12 +91,13 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-zsr.1_residual_release_grade_ledger_validated`
+- execution_state: `calc-zsr.2_tracecalc_authority_discharge_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-zsr.2` TraceCalc oracle authority and authority-exclusion discharge is the next W038 bead
+  - `calc-zsr.3` optimized core-engine conformance blocker closure and fixes is the next W038 bead
+  - TraceCalc authority is discharged for the current OxCalc-owned observable profile, but release-grade verification remains unpromoted
   - optimized/core-engine conformance blocker closure remains open
   - proof/model assumption discharge remains open
   - Stage 2 partition replay and semantic-equivalence execution remain open
@@ -107,3 +108,4 @@ Child path:
 Latest W038 evidence:
 
 1. `docs/spec/core-engine/w038-formalization/W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md` records the `calc-zsr.1` residual release-grade obligation ledger and objective map. The ledger packet `w038-residual-release-grade-obligation-ledger-001` maps 20 W038 obligations to owner beads, evidence roots, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, or fully independent evaluator diversity.
+2. `docs/spec/core-engine/w038-formalization/W038_TRACECALC_ORACLE_AUTHORITY_AND_AUTHORITY_EXCLUSION_DISCHARGE.md` records the `calc-zsr.2` TraceCalc authority-discharge slice. The packet `w038-tracecalc-authority-discharge-001` accepts the single W037 authority-excluded row as an external OxFunc-owned semantic-kernel exclusion, leaves zero uncovered TraceCalc rows for the current OxCalc-owned observable profile, and keeps non-TraceCalc release gates open.

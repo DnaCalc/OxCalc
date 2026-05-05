@@ -14,6 +14,6 @@ Packets:
 4. `W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md`
 5. `W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md`
 6. `W038_OPERATED_ASSURANCE_ALERT_QUARANTINE_AND_CROSS_ENGINE_SERVICE.md`
-7. W038 independent evaluator diversity and OxFml seam watch closure.
+7. `W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md`
 8. W038 pack-grade replay governance and C5 release decision.
 9. W038 closure audit and release-grade verification decision.

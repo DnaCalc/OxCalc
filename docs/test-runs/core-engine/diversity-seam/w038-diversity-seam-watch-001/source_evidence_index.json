@@ -1,0 +1,82 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001",
+  "rows": [
+    {
+      "artifact": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w036_independent_conformance",
+      "semantic_state": "w036_independent_projection_differential_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w036_cross_engine_differential",
+      "semantic_state": "w036_file_backed_cross_engine_differential_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w037_direct_oxfml",
+      "semantic_state": "direct_oxfml_runtime_slice_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w038_conformance",
+      "semantic_state": "w038_conformance_blockers_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w038_formal_assurance",
+      "semantic_state": "w038_formal_external_kernel_boundary_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w038_stage2_replay",
+      "semantic_state": "w038_stage2_formatting_watch_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w038_operated_assurance",
+      "semantic_state": "w038_operated_service_blockers_bound",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "w036_cross_engine_summary": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+    "w036_independent_summary": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+    "w037_direct_oxfml_summary": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+    "w038_conformance_blockers": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+    "w038_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+    "w038_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
+    "w038_operated_assurance_summary": "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+    "w038_stage2_replay_summary": "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json"
+  },
+  "source_evidence_row_count": 7
+}

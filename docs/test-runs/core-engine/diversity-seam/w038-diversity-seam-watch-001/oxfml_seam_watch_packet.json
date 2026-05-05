@@ -1,0 +1,94 @@
+{
+  "aligned_row_count": 7,
+  "handoff_triggered": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "current_read": "W073 aggregate and visualization conditional-formatting metadata is typed_rule-only for the watched families; legacy thresholds are not interpreted there.",
+      "disposition_kind": "watch_input_bound",
+      "evidence": {
+        "w038_stage2_formatting_watch_row_count": 1,
+        "w073_typed_rule_case_count": 1
+      },
+      "row_id": "seam.oxfml_w073_typed_formatting",
+      "source": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "format_delta and display_delta remain distinct; broad display-facing closure is not inferred.",
+      "disposition_kind": "watch_input_bound",
+      "evidence": {
+        "oxfml_notes_present": true,
+        "w038_stage2_formatting_watch_row_count": 1
+      },
+      "row_id": "seam.format_delta_display_delta_distinct",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "OxCalc consumes direct OxFml runtime evidence through the current facade slice without reopening OxFml ownership.",
+      "disposition_kind": "direct_external_slice_bound",
+      "evidence": {
+        "direct_oxfml_case_count": 3,
+        "expectation_mismatch_count": 0
+      },
+      "row_id": "seam.direct_oxfml_runtime_facade",
+      "source": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "LET/LAMBDA is included as a narrow carrier seam; general OxFunc kernels remain external.",
+      "disposition_kind": "accepted_boundary",
+      "evidence": {
+        "general_oxfunc_kernel_promoted": false,
+        "let_lambda_case_count": 2
+      },
+      "row_id": "seam.let_lambda_narrow_carrier",
+      "source": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "value-only callable carrier evidence is bound; callable metadata projection remains unpromoted.",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": {
+        "callable_metadata_blocker_present": true,
+        "w038_exact_remaining_blocker_count": 4
+      },
+      "row_id": "seam.callable_metadata_projection",
+      "source": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+      "watch_state": "blocked_exact"
+    },
+    {
+      "current_read": "current OxFml consumer surface points ordinary downstream use at consumer::runtime, consumer::editor, and consumer::replay; OxCalc does not build a new long-term wrapper around the older flat root.",
+      "disposition_kind": "note_level_watch",
+      "evidence": {
+        "oxfml_notes_present": true
+      },
+      "row_id": "seam.host_runtime_and_public_consumer_surface",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "table_catalog, enclosing_table_ref, and caller_table_region remain the aligned first structured-reference packet direction.",
+      "disposition_kind": "note_level_watch",
+      "evidence": {
+        "oxfml_notes_present": true
+      },
+      "row_id": "seam.structured_reference_table_packet",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "watch_state": "aligned"
+    },
+    {
+      "current_read": "registered-external direct packet naming and seven-field descriptor read are note-level converged, without coordinator API freeze.",
+      "disposition_kind": "note_level_watch",
+      "evidence": {
+        "oxfml_notes_present": true
+      },
+      "row_id": "seam.registered_external_packet",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "watch_state": "aligned"
+    }
+  ],
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.oxfml_seam_watch_packet.v1"
+}

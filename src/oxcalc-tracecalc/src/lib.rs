@@ -5,6 +5,7 @@
 pub mod assertions;
 pub mod continuous_assurance;
 pub mod contracts;
+pub mod diversity_seam;
 pub mod formal_assurance;
 pub mod implementation_conformance;
 pub mod independent_conformance;

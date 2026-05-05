@@ -1,0 +1,14 @@
+{
+  "accepted_boundary_count": 3,
+  "aligned_seam_watch_row_count": 7,
+  "diversity_disposition_row_count": 5,
+  "exact_blocker_count": 4,
+  "failed_row_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.validation.v1",
+  "seam_watch_row_count": 8,
+  "source_evidence_row_count": 7,
+  "status": "w038_diversity_seam_packet_valid",
+  "validation_failures": []
+}

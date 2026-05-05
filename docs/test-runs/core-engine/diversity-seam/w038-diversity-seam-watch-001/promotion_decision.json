@@ -1,0 +1,23 @@
+{
+  "accepted_boundary_count": 3,
+  "blockers": [
+    "diversity.fully_independent_evaluator_absent",
+    "diversity.operated_cross_engine_service_absent",
+    "seam.callable_metadata_projection_absent",
+    "seam.broad_oxfml_display_and_publication_breadth_unfrozen"
+  ],
+  "c5_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "decision_state": "w038_diversity_and_oxfml_seam_watch_bound_without_full_independence_promotion",
+  "diversity_disposition_row_count": 5,
+  "exact_blocker_count": 4,
+  "fully_independent_evaluator_promoted": false,
+  "general_oxfunc_kernel_promoted": false,
+  "oxfml_handoff_triggered": false,
+  "pack_grade_replay_promoted": false,
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.promotion_decision.v1",
+  "seam_watch_row_count": 8,
+  "semantic_equivalence_statement": "This runner classifies implementation diversity and OxFml seam-watch evidence only. It does not change evaluator kernels, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics.",
+  "stage2_policy_promoted": false
+}

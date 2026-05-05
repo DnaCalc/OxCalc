@@ -1,0 +1,46 @@
+{
+  "fully_independent_evaluator_promoted": false,
+  "row_count": 5,
+  "rows": [
+    {
+      "comparison_row_count": 15,
+      "disposition_kind": "accepted_boundary",
+      "diversity_state": "reference_oracle_not_independent_production_evaluator",
+      "evidence": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "promotion_consequence": "TraceCalc remains correctness oracle for covered reference behavior, not a fully independent optimized implementation.",
+      "row_id": "diversity.tracecalc_reference_machine"
+    },
+    {
+      "disposition_kind": "projection_evidence_not_independent",
+      "diversity_state": "shared_implementation_projection",
+      "evidence": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "exact_value_match_count": 5,
+      "promotion_consequence": "TreeCalc/CoreEngine projection rows are useful differential evidence but cannot promote full independent evaluator diversity.",
+      "row_id": "diversity.treecalc_core_projection"
+    },
+    {
+      "differential_row_count": 6,
+      "disposition_kind": "accepted_boundary",
+      "diversity_state": "file_backed_differential_not_operated_service",
+      "evidence": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+      "promotion_consequence": "File-backed differential rows support assurance but do not promote an operated cross-engine service or independent evaluator.",
+      "row_id": "diversity.file_backed_cross_engine_differential"
+    },
+    {
+      "disposition_kind": "accepted_external_slice",
+      "diversity_state": "external_formula_evaluator_slice_not_full_core_engine",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "promotion_consequence": "Direct OxFml evidence strengthens seam confidence for formulas, LET/LAMBDA carrier, and W073 formatting, but does not independently implement OxCalc coordination.",
+      "row_id": "diversity.direct_oxfml_external_evaluator_slice"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "diversity_state": "blocked",
+      "evidence": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "promotion_consequence": "Fully independent evaluator claims remain blocked until an independently implemented row set exists.",
+      "row_id": "diversity.fully_independent_evaluator_absent"
+    }
+  ],
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.implementation_diversity_disposition.v1"
+}

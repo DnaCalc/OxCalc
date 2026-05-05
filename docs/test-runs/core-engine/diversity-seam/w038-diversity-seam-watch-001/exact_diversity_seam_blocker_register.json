@@ -1,0 +1,35 @@
+{
+  "exact_blocker_count": 4,
+  "rows": [
+    {
+      "blocker_id": "diversity.fully_independent_evaluator_absent",
+      "owner": "calc-zsr.7; calc-zsr.9",
+      "promotion_consequence": "fully independent evaluator diversity remains unpromoted",
+      "reason": "TraceCalc, TreeCalc/CoreEngine projection, direct OxFml, and file-backed differential rows do not constitute an independently implemented OxCalc evaluator row set.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "diversity.operated_cross_engine_service_absent",
+      "owner": "calc-zsr.6; calc-zsr.7",
+      "promotion_consequence": "continuous cross-engine diversity claims remain unpromoted",
+      "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "seam.callable_metadata_projection_absent",
+      "owner": "calc-zsr.7; external:OxFunc",
+      "promotion_consequence": "callable metadata projection remains unpromoted",
+      "reason": "narrow LET/LAMBDA value carrier evidence is present, but callable metadata projection is not exercised.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "seam.broad_oxfml_display_and_publication_breadth_unfrozen",
+      "owner": "calc-zsr.7; OxFml watch lane",
+      "promotion_consequence": "broad OxFml seam closure remains unpromoted until exercised evidence requires and supports it",
+      "reason": "format_delta/display_delta distinction and current publication consequences are aligned, but broad display-facing and publication/topology breadth remains narrower than full future scope.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    }
+  ],
+  "run_id": "w038-diversity-seam-watch-001",
+  "schema_version": "oxcalc.diversity_seam.w038.exact_diversity_seam_blocker_register.v1"
+}

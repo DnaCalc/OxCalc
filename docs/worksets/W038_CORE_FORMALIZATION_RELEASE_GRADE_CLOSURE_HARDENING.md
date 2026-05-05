@@ -91,7 +91,7 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-zsr.6_operated_assurance_alert_quarantine_validated`
+- execution_state: `calc-zsr.7_independent_diversity_seam_watch_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
@@ -101,7 +101,7 @@ Child path:
   - proof/model assumptions, bounded models, external seams, totality boundaries, and exact proof/model blockers have W038 classifications, but full Lean/TLA verification remains unpromoted
   - Stage 2 bounded replay and permutation evidence exists for declared profiles, but production Stage 2 policy remains unpromoted
   - local alert/quarantine evidence and multi-run history are bound, but operated service claims remain unpromoted
-  - independent evaluator diversity and OxFml seam watch closure remain open
+  - independent evaluator diversity and OxFml seam watch rows are bound, but fully independent evaluator, broad OxFml display/publication, callable metadata projection, and general OxFunc kernel claims remain unpromoted
   - pack-grade replay governance, C5, and W038 release decision remain open
 
 Latest W038 evidence:
@@ -112,3 +112,4 @@ Latest W038 evidence:
 4. `docs/spec/core-engine/w038-formalization/W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md` records the `calc-zsr.4` proof/model assumption-discharge slice. The packet `w038-proof-model-assumption-discharge-001` records 8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 1 external-seam row, 3 totality boundaries, 6 exact blockers, 0 failed rows, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc promotion.
 5. `docs/spec/core-engine/w038-formalization/W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md` records the `calc-zsr.5` bounded Stage 2 replay slice. The packet `w038-stage2-partition-replay-001` records 5 partition replay rows, 6 permutation rows, 5 observable-invariance rows, 1 W073 typed-formatting watch row, 3 exact remaining blockers, 0 failed rows, and no production Stage 2 policy promotion.
 6. `docs/spec/core-engine/w038-formalization/W038_OPERATED_ASSURANCE_ALERT_QUARANTINE_AND_CROSS_ENGINE_SERVICE.md` records the `calc-zsr.6` operated-assurance disposition slice. The packet `w038-operated-assurance-alert-quarantine-001` records 8 source rows, 15 multi-run history rows, 8 evaluated alert/quarantine rules, 4 exact service blockers, 0 failed rows, and no operated continuous-assurance service, external alert dispatcher, operated cross-engine differential service, pack/C5, or Stage 2 promotion.
+7. `docs/spec/core-engine/w038-formalization/W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md` records the `calc-zsr.7` diversity/seam-watch disposition slice. The packet `w038-diversity-seam-watch-001` records 7 source rows, 5 diversity rows, 8 OxFml seam-watch rows, 4 exact blockers, 0 failed rows, current W073 typed-formatting alignment, and no fully independent evaluator, general OxFunc kernel, callable metadata projection, pack/C5, or Stage 2 promotion.

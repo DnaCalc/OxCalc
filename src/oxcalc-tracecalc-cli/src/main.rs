@@ -10,6 +10,7 @@ use oxcalc_core::treecalc_scale::{
 };
 use oxcalc_core::upstream_host_runner::UpstreamHostRunner;
 use oxcalc_tracecalc::continuous_assurance::ContinuousAssuranceRunner;
+use oxcalc_tracecalc::diversity_seam::DiversitySeamRunner;
 use oxcalc_tracecalc::formal_assurance::FormalAssuranceRunner;
 use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
@@ -36,7 +37,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | operated-assurance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | operated-assurance <run-id> | diversity-seam <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -138,6 +139,15 @@ fn run() -> Result<(), String> {
             }
             ("operated-assurance", run_id)
         }
+        "diversity-seam" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli diversity-seam <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli diversity-seam <run-id>".to_string());
+            }
+            ("diversity-seam", run_id)
+        }
         "continuous-assurance" => {
             let Some(run_id) = args.next() else {
                 return Err("usage: oxcalc-tracecalc-cli continuous-assurance <run-id>".to_string());
@@ -228,6 +238,7 @@ fn run() -> Result<(), String> {
         "formal-assurance" => ensure_formal_assurance_root(&repo_root)?,
         "stage2-replay" => ensure_stage2_replay_root(&repo_root)?,
         "operated-assurance" => ensure_operated_assurance_root(&repo_root)?,
+        "diversity-seam" => ensure_diversity_seam_root(&repo_root)?,
         "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
@@ -354,6 +365,21 @@ fn run() -> Result<(), String> {
                 summary.multi_run_history_row_count,
                 summary.evaluated_alert_rule_count,
                 summary.exact_service_blocker_count,
+                summary.failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "diversity-seam" => {
+            let runner = DiversitySeamRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("diversity seam run failed: {error}"))?;
+            println!(
+                "Diversity seam run '{run_id}' wrote {} source rows, {} diversity rows, {} OxFml seam-watch rows, {} exact blockers, and {} failed rows to {}.",
+                summary.source_evidence_row_count,
+                summary.diversity_disposition_row_count,
+                summary.seam_watch_row_count,
+                summary.exact_blocker_count,
                 summary.failed_row_count,
                 summary.artifact_root
             );
@@ -663,6 +689,28 @@ fn ensure_operated_assurance_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for operated assurance: missing {} or {}",
             w037_service_readiness.display(),
             w038_stage2.display()
+        ))
+    }
+}
+
+fn ensure_diversity_seam_root(repo_root: &Path) -> Result<(), String> {
+    let w036_independent = repo_root.join(
+        "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+    );
+    let w037_direct_oxfml = repo_root.join(
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+    );
+    let w038_operated = repo_root.join(
+        "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+    );
+    if w036_independent.exists() && w037_direct_oxfml.exists() && w038_operated.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for diversity seam: missing {}, {}, or {}",
+            w036_independent.display(),
+            w037_direct_oxfml.display(),
+            w038_operated.display()
         ))
     }
 }

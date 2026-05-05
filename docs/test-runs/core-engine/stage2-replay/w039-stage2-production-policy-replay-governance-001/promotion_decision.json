@@ -1,0 +1,31 @@
+{
+  "blockers": [
+    "stage2.snapshot_fence_counterpart_absent",
+    "stage2.capability_view_fence_counterpart_absent",
+    "stage2.production_partition_analyzer_soundness_absent",
+    "stage2.operated_cross_engine_differential_service_absent",
+    "stage2.pack_grade_replay_governance_absent"
+  ],
+  "bounded_partition_replay_present": true,
+  "capability_view_fence_counterpart_promoted": false,
+  "decision_state": "w039_stage2_policy_governance_validated_policy_unpromoted",
+  "dynamic_and_soft_reference_replay_evidenced_for_declared_profiles": true,
+  "observable_result_invariance_evidenced_for_declared_profiles": true,
+  "operated_cross_engine_stage2_service_promoted": false,
+  "pack_grade_replay_governance_promoted": false,
+  "partition_order_permutation_replay_present": true,
+  "production_partition_analyzer_soundness_promoted": false,
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "satisfied_inputs": [
+    "bounded_partition_replay_present",
+    "partition_order_permutation_replay_present",
+    "observable_result_invariance_for_declared_profiles",
+    "bounded_dynamic_soft_reference_replay_present",
+    "w073_typed_formatting_guard_carried"
+  ],
+  "schema_version": "oxcalc.stage2_replay.w039.promotion_decision.v1",
+  "semantic_equivalence_statement": "Observable-result invariance remains evidenced for declared bounded profiles only. W039 binds production-policy promotion predicates and exact blockers for snapshot/capability fences, production partition analyzer soundness, operated Stage 2 differential service, and pack-grade replay governance; no production Stage 2 policy promotion is claimed.",
+  "snapshot_fence_counterpart_promoted": false,
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false
+}

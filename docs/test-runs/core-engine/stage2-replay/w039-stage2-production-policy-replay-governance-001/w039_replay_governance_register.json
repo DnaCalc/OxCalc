@@ -1,0 +1,78 @@
+{
+  "exact_remaining_blocker_count": 2,
+  "row_count": 5,
+  "rows": [
+    {
+      "disposition": "retain W038 bounded partition replay evidence for five declared profiles",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_baseline_vs_stage2_replay",
+      "promotion_consequence": "bounded replay is carried forward but is not production policy promotion",
+      "row_id": "w039_stage2_bounded_replay_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "retain one nontrivial independent partition-order permutation and six total permutation rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "partition_order_permutation_replay",
+      "promotion_consequence": "bounded permutation evidence is carried forward but does not prove production scheduler soundness",
+      "row_id": "w039_stage2_partition_order_permutation_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "carry W038 baseline/stage2/permutation observable equality rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "observable_result_invariance",
+      "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+      "row_id": "w039_stage2_observable_invariance_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w039_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-014"
+    },
+    {
+      "disposition": "retain pack-grade replay governance and retained-witness lifecycle as release-decision blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "row_id": "w039_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+      ],
+      "w039_obligation_id": "W039-OBL-020"
+    }
+  ],
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "satisfied_policy_row_count": 3,
+  "schema_version": "oxcalc.stage2_replay.w039.replay_governance_register.v1"
+}

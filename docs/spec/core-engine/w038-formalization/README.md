@@ -11,7 +11,7 @@ Packets:
 1. `W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md`
 2. `W038_TRACECALC_ORACLE_AUTHORITY_AND_AUTHORITY_EXCLUSION_DISCHARGE.md`
 3. `W038_OPTIMIZED_CORE_ENGINE_CONFORMANCE_BLOCKER_CLOSURE_AND_FIXES.md`
-4. W038 proof-model assumption discharge and totality boundary hardening.
+4. `W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md`
 5. W038 Stage 2 partition replay and semantic-equivalence execution.
 6. W038 operated assurance alert-quarantine and cross-engine service.
 7. W038 independent evaluator diversity and OxFml seam watch closure.

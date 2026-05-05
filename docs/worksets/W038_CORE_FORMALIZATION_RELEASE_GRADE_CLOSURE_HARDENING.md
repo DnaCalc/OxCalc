@@ -91,15 +91,15 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-zsr.3_optimized_core_conformance_disposition_validated`
+- execution_state: `calc-zsr.4_proof_model_assumption_discharge_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - TraceCalc authority is discharged for the current OxCalc-owned observable profile, but release-grade verification remains unpromoted
   - optimized/core-engine conformance blockers have W038 dispositions, but exact remaining blockers remain routed to later lanes
-  - `calc-zsr.4` proof/model assumption discharge and totality boundary hardening is the next W038 bead
-  - Stage 2 partition replay and semantic-equivalence execution remain open
+  - proof/model assumptions, bounded models, external seams, totality boundaries, and exact proof/model blockers have W038 classifications, but full Lean/TLA verification remains unpromoted
+  - `calc-zsr.5` Stage 2 partition replay and semantic-equivalence execution is the next W038 bead
   - operated assurance, alert/quarantine, and cross-engine service remain open
   - independent evaluator diversity and OxFml seam watch closure remain open
   - pack-grade replay governance, C5, and W038 release decision remain open
@@ -109,3 +109,4 @@ Latest W038 evidence:
 1. `docs/spec/core-engine/w038-formalization/W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md` records the `calc-zsr.1` residual release-grade obligation ledger and objective map. The ledger packet `w038-residual-release-grade-obligation-ledger-001` maps 20 W038 obligations to owner beads, evidence roots, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, or fully independent evaluator diversity.
 2. `docs/spec/core-engine/w038-formalization/W038_TRACECALC_ORACLE_AUTHORITY_AND_AUTHORITY_EXCLUSION_DISCHARGE.md` records the `calc-zsr.2` TraceCalc authority-discharge slice. The packet `w038-tracecalc-authority-discharge-001` accepts the single W037 authority-excluded row as an external OxFunc-owned semantic-kernel exclusion, leaves zero uncovered TraceCalc rows for the current OxCalc-owned observable profile, and keeps non-TraceCalc release gates open.
 3. `docs/spec/core-engine/w038-formalization/W038_OPTIMIZED_CORE_ENGINE_CONFORMANCE_BLOCKER_CLOSURE_AND_FIXES.md` records the `calc-zsr.3` optimized/core-engine conformance-disposition slice. The packet `w038-optimized-core-conformance-disposition-001` rechecks 5 W037 residual blockers, binds 3 direct-evidence rows, accepts 1 boundary row, preserves 4 exact remaining blockers, promotes 0 declared gaps as matches, and keeps release-grade optimized/core-engine verification unpromoted.
+4. `docs/spec/core-engine/w038-formalization/W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md` records the `calc-zsr.4` proof/model assumption-discharge slice. The packet `w038-proof-model-assumption-discharge-001` records 8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 1 external-seam row, 3 totality boundaries, 6 exact blockers, 0 failed rows, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc promotion.

@@ -10,6 +10,7 @@ use oxcalc_core::treecalc_scale::{
 };
 use oxcalc_core::upstream_host_runner::UpstreamHostRunner;
 use oxcalc_tracecalc::continuous_assurance::ContinuousAssuranceRunner;
+use oxcalc_tracecalc::formal_assurance::FormalAssuranceRunner;
 use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
@@ -33,7 +34,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -107,6 +108,15 @@ fn run() -> Result<(), String> {
                 );
             }
             ("implementation-conformance", run_id)
+        }
+        "formal-assurance" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli formal-assurance <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli formal-assurance <run-id>".to_string());
+            }
+            ("formal-assurance", run_id)
         }
         "continuous-assurance" => {
             let Some(run_id) = args.next() else {
@@ -195,6 +205,7 @@ fn run() -> Result<(), String> {
     match mode {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
         "implementation-conformance" => ensure_implementation_conformance_root(&repo_root)?,
+        "formal-assurance" => ensure_formal_assurance_root(&repo_root)?,
         "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
@@ -278,6 +289,22 @@ fn run() -> Result<(), String> {
                     summary.artifact_root
                 );
             }
+        }
+        "formal-assurance" => {
+            let runner = FormalAssuranceRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("formal assurance run failed: {error}"))?;
+            println!(
+                "Formal assurance run '{run_id}' wrote {} assumption rows ({} local proof, {} bounded model, {} external seam, {} exact blockers, {} failed) to {}.",
+                summary.assumption_row_count,
+                summary.local_proof_row_count,
+                summary.bounded_model_row_count,
+                summary.accepted_external_seam_count,
+                summary.exact_remaining_blocker_count,
+                summary.failed_row_count,
+                summary.artifact_root
+            );
         }
         "continuous-assurance" => {
             let runner = ContinuousAssuranceRunner::new();
@@ -530,6 +557,24 @@ fn ensure_continuous_assurance_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for continuous assurance: missing {} or {}",
             scale_summary.display(),
             implementation_summary.display()
+        ))
+    }
+}
+
+fn ensure_formal_assurance_root(repo_root: &Path) -> Result<(), String> {
+    let formal_summary = repo_root.join(
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+    );
+    let conformance_blockers = repo_root.join(
+        "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+    );
+    if formal_summary.exists() && conformance_blockers.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for formal assurance: missing {} or {}",
+            formal_summary.display(),
+            conformance_blockers.display()
         ))
     }
 }

@@ -77,20 +77,24 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - W037 checked Stage 2 promotion predicate and current no-promotion theorem.
 10. `docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/`
    - W037 Stage 2 criteria packet: 7 criteria rows, 3 satisfied rows, 4 blocked rows, explicit observable-result invariance requirements, and no Stage 2 promotion candidate.
+11. `formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean`
+   - W038 proof/model assumption-discharge, totality-boundary, exact-blocker, external-seam, and non-promotion proof slice.
+12. `docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/`
+   - W038 formal-assurance packet: 8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 1 external-seam row, 3 totality boundaries, 6 exact blockers, 0 failed rows, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc promotion.
 
 ## Status
-- execution_state: `calc-ubd.6_stage2_criteria_validated`
+- execution_state: `calc-zsr.4_proof_model_assumption_discharge_validated`
 - scope_completeness: scope_partial
 - target_completeness: target_complete
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, and W037 adds a checked proof/model closure inventory
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, and W038 adds checked assumption-discharge and totality-boundary classification
   - full Lean verification remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
   - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, and `formal/tla/CoreEngineW036Stage2Partition.tla` have bounded configs for routine TLC checks
   - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - full TLA verification remains open
-  - deterministic Stage 2 partition replay remains absent; the W037 criteria packet defines the promotion requirements, validates the no-promotion decision, and keeps Stage 2 policy unpromoted
+  - deterministic Stage 2 partition replay remains absent; the W037 criteria packet defines the promotion requirements, validates the no-promotion decision, W038 carries replay/equivalence as an exact blocker, and Stage 2 policy remains unpromoted
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
   - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface
   - the artifact set is still a first assurance floor rather than a fully matured proof, model-check, replay-pack, or instrumentation lane

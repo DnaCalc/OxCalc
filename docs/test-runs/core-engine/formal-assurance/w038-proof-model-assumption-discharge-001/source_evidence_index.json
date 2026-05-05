@@ -1,0 +1,20 @@
+{
+  "run_id": "w038-proof-model-assumption-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w037_formal_promotion_blockers": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+    "w037_formal_summary": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+    "w037_formal_validation": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+    "w037_stage2_promotion_decision": "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json",
+    "w038_implementation_conformance_exact_blockers": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+    "w038_implementation_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+    "w038_lean_assumption_file": "formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean",
+    "w038_tracecalc_authority_summary": "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+  },
+  "source_counts": {
+    "w037_formal_blocker_count": 7,
+    "w037_lean_file_count": 12,
+    "w037_tla_routine_config_count": 11,
+    "w038_exact_conformance_blocker_count": 4
+  }
+}

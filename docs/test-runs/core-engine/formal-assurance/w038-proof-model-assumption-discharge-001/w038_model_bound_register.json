@@ -1,0 +1,122 @@
+{
+  "bounded_model_row_count": 2,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zsr.4; calc-zsr.5; calc-zsr.9",
+      "bounded_model": true,
+      "disposition": "bind the routine TLC floor as bounded model evidence while carrying unbounded model coverage as an exact boundary",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+          ],
+          "check_id": "w037_formal_inventory_all_checked",
+          "observed": {
+            "all_checked_artifacts_passed": true,
+            "lean_explicit_axiom_count": 0,
+            "lean_file_count": 12,
+            "lean_sorry_placeholder_count": 0,
+            "tla_failed_config_count": 0,
+            "tla_routine_config_count": 11
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json"
+          ],
+          "check_id": "w037_full_tla_blocker_present",
+          "observed": {
+            "blocker_id": "model.full_tla_verification_not_promoted",
+            "present": true
+          },
+          "status": "passed"
+        }
+      ],
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "exact_remaining_blocker_bead": "calc-zsr.5; calc-zsr.9",
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted until bounded configs are widened or the unbounded/model-completeness claim is otherwise discharged",
+      "reason": "The W037 inventory and W036 Stage 2 model checks are valuable bounded evidence, not an unbounded proof over the scheduler and partition universe.",
+      "row_id": "w038_model_full_tla_bounded_model_boundary",
+      "source_id": "model.full_tla_verification_not_promoted",
+      "source_row": {
+        "blocker_id": "model.full_tla_verification_not_promoted",
+        "evidence": [
+          "formal/tla/CoreEngineW036Stage2Partition.tla",
+          "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+        ],
+        "owner": "calc-ubd.5; calc-ubd.6",
+        "promotion_consequence": "Routine bounded TLC configs pass, but full TLA verification remains open.",
+        "state": "classified_open"
+      },
+      "totality_boundary": true,
+      "validation_state": "w038_assumption_disposition_validated",
+      "w038_obligation_id": "W038-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zsr.5",
+      "bounded_model": true,
+      "disposition": "carry Stage 2 replay/equivalence as an exact downstream model-and-replay blocker",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+            "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+          ],
+          "check_id": "w037_stage2_replay_blocker_present",
+          "observed": {
+            "formal_blocker_present": true,
+            "stage2_blockers": [
+              "stage2.deterministic_partition_replay_absent",
+              "stage2.production_partition_analyzer_soundness_absent",
+              "stage2.operated_cross_engine_differential_service_absent",
+              "stage2.pack_grade_replay_governance_absent"
+            ],
+            "stage2_policy_promoted": false
+          },
+          "status": "passed"
+        }
+      ],
+      "evidence_paths": [
+        "formal/lean/OxCalc/CoreEngine/W037Stage2PromotionCriteria.lean",
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+      ],
+      "exact_remaining_blocker": true,
+      "exact_remaining_blocker_bead": "calc-zsr.5",
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "Stage 2 policy remains unpromoted until deterministic partition replay and observable-result invariance evidence are executed",
+      "reason": "W037 Stage 2 criteria still names deterministic partition replay absence despite bounded TLA partition models.",
+      "row_id": "w038_model_stage2_replay_equivalence_exact_blocker",
+      "source_id": "stage2.replay_equivalence_not_bound",
+      "source_row": {
+        "blocker_id": "stage2.replay_equivalence_not_bound",
+        "evidence": [
+          "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+          "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+        ],
+        "owner": "calc-ubd.6",
+        "promotion_consequence": "Stage 2 policy remains unpromoted until deterministic replay and partition promotion criteria are bound.",
+        "state": "deferred_to_next_gate"
+      },
+      "totality_boundary": false,
+      "validation_state": "w038_assumption_disposition_validated",
+      "w038_obligation_id": "W038-OBL-009"
+    }
+  ],
+  "run_id": "w038-proof-model-assumption-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w038_model_bound_register.v1"
+}

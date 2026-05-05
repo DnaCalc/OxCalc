@@ -1,0 +1,97 @@
+{
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.emitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.published",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "eviction_eligibility_opened",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay.eviction_eligible",
+      "value": 1
+    },
+    {
+      "counter": "overlay.release_deferred",
+      "value": 1
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_evictions",
+      "value": 3
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "pinned_reader_count",
+      "value": 0
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    },
+    {
+      "counter": "reader.pinned",
+      "value": 2
+    },
+    {
+      "counter": "reader.unpinned",
+      "value": 2
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 1
+    },
+    {
+      "counter": "release_events",
+      "value": 2
+    },
+    {
+      "counter": "retention_blocked_cleanup",
+      "value": 1
+    },
+    {
+      "counter": "retention_waiting_on_readers",
+      "value": 1
+    }
+  ],
+  "scenario_id": "tc_w037_overlay_multi_reader_release_order_001"
+}

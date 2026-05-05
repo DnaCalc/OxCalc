@@ -182,6 +182,24 @@ fn unpin_view(
         vec![("view_id".to_string(), view_id.to_string())],
     );
 
+    let remaining_reader_count = state.coordinator.pinned_readers().len();
+    if remaining_reader_count > 0 {
+        state.increment_counter("retention_waiting_on_readers");
+        state.increment_counter("overlay.release_deferred");
+        state.add_event(
+            &step.step_id,
+            "overlay_release_deferred_for_remaining_readers",
+            vec![
+                ("view_id".to_string(), view_id.to_string()),
+                (
+                    "remaining_reader_count".to_string(),
+                    remaining_reader_count.to_string(),
+                ),
+            ],
+        );
+        return Ok(());
+    }
+
     let mut eviction_opened = false;
     for node_id in state.node_id_map.values().copied().collect::<Vec<_>>() {
         let node_state = state.recalc_tracker.get_state(node_id);

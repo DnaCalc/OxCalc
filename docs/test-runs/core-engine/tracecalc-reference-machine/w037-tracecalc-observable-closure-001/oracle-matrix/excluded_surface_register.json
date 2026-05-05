@@ -1,0 +1,23 @@
+{
+  "excluded_row_count": 1,
+  "rows": [
+    {
+      "artifact_paths": [],
+      "classification": "classified_out_of_scope_oxfunc_kernel",
+      "coverage_class": "excluded",
+      "evidence_state": "excluded_by_authority",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W037-OBL-006",
+      "observed_trace_labels": [],
+      "owner": "external:OxFunc; calc-ubd.4/calc-ubd.5 record boundary",
+      "reason": "W037 keeps the OxCalc/OxFml LET/LAMBDA carrier fragment in scope and excludes the general OxFunc LAMBDA semantic kernel from TraceCalc oracle coverage.",
+      "required_trace_labels": [],
+      "row_id": "w035_callable_full_oxfunc_semantics",
+      "scenario_id": null,
+      "surface": "full OxFunc LAMBDA semantic kernel"
+    }
+  ],
+  "run_id": "w037-tracecalc-observable-closure-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.excluded.v1"
+}

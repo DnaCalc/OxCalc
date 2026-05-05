@@ -1,0 +1,116 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "cycle_region_detected",
+      "normalized_event_family": "oxcalc.local.event.cycle_region_detected",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A,B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "scc_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.scc_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A,B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm1",
+        "compatibility_basis": "s0",
+        "target_count": "2"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "candidate_rejected",
+      "normalized_event_family": "reject.issued",
+      "payload": {
+        "reject_id": "rej1",
+        "reject_kind": "synthetic_cycle_reject",
+        "target_count": "2"
+      },
+      "step_id": "st3"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "oxcalc.local.scc_stage1"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ]
+  },
+  "run_id": "w037-tracecalc-observable-closure-001",
+  "scenario_id": "tc_cycle_region_reject_001"
+}

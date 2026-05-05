@@ -1,0 +1,10 @@
+{
+  "node_values": [
+    {
+      "node_id": "H",
+      "value": "1"
+    }
+  ],
+  "scenario_id": "tc_let_lambda_runtime_effect_001",
+  "snapshot_id": "s0"
+}

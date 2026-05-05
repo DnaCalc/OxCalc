@@ -1,0 +1,41 @@
+{
+  "artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/published_view.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_lambda_callable_publication_reject_001/trace.json"
+  },
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.let_lambda.carrier_identity",
+      "PACK.fec.reject_detail_replay"
+    ],
+    "replay_classes": [
+      "R8"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters",
+      "callable_carrier_identity"
+    ],
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6",
+      "I8"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+  "validation_failures": []
+}

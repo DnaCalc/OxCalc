@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001",
+  "result_counts": {
+    "passed": 31
+  },
+  "run_id": "w037-tracecalc-observable-closure-001",
+  "scenario_count": 31,
+  "schema_version": "tracecalc-corpus-s1"
+}

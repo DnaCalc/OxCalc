@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W035/W036 TraceCalc oracle matrix packet emission.
+//! W035-W037 TraceCalc oracle matrix packet emission.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -89,6 +89,7 @@ struct MatrixRowEvaluation {
 enum MatrixProfile {
     W035,
     W036CoverageClosure,
+    W037ObservableClosure,
 }
 
 impl TraceCalcOracleMatrixRunner {
@@ -181,8 +182,11 @@ impl TraceCalcOracleMatrixRunner {
         } else {
             "matrix_has_failed_or_missing_rows"
         };
-        let no_loss_crosswalk = if profile == MatrixProfile::W036CoverageClosure {
-            let crosswalk = no_loss_crosswalk_json(run_id, &rows);
+        let no_loss_crosswalk = if matches!(
+            profile,
+            MatrixProfile::W036CoverageClosure | MatrixProfile::W037ObservableClosure
+        ) {
+            let crosswalk = no_loss_crosswalk_json(run_id, &rows, profile);
             if number_at(&crosswalk, "missing_crosswalk_count") != 0 {
                 validation_status = "matrix_has_missing_no_loss_crosswalk_rows";
             }
@@ -191,6 +195,7 @@ impl TraceCalcOracleMatrixRunner {
                 &matrix_root.join("coverage_closure_criteria.json"),
                 &coverage_closure_criteria_json(
                     run_id,
+                    profile,
                     trace_summary.scenario_count,
                     rows.len(),
                     covered_row_count,
@@ -263,8 +268,10 @@ fn evaluate_row(
     profile: MatrixProfile,
 ) -> Result<MatrixRowEvaluation, TraceCalcOracleMatrixError> {
     let Some(scenario_id) = spec.scenario_id else {
-        let excluded = profile == MatrixProfile::W036CoverageClosure
-            && spec.classification.starts_with("classified_out_of_scope");
+        let excluded = matches!(
+            profile,
+            MatrixProfile::W036CoverageClosure | MatrixProfile::W037ObservableClosure
+        ) && spec.classification.starts_with("classified_out_of_scope");
         let evidence_state = if excluded {
             "excluded_by_authority"
         } else {
@@ -419,8 +426,10 @@ fn coverage_class(
 ) -> &'static str {
     if evidence_state == "covered_passed" {
         "covered"
-    } else if profile == MatrixProfile::W036CoverageClosure
-        && spec.classification.starts_with("classified_out_of_scope")
+    } else if matches!(
+        profile,
+        MatrixProfile::W036CoverageClosure | MatrixProfile::W037ObservableClosure
+    ) && spec.classification.starts_with("classified_out_of_scope")
     {
         "excluded"
     } else if evidence_state == "classified_uncovered_deferred" {
@@ -432,7 +441,9 @@ fn coverage_class(
 
 impl MatrixProfile {
     fn for_run_id(run_id: &str) -> Self {
-        if run_id.contains("w036") {
+        if run_id.contains("w037") {
+            Self::W037ObservableClosure
+        } else if run_id.contains("w036") {
             Self::W036CoverageClosure
         } else {
             Self::W035
@@ -442,7 +453,10 @@ impl MatrixProfile {
 
 fn row_specs_for(profile: MatrixProfile) -> Vec<MatrixRowSpec> {
     let mut rows = MATRIX_ROWS.to_vec();
-    if profile == MatrixProfile::W036CoverageClosure {
+    if matches!(
+        profile,
+        MatrixProfile::W036CoverageClosure | MatrixProfile::W037ObservableClosure
+    ) {
         for row in &mut rows {
             row.obligation_id = "W036-OBL-001";
             row.owner = "calc-rqq.2";
@@ -465,10 +479,41 @@ fn row_specs_for(profile: MatrixProfile) -> Vec<MatrixRowSpec> {
         }
         rows.extend_from_slice(W036_EXTENSION_ROWS);
     }
+    if profile == MatrixProfile::W037ObservableClosure {
+        for row in &mut rows {
+            row.obligation_id = "W037-OBL-001";
+            row.owner = "calc-ubd.1";
+        }
+        for row in &mut rows {
+            match row.row_id {
+                "w035_overlay_multi_reader_release_order" => {
+                    row.scenario_id = Some("tc_w037_overlay_multi_reader_release_order_001");
+                    row.required_labels = &[
+                        "reader_pinned",
+                        "overlay_retained",
+                        "overlay_release_deferred_for_remaining_readers",
+                        "overlay_released",
+                    ];
+                    row.classification = "covered_by_w037_tracecalc_replay";
+                    row.reason = "W037 adds deterministic TraceCalc replay evidence for two pinned readers: the first unpin defers overlay release while another reader remains pinned, and the final unpin opens eviction eligibility and releases the overlay.";
+                }
+                "w035_callable_full_oxfunc_semantics" => {
+                    row.obligation_id = "W037-OBL-006";
+                    row.owner = "external:OxFunc; calc-ubd.4/calc-ubd.5 record boundary";
+                    row.reason = "W037 keeps the OxCalc/OxFml LET/LAMBDA carrier fragment in scope and excludes the general OxFunc LAMBDA semantic kernel from TraceCalc oracle coverage.";
+                }
+                _ => {}
+            }
+        }
+    }
     rows
 }
 
-fn no_loss_crosswalk_json(run_id: &str, rows: &[MatrixRowEvaluation]) -> Value {
+fn no_loss_crosswalk_json(
+    run_id: &str,
+    rows: &[MatrixRowEvaluation],
+    profile: MatrixProfile,
+) -> Value {
     let w035_rows = MATRIX_ROWS
         .iter()
         .map(|source| {
@@ -522,11 +567,21 @@ fn no_loss_crosswalk_json(run_id: &str, rows: &[MatrixRowEvaluation]) -> Value {
         .filter(|row| row["relation"] == "missing")
         .count();
 
+    let relation = match profile {
+        MatrixProfile::W037ObservableClosure => {
+            "w037 retains every W035 matrix row identity, maps every W033-W035 tagged corpus scenario, and adds direct TraceCalc replay for the W035 multi-reader overlay release-order row"
+        }
+        MatrixProfile::W036CoverageClosure => {
+            "w036 retains every W035 matrix row identity and maps every W033-W035 tagged corpus scenario to at least one W036 row"
+        }
+        MatrixProfile::W035 => "w035 baseline matrix run",
+    };
+
     json!({
         "schema_version": ORACLE_MATRIX_NO_LOSS_SCHEMA_V1,
         "run_id": run_id,
         "source_w035_matrix_run_id": W035_ORACLE_MATRIX_RUN_ID,
-        "relation": "w036 retains every W035 matrix row identity and maps every W033-W035 tagged corpus scenario to at least one W036 row",
+        "relation": relation,
         "w035_matrix_row_count": MATRIX_ROWS.len(),
         "w035_matrix_rows_retained_count": MATRIX_ROWS.len() - missing_w035_rows,
         "w033_w035_scenario_count": W033_W035_SCENARIO_CROSSWALK.len(),
@@ -539,6 +594,7 @@ fn no_loss_crosswalk_json(run_id: &str, rows: &[MatrixRowEvaluation]) -> Value {
 
 fn coverage_closure_criteria_json(
     run_id: &str,
+    profile: MatrixProfile,
     tracecalc_scenario_count: usize,
     matrix_row_count: usize,
     covered_row_count: usize,
@@ -546,10 +602,38 @@ fn coverage_closure_criteria_json(
     excluded_row_count: usize,
     missing_or_failed_row_count: usize,
 ) -> Value {
+    let (closure_state, no_loss_criterion, promotion_blockers, semantic_equivalence_statement) =
+        match profile {
+            MatrixProfile::W037ObservableClosure => (
+                "observable_rows_covered_no_full_oracle_claim",
+                "Every W035 matrix row identity is retained, every W033-W035 tagged corpus scenario maps to a W037 row, and the prior multi-reader overlay release-order row has direct TraceCalc replay evidence.",
+                vec![
+                    "tracecalc.general_oxfunc_lambda_kernel_excluded_from_oxcalc_tracecalc_profile",
+                    "tracecalc.optimized_core_engine_conformance_closure_not_yet_reached",
+                    "tracecalc.direct_oxfml_evaluator_reexecution_not_yet_exercised",
+                    "tracecalc.lean_tla_and_stage2_partition_work_remains_open",
+                    "tracecalc.independent_evaluator_diversity_and_operated_assurance_lanes_remain_open",
+                ],
+                "W037 changes only the spec-purpose TraceCalc reference-machine replay profile for multi-reader overlay release ordering. It does not change production TreeCalc/CoreEngine runtime behavior, coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, pack decisions, continuous-assurance runners, or OxFml/OxFunc evaluator behavior.",
+            ),
+            MatrixProfile::W036CoverageClosure | MatrixProfile::W035 => (
+                "criteria_defined_no_full_oracle_claim",
+                "Every W035 matrix row identity is retained, and every W033-W035 tagged corpus scenario maps to a W036 row.",
+                vec![
+                    "tracecalc.multi_reader_overlay_release_order_deferred_to_tla_stage2",
+                    "tracecalc.general_oxfunc_lambda_kernel_excluded_from_oxcalc_tracecalc_profile",
+                    "tracecalc.optimized_core_engine_conformance_closure_not_yet_reached",
+                    "tracecalc.lean_tla_assumption_and_stage2_partition_work_remains_open",
+                    "tracecalc.independent_evaluator_diversity_and_continuous_assurance_lanes_remain_open",
+                ],
+                "This runner emits evidence classification artifacts only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, TraceCalc execution semantics, TreeCalc/CoreEngine behavior, Lean/TLA models, pack decisions, continuous-assurance runners, or OxFml/OxFunc evaluator behavior.",
+            ),
+        };
+
     json!({
         "schema_version": ORACLE_MATRIX_CLOSURE_CRITERIA_SCHEMA_V1,
         "run_id": run_id,
-        "closure_state": "criteria_defined_no_full_oracle_claim",
+        "closure_state": closure_state,
         "full_oracle_claim": false,
         "matrix_row_count": matrix_row_count,
         "covered_row_count": covered_row_count,
@@ -561,17 +645,11 @@ fn coverage_closure_criteria_json(
             "covered_row": "A row is covered only when its scenario result passed, validation/assertion/conformance mismatch arrays are empty, and every required trace label is present.",
             "uncovered_row": "A row is uncovered when the surface is relevant to future core-engine verification but has no deterministic TraceCalc scenario in this profile.",
             "excluded_row": "A row is excluded only when authority belongs outside this TraceCalc profile, such as the general OxFunc semantic kernel.",
-            "no_loss": "Every W035 matrix row identity is retained, and every W033-W035 tagged corpus scenario maps to a W036 row.",
+            "no_loss": no_loss_criterion,
             "full_oracle_promotion": "A full TraceCalc oracle claim requires zero missing/failed rows, zero uncovered rows, no core-engine-owned excluded rows, optimized/core-engine conformance closure, and discharge or explicit non-oracle ownership for Lean/TLA obligations."
         },
-        "promotion_blockers": [
-            "tracecalc.multi_reader_overlay_release_order_deferred_to_tla_stage2",
-            "tracecalc.general_oxfunc_lambda_kernel_excluded_from_oxcalc_tracecalc_profile",
-            "tracecalc.optimized_core_engine_conformance_closure_not_yet_reached",
-            "tracecalc.lean_tla_assumption_and_stage2_partition_work_remains_open",
-            "tracecalc.independent_evaluator_diversity_and_continuous_assurance_lanes_remain_open"
-        ],
-        "semantic_equivalence_statement": "This runner emits evidence classification artifacts only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, TraceCalc execution semantics, TreeCalc/CoreEngine behavior, Lean/TLA models, pack decisions, continuous-assurance runners, or OxFml/OxFunc evaluator behavior."
+        "promotion_blockers": promotion_blockers,
+        "semantic_equivalence_statement": semantic_equivalence_statement
     })
 }
 
@@ -1022,7 +1100,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 30);
+        assert_eq!(summary.tracecalc_scenario_count, 31);
         assert_eq!(summary.matrix_row_count, MATRIX_ROWS.len());
         assert!(summary.covered_row_count >= 15);
         assert_eq!(summary.uncovered_row_count, 2);
@@ -1062,7 +1140,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 30);
+        assert_eq!(summary.tracecalc_scenario_count, 31);
         assert_eq!(
             summary.matrix_row_count,
             MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()
@@ -1094,6 +1172,14 @@ mod tests {
             closure["closure_state"],
             "criteria_defined_no_full_oracle_claim"
         );
+        assert!(
+            closure["promotion_blockers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|blocker| blocker
+                    == "tracecalc.multi_reader_overlay_release_order_deferred_to_tla_stage2")
+        );
 
         let crosswalk = read_json(
             &repo_root,
@@ -1110,6 +1196,110 @@ mod tests {
         assert_eq!(
             crosswalk["w033_w035_scenarios_mapped_count"],
             W033_W035_SCENARIO_CROSSWALK.len()
+        );
+        assert!(
+            crosswalk["relation"]
+                .as_str()
+                .unwrap()
+                .starts_with("w036 retains")
+        );
+
+        cleanup();
+    }
+
+    #[test]
+    fn oracle_matrix_runner_emits_w037_observable_closure_artifacts() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w037-observable-closure-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/tracecalc-reference-machine/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = TraceCalcOracleMatrixRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.tracecalc_scenario_count, 31);
+        assert_eq!(
+            summary.matrix_row_count,
+            MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()
+        );
+        assert_eq!(summary.covered_row_count, 31);
+        assert_eq!(summary.uncovered_row_count, 0);
+        assert_eq!(summary.excluded_row_count, 1);
+        assert_eq!(summary.missing_or_failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/tracecalc-reference-machine/{run_id}/oracle-matrix/validation.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(validation["status"], "matrix_valid");
+        assert_eq!(validation["missing_crosswalk_count"], 0);
+
+        let closure = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/tracecalc-reference-machine/{run_id}/oracle-matrix/coverage_closure_criteria.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(closure["full_oracle_claim"], false);
+        assert_eq!(
+            closure["closure_state"],
+            "observable_rows_covered_no_full_oracle_claim"
+        );
+        assert!(
+            closure["promotion_blockers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|blocker| blocker
+                    != "tracecalc.multi_reader_overlay_release_order_deferred_to_tla_stage2")
+        );
+
+        let matrix = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/tracecalc-reference-machine/{run_id}/oracle-matrix/coverage_matrix.json"
+            ),
+        )
+        .unwrap();
+        let rows = matrix["rows"].as_array().unwrap();
+        let multi_reader = rows
+            .iter()
+            .find(|row| row["row_id"] == "w035_overlay_multi_reader_release_order")
+            .unwrap();
+        assert_eq!(multi_reader["coverage_class"], "covered");
+        assert_eq!(
+            multi_reader["scenario_id"],
+            "tc_w037_overlay_multi_reader_release_order_001"
+        );
+
+        let crosswalk = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/tracecalc-reference-machine/{run_id}/oracle-matrix/no_loss_crosswalk.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(crosswalk["missing_crosswalk_count"], 0);
+        assert!(
+            crosswalk["relation"]
+                .as_str()
+                .unwrap()
+                .starts_with("w037 retains")
         );
 
         cleanup();

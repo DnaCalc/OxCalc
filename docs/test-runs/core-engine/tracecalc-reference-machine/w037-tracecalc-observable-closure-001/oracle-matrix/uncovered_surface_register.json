@@ -1,0 +1,7 @@
+{
+  "classified_uncovered_row_count": 0,
+  "missing_or_failed_row_count": 0,
+  "rows": [],
+  "run_id": "w037-tracecalc-observable-closure-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.uncovered.v1"
+}

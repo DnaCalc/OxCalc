@@ -1210,7 +1210,7 @@ mod tests {
             .execute_manifest(&repo_root, &run_id, None, None)
             .unwrap();
         assert_eq!(summary.run_id, run_id);
-        assert_eq!(summary.scenario_count, 30);
+        assert_eq!(summary.scenario_count, 31);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("manifest_selection.json").exists());
         assert!(

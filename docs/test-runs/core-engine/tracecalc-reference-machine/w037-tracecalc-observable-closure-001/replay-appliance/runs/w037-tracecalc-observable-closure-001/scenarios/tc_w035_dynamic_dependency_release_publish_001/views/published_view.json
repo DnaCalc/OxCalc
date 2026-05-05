@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "Mode",
+      "value": "literal"
+    },
+    {
+      "node_id": "Pick",
+      "value": "1"
+    },
+    {
+      "node_id": "Source",
+      "value": "9"
+    }
+  ],
+  "scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+  "snapshot_id": "s0"
+}

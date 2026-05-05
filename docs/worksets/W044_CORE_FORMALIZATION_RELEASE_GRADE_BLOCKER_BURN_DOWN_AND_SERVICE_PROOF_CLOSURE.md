@@ -77,10 +77,14 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-b1t.1_ready_residual_release_grade_blocker_reclassification_and_promotion_contract_map`
+- execution_state: `calc-b1t.2_ready_optimized_core_dynamic_transition_and_callable_metadata_implementation_tranche`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-b1t.1` residual release-grade blocker reclassification and promotion-contract map is next
+  - `calc-b1t.2` optimized core dynamic transition and callable metadata implementation tranche is next
   - full optimized/core verification, Rust totality/refinement, full Lean/TLA verification, unbounded fairness, Stage 2 production policy, operated services, independent evaluator breadth, mismatch quarantine, broad OxFml closure, callable metadata/carrier, registered-external projection, provider-publication, pack-grade replay, C5, release-grade verification, and general OxFunc kernels remain unpromoted
+
+Latest evidence:
+
+1. `docs/spec/core-engine/w044-formalization/W044_RESIDUAL_RELEASE_GRADE_BLOCKER_RECLASSIFICATION_AND_PROMOTION_CONTRACT_MAP.md` records the `calc-b1t.1` residual blocker map. The packet `w044-residual-release-grade-blocker-reclassification-map-001` maps 20 post-W043 residual lanes into 45 W044 obligations and 17 promotion contracts, carries current OxFml W073 typed-rule-only conditional-formatting intake, records downstream W073 typed-rule request construction as required but unverified, records runtime-facade, host/runtime, structured-reference, stand-in fixture-host, registered-external, provider-failure/callable-publication, public-migration, and `format_delta`/`display_delta` notes as watch or handoff-trigger inputs, requires no OxFml handoff, and keeps release-grade verification, full formalization, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, retention SLO, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, W073 downstream uptake, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, release-scale correctness from performance, and general OxFunc kernels unpromoted.

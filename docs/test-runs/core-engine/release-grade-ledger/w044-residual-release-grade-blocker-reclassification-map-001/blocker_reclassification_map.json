@@ -1,0 +1,148 @@
+{
+  "run_id": "w044-residual-release-grade-blocker-reclassification-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w044.blocker_reclassification_map.v1",
+  "source_residual_lane_count": 20,
+  "obligation_count": 45,
+  "rows": [
+    {
+      "source_lane": "w043_residual.release_grade_full_verification",
+      "owner_beads": ["calc-b1t.1", "calc-b1t.11"],
+      "obligation_ids": ["W044-OBL-001", "W044-OBL-002", "W044-OBL-003"],
+      "required_disposition": "direct_evidence_checklist_no_proxy_guard_and_release_grade_decision_inputs",
+      "promotion_consequence": "release_grade_verification_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.optimized_core_dynamic_dependency_transitions",
+      "owner_beads": ["calc-b1t.2"],
+      "obligation_ids": ["W044-OBL-004", "W044-OBL-005", "W044-OBL-006", "W044-OBL-011"],
+      "required_disposition": "broaden_dynamic_transition_and_soft_reference_coverage_or_retain_exact_blocker",
+      "promotion_consequence": "full_optimized_core_verification_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.callable_metadata_projection",
+      "owner_beads": ["calc-b1t.2", "calc-b1t.8"],
+      "obligation_ids": ["W044-OBL-009", "W044-OBL-010", "W044-OBL-038", "W044-OBL-039"],
+      "required_disposition": "metadata_projection_fixture_implementation_and_publication_evidence_or_exact_blocker",
+      "promotion_consequence": "callable_metadata_projection_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.callable_carrier_sufficiency",
+      "owner_beads": ["calc-b1t.8"],
+      "obligation_ids": ["W044-OBL-015", "W044-OBL-037", "W044-OBL-045"],
+      "required_disposition": "narrow_let_lambda_carrier_sufficiency_proof_or_exact_blocker",
+      "promotion_consequence": "callable_carrier_sufficiency_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.rust_totality_refinement_panic_surface",
+      "owner_beads": ["calc-b1t.3"],
+      "obligation_ids": ["W044-OBL-012", "W044-OBL-013", "W044-OBL-014", "W044-OBL-015"],
+      "required_disposition": "totality_refinement_and_panic_surface_discharge_or_exact_blocker",
+      "promotion_consequence": "rust_totality_refinement_and_panic_free_core_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.lean_tla_full_verification",
+      "owner_beads": ["calc-b1t.4"],
+      "obligation_ids": ["W044-OBL-016", "W044-OBL-017", "W044-OBL-018"],
+      "required_disposition": "full_proof_model_discharge_or_model_bound_and_exact_blocker",
+      "promotion_consequence": "full_lean_tla_verification_and_unbounded_fairness_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.stage2_production_policy_and_pack_equivalence",
+      "owner_beads": ["calc-b1t.5"],
+      "obligation_ids": ["W044-OBL-019", "W044-OBL-020", "W044-OBL-021", "W044-OBL-022"],
+      "required_disposition": "production_partition_soundness_scheduler_equivalence_and_pack_equivalence_or_exact_blocker",
+      "promotion_consequence": "stage2_production_policy_and_pack_grade_replay_equivalence_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.operated_assurance_service",
+      "owner_beads": ["calc-b1t.6"],
+      "obligation_ids": ["W044-OBL-023", "W044-OBL-027", "W044-OBL-028"],
+      "required_disposition": "operated_service_artifacts_or_exact_service_blocker",
+      "promotion_consequence": "operated_continuous_assurance_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.retained_history_and_witness_lifecycle",
+      "owner_beads": ["calc-b1t.6"],
+      "obligation_ids": ["W044-OBL-024", "W044-OBL-025", "W044-OBL-026"],
+      "required_disposition": "retained_history_endpoint_witness_lifecycle_and_retention_slo_or_exact_blockers",
+      "promotion_consequence": "retained_history_retained_witness_and_retention_slo_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.external_alert_dispatcher",
+      "owner_beads": ["calc-b1t.6"],
+      "obligation_ids": ["W044-OBL-027"],
+      "required_disposition": "external_alert_quarantine_dispatcher_behavior_or_exact_blocker",
+      "promotion_consequence": "external_alert_dispatcher_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.operated_cross_engine_differential",
+      "owner_beads": ["calc-b1t.7"],
+      "obligation_ids": ["W044-OBL-022", "W044-OBL-028"],
+      "required_disposition": "operated_cross_engine_differential_service_evidence_or_exact_blocker",
+      "promotion_consequence": "operated_cross_engine_differential_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.fully_independent_evaluator",
+      "owner_beads": ["calc-b1t.7"],
+      "obligation_ids": ["W044-OBL-030", "W044-OBL-031"],
+      "required_disposition": "independent_implementation_breadth_and_authority_or_exact_blocker",
+      "promotion_consequence": "fully_independent_evaluator_breadth_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.mismatch_quarantine_service",
+      "owner_beads": ["calc-b1t.7"],
+      "obligation_ids": ["W044-OBL-029", "W044-OBL-031", "W044-OBL-032"],
+      "required_disposition": "mismatch_quarantine_service_retained_witness_attachment_and_alert_semantics_or_exact_blocker",
+      "promotion_consequence": "mismatch_quarantine_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.oxfml_broad_display_publication_public_migration",
+      "owner_beads": ["calc-b1t.8"],
+      "obligation_ids": ["W044-OBL-033", "W044-OBL-035", "W044-OBL-036", "W044-OBL-040"],
+      "required_disposition": "broad_consumed_surface_public_migration_and_format_display_boundary_evidence_or_exact_blocker",
+      "promotion_consequence": "broad_oxfml_display_publication_and_public_migration_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.w073_downstream_typed_rule_request_construction",
+      "owner_beads": ["calc-b1t.8"],
+      "obligation_ids": ["W044-OBL-033", "W044-OBL-034"],
+      "required_disposition": "verify_downstream_typed_rule_request_construction_where_consumed_or_retain_external_blocker",
+      "promotion_consequence": "w073_downstream_typed_rule_request_construction_remains_unverified"
+    },
+    {
+      "source_lane": "w043_residual.registered_external_provider_publication",
+      "owner_beads": ["calc-b1t.8"],
+      "obligation_ids": ["W044-OBL-038", "W044-OBL-039", "W044-OBL-040"],
+      "required_disposition": "registered_external_projection_and_provider_publication_semantics_or_watch_lane",
+      "promotion_consequence": "registered_external_projection_and_provider_publication_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.release_scale_replay_performance_scaling",
+      "owner_beads": ["calc-b1t.9"],
+      "obligation_ids": ["W044-OBL-041", "W044-OBL-042", "W044-OBL-043"],
+      "required_disposition": "model_shape_validation_oracle_phase_timings_and_semantic_guard",
+      "promotion_consequence": "performance_and_scaling_data_must_not_substitute_for_correctness_proof"
+    },
+    {
+      "source_lane": "w043_residual.pack_grade_replay_and_c5",
+      "owner_beads": ["calc-b1t.10"],
+      "obligation_ids": ["W044-OBL-021", "W044-OBL-044"],
+      "required_disposition": "pack_grade_replay_governance_and_c5_reassessment_after_w044_evidence",
+      "promotion_consequence": "pack_grade_replay_and_cap_c5_pack_valid_remain_unpromoted"
+    },
+    {
+      "source_lane": "w043_residual.release_grade_successor_planning",
+      "owner_beads": ["calc-b1t.11"],
+      "obligation_ids": ["W044-OBL-001", "W044-OBL-002", "W044-OBL-003", "W044-OBL-044"],
+      "required_disposition": "closure_audit_and_release_grade_decision",
+      "promotion_consequence": "w044_closure_owns_next_release_grade_decision"
+    },
+    {
+      "source_lane": "w043_residual.general_oxfunc_kernels",
+      "owner_beads": ["calc-b1t.8", "calc-b1t.11"],
+      "obligation_ids": ["W044-OBL-015", "W044-OBL-037", "W044-OBL-045"],
+      "required_disposition": "accepted_external_owner_boundary_except_narrow_let_lambda_carrier",
+      "promotion_consequence": "general_oxfunc_kernels_remain_outside_oxcalc_scope"
+    }
+  ]
+}

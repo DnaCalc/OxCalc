@@ -1,0 +1,71 @@
+{
+  "run_id": "w044-residual-release-grade-blocker-reclassification-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w044.source_evidence_index.v1",
+  "sources": [
+    {
+      "source_id": "w044_workset",
+      "path": "docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md",
+      "role": "scope_and_exit_gate"
+    },
+    {
+      "source_id": "w043_closure_packet",
+      "path": "docs/spec/core-engine/w043-formalization/W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+      "role": "predecessor_release_grade_decision"
+    },
+    {
+      "source_id": "w043_residual_lane_ledger",
+      "path": "docs/test-runs/core-engine/closure-audit/w043-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json",
+      "role": "20_post_w043_residual_lanes"
+    },
+    {
+      "source_id": "w043_direct_evidence_coverage",
+      "path": "docs/test-runs/core-engine/closure-audit/w043-closure-audit-release-grade-verification-decision-001/direct_evidence_coverage_audit.json",
+      "role": "w043_direct_evidence_coverage_audit"
+    },
+    {
+      "source_id": "w043_pack_decision",
+      "path": "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+      "role": "w043_pack_c5_no_promotion_decision"
+    },
+    {
+      "source_id": "w043_treecalc_run",
+      "path": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json",
+      "role": "optimized_core_dynamic_transition_evidence"
+    },
+    {
+      "source_id": "w043_oxfml_seam",
+      "path": "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
+      "role": "current_consumed_oxfml_surface_evidence"
+    },
+    {
+      "source_id": "oxfml_notes",
+      "path": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "role": "inbound_observation_ledger"
+    },
+    {
+      "source_id": "oxfml_w073_workset",
+      "path": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "role": "typed_rule_only_formatting_contract"
+    },
+    {
+      "source_id": "oxfml_w073_handoff",
+      "path": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "role": "downstream_typed_rule_request_construction_handoff"
+    },
+    {
+      "source_id": "oxfml_w073_publication_working_copy_diff",
+      "path": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "role": "working_copy_evaluator_direct_typed_only_replacement_for_w073_families"
+    },
+    {
+      "source_id": "oxfml_w073_conditional_formatting_tests_working_copy_diff",
+      "path": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "role": "working_copy_typed_payload_and_old_string_non_interpretation_test_evidence"
+    },
+    {
+      "source_id": "oxfml_ip21_working_copy_diff",
+      "path": "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md",
+      "role": "working_copy_downstream_typed_request_construction_remains_open"
+    }
+  ]
+}

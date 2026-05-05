@@ -1,0 +1,63 @@
+{
+  "run_id": "w044-residual-release-grade-blocker-reclassification-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w044.oxfml_observation_intake.v1",
+  "reviewed_sources": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "reviewed_working_copy_formatting_sources": [
+    "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+    "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+    "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+  ],
+  "w073_formatting": {
+    "typed_rule_only_families": [
+      "colorScale",
+      "dataBar",
+      "iconSet",
+      "top",
+      "bottom",
+      "aboveAverage",
+      "belowAverage"
+    ],
+    "threshold_fallback_allowed_for_typed_families": false,
+    "thresholds_remain_scalar_operator_expression_input": true,
+    "old_bounded_string_non_interpretation_evidence_reviewed": true,
+    "focused_conditional_formatting_test_count_reported_by_oxfml": 21,
+    "downstream_typed_rule_request_construction_required": true,
+    "downstream_uptake_verified_by_oxcalc": false
+  },
+  "watch_lanes": [
+    {
+      "lane": "runtime_facade",
+      "state": "converged_for_first_implementation_planning_not_seam_freeze"
+    },
+    {
+      "lane": "host_runtime_external_requirements",
+      "state": "canonical_bounded_packet_not_full_language_closure"
+    },
+    {
+      "lane": "structured_reference_table_context",
+      "state": "table_catalog_enclosing_table_ref_and_caller_table_region_remain_first_packet_direction"
+    },
+    {
+      "lane": "stand_in_fixture_host",
+      "state": "deterministic_fixture_reuse_not_production_api_freeze"
+    },
+    {
+      "lane": "registered_external_provider",
+      "state": "registration_channel_identity_and_stable_registration_identity_must_be_preserved"
+    },
+    {
+      "lane": "provider_failure_callable_publication",
+      "state": "watch_lane_until_coordinator_visible_evidence_creates_handoff_pressure"
+    },
+    {
+      "lane": "format_delta_display_delta",
+      "state": "distinct_semantic_format_and_display_categories_retained"
+    }
+  ],
+  "handoff_required": false,
+  "handoff_reason": "W044.1 records obligations and promotion contracts only; no exercised OxCalc/OxFml mismatch is introduced."
+}

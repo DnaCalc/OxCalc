@@ -13,6 +13,7 @@ pub mod machine;
 pub mod operated_assurance;
 pub mod oracle_matrix;
 pub mod oxfml_fixture_bridge;
+pub mod oxfml_seam;
 pub mod pack_capability;
 pub mod planner;
 pub mod replay_mappings;

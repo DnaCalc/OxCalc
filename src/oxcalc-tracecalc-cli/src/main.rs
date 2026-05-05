@@ -17,6 +17,7 @@ use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::operated_assurance::OperatedAssuranceRunner;
 use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
+use oxcalc_tracecalc::oxfml_seam::OxFmlSeamRunner;
 use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
@@ -37,7 +38,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | operated-assurance <run-id> | diversity-seam <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | operated-assurance <run-id> | diversity-seam <run-id> | oxfml-seam <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -148,6 +149,15 @@ fn run() -> Result<(), String> {
             }
             ("diversity-seam", run_id)
         }
+        "oxfml-seam" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli oxfml-seam <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli oxfml-seam <run-id>".to_string());
+            }
+            ("oxfml-seam", run_id)
+        }
         "continuous-assurance" => {
             let Some(run_id) = args.next() else {
                 return Err("usage: oxcalc-tracecalc-cli continuous-assurance <run-id>".to_string());
@@ -239,6 +249,7 @@ fn run() -> Result<(), String> {
         "stage2-replay" => ensure_stage2_replay_root(&repo_root)?,
         "operated-assurance" => ensure_operated_assurance_root(&repo_root)?,
         "diversity-seam" => ensure_diversity_seam_root(&repo_root)?,
+        "oxfml-seam" => ensure_oxfml_seam_root(&repo_root)?,
         "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
@@ -389,6 +400,22 @@ fn run() -> Result<(), String> {
                 summary.source_evidence_row_count,
                 summary.diversity_disposition_row_count,
                 summary.seam_watch_row_count,
+                summary.exact_blocker_count,
+                summary.failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "oxfml-seam" => {
+            let runner = OxFmlSeamRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("OxFml seam run failed: {error}"))?;
+            println!(
+                "OxFml seam run '{run_id}' wrote {} source rows, {} surface rows, {} publication/display rows, {} callable rows, {} exact blockers, and {} failed rows to {}.",
+                summary.source_evidence_row_count,
+                summary.surface_row_count,
+                summary.publication_display_row_count,
+                summary.callable_metadata_row_count,
                 summary.exact_blocker_count,
                 summary.failed_row_count,
                 summary.artifact_root
@@ -721,6 +748,26 @@ fn ensure_diversity_seam_root(repo_root: &Path) -> Result<(), String> {
             w036_independent.display(),
             w037_direct_oxfml.display(),
             w038_operated.display()
+        ))
+    }
+}
+
+fn ensure_oxfml_seam_root(repo_root: &Path) -> Result<(), String> {
+    let w039_upstream_host = repo_root.join(
+        "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    );
+    let w039_callable_blockers = repo_root.join(
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+    );
+    let oxfml_notes = repo_root.join("../OxFml/docs/upstream/NOTES_FOR_OXCALC.md");
+    if w039_upstream_host.exists() && w039_callable_blockers.exists() && oxfml_notes.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for OxFml seam: missing {}, {}, or {}",
+            w039_upstream_host.display(),
+            w039_callable_blockers.display(),
+            oxfml_notes.display()
         ))
     }
 }

@@ -1,0 +1,109 @@
+{
+  "binding_world": {
+    "caller_table_region": {
+      "data_row_offset": 1,
+      "region_kind": "data",
+      "table_id": "table:1"
+    },
+    "cell_fixture_arrays": [],
+    "cell_fixture_numbers": {
+      "B3": 7.0
+    },
+    "defined_name_values": {},
+    "enclosing_table_ref": "table:1",
+    "table_catalog": [
+      {
+        "columns": [
+          {
+            "column_id": "column:label",
+            "column_name": "Label",
+            "column_range_ref": "A2:A4",
+            "ordinal": 1
+          },
+          {
+            "column_id": "column:amount",
+            "column_name": "Amount",
+            "column_range_ref": "B2:B4",
+            "ordinal": 2
+          },
+          {
+            "column_id": "column:tax",
+            "column_name": "Tax",
+            "column_range_ref": "C2:C4",
+            "ordinal": 3
+          }
+        ],
+        "header_row_present": true,
+        "sheet_scope_ref": "sheet:default",
+        "table_id": "table:1",
+        "table_name": "Table1",
+        "table_range_ref": "A1:C5",
+        "totals_row_present": true,
+        "workbook_scope_ref": "book:default"
+      }
+    ]
+  },
+  "case_id": "uh_structured_reference_eval_001",
+  "description": "A current-row structured reference evaluates through the same table-context packet using an enclosed table and caller-table-region.",
+  "evaluation_backend": "oxfunc_backed",
+  "expected": {
+    "bind_artifact_id": null,
+    "bind_name_kinds": {},
+    "caller_table_region": {
+      "data_row_offset": 1,
+      "region_kind": "data",
+      "table_id": "table:1"
+    },
+    "candidate_value_payload": null,
+    "capture_snapshot_ref": null,
+    "conditional_formatting_effective_fill_colors": null,
+    "conditional_formatting_typed_rule_families": [],
+    "display_delta_present": null,
+    "enclosing_table_ref": "table:1",
+    "format_delta_present": null,
+    "formula_token": null,
+    "host_provider_outcome_kind": null,
+    "payload_summary": "Number",
+    "returned_surface_kind": "ordinary_value",
+    "table_catalog_len": 1,
+    "trace_function_ids": [],
+    "worksheet_error": null
+  },
+  "formula_slot": {
+    "active_selection_anchor": {
+      "col": 2,
+      "row": 3
+    },
+    "address_mode": null,
+    "bind_artifact_id": null,
+    "caller_anchor": {
+      "col": 2,
+      "row": 3
+    },
+    "fixture_input_id": "fixture:upstream_host:006",
+    "formula_channel_kind": "worksheet_a1",
+    "formula_slot_id": "node:slot:upstream_host:006",
+    "formula_stable_id": "formula:upstream_host:006",
+    "formula_text": "=[@Amount]+2",
+    "formula_text_version": 1,
+    "formula_token": null,
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "publication_context": null,
+  "runtime_catalog": {
+    "surface_names": []
+  },
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "typed_query_facts": {
+    "host_info_mode": {
+      "kind": "disabled"
+    },
+    "locale_context_kind": "",
+    "now_serial": null,
+    "random_value": null,
+    "registered_external_present": false,
+    "rtd_mode": {
+      "kind": "disabled"
+    }
+  }
+}

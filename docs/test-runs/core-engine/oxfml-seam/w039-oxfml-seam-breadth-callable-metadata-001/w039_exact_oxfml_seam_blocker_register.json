@@ -1,0 +1,51 @@
+{
+  "exact_blocker_count": 5,
+  "rows": [
+    {
+      "blocker_id": "w039_oxfml.callable_metadata_projection_absent",
+      "blocker_present": true,
+      "evidence": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+      "owner": "calc-f7o.7",
+      "promotion_consequence": "callable metadata projection remains unpromoted",
+      "reason": "direct LET/LAMBDA value-carrier evidence exists, but callable metadata projection fixture or carrier sufficiency proof is absent.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_oxfml.broad_display_publication_breadth_unexercised",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "format_display_notes_present": true,
+      "owner": "calc-f7o.7",
+      "promotion_consequence": "broad OxFml display/publication closure remains unpromoted",
+      "reason": "the current direct slice carries typed formatting and distinct format/display categories, but not broad display-facing or publication/topology closure.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_oxfml.public_consumer_surface_migration_not_verified",
+      "consumer_surface_present": true,
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-f7o.7; future implementation lane",
+      "promotion_consequence": "public surface alignment remains watch-bound rather than promoted",
+      "reason": "OxFml names the public consumer surface, but this bead does not migrate or verify all OxCalc integration call sites against that surface.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w039_oxfml.registered_external_callable_projection_deferred",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-f7o.7; external:OxFml/OxFunc",
+      "promotion_consequence": "registered external callable metadata projection remains unpromoted",
+      "reason": "registered-external packet naming is note-level converged, but no OxCalc callable metadata projection fixture is exercised.",
+      "registered_external_descriptor_present": true,
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w039_oxfml.general_oxfunc_kernel_external",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "external:OxFunc",
+      "promotion_consequence": "general OxFunc kernel promotion remains outside OxCalc",
+      "reason": "W039 includes the narrow LET/LAMBDA carrier seam, not general OxFunc kernel formalization inside OxCalc.",
+      "status_after_run": "accepted_external_boundary"
+    }
+  ],
+  "run_id": "w039-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.oxfml_seam.w039.exact_blocker_register.v1"
+}

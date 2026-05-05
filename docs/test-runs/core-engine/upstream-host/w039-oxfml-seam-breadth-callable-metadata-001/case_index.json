@@ -1,0 +1,150 @@
+{
+  "cases": [
+    {
+      "case_id": "uh_info_directory_capture_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_info_directory_capture_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "host-info",
+        "capture-packet"
+      ]
+    },
+    {
+      "case_id": "uh_info_unsupported_query_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_info_unsupported_query_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "host-info",
+        "unsupported-query"
+      ]
+    },
+    {
+      "case_id": "uh_rtd_provider_error_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_rtd_provider_error_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "rtd",
+        "provider-error"
+      ]
+    },
+    {
+      "case_id": "uh_sum_defined_name_bind_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_sum_defined_name_bind_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "bind-context",
+        "defined-name"
+      ]
+    },
+    {
+      "case_id": "uh_let_lambda_lexical_capture_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "direct-oxfml",
+        "let-lambda",
+        "lexical-capture",
+        "w037"
+      ]
+    },
+    {
+      "case_id": "uh_returned_lambda_invocation_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_returned_lambda_invocation_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "direct-oxfml",
+        "let-lambda",
+        "returned-lambda",
+        "w037"
+      ]
+    },
+    {
+      "case_id": "uh_typed_cf_top_rank_guard_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_typed_cf_top_rank_guard_001/result.json",
+      "status": "matched",
+      "tags": [
+        "direct-oxfml",
+        "formatting",
+        "w073",
+        "w037"
+      ]
+    },
+    {
+      "case_id": "uh_table_context_bind_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_table_context_bind_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "bind-context"
+      ]
+    },
+    {
+      "case_id": "uh_structured_reference_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_reference_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation"
+      ]
+    },
+    {
+      "case_id": "uh_structured_column_sum_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_column_sum_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "aggregate"
+      ]
+    },
+    {
+      "case_id": "uh_structured_headers_section_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_headers_section_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "section"
+      ]
+    },
+    {
+      "case_id": "uh_structured_data_multicol_sum_eval_001",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_data_multicol_sum_eval_001/result.json",
+      "status": "matched",
+      "tags": [
+        "scaffolding",
+        "table-context",
+        "structured-reference",
+        "evaluation",
+        "data-qualified",
+        "multi-column",
+        "aggregate"
+      ]
+    }
+  ],
+  "run_id": "w039-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.upstream_host.direct_case_index.v1"
+}

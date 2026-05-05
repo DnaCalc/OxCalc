@@ -1,0 +1,62 @@
+{
+  "schema_version": "oxcalc.tla.w036_stage2_partition.promotion_blockers.v1",
+  "run_id": "w036-stage2-partition-001",
+  "blocker_count": 5,
+  "rows": [
+    {
+      "blocker_id": "stage2.policy.not_promoted",
+      "owner": "calc-rqq.5; calc-rqq.8",
+      "state": "blocked",
+      "evidence": [
+        "NoStage2PolicyPromotion",
+        "Stage2PolicyPromotionRequiresReplayEvidence",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json"
+      ],
+      "promotion_consequence": "Stage 2 policy remains unpromoted; W036 records bounded scheduler-readiness criteria only."
+    },
+    {
+      "blocker_id": "stage2.semantic_replay.not_pack_grade",
+      "owner": "calc-rqq.8",
+      "state": "blocked",
+      "evidence": [
+        "BoundedReadyRequiresPreconditions",
+        "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg"
+      ],
+      "promotion_consequence": "Pack-grade Stage 2 promotion still requires deterministic replay-equivalence and pack-gate evidence outside this bounded TLA run."
+    },
+    {
+      "blocker_id": "optimized.snapshot_fence.conformance_not_promoted",
+      "owner": "calc-rqq.6; calc-rqq.8",
+      "state": "blocked",
+      "evidence": [
+        "RejectIsNoPublish",
+        "NoStaleSnapshotAccepted",
+        "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg"
+      ],
+      "promotion_consequence": "The snapshot-fence row has a bounded TLA/coordinator counterpart, but optimized/core-engine conformance remains unpromoted until differential or fixture evidence is bound."
+    },
+    {
+      "blocker_id": "optimized.capability_view_fence.conformance_not_promoted",
+      "owner": "calc-rqq.6; calc-rqq.8",
+      "state": "blocked",
+      "evidence": [
+        "RejectIsNoPublish",
+        "NoCapabilityViewFenceAccepted",
+        "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg"
+      ],
+      "promotion_consequence": "The capability-view fence row has a bounded TLA/coordinator counterpart, but optimized/core-engine conformance remains unpromoted until differential or fixture evidence is bound."
+    },
+    {
+      "blocker_id": "tracecalc.multi_reader.not_replay_oracle",
+      "owner": "calc-rqq.5; calc-rqq.9",
+      "state": "classified_model_checked_not_tracecalc_replay",
+      "evidence": [
+        "ProtectedOverlayPinnedAndRetained",
+        "ReleasedReaderDoesNotReleaseOtherReaderProtectedOverlay",
+        "EvictedOverlayWasUnprotected",
+        "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg"
+      ],
+      "promotion_consequence": "The multi-reader overlay row is covered by bounded TLA model evidence, not by TraceCalc runtime replay; no full TraceCalc oracle claim follows from this run."
+    }
+  ]
+}

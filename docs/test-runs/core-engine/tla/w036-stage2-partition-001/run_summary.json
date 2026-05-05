@@ -1,0 +1,96 @@
+{
+  "schema_version": "oxcalc.tla.w036_stage2_partition.run_summary.v1",
+  "run_id": "w036-stage2-partition-001",
+  "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+  "model_family": "bounded_stage2_partition_scheduler_equivalence",
+  "tlc_version": "2.19 of 08 August 2024",
+  "result": "passed",
+  "config_count": 5,
+  "passed_config_count": 5,
+  "failed_config_count": 0,
+  "checked_invariants": [
+    "TypeInvariant",
+    "ConcretePartitionOwnershipSound",
+    "FinishedNodesWereScheduled",
+    "BoundedReadyRequiresPreconditions",
+    "BlockedStage2DecisionIsNoPromotion",
+    "Stage2PolicyPromotionRequiresReplayEvidence",
+    "NoStage2PolicyPromotion",
+    "RejectIsNoPublish",
+    "AcceptedCandidateRequiresFences",
+    "NoStaleSnapshotAccepted",
+    "NoCapabilityViewFenceAccepted",
+    "ProtectedOverlayPinnedAndRetained",
+    "ReleasedReaderDoesNotReleaseOtherReaderProtectedOverlay",
+    "EvictedOverlayWasUnprotected"
+  ],
+  "scheduler_equivalence_criteria": {
+    "partition_model_sound": "every node is owned by exactly one of the bounded partitions and every partition has at least one owned node",
+    "cross_partition_dependencies": "blocked when CrossPartitionDependencyInput is true",
+    "partition_work": "bounded readiness requires all owned partition nodes to be finished",
+    "evidence": [
+      "partition_ownership_model",
+      "scheduler_equivalence_criteria",
+      "semantic_replay_equivalence"
+    ],
+    "promotion_guard": "NoStage2PolicyPromotion is checked in every W036 config"
+  },
+  "configs": [
+    {
+      "config": "formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+      "purpose": "semantic replay evidence absent while concrete partition ownership is sound",
+      "max_transitions": 5,
+      "states_generated": 60632,
+      "distinct_states": 10975,
+      "queue_left": 0,
+      "depth": 6,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/CoreEngineW036Stage2Partition.scheduler_blocked.tlc.txt"
+    },
+    {
+      "config": "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+      "purpose": "cross-partition dependency input blocks bounded scheduler readiness even with all evidence present",
+      "max_transitions": 5,
+      "states_generated": 60632,
+      "distinct_states": 10975,
+      "queue_left": 0,
+      "depth": 6,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/CoreEngineW036Stage2Partition.partition_cross_dep.tlc.txt"
+    },
+    {
+      "config": "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+      "purpose": "bounded readiness criteria with sound ownership, no cross-partition dependency, and all required evidence present",
+      "max_transitions": 5,
+      "states_generated": 15306,
+      "distinct_states": 3395,
+      "queue_left": 0,
+      "depth": 6,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/CoreEngineW036Stage2Partition.bounded_ready.tlc.txt"
+    },
+    {
+      "config": "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg",
+      "purpose": "stale snapshot and capability-view fence candidates cannot be accepted or published",
+      "max_transitions": 4,
+      "states_generated": 54690,
+      "distinct_states": 6490,
+      "queue_left": 0,
+      "depth": 5,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/CoreEngineW036Stage2Partition.fence_reject.tlc.txt"
+    },
+    {
+      "config": "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg",
+      "purpose": "two-reader/two-overlay release ordering remains safe under the same bounded partition model",
+      "max_transitions": 5,
+      "states_generated": 120062,
+      "distinct_states": 15872,
+      "queue_left": 0,
+      "depth": 6,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/CoreEngineW036Stage2Partition.multi_reader.tlc.txt"
+    }
+  ],
+  "semantic_equivalence_statement": "This run checks bounded TLA model evidence only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, TraceCalc or TreeCalc behavior, Lean artifacts, pack decisions, continuous-assurance runners, or OxFml/OxFunc evaluator behavior."
+}

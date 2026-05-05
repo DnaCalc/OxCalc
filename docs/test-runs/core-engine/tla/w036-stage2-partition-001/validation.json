@@ -1,0 +1,15 @@
+{
+  "schema_version": "oxcalc.tla.w036_stage2_partition.validation.v1",
+  "run_id": "w036-stage2-partition-001",
+  "validation_state": "w036_tla_stage2_partition_model_validated",
+  "all_configs_passed": true,
+  "failed_configs": [],
+  "empty_log_files": [],
+  "promotion_claims": {
+    "stage2_policy_promoted": false,
+    "pack_grade_promoted": false,
+    "full_tla_verification_promoted": false,
+    "full_tracecalc_oracle_promoted": false,
+    "optimized_core_engine_conformance_promoted": false
+  }
+}

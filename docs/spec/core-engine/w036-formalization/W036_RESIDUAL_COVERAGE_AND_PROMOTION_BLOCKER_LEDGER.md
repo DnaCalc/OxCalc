@@ -155,6 +155,12 @@ Evidence run `w036-implementation-conformance-closure-001` emits 6 closure actio
 
 Checked Lean files `formal/lean/OxCalc/CoreEngine/W036LeanCoverageExpansion.lean` and `formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean` add W036 proof-inventory rows for match guards, harness first-fix rows, callable carrier boundaries, callable metadata deferral, OxFml external seam assumptions, full OxFunc LAMBDA kernel opacity, and TLA/conformance deferrals. The W036 Lean inventory has zero explicit axioms, zero match-promoted rows, and no full Lean verification promotion.
 
+### calc-rqq.5 Disposition Update
+
+`calc-rqq.5` now records the W036 TLA Stage 2 partition and scheduler-equivalence model in `W036_TLA_STAGE2_PARTITION_AND_SCHEDULER_EQUIVALENCE_MODEL.md`.
+
+Checked TLA artifacts `formal/tla/CoreEngineW036Stage2Partition.tla` and five configs record bounded concrete partition ownership, scheduler-readiness criteria, stale snapshot and capability-view fence rejection, and multi-reader overlay release ordering. Evidence run `w036-stage2-partition-001` has 5 TLC configs, 5 passed configs, 0 failed configs, raw TLC logs, state counts, promotion blockers, and no Stage 2 policy promotion. Full TLA verification, full TraceCalc oracle coverage, optimized/core-engine conformance, pack-grade replay, and Stage 2 policy remain unpromoted.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

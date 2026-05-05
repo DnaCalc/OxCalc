@@ -104,6 +104,22 @@
       ]
     },
     {
+      "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+      "path": "cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001.json",
+      "tags": [
+        "local-sequential",
+        "dynamic-reference",
+        "soft-reference",
+        "dependency-addition",
+        "dependency-release",
+        "dependency-reclassification",
+        "multi-descriptor",
+        "automatic-transition",
+        "post-edit",
+        "W044"
+      ]
+    },
+    {
       "case_id": "tc_local_rebind_after_rename_001",
       "path": "cases/tc_local_rebind_after_rename_001.json",
       "tags": [

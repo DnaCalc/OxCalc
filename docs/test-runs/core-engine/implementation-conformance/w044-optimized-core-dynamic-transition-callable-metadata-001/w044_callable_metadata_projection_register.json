@@ -1,0 +1,30 @@
+{
+  "callable_metadata_projection_promoted": false,
+  "row_count": 3,
+  "rows": [
+    {
+      "consequence": "TreeCalc LET/LAMBDA value-carrier evidence is retained as value evidence only.",
+      "evidence_state": "value_carrier_evidenced",
+      "metadata_projection_evidenced": false,
+      "row_id": "w044_treecalc_callable_value_carrier_carried",
+      "source_w043_row_id": "w043_treecalc_callable_value_only_evidence"
+    },
+    {
+      "consequence": "Direct OxFml LET/LAMBDA carrier evidence is retained as carrier evidence only.",
+      "evidence_state": "carrier_evidenced",
+      "metadata_projection_evidenced": false,
+      "row_id": "w044_upstream_host_callable_carrier_carried",
+      "source_w043_row_id": "w043_upstream_host_let_lambda_carrier_evidence_carried"
+    },
+    {
+      "consequence": "Callable metadata projection remains an exact blocker in W044.2.",
+      "evidence_state": "exact_blocker_retained",
+      "metadata_projection_evidenced": false,
+      "row_id": "w044_callable_metadata_projection_exact_blocker",
+      "source_w043_row_id": "w043_callable_metadata_projection_exact_blocker"
+    }
+  ],
+  "run_id": "w044-optimized-core-dynamic-transition-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w044_callable_metadata_projection_register.v1",
+  "source_w043_callable_metadata_projection_register": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json"
+}

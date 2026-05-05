@@ -1,0 +1,108 @@
+{
+  "exact_remaining_blocker_count": 4,
+  "rows": [
+    {
+      "authority_owner": "calc-b1t.2",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "disposition": "retain broader dynamic transition coverage as an exact optimized/core blocker after adding mixed add+release+reclassification evidence",
+      "disposition_kind": "retained_exact_blocker_after_direct_evidence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "policy_area": "broader_automatic_dynamic_dependency_transition_coverage",
+      "promotion_consequence": "full optimized/core verification remains blocked until dynamic coverage spans additional descriptor transitions, structural-plus-formula edits, host-resolution surfaces, or a sufficiency proof",
+      "row_id": "w044_broader_dynamic_transition_remaining_exact_blocker",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json"
+      ],
+      "source_w043_row_id": "w043_broader_dynamic_transition_coverage_remaining_exact_blocker",
+      "source_w044_lane": "w043_residual.optimized_core_dynamic_dependency_transitions",
+      "validation_state": "w044_disposition_validated",
+      "w044_obligation_ids": [
+        "W044-OBL-004",
+        "W044-OBL-005",
+        "W044-OBL-006",
+        "W044-OBL-011"
+      ]
+    },
+    {
+      "authority_owner": "calc-b1t.2; calc-b1t.5",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "disposition": "snapshot-fence counterpart evidence remains declared-profile only; broad Stage 2 and production scheduler equivalence still need direct counterpart coverage",
+      "disposition_kind": "retained_exact_blocker_declared_profile_only",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "policy_area": "snapshot_fence_counterpart_breadth",
+      "promotion_consequence": "stage2_production_policy_and_pack_equivalence_remain_unpromoted",
+      "row_id": "w044_snapshot_fence_counterpart_breadth_exact_blocker",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json"
+      ],
+      "source_w043_row_id": "w043_snapshot_fence_counterpart_declared_profile_evidence",
+      "source_w044_lane": "w043_residual.stage2_production_policy_and_pack_equivalence",
+      "validation_state": "w044_disposition_validated",
+      "w044_obligation_ids": [
+        "W044-OBL-019",
+        "W044-OBL-020",
+        "W044-OBL-021",
+        "W044-OBL-022"
+      ]
+    },
+    {
+      "authority_owner": "calc-b1t.2; calc-b1t.5",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "disposition": "capability-view counterpart evidence remains declared-profile only; broad capability-fence production coverage still needs direct counterpart evidence",
+      "disposition_kind": "retained_exact_blocker_declared_profile_only",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "policy_area": "capability_view_counterpart_breadth",
+      "promotion_consequence": "capability_view_counterpart_and_stage2_policy_remain_unpromoted",
+      "row_id": "w044_capability_view_counterpart_breadth_exact_blocker",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json"
+      ],
+      "source_w043_row_id": "w043_capability_view_counterpart_declared_profile_evidence",
+      "source_w044_lane": "w043_residual.stage2_production_policy_and_pack_equivalence",
+      "validation_state": "w044_disposition_validated",
+      "w044_obligation_ids": [
+        "W044-OBL-019",
+        "W044-OBL-020",
+        "W044-OBL-021",
+        "W044-OBL-022"
+      ]
+    },
+    {
+      "authority_owner": "calc-b1t.2; calc-b1t.8",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "disposition": "retain callable metadata projection as an exact blocker; LET/LAMBDA value-carrier and direct OxFml carrier evidence are not metadata projection evidence",
+      "disposition_kind": "retained_exact_callable_metadata_blocker",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "policy_area": "callable_metadata_projection",
+      "promotion_consequence": "callable metadata projection, registered external callable projection, and provider-failure callable publication semantics remain unpromoted",
+      "row_id": "w044_callable_metadata_projection_exact_blocker",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json"
+      ],
+      "source_w043_row_id": "w043_callable_metadata_projection_exact_blocker",
+      "source_w044_lane": "w043_residual.callable_metadata_projection",
+      "validation_state": "w044_disposition_validated",
+      "w044_obligation_ids": [
+        "W044-OBL-009",
+        "W044-OBL-010",
+        "W044-OBL-038",
+        "W044-OBL-039"
+      ]
+    }
+  ],
+  "run_id": "w044-optimized-core-dynamic-transition-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w044_blocker_register.v1"
+}

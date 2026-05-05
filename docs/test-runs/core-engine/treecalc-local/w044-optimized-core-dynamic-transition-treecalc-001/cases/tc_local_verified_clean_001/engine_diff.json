@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_local_verified_clean_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "verified_clean"
+}

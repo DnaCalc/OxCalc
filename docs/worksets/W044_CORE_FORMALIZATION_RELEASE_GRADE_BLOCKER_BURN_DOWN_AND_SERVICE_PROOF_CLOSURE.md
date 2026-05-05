@@ -77,14 +77,16 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-b1t.2_ready_optimized_core_dynamic_transition_and_callable_metadata_implementation_tranche`
+- execution_state: `calc-b1t.3_ready_rust_totality_refinement_and_panic_surface_proof_expansion`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-b1t.2` optimized core dynamic transition and callable metadata implementation tranche is next
+  - `calc-b1t.3` Rust totality refinement and panic-surface proof expansion is next
+  - broader dynamic transition coverage, snapshot/capability counterpart breadth, and callable metadata projection remain unpromoted after `calc-b1t.2`
   - full optimized/core verification, Rust totality/refinement, full Lean/TLA verification, unbounded fairness, Stage 2 production policy, operated services, independent evaluator breadth, mismatch quarantine, broad OxFml closure, callable metadata/carrier, registered-external projection, provider-publication, pack-grade replay, C5, release-grade verification, and general OxFunc kernels remain unpromoted
 
 Latest evidence:
 
 1. `docs/spec/core-engine/w044-formalization/W044_RESIDUAL_RELEASE_GRADE_BLOCKER_RECLASSIFICATION_AND_PROMOTION_CONTRACT_MAP.md` records the `calc-b1t.1` residual blocker map. The packet `w044-residual-release-grade-blocker-reclassification-map-001` maps 20 post-W043 residual lanes into 45 W044 obligations and 17 promotion contracts, carries current OxFml W073 typed-rule-only conditional-formatting intake, records downstream W073 typed-rule request construction as required but unverified, records runtime-facade, host/runtime, structured-reference, stand-in fixture-host, registered-external, provider-failure/callable-publication, public-migration, and `format_delta`/`display_delta` notes as watch or handoff-trigger inputs, requires no OxFml handoff, and keeps release-grade verification, full formalization, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, retention SLO, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, W073 downstream uptake, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, release-scale correctness from performance, and general OxFunc kernels unpromoted.
+2. `docs/spec/core-engine/w044-formalization/W044_OPTIMIZED_CORE_DYNAMIC_TRANSITION_AND_CALLABLE_METADATA_IMPLEMENTATION.md` records the `calc-b1t.2` optimized/core tranche. The TreeCalc run `w044-optimized-core-dynamic-transition-treecalc-001` emits 28 cases with 0 expectation mismatches and adds the mixed dynamic soft-reference fixture `tc_local_dynamic_mixed_add_release_auto_post_edit_001`, proving automatic `DependencyAdded`, `DependencyRemoved`, and `DependencyReclassified` seeds, rebind-required closure, and no-publication rejection. The implementation-conformance packet `w044-optimized-core-dynamic-transition-callable-metadata-001` records 6 W044 dispositions, 2 direct-evidence rows, 4 exact remaining blockers, 0 match-promoted rows, and 0 failed rows. It narrows dynamic-transition evidence while retaining broader dynamic coverage, snapshot-fence breadth, capability-view breadth, and callable metadata projection as exact blockers, carries the current W073 typed-rule-only guard, records downstream W073 request construction as still unverified, and keeps optimized/core, release-grade, C5, pack-grade replay, Stage 2, callable metadata, callable carrier sufficiency, broad OxFml, and general OxFunc promotion unclaimed.

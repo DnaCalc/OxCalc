@@ -1,0 +1,107 @@
+{
+  "candidate_result": {
+    "aligned_canonical_family": "AcceptedCandidateResult",
+    "candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate",
+    "dependency_shape_updates": [
+      {
+        "affected_node_ids": [
+          2,
+          3
+        ],
+        "kind": "dynamic_dependency_bound"
+      }
+    ],
+    "projection_owner": "oxcalc_local",
+    "runtime_effects": [
+      {
+        "detail": "owner_node:node:3;target_node:node:2;detail:dynamic_resolved:node:2:carrier:dynamic:auto-release-reclass:resolved_before_automatic_release",
+        "family": "DynamicDependency",
+        "family_owner": "oxcalc_local_projection",
+        "kind": "runtime_effect.dynamic_reference",
+        "kind_owner": "oxcalc_local_projection"
+      }
+    ],
+    "target_set": [
+      3
+    ],
+    "value_updates": {
+      "3": "11"
+    }
+  },
+  "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/dependency_graph.json",
+  "diagnostics": [
+    "oxfml_candidate_result_id:candidate:3",
+    "oxfml_candidate_formula_stable_id:formula:dynamic:auto-release-reclass",
+    "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+    "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:auto-release-reclass",
+    "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+    "oxfml_commit_candidate_result_id:candidate:3",
+    "oxfml_commit_attempt_id:commit:0001",
+    "oxfml_commit_formula_stable_id:formula:dynamic:auto-release-reclass",
+    "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+    "coordinator_publication_authority:oxcalc",
+    "dependency_shape_update:dynamic_dependency_bound",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:0"
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/phase_timings.json",
+  "publication_bundle": {
+    "aligned_canonical_family": "CommitBundle",
+    "candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate",
+    "carriage_classification": {
+      "dependency_shape_update_count": 1,
+      "explicit_current_absence_categories": [
+        "shape_delta",
+        "topology_delta",
+        "format_delta",
+        "display_delta"
+      ],
+      "local_floor_only_categories": [
+        "dependency_shape_updates"
+      ],
+      "publish_critical_categories": [
+        "value_delta"
+      ],
+      "replay_visible_non_publish_critical_categories": [
+        "published_runtime_effects",
+        "trace_markers"
+      ]
+    },
+    "projection_owner": "oxcalc_local",
+    "publication_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:publication",
+    "published_runtime_effects": [
+      {
+        "detail": "owner_node:node:3;target_node:node:2;detail:dynamic_resolved:node:2:carrier:dynamic:auto-release-reclass:resolved_before_automatic_release",
+        "family": "DynamicDependency",
+        "family_owner": "oxcalc_local_projection",
+        "kind": "runtime_effect.dynamic_reference",
+        "kind_owner": "oxcalc_local_projection"
+      }
+    ],
+    "published_view_delta": {
+      "3": "11"
+    },
+    "trace_markers": [
+      "publication_committed"
+    ]
+  },
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/published_values.json",
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/runtime_effects.json"
+}

@@ -2754,6 +2754,71 @@ mod tests {
     }
 
     #[test]
+    fn structural_invalidation_seeds_mark_mixed_dynamic_add_release_reclassification() {
+        let predecessor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:mixed".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:mixed".to_string())),
+            expression: TreeFormula::Binary {
+                op: FormulaBinaryOp::Add,
+                left: Box::new(TreeFormula::Reference(TreeReference::DynamicResolved {
+                    target_node_id: TreeNodeId(2),
+                    carrier_id: "carrier:dynamic:mixed-left".to_string(),
+                    detail: "resolved_before_mixed_release".to_string(),
+                })),
+                right: Box::new(TreeFormula::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic:mixed-right".to_string(),
+                    detail: "unresolved_before_mixed_addition".to_string(),
+                })),
+            },
+        }]);
+        let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:mixed".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:mixed".to_string())),
+            expression: TreeFormula::Binary {
+                op: FormulaBinaryOp::Add,
+                left: Box::new(TreeFormula::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic:mixed-left".to_string(),
+                    detail: "released_to_runtime_resolution".to_string(),
+                })),
+                right: Box::new(TreeFormula::Reference(TreeReference::DynamicResolved {
+                    target_node_id: TreeNodeId(4),
+                    carrier_id: "carrier:dynamic:mixed-right".to_string(),
+                    detail: "resolved_after_mixed_addition".to_string(),
+                })),
+            },
+        }]);
+        let structural_snapshot = snapshot();
+
+        let seeds = derive_structural_invalidation_seeds_for_catalogs(
+            &structural_snapshot,
+            &structural_snapshot,
+            &predecessor_catalog,
+            &successor_catalog,
+            &[],
+        );
+
+        assert_eq!(
+            seeds,
+            vec![
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyAdded,
+                },
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyRemoved,
+                },
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyReclassified,
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn structural_invalidation_seeds_keep_direct_reference_recalc_only_after_target_move() {
         let outcome = snapshot()
             .apply_edit(

@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "published"
+}

@@ -1,0 +1,10 @@
+{
+  "allowed_promoted_rows": [],
+  "guard_status": "w044_declared_gap_promotion_guard_holds",
+  "non_promoted_row_count": 6,
+  "policy": "W044 calc-b1t.2 binds direct mixed dynamic transition evidence and retains exact blockers without counting declared profiles, note-level evidence, external formatting intake, callable value carriers, or retained blockers as optimized/core matches.",
+  "promoted_match_count": 0,
+  "run_id": "w044-optimized-core-dynamic-transition-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w044_match_guard.v1",
+  "source_w043_match_promoted_count": 0
+}

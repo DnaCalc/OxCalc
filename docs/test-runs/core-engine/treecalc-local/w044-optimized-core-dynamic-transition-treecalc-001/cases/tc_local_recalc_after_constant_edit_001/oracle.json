@@ -1,0 +1,12 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "expected_evaluation_order": [
+    3
+  ],
+  "expected_published_values": {
+    "3": "5"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "node_id": 3,
+    "reason": "DependencyAdded"
+  },
+  {
+    "node_id": 3,
+    "reason": "DependencyRemoved"
+  },
+  {
+    "node_id": 3,
+    "reason": "DependencyReclassified"
+  }
+]

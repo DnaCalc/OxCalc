@@ -2086,7 +2086,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 27);
+        assert_eq!(summary.case_count, 28);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2219,7 +2219,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 27);
+        assert_eq!(replay_manifest["case_count"], 28);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()
@@ -2828,6 +2828,68 @@ mod tests {
                         && record["requires_rebind"] == true
                         && record["reasons"].as_array().is_some_and(|reasons| {
                             reasons.iter().any(|reason| reason == "DependencyAdded")
+                                && reasons
+                                    .iter()
+                                    .any(|reason| reason == "DependencyReclassified")
+                        })
+                }))
+        );
+
+        let mixed_dynamic_transition_seeds =
+            serde_json::from_str::<serde_json::Value>(
+                &fs::read_to_string(artifact_root.join(
+                    "cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/invalidation_seeds.json",
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            mixed_dynamic_transition_seeds.as_array().map(Vec::len),
+            Some(3)
+        );
+        for expected_reason in [
+            "DependencyAdded",
+            "DependencyRemoved",
+            "DependencyReclassified",
+        ] {
+            assert!(
+                mixed_dynamic_transition_seeds
+                    .as_array()
+                    .is_some_and(|seeds| seeds
+                        .iter()
+                        .any(|seed| seed["reason"] == expected_reason)),
+                "missing mixed dynamic transition seed {expected_reason}"
+            );
+        }
+        let mixed_dynamic_transition_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join(
+                "cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/result.json",
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(mixed_dynamic_transition_result["result_state"], "rejected");
+        assert_eq!(
+            mixed_dynamic_transition_result["reject_detail"]["kind"],
+            "HostInjectedFailure"
+        );
+        let mixed_dynamic_transition_closure =
+            serde_json::from_str::<serde_json::Value>(
+                &fs::read_to_string(artifact_root.join(
+                    "cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/invalidation_closure.json",
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(
+            mixed_dynamic_transition_closure
+                .as_array()
+                .is_some_and(|records| records.iter().any(|record| {
+                    record["node_id"] == 3
+                        && record["requires_rebind"] == true
+                        && record["reasons"].as_array().is_some_and(|reasons| {
+                            reasons.iter().any(|reason| reason == "DependencyAdded")
+                                && reasons.iter().any(|reason| reason == "DependencyRemoved")
                                 && reasons
                                     .iter()
                                     .any(|reason| reason == "DependencyReclassified")

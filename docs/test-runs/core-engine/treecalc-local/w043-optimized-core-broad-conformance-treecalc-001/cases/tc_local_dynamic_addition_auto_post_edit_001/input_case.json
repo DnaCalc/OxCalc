@@ -1,0 +1,103 @@
+{
+  "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+  "description": "A rejected dynamic-potential formula is rerun with a successor formula catalog that resolves the dynamic dependency, proving automatic dependency-addition invalidation seeds without manual overrides.",
+  "expected": {
+    "evaluation_order": [
+      3
+    ],
+    "published_values": null,
+    "reject_kind": "DynamicDependencyFailure",
+    "result_state": "rejected",
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ],
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:dynamic:auto-addition",
+      "expression": {
+        "Reference": {
+          "DynamicPotential": {
+            "carrier_id": "carrier:dynamic:auto-addition",
+            "detail": "unresolved_before_automatic_addition"
+          }
+        }
+      },
+      "formula_artifact_id": "formula:dynamic:auto-addition",
+      "owner_node_id": 3
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "13",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "DynamicSource"
+    },
+    {
+      "bind_artifact_id": "bind:dynamic:auto-addition",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:dynamic:auto-addition",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "DynamicConsumer"
+    }
+  ],
+  "post_edit": {
+    "edits": [],
+    "expected": {
+      "evaluation_order": [
+        3
+      ],
+      "published_values": null,
+      "reject_kind": "HostInjectedFailure",
+      "result_state": "rejected",
+      "runtime_effect_kinds": null,
+      "runtime_effect_overlay_kinds": null
+    },
+    "expected_affected_node_ids": [],
+    "expected_impacts": [],
+    "formulas": [
+      {
+        "bind_artifact_id": "bind:dynamic:auto-addition",
+        "expression": {
+          "Reference": {
+            "DynamicResolved": {
+              "carrier_id": "carrier:dynamic:auto-addition",
+              "detail": "resolved_after_runtime_resolution",
+              "target_node_id": 2
+            }
+          }
+        },
+        "formula_artifact_id": "formula:dynamic:auto-addition",
+        "owner_node_id": 3
+      }
+    ],
+    "invalidation_seeds": [],
+    "successor_snapshot_start_id": 45
+  },
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 44
+}

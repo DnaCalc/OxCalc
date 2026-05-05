@@ -1,0 +1,119 @@
+{
+  "run_id": "w043-optimized-core-broad-conformance-callable-metadata-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w043.counterpart_conformance_register.v1",
+  "row_count": 8,
+  "direct_evidence_bound_count": 6,
+  "exact_remaining_blocker_count": 3,
+  "match_promoted_count": 0,
+  "rows": [
+    {
+      "row_id": "w043_dynamic_addition_reclassification_direct_evidence",
+      "w043_obligation_id": "W043-OBL-003",
+      "policy_area": "broader_automatic_dynamic_dependency_transition_coverage",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_dynamic_transition_evidence.json"
+      ],
+      "disposition": "add a new fixture and fresh W043 TreeCalc run for automatic DependencyAdded plus DependencyReclassified derivation and rebind no-publication behavior",
+      "promotion_consequence": "dynamic-transition coverage is narrowed but not promoted to broad coverage"
+    },
+    {
+      "row_id": "w043_dynamic_release_reclassification_carried_evidence",
+      "w043_obligation_id": "W043-OBL-003",
+      "policy_area": "broader_automatic_dynamic_dependency_transition_coverage",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json"
+      ],
+      "disposition": "bind W041/W042 automatic DependencyRemoved and DependencyReclassified evidence in the fresh W043 run",
+      "promotion_consequence": "the exercised release pattern remains evidenced"
+    },
+    {
+      "row_id": "w043_snapshot_fence_counterpart_declared_profile_evidence",
+      "w043_obligation_id": "W043-OBL-004",
+      "policy_area": "snapshot_fence_counterpart",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json"
+      ],
+      "disposition": "carry declared-profile stale-snapshot reject/no-publish counterpart evidence without broad Stage 2 or release-grade promotion",
+      "promotion_consequence": "snapshot-fence counterpart remains declared-profile evidence"
+    },
+    {
+      "row_id": "w043_capability_view_counterpart_declared_profile_evidence",
+      "w043_obligation_id": "W043-OBL-005",
+      "policy_area": "capability_view_fence_counterpart",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json"
+      ],
+      "disposition": "carry declared-profile capability-view reject/no-publish counterpart evidence and fresh capability-sensitive TreeCalc reject evidence",
+      "promotion_consequence": "capability-view counterpart remains declared-profile evidence"
+    },
+    {
+      "row_id": "w043_callable_value_carrier_boundary_evidence",
+      "w043_obligation_id": "W043-OBL-007",
+      "policy_area": "callable_value_carrier_boundary",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json"
+      ],
+      "disposition": "bind fresh TreeCalc LET/LAMBDA value-carrier evidence as carrier context only",
+      "promotion_consequence": "ordinary callable value carrier behavior is evidenced; metadata projection remains blocked"
+    },
+    {
+      "row_id": "w043_callable_metadata_projection_exact_blocker",
+      "w043_obligation_id": "W043-OBL-006",
+      "policy_area": "callable_metadata_projection",
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json"
+      ],
+      "disposition": "retain callable metadata projection as an exact blocker",
+      "promotion_consequence": "callable metadata projection remains unpromoted"
+    },
+    {
+      "row_id": "w043_no_proxy_promotion_guard",
+      "w043_obligation_id": "W043-OBL-008",
+      "policy_area": "no_proxy_promotion_guard",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json"
+      ],
+      "disposition": "keep dynamic narrowing, declared-profile counterparts, value-only callable rows, and W073 watch rows out of full optimized/core promotion counts",
+      "promotion_consequence": "no proxy or match promotion is counted"
+    },
+    {
+      "row_id": "w043_full_optimized_core_release_grade_conformance_blocker",
+      "w043_obligation_id": "W043-OBL-008",
+      "policy_area": "full_optimized_core_release_grade_conformance",
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json"
+      ],
+      "disposition": "retain full optimized/core release-grade conformance as exact blocker until broader dynamic, callable metadata, Rust/proof, Stage 2, service, diversity, and OxFml gates are discharged",
+      "promotion_consequence": "full optimized/core verification and release-grade verification remain unpromoted"
+    }
+  ]
+}

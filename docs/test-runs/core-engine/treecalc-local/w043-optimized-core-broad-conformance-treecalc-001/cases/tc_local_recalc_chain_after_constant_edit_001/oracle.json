@@ -1,0 +1,14 @@
+{
+  "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+  "expected_evaluation_order": [
+    3,
+    4
+  ],
+  "expected_published_values": {
+    "3": "5",
+    "4": "7"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

@@ -1,0 +1,25 @@
+{
+  "run_id": "w043-optimized-core-broad-conformance-callable-metadata-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w043.match_promotion_guard.v1",
+  "match_promoted_count": 0,
+  "declared_gap_match_count": 0,
+  "proxy_promotion_count": 0,
+  "guard_rows": [
+    {
+      "row_id": "w043_dynamic_addition_is_narrowing_not_broad_promotion",
+      "guard": "DependencyAdded plus DependencyReclassified evidence narrows the dynamic-transition blocker but does not promote broad dynamic transition coverage"
+    },
+    {
+      "row_id": "w043_snapshot_capability_declared_profiles_not_stage2_promotion",
+      "guard": "snapshot and capability counterparts remain declared-profile evidence, not Stage 2 production policy or full optimized/core conformance promotion"
+    },
+    {
+      "row_id": "w043_callable_value_not_metadata_projection",
+      "guard": "LET/LAMBDA value publication remains value-carrier evidence and is not callable metadata projection evidence"
+    },
+    {
+      "row_id": "w043_w073_guard_not_core_conformance_promotion",
+      "guard": "W073 typed-only formatting intake is a seam guard and does not promote optimized/core conformance"
+    }
+  ]
+}

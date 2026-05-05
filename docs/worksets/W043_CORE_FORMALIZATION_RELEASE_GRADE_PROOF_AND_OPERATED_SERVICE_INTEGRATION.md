@@ -102,13 +102,13 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-2p3.2_ready_optimized_core_broad_conformance_and_callable_metadata_closure`
+- execution_state: `calc-2p3.3_ready_rust_totality_refinement_and_panic_free_core_proof_frontier`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-2p3.2` optimized core broad conformance and callable metadata closure is next
-  - broader dynamic dependency-transition coverage remains partial
+  - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier is next
+  - broader dynamic dependency-transition coverage remains partial beyond the new addition/reclassification and carried removal/reclassification fixture families
   - callable metadata projection remains an exact blocker
   - callable carrier sufficiency proof remains blocked
   - runtime panic-surface proof remains an exact blocker
@@ -131,3 +131,4 @@ Child path:
 Latest evidence:
 
 1. `docs/spec/core-engine/w043-formalization/W043_RESIDUAL_RELEASE_GRADE_PROOF_SERVICE_OBLIGATION_MAP.md` records the `calc-2p3.1` residual release-grade proof-service obligation map. The packet `w043-residual-release-grade-proof-service-obligation-map-001` maps 18 post-W042 residual lanes into 36 W043 obligations and 16 promotion-target gates. It carries current OxFml W073 typed-only conditional-formatting intake, records runtime-facade, host/runtime, structured-reference, stand-in fixture-host, registered-external, provider-failure/callable-publication, public-migration, and `format_delta`/`display_delta` notes as watch or handoff-trigger inputs, requires no OxFml handoff, and keeps release-grade verification, full formalization, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, retention SLO, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.
+2. `docs/spec/core-engine/w043-formalization/W043_OPTIMIZED_CORE_BROAD_CONFORMANCE_AND_CALLABLE_METADATA_CLOSURE.md` records the `calc-2p3.2` optimized/core conformance packet. The packet `w043-optimized-core-broad-conformance-callable-metadata-closure-001` adds a TreeCalc fixture for automatic `DependencyAdded` plus `DependencyReclassified` dynamic transition derivation, binds a fresh 27-case TreeCalc run with 0 expectation mismatches, carries declared-profile snapshot/capability counterpart evidence, carries LET/LAMBDA value-carrier evidence, records current W073 typed-only formatting intake, retains callable metadata projection and full optimized/core release-grade conformance as exact blockers, and records zero match promotion.

@@ -1,0 +1,29 @@
+{
+  "run_id": "w043-optimized-core-broad-conformance-callable-metadata-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w043.w073_formatting_intake.v1",
+  "status": "typed_only_guard_reviewed_no_core_engine_change",
+  "sources": [
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+  ],
+  "typed_rule_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "threshold_fallback_allowed_for_typed_families": false,
+  "thresholds_remain_meaningful_for": [
+    "scalar",
+    "operator",
+    "expression"
+  ],
+  "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata": false,
+  "current_oxcalc_disposition": "No W043.2 optimized/core evidence uses aggregate or visualization conditional-formatting metadata. Future W043 OxFml seam evidence must use VerificationConditionalFormattingRule.typed_rule for the named families.",
+  "handoff_required": false,
+  "core_engine_code_change_required": false
+}

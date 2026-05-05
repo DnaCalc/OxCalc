@@ -1,0 +1,39 @@
+{
+  "run_id": "w043-optimized-core-broad-conformance-callable-metadata-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w043.blocker_register.v1",
+  "exact_remaining_blocker_count": 3,
+  "rows": [
+    {
+      "row_id": "w043_broader_dynamic_transition_coverage_remaining_exact_blocker",
+      "source_w042_row_id": "w042_broader_dynamic_transition_coverage_exact_blocker",
+      "blocker": "W043 adds automatic DependencyAdded plus DependencyReclassified evidence, but dynamic transition evidence remains limited to fixture-scale formula-catalog potential/resolved toggles and does not cover all dynamic reference families, multi-descriptor mixtures, structural-plus-formula edits, or production host resolution behaviors",
+      "required_successor_evidence": "broader dynamic dependency transition coverage across additional descriptor transitions, host-resolution surfaces, structural and formula mixed edits, or proof that the exercised transition family is sufficient for the promoted profile",
+      "owner_beads": [
+        "calc-2p3.3",
+        "calc-2p3.4",
+        "calc-2p3.5",
+        "calc-2p3.10"
+      ]
+    },
+    {
+      "row_id": "w043_callable_metadata_projection_exact_blocker",
+      "source_w042_row_id": "w042_callable_metadata_projection_exact_blocker",
+      "blocker": "callable metadata projection fixture or sufficiency proof remains absent",
+      "required_successor_evidence": "direct callable metadata projection fixture or proof that the consumed LET/LAMBDA carrier surface is sufficient without general OxFunc kernel promotion",
+      "owner_beads": [
+        "calc-2p3.4",
+        "calc-2p3.8",
+        "calc-2p3.10"
+      ]
+    },
+    {
+      "row_id": "w043_full_optimized_core_release_grade_conformance_exact_blocker",
+      "source_w042_row_id": "w042_full_optimized_core_release_grade_conformance_exact_blocker",
+      "blocker": "full optimized/core release-grade conformance remains blocked by broader dynamic coverage, callable metadata projection, proof/model, Stage 2, service, diversity, OxFml, pack/C5, and release-grade gates",
+      "required_successor_evidence": "direct evidence across all promoted optimized/core release-grade profiles with no declared-gap, bounded-only, note-level, service-envelope, or proxy promotion",
+      "owner_beads": [
+        "calc-2p3.10"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "economics_reading": {
+    "fallback_observed": true,
+    "optimization_claim": "not_promoted",
+    "overlay_evictions_observed": true,
+    "overlay_hits_observed": false,
+    "overlay_misses_observed": true
+  },
+  "fallback_counters": [
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 9
+    },
+    {
+      "counter": "fallback_by_reason.dynamic_dependency_failure",
+      "value": 2
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 7
+    }
+  ],
+  "guardrail_artifacts": [
+    "retention_guardrail.json",
+    "measurement_counter_summary.json"
+  ],
+  "overlay_counters": [
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 10
+    },
+    {
+      "counter": "overlay_evictions",
+      "value": 3
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 10
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 10
+    }
+  ],
+  "retention_counters": [
+    {
+      "counter": "eviction_eligibility_opened",
+      "value": 1
+    },
+    {
+      "counter": "release_events",
+      "value": 1
+    },
+    {
+      "counter": "retention_blocked_cleanup",
+      "value": 1
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.overlay_economics.v1",
+  "source": "treecalc_local_counter_and_retention_guardrail_artifacts"
+}

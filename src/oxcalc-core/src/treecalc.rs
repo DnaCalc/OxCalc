@@ -2708,6 +2708,52 @@ mod tests {
     }
 
     #[test]
+    fn structural_invalidation_seeds_mark_formula_catalog_dynamic_addition_reclassification() {
+        let predecessor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DynamicPotential {
+                carrier_id: "carrier:dynamic:auto".to_string(),
+                detail: "unresolved_before_addition".to_string(),
+            }),
+        }]);
+        let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DynamicResolved {
+                target_node_id: TreeNodeId(2),
+                carrier_id: "carrier:dynamic:auto".to_string(),
+                detail: "resolved_after_addition".to_string(),
+            }),
+        }]);
+        let structural_snapshot = snapshot();
+
+        let seeds = derive_structural_invalidation_seeds_for_catalogs(
+            &structural_snapshot,
+            &structural_snapshot,
+            &predecessor_catalog,
+            &successor_catalog,
+            &[],
+        );
+
+        assert_eq!(
+            seeds,
+            vec![
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyAdded,
+                },
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyReclassified,
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn structural_invalidation_seeds_keep_direct_reference_recalc_only_after_target_move() {
         let outcome = snapshot()
             .apply_edit(

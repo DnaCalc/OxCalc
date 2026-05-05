@@ -1,0 +1,53 @@
+{
+  "run_id": "w043-optimized-core-broad-conformance-callable-metadata-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w043.dynamic_transition_evidence.v1",
+  "treecalc_run_id": "w043-optimized-core-broad-conformance-treecalc-001",
+  "new_case_count": 1,
+  "dynamic_transition_rows": [
+    {
+      "row_id": "w043_dynamic_addition_reclassification_auto_transition",
+      "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+      "transition_shape": "DynamicPotential_without_target_to_DynamicResolved_with_target",
+      "manual_invalidation_seeds": false,
+      "observed_invalidation_seed_reasons": [
+        "DependencyAdded",
+        "DependencyReclassified"
+      ],
+      "observed_closure_requires_rebind": true,
+      "post_edit_result_state": "rejected",
+      "post_edit_reject_kind": "HostInjectedFailure",
+      "post_edit_publication_committed": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/invalidation_seeds.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/invalidation_closure.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/result.json"
+      ],
+      "consequence": "W043 directly exercises automatic dependency addition and reclassification seed derivation, plus the current rebind-required no-publication gate for that transition."
+    },
+    {
+      "row_id": "w043_dynamic_release_reclassification_auto_transition_carried",
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "transition_shape": "DynamicResolved_with_target_to_DynamicPotential_without_target",
+      "manual_invalidation_seeds": false,
+      "observed_invalidation_seed_reasons": [
+        "DependencyRemoved",
+        "DependencyReclassified"
+      ],
+      "observed_closure_requires_rebind": true,
+      "post_edit_result_state": "rejected",
+      "post_edit_publication_committed": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+        "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json"
+      ],
+      "consequence": "W041/W042 automatic release and reclassification evidence remains present in the fresh W043 run."
+    }
+  ],
+  "coverage_narrowing": {
+    "dependency_added_evidenced": true,
+    "dependency_removed_evidenced": true,
+    "dependency_reclassified_evidenced": true,
+    "broader_dynamic_transition_coverage_promoted": false,
+    "remaining_boundary": "coverage is still fixture-scale formula-catalog transition evidence, not a proof over all dynamic reference families, multi-descriptor mixtures, structural-plus-formula edits, or production host resolution behaviors"
+  }
+}

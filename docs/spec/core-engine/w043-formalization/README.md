@@ -20,25 +20,25 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
 ## Current Packets
 
 1. `W043_RESIDUAL_RELEASE_GRADE_PROOF_SERVICE_OBLIGATION_MAP.md` - `calc-2p3.1` residual release-grade proof-service obligation map.
+2. `W043_OPTIMIZED_CORE_BROAD_CONFORMANCE_AND_CALLABLE_METADATA_CLOSURE.md` - `calc-2p3.2` optimized core broad conformance and callable metadata closure.
 
 ## Planned Packets
 
-1. `W043_OPTIMIZED_CORE_BROAD_CONFORMANCE_AND_CALLABLE_METADATA_CLOSURE.md` - `calc-2p3.2` optimized core broad conformance and callable metadata closure.
-2. `W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md` - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier.
-3. `W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md` - `calc-2p3.4` Lean/TLA full-verification and unbounded fairness discharge.
-4. `W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md` - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence.
-5. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service.
-6. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
-7. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
-8. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
-9. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
+1. `W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md` - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier.
+2. `W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md` - `calc-2p3.4` Lean/TLA full-verification and unbounded fairness discharge.
+3. `W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md` - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence.
+4. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service.
+5. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
+6. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
+7. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
+8. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
 
 ## Current Status
 
-- execution_state: `calc-2p3.2_ready_optimized_core_broad_conformance_and_callable_metadata_closure`
+- execution_state: `calc-2p3.3_ready_rust_totality_refinement_and_panic_free_core_proof_frontier`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-2p3.2` optimized core broad conformance and callable metadata closure is next
+  - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier is next
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, full independent evaluator breadth, broad OxFml closure, public migration, callable metadata/carrier, registered-external projection, provider-publication, and general OxFunc kernels remain unpromoted

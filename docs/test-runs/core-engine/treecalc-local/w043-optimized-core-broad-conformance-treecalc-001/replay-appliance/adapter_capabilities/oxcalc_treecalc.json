@@ -1,0 +1,22 @@
+{
+  "adapter_id": "oxcalc-treecalc-local-replay-adapter",
+  "claimed_capability_levels": [
+    "cap.C0.ingest_valid",
+    "cap.C1.replay_valid",
+    "cap.C2.diff_valid",
+    "cap.C3.explain_valid"
+  ],
+  "known_limits": [
+    "treecalc.local.limit.no_stage2_concurrency",
+    "treecalc.local.limit.host_table_context_watch_only",
+    "treecalc.local.limit.performance_not_promoted"
+  ],
+  "lane_id": "oxcalc_treecalc_local",
+  "projection_scope": "treecalc_local_run_snapshot",
+  "run_id": "w043-optimized-core-broad-conformance-treecalc-001",
+  "schema_version": "oxcalc.treecalc.replay_adapter_capability.v1",
+  "target_capability_levels": [
+    "cap.C4.distill_valid",
+    "cap.C5.pack_valid"
+  ]
+}

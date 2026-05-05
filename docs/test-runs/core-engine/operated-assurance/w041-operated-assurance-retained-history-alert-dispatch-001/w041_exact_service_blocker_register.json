@@ -1,0 +1,42 @@
+{
+  "exact_service_blocker_count": 5,
+  "rows": [
+    {
+      "blocker_id": "service.operated_scheduler_service_endpoint_absent",
+      "owner": "calc-sui.6; calc-sui.10",
+      "promotion_consequence": "operated continuous assurance service remains unpromoted",
+      "reason": "W041 emits a file-backed service envelope and run queue manifest, but no recurring scheduler, daemon, service endpoint, or operated run queue.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_history_service_endpoint_absent",
+      "owner": "calc-sui.6; calc-sui.9",
+      "promotion_consequence": "retained-history service and pack-grade replay governance remain unpromoted",
+      "reason": "W041 emits a retained-history query API contract and replay-correlation index, but no operated retained-history service endpoint or retention lifecycle service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.external_alert_dispatcher_absent",
+      "owner": "calc-sui.6; calc-sui.10",
+      "promotion_consequence": "alert/quarantine dispatcher claims remain unpromoted",
+      "reason": "W041 evaluates alert/quarantine dispatch rules locally and records an external dispatcher contract, but no external dispatcher or quarantine service is operated.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.operated_cross_engine_differential_absent",
+      "owner": "calc-sui.6; calc-sui.7",
+      "promotion_consequence": "operated cross-engine differential service, independent diversity, and Stage 2 service dependencies remain blocked",
+      "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retention_slo_retained_witness_pack_governance_absent",
+      "owner": "calc-sui.6; calc-sui.9",
+      "promotion_consequence": "retained-witness lifecycle service, pack-grade replay, C5, and release-grade verification remain unpromoted",
+      "reason": "W041 declares retention SLO policy and registers retained-witness lifecycles, but no SLO enforcement, retained-witness lifecycle service, or pack-grade replay governance service exists.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w041-operated-assurance-retained-history-alert-dispatch-001",
+  "schema_version": "oxcalc.operated_assurance.w041.exact_service_blocker_register.v1"
+}

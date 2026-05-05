@@ -1,0 +1,19 @@
+{
+  "alert_decision_count": 0,
+  "evaluated_alert_rule_count": 18,
+  "exact_service_blocker_count": 5,
+  "failed_row_count": 0,
+  "multi_run_history_row_count": 25,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 7,
+  "replay_correlation_row_count": 5,
+  "retained_witness_lifecycle_row_count": 4,
+  "run_id": "w041-operated-assurance-retained-history-alert-dispatch-001",
+  "schema_version": "oxcalc.operated_assurance.w041.validation.v1",
+  "service_envelope_row_count": 8,
+  "service_readiness_blocked_count": 5,
+  "service_readiness_criteria_count": 17,
+  "source_evidence_row_count": 12,
+  "status": "w041_operated_assurance_service_envelope_valid",
+  "validation_failures": []
+}

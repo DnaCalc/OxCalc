@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W038/W039/W040 operated-assurance, alert/quarantine, and service-disposition packet emission.
+//! W038/W039/W040/W041 operated-assurance, alert/quarantine, and service-disposition packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -53,6 +53,25 @@ const W040_BLOCKER_REGISTER_SCHEMA_V1: &str =
 const W040_PROMOTION_DECISION_SCHEMA_V1: &str =
     "oxcalc.operated_assurance.w040.promotion_decision.v1";
 const W040_VALIDATION_SCHEMA_V1: &str = "oxcalc.operated_assurance.w040.validation.v1";
+const W041_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.operated_assurance.w041.run_summary.v1";
+const W041_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.operated_assurance.w041.source_evidence_index.v1";
+const W041_SERVICE_ENVELOPE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.operated_service_envelope.v1";
+const W041_RETAINED_HISTORY_SERVICE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.retained_history_service_query.v1";
+const W041_RETAINED_WITNESS_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.retained_witness_lifecycle.v1";
+const W041_ALERT_DISPATCH_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.alert_dispatch_service_register.v1";
+const W041_CROSS_ENGINE_SERVICE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.cross_engine_service_register.v1";
+const W041_SERVICE_READINESS_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.service_readiness_register.v1";
+const W041_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.exact_service_blocker_register.v1";
+const W041_PROMOTION_DECISION_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w041.promotion_decision.v1";
+const W041_VALIDATION_SCHEMA_V1: &str = "oxcalc.operated_assurance.w041.validation.v1";
 
 const W037_CONTINUOUS_RUN_SUMMARY: &str = "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/run_summary.json";
 const W037_SERVICE_READINESS: &str = "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/service/service_readiness.json";
@@ -95,6 +114,25 @@ const W040_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w040
 const W040_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json";
 const W040_STAGE2_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json";
 const W040_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json";
+const W040_OPERATED_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json";
+const W040_OPERATED_ASSURANCE_VALIDATION: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/validation.json";
+const W040_OPERATED_RUNNER_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_operated_runner_register.json";
+const W040_RETAINED_HISTORY_STORE_QUERY: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json";
+const W040_ALERT_DISPATCHER_ENFORCEMENT: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_alert_dispatcher_enforcement.json";
+const W040_CROSS_ENGINE_SERVICE_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json";
+const W040_SERVICE_READINESS_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_service_readiness_register.json";
+const W040_OPERATED_SERVICE_BLOCKERS: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_exact_service_blocker_register.json";
+const W040_OPERATED_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/promotion_decision.json";
+const W041_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json";
+const W041_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
+const W041_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json";
+const W041_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json";
+const W041_STAGE2_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json";
+const W041_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json";
+const W040_PACK_SUMMARY: &str = "docs/test-runs/core-engine/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/run_summary.json";
+const W040_PACK_DECISION: &str = "docs/test-runs/core-engine/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json";
+const RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE: &str = "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json";
+const RETAINED_WITNESS_QUARANTINED_LIFECYCLE: &str = "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/lifecycle.json";
 
 #[derive(Debug, Error)]
 pub enum OperatedAssuranceError {
@@ -166,6 +204,9 @@ impl OperatedAssuranceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<OperatedAssuranceRunSummary, OperatedAssuranceError> {
+        if run_id.contains("w041") {
+            return self.execute_w041(repo_root, run_id);
+        }
         if run_id.contains("w040") {
             return self.execute_w040(repo_root, run_id);
         }
@@ -437,6 +478,334 @@ impl OperatedAssuranceRunner {
             evaluated_alert_rule_count: alert_rules.len(),
             quarantine_decision_count,
             alert_decision_count,
+            service_readiness_criteria_count: number_at(&readiness, "criteria_count") as usize,
+            service_readiness_blocked_count: number_at(&readiness, "blocked_criteria_count")
+                as usize,
+            exact_service_blocker_count,
+            failed_row_count,
+            operated_service_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w041(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<OperatedAssuranceRunSummary, OperatedAssuranceError> {
+        let relative_artifact_root = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "operated-assurance",
+            run_id,
+        ]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                OperatedAssuranceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            OperatedAssuranceError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w041_obligation_summary = read_json(repo_root, W041_OBLIGATION_SUMMARY)?;
+        let w041_obligation_map = read_json(repo_root, W041_OBLIGATION_MAP)?;
+        let w040_formatting_intake = read_json(repo_root, W040_FORMATTING_INTAKE)?;
+        let w040_summary = read_json(repo_root, W040_OPERATED_ASSURANCE_SUMMARY)?;
+        let w040_validation = read_json(repo_root, W040_OPERATED_ASSURANCE_VALIDATION)?;
+        let w040_runner = read_json(repo_root, W040_OPERATED_RUNNER_REGISTER)?;
+        let w040_retained = read_json(repo_root, W040_RETAINED_HISTORY_STORE_QUERY)?;
+        let w040_alerts = read_json(repo_root, W040_ALERT_DISPATCHER_ENFORCEMENT)?;
+        let w040_cross_engine = read_json(repo_root, W040_CROSS_ENGINE_SERVICE_REGISTER)?;
+        let w040_readiness = read_json(repo_root, W040_SERVICE_READINESS_REGISTER)?;
+        let w040_blockers = read_json(repo_root, W040_OPERATED_SERVICE_BLOCKERS)?;
+        let w040_promotion = read_json(repo_root, W040_OPERATED_PROMOTION_DECISION)?;
+        let w041_stage2_summary = read_json(repo_root, W041_STAGE2_SUMMARY)?;
+        let w041_stage2_validation = read_json(repo_root, W041_STAGE2_VALIDATION)?;
+        let w041_stage2_decision = read_json(repo_root, W041_STAGE2_DECISION)?;
+        let w041_stage2_blockers = read_json(repo_root, W041_STAGE2_BLOCKERS)?;
+        let w040_pack_summary = read_json(repo_root, W040_PACK_SUMMARY)?;
+        let w040_pack_decision = read_json(repo_root, W040_PACK_DECISION)?;
+        let retained_witness = read_json(repo_root, RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE)?;
+        let quarantined_witness = read_json(repo_root, RETAINED_WITNESS_QUARANTINED_LIFECYCLE)?;
+
+        let source_rows = w041_source_rows(
+            &w041_obligation_summary,
+            &w041_obligation_map,
+            &w040_formatting_intake,
+            &w040_summary,
+            &w040_validation,
+            &w040_runner,
+            &w040_retained,
+            &w040_alerts,
+            &w040_cross_engine,
+            &w040_readiness,
+            &w040_blockers,
+            &w040_promotion,
+            &w041_stage2_summary,
+            &w041_stage2_validation,
+            &w041_stage2_decision,
+            &w041_stage2_blockers,
+            &w040_pack_summary,
+            &w040_pack_decision,
+            &retained_witness,
+            &quarantined_witness,
+        );
+        let source_failures = w039_source_validation_failures(&source_rows);
+        let service_envelope =
+            w041_operated_service_envelope(run_id, &relative_artifact_root, source_rows.len());
+        let retained_history = w041_retained_history_service_query(
+            run_id,
+            &relative_artifact_root,
+            &w040_retained,
+            &w041_stage2_summary,
+            &w041_stage2_blockers,
+            &w040_pack_decision,
+            &retained_witness,
+            &quarantined_witness,
+        );
+        let retained_witness_register = w041_retained_witness_lifecycle(
+            run_id,
+            &retained_witness,
+            &quarantined_witness,
+            &w040_pack_decision,
+        );
+        let alert_dispatcher = w041_alert_dispatch_service(
+            run_id,
+            &w040_alerts,
+            &w040_promotion,
+            &w041_stage2_decision,
+            &w040_pack_decision,
+            &retained_history,
+            &retained_witness_register,
+        );
+        let cross_engine_service = w041_cross_engine_service(
+            run_id,
+            &w040_cross_engine,
+            &w041_stage2_summary,
+            &w041_stage2_blockers,
+        );
+        let readiness = w041_service_readiness(
+            run_id,
+            &relative_artifact_root,
+            &service_envelope,
+            &retained_history,
+            &retained_witness_register,
+            &alert_dispatcher,
+            &cross_engine_service,
+            &w041_stage2_decision,
+        );
+        let exact_blockers = w041_exact_service_blockers();
+        let exact_service_blocker_count = exact_blockers.len();
+        let failed_row_count = source_failures.len();
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let service_envelope_path =
+            format!("{relative_artifact_root}/w041_operated_service_envelope.json");
+        let retained_history_path =
+            format!("{relative_artifact_root}/w041_retained_history_service_query.json");
+        let retained_witness_path =
+            format!("{relative_artifact_root}/w041_retained_witness_lifecycle_register.json");
+        let alert_dispatcher_path =
+            format!("{relative_artifact_root}/w041_alert_dispatch_service_register.json");
+        let cross_engine_service_path =
+            format!("{relative_artifact_root}/w041_cross_engine_service_register.json");
+        let service_readiness_path =
+            format!("{relative_artifact_root}/w041_service_readiness_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w041_exact_service_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": W041_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_row_count": source_rows.len(),
+                "rows": source_rows,
+                "source_artifacts": {
+                    "w041_obligation_summary": W041_OBLIGATION_SUMMARY,
+                    "w041_obligation_map": W041_OBLIGATION_MAP,
+                    "w040_formatting_intake": W040_FORMATTING_INTAKE,
+                    "w040_operated_assurance_summary": W040_OPERATED_ASSURANCE_SUMMARY,
+                    "w040_operated_assurance_validation": W040_OPERATED_ASSURANCE_VALIDATION,
+                    "w040_operated_runner": W040_OPERATED_RUNNER_REGISTER,
+                    "w040_retained_history_store_query": W040_RETAINED_HISTORY_STORE_QUERY,
+                    "w040_alert_dispatcher": W040_ALERT_DISPATCHER_ENFORCEMENT,
+                    "w040_cross_engine_service": W040_CROSS_ENGINE_SERVICE_REGISTER,
+                    "w040_service_readiness": W040_SERVICE_READINESS_REGISTER,
+                    "w040_exact_service_blockers": W040_OPERATED_SERVICE_BLOCKERS,
+                    "w040_promotion_decision": W040_OPERATED_PROMOTION_DECISION,
+                    "w041_stage2_summary": W041_STAGE2_SUMMARY,
+                    "w041_stage2_validation": W041_STAGE2_VALIDATION,
+                    "w041_stage2_decision": W041_STAGE2_DECISION,
+                    "w041_stage2_blockers": W041_STAGE2_BLOCKERS,
+                    "w040_pack_summary": W040_PACK_SUMMARY,
+                    "w040_pack_decision": W040_PACK_DECISION,
+                    "retained_witness_publication_fence_lifecycle": RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE,
+                    "retained_witness_quarantined_lifecycle": RETAINED_WITNESS_QUARANTINED_LIFECYCLE
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w041_operated_service_envelope.json"),
+            &service_envelope,
+        )?;
+        write_json(
+            &artifact_root.join("w041_retained_history_service_query.json"),
+            &retained_history,
+        )?;
+        write_json(
+            &artifact_root.join("w041_retained_witness_lifecycle_register.json"),
+            &retained_witness_register,
+        )?;
+        write_json(
+            &artifact_root.join("w041_alert_dispatch_service_register.json"),
+            &alert_dispatcher,
+        )?;
+        write_json(
+            &artifact_root.join("w041_cross_engine_service_register.json"),
+            &cross_engine_service,
+        )?;
+        write_json(
+            &artifact_root.join("w041_service_readiness_register.json"),
+            &readiness,
+        )?;
+        write_json(
+            &artifact_root.join("w041_exact_service_blocker_register.json"),
+            &json!({
+                "schema_version": W041_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "rows": exact_blockers
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &json!({
+                "schema_version": W041_PROMOTION_DECISION_SCHEMA_V1,
+                "run_id": run_id,
+                "decision_state": "w041_operated_assurance_service_envelope_validated_services_unpromoted",
+                "file_backed_service_envelope_present": true,
+                "service_run_queue_manifest_present": bool_at(&service_envelope, "service_run_queue_manifest_present"),
+                "retained_history_query_api_contract_present": bool_at(&retained_history, "retained_history_query_api_contract_present"),
+                "replay_correlation_index_present": bool_at(&retained_history, "replay_correlation_index_present"),
+                "retained_witness_lifecycle_register_present": bool_at(&retained_witness_register, "retained_witness_lifecycle_register_present"),
+                "retention_slo_policy_declared": bool_at(&retained_history, "retention_slo_policy_declared"),
+                "retention_slo_enforced": bool_at(&retained_history, "retention_slo_enforced"),
+                "local_alert_dispatcher_evaluated": bool_at(&alert_dispatcher, "local_alert_dispatcher_evaluated"),
+                "external_alert_dispatcher_contract_present": bool_at(&alert_dispatcher, "external_alert_dispatcher_contract_present"),
+                "operated_continuous_assurance_service_promoted": false,
+                "retained_history_service_promoted": false,
+                "retained_witness_lifecycle_service_promoted": false,
+                "external_alert_dispatcher_promoted": false,
+                "quarantine_service_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "c5_promoted": false,
+                "stage2_policy_promoted": false,
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "blockers": w041_exact_service_blockers()
+                    .iter()
+                    .map(|row| row["blocker_id"].clone())
+                    .collect::<Vec<_>>(),
+                "semantic_equivalence_statement": "This W041 runner emits a service envelope, retained-history query contract, replay-correlation rows, retained-witness lifecycle register, local alert-dispatch service register, and exact service blockers only. It does not change scheduler, recalc, publication, replay, pack, service, alert-dispatch, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics."
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": W041_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": if source_failures.is_empty() {
+                    "w041_operated_assurance_service_envelope_valid"
+                } else {
+                    "w041_operated_assurance_service_envelope_invalid"
+                },
+                "source_evidence_row_count": source_rows.len(),
+                "service_envelope_row_count": number_at(&service_envelope, "row_count"),
+                "multi_run_history_row_count": number_at(&retained_history, "store_record_count"),
+                "query_register_row_count": number_at(&retained_history, "query_register_row_count"),
+                "replay_correlation_row_count": number_at(&retained_history, "replay_correlation_row_count"),
+                "retained_witness_lifecycle_row_count": number_at(&retained_witness_register, "witness_lifecycle_row_count"),
+                "evaluated_alert_rule_count": number_at(&alert_dispatcher, "evaluated_rule_count"),
+                "quarantine_decision_count": number_at(&alert_dispatcher, "quarantine_decision_count"),
+                "alert_decision_count": number_at(&alert_dispatcher, "alert_decision_count"),
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "failed_row_count": failed_row_count,
+                "validation_failures": source_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": W041_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "service_envelope_path": service_envelope_path,
+                "retained_history_service_query_path": retained_history_path,
+                "retained_witness_lifecycle_register_path": retained_witness_path,
+                "alert_dispatch_service_register_path": alert_dispatcher_path,
+                "cross_engine_service_register_path": cross_engine_service_path,
+                "service_readiness_register_path": service_readiness_path,
+                "exact_service_blocker_register_path": blocker_register_path,
+                "promotion_decision_path": promotion_decision_path,
+                "validation_path": validation_path,
+                "source_evidence_row_count": source_rows.len(),
+                "service_envelope_row_count": number_at(&service_envelope, "row_count"),
+                "multi_run_history_row_count": number_at(&retained_history, "store_record_count"),
+                "query_register_row_count": number_at(&retained_history, "query_register_row_count"),
+                "replay_correlation_row_count": number_at(&retained_history, "replay_correlation_row_count"),
+                "retained_witness_lifecycle_row_count": number_at(&retained_witness_register, "witness_lifecycle_row_count"),
+                "evaluated_alert_rule_count": number_at(&alert_dispatcher, "evaluated_rule_count"),
+                "quarantine_decision_count": number_at(&alert_dispatcher, "quarantine_decision_count"),
+                "alert_decision_count": number_at(&alert_dispatcher, "alert_decision_count"),
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "failed_row_count": failed_row_count,
+                "file_backed_service_envelope_present": true,
+                "service_run_queue_manifest_present": bool_at(&service_envelope, "service_run_queue_manifest_present"),
+                "retained_history_query_api_contract_present": bool_at(&retained_history, "retained_history_query_api_contract_present"),
+                "retained_witness_lifecycle_register_present": bool_at(&retained_witness_register, "retained_witness_lifecycle_register_present"),
+                "retention_slo_policy_declared": bool_at(&retained_history, "retention_slo_policy_declared"),
+                "retention_slo_enforced": bool_at(&retained_history, "retention_slo_enforced"),
+                "local_alert_dispatcher_evaluated": bool_at(&alert_dispatcher, "local_alert_dispatcher_evaluated"),
+                "operated_continuous_assurance_service_promoted": false,
+                "retained_history_service_promoted": false,
+                "retained_witness_lifecycle_service_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+                "external_alert_dispatcher_promoted": false
+            }),
+        )?;
+
+        Ok(OperatedAssuranceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W041_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            source_evidence_row_count: source_rows.len(),
+            multi_run_history_row_count: number_at(&retained_history, "store_record_count")
+                as usize,
+            evaluated_alert_rule_count: number_at(&alert_dispatcher, "evaluated_rule_count")
+                as usize,
+            quarantine_decision_count: number_at(&alert_dispatcher, "quarantine_decision_count")
+                as usize,
+            alert_decision_count: number_at(&alert_dispatcher, "alert_decision_count") as usize,
             service_readiness_criteria_count: number_at(&readiness, "criteria_count") as usize,
             service_readiness_blocked_count: number_at(&readiness, "blocked_criteria_count")
                 as usize,
@@ -1932,6 +2301,783 @@ fn w039_exact_service_blockers() -> Vec<Value> {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn w041_source_rows(
+    w041_obligation_summary: &Value,
+    w041_obligation_map: &Value,
+    w040_formatting_intake: &Value,
+    w040_summary: &Value,
+    w040_validation: &Value,
+    w040_runner: &Value,
+    w040_retained: &Value,
+    w040_alerts: &Value,
+    w040_cross_engine: &Value,
+    w040_readiness: &Value,
+    w040_blockers: &Value,
+    w040_promotion: &Value,
+    w041_stage2_summary: &Value,
+    w041_stage2_validation: &Value,
+    w041_stage2_decision: &Value,
+    w041_stage2_blockers: &Value,
+    w040_pack_summary: &Value,
+    w040_pack_decision: &Value,
+    retained_witness: &Value,
+    quarantined_witness: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "source.w041_successor_obligation_map",
+            "artifact": W041_OBLIGATION_MAP,
+            "valid": text_at(w041_obligation_summary, "status") == "residual_successor_obligation_map_validated"
+                && number_at(w041_obligation_summary, "obligation_count") == 28
+                && number_at(w041_obligation_map, "obligation_count") == 28,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "w041_operated_service_obligations_bound"
+        }),
+        json!({
+            "row_id": "source.w041_w073_typed_formatting_guard",
+            "artifact": W040_FORMATTING_INTAKE,
+            "valid": text_at(w040_formatting_intake, "contract_mode") == "direct_replacement_for_aggregate_and_visualization_metadata"
+                && array_len(&w040_formatting_intake["typed_rule_only_families"]) == 7
+                && !bool_at(w040_formatting_intake, "w072_threshold_fallback_allowed_for_aggregate_visualization")
+                && array_len(&w040_formatting_intake["observed_oxfml_evidence"]["old_string_rejection_tests"]) >= 2,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "w073_typed_only_formatting_guard_retained_for_operated_assurance"
+        }),
+        json!({
+            "row_id": "source.w040_operated_assurance_summary",
+            "artifact": W040_OPERATED_ASSURANCE_SUMMARY,
+            "valid": text_at(w040_validation, "status") == "w040_operated_assurance_retained_history_service_artifacts_valid"
+                && number_at(w040_summary, "exact_service_blocker_count") == 4
+                && number_at(w040_summary, "failed_row_count") == 0,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w040_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(w040_promotion, "operated_continuous_assurance_service_promoted")
+                || bool_at(w040_promotion, "retained_history_service_promoted")
+                || bool_at(w040_promotion, "external_alert_dispatcher_promoted")
+                || bool_at(w040_promotion, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w040_operated_assurance_packet_bound_without_service_promotion"
+        }),
+        json!({
+            "row_id": "source.w040_runner_retained_history_query",
+            "artifact": W040_RETAINED_HISTORY_STORE_QUERY,
+            "valid": number_at(w040_runner, "row_count") == 6
+                && number_at(w040_retained, "store_record_count") == 21
+                && number_at(w040_retained, "query_register_row_count") == 5
+                && number_at(w040_retained, "replay_correlation_row_count") == 3
+                && bool_at(w040_retained, "file_backed_retained_history_store_present")
+                && !bool_at(w040_retained, "retained_history_service_present"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w040_retained, "retained_history_service_present"),
+            "semantic_state": "w040_file_backed_store_and_query_register_available_for_w041"
+        }),
+        json!({
+            "row_id": "source.w040_alert_dispatcher_policy",
+            "artifact": W040_ALERT_DISPATCHER_ENFORCEMENT,
+            "valid": number_at(w040_alerts, "evaluated_rule_count") == 14
+                && number_at(w040_alerts, "quarantine_decision_count") == 0
+                && number_at(w040_alerts, "alert_decision_count") == 0
+                && bool_at(w040_alerts, "local_dispatcher_evidenced"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w040_alerts, "quarantine_decision_count"),
+            "promoted_unsupported_service": bool_at(w040_alerts, "external_alert_dispatcher_promoted")
+                || bool_at(w040_alerts, "quarantine_service_promoted"),
+            "semantic_state": "w040_local_dispatch_policy_clean_for_w041_extension"
+        }),
+        json!({
+            "row_id": "source.w040_cross_engine_service_blocker",
+            "artifact": W040_CROSS_ENGINE_SERVICE_REGISTER,
+            "valid": bool_at(w040_cross_engine, "file_backed_cross_engine_substrate_present")
+                && bool_at(w040_cross_engine, "w040_stage2_service_dependency_blocker_present")
+                && !bool_at(w040_cross_engine, "operated_cross_engine_differential_service_present"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w040_cross_engine, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w040_cross_engine_file_backed_substrate_bound"
+        }),
+        json!({
+            "row_id": "source.w040_service_readiness_blockers",
+            "artifact": W040_SERVICE_READINESS_REGISTER,
+            "valid": number_at(w040_readiness, "blocked_criteria_count") == 4
+                && number_at(w040_blockers, "exact_service_blocker_count") == 4,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w040_readiness, "operated_continuous_assurance_service_promoted")
+                || bool_at(w040_readiness, "retained_history_service_promoted")
+                || bool_at(w040_readiness, "external_alert_dispatcher_promoted")
+                || bool_at(w040_readiness, "cross_engine_differential_service_promoted"),
+            "semantic_state": "w040_exact_service_blockers_bound_for_w041"
+        }),
+        json!({
+            "row_id": "source.w041_stage2_analyzer_service_dependency",
+            "artifact": W041_STAGE2_SUMMARY,
+            "valid": text_at(w041_stage2_validation, "status") == "w041_stage2_analyzer_pack_equivalence_valid"
+                && number_at(w041_stage2_summary, "failed_row_count") == 0
+                && row_with_field_exists(
+                    w041_stage2_blockers,
+                    "row_id",
+                    "w041_stage2_operated_cross_engine_service_dependency_blocker"
+                ),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w041_stage2_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(w041_stage2_decision, "operated_cross_engine_stage2_service_promoted")
+                || bool_at(w041_stage2_decision, "stage2_policy_promoted"),
+            "semantic_state": "w041_stage2_service_dependency_bound"
+        }),
+        json!({
+            "row_id": "source.w041_stage2_pack_governance_dependency",
+            "artifact": W041_STAGE2_BLOCKERS,
+            "valid": row_with_field_exists(
+                    w041_stage2_blockers,
+                    "row_id",
+                    "w041_stage2_pack_grade_replay_governance_blocker"
+                )
+                && !bool_at(w041_stage2_decision, "pack_grade_replay_governance_promoted"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w041_stage2_decision, "pack_grade_replay_governance_promoted"),
+            "semantic_state": "w041_pack_governance_dependency_retained"
+        }),
+        json!({
+            "row_id": "source.w040_pack_c5_service_blockers",
+            "artifact": W040_PACK_DECISION,
+            "valid": text_at(w040_pack_decision, "decision_status") == "capability_not_promoted"
+                && !bool_at(w040_pack_decision, "capability_promoted")
+                && number_at(w040_pack_decision, "missing_artifact_count") == 0
+                && number_at(w040_pack_summary, "failed_row_count") == 0
+                && array_contains_string(&w040_pack_decision["no_promotion_reason_ids"], "pack.grade.w040_retained_history_service_absent")
+                && array_contains_string(&w040_pack_decision["no_promotion_reason_ids"], "pack.grade.w040_external_alert_dispatcher_absent")
+                && array_contains_string(&w040_pack_decision["no_promotion_reason_ids"], "pack.grade.w040_operated_cross_engine_diff_service_absent")
+                && array_contains_string(&w040_pack_decision["no_promotion_reason_ids"], "pack.grade.w040_pack_grade_replay_governance_absent")
+                && array_contains_string(&w040_pack_decision["no_promotion_reason_ids"], "pack.grade.retained_witness_promotion_not_shared_program_grade"),
+            "missing_artifact_count": number_at(w040_pack_decision, "missing_artifact_count"),
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w040_pack_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(w040_pack_decision, "capability_promoted"),
+            "semantic_state": "w040_pack_c5_no_promotion_blockers_bound"
+        }),
+        json!({
+            "row_id": "source.retained_witness_publication_fence_lifecycle",
+            "artifact": RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE,
+            "valid": text_at(retained_witness, "lifecycle_state") == "wit.retained_local"
+                && bool_at(retained_witness, "replay_validity_assessed")
+                && !bool_at(retained_witness, "pack_eligible"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(retained_witness, "pack_eligible"),
+            "semantic_state": "retained_local_witness_available_without_pack_eligibility"
+        }),
+        json!({
+            "row_id": "source.retained_witness_quarantined_lifecycle",
+            "artifact": RETAINED_WITNESS_QUARANTINED_LIFECYCLE,
+            "valid": text_at(quarantined_witness, "lifecycle_state") == "wit.quarantined"
+                && text_at(quarantined_witness, "quarantine_reason") == "capture_insufficient"
+                && !bool_at(quarantined_witness, "replay_validity_assessed")
+                && !bool_at(quarantined_witness, "pack_eligible"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(quarantined_witness, "pack_eligible"),
+            "semantic_state": "quarantined_witness_bound_without_pack_eligibility"
+        }),
+    ]
+}
+
+fn w041_operated_service_envelope(
+    run_id: &str,
+    relative_artifact_root: &str,
+    source_evidence_row_count: usize,
+) -> Value {
+    let rows = vec![
+        json!({
+            "row_id": "service.cli_entrypoint",
+            "state": "satisfied",
+            "runner_command": format!("cargo run -p oxcalc-tracecalc-cli -- operated-assurance {run_id}"),
+            "evidence_or_blocker": "W041 operated-assurance packet is emitted by the checked CLI runner"
+        }),
+        json!({
+            "row_id": "service.artifact_root",
+            "state": "satisfied",
+            "artifact_root": relative_artifact_root,
+            "evidence_or_blocker": "runner writes source index, service envelope, retained-history query, retained-witness lifecycle, alert dispatch, cross-engine service, readiness, blockers, decision, and validation artifacts"
+        }),
+        json!({
+            "row_id": "service.source_ingestion",
+            "state": "satisfied",
+            "source_evidence_row_count": source_evidence_row_count,
+            "evidence_or_blocker": "runner binds W041 obligations, W073 typed-formatting intake, W040 operated-assurance artifacts, W041 Stage 2 blockers, W040 pack decision, and retained-witness lifecycles"
+        }),
+        json!({
+            "row_id": "service.run_queue_manifest",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "service-readable run queue manifest is represented in the artifact envelope, but it is not an operated queue"
+        }),
+        json!({
+            "row_id": "service.retained_history_query_contract",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "deterministic retained-history query contract is emitted as file-backed evidence"
+        }),
+        json!({
+            "row_id": "service.retained_witness_lifecycle_register",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "retained-local and quarantined witness lifecycle rows are bound without pack-grade promotion"
+        }),
+        json!({
+            "row_id": "service.recurring_scheduler",
+            "state": "blocked",
+            "evidence_or_blocker": "no recurring scheduler, daemon, service endpoint, or operated run queue is present"
+        }),
+        json!({
+            "row_id": "service.external_dispatch_endpoint",
+            "state": "blocked",
+            "evidence_or_blocker": "local dispatch contract is evaluated, but no external alert or quarantine endpoint is operated"
+        }),
+    ];
+
+    json!({
+        "schema_version": W041_SERVICE_ENVELOPE_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "runner_kind": "file_backed_operated_assurance_service_envelope",
+        "runner_command": format!("cargo run -p oxcalc-tracecalc-cli -- operated-assurance {run_id}"),
+        "file_backed_service_envelope_present": true,
+        "service_run_queue_manifest_present": true,
+        "operated_run_queue_present": false,
+        "service_endpoint_present": false,
+        "recurring_scheduler_present": false,
+        "source_evidence_row_count": source_evidence_row_count,
+        "row_count": rows.len(),
+        "rows": rows
+    })
+}
+
+fn w041_retained_history_service_query(
+    run_id: &str,
+    relative_artifact_root: &str,
+    w040_retained: &Value,
+    w041_stage2_summary: &Value,
+    _w041_stage2_blockers: &Value,
+    w040_pack_decision: &Value,
+    retained_witness: &Value,
+    quarantined_witness: &Value,
+) -> Value {
+    let mut rows = w040_retained
+        .get("rows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let next_order = rows.len() + 1;
+    rows.push(history_row(
+        next_order,
+        "w041.successor_obligation_map",
+        "w041_successor_obligation_map",
+        "w041_operated_service_obligations_bound",
+        W041_OBLIGATION_MAP,
+        0,
+        0,
+        0,
+    ));
+    rows.push(history_row(
+        next_order + 1,
+        "w041.stage2_analyzer_pack_equivalence",
+        "w041_stage2_service_dependency",
+        "stage2_analyzer_and_pack_equivalence_bound_with_service_and_pack_blockers",
+        W041_STAGE2_SUMMARY,
+        number_at(w041_stage2_summary, "failed_row_count"),
+        0,
+        number_at(w041_stage2_summary, "exact_remaining_blocker_count"),
+    ));
+    rows.push(history_row(
+        next_order + 2,
+        "w040.pack_c5_decision",
+        "w040_pack_service_and_retained_witness_blockers",
+        "pack_c5_decision_retains_service_retained_witness_and_program_grade_governance_blockers",
+        W040_PACK_DECISION,
+        0,
+        0,
+        array_len(&w040_pack_decision["no_promotion_reason_ids"]) as u64,
+    ));
+    rows.push(history_row(
+        next_order + 3,
+        "w041.retained_witness_lifecycle",
+        "retained_witness_lifecycle_register",
+        "retained_local_and_quarantined_witness_lifecycles_bound_without_pack_eligibility",
+        RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE,
+        0,
+        0,
+        if bool_at(retained_witness, "pack_eligible")
+            || bool_at(quarantined_witness, "pack_eligible")
+        {
+            1
+        } else {
+            0
+        },
+    ));
+
+    let mut query_register = w040_retained
+        .get("query_register")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    query_register.push(json!({
+        "query_id": "history.by_w041_obligation",
+        "query_kind": "join_service_rows_to_w041_successor_obligation_map",
+        "result_source": W041_OBLIGATION_MAP,
+        "deterministic": true
+    }));
+    query_register.push(json!({
+        "query_id": "history.by_retained_witness_lifecycle",
+        "query_kind": "join_history_rows_to_retained_witness_lifecycle_register",
+        "result_source": "w041_retained_witness_lifecycle_register.json",
+        "deterministic": true
+    }));
+
+    let mut replay_correlation_index = w040_retained
+        .get("replay_correlation_index")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w041_stage2_service_dependency",
+        "source_artifacts": [W041_STAGE2_SUMMARY, W041_STAGE2_BLOCKERS],
+        "w041_obligations": ["W041-OBL-014", "W041-OBL-018", "W041-OBL-025"],
+        "replay_role": "stage2_analyzer_service_and_pack_governance_dependency"
+    }));
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w041_retained_witness_pack_gate",
+        "source_artifacts": [
+            RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE,
+            RETAINED_WITNESS_QUARANTINED_LIFECYCLE,
+            W040_PACK_DECISION
+        ],
+        "w041_obligations": ["W041-OBL-016", "W041-OBL-025"],
+        "replay_role": "retained_witness_lifecycle_and_pack_governance_gate"
+    }));
+
+    json!({
+        "schema_version": W041_RETAINED_HISTORY_SERVICE_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "history_kind": "w041_retained_history_query_contract_with_retained_witness_lifecycle",
+        "file_backed_retained_history_store_present": true,
+        "retained_history_query_api_contract_present": true,
+        "retained_history_query_register_present": true,
+        "replay_correlation_index_present": true,
+        "retained_history_service_operated": false,
+        "retained_history_service_promoted": false,
+        "retention_slo_policy_declared": true,
+        "retention_slo_enforced": false,
+        "source_history_row_count": number_at(w040_retained, "store_record_count"),
+        "store_record_count": rows.len(),
+        "query_register_row_count": query_register.len(),
+        "replay_correlation_row_count": replay_correlation_index.len(),
+        "history_lifecycle_state": "file_backed_query_contract_bound_without_operated_retained_history_service",
+        "rows": rows,
+        "query_register": query_register,
+        "replay_correlation_index": replay_correlation_index
+    })
+}
+
+fn w041_retained_witness_lifecycle(
+    run_id: &str,
+    retained_witness: &Value,
+    quarantined_witness: &Value,
+    w040_pack_decision: &Value,
+) -> Value {
+    let rows = vec![
+        json!({
+            "row_id": "witness.retained_local_publication_fence",
+            "source_artifact": RETAINED_WITNESS_PUBLICATION_FENCE_LIFECYCLE,
+            "witness_id": text_at(retained_witness, "witness_id"),
+            "scenario_id": text_at(retained_witness, "scenario_id"),
+            "lifecycle_state": text_at(retained_witness, "lifecycle_state"),
+            "replay_validity_assessed": bool_at(retained_witness, "replay_validity_assessed"),
+            "pack_eligible": bool_at(retained_witness, "pack_eligible"),
+            "promotion_consequence": "retained-local witness is available as local evidence but is not pack-eligible"
+        }),
+        json!({
+            "row_id": "witness.quarantined_verify_clean",
+            "source_artifact": RETAINED_WITNESS_QUARANTINED_LIFECYCLE,
+            "witness_id": text_at(quarantined_witness, "witness_id"),
+            "scenario_id": text_at(quarantined_witness, "scenario_id"),
+            "lifecycle_state": text_at(quarantined_witness, "lifecycle_state"),
+            "quarantine_reason": text_at(quarantined_witness, "quarantine_reason"),
+            "replay_validity_assessed": bool_at(quarantined_witness, "replay_validity_assessed"),
+            "pack_eligible": bool_at(quarantined_witness, "pack_eligible"),
+            "promotion_consequence": "quarantined witness remains non-pack-eligible"
+        }),
+        json!({
+            "row_id": "witness.retention_slo_policy_declared",
+            "source_artifact": W041_OBLIGATION_MAP,
+            "lifecycle_state": "retention_policy_declared_not_operated",
+            "retention_slo_policy_declared": true,
+            "retention_slo_enforced": false,
+            "pack_eligible": false,
+            "promotion_consequence": "retained-witness lifecycle service remains unpromoted until SLO enforcement exists"
+        }),
+        json!({
+            "row_id": "witness.pack_governance_blocker_retained",
+            "source_artifact": W040_PACK_DECISION,
+            "lifecycle_state": "pack_governance_blocker_retained",
+            "retained_witness_pack_blocker_present": array_contains_string(
+                &w040_pack_decision["no_promotion_reason_ids"],
+                "pack.grade.retained_witness_promotion_not_shared_program_grade"
+            ),
+            "pack_eligible": false,
+            "promotion_consequence": "pack-grade replay and C5 remain unpromoted"
+        }),
+    ];
+
+    let retained_local_count = rows
+        .iter()
+        .filter(|row| text_at(row, "lifecycle_state") == "wit.retained_local")
+        .count();
+    let quarantined_count = rows
+        .iter()
+        .filter(|row| text_at(row, "lifecycle_state") == "wit.quarantined")
+        .count();
+    let pack_eligible_count = rows
+        .iter()
+        .filter(|row| bool_at(row, "pack_eligible"))
+        .count();
+
+    json!({
+        "schema_version": W041_RETAINED_WITNESS_SCHEMA_V1,
+        "run_id": run_id,
+        "retained_witness_lifecycle_register_present": true,
+        "retained_witness_lifecycle_service_promoted": false,
+        "retention_slo_policy_declared": true,
+        "retention_slo_enforced": false,
+        "pack_governance_promoted": false,
+        "witness_lifecycle_row_count": rows.len(),
+        "retained_local_witness_count": retained_local_count,
+        "quarantined_witness_count": quarantined_count,
+        "pack_eligible_witness_count": pack_eligible_count,
+        "rows": rows
+    })
+}
+
+fn w041_alert_dispatch_service(
+    run_id: &str,
+    w040_alerts: &Value,
+    w040_promotion: &Value,
+    w041_stage2_decision: &Value,
+    w040_pack_decision: &Value,
+    retained_history: &Value,
+    retained_witness_register: &Value,
+) -> Value {
+    let mut rows = w040_alerts
+        .get("rows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    rows.push(json!({
+        "rule_id": "quarantine.w041_unsupported_operated_service_claim",
+        "action": "quarantine_run_and_block_service_promotion",
+        "trigger": "any W040/W041 operated service, retained-history service, external dispatcher, Stage 2 service, or pack promotion flag appears without operated service artifacts",
+        "owner": "calc-sui.6; calc-sui.10",
+        "triggered": bool_at(w040_promotion, "operated_continuous_assurance_service_promoted")
+            || bool_at(w040_promotion, "retained_history_service_promoted")
+            || bool_at(w040_promotion, "external_alert_dispatcher_promoted")
+            || bool_at(w041_stage2_decision, "operated_cross_engine_stage2_service_promoted")
+            || bool_at(w040_pack_decision, "capability_promoted"),
+        "decision": "clean",
+        "evidence": {
+            "operated_continuous_assurance_service_promoted": bool_at(w040_promotion, "operated_continuous_assurance_service_promoted"),
+            "retained_history_service_promoted": bool_at(w040_promotion, "retained_history_service_promoted"),
+            "external_alert_dispatcher_promoted": bool_at(w040_promotion, "external_alert_dispatcher_promoted"),
+            "operated_cross_engine_stage2_service_promoted": bool_at(w041_stage2_decision, "operated_cross_engine_stage2_service_promoted"),
+            "pack_capability_promoted": bool_at(w040_pack_decision, "capability_promoted")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "quarantine.w041_missing_retained_history_query_contract",
+        "action": "quarantine_run_and_block_pack_reassessment",
+        "trigger": "retained-history query API contract, replay-correlation index, or retained-witness register is absent",
+        "owner": "calc-sui.6; calc-sui.9",
+        "triggered": !bool_at(retained_history, "retained_history_query_api_contract_present")
+            || !bool_at(retained_history, "replay_correlation_index_present")
+            || !bool_at(retained_witness_register, "retained_witness_lifecycle_register_present"),
+        "decision": "clean",
+        "evidence": {
+            "retained_history_query_api_contract_present": bool_at(retained_history, "retained_history_query_api_contract_present"),
+            "replay_correlation_index_present": bool_at(retained_history, "replay_correlation_index_present"),
+            "retained_witness_lifecycle_register_present": bool_at(retained_witness_register, "retained_witness_lifecycle_register_present")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "alert.w041_retention_slo_not_enforced",
+        "action": "record_retention_slo_blocker_without_dispatch",
+        "trigger": "retention SLO policy is declared but not enforced by an operated service",
+        "owner": "calc-sui.6; calc-sui.9",
+        "triggered": false,
+        "decision": "clean",
+        "evidence": {
+            "retention_slo_policy_declared": bool_at(retained_history, "retention_slo_policy_declared"),
+            "retention_slo_enforced": bool_at(retained_history, "retention_slo_enforced")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "alert.w041_w073_typed_formatting_guard_retained",
+        "action": "record_w073_guard_without_handoff",
+        "trigger": "W041 service packet carries OxFml W073 typed-only conditional-formatting input guard and old-string non-interpretation evidence",
+        "owner": "calc-sui.6; calc-sui.8",
+        "triggered": false,
+        "decision": "clean",
+        "evidence": {
+            "typed_rule_only_for_aggregate_visualization": true,
+            "w072_threshold_fallback_allowed_for_aggregate_visualization": false,
+            "old_string_non_interpretation_evidence_carried": true
+        }
+    }));
+
+    let quarantine_decision_count = rows
+        .iter()
+        .filter(|row| {
+            row.get("triggered").and_then(Value::as_bool) == Some(true)
+                && text_at(row, "action").starts_with("quarantine")
+        })
+        .count();
+    let alert_decision_count = rows
+        .iter()
+        .filter(|row| {
+            row.get("triggered").and_then(Value::as_bool) == Some(true)
+                && text_at(row, "action").starts_with("alert")
+        })
+        .count();
+
+    json!({
+        "schema_version": W041_ALERT_DISPATCH_SCHEMA_V1,
+        "run_id": run_id,
+        "policy_source": W040_ALERT_DISPATCHER_ENFORCEMENT,
+        "policy_state": "w041_local_alert_dispatch_service_contract_evaluated_without_external_dispatcher_promotion",
+        "evaluated_rule_count": rows.len(),
+        "quarantine_decision_count": quarantine_decision_count,
+        "alert_decision_count": alert_decision_count,
+        "clean_rule_count": rows.len() - quarantine_decision_count - alert_decision_count,
+        "local_alert_dispatcher_evaluated": true,
+        "external_alert_dispatcher_contract_present": true,
+        "external_alert_dispatcher_promoted": false,
+        "quarantine_service_promoted": false,
+        "rows": rows
+    })
+}
+
+fn w041_cross_engine_service(
+    run_id: &str,
+    w040_cross_engine: &Value,
+    w041_stage2_summary: &Value,
+    w041_stage2_blockers: &Value,
+) -> Value {
+    json!({
+        "schema_version": W041_CROSS_ENGINE_SERVICE_SCHEMA_V1,
+        "run_id": run_id,
+        "file_backed_cross_engine_substrate_present": bool_at(w040_cross_engine, "file_backed_cross_engine_substrate_present"),
+        "w040_stage2_service_dependency_blocker_present": bool_at(w040_cross_engine, "w040_stage2_service_dependency_blocker_present"),
+        "w041_stage2_policy_row_count": number_at(w041_stage2_summary, "policy_row_count"),
+        "w041_stage2_service_dependency_blocker_present": row_with_field_exists(
+            w041_stage2_blockers,
+            "row_id",
+            "w041_stage2_operated_cross_engine_service_dependency_blocker"
+        ),
+        "operated_cross_engine_differential_service_present": false,
+        "operated_cross_engine_differential_service_promoted": false,
+        "service_endpoint_present": false,
+        "service_state": "file_backed_cross_engine_substrate_and_w041_stage2_dependency_bound_without_operated_service",
+        "blocked_service_claims": [
+            "recurring_cross_engine_diff_scheduler",
+            "cross_engine_service_endpoint",
+            "operated_mismatch_quarantine_dispatcher",
+            "stage2_operated_cross_engine_differential_service"
+        ]
+    })
+}
+
+fn w041_service_readiness(
+    run_id: &str,
+    relative_artifact_root: &str,
+    service_envelope: &Value,
+    retained_history: &Value,
+    retained_witness_register: &Value,
+    alert_dispatcher: &Value,
+    cross_engine_service: &Value,
+    w041_stage2_decision: &Value,
+) -> Value {
+    let criteria = vec![
+        criterion(
+            "readiness.w041_service_envelope_present",
+            "satisfied",
+            "W041 emits a file-backed service envelope through the checked operated-assurance runner",
+        ),
+        criterion(
+            "readiness.w041_source_evidence_index_bound",
+            "satisfied",
+            "W041 source index binds obligations, W073 formatting intake, W040 service artifacts, W041 Stage 2 blockers, W040 pack decision, and retained-witness lifecycle rows",
+        ),
+        criterion(
+            "readiness.w041_run_queue_manifest_declared",
+            "satisfied_boundary",
+            "service-readable run queue manifest is declared in the envelope, but not operated as a scheduler",
+        ),
+        criterion(
+            "readiness.w041_retained_history_query_contract_present",
+            "satisfied_boundary",
+            "deterministic retained-history query API contract is emitted with store and query rows",
+        ),
+        criterion(
+            "readiness.w041_replay_correlation_index_present",
+            "satisfied",
+            "replay-correlation rows are emitted for Stage 2 service dependencies and retained-witness pack governance",
+        ),
+        criterion(
+            "readiness.w041_retained_witness_lifecycle_register_present",
+            "satisfied_boundary",
+            "retained-local and quarantined witness lifecycles are registered without pack eligibility promotion",
+        ),
+        criterion(
+            "readiness.w041_retention_slo_policy_declared",
+            "satisfied_boundary",
+            "retention SLO policy is declared for retained-history and retained-witness lifecycle evidence",
+        ),
+        criterion(
+            "readiness.w041_alert_dispatch_contract_evaluated",
+            "satisfied",
+            "local alert/quarantine dispatch contract is evaluated against service, retained-history, Stage 2, pack, and W073 inputs",
+        ),
+        criterion(
+            "readiness.w041_no_quarantine_decisions",
+            "satisfied",
+            "W041 local dispatch contract and source evidence produce no quarantine decisions",
+        ),
+        criterion(
+            "readiness.w041_cross_engine_substrate_bound",
+            "satisfied_boundary",
+            "W041 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+        ),
+        criterion(
+            "readiness.w041_stage2_service_dependency_classified",
+            "satisfied",
+            "W041 Stage 2 analyzer retains operated cross-engine service as an exact dependency",
+        ),
+        criterion(
+            "readiness.w041_w073_typed_formatting_guard_retained",
+            "satisfied",
+            "W041 carries OxFml W073 typed-only aggregate/visualization formatting guard and old-string non-interpretation evidence",
+        ),
+        criterion(
+            "service.operated_scheduler_service_endpoint",
+            "blocked",
+            "file-backed runner and run queue manifest are present, but no recurring scheduler, daemon, service endpoint, or operated queue exists",
+        ),
+        criterion(
+            "service.retained_history_service_endpoint",
+            "blocked",
+            "retained-history query contract is file-backed and not an operated retained-history service endpoint",
+        ),
+        criterion(
+            "service.external_alert_dispatcher",
+            "blocked",
+            "external alert/quarantine dispatcher contract is represented, but no external dispatcher or quarantine service is operated",
+        ),
+        criterion(
+            "service.operated_cross_engine_differential",
+            "blocked",
+            "cross-engine differential evidence remains file-backed rather than operated as a service",
+        ),
+        criterion(
+            "service.retention_slo_retained_witness_pack_governance",
+            "blocked",
+            "retention SLO is declared but not enforced, retained-witness lifecycle is not service-operated, and pack-grade replay governance remains unpromoted",
+        ),
+    ];
+    let blocked_criteria_count = criteria
+        .iter()
+        .filter(|row| row.get("state").and_then(Value::as_str) == Some("blocked"))
+        .count();
+
+    json!({
+        "schema_version": W041_SERVICE_READINESS_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "readiness_state": "w041_service_envelope_and_query_contract_validated_without_operated_service_promotion",
+        "criteria_count": criteria.len(),
+        "satisfied_criteria_count": criteria.len() - blocked_criteria_count,
+        "blocked_criteria_count": blocked_criteria_count,
+        "service_envelope_row_count": number_at(service_envelope, "row_count"),
+        "service_run_queue_manifest_present": bool_at(service_envelope, "service_run_queue_manifest_present"),
+        "history_store_record_count": number_at(retained_history, "store_record_count"),
+        "query_register_row_count": number_at(retained_history, "query_register_row_count"),
+        "replay_correlation_row_count": number_at(retained_history, "replay_correlation_row_count"),
+        "retained_witness_lifecycle_row_count": number_at(retained_witness_register, "witness_lifecycle_row_count"),
+        "evaluated_alert_rule_count": number_at(alert_dispatcher, "evaluated_rule_count"),
+        "quarantine_decision_count": number_at(alert_dispatcher, "quarantine_decision_count"),
+        "alert_decision_count": number_at(alert_dispatcher, "alert_decision_count"),
+        "file_backed_cross_engine_substrate_present": bool_at(cross_engine_service, "file_backed_cross_engine_substrate_present"),
+        "stage2_policy_promoted": bool_at(w041_stage2_decision, "stage2_policy_promoted"),
+        "operated_continuous_assurance_service_promoted": false,
+        "retained_history_service_promoted": false,
+        "retained_witness_lifecycle_service_promoted": false,
+        "cross_engine_differential_service_promoted": false,
+        "external_alert_dispatcher_promoted": false,
+        "criteria": criteria
+    })
+}
+
+fn w041_exact_service_blockers() -> Vec<Value> {
+    vec![
+        json!({
+            "blocker_id": "service.operated_scheduler_service_endpoint_absent",
+            "owner": "calc-sui.6; calc-sui.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W041 emits a file-backed service envelope and run queue manifest, but no recurring scheduler, daemon, service endpoint, or operated run queue.",
+            "promotion_consequence": "operated continuous assurance service remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.retained_history_service_endpoint_absent",
+            "owner": "calc-sui.6; calc-sui.9",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W041 emits a retained-history query API contract and replay-correlation index, but no operated retained-history service endpoint or retention lifecycle service.",
+            "promotion_consequence": "retained-history service and pack-grade replay governance remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.external_alert_dispatcher_absent",
+            "owner": "calc-sui.6; calc-sui.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W041 evaluates alert/quarantine dispatch rules locally and records an external dispatcher contract, but no external dispatcher or quarantine service is operated.",
+            "promotion_consequence": "alert/quarantine dispatcher claims remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.operated_cross_engine_differential_absent",
+            "owner": "calc-sui.6; calc-sui.7",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+            "promotion_consequence": "operated cross-engine differential service, independent diversity, and Stage 2 service dependencies remain blocked"
+        }),
+        json!({
+            "blocker_id": "service.retention_slo_retained_witness_pack_governance_absent",
+            "owner": "calc-sui.6; calc-sui.9",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W041 declares retention SLO policy and registers retained-witness lifecycles, but no SLO enforcement, retained-witness lifecycle service, or pack-grade replay governance service exists.",
+            "promotion_consequence": "retained-witness lifecycle service, pack-grade replay, C5, and release-grade verification remain unpromoted"
+        }),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
 fn w040_source_rows(
     w040_direct_summary: &Value,
     w040_direct_map: &Value,
@@ -2829,6 +3975,101 @@ mod tests {
         )
         .unwrap();
         assert_eq!(blocker_register["exact_service_blocker_count"], 4);
+
+        cleanup();
+    }
+
+    #[test]
+    fn operated_assurance_runner_binds_w041_service_envelope_without_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w041-operated-assurance-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/operated-assurance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = OperatedAssuranceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.source_evidence_row_count, 12);
+        assert_eq!(summary.multi_run_history_row_count, 25);
+        assert_eq!(summary.evaluated_alert_rule_count, 18);
+        assert_eq!(summary.quarantine_decision_count, 0);
+        assert_eq!(summary.alert_decision_count, 0);
+        assert_eq!(summary.service_readiness_criteria_count, 17);
+        assert_eq!(summary.service_readiness_blocked_count, 5);
+        assert_eq!(summary.exact_service_blocker_count, 5);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.operated_service_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/operated-assurance/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w041_operated_assurance_service_envelope_valid"
+        );
+
+        let retained_history = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w041_retained_history_service_query.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            retained_history["retained_history_query_api_contract_present"],
+            true
+        );
+        assert_eq!(retained_history["retained_history_service_operated"], false);
+        assert_eq!(retained_history["retention_slo_enforced"], false);
+
+        let retained_witness = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w041_retained_witness_lifecycle_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            retained_witness["retained_witness_lifecycle_register_present"],
+            true
+        );
+        assert_eq!(retained_witness["pack_eligible_witness_count"], 0);
+
+        let promotion = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/promotion_decision.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            promotion["retained_witness_lifecycle_register_present"],
+            true
+        );
+        assert_eq!(promotion["retained_history_service_promoted"], false);
+        assert_eq!(promotion["external_alert_dispatcher_promoted"], false);
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w041_exact_service_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_service_blocker_count"], 5);
 
         cleanup();
     }

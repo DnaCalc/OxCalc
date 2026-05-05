@@ -1,0 +1,16 @@
+{
+  "accepted_boundary_count": 2,
+  "accepted_external_seam_count": 1,
+  "automatic_dynamic_transition_row_count": 1,
+  "bounded_model_row_count": 0,
+  "exact_remaining_blocker_count": 4,
+  "failed_row_count": 0,
+  "local_proof_row_count": 7,
+  "refinement_row_count": 5,
+  "run_id": "w041-rust-totality-refinement-proof-tranche-001",
+  "rust_row_count": 10,
+  "schema_version": "oxcalc.formal_assurance.validation.v1",
+  "status": "formal_assurance_w041_rust_totality_refinement_valid",
+  "totality_boundary_count": 4,
+  "validation_failures": []
+}

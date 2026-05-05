@@ -1,0 +1,27 @@
+{
+  "run_id": "w041-rust-totality-refinement-proof-tranche-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w040_rust_exact_blockers": "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_exact_blocker_register.json",
+    "w040_rust_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "w040_rust_formal_assurance_validation": "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/validation.json",
+    "w041_dynamic_release_reclassification_auto_evidence": "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json",
+    "w041_implementation_conformance_exact_blockers": "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json",
+    "w041_implementation_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+    "w041_implementation_conformance_validation": "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/validation.json",
+    "w041_lean_rust_totality_file": "formal/lean/OxCalc/CoreEngine/W041RustTotalityAndRefinement.lean",
+    "w041_successor_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "w041_successor_obligation_summary": "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
+    "w041_treecalc_auto_post_edit_closure": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json",
+    "w041_treecalc_auto_post_edit_result": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/result.json",
+    "w041_treecalc_auto_post_edit_seeds": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+    "w041_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json"
+  },
+  "source_counts": {
+    "panic_marker_count": 146,
+    "w040_rust_exact_blocker_count": 5,
+    "w041_conformance_exact_blocker_count": 3,
+    "w041_obligation_count": 28,
+    "w041_treecalc_case_count": 26
+  }
+}

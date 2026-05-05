@@ -1,0 +1,132 @@
+{
+  "alert_decision_count": 0,
+  "artifact_root": "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001",
+  "blocked_criteria_count": 6,
+  "criteria": [
+    {
+      "criterion_id": "readiness.w042_service_envelope_present",
+      "evidence_or_blocker": "W042 emits a file-backed service closure envelope through the checked operated-assurance runner",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_source_evidence_index_bound",
+      "evidence_or_blocker": "W042 source index binds W042 obligations, W073 formatting intake, W041 service evidence, W042 Stage 2 blockers, and W041 pack blockers",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_run_queue_manifest_declared",
+      "evidence_or_blocker": "service-readable run queue manifest is declared in the envelope, but not operated as a scheduler",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w042_retained_history_query_contract_present",
+      "evidence_or_blocker": "deterministic retained-history query API contract is emitted with store and query rows",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w042_replay_correlation_index_present",
+      "evidence_or_blocker": "replay-correlation rows are emitted for W042 Stage 2 service dependencies, retained-witness pack governance, and W073 guard evidence",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_retained_witness_lifecycle_register_present",
+      "evidence_or_blocker": "retained-witness lifecycle rows are registered without pack eligibility promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w042_retention_slo_policy_declared",
+      "evidence_or_blocker": "retention SLO policy is declared for retained-history and retained-witness lifecycle evidence",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w042_alert_dispatch_contract_evaluated",
+      "evidence_or_blocker": "local alert/quarantine dispatch contract is evaluated against service, retained-history, retained-witness, Stage 2, pack, and W073 inputs",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_no_quarantine_decisions",
+      "evidence_or_blocker": "W042 local dispatch contract and source evidence produce no quarantine decisions",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_cross_engine_substrate_bound",
+      "evidence_or_blocker": "W042 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w042_stage2_service_dependency_classified",
+      "evidence_or_blocker": "W042 Stage 2 analyzer retains operated cross-engine service as an exact dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_retained_witness_pack_dependency_classified",
+      "evidence_or_blocker": "W042 Stage 2 analyzer retains retained-witness lifecycle as an exact pack-grade replay dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_pack_governance_dependency_classified",
+      "evidence_or_blocker": "W042 Stage 2 and W041 pack decision retain pack-grade replay governance as a no-promotion dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_w073_typed_formatting_guard_retained",
+      "evidence_or_blocker": "W042 carries OxFml W073 typed-only aggregate/visualization formatting guard and old-string non-interpretation evidence",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w042_no_proxy_service_promotion_guard",
+      "evidence_or_blocker": "file-backed and local-only artifacts are not counted as operated service, pack, Stage 2, or C5 promotions",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "service.operated_scheduler_service_endpoint",
+      "evidence_or_blocker": "file-backed runner and run queue manifest are present, but no recurring scheduler, daemon, service endpoint, or operated queue exists",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_history_service_endpoint",
+      "evidence_or_blocker": "retained-history query contract is file-backed and not an operated retained-history service endpoint",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_witness_lifecycle_service_slo",
+      "evidence_or_blocker": "retained-witness lifecycle rows are present, but no lifecycle service or retention SLO enforcement exists",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.external_alert_dispatcher",
+      "evidence_or_blocker": "external alert/quarantine dispatcher contract is represented, but no external dispatcher or quarantine service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.operated_cross_engine_differential",
+      "evidence_or_blocker": "cross-engine differential evidence remains file-backed rather than operated as a service",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.pack_grade_replay_governance",
+      "evidence_or_blocker": "pack-grade replay governance service remains unpromoted and cannot be inferred from local retained-history or retained-witness artifacts",
+      "state": "blocked"
+    }
+  ],
+  "criteria_count": 21,
+  "cross_engine_differential_service_promoted": false,
+  "evaluated_alert_rule_count": 23,
+  "external_alert_dispatcher_promoted": false,
+  "file_backed_cross_engine_substrate_present": true,
+  "history_store_record_count": 29,
+  "operated_continuous_assurance_service_promoted": false,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 10,
+  "readiness_state": "w042_service_closure_validated_without_operated_service_promotion",
+  "replay_correlation_row_count": 8,
+  "retained_history_service_promoted": false,
+  "retained_witness_lifecycle_row_count": 6,
+  "retained_witness_lifecycle_service_promoted": false,
+  "run_id": "w042-operated-assurance-retained-history-retained-witness-alert-service-001",
+  "satisfied_criteria_count": 15,
+  "schema_version": "oxcalc.operated_assurance.w042.service_readiness_register.v1",
+  "service_envelope_row_count": 9,
+  "service_run_queue_manifest_present": true,
+  "stage2_policy_promoted": false
+}

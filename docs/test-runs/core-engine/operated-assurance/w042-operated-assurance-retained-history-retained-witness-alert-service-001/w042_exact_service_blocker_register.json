@@ -1,0 +1,49 @@
+{
+  "exact_service_blocker_count": 6,
+  "rows": [
+    {
+      "blocker_id": "service.operated_scheduler_service_endpoint_absent",
+      "owner": "calc-czd.6; calc-czd.10",
+      "promotion_consequence": "operated continuous assurance service remains unpromoted",
+      "reason": "W042 emits a file-backed service envelope and run queue manifest, but no recurring scheduler, daemon, service endpoint, or operated run queue.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_history_service_endpoint_absent",
+      "owner": "calc-czd.6; calc-czd.9",
+      "promotion_consequence": "retained-history service and pack-grade replay governance remain unpromoted",
+      "reason": "W042 emits a retained-history query API contract and replay-correlation index, but no operated retained-history service endpoint or retention lifecycle service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_witness_lifecycle_service_slo_absent",
+      "owner": "calc-czd.6; calc-czd.9",
+      "promotion_consequence": "retained-witness lifecycle service, pack-grade replay, C5, and release-grade verification remain unpromoted",
+      "reason": "W042 carries retained-witness lifecycle rows and declares a retention SLO policy, but no lifecycle service or SLO enforcement exists.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.external_alert_dispatcher_absent",
+      "owner": "calc-czd.6; calc-czd.10",
+      "promotion_consequence": "alert/quarantine dispatcher and mismatch quarantine service claims remain unpromoted",
+      "reason": "W042 evaluates alert/quarantine dispatch rules locally and records an external dispatcher contract, but no external dispatcher or quarantine service is operated.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.operated_cross_engine_differential_absent",
+      "owner": "calc-czd.6; calc-czd.7",
+      "promotion_consequence": "operated cross-engine differential service, independent diversity, mismatch quarantine, and Stage 2 service dependencies remain blocked",
+      "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.pack_grade_replay_governance_service_absent",
+      "owner": "calc-czd.6; calc-czd.9",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain unpromoted",
+      "reason": "W042 retained-history and retained-witness rows are deterministic local artifacts, but no pack-grade replay governance service binds them into a program-grade retained-witness lifecycle.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w042-operated-assurance-retained-history-retained-witness-alert-service-001",
+  "schema_version": "oxcalc.operated_assurance.w042.exact_service_blocker_register.v1"
+}

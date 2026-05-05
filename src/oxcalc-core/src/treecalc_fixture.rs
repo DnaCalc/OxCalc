@@ -17,7 +17,7 @@ use crate::structural::{
 };
 use crate::treecalc::{
     LocalTreeCalcEngine, LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts,
-    derive_structural_invalidation_seeds,
+    derive_structural_invalidation_seeds_for_catalogs,
 };
 
 const TREECALC_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.fixture_manifest.v1";
@@ -60,6 +60,8 @@ pub struct TreeCalcFixtureCase {
 pub struct TreeCalcFixturePostEditPlan {
     pub successor_snapshot_start_id: u64,
     pub edits: Vec<TreeCalcFixtureStructuralEdit>,
+    #[serde(default)]
+    pub formulas: Option<Vec<TreeCalcFixtureFormulaBinding>>,
     #[serde(default)]
     pub invalidation_seeds: Vec<TreeCalcFixtureInvalidationSeed>,
     pub expected_impacts: Vec<String>,
@@ -313,12 +315,18 @@ fn execute_post_edit_plan(
         .last()
         .map(|outcome| outcome.snapshot.clone())
         .unwrap_or_else(|| structural_snapshot.clone());
+    let rerun_formula_catalog = plan
+        .formulas
+        .as_ref()
+        .map(|formulas| TreeFormulaCatalog::new(formulas.iter().map(to_formula_binding)))
+        .unwrap_or_else(|| formula_catalog.clone());
 
     let invalidation_seeds = if plan.invalidation_seeds.is_empty() {
-        derive_structural_invalidation_seeds(
+        derive_structural_invalidation_seeds_for_catalogs(
             structural_snapshot,
             &rerun_snapshot,
             formula_catalog,
+            &rerun_formula_catalog,
             &edit_outcomes,
         )
     } else {
@@ -331,7 +339,7 @@ fn execute_post_edit_plan(
     let rerun_artifacts = engine
         .execute(LocalTreeCalcInput {
             structural_snapshot: rerun_snapshot.clone(),
-            formula_catalog: formula_catalog.clone(),
+            formula_catalog: rerun_formula_catalog,
             seeded_published_values,
             invalidation_seeds: invalidation_seeds.clone(),
             candidate_result_id: format!("fixture:{}:candidate:post_edit", case.case_id),
@@ -493,7 +501,7 @@ mod tests {
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
 
-        assert_eq!(manifest.cases.len(), 25);
+        assert_eq!(manifest.cases.len(), 26);
 
         for entry in &manifest.cases {
             let case_path = repo_root

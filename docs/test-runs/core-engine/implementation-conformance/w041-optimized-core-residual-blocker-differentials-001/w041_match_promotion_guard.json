@@ -1,0 +1,30 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.match_guard.v1",
+  "match_promoted_count": 0,
+  "declared_gap_match_promoted": false,
+  "full_optimized_core_verification_promoted": false,
+  "release_grade_verification_promoted": false,
+  "guard_rows": [
+    {
+      "row_id": "w041_dynamic_release_reclassification_auto_transition_evidence",
+      "match_promoted": false,
+      "reason": "direct implementation and replay evidence is bound for one dynamic resolved-to-potential transition pattern, not for full optimized/core verification"
+    },
+    {
+      "row_id": "w041_snapshot_fence_counterpart_exact_blocker",
+      "match_promoted": false,
+      "reason": "required direct stale snapshot-fence counterpart remains absent"
+    },
+    {
+      "row_id": "w041_capability_view_fence_counterpart_exact_blocker",
+      "match_promoted": false,
+      "reason": "required direct capability-view fence counterpart remains absent"
+    },
+    {
+      "row_id": "w041_callable_metadata_projection_exact_blocker",
+      "match_promoted": false,
+      "reason": "required callable metadata projection fixture or sufficiency proof remains absent"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "node_id": 3,
+    "reason": "StructuralRecalcOnly"
+  },
+  {
+    "node_id": 4,
+    "reason": "StructuralRecalcOnly"
+  }
+]

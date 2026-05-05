@@ -1,0 +1,106 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.disposition_register.v1",
+  "source_w040_exact_blocker_count": 4,
+  "disposition_row_count": 5,
+  "direct_evidence_bound_count": 2,
+  "exact_remaining_blocker_count": 3,
+  "match_promoted_count": 0,
+  "failed_row_count": 0,
+  "rows": [
+    {
+      "row_id": "w041_dynamic_release_reclassification_auto_transition_evidence",
+      "source_w040_row_id": "w040_dynamic_release_reclassification_transition_exact_blocker",
+      "owner_beads": [
+        "calc-sui.2"
+      ],
+      "direct_evidence_bound": true,
+      "new_w041_evidence": [
+        "docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001.json",
+        "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+        "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json",
+        "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/result.json"
+      ],
+      "implementation_files": [
+        "src/oxcalc-core/src/treecalc.rs",
+        "src/oxcalc-core/src/treecalc_fixture.rs",
+        "src/oxcalc-core/src/treecalc_runner.rs"
+      ],
+      "w041_disposition_kind": "automatic_transition_implementation_evidence_bound",
+      "w041_disposition": "successor formula-catalog descriptors now derive DependencyRemoved and DependencyReclassified invalidation seeds for the exercised dynamic resolved-to-potential transition without manual invalidation seed injection",
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "promotion_consequence": "full optimized/core verification remains blocked by remaining exact blockers and later W041 proof/model/service lanes",
+      "validation_state": "w041_dynamic_auto_transition_evidence_validated"
+    },
+    {
+      "row_id": "w041_snapshot_fence_counterpart_exact_blocker",
+      "source_w040_row_id": "w040_snapshot_fence_counterpart_exact_blocker",
+      "owner_beads": [
+        "calc-sui.2",
+        "calc-sui.5"
+      ],
+      "direct_evidence_bound": false,
+      "new_w041_evidence": [],
+      "implementation_files": [],
+      "w041_disposition_kind": "retained_exact_stage2_coordinator_blocker",
+      "w041_disposition": "retain deterministic stale accepted-candidate snapshot-fence counterpart as a Stage 2/coordinator replay blocker for the W041 Stage 2 tranche",
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "promotion_consequence": "snapshot-fence conformance and Stage 2 production policy remain blocked",
+      "validation_state": "w041_snapshot_fence_blocker_retained"
+    },
+    {
+      "row_id": "w041_capability_view_fence_counterpart_exact_blocker",
+      "source_w040_row_id": "w040_capability_view_fence_counterpart_exact_blocker",
+      "owner_beads": [
+        "calc-sui.2",
+        "calc-sui.5"
+      ],
+      "direct_evidence_bound": false,
+      "new_w041_evidence": [],
+      "implementation_files": [],
+      "w041_disposition_kind": "retained_exact_stage2_coordinator_blocker",
+      "w041_disposition": "retain compatibility-fenced capability-view mismatch counterpart as a Stage 2/coordinator replay blocker for the W041 Stage 2 tranche",
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "promotion_consequence": "capability-view fence conformance and Stage 2 production policy remain blocked",
+      "validation_state": "w041_capability_view_fence_blocker_retained"
+    },
+    {
+      "row_id": "w041_callable_metadata_projection_exact_blocker",
+      "source_w040_row_id": "w040_callable_metadata_projection_exact_blocker",
+      "owner_beads": [
+        "calc-sui.2",
+        "calc-sui.8"
+      ],
+      "direct_evidence_bound": false,
+      "new_w041_evidence": [],
+      "implementation_files": [],
+      "w041_disposition_kind": "retained_exact_callable_metadata_blocker",
+      "w041_disposition": "retain callable metadata projection as exact OxFml/callable seam blocker; this optimized/core bead changes dynamic dependency transition handling only",
+      "exact_remaining_blocker": true,
+      "match_promoted": false,
+      "promotion_consequence": "callable metadata projection and broad callable conformance remain blocked",
+      "validation_state": "w041_callable_metadata_blocker_retained"
+    },
+    {
+      "row_id": "w041_declared_gap_match_promotion_guard",
+      "source_w040_row_id": "w040_declared_gap_match_promotion_guard",
+      "owner_beads": [
+        "calc-sui.2"
+      ],
+      "direct_evidence_bound": true,
+      "new_w041_evidence": [
+        "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json"
+      ],
+      "implementation_files": [],
+      "w041_disposition_kind": "match_promotion_guard",
+      "w041_disposition": "retain zero match promotion for exact blockers and declared gaps",
+      "exact_remaining_blocker": false,
+      "match_promoted": false,
+      "promotion_consequence": "no optimized/core match promotion is claimed by this bead",
+      "validation_state": "w041_declared_gap_guard_validated"
+    }
+  ]
+}

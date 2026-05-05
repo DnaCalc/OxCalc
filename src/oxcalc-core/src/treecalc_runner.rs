@@ -2086,7 +2086,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 25);
+        assert_eq!(summary.case_count, 26);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2219,7 +2219,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 25);
+        assert_eq!(replay_manifest["case_count"], 26);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()
@@ -2746,6 +2746,34 @@ mod tests {
                                     .any(|reason| reason == "DependencyReclassified")
                         })
                 }))
+        );
+
+        let auto_dynamic_release_reclass_seeds = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            auto_dynamic_release_reclass_seeds.as_array().map(Vec::len),
+            Some(2)
+        );
+        assert!(
+            auto_dynamic_release_reclass_seeds
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| seed["reason"] == "DependencyRemoved"))
+        );
+        assert!(
+            auto_dynamic_release_reclass_seeds
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| seed["reason"] == "DependencyReclassified"))
         );
 
         let host_sensitive_explain = serde_json::from_str::<serde_json::Value>(

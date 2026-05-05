@@ -1,0 +1,27 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.source_index.v1",
+  "predecessor_artifacts": [
+    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_blocker_disposition_register.json",
+    "docs/spec/core-engine/w040-formalization/W040_OPTIMIZED_CORE_EXACT_BLOCKER_FIXES_AND_DIFFERENTIALS.md",
+    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json"
+  ],
+  "new_implementation_artifacts": [
+    "src/oxcalc-core/src/treecalc.rs",
+    "src/oxcalc-core/src/treecalc_fixture.rs",
+    "src/oxcalc-core/src/treecalc_runner.rs",
+    "docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001.json",
+    "docs/test-fixtures/core-engine/treecalc/MANIFEST.json"
+  ],
+  "new_replay_artifacts": [
+    "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+    "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json",
+    "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/result.json"
+  ],
+  "oxfml_formatting_intake": {
+    "source": "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
+    "w041_2_consequence": "no OxCalc optimized/core code change is required in this bead; the typed-only W073 conditional-formatting intake remains a seam-watch obligation for later W041 OxFml/publication lanes"
+  }
+}

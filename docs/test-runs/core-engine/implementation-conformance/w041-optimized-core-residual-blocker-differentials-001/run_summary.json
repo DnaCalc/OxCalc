@@ -1,0 +1,34 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.summary.v1",
+  "workset": "W041",
+  "parent_epic": "calc-sui",
+  "bead": "calc-sui.2",
+  "status": "optimized_core_dynamic_transition_evidenced_exact_blockers_retained_no_promotion",
+  "source_w040_exact_blocker_count": 4,
+  "disposition_row_count": 5,
+  "dynamic_transition_implementation_evidence_count": 1,
+  "direct_evidence_bound_count": 2,
+  "new_w041_treecalc_case_count": 1,
+  "exact_remaining_blocker_count": 3,
+  "match_promoted_count": 0,
+  "failed_row_count": 0,
+  "treecalc_run_id": "w041-optimized-core-automatic-dynamic-transition-001",
+  "treecalc_case_count": 26,
+  "treecalc_expectation_mismatch_count": 0,
+  "remaining_exact_blockers": [
+    "w041_snapshot_fence_counterpart_exact_blocker",
+    "w041_capability_view_fence_counterpart_exact_blocker",
+    "w041_callable_metadata_projection_exact_blocker"
+  ],
+  "no_promotion_claims": [
+    "full_optimized_core_verification",
+    "release_grade_full_verification",
+    "stage2_production_policy",
+    "callable_metadata_projection",
+    "broad_oxfml_callable_conformance",
+    "pack_grade_replay",
+    "cap.C5.pack_valid"
+  ],
+  "next_bead": "calc-sui.3"
+}

@@ -1,0 +1,34 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.blocker_register.v1",
+  "exact_remaining_blocker_count": 3,
+  "rows": [
+    {
+      "row_id": "w041_snapshot_fence_counterpart_exact_blocker",
+      "source_w040_row_id": "w040_snapshot_fence_counterpart_exact_blocker",
+      "blocker": "deterministic stale accepted-candidate snapshot-fence counterpart remains absent",
+      "required_successor_evidence": "coordinator or Stage 2 replay evidence that rejects stale candidate admission against an older structural snapshot",
+      "owner_beads": [
+        "calc-sui.5"
+      ]
+    },
+    {
+      "row_id": "w041_capability_view_fence_counterpart_exact_blocker",
+      "source_w040_row_id": "w040_capability_view_fence_counterpart_exact_blocker",
+      "blocker": "compatibility-fenced capability-view mismatch counterpart remains absent",
+      "required_successor_evidence": "coordinator or Stage 2 replay evidence for capability-view fence mismatch, distinct from broader capability-sensitive rejection",
+      "owner_beads": [
+        "calc-sui.5"
+      ]
+    },
+    {
+      "row_id": "w041_callable_metadata_projection_exact_blocker",
+      "source_w040_row_id": "w040_callable_metadata_projection_exact_blocker",
+      "blocker": "callable metadata projection fixture or carrier sufficiency proof remains absent",
+      "required_successor_evidence": "direct callable metadata projection fixture or proof that the consumed LET/LAMBDA carrier surface is sufficient without general OxFunc kernel promotion",
+      "owner_beads": [
+        "calc-sui.8"
+      ]
+    }
+  ]
+}

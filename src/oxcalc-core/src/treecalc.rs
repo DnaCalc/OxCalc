@@ -585,6 +585,57 @@ pub(crate) fn derive_structural_invalidation_seeds(
     formula_catalog: &TreeFormulaCatalog,
     edit_outcomes: &[StructuralEditOutcome],
 ) -> Vec<InvalidationSeed> {
+    derive_structural_invalidation_seeds_for_catalogs(
+        predecessor_snapshot,
+        structural_snapshot,
+        formula_catalog,
+        formula_catalog,
+        edit_outcomes,
+    )
+}
+
+pub(crate) fn derive_structural_invalidation_seeds_for_catalogs(
+    predecessor_snapshot: &StructuralSnapshot,
+    structural_snapshot: &StructuralSnapshot,
+    predecessor_formula_catalog: &TreeFormulaCatalog,
+    successor_formula_catalog: &TreeFormulaCatalog,
+    edit_outcomes: &[StructuralEditOutcome],
+) -> Vec<InvalidationSeed> {
+    let transition_seeds = if predecessor_formula_catalog == successor_formula_catalog {
+        Vec::new()
+    } else {
+        dependency_descriptor_transition_seeds(
+            predecessor_snapshot,
+            structural_snapshot,
+            predecessor_formula_catalog,
+            successor_formula_catalog,
+        )
+    };
+    let transition_seed_owner_ids = transition_seeds
+        .iter()
+        .map(|seed| seed.node_id)
+        .collect::<BTreeSet<_>>();
+
+    let mut seeds = transition_seeds;
+    seeds.extend(
+        derive_structural_context_invalidation_seeds(
+            predecessor_snapshot,
+            structural_snapshot,
+            successor_formula_catalog,
+            edit_outcomes,
+        )
+        .into_iter()
+        .filter(|seed| !transition_seed_owner_ids.contains(&seed.node_id)),
+    );
+    seeds
+}
+
+fn derive_structural_context_invalidation_seeds(
+    predecessor_snapshot: &StructuralSnapshot,
+    structural_snapshot: &StructuralSnapshot,
+    formula_catalog: &TreeFormulaCatalog,
+    edit_outcomes: &[StructuralEditOutcome],
+) -> Vec<InvalidationSeed> {
     let formula_owner_ids = formula_catalog.owner_node_ids();
     if edit_outcomes.is_empty() {
         return default_invalidation_seeds(&formula_owner_ids);
@@ -659,6 +710,131 @@ pub(crate) fn derive_structural_invalidation_seeds(
             }
         })
         .collect()
+}
+
+fn dependency_descriptor_transition_seeds(
+    predecessor_snapshot: &StructuralSnapshot,
+    structural_snapshot: &StructuralSnapshot,
+    predecessor_formula_catalog: &TreeFormulaCatalog,
+    successor_formula_catalog: &TreeFormulaCatalog,
+) -> Vec<InvalidationSeed> {
+    let predecessor_descriptors = descriptors_by_owner_and_id(
+        predecessor_formula_catalog.to_dependency_descriptors(predecessor_snapshot),
+    );
+    let successor_descriptors = descriptors_by_owner_and_id(
+        successor_formula_catalog.to_dependency_descriptors(structural_snapshot),
+    );
+    let owner_node_ids = predecessor_descriptors
+        .keys()
+        .chain(successor_descriptors.keys())
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let successor_owner_ids = successor_formula_catalog
+        .owner_node_ids()
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let mut reasons_by_owner = BTreeMap::<TreeNodeId, BTreeSet<InvalidationReasonKind>>::new();
+
+    for owner_node_id in owner_node_ids {
+        if !successor_owner_ids.contains(&owner_node_id) {
+            continue;
+        }
+
+        let predecessor_by_id = predecessor_descriptors.get(&owner_node_id);
+        let successor_by_id = successor_descriptors.get(&owner_node_id);
+        let descriptor_ids = predecessor_by_id
+            .into_iter()
+            .flat_map(|descriptors| descriptors.keys())
+            .chain(
+                successor_by_id
+                    .into_iter()
+                    .flat_map(|descriptors| descriptors.keys()),
+            )
+            .cloned()
+            .collect::<BTreeSet<_>>();
+
+        for descriptor_id in descriptor_ids {
+            let predecessor =
+                predecessor_by_id.and_then(|descriptors| descriptors.get(&descriptor_id));
+            let successor = successor_by_id.and_then(|descriptors| descriptors.get(&descriptor_id));
+            match (predecessor, successor) {
+                (Some(previous), Some(next)) => {
+                    if previous.target_node_id.is_none() && next.target_node_id.is_some() {
+                        reasons_by_owner
+                            .entry(owner_node_id)
+                            .or_default()
+                            .insert(InvalidationReasonKind::DependencyAdded);
+                    }
+                    if previous.target_node_id.is_some() && next.target_node_id.is_none() {
+                        reasons_by_owner
+                            .entry(owner_node_id)
+                            .or_default()
+                            .insert(InvalidationReasonKind::DependencyRemoved);
+                    }
+                    if descriptor_reclassified(previous, next) {
+                        reasons_by_owner
+                            .entry(owner_node_id)
+                            .or_default()
+                            .insert(InvalidationReasonKind::DependencyReclassified);
+                    }
+                }
+                (Some(_), None) => {
+                    reasons_by_owner
+                        .entry(owner_node_id)
+                        .or_default()
+                        .insert(InvalidationReasonKind::DependencyRemoved);
+                }
+                (None, Some(_)) => {
+                    reasons_by_owner
+                        .entry(owner_node_id)
+                        .or_default()
+                        .insert(InvalidationReasonKind::DependencyAdded);
+                }
+                (None, None) => {}
+            }
+        }
+    }
+
+    reasons_by_owner
+        .into_iter()
+        .flat_map(|(node_id, reasons)| {
+            reasons
+                .into_iter()
+                .map(move |reason| InvalidationSeed { node_id, reason })
+        })
+        .collect()
+}
+
+fn descriptors_by_owner_and_id(
+    descriptors: Vec<DependencyDescriptor>,
+) -> BTreeMap<TreeNodeId, BTreeMap<String, DependencyDescriptor>> {
+    descriptors
+        .into_iter()
+        .fold(BTreeMap::new(), |mut by_owner, descriptor| {
+            by_owner
+                .entry(descriptor.owner_node_id)
+                .or_insert_with(BTreeMap::new)
+                .insert(descriptor.descriptor_id.clone(), descriptor);
+            by_owner
+        })
+}
+
+fn descriptor_reclassified(previous: &DependencyDescriptor, next: &DependencyDescriptor) -> bool {
+    previous.kind != next.kind
+        || previous.requires_rebind_on_structural_change
+            != next.requires_rebind_on_structural_change
+        || dependency_carrier_family(&previous.carrier_detail)
+            != dependency_carrier_family(&next.carrier_detail)
+        || previous
+            .target_node_id
+            .zip(next.target_node_id)
+            .is_some_and(|(previous_target, next_target)| previous_target != next_target)
+}
+
+fn dependency_carrier_family(carrier_detail: &str) -> &str {
+    carrier_detail
+        .split_once(':')
+        .map_or(carrier_detail, |(family, _)| family)
 }
 
 fn adapt_local_candidate(
@@ -2482,6 +2658,52 @@ mod tests {
                 node_id: TreeNodeId(4),
                 reason: InvalidationReasonKind::StructuralRebindRequired,
             }]
+        );
+    }
+
+    #[test]
+    fn structural_invalidation_seeds_mark_formula_catalog_dynamic_release_reclassification() {
+        let predecessor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DynamicResolved {
+                target_node_id: TreeNodeId(2),
+                carrier_id: "carrier:dynamic:auto".to_string(),
+                detail: "resolved_before_release".to_string(),
+            }),
+        }]);
+        let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DynamicPotential {
+                carrier_id: "carrier:dynamic:auto".to_string(),
+                detail: "released_to_runtime".to_string(),
+            }),
+        }]);
+        let structural_snapshot = snapshot();
+
+        let seeds = derive_structural_invalidation_seeds_for_catalogs(
+            &structural_snapshot,
+            &structural_snapshot,
+            &predecessor_catalog,
+            &successor_catalog,
+            &[],
+        );
+
+        assert_eq!(
+            seeds,
+            vec![
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyRemoved,
+                },
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::DependencyReclassified,
+                },
+            ]
         );
     }
 

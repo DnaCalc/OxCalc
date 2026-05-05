@@ -1,0 +1,71 @@
+{
+  "run_id": "w041-optimized-core-residual-blocker-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w041.validation.v1",
+  "status": "optimized_core_w041_dynamic_transition_packet_valid",
+  "validation_rows": [
+    {
+      "command": "cargo test -p oxcalc-core structural_invalidation_seeds_mark_formula_catalog_dynamic_release_reclassification",
+      "status": "passed",
+      "evidence": "new unit test proves automatic DependencyRemoved and DependencyReclassified seeds from predecessor/successor formula-catalog descriptor delta"
+    },
+    {
+      "command": "cargo test -p oxcalc-core treecalc_fixture",
+      "status": "passed",
+      "evidence": "26 checked-in TreeCalc fixtures execute against local runtime with zero fixture expectation mismatches"
+    },
+    {
+      "command": "cargo test -p oxcalc-core treecalc_runner",
+      "status": "passed",
+      "evidence": "TreeCalc runner emits replay artifacts and validates the automatic dynamic transition seed artifacts"
+    },
+    {
+      "command": "cargo run -p oxcalc-tracecalc-cli -- treecalc w041-optimized-core-automatic-dynamic-transition-001",
+      "status": "passed",
+      "evidence": "TreeCalc replay emitted 26 cases with 0 expectation mismatches"
+    },
+    {
+      "command": "cargo test -p oxcalc-core",
+      "status": "passed",
+      "evidence": "full oxcalc-core test suite passed with 53 library tests, 5 upstream-host scaffolding tests, and 0 doc tests"
+    },
+    {
+      "command": "scripts/check-worksets.ps1",
+      "status": "passed",
+      "evidence": "workset register and bead status validator passed with W041.2 in progress"
+    },
+    {
+      "command": "br dep cycles --json",
+      "status": "passed",
+      "evidence": "0 bead dependency cycles"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed",
+      "evidence": "no whitespace errors; CRLF warnings only"
+    }
+  ],
+  "artifact_checks": [
+    {
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+      "expected": {
+        "case_count": 26,
+        "expectation_mismatch_count": 0
+      },
+      "status": "passed"
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+      "expected_reasons": [
+        "DependencyRemoved",
+        "DependencyReclassified"
+      ],
+      "manual_seed_override": false,
+      "status": "passed"
+    }
+  ],
+  "promotion_guard": {
+    "match_promoted_count": 0,
+    "full_optimized_core_verification_promoted": false,
+    "release_grade_verification_promoted": false
+  }
+}

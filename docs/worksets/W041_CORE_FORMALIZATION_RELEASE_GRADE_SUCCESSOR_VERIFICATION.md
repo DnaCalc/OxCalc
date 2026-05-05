@@ -97,14 +97,15 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-sui.1_residual_successor_obligation_map_validated`
+- execution_state: `calc-sui.2_optimized_core_dynamic_transition_evidence_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-sui.2` optimized/core residual blocker implementation and differential closure is next
-  - full optimized/core-engine verification, Rust totality/refinement, full Lean/TLA verification, Stage 2 production policy, operated services, retained-history service, independent evaluator breadth, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, pack-grade replay, C5, and release-grade verification remain unpromoted
+  - `calc-sui.3` Rust totality/refinement and panic-boundary discharge is next
+  - snapshot-fence counterpart, capability-view fence counterpart, callable metadata projection, full optimized/core-engine verification, Rust totality/refinement, full Lean/TLA verification, Stage 2 production policy, operated services, retained-history service, independent evaluator breadth, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, pack-grade replay, C5, and release-grade verification remain unpromoted
 
 Latest evidence:
 
 1. `docs/spec/core-engine/w041-formalization/W041_RESIDUAL_RELEASE_GRADE_SUCCESSOR_OBLIGATION_MAP.md` records the `calc-sui.1` residual successor obligation map. The packet `w041-residual-release-grade-successor-obligation-map-001` maps 15 post-W040 residual lanes into 28 W041 obligations, 12 promotion-target gates, current OxFml W073 typed-only conditional-formatting intake, owner beads, required evidence, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, independent evaluator breadth, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, or general OxFunc kernels.
+2. `docs/spec/core-engine/w041-formalization/W041_OPTIMIZED_CORE_RESIDUAL_BLOCKER_IMPLEMENTATION_AND_DIFFERENTIAL_CLOSURE.md` records the `calc-sui.2` optimized/core packet. The TreeCalc run `w041-optimized-core-automatic-dynamic-transition-001` emits 26 cases with 0 expectation mismatches and proves the exercised dynamic resolved-to-potential successor formula-catalog transition derives `DependencyRemoved` and `DependencyReclassified` without manual invalidation seeds. Snapshot-fence counterpart, capability-view fence counterpart, and callable metadata projection remain exact blockers with zero match promotion.

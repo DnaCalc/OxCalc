@@ -1,0 +1,51 @@
+{
+  "case_id": "tc_local_dynamic_resolved_publish_001",
+  "events": [
+    {
+      "case_id": "tc_local_dynamic_resolved_publish_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "detail": "owner_node:node:3;target_node:node:2;detail:dynamic_resolved:node:2:carrier:dynamic:resolved:resolved_late_bound_projection",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 3
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_dynamic_resolved_publish_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 4,
+      "target_set": [
+        3
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_dynamic_resolved_publish_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_dynamic_resolved_publish_001:publication",
+      "step_id": 5
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 6
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

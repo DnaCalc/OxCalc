@@ -1,0 +1,93 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+  "description": "A published resolved dynamic dependency is rerun with a successor formula catalog that releases the binding back to a dynamic potential reference, proving automatic dependency-release and dependency-reclassification invalidation seeds without manual overrides.",
+  "snapshot_id": 42,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "DynamicSource",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "11"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "DynamicConsumer",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+      "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+      "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "target_node_id": 2,
+            "carrier_id": "carrier:dynamic:auto-release-reclass",
+            "detail": "resolved_before_automatic_release"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "post_edit": {
+    "successor_snapshot_start_id": 43,
+    "edits": [],
+    "formulas": [
+      {
+        "owner_node_id": 3,
+        "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+        "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+        "expression": {
+          "Reference": {
+            "DynamicPotential": {
+              "carrier_id": "carrier:dynamic:auto-release-reclass",
+              "detail": "released_to_runtime_resolution"
+            }
+          }
+        }
+      }
+    ],
+    "invalidation_seeds": [],
+    "expected_impacts": [],
+    "expected_affected_node_ids": [],
+    "expected": {
+      "result_state": "rejected",
+      "evaluation_order": [3],
+      "reject_kind": "HostInjectedFailure"
+    }
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "11"
+    },
+    "evaluation_order": [3],
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ]
+  }
+}

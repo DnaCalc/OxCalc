@@ -1,0 +1,111 @@
+{
+  "schema_version": "oxcalc.formal_inventory.w037_proof_model_closure.validation.v1",
+  "run_id": "w037-proof-model-closure-001",
+  "validation_state": "w037_proof_model_closure_inventory_validated",
+  "commands": [
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\Stage1State.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W033FirstSlice.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W033PostSlice.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W034PublicationFences.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W034DependenciesOverlays.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W034LetLambdaReplay.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W034RefinementObligations.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W035AssumptionDischarge.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W035SeamProofMap.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W036LeanCoverageExpansion.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W036CallableBoundaryInventory.lean",
+      "result": "passed"
+    },
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W037ProofModelClosureInventory.lean",
+      "result": "passed"
+    },
+    {
+      "command": "rg -n \"^\\s*(axiom|sorry|admit)\\b\" formal/lean",
+      "result": "passed_no_matches"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineStage1.tla formal\\tla\\CoreEngineStage1.smoke.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEnginePostW033.tla formal\\tla\\CoreEnginePostW033.smoke.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW034Interleavings.tla formal\\tla\\CoreEngineW034Interleavings.smoke.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW035NonRoutineInterleavings.tla formal\\tla\\CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW035NonRoutineInterleavings.tla formal\\tla\\CoreEngineW035NonRoutineInterleavings.partition_gap.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW035NonRoutineInterleavings.tla formal\\tla\\CoreEngineW035NonRoutineInterleavings.multi_reader.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.bounded_ready.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.fence_reject.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.multi_reader.cfg",
+      "result": "passed"
+    }
+  ],
+  "no_promotion_claims": {
+    "full_lean_verification": true,
+    "full_tla_verification": true,
+    "general_oxfunc_kernel": true,
+    "stage2_policy": true,
+    "pack_grade_replay": true,
+    "c5": true
+  }
+}

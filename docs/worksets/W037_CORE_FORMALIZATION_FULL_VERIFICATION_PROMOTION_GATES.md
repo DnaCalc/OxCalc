@@ -94,14 +94,14 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 
 ## Current Status
 
-- execution_state: `calc-ubd.4_direct_oxfml_evaluator_validated`
+- execution_state: `calc-ubd.5_proof_model_inventory_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.5` is the next ready W037 bead
-  - `calc-ubd.6` through `calc-ubd.9` remain blocked by the sequential W037 path
-  - full Lean/TLA verification remains open
+  - `calc-ubd.6` is the next ready W037 bead
+  - `calc-ubd.7` through `calc-ubd.9` remain blocked by the sequential W037 path
+  - W037 proof/model inventory is exercised with 12 Lean files and 11 routine TLC configs, but full Lean/TLA verification remains open
   - full TraceCalc oracle promotion remains unclaimed because authority exclusions and non-TraceCalc gates remain
   - full optimized/core-engine verification remains open with five explicit W037 residual conformance blockers
   - fully independent evaluator diversity remains open
@@ -116,3 +116,4 @@ Latest W037 evidence:
 2. `docs/spec/core-engine/w037-formalization/W037_TRACECALC_OBSERVABLE_CLOSURE_AND_MULTI_READER_REPLAY.md` records the `calc-ubd.1` TraceCalc observable-closure slice and the W037 oracle matrix run with 32 rows, 31 covered rows, 0 uncovered rows, 1 authority-excluded row, 0 failed/missing rows, and no full oracle claim.
 3. `docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md` records the `calc-ubd.3` optimized/core-engine conformance decision slice. The TreeCalc run `w037-optimized-core-conformance-treecalc-001` emits 24 cases with 0 expectation mismatches and adds a resolved dynamic dependency publication case. The implementation-conformance run `w037-implementation-conformance-closure-001` emits 6 decision rows, 1 fixed/promoted row, 5 residual blockers, 1 match-promoted row, 0 failed rows, and no full optimized/core-engine verification claim.
 4. `docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md` records the `calc-ubd.4` direct OxFml evaluator slice. The upstream-host run `w037-direct-oxfml-evaluator-001` emits 12 cases with 0 expectation mismatches, including 3 direct-OxFml rows, 2 `LET`/`LAMBDA` rows, and 1 W073 typed conditional-formatting guard row. Pack-grade replay and C5 remain unpromoted.
+5. `docs/spec/core-engine/w037-formalization/W037_LEAN_TLA_PROOF_MODEL_CLOSURE_INVENTORY.md` records the `calc-ubd.5` proof/model inventory slice. The formal-inventory packet `w037-proof-model-closure-001` records 12 Lean files checked, 11 routine TLC configs checked, 0 explicit Lean axioms, 0 Lean `sorry`/`admit` placeholders, 0 TLC failed configs, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc kernel promotion.

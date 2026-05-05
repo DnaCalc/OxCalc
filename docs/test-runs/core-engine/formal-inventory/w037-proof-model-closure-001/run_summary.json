@@ -1,0 +1,32 @@
+{
+  "schema_version": "oxcalc.formal_inventory.w037_proof_model_closure.run_summary.v1",
+  "run_id": "w037-proof-model-closure-001",
+  "validation_state": "w037_proof_model_closure_inventory_validated",
+  "lean_version": "4.29.1",
+  "tlc_version": "2.19 of 08 August 2024",
+  "lean_file_count": 12,
+  "lean_files_checked": 12,
+  "lean_explicit_axiom_count": 0,
+  "lean_sorry_placeholder_count": 0,
+  "tla_routine_config_count": 11,
+  "tla_configs_checked": 11,
+  "tla_failed_config_count": 0,
+  "target_closed_rows": 8,
+  "classified_open_rows": 3,
+  "all_checked_artifacts_passed": true,
+  "promotion_claims": {
+    "full_lean_verification_promoted": false,
+    "full_tla_verification_promoted": false,
+    "general_oxfunc_kernel_promoted": false,
+    "stage2_policy_promoted": false,
+    "pack_grade_replay_promoted": false,
+    "c5_promoted": false
+  },
+  "primary_artifacts": [
+    "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean",
+    "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/lean_inventory.json",
+    "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+    "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+    "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json"
+  ]
+}

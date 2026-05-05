@@ -1,0 +1,124 @@
+{
+  "schema_version": "oxcalc.formal_inventory.w037_proof_model_closure.tla_inventory.v1",
+  "run_id": "w037-proof-model-closure-001",
+  "command_family": "tlc_routine_config_check",
+  "config_count": 11,
+  "passed_config_count": 11,
+  "failed_config_count": 0,
+  "configs": [
+    {
+      "model": "formal/tla/CoreEngineStage1.tla",
+      "config": "formal/tla/CoreEngineStage1.smoke.cfg",
+      "result": "no_error_found",
+      "states_generated": 4855,
+      "distinct_states": 908,
+      "depth": 5
+    },
+    {
+      "model": "formal/tla/CoreEnginePostW033.tla",
+      "config": "formal/tla/CoreEnginePostW033.smoke.cfg",
+      "result": "no_error_found",
+      "states_generated": 814981,
+      "distinct_states": 49614,
+      "depth": 5
+    },
+    {
+      "model": "formal/tla/CoreEngineW034Interleavings.tla",
+      "config": "formal/tla/CoreEngineW034Interleavings.smoke.cfg",
+      "result": "no_error_found",
+      "states_generated": 247984,
+      "distinct_states": 19373,
+      "depth": 5
+    },
+    {
+      "model": "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+      "config": "formal/tla/CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg",
+      "result": "no_error_found",
+      "states_generated": 5224,
+      "distinct_states": 1443,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+      "config": "formal/tla/CoreEngineW035NonRoutineInterleavings.partition_gap.cfg",
+      "result": "no_error_found",
+      "states_generated": 8205,
+      "distinct_states": 1924,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+      "config": "formal/tla/CoreEngineW035NonRoutineInterleavings.multi_reader.cfg",
+      "result": "no_error_found",
+      "states_generated": 30633,
+      "distinct_states": 5408,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+      "config": "formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+      "result": "no_error_found",
+      "states_generated": 60632,
+      "distinct_states": 10975,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+      "config": "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+      "result": "no_error_found",
+      "states_generated": 60632,
+      "distinct_states": 10975,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+      "config": "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+      "result": "no_error_found",
+      "states_generated": 15306,
+      "distinct_states": 3395,
+      "depth": 6
+    },
+    {
+      "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+      "config": "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg",
+      "result": "no_error_found",
+      "states_generated": 54690,
+      "distinct_states": 6490,
+      "depth": 5
+    },
+    {
+      "model": "formal/tla/CoreEngineW036Stage2Partition.tla",
+      "config": "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg",
+      "result": "no_error_found",
+      "states_generated": 120062,
+      "distinct_states": 15872,
+      "depth": 6
+    }
+  ],
+  "closure_rows": [
+    {
+      "row_id": "w037.model.tla-bounded-model-inventory",
+      "obligation_id": "W037-OBL-008",
+      "disposition": "checked_bounded_model",
+      "claim_limit": "routine bounded TLC model set, not total TLA verification"
+    },
+    {
+      "row_id": "w037.model.full-tla-verification-bound",
+      "obligation_id": "W037-OBL-008",
+      "disposition": "model_bound",
+      "claim_limit": "full TLA verification remains open"
+    },
+    {
+      "row_id": "w037.model.stage2-replay-equivalence-deferred",
+      "obligation_id": "W037-OBL-009",
+      "disposition": "deferred_to_stage2_replay",
+      "claim_limit": "deterministic Stage 2 replay equivalence is owned by calc-ubd.6"
+    },
+    {
+      "row_id": "w037.model.pack-c5-deferred",
+      "obligation_id": "W037-OBL-013",
+      "disposition": "deferred_to_pack_gate",
+      "claim_limit": "pack-grade replay and C5 reassessment are owned by calc-ubd.8"
+    }
+  ]
+}

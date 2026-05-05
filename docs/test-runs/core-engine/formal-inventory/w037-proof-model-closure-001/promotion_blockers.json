@@ -1,0 +1,74 @@
+{
+  "schema_version": "oxcalc.formal_inventory.w037_proof_model_closure.promotion_blockers.v1",
+  "run_id": "w037-proof-model-closure-001",
+  "blocker_count": 7,
+  "rows": [
+    {
+      "blocker_id": "proof.full_lean_verification_not_promoted",
+      "owner": "calc-ubd.5; successor proof-hardening beads if added",
+      "state": "classified_open",
+      "evidence": [
+        "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/lean_inventory.json"
+      ],
+      "promotion_consequence": "Checked Lean inventory exists with zero explicit axioms and zero sorry placeholders, but it is not a total proof over the Rust engine."
+    },
+    {
+      "blocker_id": "model.full_tla_verification_not_promoted",
+      "owner": "calc-ubd.5; calc-ubd.6",
+      "state": "classified_open",
+      "evidence": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "promotion_consequence": "Routine bounded TLC configs pass, but full TLA verification remains open."
+    },
+    {
+      "blocker_id": "callable.general_oxfunc_kernel_not_promoted",
+      "owner": "OxFunc; calc-ubd.5 boundary classification",
+      "state": "opaque_external_boundary",
+      "evidence": [
+        "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
+        "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean"
+      ],
+      "promotion_consequence": "OxCalc closes only the narrow carrier classification consumed by its proof/model inventory; it does not own general OxFunc LAMBDA kernel semantics."
+    },
+    {
+      "blocker_id": "stage2.replay_equivalence_not_bound",
+      "owner": "calc-ubd.6",
+      "state": "deferred_to_next_gate",
+      "evidence": [
+        "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "promotion_consequence": "Stage 2 policy remains unpromoted until deterministic replay and partition promotion criteria are bound."
+    },
+    {
+      "blocker_id": "pack.grade_replay_not_promoted",
+      "owner": "calc-ubd.8",
+      "state": "blocked",
+      "evidence": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "promotion_consequence": "Pack-grade replay remains unpromoted by proof/model inventory alone."
+    },
+    {
+      "blocker_id": "capability.c5_not_promoted",
+      "owner": "calc-ubd.8",
+      "state": "blocked",
+      "evidence": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "promotion_consequence": "C5 remains unpromoted by proof/model inventory alone."
+    },
+    {
+      "blocker_id": "spec.evolution_not_frozen",
+      "owner": "calc-ubd.9; successor beads if evidence changes specs",
+      "state": "guarded_open",
+      "evidence": [
+        "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean"
+      ],
+      "promotion_consequence": "The proof/model inventory records current closure boundaries without freezing future spec evolution."
+    }
+  ]
+}

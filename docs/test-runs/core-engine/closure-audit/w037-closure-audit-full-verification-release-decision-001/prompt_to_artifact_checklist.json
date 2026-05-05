@@ -1,0 +1,83 @@
+{
+  "run_id": "w037-closure-audit-full-verification-release-decision-001",
+  "items": [
+    {
+      "requirement": "incorporate OxFml formatting updates if needed",
+      "evidence": [
+        "docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_top_rank_guard_001.json",
+        "docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md"
+      ],
+      "coverage": "covered_for_exercised_slice",
+      "promotion_consequence": "no_oxcalc_patch_or_oxfml_handoff_required"
+    },
+    {
+      "requirement": "continue W037 formalization beads sequentially",
+      "evidence": [
+        ".beads/issues.jsonl",
+        "docs/worksets/W037_CORE_FORMALIZATION_FULL_VERIFICATION_PROMOTION_GATES.md"
+      ],
+      "coverage": "covered_for_w037_target",
+      "promotion_consequence": "successor_w038_required"
+    },
+    {
+      "requirement": "formalization should improve specs and implementation rather than test a fixed initial spec",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md",
+        "docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md"
+      ],
+      "coverage": "covered_for_w037_target",
+      "promotion_consequence": "spec_evolution_hooks_carried_to_w038"
+    },
+    {
+      "requirement": "TraceCalc stands as correctness oracle for spec purposes",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_TRACECALC_OBSERVABLE_CLOSURE_AND_MULTI_READER_REPLAY.md"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "full_oracle_authority_not_promoted"
+    },
+    {
+      "requirement": "verify TraceCalc and optimized implementations",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_TRACECALC_OBSERVABLE_CLOSURE_AND_MULTI_READER_REPLAY.md",
+        "docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "full_optimized_core_verification_not_promoted"
+    },
+    {
+      "requirement": "include OxFml and narrow LET/LAMBDA carrier interaction",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md"
+      ],
+      "coverage": "covered_for_exercised_slice",
+      "promotion_consequence": "general_oxfunc_kernels_out_of_oxcalc_scope"
+    },
+    {
+      "requirement": "deepen Lean/TLA and formal modeling leverage",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_LEAN_TLA_PROOF_MODEL_CLOSURE_INVENTORY.md",
+        "docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "full_lean_tla_verification_not_promoted"
+    },
+    {
+      "requirement": "continue operated assurance and performance/scaling lanes from semantic evidence",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_OPERATED_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_SERVICE_PILOT.md"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "operated_service_not_promoted"
+    },
+    {
+      "requirement": "make pack and Stage 2 decisions from direct evidence only",
+      "evidence": [
+        "docs/spec/core-engine/w037-formalization/W037_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_CANDIDATE_DECISION.md",
+        "docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md"
+      ],
+      "coverage": "covered_as_no_promotion_decisions",
+      "promotion_consequence": "capability_remains_cap_C4_distill_valid"
+    }
+  ]
+}

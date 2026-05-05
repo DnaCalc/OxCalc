@@ -1,0 +1,76 @@
+{
+  "run_id": "w037-closure-audit-full-verification-release-decision-001",
+  "successor_workset": "W038",
+  "residual_lanes": [
+    {
+      "id": "W038-LANE-001",
+      "area": "TraceCalc oracle authority",
+      "w037_evidence": "32 matrix rows, 31 covered rows, 1 authority-excluded row, 0 failed/missing rows",
+      "current_consequence": "full_oracle_authority_not_promoted",
+      "successor_owner": "calc-zsr.2"
+    },
+    {
+      "id": "W038-LANE-002",
+      "area": "optimized/core-engine conformance",
+      "w037_evidence": "6 decision rows, 1 fixed/promoted row, 5 residual blockers, 0 failed rows",
+      "current_consequence": "full_optimized_core_verification_not_promoted",
+      "successor_owner": "calc-zsr.3"
+    },
+    {
+      "id": "W038-LANE-003",
+      "area": "Lean/TLA proof and model closure",
+      "w037_evidence": "12 Lean files checked, 11 routine TLC configs checked, no explicit axioms, no sorry/admit placeholders",
+      "current_consequence": "full_lean_tla_verification_not_promoted",
+      "successor_owner": "calc-zsr.4"
+    },
+    {
+      "id": "W038-LANE-004",
+      "area": "Stage 2 deterministic partition replay",
+      "w037_evidence": "7 criteria rows, 3 satisfied rows, 4 blocked rows, explicit observable-result invariance requirements",
+      "current_consequence": "stage2_policy_not_promoted",
+      "successor_owner": "calc-zsr.5"
+    },
+    {
+      "id": "W038-LANE-005",
+      "area": "operated continuous assurance service",
+      "w037_evidence": "10 service-readiness criteria, 4 blocked service criteria, simulated/history evidence only",
+      "current_consequence": "operated_assurance_service_not_promoted",
+      "successor_owner": "calc-zsr.6"
+    },
+    {
+      "id": "W038-LANE-006",
+      "area": "operated cross-engine differential service",
+      "w037_evidence": "9 differential rows and service-readiness criteria, not an operated service",
+      "current_consequence": "operated_cross_engine_service_not_promoted",
+      "successor_owner": "calc-zsr.6"
+    },
+    {
+      "id": "W038-LANE-007",
+      "area": "alert/quarantine enforcement",
+      "w037_evidence": "8 quarantine rules and readiness criteria, no enforcing service",
+      "current_consequence": "alert_quarantine_service_not_promoted",
+      "successor_owner": "calc-zsr.6"
+    },
+    {
+      "id": "W038-LANE-008",
+      "area": "fully independent evaluator diversity",
+      "w037_evidence": "direct OxFml slice and differential rows exist, but fully independent evaluator authority remains absent",
+      "current_consequence": "fully_independent_evaluator_not_promoted",
+      "successor_owner": "calc-zsr.7"
+    },
+    {
+      "id": "W038-LANE-009",
+      "area": "OxFml seam and formatting watch",
+      "w037_evidence": "W073 typed conditional-formatting guard row and format_delta/display_delta watch text",
+      "current_consequence": "watch_lane_carried_without_handoff",
+      "successor_owner": "calc-zsr.7"
+    },
+    {
+      "id": "W038-LANE-010",
+      "area": "pack-grade replay governance and C5",
+      "w037_evidence": "13 satisfied inputs, 22 blockers, highest honest capability cap.C4.distill_valid",
+      "current_consequence": "pack_grade_replay_and_c5_not_promoted",
+      "successor_owner": "calc-zsr.8"
+    }
+  ]
+}

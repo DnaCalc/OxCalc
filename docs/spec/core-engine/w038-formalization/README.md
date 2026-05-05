@@ -1,0 +1,19 @@
+# W038 Formalization Artifact Root
+
+This directory is reserved for W038 evidence packets.
+
+W038 starts from `docs/spec/core-engine/w037-formalization/W037_CLOSURE_AUDIT_AND_FULL_VERIFICATION_RELEASE_DECISION.md` and owns the next release-grade hardening tranche for remaining full-verification blockers, including TraceCalc authority discharge, optimized/core-engine conformance blocker closure, proof/model assumption discharge, deterministic Stage 2 partition replay, operated assurance and cross-engine service evidence, independent evaluator diversity, OxFml seam and formatting watch rows, pack-grade replay governance, and C5 release decision.
+
+The governing workset is `docs/worksets/W038_CORE_FORMALIZATION_RELEASE_GRADE_CLOSURE_HARDENING.md`.
+
+Expected first packets:
+
+1. W038 residual release-grade obligation ledger and objective map.
+2. W038 TraceCalc oracle authority and authority-exclusion discharge.
+3. W038 optimized core-engine conformance blocker closure and fixes.
+4. W038 proof-model assumption discharge and totality boundary hardening.
+5. W038 Stage 2 partition replay and semantic-equivalence execution.
+6. W038 operated assurance alert-quarantine and cross-engine service.
+7. W038 independent evaluator diversity and OxFml seam watch closure.
+8. W038 pack-grade replay governance and C5 release decision.
+9. W038 closure audit and release-grade verification decision.

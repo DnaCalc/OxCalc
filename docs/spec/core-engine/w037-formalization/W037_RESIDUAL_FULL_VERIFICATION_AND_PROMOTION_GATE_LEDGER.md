@@ -169,6 +169,8 @@ Post-`calc-ubd.7` note: `w037-operated-assurance-service-pilot-001` records the 
 
 Post-`calc-ubd.8` note: `w037-pack-c5-candidate-decision-001` records the W037 pack-grade replay governance and C5 candidate decision. It records 13 satisfied inputs, 22 blockers, 0 missing artifacts, `cap.C4.distill_valid` as highest honest capability, removes direct OxFml evaluator absence for the exercised upstream-host slice, and keeps pack-grade replay, C5, Stage 2 policy, full verification, operated services, and fully independent evaluator diversity unpromoted.
 
+Post-`calc-ubd.9` note: `w037-closure-audit-full-verification-release-decision-001` records the W037 closure audit and release decision. It keeps release-grade full verification, C5, pack-grade replay, Stage 2 policy, operated services, alert/quarantine enforcement, and fully independent evaluator diversity unpromoted; it routes exact residual lanes to W038 under `calc-zsr`.
+
 ## 9. Semantic-Equivalence Statement
 
 This bead adds a W037 residual ledger and updates planning/status surfaces only. It does not change coordinator scheduling, invalidation strategy, dependency graph construction, soft-reference update behavior, recalc behavior, publication semantics, reject policy, overlay lifecycle behavior, TraceCalc semantics, TreeCalc/CoreEngine runtime behavior, Lean/TLA model semantics, pack-decision logic, continuous-assurance runner semantics, or OxFml/OxFunc evaluator behavior.

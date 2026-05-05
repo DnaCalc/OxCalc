@@ -1,7 +1,7 @@
 # OxCalc Workset Register
 
 Status: `active_register`
-Date: 2026-04-03
+Date: 2026-05-05
 
 ## 1. Purpose
 This is the live ordered workset register for current OxCalc execution.
@@ -298,5 +298,21 @@ It does mean:
    W036 residuals are assigned to W037 proof, implementation, replay, direct-OxFml, operated-service, pack, deferral, or successor obligations; TraceCalc observable closure and optimized/core-engine conformance are directly evidenced or blocked; direct OxFml evaluator and narrow `LET`/`LAMBDA` seam evidence is exercised or named as a blocker; Lean/TLA proof/model claims are checked and assumption-bounded; Stage 2 deterministic replay and partition promotion criteria include semantic-equivalence evidence; operated assurance/service claims use operated artifacts rather than simulation; pack/C5 decisions state exact evidence consequence; and the closure audit maps the full-formalization objective to artifacts before any release-grade claim.
 6. initial_epic_lanes:
    residual full-verification and promotion-gate ledger, TraceCalc observable closure and multi-reader replay, optimized/core-engine conformance implementation closure, direct OxFml evaluator and `LET`/`LAMBDA` seam evidence, Lean/TLA proof and model closure inventory, Stage 2 deterministic replay and partition promotion criteria, operated continuous assurance and cross-engine service pilot, pack-grade replay governance and C5 candidate decision, closure audit and full-verification release decision
+7. rollout_mode:
+   `execution_target`
+
+### W038 Core Formalization Release-Grade Closure Hardening
+1. purpose:
+   continue after W037 by converting release-grade residual blockers into direct TraceCalc authority, optimized/core-engine conformance, proof/model assumption discharge, Stage 2 replay-equivalence, operated-service, independent-diversity, OxFml seam/watch, pack-grade replay, and C5 evidence where possible, while allowing specs and scope to evolve from new evidence rather than treating earlier specs or implementations as immutable targets.
+2. depends_on:
+   `W037`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W038_CORE_FORMALIZATION_RELEASE_GRADE_CLOSURE_HARDENING.md`, `docs/spec/core-engine/w037-formalization/W037_CLOSURE_AUDIT_AND_FULL_VERIFICATION_RELEASE_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W037 residuals are assigned to W038 proof, implementation, replay, service, diversity, pack, handoff/watch, deferral, or successor obligations; TraceCalc authority exclusions are discharged, accepted, or kept as exact blockers; optimized/core-engine conformance blockers are fixed, diff-promoted, spec-evolved, or carried without declared-gap match promotion; Lean/TLA assumptions and totality boundaries are checked or blocked; Stage 2 partition replay and semantic-equivalence evidence exists before policy promotion; operated assurance, cross-engine service, and alert/quarantine claims use operated artifacts; independent evaluator diversity is backed by independent implementation authority; OxFml formatting and `LET`/`LAMBDA` seam rows remain current; pack/C5 decisions state exact evidence consequence; and the closure audit maps release-grade objectives to artifacts before any promotion claim.
+6. initial_epic_lanes:
+   residual release-grade obligation ledger and objective map, TraceCalc oracle authority and authority-exclusion discharge, optimized core-engine conformance blocker closure and fixes, proof-model assumption discharge and totality boundary hardening, Stage 2 partition replay and semantic-equivalence execution, operated assurance alert-quarantine and cross-engine service, independent evaluator diversity and OxFml seam watch closure, pack-grade replay governance and C5 release decision, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`

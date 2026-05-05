@@ -94,12 +94,12 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 
 ## Current Status
 
-- execution_state: `calc-ubd.8_pack_c5_candidate_decision_validated`
+- execution_state: `calc-ubd.9_closure_audit_full_verification_release_decision`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.9` is the next ready W037 bead
+  - W038 successor tranche is created under `calc-zsr`
   - W037 proof/model inventory is exercised with 12 Lean files and 11 routine TLC configs, but full Lean/TLA verification remains open
   - full TraceCalc oracle promotion remains unclaimed because authority exclusions and non-TraceCalc gates remain
   - full optimized/core-engine verification remains open with five explicit W037 residual conformance blockers
@@ -119,3 +119,4 @@ Latest W037 evidence:
 6. `docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md` records the `calc-ubd.6` Stage 2 criteria slice. The criteria packet `w037-stage2-deterministic-replay-criteria-001` records 7 criteria rows, 3 satisfied rows, 4 blocked rows, a checked Lean promotion predicate, 3 checked Stage 2 TLC configs, explicit observable-result invariance requirements, and no Stage 2 promotion candidate.
 7. `docs/spec/core-engine/w037-formalization/W037_OPERATED_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_SERVICE_PILOT.md` records the `calc-ubd.7` operated assurance/service pilot slice. The continuous-assurance packet `w037-operated-assurance-service-pilot-001` records 16 source rows, 5 scheduled lanes, 9 differential rows, 11 history rows, 7 threshold rules, 8 quarantine rules, 10 readiness criteria, 4 blocked service criteria, 0 missing artifacts, 0 unexpected mismatches, 12 no-promotion reasons, and no operated service or cross-engine service promotion.
 8. `docs/spec/core-engine/w037-formalization/W037_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_CANDIDATE_DECISION.md` records the `calc-ubd.8` pack/C5 candidate slice. The pack-capability packet `w037-pack-c5-candidate-decision-001` records 13 satisfied inputs, 22 blockers, 0 missing artifacts, highest honest capability `cap.C4.distill_valid`, no direct OxFml evaluator absence blocker for the exercised slice, no C5 promotion, and no Stage 2 policy promotion.
+9. `docs/spec/core-engine/w037-formalization/W037_CLOSURE_AUDIT_AND_FULL_VERIFICATION_RELEASE_DECISION.md` records the `calc-ubd.9` closure-audit slice. The closure-audit packet `w037-closure-audit-full-verification-release-decision-001` keeps release-grade full verification, C5, pack-grade replay, Stage 2 policy, operated services, alert/quarantine enforcement, and fully independent evaluator diversity unpromoted, and routes the residual lanes to W038 under `calc-zsr`.

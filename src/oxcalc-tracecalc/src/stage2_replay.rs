@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W038/W039/W040/W041/W042 bounded Stage 2 partition replay and policy-governance evidence.
+//! W038/W039/W040/W041/W042/W043 bounded Stage 2 partition replay and policy-governance evidence.
 
 use std::collections::HashMap;
 use std::fs;
@@ -64,6 +64,19 @@ const W042_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.stage2_replay.w042.stage2_exact_blocker_register.v1";
 const W042_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w042.promotion_decision.v1";
 const W042_VALIDATION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w042.validation.v1";
+const W043_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.stage2_replay.w043.run_summary.v1";
+const W043_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.stage2_replay.w043.source_evidence_index.v1";
+const W043_POLICY_GATE_SCHEMA_V1: &str = "oxcalc.stage2_replay.w043.stage2_policy_gate_register.v1";
+const W043_PRODUCTION_PARTITION_ANALYZER_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w043.production_partition_analyzer_register.v1";
+const W043_SCHEDULER_EQUIVALENCE_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w043.scheduler_equivalence_register.v1";
+const W043_PACK_GRADE_EQUIVALENCE_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w043.pack_grade_equivalence_register.v1";
+const W043_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w043.stage2_exact_blocker_register.v1";
+const W043_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w043.promotion_decision.v1";
+const W043_VALIDATION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w043.validation.v1";
 
 const W036_STAGE2_TLA_RUN_SUMMARY: &str =
     "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json";
@@ -146,6 +159,29 @@ const W041_STAGE2_BLOCKERS_FOR_W042: &str = "docs/test-runs/core-engine/stage2-r
 const W041_STAGE2_PROMOTION_DECISION_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json";
 const W042_STAGE2_LEAN_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean";
+const W043_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json";
+const W043_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
+const W043_PROMOTION_TARGET_GATE_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json";
+const W043_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json";
+const W043_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json";
+const W043_OPTIMIZED_CORE_COUNTERPART: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json";
+const W043_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json";
+const W043_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json";
+const W043_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json";
+const W043_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json";
+const W043_RUST_REFINEMENT_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json";
+const W043_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json";
+const W043_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/validation.json";
+const W043_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json";
+const W043_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json";
+const W042_STAGE2_RUN_SUMMARY_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json";
+const W042_STAGE2_VALIDATION_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json";
+const W042_STAGE2_POLICY_GATE_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json";
+const W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json";
+const W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json";
+const W042_STAGE2_BLOCKERS_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json";
+const W042_STAGE2_PROMOTION_DECISION_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json";
+const W043_STAGE2_LEAN_FILE: &str = "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
 
 const TRACE_ACCEPT_RESULT: &str = "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_accept_publish_001/result.json";
 const TREE_INDEPENDENT_RESULT: &str = "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json";
@@ -261,6 +297,9 @@ impl Stage2ReplayRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<Stage2ReplayRunSummary, Stage2ReplayError> {
+        if run_id.contains("w043") {
+            return self.execute_w043(repo_root, run_id);
+        }
         if run_id.contains("w042") {
             return self.execute_w042(repo_root, run_id);
         }
@@ -524,6 +563,939 @@ impl Stage2ReplayRunner {
             formatting_watch_row_count,
             exact_remaining_blocker_count,
             failed_row_count,
+            stage2_policy_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w043(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<Stage2ReplayRunSummary, Stage2ReplayError> {
+        let relative_artifact_root =
+            relative_artifact_path(&["docs", "test-runs", "core-engine", "stage2-replay", run_id]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                Stage2ReplayError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            Stage2ReplayError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w043_obligation_summary = read_json(repo_root, W043_OBLIGATION_SUMMARY)?;
+        let w043_obligation_map = read_json(repo_root, W043_OBLIGATION_MAP)?;
+        let w043_promotion_target_gate_map = read_json(repo_root, W043_PROMOTION_TARGET_GATE_MAP)?;
+        let w043_formatting_intake = read_json(repo_root, W043_FORMATTING_INTAKE)?;
+        let w043_optimized_summary = read_json(repo_root, W043_OPTIMIZED_CORE_SUMMARY)?;
+        let w043_optimized_counterpart = read_json(repo_root, W043_OPTIMIZED_CORE_COUNTERPART)?;
+        let w043_optimized_blockers = read_json(repo_root, W043_OPTIMIZED_CORE_BLOCKERS)?;
+        let w043_treecalc_summary = read_json(repo_root, W043_TREECALC_SUMMARY)?;
+        let w043_rust_summary = read_json(repo_root, W043_RUST_SUMMARY)?;
+        let w043_rust_validation = read_json(repo_root, W043_RUST_VALIDATION)?;
+        let w043_rust_refinement = read_json(repo_root, W043_RUST_REFINEMENT_REGISTER)?;
+        let w043_lean_tla_summary = read_json(repo_root, W043_LEAN_TLA_SUMMARY)?;
+        let w043_lean_tla_validation = read_json(repo_root, W043_LEAN_TLA_VALIDATION)?;
+        let w043_tla_model_register = read_json(repo_root, W043_TLA_MODEL_REGISTER)?;
+        let w043_lean_tla_blockers = read_json(repo_root, W043_LEAN_TLA_BLOCKERS)?;
+        let w042_stage2_summary = read_json(repo_root, W042_STAGE2_RUN_SUMMARY_FOR_W043)?;
+        let w042_stage2_validation = read_json(repo_root, W042_STAGE2_VALIDATION_FOR_W043)?;
+        let w042_stage2_policy_gate = read_json(repo_root, W042_STAGE2_POLICY_GATE_FOR_W043)?;
+        let w042_stage2_production_analyzer =
+            read_json(repo_root, W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043)?;
+        let w042_stage2_pack_grade_equivalence =
+            read_json(repo_root, W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043)?;
+        let w042_stage2_blockers = read_json(repo_root, W042_STAGE2_BLOCKERS_FOR_W043)?;
+        let w042_stage2_promotion_decision =
+            read_json(repo_root, W042_STAGE2_PROMOTION_DECISION_FOR_W043)?;
+        let lean_file_present = repo_root.join(W043_STAGE2_LEAN_FILE).exists();
+
+        let w043_obligation_valid = number_at(&w043_obligation_summary, "obligation_count") == 36
+            && bool_at(
+                &w043_obligation_summary,
+                "oxfml_formatting_update_incorporated",
+            )
+            && number_at(&w043_promotion_target_gate_map, "promotion_target_count") == 16;
+        let w042_stage2_valid = string_at(&w042_stage2_validation, "status")
+            == "w042_stage2_pack_grade_equivalence_valid"
+            && number_at(&w042_stage2_summary, "policy_row_count") == 18
+            && number_at(&w042_stage2_summary, "satisfied_policy_row_count") == 12
+            && number_at(&w042_stage2_summary, "exact_remaining_blocker_count") == 6
+            && !bool_at(&w042_stage2_summary, "stage2_policy_promoted")
+            && !bool_at(&w042_stage2_summary, "pack_grade_replay_promoted")
+            && !bool_at(&w042_stage2_promotion_decision, "stage2_policy_promoted")
+            && !bool_at(
+                &w042_stage2_promotion_decision,
+                "pack_grade_replay_promoted",
+            );
+        let w043_optimized_valid = number_at(&w043_optimized_summary, "failed_row_count") == 0
+            && string_at(&w043_optimized_summary, "validation_state") == "passed"
+            && number_at(&w043_optimized_summary, "match_promoted_count") == 0
+            && number_at(&w043_optimized_summary, "exact_remaining_blocker_count") == 3
+            && bool_at(
+                &w043_optimized_summary,
+                "dynamic_addition_reclassification_evidenced",
+            )
+            && bool_at(
+                &w043_optimized_summary,
+                "dynamic_release_reclassification_evidenced",
+            )
+            && bool_at(
+                &w043_optimized_summary,
+                "snapshot_counterpart_evidenced_for_declared_profile",
+            )
+            && bool_at(
+                &w043_optimized_summary,
+                "capability_counterpart_evidenced_for_declared_profile",
+            );
+        let w043_treecalc_valid = number_at(&w043_treecalc_summary, "case_count") == 27
+            && number_at(&w043_treecalc_summary, "expectation_mismatch_count") == 0;
+        let w043_rust_valid = string_at(&w043_rust_validation, "status")
+            == "formal_assurance_w043_rust_totality_refinement_valid"
+            && number_at(&w043_rust_summary, "automatic_dynamic_transition_row_count") == 2
+            && !bool_at(
+                &w043_rust_summary["promotion_claims"],
+                "stage2_policy_promoted",
+            );
+        let w043_lean_tla_valid = string_at(&w043_lean_tla_validation, "status")
+            == "formal_assurance_w043_lean_tla_fairness_valid"
+            && number_at(&w043_lean_tla_summary, "bounded_model_row_count") == 4
+            && number_at(&w043_lean_tla_summary, "exact_remaining_blocker_count") == 5
+            && !bool_at(
+                &w043_lean_tla_summary["promotion_claims"],
+                "stage2_policy_promoted",
+            );
+
+        let partition_replay_row_count =
+            number_at(&w042_stage2_summary, "partition_replay_row_count") as usize;
+        let permutation_replay_row_count =
+            number_at(&w042_stage2_summary, "permutation_replay_row_count") as usize;
+        let nontrivial_permutation_row_count =
+            number_at(&w042_stage2_summary, "nontrivial_permutation_row_count") as usize;
+        let observable_invariance_row_count =
+            number_at(&w042_stage2_summary, "observable_invariance_row_count") as usize;
+        let formatting_watch_row_count =
+            number_at(&w042_stage2_summary, "formatting_watch_row_count") as usize;
+
+        let predecessor_policy_valid = w042_stage2_valid
+            && number_at(&w042_stage2_policy_gate, "policy_row_count") == 18
+            && number_at(&w042_stage2_policy_gate, "satisfied_policy_row_count") == 12
+            && number_at(&w042_stage2_policy_gate, "exact_remaining_blocker_count") == 6;
+        let bounded_replay_valid = predecessor_policy_valid && partition_replay_row_count == 5;
+        let permutation_replay_valid = predecessor_policy_valid
+            && permutation_replay_row_count == 6
+            && nontrivial_permutation_row_count == 1;
+        let observable_invariance_valid =
+            predecessor_policy_valid && observable_invariance_row_count == 5;
+        let automatic_dynamic_addition_valid = w043_optimized_valid
+            && w043_treecalc_valid
+            && w043_rust_valid
+            && row_with_field_exists(
+                &w043_optimized_counterpart,
+                "row_id",
+                "w043_dynamic_addition_reclassification_direct_evidence",
+            )
+            && row_with_field_exists(
+                &w043_rust_refinement,
+                "row_id",
+                "w043_automatic_dynamic_addition_refinement_evidence",
+            );
+        let automatic_dynamic_release_valid = w043_optimized_valid
+            && w043_treecalc_valid
+            && w043_rust_valid
+            && row_with_field_exists(
+                &w043_optimized_counterpart,
+                "row_id",
+                "w043_dynamic_release_reclassification_carried_evidence",
+            )
+            && row_with_field_exists(
+                &w043_rust_refinement,
+                "row_id",
+                "w043_automatic_dynamic_release_refinement_evidence",
+            );
+        let snapshot_counterpart_valid = w043_optimized_valid
+            && row_with_field_exists(
+                &w043_optimized_counterpart,
+                "row_id",
+                "w043_snapshot_fence_counterpart_declared_profile_evidence",
+            )
+            && row_with_field_exists(
+                &w043_rust_refinement,
+                "row_id",
+                "w043_snapshot_fence_declared_profile_refinement_evidence",
+            );
+        let capability_counterpart_valid = w043_optimized_valid
+            && row_with_field_exists(
+                &w043_optimized_counterpart,
+                "row_id",
+                "w043_capability_view_counterpart_declared_profile_evidence",
+            )
+            && row_with_field_exists(
+                &w043_rust_refinement,
+                "row_id",
+                "w043_capability_view_declared_profile_refinement_evidence",
+            );
+        let bounded_analyzer_valid = predecessor_policy_valid
+            && number_at(&w042_stage2_production_analyzer, "row_count") == 9
+            && row_with_field_exists(
+                &w043_tla_model_register,
+                "row_id",
+                "w043_stage2_equivalence_bounded_model_input",
+            )
+            && lean_file_present;
+        let lean_tla_model_bound_valid = w043_lean_tla_valid
+            && row_with_field_exists(
+                &w043_tla_model_register,
+                "row_id",
+                "w043_tla_stage2_partition_bounded_model_evidence",
+            )
+            && row_with_field_exists(
+                &w043_lean_tla_blockers,
+                "row_id",
+                "w043_tla_fairness_scheduler_unbounded_boundary",
+            );
+        let w073_guard_valid = formatting_watch_row_count == 1
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "colorScale",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "dataBar",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "iconSet",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "top",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "bottom",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "aboveAverage",
+            )
+            && array_field_contains_string(
+                &w043_formatting_intake,
+                "typed_rule_only_families",
+                "belowAverage",
+            )
+            && !bool_at(
+                &w043_formatting_intake,
+                "threshold_fallback_allowed_for_typed_families",
+            );
+        let declared_pack_equivalence_valid = predecessor_policy_valid
+            && observable_invariance_valid
+            && snapshot_counterpart_valid
+            && capability_counterpart_valid
+            && w073_guard_valid
+            && number_at(&w042_stage2_pack_grade_equivalence, "row_count") == 11
+            && number_at(
+                &w042_stage2_pack_grade_equivalence,
+                "satisfied_policy_row_count",
+            ) == 8
+            && bool_at(&w042_stage2_summary, "declared_pack_equivalence_evidenced");
+        let scheduler_equivalence_declared_profile_valid = bounded_replay_valid
+            && permutation_replay_valid
+            && observable_invariance_valid
+            && lean_tla_model_bound_valid
+            && lean_file_present;
+        let no_proxy_guard_valid = w043_obligation_valid
+            && number_at(&w043_optimized_summary, "match_promoted_count") == 0
+            && array_field_contains_string(
+                &w043_obligation_summary,
+                "no_promotion_claims",
+                "stage2_production_policy",
+            )
+            && array_field_contains_string(
+                &w043_obligation_summary,
+                "no_promotion_claims",
+                "pack_grade_replay_equivalence",
+            )
+            && !bool_at(
+                &w042_stage2_promotion_decision,
+                "stage2_promotion_candidate",
+            );
+        let broader_dynamic_transition_blocked = row_with_field_exists(
+            &w043_optimized_blockers,
+            "row_id",
+            "w043_broader_dynamic_transition_coverage_remaining_exact_blocker",
+        );
+
+        let policy_rows = vec![
+            json!({
+                "row_id": "w043_stage2_w042_predecessor_policy_carried",
+                "w043_obligation_id": "W043-OBL-016",
+                "policy_area": "w042_stage2_predecessor_policy_packet",
+                "source_artifacts": [W042_STAGE2_RUN_SUMMARY_FOR_W043, W042_STAGE2_VALIDATION_FOR_W043, W042_STAGE2_POLICY_GATE_FOR_W043],
+                "satisfied_for_declared_profile": predecessor_policy_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "W042 predecessor evidence is valid input only; W043 promotion still requires direct W043 gates",
+                "disposition": "carry the W042 Stage 2 analyzer and pack-grade equivalence packet as non-promoting predecessor evidence",
+                "failures": if predecessor_policy_valid { Vec::<String>::new() } else { vec!["w043_w042_stage2_predecessor_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_bounded_replay_carried",
+                "w043_obligation_id": "W043-OBL-018",
+                "policy_area": "bounded_baseline_vs_stage2_replay",
+                "source_artifacts": [W042_STAGE2_RUN_SUMMARY_FOR_W043, W042_STAGE2_POLICY_GATE_FOR_W043],
+                "satisfied_for_declared_profile": bounded_replay_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded replay remains declared-profile evidence only",
+                "disposition": "carry W042 bounded baseline-versus-Stage-2 replay rows into W043 pack-grade equivalence classification",
+                "failures": if bounded_replay_valid { Vec::<String>::new() } else { vec!["w043_bounded_replay_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_partition_order_permutation_carried",
+                "w043_obligation_id": "W043-OBL-017",
+                "policy_area": "partition_order_permutation_replay",
+                "source_artifacts": [W042_STAGE2_RUN_SUMMARY_FOR_W043, W042_STAGE2_POLICY_GATE_FOR_W043],
+                "satisfied_for_declared_profile": permutation_replay_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded permutation replay supports declared-profile scheduler equivalence but does not discharge unbounded fairness",
+                "disposition": "carry one nontrivial partition-order permutation row and six total permutation rows",
+                "failures": if permutation_replay_valid { Vec::<String>::new() } else { vec!["w043_partition_permutation_replay_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_observable_invariance_carried",
+                "w043_obligation_id": "W043-OBL-017",
+                "policy_area": "observable_result_invariance",
+                "source_artifacts": [W042_STAGE2_RUN_SUMMARY_FOR_W043, W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043],
+                "satisfied_for_declared_profile": observable_invariance_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+                "disposition": "carry W042 observable-result invariance rows for values, rejects, fence no-publish behavior, and formatting watch surfaces",
+                "failures": if observable_invariance_valid { Vec::<String>::new() } else { vec!["w043_observable_invariance_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_dynamic_addition_refinement_bound",
+                "w043_obligation_id": "W043-OBL-016",
+                "policy_area": "dynamic_addition_soft_reference_transition",
+                "source_artifacts": [W043_OPTIMIZED_CORE_COUNTERPART, W043_RUST_REFINEMENT_REGISTER, W043_TREECALC_SUMMARY],
+                "satisfied_for_declared_profile": automatic_dynamic_addition_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "automatic dependency-addition evidence narrows declared-profile analyzer inputs but does not prove full production analyzer soundness",
+                "disposition": "bind W043 automatic DependencyAdded plus DependencyReclassified evidence to Stage 2 analyzer preconditions",
+                "failures": if automatic_dynamic_addition_valid { Vec::<String>::new() } else { vec!["w043_dynamic_addition_transition_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_dynamic_release_refinement_bound",
+                "w043_obligation_id": "W043-OBL-016",
+                "policy_area": "dynamic_release_soft_reference_transition",
+                "source_artifacts": [W043_OPTIMIZED_CORE_COUNTERPART, W043_RUST_REFINEMENT_REGISTER, W043_TREECALC_SUMMARY],
+                "satisfied_for_declared_profile": automatic_dynamic_release_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "automatic dependency-release evidence narrows declared-profile analyzer inputs but does not prove full production analyzer soundness",
+                "disposition": "bind W043 automatic DependencyRemoved plus DependencyReclassified evidence to Stage 2 analyzer preconditions",
+                "failures": if automatic_dynamic_release_valid { Vec::<String>::new() } else { vec!["w043_dynamic_release_transition_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_snapshot_fence_counterpart_evidence",
+                "w043_obligation_id": "W043-OBL-004",
+                "policy_area": "snapshot_fence_counterpart",
+                "source_artifacts": [W043_OPTIMIZED_CORE_COUNTERPART, W043_RUST_REFINEMENT_REGISTER],
+                "satisfied_for_declared_profile": snapshot_counterpart_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "snapshot-fence counterpart is evidenced for declared profiles; production Stage 2 policy remains blocked by broader gates",
+                "disposition": "bind W043 optimized/core and Rust declared-profile snapshot-fence reject/no-publish counterpart evidence without match promotion",
+                "failures": if snapshot_counterpart_valid { Vec::<String>::new() } else { vec!["w043_snapshot_counterpart_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_capability_view_counterpart_evidence",
+                "w043_obligation_id": "W043-OBL-005",
+                "policy_area": "capability_view_fence_counterpart",
+                "source_artifacts": [W043_OPTIMIZED_CORE_COUNTERPART, W043_RUST_REFINEMENT_REGISTER],
+                "satisfied_for_declared_profile": capability_counterpart_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "capability-view counterpart is evidenced for declared profiles; production Stage 2 policy remains blocked by broader gates",
+                "disposition": "bind W043 optimized/core and Rust declared-profile capability-view reject/no-publish counterpart evidence without match promotion",
+                "failures": if capability_counterpart_valid { Vec::<String>::new() } else { vec!["w043_capability_counterpart_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_bounded_partition_analyzer_predicate_evidence",
+                "w043_obligation_id": "W043-OBL-016",
+                "policy_area": "bounded_partition_analyzer_soundness",
+                "source_artifacts": [W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043, W043_TLA_MODEL_REGISTER, W043_STAGE2_LEAN_FILE],
+                "satisfied_for_declared_profile": bounded_analyzer_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded analyzer preconditions are evidenced, but full production analyzer soundness remains blocked",
+                "disposition": "bind W042 bounded partition-analyzer evidence and W043 bounded Stage 2 model input under the W043 Lean predicate",
+                "failures": if bounded_analyzer_valid { Vec::<String>::new() } else { vec!["w043_bounded_partition_analyzer_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_lean_tla_model_bound_carried",
+                "w043_obligation_id": "W043-OBL-014",
+                "policy_area": "lean_tla_model_bound",
+                "source_artifacts": [W043_LEAN_TLA_SUMMARY, W043_TLA_MODEL_REGISTER, W043_LEAN_TLA_BLOCKERS],
+                "satisfied_for_declared_profile": lean_tla_model_bound_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded proof/model inputs strengthen the Stage 2 packet but do not promote full TLA or Stage 2 policy",
+                "disposition": "carry W043 Lean/TLA bounded Stage 2 model rows and exact fairness boundary into the Stage 2 gate",
+                "failures": if lean_tla_model_bound_valid { Vec::<String>::new() } else { vec!["w043_lean_tla_model_bound_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_w073_typed_formatting_guard_carried",
+                "w043_obligation_id": "W043-OBL-027",
+                "policy_area": "w073_typed_formatting_watch",
+                "source_artifacts": [W043_FORMATTING_INTAKE, W042_STAGE2_RUN_SUMMARY_FOR_W043],
+                "satisfied_for_declared_profile": w073_guard_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "typed-only formatting is carried as an observable-surface guard; broad OxFml seam breadth remains under calc-2p3.8",
+                "disposition": "retain the W073 direct-replacement rule for aggregate and visualization conditional-formatting metadata",
+                "failures": if w073_guard_valid { Vec::<String>::new() } else { vec!["w043_w073_formatting_guard_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_declared_pack_replay_equivalence",
+                "w043_obligation_id": "W043-OBL-018",
+                "policy_area": "declared_profile_pack_replay_equivalence",
+                "source_artifacts": [W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043, W042_STAGE2_PROMOTION_DECISION_FOR_W043, W043_OPTIMIZED_CORE_COUNTERPART],
+                "satisfied_for_declared_profile": declared_pack_equivalence_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "declared-profile equivalence evidence is not pack-grade replay governance",
+                "disposition": "classify values, rejects, fence no-publish behavior, typed-formatting watch, replay validation, and W043 counterpart rows as declared-profile pack-equivalence inputs",
+                "failures": if declared_pack_equivalence_valid { Vec::<String>::new() } else { vec!["w043_declared_pack_equivalence_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_no_proxy_promotion_guard",
+                "w043_obligation_id": "W043-OBL-008",
+                "policy_area": "no_proxy_promotion_guard",
+                "source_artifacts": [W043_OBLIGATION_SUMMARY, W043_PROMOTION_TARGET_GATE_MAP, W043_OPTIMIZED_CORE_SUMMARY, W042_STAGE2_PROMOTION_DECISION_FOR_W043],
+                "satisfied_for_declared_profile": no_proxy_guard_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "Stage 2, pack, and release-grade gates remain blocked unless direct target evidence is present",
+                "disposition": "keep bounded-only, declared-profile, retained-blocker, and predecessor evidence out of promotion counts",
+                "failures": if no_proxy_guard_valid { Vec::<String>::new() } else { vec!["w043_no_proxy_guard_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_declared_profile_scheduler_equivalence",
+                "w043_obligation_id": "W043-OBL-017",
+                "policy_area": "declared_profile_scheduler_equivalence",
+                "source_artifacts": [W042_STAGE2_RUN_SUMMARY_FOR_W043, W043_TLA_MODEL_REGISTER, W043_STAGE2_LEAN_FILE],
+                "satisfied_for_declared_profile": scheduler_equivalence_declared_profile_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "scheduler equivalence is evidenced for declared bounded profiles only; unbounded fairness remains blocked",
+                "disposition": "bind bounded partition replay, permutation replay, observable invariance, and Lean/TLA model-bound rows as declared-profile scheduler-equivalence evidence",
+                "failures": if scheduler_equivalence_declared_profile_valid { Vec::<String>::new() } else { vec!["w043_declared_scheduler_equivalence_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_broader_dynamic_transition_coverage_blocker",
+                "w043_obligation_id": "W043-OBL-016",
+                "related_w043_obligation_ids": ["W043-OBL-003"],
+                "policy_area": "broader_dynamic_transition_coverage",
+                "source_artifacts": [W043_OPTIMIZED_CORE_BLOCKERS, W043_RUST_REFINEMENT_REGISTER],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "production partition-analyzer soundness remains blocked",
+                "disposition": "retain broader dynamic dependency-transition coverage as a Stage 2 analyzer dependency beyond the exercised addition and release patterns",
+                "failures": if broader_dynamic_transition_blocked { Vec::<String>::new() } else { vec!["w043_broader_dynamic_transition_blocker_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_full_production_partition_analyzer_soundness_blocker",
+                "w043_obligation_id": "W043-OBL-016",
+                "policy_area": "full_production_partition_analyzer_soundness",
+                "source_artifacts": [W043_OBLIGATION_MAP, W042_STAGE2_BLOCKERS_FOR_W043, W043_STAGE2_LEAN_FILE],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "Stage 2 production policy remains unpromoted",
+                "disposition": "retain full production partition-analyzer soundness as exact blocker beyond bounded declared-profile evidence",
+                "failures": if obligation_exists(&w043_obligation_map, "W043-OBL-016") && row_with_field_exists(&w042_stage2_blockers, "row_id", "w042_stage2_full_production_analyzer_soundness_blocker") && lean_file_present { Vec::<String>::new() } else { vec!["w043_production_analyzer_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_scheduler_fairness_unbounded_equivalence_blocker",
+                "w043_obligation_id": "W043-OBL-017",
+                "related_w043_obligation_ids": ["W043-OBL-013", "W043-OBL-014"],
+                "policy_area": "fairness_scheduler_unbounded_coverage",
+                "source_artifacts": [W043_LEAN_TLA_SUMMARY, W043_LEAN_TLA_BLOCKERS, W042_STAGE2_BLOCKERS_FOR_W043],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+                "disposition": "retain fairness, unbounded scheduler coverage, and model-completeness limits as exact Stage 2 blockers",
+                "failures": if obligation_exists(&w043_obligation_map, "W043-OBL-017") && row_with_field_exists(&w043_lean_tla_blockers, "row_id", "w043_tla_fairness_scheduler_unbounded_boundary") { Vec::<String>::new() } else { vec!["w043_scheduler_fairness_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_operated_cross_engine_service_dependency_blocker",
+                "w043_obligation_id": "W043-OBL-023",
+                "policy_area": "operated_cross_engine_stage2_differential_service",
+                "source_artifacts": [W043_OBLIGATION_MAP, W042_STAGE2_BLOCKERS_FOR_W043],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+                "disposition": "retain operated cross-engine differential service as successor dependency",
+                "failures": if obligation_exists(&w043_obligation_map, "W043-OBL-023") && row_with_field_exists(&w042_stage2_blockers, "row_id", "w042_stage2_operated_cross_engine_service_dependency_blocker") { Vec::<String>::new() } else { vec!["w043_operated_stage2_service_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_retained_witness_lifecycle_pack_dependency_blocker",
+                "w043_obligation_id": "W043-OBL-021",
+                "policy_area": "retained_witness_lifecycle_pack_dependency",
+                "source_artifacts": [W043_OBLIGATION_MAP, W042_STAGE2_BLOCKERS_FOR_W043],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "pack-grade replay equivalence remains blocked until retained-witness lifecycle and retention SLO evidence exists",
+                "disposition": "retain retained-witness lifecycle and retention SLO as a pack-grade replay dependency rather than treating deterministic replay files as operated witness evidence",
+                "failures": if obligation_exists(&w043_obligation_map, "W043-OBL-021") && row_with_field_exists(&w042_stage2_blockers, "row_id", "w042_stage2_retained_witness_lifecycle_pack_dependency_blocker") { Vec::<String>::new() } else { vec!["w043_retained_witness_obligation_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w043_stage2_pack_grade_replay_governance_blocker",
+                "w043_obligation_id": "W043-OBL-034",
+                "related_w043_obligation_ids": ["W043-OBL-018"],
+                "policy_area": "pack_grade_replay_governance",
+                "source_artifacts": [W043_OBLIGATION_MAP, W042_STAGE2_BLOCKERS_FOR_W043],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+                "disposition": "retain pack-grade replay governance as release-decision blocker beyond declared-profile equivalence",
+                "failures": if obligation_exists(&w043_obligation_map, "W043-OBL-034") && obligation_exists(&w043_obligation_map, "W043-OBL-018") && row_with_field_exists(&w042_stage2_blockers, "row_id", "w042_stage2_pack_grade_replay_governance_blocker") { Vec::<String>::new() } else { vec!["w043_pack_grade_replay_governance_blocker_input_missing".to_string()] },
+            }),
+        ];
+
+        let satisfied_policy_row_count = policy_rows
+            .iter()
+            .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+            .count();
+        let policy_blocker_rows = policy_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let policy_failed_row_count = policy_rows
+            .iter()
+            .filter(|row| {
+                !row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            })
+            .count();
+        let exact_remaining_blocker_count = policy_blocker_rows.len();
+        let policy_row_count = policy_rows.len();
+
+        let production_analyzer_rows = policy_rows
+            .iter()
+            .filter(|row| {
+                matches!(
+                    string_at(row, "policy_area"),
+                    "w042_stage2_predecessor_policy_packet"
+                        | "dynamic_addition_soft_reference_transition"
+                        | "dynamic_release_soft_reference_transition"
+                        | "snapshot_fence_counterpart"
+                        | "capability_view_fence_counterpart"
+                        | "bounded_partition_analyzer_soundness"
+                        | "lean_tla_model_bound"
+                        | "declared_profile_scheduler_equivalence"
+                        | "broader_dynamic_transition_coverage"
+                        | "full_production_partition_analyzer_soundness"
+                        | "fairness_scheduler_unbounded_coverage"
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let scheduler_equivalence_rows = policy_rows
+            .iter()
+            .filter(|row| {
+                matches!(
+                    string_at(row, "policy_area"),
+                    "bounded_baseline_vs_stage2_replay"
+                        | "partition_order_permutation_replay"
+                        | "observable_result_invariance"
+                        | "lean_tla_model_bound"
+                        | "declared_profile_scheduler_equivalence"
+                        | "fairness_scheduler_unbounded_coverage"
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let pack_grade_equivalence_rows = policy_rows
+            .iter()
+            .filter(|row| {
+                matches!(
+                    string_at(row, "policy_area"),
+                    "bounded_baseline_vs_stage2_replay"
+                        | "partition_order_permutation_replay"
+                        | "observable_result_invariance"
+                        | "snapshot_fence_counterpart"
+                        | "capability_view_fence_counterpart"
+                        | "w073_typed_formatting_watch"
+                        | "declared_profile_pack_replay_equivalence"
+                        | "no_proxy_promotion_guard"
+                        | "operated_cross_engine_stage2_differential_service"
+                        | "retained_witness_lifecycle_pack_dependency"
+                        | "pack_grade_replay_governance"
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let mut validation_failures = Vec::new();
+        if !w043_obligation_valid {
+            validation_failures.push("w043_obligation_map_not_valid".to_string());
+        }
+        for obligation_id in [
+            "W043-OBL-004",
+            "W043-OBL-005",
+            "W043-OBL-008",
+            "W043-OBL-013",
+            "W043-OBL-014",
+            "W043-OBL-016",
+            "W043-OBL-017",
+            "W043-OBL-018",
+            "W043-OBL-021",
+            "W043-OBL-023",
+            "W043-OBL-034",
+        ] {
+            if !obligation_exists(&w043_obligation_map, obligation_id) {
+                validation_failures.push(format!("{obligation_id}_missing"));
+            }
+        }
+        if !predecessor_policy_valid {
+            validation_failures.push("w042_stage2_predecessor_not_valid".to_string());
+        }
+        if !w043_optimized_valid || !w043_treecalc_valid {
+            validation_failures.push("w043_optimized_stage2_inputs_not_valid".to_string());
+        }
+        if !w043_rust_valid {
+            validation_failures.push("w043_rust_stage2_inputs_not_valid".to_string());
+        }
+        if !w043_lean_tla_valid {
+            validation_failures.push("w043_lean_tla_stage2_inputs_not_valid".to_string());
+        }
+        if !automatic_dynamic_addition_valid {
+            validation_failures.push("w043_dynamic_addition_transition_not_valid".to_string());
+        }
+        if !automatic_dynamic_release_valid {
+            validation_failures.push("w043_dynamic_release_transition_not_valid".to_string());
+        }
+        if !snapshot_counterpart_valid {
+            validation_failures.push("w043_snapshot_counterpart_not_valid".to_string());
+        }
+        if !capability_counterpart_valid {
+            validation_failures.push("w043_capability_counterpart_not_valid".to_string());
+        }
+        if !bounded_analyzer_valid {
+            validation_failures.push("w043_bounded_partition_analyzer_not_valid".to_string());
+        }
+        if !lean_tla_model_bound_valid {
+            validation_failures.push("w043_lean_tla_model_bound_not_valid".to_string());
+        }
+        if !declared_pack_equivalence_valid {
+            validation_failures.push("w043_declared_pack_equivalence_not_valid".to_string());
+        }
+        if !scheduler_equivalence_declared_profile_valid {
+            validation_failures.push("w043_declared_scheduler_equivalence_not_valid".to_string());
+        }
+        if !no_proxy_guard_valid {
+            validation_failures.push("w043_no_proxy_guard_not_valid".to_string());
+        }
+        if !w073_guard_valid {
+            validation_failures.push("w043_w073_formatting_guard_not_valid".to_string());
+        }
+        if !broader_dynamic_transition_blocked {
+            validation_failures.push("w043_broader_dynamic_transition_blocker_missing".to_string());
+        }
+        if !lean_file_present {
+            validation_failures.push("w043_stage2_lean_file_missing".to_string());
+        }
+        if policy_failed_row_count != 0 {
+            validation_failures.push("w043_stage2_policy_row_failures_present".to_string());
+        }
+        if satisfied_policy_row_count != 14 {
+            validation_failures
+                .push("w043_stage2_expected_fourteen_satisfied_policy_rows".to_string());
+        }
+        if exact_remaining_blocker_count != 6 {
+            validation_failures.push("w043_stage2_expected_six_exact_blockers".to_string());
+        }
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let policy_gate_register_path =
+            format!("{relative_artifact_root}/w043_stage2_policy_gate_register.json");
+        let production_analyzer_register_path =
+            format!("{relative_artifact_root}/w043_production_partition_analyzer_register.json");
+        let scheduler_equivalence_register_path =
+            format!("{relative_artifact_root}/w043_scheduler_equivalence_register.json");
+        let pack_grade_equivalence_register_path =
+            format!("{relative_artifact_root}/w043_pack_grade_equivalence_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w043_stage2_exact_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": W043_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_artifacts": {
+                    "w043_obligation_summary": W043_OBLIGATION_SUMMARY,
+                    "w043_obligation_map": W043_OBLIGATION_MAP,
+                    "w043_promotion_target_gate_map": W043_PROMOTION_TARGET_GATE_MAP,
+                    "w043_formatting_intake": W043_FORMATTING_INTAKE,
+                    "w043_optimized_core_summary": W043_OPTIMIZED_CORE_SUMMARY,
+                    "w043_optimized_core_counterpart": W043_OPTIMIZED_CORE_COUNTERPART,
+                    "w043_optimized_core_blockers": W043_OPTIMIZED_CORE_BLOCKERS,
+                    "w043_treecalc_summary": W043_TREECALC_SUMMARY,
+                    "w043_rust_summary": W043_RUST_SUMMARY,
+                    "w043_rust_validation": W043_RUST_VALIDATION,
+                    "w043_rust_refinement_register": W043_RUST_REFINEMENT_REGISTER,
+                    "w043_lean_tla_summary": W043_LEAN_TLA_SUMMARY,
+                    "w043_lean_tla_validation": W043_LEAN_TLA_VALIDATION,
+                    "w043_tla_model_register": W043_TLA_MODEL_REGISTER,
+                    "w043_lean_tla_blockers": W043_LEAN_TLA_BLOCKERS,
+                    "w042_stage2_summary": W042_STAGE2_RUN_SUMMARY_FOR_W043,
+                    "w042_stage2_validation": W042_STAGE2_VALIDATION_FOR_W043,
+                    "w042_stage2_policy_gate": W042_STAGE2_POLICY_GATE_FOR_W043,
+                    "w042_stage2_production_analyzer": W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043,
+                    "w042_stage2_pack_grade_equivalence": W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043,
+                    "w042_stage2_blockers": W042_STAGE2_BLOCKERS_FOR_W043,
+                    "w042_stage2_promotion_decision": W042_STAGE2_PROMOTION_DECISION_FOR_W043,
+                    "w043_stage2_lean_file": W043_STAGE2_LEAN_FILE
+                },
+                "source_counts": {
+                    "w043_obligation_count": number_at(&w043_obligation_summary, "obligation_count"),
+                    "w043_promotion_target_count": number_at(&w043_promotion_target_gate_map, "promotion_target_count"),
+                    "w043_optimized_exact_remaining_blocker_count": number_at(&w043_optimized_summary, "exact_remaining_blocker_count"),
+                    "w043_rust_exact_remaining_blocker_count": number_at(&w043_rust_summary, "exact_remaining_blocker_count"),
+                    "w043_lean_tla_exact_remaining_blocker_count": number_at(&w043_lean_tla_summary, "exact_remaining_blocker_count"),
+                    "w042_stage2_policy_row_count": number_at(&w042_stage2_summary, "policy_row_count"),
+                    "w042_stage2_exact_remaining_blocker_count": number_at(&w042_stage2_summary, "exact_remaining_blocker_count")
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w043_stage2_policy_gate_register.json"),
+            &json!({
+                "schema_version": W043_POLICY_GATE_SCHEMA_V1,
+                "run_id": run_id,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "stage2_policy_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "rows": policy_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w043_production_partition_analyzer_register.json"),
+            &json!({
+                "schema_version": W043_PRODUCTION_PARTITION_ANALYZER_SCHEMA_V1,
+                "run_id": run_id,
+                "row_count": production_analyzer_rows.len(),
+                "satisfied_policy_row_count": production_analyzer_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+                    .count(),
+                "exact_remaining_blocker_count": production_analyzer_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "exact_remaining_blocker"))
+                    .count(),
+                "semantic_statement": "W043 binds declared-profile replay, W043 dynamic addition/release refinement, snapshot/capability counterparts, bounded analyzer evidence, Lean/TLA model bounds, and declared-profile scheduler-equivalence evidence as production-partition-analyzer inputs. Full production partition-analyzer soundness remains blocked by broader dynamic coverage, unbounded scheduler/fairness coverage, and operated evidence.",
+                "rows": production_analyzer_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w043_scheduler_equivalence_register.json"),
+            &json!({
+                "schema_version": W043_SCHEDULER_EQUIVALENCE_SCHEMA_V1,
+                "run_id": run_id,
+                "row_count": scheduler_equivalence_rows.len(),
+                "satisfied_policy_row_count": scheduler_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+                    .count(),
+                "exact_remaining_blocker_count": scheduler_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "exact_remaining_blocker"))
+                    .count(),
+                "semantic_equivalence_statement": "Declared-profile scheduler equivalence is evidenced by bounded partition replay, one nontrivial partition-order permutation row, observable-result invariance, W043 Lean/TLA model-bound rows, and the checked W043 Stage 2 predicate. This does not discharge unbounded fairness or production scheduler coverage.",
+                "rows": scheduler_equivalence_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w043_pack_grade_equivalence_register.json"),
+            &json!({
+                "schema_version": W043_PACK_GRADE_EQUIVALENCE_SCHEMA_V1,
+                "run_id": run_id,
+                "row_count": pack_grade_equivalence_rows.len(),
+                "satisfied_policy_row_count": pack_grade_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+                    .count(),
+                "exact_remaining_blocker_count": pack_grade_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "exact_remaining_blocker"))
+                    .count(),
+                "semantic_equivalence_statement": "Declared-profile values, rejects, fence no-publish behavior, typed-formatting observable guards, replay validation, W043 counterpart evidence, and no-proxy promotion guards are bound as pack-equivalence inputs. This still is not pack-grade replay governance because retained-witness lifecycle, operated-service evidence, and pack governance remain blocked.",
+                "rows": pack_grade_equivalence_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w043_stage2_exact_blocker_register.json"),
+            &json!({
+                "schema_version": W043_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "rows": policy_blocker_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &json!({
+                "schema_version": W043_PROMOTION_DECISION_SCHEMA_V1,
+                "run_id": run_id,
+                "decision_state": "w043_stage2_scheduler_equivalence_validated_policy_unpromoted",
+                "stage2_policy_promoted": false,
+                "stage2_promotion_candidate": false,
+                "pack_grade_replay_promoted": false,
+                "pack_grade_replay_candidate": false,
+                "bounded_partition_replay_present": bounded_replay_valid,
+                "partition_order_permutation_replay_present": permutation_replay_valid,
+                "observable_result_invariance_evidenced_for_declared_profiles": observable_invariance_valid,
+                "automatic_dynamic_addition_evidenced_for_declared_profiles": automatic_dynamic_addition_valid,
+                "automatic_dynamic_release_evidenced_for_declared_profiles": automatic_dynamic_release_valid,
+                "snapshot_fence_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_view_fence_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_soundness_evidenced": bounded_analyzer_valid,
+                "declared_profile_scheduler_equivalence_evidenced": scheduler_equivalence_declared_profile_valid,
+                "lean_tla_model_bound_evidenced": lean_tla_model_bound_valid,
+                "w073_typed_formatting_guard_carried": w073_guard_valid,
+                "declared_profile_pack_replay_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "production_partition_analyzer_soundness_promoted": false,
+                "fairness_scheduler_unbounded_coverage_promoted": false,
+                "operated_cross_engine_stage2_service_promoted": false,
+                "retained_witness_lifecycle_promoted": false,
+                "pack_grade_replay_governance_promoted": false,
+                "satisfied_inputs": [
+                    "w042_stage2_predecessor_policy_packet",
+                    "bounded_partition_replay_present",
+                    "partition_order_permutation_replay_present",
+                    "observable_result_invariance_for_declared_profiles",
+                    "automatic_dynamic_addition_evidenced_for_declared_profiles",
+                    "automatic_dynamic_release_evidenced_for_declared_profiles",
+                    "snapshot_fence_counterpart_evidenced_for_declared_profiles",
+                    "capability_view_fence_counterpart_evidenced_for_declared_profiles",
+                    "bounded_partition_analyzer_soundness_evidenced",
+                    "declared_profile_scheduler_equivalence_evidenced",
+                    "lean_tla_model_bound_evidenced",
+                    "w073_typed_formatting_guard_carried",
+                    "declared_profile_pack_replay_equivalence_evidenced",
+                    "no_proxy_promotion_guard_evidenced"
+                ],
+                "blockers": [
+                    "stage2.broader_dynamic_transition_coverage_absent",
+                    "stage2.full_production_partition_analyzer_soundness_absent",
+                    "stage2.fairness_scheduler_unbounded_coverage_absent",
+                    "stage2.operated_cross_engine_differential_service_absent",
+                    "stage2.retained_witness_lifecycle_pack_dependency_absent",
+                    "stage2.pack_grade_replay_governance_absent"
+                ],
+                "semantic_equivalence_statement": "Observable-result and scheduler equivalence are evidenced for declared W043 Stage 2 profiles, including W043 dynamic addition/release refinement, snapshot/capability fence no-publish counterparts, Lean/TLA model bounds, and W073 typed-formatting guards. Production Stage 2 policy and pack-grade replay remain unpromoted until broader dynamic coverage, production analyzer soundness, fairness and unbounded scheduler coverage, operated cross-engine service evidence, retained-witness lifecycle evidence, and pack governance are present."
+            }),
+        )?;
+
+        let validation_status = if validation_failures.is_empty() {
+            "w043_stage2_scheduler_equivalence_valid"
+        } else {
+            "w043_stage2_scheduler_equivalence_invalid"
+        };
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": W043_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "partition_replay_row_count": partition_replay_row_count,
+                "permutation_replay_row_count": permutation_replay_row_count,
+                "nontrivial_permutation_row_count": nontrivial_permutation_row_count,
+                "observable_invariance_row_count": observable_invariance_row_count,
+                "formatting_watch_row_count": formatting_watch_row_count,
+                "automatic_dynamic_transition_row_count": 2,
+                "automatic_dynamic_addition_evidenced": automatic_dynamic_addition_valid,
+                "automatic_dynamic_release_evidenced": automatic_dynamic_release_valid,
+                "snapshot_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_evidenced": bounded_analyzer_valid,
+                "scheduler_equivalence_evidenced_for_declared_profiles": scheduler_equivalence_declared_profile_valid,
+                "lean_tla_model_bound_evidenced": lean_tla_model_bound_valid,
+                "declared_pack_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "failed_row_count": policy_failed_row_count,
+                "stage2_policy_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "validation_failures": validation_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": W043_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "w043_stage2_policy_gate_register_path": policy_gate_register_path,
+                "w043_production_partition_analyzer_register_path": production_analyzer_register_path,
+                "w043_scheduler_equivalence_register_path": scheduler_equivalence_register_path,
+                "w043_pack_grade_equivalence_register_path": pack_grade_equivalence_register_path,
+                "w043_stage2_exact_blocker_register_path": blocker_register_path,
+                "promotion_decision_path": promotion_decision_path,
+                "validation_path": validation_path,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "partition_replay_row_count": partition_replay_row_count,
+                "permutation_replay_row_count": permutation_replay_row_count,
+                "nontrivial_permutation_row_count": nontrivial_permutation_row_count,
+                "observable_invariance_row_count": observable_invariance_row_count,
+                "formatting_watch_row_count": formatting_watch_row_count,
+                "automatic_dynamic_transition_row_count": 2,
+                "automatic_dynamic_addition_evidenced": automatic_dynamic_addition_valid,
+                "automatic_dynamic_release_evidenced": automatic_dynamic_release_valid,
+                "snapshot_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_evidenced": bounded_analyzer_valid,
+                "scheduler_equivalence_evidenced_for_declared_profiles": scheduler_equivalence_declared_profile_valid,
+                "lean_tla_model_bound_evidenced": lean_tla_model_bound_valid,
+                "declared_pack_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "failed_row_count": policy_failed_row_count,
+                "stage2_policy_promoted": false,
+                "stage2_promotion_candidate": false,
+                "pack_grade_replay_promoted": false,
+                "pack_grade_replay_candidate": false
+            }),
+        )?;
+
+        Ok(Stage2ReplayRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W043_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            partition_replay_row_count,
+            permutation_replay_row_count,
+            nontrivial_permutation_row_count,
+            observable_invariance_row_count,
+            formatting_watch_row_count,
+            exact_remaining_blocker_count,
+            failed_row_count: policy_failed_row_count,
             stage2_policy_promoted: false,
             artifact_root: relative_artifact_root,
         })
@@ -4032,6 +5004,91 @@ mod tests {
             &repo_root,
             &format!(
                 "docs/test-runs/core-engine/stage2-replay/{run_id}/w042_stage2_exact_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_remaining_blocker_count"], 6);
+
+        cleanup();
+    }
+
+    #[test]
+    fn stage2_replay_runner_writes_w043_scheduler_equivalence_without_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w043-stage2-replay-{}", std::process::id());
+        let artifact_root =
+            repo_root.join(format!("docs/test-runs/core-engine/stage2-replay/{run_id}"));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = Stage2ReplayRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.partition_replay_row_count, 5);
+        assert_eq!(summary.permutation_replay_row_count, 6);
+        assert_eq!(summary.nontrivial_permutation_row_count, 1);
+        assert_eq!(summary.observable_invariance_row_count, 5);
+        assert_eq!(summary.formatting_watch_row_count, 1);
+        assert_eq!(summary.exact_remaining_blocker_count, 6);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.stage2_policy_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/stage2-replay/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w043_stage2_scheduler_equivalence_valid"
+        );
+        assert_eq!(validation["policy_row_count"], 20);
+        assert_eq!(validation["satisfied_policy_row_count"], 14);
+        assert_eq!(validation["automatic_dynamic_transition_row_count"], 2);
+        assert_eq!(validation["automatic_dynamic_addition_evidenced"], true);
+        assert_eq!(validation["automatic_dynamic_release_evidenced"], true);
+        assert_eq!(validation["snapshot_counterpart_evidenced"], true);
+        assert_eq!(validation["capability_counterpart_evidenced"], true);
+        assert_eq!(validation["lean_tla_model_bound_evidenced"], true);
+        assert_eq!(
+            validation["scheduler_equivalence_evidenced_for_declared_profiles"],
+            true
+        );
+        assert_eq!(validation["declared_pack_equivalence_evidenced"], true);
+        assert_eq!(validation["pack_grade_replay_promoted"], false);
+
+        let promotion = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/stage2-replay/{run_id}/promotion_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(promotion["stage2_policy_promoted"], false);
+        assert_eq!(promotion["pack_grade_replay_promoted"], false);
+        assert_eq!(
+            promotion["production_partition_analyzer_soundness_promoted"],
+            false
+        );
+        assert_eq!(
+            promotion["declared_profile_scheduler_equivalence_evidenced"],
+            true
+        );
+        assert_eq!(
+            promotion["declared_profile_pack_replay_equivalence_evidenced"],
+            true
+        );
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/stage2-replay/{run_id}/w043_stage2_exact_blocker_register.json"
             ),
         )
         .unwrap();

@@ -23,27 +23,31 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
 2. `W043_OPTIMIZED_CORE_BROAD_CONFORMANCE_AND_CALLABLE_METADATA_CLOSURE.md` - `calc-2p3.2` optimized core broad conformance and callable metadata closure.
 3. `W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md` - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier.
 4. `W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md` - `calc-2p3.4` Lean/TLA full-verification and unbounded fairness discharge.
+5. `W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md` - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence.
 
 ## Planned Packets
 
-1. `W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md` - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence.
-2. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service.
-3. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
-4. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
-5. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
-6. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
+1. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service.
+2. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
+3. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
+4. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
+5. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
 
 ## Current Status
 
-- execution_state: `calc-2p3.5_ready_stage2_production_partition_analyzer_and_scheduler_equivalence`
+- execution_state: `calc-2p3.6_ready_operated_assurance_retained_history_witness_slo_and_alert_service`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence is next
+  - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service is next
   - full Lean verification remains blocked
   - full TLA verification remains blocked
   - scheduler fairness and unbounded model coverage remain exact blockers
+  - full production partition-analyzer soundness remains blocked
+  - operated cross-engine Stage 2 differential service remains blocked
+  - retained-witness lifecycle and retention SLO remain blocked
+  - pack-grade replay governance remains blocked
   - runtime panic-surface proof remains an exact blocker
   - Rust-engine totality and Rust refinement remain unpromoted
   - broader dynamic dependency-transition coverage remains partial beyond fixture-scale addition/release and reclassification patterns

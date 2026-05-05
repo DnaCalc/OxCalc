@@ -1,0 +1,193 @@
+{
+  "local_proof_row_count": 7,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4",
+      "bounded_model": false,
+      "disposition": "bind the current Lean inventory and zero-placeholder audit as checked evidence, without promoting full Lean verification",
+      "disposition_kind": "checked_lean_inventory_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+        "formal/lean/OxCalc/CoreEngine/W041LeanTlaFullVerificationAndFairnessDischarge.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "lean_file_count": 12,
+        "lean_placeholder_count": 0
+      },
+      "promotion_consequence": "full Lean verification remains unpromoted until all semantic proof boundaries are discharged",
+      "reason": "The Lean inventory is typechecked and the local placeholder census is zero, but this remains a classification inventory rather than a whole-engine semantic proof.",
+      "row_id": "w041_lean_inventory_checked_no_placeholder_evidence",
+      "source_inputs": [
+        "W037 formal inventory",
+        "formal/lean/OxCalc/CoreEngine/W041LeanTlaFullVerificationAndFairnessDischarge.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w041_lean_proof_row_validated",
+      "w041_obligation_id": "W041-OBL-010"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4",
+      "bounded_model": false,
+      "disposition": "bind the W040 Lean/TLA packet as a checked non-promoting predecessor input",
+      "disposition_kind": "checked_lean_bridge_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json",
+        "formal/lean/OxCalc/CoreEngine/W040LeanTlaFullVerificationDischarge.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean/TLA verification remains unpromoted",
+      "reason": "The W040 Lean/TLA packet remains valid and records five exact blockers; W041.4 builds on it without treating it as full verification.",
+      "row_id": "w041_lean_tla_predecessor_bridge",
+      "source_inputs": [
+        "W040 Lean/TLA proof-model packet",
+        "formal/lean/OxCalc/CoreEngine/W040LeanTlaFullVerificationDischarge.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w041_lean_proof_row_validated",
+      "w041_obligation_id": "W041-OBL-010"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.3; calc-sui.4",
+      "bounded_model": false,
+      "disposition": "bind the W041 automatic dynamic transition refinement row as a checked Lean/TLA proof input",
+      "disposition_kind": "checked_lean_refinement_bridge",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_refinement_register.json",
+        "formal/lean/OxCalc/CoreEngine/W041RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "automatic_dynamic_transition_row_count": 1,
+        "w041_rust_exact_blocker_count": 4
+      },
+      "promotion_consequence": "Rust refinement and full optimized/core verification remain unpromoted because retained blockers remain",
+      "reason": "W041.3 moved the exercised automatic dynamic transition into direct refinement evidence, but the Rust packet still retains four exact blockers.",
+      "row_id": "w041_lean_rust_dynamic_refinement_bridge",
+      "source_inputs": [
+        "W041 Rust totality/refinement packet",
+        "formal/lean/OxCalc/CoreEngine/W041RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w041_lean_proof_row_validated",
+      "w041_obligation_id": "W041-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4; calc-sui.5",
+      "bounded_model": false,
+      "disposition": "carry the checked W040 Stage 2 promotion predicate as a Lean proof input while retaining production-policy blockers",
+      "disposition_kind": "checked_lean_policy_predicate",
+      "evidence_paths": [
+        "formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "The predicate proves no-promotion under current evidence; it is not production partition analyzer soundness or fairness discharge.",
+      "row_id": "w041_lean_stage2_policy_predicate_carried",
+      "source_inputs": [
+        "W040 Stage 2 Lean predicate and replay packet"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w041_lean_proof_row_validated",
+      "w041_obligation_id": "W041-OBL-011"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4; calc-sui.10",
+      "bounded_model": false,
+      "disposition": "retain full Lean verification as exact blocker despite checked local proof rows",
+      "disposition_kind": "exact_lean_verification_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+        "formal/lean/OxCalc/CoreEngine/W041LeanTlaFullVerificationAndFairnessDischarge.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted",
+      "reason": "Checked classification files do not prove every Rust, OxFml, TLA, and coordinator semantic path for the claimed scope.",
+      "row_id": "w041_full_lean_verification_exact_blocker",
+      "source_inputs": [
+        "W041 successor obligation map",
+        "Lean proof inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w041_lean_tla_exact_blocker_validated",
+      "w041_obligation_id": "W041-OBL-010"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4; calc-sui.10",
+      "bounded_model": false,
+      "disposition": "retain Rust totality/refinement dependency as a Lean/TLA proof blocker",
+      "disposition_kind": "exact_rust_dependency_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_exact_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean/TLA verification remains unpromoted",
+      "reason": "The preceding W041 Rust packet intentionally retains four exact blockers, so Lean/TLA full verification cannot be promoted over them.",
+      "row_id": "w041_rust_totality_dependency_exact_blocker",
+      "source_inputs": [
+        "W041 Rust totality/refinement blockers"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w041_lean_tla_exact_blocker_validated",
+      "w041_obligation_id": "W041-OBL-009"
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-sui.4; calc-sui.10",
+      "bounded_model": false,
+      "disposition": "preserve Lean/TLA formalization as spec-evolution and implementation-improvement work",
+      "disposition_kind": "accepted_spec_evolution_guard",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+        "docs/worksets/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
+      "reason": "W041 explicitly allows proof/model evidence to evolve the specs rather than testing against a fixed initial document set.",
+      "row_id": "w041_formal_model_spec_evolution_guard",
+      "source_inputs": [
+        "W041 successor obligation map",
+        "W041 workset"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w041_lean_tla_boundary_validated",
+      "w041_obligation_id": "W041-OBL-010"
+    }
+  ],
+  "run_id": "w041-lean-tla-full-verification-fairness-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w041_lean_proof_register.v1"
+}

@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"failure_class\":\"runtime_dependency_resolution\",\"missing_dependency\":\"MissingTarget\",\"selector_node\":\"Mode\",\"selector_value\":\"missing\"}",
+      "reject_id": "rej-dynamic-negative",
+      "reject_kind": "dynamic_dependency_failure"
+    }
+  ],
+  "scenario_id": "tc_w034_dynamic_dependency_negative_001"
+}

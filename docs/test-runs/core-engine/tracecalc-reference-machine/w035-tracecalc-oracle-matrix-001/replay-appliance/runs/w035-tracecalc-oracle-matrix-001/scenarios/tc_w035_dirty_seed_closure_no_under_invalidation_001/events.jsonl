@@ -1,0 +1,15 @@
+{"event_id":"evt-0001","normalized_event_family":"oxcalc.local.event.node_marked_dirty","payload":{"node_id":"A"},"source_label":"node_marked_dirty","step_id":"st1"}
+{"event_id":"evt-0002","normalized_event_family":"oxcalc.local.event.topo_group_scheduled","payload":{"group_index":"0","nodes":"A"},"source_label":"topo_group_scheduled","step_id":"st2"}
+{"event_id":"evt-0003","normalized_event_family":"oxcalc.local.event.topo_group_scheduled","payload":{"group_index":"1","nodes":"Mid"},"source_label":"topo_group_scheduled","step_id":"st2"}
+{"event_id":"evt-0004","normalized_event_family":"oxcalc.local.event.topo_group_scheduled","payload":{"group_index":"2","nodes":"Final"},"source_label":"topo_group_scheduled","step_id":"st2"}
+{"event_id":"evt-0005","normalized_event_family":"oxcalc.local.event.node_marked_needed","payload":{"node_id":"A"},"source_label":"node_marked_needed","step_id":"st2"}
+{"event_id":"evt-0006","normalized_event_family":"oxcalc.local.event.evaluation_started","payload":{"compatibility_basis":"s0","node_id":"A"},"source_label":"evaluation_started","step_id":"st2"}
+{"event_id":"evt-0007","normalized_event_family":"oxcalc.local.event.node_marked_dirty","payload":{"node_id":"Mid"},"source_label":"node_marked_dirty","step_id":"st2"}
+{"event_id":"evt-0008","normalized_event_family":"oxcalc.local.event.node_marked_needed","payload":{"node_id":"Mid"},"source_label":"node_marked_needed","step_id":"st2"}
+{"event_id":"evt-0009","normalized_event_family":"oxcalc.local.event.evaluation_started","payload":{"compatibility_basis":"s0","node_id":"Mid"},"source_label":"evaluation_started","step_id":"st2"}
+{"event_id":"evt-0010","normalized_event_family":"oxcalc.local.event.node_marked_dirty","payload":{"node_id":"Final"},"source_label":"node_marked_dirty","step_id":"st2"}
+{"event_id":"evt-0011","normalized_event_family":"oxcalc.local.event.node_marked_needed","payload":{"node_id":"Final"},"source_label":"node_marked_needed","step_id":"st2"}
+{"event_id":"evt-0012","normalized_event_family":"oxcalc.local.event.evaluation_started","payload":{"compatibility_basis":"s0","node_id":"Final"},"source_label":"evaluation_started","step_id":"st2"}
+{"event_id":"evt-0013","normalized_event_family":"candidate.admitted","payload":{"admission_id":"adm-closure","compatibility_basis":"s0","target_count":"3"},"source_label":"candidate_admitted","step_id":"st2"}
+{"event_id":"evt-0014","normalized_event_family":"candidate.built","payload":{"candidate_result_id":"cand-closure","target_count":"3"},"source_label":"candidate_emitted","step_id":"st3"}
+{"event_id":"evt-0015","normalized_event_family":"publication.committed","payload":{"candidate_result_id":"cand-closure","publication_id":"pub-closure"},"source_label":"candidate_published","step_id":"st4"}

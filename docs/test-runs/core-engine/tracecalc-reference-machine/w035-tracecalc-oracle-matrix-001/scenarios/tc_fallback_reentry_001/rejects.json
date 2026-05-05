@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"owner_node_id\":\"Pick\",\"phase\":\"first-pass\"}",
+      "reject_id": "rej1",
+      "reject_kind": "dynamic_dependency_failure"
+    }
+  ],
+  "scenario_id": "tc_fallback_reentry_001"
+}

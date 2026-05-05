@@ -1,0 +1,194 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_let_lambda_defined_name_callable_001",
+  "description": "defined-name callable carrier origin is preserved while publishing an ordinary value",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "let-lambda",
+    "defined-name-callable",
+    "publication"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "let-lambda-carrier"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Base",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 7
+        }
+      },
+      {
+        "node_id": "Out",
+        "kind": "value",
+        "expr": {
+          "op": "let_lambda_defined_name_invoke",
+          "carrier_id": "carrier:defined-name:TaxAdder",
+          "origin_kind": "DefinedNameCallable",
+          "capture_names": [
+            "tax_rate"
+          ],
+          "parameter_names": [
+            "amount"
+          ],
+          "deps": [
+            "Base"
+          ]
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Base",
+        "value": 7
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Out"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-defined-name-callable",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Out"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-defined-name-callable",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Out",
+          "value": 9
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "Out",
+          "kind": "let_lambda_defined_name_dependency",
+          "dep_id": "Base",
+          "payload": {
+            "callable_id": "carrier:defined-name:TaxAdder",
+            "origin_kind": "DefinedNameCallable",
+            "defined_name": "TaxAdder",
+            "capture_names": [
+              "tax_rate"
+            ],
+            "parameter_names": [
+              "amount"
+            ],
+            "arity": 1,
+            "dependency_visible": true,
+            "callable_publication_policy": "ordinary_value_only"
+          }
+        }
+      ],
+      "runtime_effects": [
+        {
+          "effect_kind": "runtime_effect.defined_name_callable_invocation",
+          "owner_node_id": "Out",
+          "payload": {
+            "callable_id": "carrier:defined-name:TaxAdder",
+            "origin_kind": "DefinedNameCallable"
+          }
+        }
+      ],
+      "diagnostic_events": [
+        "callable_carrier_origin:DefinedNameCallable",
+        "callable_replay_identity:carrier:defined-name:TaxAdder"
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-defined-name-callable",
+      "publication_id": "pub-defined-name-callable"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Base",
+          "value": 7
+        },
+        {
+          "node_id": "Out",
+          "value": 9
+        }
+      ]
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R7"
+    ],
+    "pack_bindings": [
+      "PACK.let_lambda.carrier_identity",
+      "PACK.let_lambda.defined_name_callable",
+      "PACK.dag.dependency_bind_semantics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates",
+      "callable_carrier_identity"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S3"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3",
+      "I8"
+    ]
+  }
+}

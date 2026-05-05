@@ -1,0 +1,946 @@
+{
+  "bundle_diff_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/diff/engine_diff.json",
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "run_kind": "tracecalc_reference_run",
+  "scenarios": [
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R1"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "candidate_publication_boundary",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_accept_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_accept_publish_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_accept_publish_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_accept_publish_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R2"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_reject_no_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_reject_no_publish_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_reject_no_publish_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_reject_no_publish_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/result.json"
+      },
+      "replay_classes": [
+        "R4"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "pinned_view",
+        "trace_labels",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_pinned_view_stability_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_pinned_view_stability_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_pinned_view_stability_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_pinned_view_stability_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/result.json"
+      },
+      "replay_classes": [
+        "R8"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "candidate_publication_boundary"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_dynamic_dep_switch_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_dynamic_dep_switch_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_dynamic_dep_switch_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_dynamic_dep_switch_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_overlay_retention_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_overlay_retention_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_overlay_retention_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_overlay_retention_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/result.json"
+      },
+      "replay_classes": [
+        "oxcalc.local.scale_seed"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_scale_chain_seed_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_scale_chain_seed_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_scale_chain_seed_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_scale_chain_seed_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R7"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_verify_clean_no_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_verify_clean_no_publish_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_verify_clean_no_publish_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_verify_clean_no_publish_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R3"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "candidate_publication_boundary"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_multinode_dag_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_multinode_dag_publish_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_multinode_dag_publish_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_publication_fence_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_publication_fence_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_publication_fence_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_publication_fence_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_artifact_token_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_artifact_token_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_artifact_token_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_artifact_token_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/result.json"
+      },
+      "replay_classes": [
+        "R8"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters",
+        "candidate_publication_boundary"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_fallback_reentry_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_fallback_reentry_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_fallback_reentry_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_fallback_reentry_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/result.json"
+      },
+      "replay_classes": [
+        "oxcalc.local.scc_stage1"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_cycle_region_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_cycle_region_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_cycle_region_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_cycle_region_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R7"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates",
+        "callable_carrier_identity"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_let_lambda_carrier_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_let_lambda_carrier_publish_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_let_lambda_carrier_publish_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R8"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "callable_carrier_identity",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_let_lambda_invocation_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_let_lambda_invocation_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_let_lambda_invocation_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/result.json"
+      },
+      "replay_classes": [
+        "R9"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "runtime_effects",
+        "callable_carrier_identity"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_let_lambda_runtime_effect_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_let_lambda_runtime_effect_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_runtime_effect_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_let_lambda_runtime_effect_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters",
+        "assertion_result_set"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_snapshot_fence_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_snapshot_fence_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_snapshot_fence_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters",
+        "capability_view_key"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_capability_fence_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_capability_fence_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_capability_fence_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/result.json"
+      },
+      "replay_classes": [
+        "R5",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_dynamic_dependency_negative_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_dynamic_dependency_negative_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "overlay_lifecycle"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_overlay_eviction_after_unpin_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_overlay_eviction_after_unpin_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/result.json"
+      },
+      "replay_classes": [
+        "R7"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates",
+        "callable_carrier_identity",
+        "runtime_effects"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_let_lambda_higher_order_replay_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_let_lambda_higher_order_replay_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R8"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "candidate_publication_boundary",
+        "replay_history_projection"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w034_replay_equivalent_independent_order_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_replay_equivalent_independent_order_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w034_replay_equivalent_independent_order_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_profile_fence_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/published_view.json",
+        "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_w035_profile_fence_reject_001--reduction-seed/reduction_manifest.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/trace.json",
+        "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_w035_profile_fence_reject_001--witness-seed/lifecycle.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R3",
+        "R6"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_static_dependency_add_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates",
+        "runtime_effects"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates",
+        "runtime_effects"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/result.json"
+      },
+      "replay_classes": [
+        "R5"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "overlay_lifecycle"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/result.json"
+      },
+      "replay_classes": [
+        "R7"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "trace_labels",
+        "counters",
+        "dependency_shape_updates",
+        "callable_carrier_identity"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_let_lambda_defined_name_callable_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/trace.json"
+      }
+    },
+    {
+      "bundle_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/counters.json",
+        "events": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/events.jsonl",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/views/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/views/published_view.json",
+        "reject_set": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/views/reject_set.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/runs/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/result.json"
+      },
+      "replay_classes": [
+        "R8"
+      ],
+      "required_equality_surfaces": [
+        "published_view",
+        "reject_set",
+        "trace_labels",
+        "counters",
+        "callable_carrier_identity"
+      ],
+      "result_state": "passed",
+      "scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+      "source_artifact_paths": {
+        "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/counters.json",
+        "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/pinned_views.json",
+        "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/published_view.json",
+        "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/rejects.json",
+        "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/trace.json"
+      }
+    }
+  ],
+  "schema_version": "oxcalc.local.replay_run_manifest.v1",
+  "source_artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001",
+  "source_engine_diff_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/conformance/engine_diff.json",
+  "source_manifest_selection_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/manifest_selection.json",
+  "source_oracle_baseline_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/conformance/oracle_baseline.json",
+  "source_run_summary_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/run_summary.json"
+}

@@ -92,6 +92,17 @@ Any later W035 promotion candidate must include machine-readable evidence, a sem
 | `calc-tkq.7` | `W035-OBL-006`, `W035-OBL-010`, `W035-OBL-012` |
 | `calc-tkq.8` | `W035-OBL-014`, `W035-OBL-015`, all open-lane audit rows |
 
+`calc-tkq.2` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_TRACECALC_ORACLE_MATRIX_EXPANSION.md` and `docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/`.
+
+Current `calc-tkq.2` obligation disposition:
+
+| Obligation id | `calc-tkq.2` disposition |
+|---|---|
+| `W035-OBL-001` | stale-fence matrix has 4 covered TraceCalc rows and 0 failed/missing rows |
+| `W035-OBL-002` | dependency-update matrix has 5 covered TraceCalc rows and 0 failed/missing rows |
+| `W035-OBL-003` | overlay-retention matrix has 2 covered TraceCalc rows; multi-reader release ordering is classified to `calc-tkq.5` |
+| `W035-OBL-004` | callable-carrier matrix has 4 covered TraceCalc rows; full OxFunc kernel semantics are classified to `calc-tkq.4` |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

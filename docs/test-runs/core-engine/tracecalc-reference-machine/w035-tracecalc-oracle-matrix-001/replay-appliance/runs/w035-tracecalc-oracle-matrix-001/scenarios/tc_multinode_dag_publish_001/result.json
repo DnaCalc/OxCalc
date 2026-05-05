@@ -1,0 +1,44 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.commit_atomicity"
+    ],
+    "replay_classes": [
+      "R3"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "candidate_publication_boundary"
+    ],
+    "safety_properties": [
+      "S1",
+      "S4"
+    ],
+    "transition_labels": [
+      "I1",
+      "I2",
+      "I3",
+      "C1",
+      "C2",
+      "C4"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_multinode_dag_publish_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/reductions/tc_multinode_dag_publish_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_multinode_dag_publish_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/witnesses/tc_multinode_dag_publish_001--witness-seed/lifecycle.json"
+  },
+  "validation_failures": []
+}

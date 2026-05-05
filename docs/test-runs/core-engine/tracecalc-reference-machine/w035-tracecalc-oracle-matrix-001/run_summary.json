@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001",
+  "result_counts": {
+    "passed": 30
+  },
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "scenario_count": 30,
+  "schema_version": "tracecalc-corpus-s1"
+}

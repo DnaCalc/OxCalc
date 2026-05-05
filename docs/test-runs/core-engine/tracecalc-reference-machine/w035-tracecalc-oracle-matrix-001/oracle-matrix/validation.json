@@ -1,0 +1,10 @@
+{
+  "classified_uncovered_row_count": 2,
+  "covered_row_count": 15,
+  "matrix_row_count": 17,
+  "missing_or_failed_row_count": 0,
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.validation.v1",
+  "status": "matrix_valid",
+  "tracecalc_scenario_count": 30
+}

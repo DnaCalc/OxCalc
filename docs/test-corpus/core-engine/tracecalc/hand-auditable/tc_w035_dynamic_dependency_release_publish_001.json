@@ -1,0 +1,195 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+  "description": "a dynamic dependency release publishes a scalar fallback value with release evidence",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "dynamic-dependency",
+    "dependency-release",
+    "publication"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "r5-dynamic-dependency"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Mode",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": "literal"
+        }
+      },
+      {
+        "node_id": "Source",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 9
+        }
+      },
+      {
+        "node_id": "Pick",
+        "kind": "value",
+        "expr": {
+          "op": "dyn_select",
+          "selector": "Mode",
+          "candidates": {
+            "source": "Source"
+          }
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Mode",
+        "value": "source"
+      },
+      {
+        "node_id": "Source",
+        "value": 9
+      },
+      {
+        "node_id": "Pick",
+        "value": 9
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Mode"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-dynamic-release",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-dynamic-release",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Mode",
+          "value": "literal"
+        },
+        {
+          "node_id": "Pick",
+          "value": 1
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "Pick",
+          "kind": "dynamic_dep_released",
+          "dep_id": "Source",
+          "payload": {
+            "selector_node": "Mode",
+            "released_dep": "Source",
+            "new_dependency_class": "literal_fallback"
+          }
+        }
+      ],
+      "runtime_effects": [
+        {
+          "effect_kind": "dynamic_ref_released",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Source"
+          }
+        }
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-dynamic-release",
+      "publication_id": "pub-dynamic-release"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Mode",
+          "value": "literal"
+        },
+        {
+          "node_id": "Source",
+          "value": 9
+        },
+        {
+          "node_id": "Pick",
+          "value": 1
+        }
+      ]
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.fec.dynamic_dependency",
+      "PACK.dag.dependency_bind_semantics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates",
+      "runtime_effects"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S5"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3"
+    ]
+  }
+}

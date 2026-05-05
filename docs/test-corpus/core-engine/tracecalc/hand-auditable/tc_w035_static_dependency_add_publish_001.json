@@ -1,0 +1,184 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_static_dependency_add_publish_001",
+  "description": "a static dependency addition publishes a new value with dependency-shape evidence",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "dependency-update",
+    "static-dependency",
+    "publication"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "dependency-update"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "A",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 1
+        }
+      },
+      {
+        "node_id": "B",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 2
+        }
+      },
+      {
+        "node_id": "C",
+        "kind": "value",
+        "expr": {
+          "op": "sum",
+          "deps": [
+            "A"
+          ]
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": 1
+      },
+      {
+        "node_id": "B",
+        "value": 2
+      },
+      {
+        "node_id": "C",
+        "value": 1
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "C"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-static-add",
+      "compatibility_basis": "s0",
+      "targets": [
+        "C"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-static-add",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "C",
+          "value": 3
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "C",
+          "kind": "static_dep_added",
+          "dep_id": "B",
+          "payload": {
+            "old_deps": [
+              "A"
+            ],
+            "new_deps": [
+              "A",
+              "B"
+            ]
+          }
+        }
+      ],
+      "runtime_effects": []
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-static-add",
+      "publication_id": "pub-static-add"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "A",
+          "value": 1
+        },
+        {
+          "node_id": "B",
+          "value": 2
+        },
+        {
+          "node_id": "C",
+          "value": 3
+        }
+      ]
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 1
+      },
+      {
+        "label": "candidate_published",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.dag.dependency_bind_semantics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S1",
+      "S5"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3"
+    ]
+  }
+}

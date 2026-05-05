@@ -9,6 +9,7 @@ use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
+use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
 use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
@@ -29,7 +30,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -77,6 +78,19 @@ fn run() -> Result<(), String> {
                 return Err("usage: oxcalc-tracecalc-cli treecalc <run-id>".to_string());
             }
             ("treecalc", run_id)
+        }
+        "tracecalc-oracle-matrix" => {
+            let Some(run_id) = args.next() else {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli tracecalc-oracle-matrix <run-id>".to_string(),
+                );
+            };
+            if args.next().is_some() {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli tracecalc-oracle-matrix <run-id>".to_string(),
+                );
+            }
+            ("tracecalc-oracle-matrix", run_id)
         }
         "retained-failures" => {
             let Some(run_id) = args.next() else {
@@ -146,6 +160,7 @@ fn run() -> Result<(), String> {
 
     match mode {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
+        "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
         "independent-conformance" => ensure_independent_conformance_root(&repo_root)?,
@@ -163,6 +178,20 @@ fn run() -> Result<(), String> {
             println!(
                 "TreeCalc local run '{run_id}' wrote {} cases to {}.",
                 summary.case_count, summary.artifact_root
+            );
+        }
+        "tracecalc-oracle-matrix" => {
+            let runner = TraceCalcOracleMatrixRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("TraceCalc oracle matrix run failed: {error}"))?;
+            println!(
+                "TraceCalc oracle matrix run '{run_id}' wrote {} matrix rows ({} covered, {} classified uncovered, {} failed/missing) to {}.",
+                summary.matrix_row_count,
+                summary.covered_row_count,
+                summary.uncovered_row_count,
+                summary.missing_or_failed_row_count,
+                summary.artifact_root
             );
         }
         "retained-failures" => {

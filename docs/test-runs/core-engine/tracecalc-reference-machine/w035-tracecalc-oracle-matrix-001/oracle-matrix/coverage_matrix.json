@@ -1,0 +1,492 @@
+{
+  "classified_uncovered_row_count": 2,
+  "covered_row_count": 15,
+  "matrix_row_count": 17,
+  "missing_or_failed_row_count": 0,
+  "rows": [
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_snapshot_fence_reject_001/trace.json"
+      ],
+      "classification": "covered_by_w034_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "stale_fence",
+      "obligation_id": "W035-OBL-001",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W034 snapshot-fence reject remains part of the W035 matrix floor.",
+      "required_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_stale_snapshot_fence_reject",
+      "scenario_id": "tc_w034_snapshot_fence_reject_001",
+      "surface": "snapshot epoch mismatch rejects without publication"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_capability_fence_reject_001/trace.json"
+      ],
+      "classification": "covered_by_w034_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "stale_fence",
+      "obligation_id": "W035-OBL-001",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W034 capability-fence reject remains part of the W035 matrix floor.",
+      "required_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_stale_capability_view_fence_reject",
+      "scenario_id": "tc_w034_capability_fence_reject_001",
+      "surface": "capability-view mismatch rejects without publication"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_profile_fence_reject_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "stale_fence",
+      "obligation_id": "W035-OBL-001",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a profile-version fence row that was not in the W034 TraceCalc seed.",
+      "required_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_stale_profile_version_fence_reject",
+      "scenario_id": "tc_w035_profile_fence_reject_001",
+      "surface": "profile-version mismatch rejects without publication"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_candidate_after_emit_fence_reject_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "stale_fence",
+      "obligation_id": "W035-OBL-001",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a post-candidate no-publish reject row for candidate/publication separation.",
+      "required_trace_labels": [
+        "candidate_emitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_stale_post_candidate_fence_reject",
+      "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001",
+      "surface": "accepted candidate can still be rejected before publication"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_dynamic_dependency_negative_001/trace.json"
+      ],
+      "classification": "covered_by_w034_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "dependency_update",
+      "obligation_id": "W035-OBL-002",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W034 dynamic negative row remains part of the W035 dependency-update floor.",
+      "required_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_dependency_dynamic_negative",
+      "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "surface": "unresolved dynamic dependency rejects without publication"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_static_dependency_add_publish_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "dependency_update",
+      "obligation_id": "W035-OBL-002",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a positive static dependency-shape update row.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_dependency_static_add_publish",
+      "scenario_id": "tc_w035_static_dependency_add_publish_001",
+      "surface": "static dependency addition publishes with dependency-shape evidence"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_switch_publish_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "dependency_update",
+      "obligation_id": "W035-OBL-002",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a positive dynamic dependency switch row.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_dependency_dynamic_switch_publish",
+      "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001",
+      "surface": "dynamic dependency switch publishes with runtime-effect evidence"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "dependency_update",
+      "obligation_id": "W035-OBL-002",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a dynamic dependency release/reclassification row.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_dependency_dynamic_release_publish",
+      "scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+      "surface": "dynamic dependency release publishes with runtime-effect evidence"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_dirty_seed_closure_no_under_invalidation_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "dependency_update",
+      "obligation_id": "W035-OBL-002",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a no-under-invalidation closure row for downstream dependents.",
+      "required_trace_labels": [
+        "node_marked_needed",
+        "candidate_published"
+      ],
+      "row_id": "w035_dependency_dirty_seed_closure",
+      "scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+      "surface": "dirty seed invalidates downstream closure without under-invalidation"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_overlay_eviction_after_unpin_001/trace.json"
+      ],
+      "classification": "covered_by_w034_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "overlay_retention",
+      "obligation_id": "W035-OBL-003",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "eviction_eligibility_opened",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_released",
+        "overlay_retained",
+        "reader_pinned",
+        "reader_unpinned",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W034 overlay retain/release row remains part of the W035 matrix floor.",
+      "required_trace_labels": [
+        "overlay_retained",
+        "eviction_eligibility_opened",
+        "overlay_released"
+      ],
+      "row_id": "w035_overlay_retain_release",
+      "scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "surface": "protected dynamic overlay retained while reader is pinned and released after unpin"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_overlay_reuse_protected_dynamic_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "overlay_retention",
+      "obligation_id": "W035-OBL-003",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a retained-overlay reuse row.",
+      "required_trace_labels": [
+        "overlay_retained",
+        "candidate_shape_update_produced"
+      ],
+      "row_id": "w035_overlay_reuse_protected_dynamic",
+      "scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001",
+      "surface": "protected dynamic overlay is reused on later compatible candidate emission"
+    },
+    {
+      "artifact_paths": [],
+      "classification": "classified_uncovered_tla_owner",
+      "evidence_state": "classified_uncovered_deferred",
+      "failures": [],
+      "matrix_family": "overlay_retention",
+      "obligation_id": "W035-OBL-003",
+      "observed_trace_labels": [],
+      "owner": "calc-tkq.5",
+      "reason": "TraceCalc remains single-threaded and does not model full multi-reader interleavings; W035 TLA non-routine exploration owns this row.",
+      "required_trace_labels": [],
+      "row_id": "w035_overlay_multi_reader_release_order",
+      "scenario_id": null,
+      "surface": "multi-reader overlay release ordering across independent pins"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/trace.json"
+      ],
+      "classification": "covered_by_w033_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W033 direct carrier row remains part of the W035 callable floor.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_callable_direct_capture_publish",
+      "scenario_id": "tc_let_lambda_carrier_publish_001",
+      "surface": "LET/LAMBDA direct capture publishes ordinary value with callable identity"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w034_let_lambda_higher_order_replay_001/trace.json"
+      ],
+      "classification": "covered_by_w034_seed",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W034 higher-order carrier row remains part of the W035 callable floor.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_callable_higher_order_publish",
+      "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "surface": "higher-order callable publishes ordinary value with replay-visible carrier identity"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_let_lambda_defined_name_callable_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_emitted",
+        "candidate_published",
+        "candidate_shape_update_produced",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "overlay_retained",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a defined-name callable carrier row.",
+      "required_trace_labels": [
+        "candidate_shape_update_produced",
+        "candidate_published"
+      ],
+      "row_id": "w035_callable_defined_name_publish",
+      "scenario_id": "tc_w035_let_lambda_defined_name_callable_001",
+      "surface": "defined-name callable carrier publishes ordinary value with origin preservation"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_w035_lambda_callable_publication_reject_001/trace.json"
+      ],
+      "classification": "covered_by_w035_matrix",
+      "evidence_state": "covered_passed",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected",
+        "evaluation_started",
+        "node_marked_dirty",
+        "node_marked_needed",
+        "topo_group_scheduled"
+      ],
+      "owner": "calc-tkq.2",
+      "reason": "W035 adds a callable-publication-policy reject row.",
+      "required_trace_labels": [
+        "candidate_admitted",
+        "candidate_rejected"
+      ],
+      "row_id": "w035_callable_publication_reject",
+      "scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+      "surface": "callable-as-value publication remains a typed reject/no-publish row"
+    },
+    {
+      "artifact_paths": [],
+      "classification": "classified_out_of_scope_oxfunc_kernel",
+      "evidence_state": "classified_uncovered_deferred",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [],
+      "owner": "calc-tkq.4",
+      "reason": "W035 formalizes the OxCalc/OxFml callable carrier fragment, not the general OxFunc semantic kernel.",
+      "required_trace_labels": [],
+      "row_id": "w035_callable_full_oxfunc_semantics",
+      "scenario_id": null,
+      "surface": "full OxFunc LAMBDA semantic kernel"
+    }
+  ],
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.coverage.v1",
+  "tracecalc_run_summary_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/run_summary.json"
+}

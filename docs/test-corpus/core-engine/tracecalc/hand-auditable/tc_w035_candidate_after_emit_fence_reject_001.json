@@ -1,0 +1,168 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001",
+  "description": "an accepted candidate result can still be rejected before publication, preserving the previous published view",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "candidate-result",
+    "publication-fence",
+    "no-publish"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "candidate-publication-boundary",
+    "r6-reject-taxonomy"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "A",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 2
+        }
+      },
+      {
+        "node_id": "B",
+        "kind": "value",
+        "expr": {
+          "op": "sum",
+          "deps": [
+            "A"
+          ]
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "A",
+        "value": 2
+      },
+      {
+        "node_id": "B",
+        "value": 2
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "B"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "cand-post-candidate",
+      "compatibility_basis": "s0",
+      "targets": [
+        "B"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-post-candidate",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "B",
+          "value": 6
+        }
+      ],
+      "dependency_shape_updates": [],
+      "runtime_effects": []
+    },
+    {
+      "step_id": "st4",
+      "kind": "emit_reject",
+      "reject_id": "rej-post-candidate",
+      "reject_kind": "publication_fence_mismatch",
+      "reject_detail": {
+        "candidate_result_id": "cand-post-candidate",
+        "expected_fence": "s0",
+        "observed_fence": "s1",
+        "phase": "pre_publish"
+      }
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "A",
+          "value": 2
+        },
+        {
+          "node_id": "B",
+          "value": 2
+        }
+      ]
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_emitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "accepted_candidate_results",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "rejects_by_class.publication_fence_mismatch",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-post-candidate",
+        "reject_kind": "publication_fence_mismatch",
+        "detail_contains": "pre_publish"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R3",
+      "R6"
+    ],
+    "pack_bindings": [
+      "PACK.fec.candidate_publication_boundary",
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2",
+      "S4"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C3",
+      "I6"
+    ]
+  }
+}

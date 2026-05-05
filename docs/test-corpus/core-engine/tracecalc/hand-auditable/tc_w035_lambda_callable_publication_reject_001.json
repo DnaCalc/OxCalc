@@ -1,0 +1,123 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+  "description": "publishing a callable carrier as the cell value remains a typed no-publish reject in the current OxCalc carrier fragment",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "let-lambda",
+    "callable-publication-policy",
+    "rejected"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "let-lambda-carrier",
+    "r6-reject-taxonomy"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Callable",
+        "kind": "value",
+        "expr": {
+          "op": "lambda_value",
+          "carrier_id": "carrier:lambda:publish_me",
+          "origin_kind": "HelperLambda",
+          "arity": 1,
+          "callable_publication_policy": "ordinary_value_only"
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": []
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Callable"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-callable-publication",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Callable"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-callable-publication",
+      "reject_kind": "lambda_callable_publication_not_supported",
+      "reject_detail_text": "callable carrier carrier:lambda:publish_me cannot publish as ordinary cell value under current OxCalc/OxFml carrier fragment"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": []
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_admitted",
+        "count": 1
+      },
+      {
+        "label": "candidate_rejected",
+        "count": 1
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "rejects_by_class.lambda_callable_publication_not_supported",
+        "comparison": "eq",
+        "value": 1
+      },
+      {
+        "counter": "fallback_affected_work_volume",
+        "comparison": "eq",
+        "value": 1
+      }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-callable-publication",
+        "reject_kind": "lambda_callable_publication_not_supported",
+        "detail_contains": "cannot publish"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R8"
+    ],
+    "pack_bindings": [
+      "PACK.let_lambda.carrier_identity",
+      "PACK.fec.reject_detail_replay"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters",
+      "callable_carrier_identity"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6",
+      "I8"
+    ]
+  }
+}

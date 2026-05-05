@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001",
+  "classified_uncovered_row_count": 2,
+  "coverage_matrix_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/coverage_matrix.json",
+  "covered_row_count": 15,
+  "matrix_row_count": 17,
+  "missing_or_failed_row_count": 0,
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.summary.v1",
+  "tracecalc_scenario_count": 30,
+  "uncovered_surface_register_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/uncovered_surface_register.json",
+  "validation_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/validation.json"
+}

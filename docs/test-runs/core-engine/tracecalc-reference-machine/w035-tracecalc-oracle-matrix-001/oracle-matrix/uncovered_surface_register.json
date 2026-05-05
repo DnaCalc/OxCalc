@@ -1,0 +1,38 @@
+{
+  "classified_uncovered_row_count": 2,
+  "missing_or_failed_row_count": 0,
+  "rows": [
+    {
+      "artifact_paths": [],
+      "classification": "classified_uncovered_tla_owner",
+      "evidence_state": "classified_uncovered_deferred",
+      "failures": [],
+      "matrix_family": "overlay_retention",
+      "obligation_id": "W035-OBL-003",
+      "observed_trace_labels": [],
+      "owner": "calc-tkq.5",
+      "reason": "TraceCalc remains single-threaded and does not model full multi-reader interleavings; W035 TLA non-routine exploration owns this row.",
+      "required_trace_labels": [],
+      "row_id": "w035_overlay_multi_reader_release_order",
+      "scenario_id": null,
+      "surface": "multi-reader overlay release ordering across independent pins"
+    },
+    {
+      "artifact_paths": [],
+      "classification": "classified_out_of_scope_oxfunc_kernel",
+      "evidence_state": "classified_uncovered_deferred",
+      "failures": [],
+      "matrix_family": "let_lambda_callable",
+      "obligation_id": "W035-OBL-004",
+      "observed_trace_labels": [],
+      "owner": "calc-tkq.4",
+      "reason": "W035 formalizes the OxCalc/OxFml callable carrier fragment, not the general OxFunc semantic kernel.",
+      "required_trace_labels": [],
+      "row_id": "w035_callable_full_oxfunc_semantics",
+      "scenario_id": null,
+      "surface": "full OxFunc LAMBDA semantic kernel"
+    }
+  ],
+  "run_id": "w035-tracecalc-oracle-matrix-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.uncovered.v1"
+}

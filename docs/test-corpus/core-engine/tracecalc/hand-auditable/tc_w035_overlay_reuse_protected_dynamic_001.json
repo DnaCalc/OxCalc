@@ -1,0 +1,255 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001",
+  "description": "a retained dynamic-dependency overlay is reused by a later compatible candidate emission",
+  "calc_space": "TraceCalc",
+  "tags": [
+    "w035",
+    "overlay",
+    "overlay-reuse",
+    "dynamic-dependency"
+  ],
+  "pack_tags": [
+    "stage1",
+    "w035",
+    "overlay-retention",
+    "r5-dynamic-dependency"
+  ],
+  "initial_graph": {
+    "snapshot_id": "s0",
+    "nodes": [
+      {
+        "node_id": "Mode",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": "left"
+        }
+      },
+      {
+        "node_id": "Left",
+        "kind": "value",
+        "expr": {
+          "op": "const",
+          "value": 10
+        }
+      },
+      {
+        "node_id": "Pick",
+        "kind": "value",
+        "expr": {
+          "op": "dyn_select",
+          "selector": "Mode",
+          "candidates": {
+            "left": "Left"
+          }
+        }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      {
+        "node_id": "Mode",
+        "value": "left"
+      },
+      {
+        "node_id": "Left",
+        "value": 10
+      },
+      {
+        "node_id": "Pick",
+        "value": 10
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step_id": "st1",
+      "kind": "mark_stale",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-overlay-reuse-1",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-overlay-reuse",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "Pick",
+          "kind": "activate_dynamic_dep",
+          "dep_id": "Left",
+          "payload": {
+            "selector_node": "Mode",
+            "selector_value": "left",
+            "round": 1
+          }
+        }
+      ],
+      "runtime_effects": [
+        {
+          "effect_kind": "dynamic_ref_activated",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Left"
+          }
+        }
+      ]
+    },
+    {
+      "step_id": "st4",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-overlay-reuse",
+      "publication_id": "pub-overlay-reuse-1"
+    },
+    {
+      "step_id": "st5",
+      "kind": "mark_stale",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st6",
+      "kind": "admit_work",
+      "admission_id": "adm-overlay-reuse-2",
+      "compatibility_basis": "s0",
+      "targets": [
+        "Pick"
+      ]
+    },
+    {
+      "step_id": "st7",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-overlay-reuse",
+      "compatibility_basis": "s0",
+      "value_updates": [
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "Pick",
+          "kind": "activate_dynamic_dep",
+          "dep_id": "Left",
+          "payload": {
+            "selector_node": "Mode",
+            "selector_value": "left",
+            "round": 2,
+            "expected_overlay_reuse": true
+          }
+        }
+      ],
+      "runtime_effects": [
+        {
+          "effect_kind": "dynamic_ref_activated",
+          "owner_node_id": "Pick",
+          "payload": {
+            "dep_id": "Left"
+          }
+        }
+      ]
+    },
+    {
+      "step_id": "st8",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-overlay-reuse",
+      "publication_id": "pub-overlay-reuse-2"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s0",
+      "node_values": [
+        {
+          "node_id": "Mode",
+          "value": "left"
+        },
+        {
+          "node_id": "Left",
+          "value": 10
+        },
+        {
+          "node_id": "Pick",
+          "value": 10
+        }
+      ]
+    },
+    "trace_labels": [
+      {
+        "label": "candidate_shape_update_produced",
+        "count": 2
+      },
+      {
+        "label": "overlay_retained",
+        "count": 2
+      },
+      {
+        "label": "candidate_published",
+        "count": 2
+      }
+    ],
+    "counter_expectations": [
+      {
+        "counter": "overlay_hits",
+        "comparison": "ge",
+        "value": 1
+      },
+      {
+        "counter": "overlay_reuse_after_retention",
+        "comparison": "ge",
+        "value": 1
+      },
+      {
+        "counter": "publications_committed",
+        "comparison": "eq",
+        "value": 2
+      }
+    ],
+    "rejects": []
+  },
+  "replay_projection": {
+    "replay_classes": [
+      "R5"
+    ],
+    "pack_bindings": [
+      "PACK.fec.overlay_lifecycle",
+      "PACK.overlay.fallback_economics"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "overlay_lifecycle"
+    ],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": [
+      "S5",
+      "S6"
+    ],
+    "transition_labels": [
+      "C4",
+      "A9",
+      "A10"
+    ]
+  }
+}

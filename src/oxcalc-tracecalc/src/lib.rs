@@ -6,6 +6,7 @@ pub mod assertions;
 pub mod contracts;
 pub mod independent_conformance;
 pub mod machine;
+pub mod oracle_matrix;
 pub mod oxfml_fixture_bridge;
 pub mod pack_capability;
 pub mod planner;

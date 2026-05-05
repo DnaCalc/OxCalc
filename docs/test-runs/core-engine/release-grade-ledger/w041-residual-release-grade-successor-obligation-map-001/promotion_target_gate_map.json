@@ -1,0 +1,67 @@
+{
+  "run_id": "w041-residual-release-grade-successor-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w041.promotion_target_gate_map.v1",
+  "promotion_target_count": 12,
+  "targets": [
+    {
+      "target": "release_grade_full_verification",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-001", "W041-OBL-002", "W041-OBL-003", "W041-OBL-004", "W041-OBL-005", "W041-OBL-006", "W041-OBL-007", "W041-OBL-008", "W041-OBL-009", "W041-OBL-010", "W041-OBL-011", "W041-OBL-012", "W041-OBL-013", "W041-OBL-014", "W041-OBL-015", "W041-OBL-016", "W041-OBL-017", "W041-OBL-018", "W041-OBL-019", "W041-OBL-020", "W041-OBL-021", "W041-OBL-022", "W041-OBL-023", "W041-OBL-024", "W041-OBL-025", "W041-OBL-026", "W041-OBL-027", "W041-OBL-028"]
+    },
+    {
+      "target": "full_optimized_core_verification",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-002", "W041-OBL-003", "W041-OBL-004", "W041-OBL-005", "W041-OBL-006", "W041-OBL-009"]
+    },
+    {
+      "target": "rust_totality_and_refinement",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-007", "W041-OBL-008", "W041-OBL-009"]
+    },
+    {
+      "target": "full_lean_tla_verification",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-009", "W041-OBL-010", "W041-OBL-011", "W041-OBL-023", "W041-OBL-028"]
+    },
+    {
+      "target": "stage2_production_policy",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-003", "W041-OBL-004", "W041-OBL-011", "W041-OBL-012", "W041-OBL-013", "W041-OBL-018", "W041-OBL-025"]
+    },
+    {
+      "target": "operated_assurance_services",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-014", "W041-OBL-015", "W041-OBL-016", "W041-OBL-017", "W041-OBL-018"]
+    },
+    {
+      "target": "retained_history_and_witness_services",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-015", "W041-OBL-016", "W041-OBL-025"]
+    },
+    {
+      "target": "fully_independent_evaluator_breadth",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-018", "W041-OBL-019", "W041-OBL-020"]
+    },
+    {
+      "target": "broad_oxfml_display_publication_and_public_migration",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-021", "W041-OBL-022", "W041-OBL-024"]
+    },
+    {
+      "target": "callable_metadata_and_carrier_sufficiency",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-005", "W041-OBL-023", "W041-OBL-024", "W041-OBL-028"]
+    },
+    {
+      "target": "pack_grade_replay_and_cap_c5_pack_valid",
+      "readiness": "blocked",
+      "required_obligations": ["W041-OBL-001", "W041-OBL-006", "W041-OBL-013", "W041-OBL-015", "W041-OBL-016", "W041-OBL-018", "W041-OBL-019", "W041-OBL-020", "W041-OBL-025", "W041-OBL-026"]
+    },
+    {
+      "target": "general_oxfunc_kernels_inside_oxcalc",
+      "readiness": "out_of_scope_not_promoted",
+      "required_obligations": ["W041-OBL-028"]
+    }
+  ]
+}

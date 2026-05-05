@@ -1,0 +1,15 @@
+{
+  "run_id": "w041-residual-release-grade-successor-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w041.oxfml_formatting_intake.v1",
+  "source": "Current OxFml W073 typed conditional-formatting update retained for W041",
+  "typed_rule_only_families": ["colorScale", "dataBar", "iconSet", "top", "bottom", "aboveAverage", "belowAverage"],
+  "accepted_metadata_source": "VerificationConditionalFormattingRule.typed_rule",
+  "ignored_legacy_metadata_source_for_named_families": "W072 bounded thresholds strings",
+  "thresholds_still_valid_for": ["scalar", "operator", "expression"],
+  "old_string_non_interpretation_rows_observed": [
+    "bounded_visualization_threshold_strings_are_not_interpreted",
+    "bounded_aggregate_option_strings_are_not_interpreted"
+  ],
+  "handoff_required": false,
+  "w041_owner_bead": "calc-sui.8"
+}

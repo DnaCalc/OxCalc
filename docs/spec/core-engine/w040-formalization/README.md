@@ -24,9 +24,9 @@ Current packets:
 5. `W040_STAGE2_PRODUCTION_POLICY_AND_EQUIVALENCE_IMPLEMENTATION.md` - `calc-tv5.5` Stage 2 policy/equivalence packet.
 6. `W040_OPERATED_ASSURANCE_AND_RETAINED_HISTORY_SERVICE_IMPLEMENTATION.md` - `calc-tv5.6` operated-assurance and retained-history service-artifact packet.
 7. `W040_INDEPENDENT_EVALUATOR_IMPLEMENTATION_AND_OPERATED_DIFFERENTIAL.md` - `calc-tv5.7` bounded independent-evaluator diversity packet.
-8. `W040_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_IMPLEMENTATION.md` - current `calc-tv5.8` OxFml seam breadth and callable metadata packet.
+8. `W040_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_IMPLEMENTATION.md` - `calc-tv5.8` OxFml seam breadth and callable metadata packet.
+9. `W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md` - current `calc-tv5.9` pack-grade replay governance and C5 promotion decision packet.
 
 Planned packets:
 
-1. `W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md`
-2. `W040_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`
+1. `W040_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`

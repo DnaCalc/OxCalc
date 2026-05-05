@@ -51,7 +51,8 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 11. `W035` core formalization proof and assurance hardening,
 12. `W036` core formalization verification closure expansion,
 13. `W037` core formalization full-verification promotion gates,
-14. `W038` core formalization release-grade closure hardening.
+14. `W038` core formalization release-grade closure hardening,
+15. `W039` core formalization release-grade successor closure.
 
 ## Historical Note
 

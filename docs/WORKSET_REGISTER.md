@@ -316,3 +316,19 @@ It does mean:
    residual release-grade obligation ledger and objective map, TraceCalc oracle authority and authority-exclusion discharge, optimized core-engine conformance blocker closure and fixes, proof-model assumption discharge and totality boundary hardening, Stage 2 partition replay and semantic-equivalence execution, operated assurance alert-quarantine and cross-engine service, independent evaluator diversity and OxFml seam watch closure, pack-grade replay governance and C5 release decision, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`
+
+### W039 Core Formalization Release-Grade Successor Closure
+1. purpose:
+   continue after W038 by attacking the remaining release-grade blockers directly: optimized/core exact blockers, Lean/TLA totality, Stage 2 production partition policy, operated assurance services, retained history, independent evaluator diversity, OxFml seam breadth including current W073 typed-only conditional-formatting metadata, callable metadata, pack-grade replay governance, C5 reassessment, and release-grade decision.
+2. depends_on:
+   `W038`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W039_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_CLOSURE.md`, `docs/spec/core-engine/w038-formalization/W038_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W038 residuals are mapped to W039 obligations; optimized/core exact blockers are fixed, directly evidenced, spec-evolved, or retained without declared-gap match promotion; Lean/TLA totality and proof/model rows distinguish discharged, bounded, assumed, and blocked cases; Stage 2 production partition and pack-grade replay evidence is present before policy promotion; operated assurance, retained-history, alert/quarantine, and cross-engine differential claims use service artifacts; independent evaluator diversity uses independent implementation authority; OxFml W073 typed-only formatting, broad seam breadth, public consumer surfaces, and callable metadata are evidenced, handed off, or blocked; pack/C5 and release-grade decisions state exact evidence consequence before any promotion claim.
+6. initial_epic_lanes:
+   residual successor obligation ledger and promotion-readiness map, optimized core exact blocker implementation closure, Lean/TLA totality and proof-model closure tranche, Stage 2 production partition policy and replay governance, operated assurance service and retained history substrate, independent evaluator row set and cross-engine diversity, OxFml seam breadth and callable metadata closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade decision
+7. rollout_mode:
+   `execution_target`

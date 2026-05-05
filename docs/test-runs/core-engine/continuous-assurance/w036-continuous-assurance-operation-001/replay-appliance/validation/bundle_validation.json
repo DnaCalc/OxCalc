@@ -1,0 +1,15 @@
+{
+  "continuous_service_promoted": false,
+  "decision_status": "w036_simulated_continuous_assurance_history_defined_without_service_promotion",
+  "history_window_row_count": 6,
+  "missing_paths": [],
+  "quarantine_rule_count": 7,
+  "regression_threshold_count": 7,
+  "run_id": "w036-continuous-assurance-operation-001",
+  "schema_version": "oxcalc.continuous_assurance.bundle_validation.v1",
+  "simulated_multi_run_count": 6,
+  "source_missing_artifact_count": 0,
+  "status": "bundle_valid",
+  "unexpected_mismatch_count": 0,
+  "validated_required_artifact_count": 46
+}

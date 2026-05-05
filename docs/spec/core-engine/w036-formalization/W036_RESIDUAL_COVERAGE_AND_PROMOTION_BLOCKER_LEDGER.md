@@ -167,6 +167,12 @@ Checked TLA artifacts `formal/tla/CoreEngineW036Stage2Partition.tla` and five co
 
 Evidence run `w036-independent-diversity-differential-001` emits 15 base TraceCalc-to-TreeCalc comparison rows, 5 evaluator diversity rows, 6 cross-engine differential rows, 6 promotion blockers, 0 missing artifacts, 0 unexpected mismatches, 0 fully independent evaluator rows, and no continuous cross-engine service promotion. Direct OxFml evaluator re-execution, full independent evaluator implementation diversity, full optimized/core-engine verification, pack-grade replay, and Stage 2 policy remain unpromoted.
 
+### calc-rqq.7 Disposition Update
+
+`calc-rqq.7` now records the W036 continuous-assurance operation and history window in `W036_CONTINUOUS_ASSURANCE_OPERATION_AND_HISTORY_WINDOW.md`.
+
+Evidence run `w036-continuous-assurance-operation-001` emits 11 source evidence rows, 4 scheduled lanes, 6 cross-engine gate rows, 6 simulated history rows, 7 regression threshold rules, 7 quarantine/alert rules, 6 simulated multi-run rows, 0 missing artifacts, 0 unexpected mismatches, and 11 no-promotion reasons. The packet defines semantic-first acceptance and quarantine criteria, but it does not promote an operated continuous-assurance service, an alert dispatcher, continuous cross-engine differential service, timing-based correctness, pack C5, or Stage 2 policy.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

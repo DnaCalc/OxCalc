@@ -252,14 +252,28 @@ fn run() -> Result<(), String> {
             let summary = runner
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("continuous assurance run failed: {error}"))?;
-            println!(
-                "Continuous assurance run '{run_id}' wrote decision '{}' with {} source rows, {} differential rows, and {} no-promotion reasons to {}.",
-                summary.decision_status,
-                summary.source_evidence_row_count,
-                summary.cross_engine_gate_row_count,
-                summary.no_promotion_reason_count,
-                summary.artifact_root
-            );
+            if run_id.starts_with("w036-") {
+                println!(
+                    "Continuous assurance run '{run_id}' wrote decision '{}' with {} source rows, {} differential rows, {} history rows, {} threshold rules, {} quarantine rules, and {} no-promotion reasons to {}.",
+                    summary.decision_status,
+                    summary.source_evidence_row_count,
+                    summary.cross_engine_gate_row_count,
+                    summary.history_window_row_count,
+                    summary.regression_threshold_count,
+                    summary.quarantine_rule_count,
+                    summary.no_promotion_reason_count,
+                    summary.artifact_root
+                );
+            } else {
+                println!(
+                    "Continuous assurance run '{run_id}' wrote decision '{}' with {} source rows, {} differential rows, and {} no-promotion reasons to {}.",
+                    summary.decision_status,
+                    summary.source_evidence_row_count,
+                    summary.cross_engine_gate_row_count,
+                    summary.no_promotion_reason_count,
+                    summary.artifact_root
+                );
+            }
         }
         "retained-failures" => {
             let runner = TraceCalcRetainedFailureRunner::new();

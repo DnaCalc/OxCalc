@@ -1162,9 +1162,12 @@ fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> St
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
+
+    static TEST_REPO_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     #[test]
     fn pack_capability_runner_keeps_c5_unpromoted_when_blockers_remain() {
@@ -1290,8 +1293,9 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
+        let counter = TEST_REPO_COUNTER.fetch_add(1, Ordering::Relaxed);
         let base = std::env::temp_dir().join(format!(
-            "oxcalc-pack-capability-test-{}-{nanos}",
+            "oxcalc-pack-capability-test-{}-{nanos}-{counter}",
             std::process::id()
         ));
         let repo_root = base.join("OxCalc");

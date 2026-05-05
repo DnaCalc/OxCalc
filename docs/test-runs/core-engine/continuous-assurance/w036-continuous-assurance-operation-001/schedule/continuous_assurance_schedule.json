@@ -1,0 +1,67 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001",
+  "lanes": [
+    {
+      "acceptance": [
+        "zero failed oracle-matrix rows",
+        "zero failed implementation-conformance rows",
+        "zero source missing artifacts"
+      ],
+      "cadence": "per_change_or_nightly",
+      "lane_id": "continuous.semantic.smoke",
+      "required_commands": [
+        "cargo test -p oxcalc-tracecalc oracle_matrix",
+        "cargo test -p oxcalc-tracecalc implementation_conformance",
+        "cargo test -p oxcalc-tracecalc scale_semantic_binding"
+      ]
+    },
+    {
+      "acceptance": [
+        "closed-form semantic validation passes",
+        "metamorphic signature rows remain matched",
+        "timing changes are reported as measurement, not correctness proof"
+      ],
+      "cadence": "scheduled_weekly_or_release_candidate",
+      "lane_id": "continuous.scale.regression",
+      "required_profiles": [
+        "grid-cross-sum",
+        "fanout-bands",
+        "dynamic-indirect-stripes",
+        "relative-rebind-churn"
+      ]
+    },
+    {
+      "acceptance": [
+        "no unexpected mismatches",
+        "declared gaps are not counted as matches",
+        "pack C5 promotion requires all blockers cleared"
+      ],
+      "cadence": "release_candidate_and_before_pack_promotion",
+      "lane_id": "continuous.cross_engine.diff",
+      "required_comparisons": [
+        "TraceCalc oracle matrix",
+        "TreeCalc/CoreEngine implementation conformance",
+        "million-node scale semantic signatures",
+        "pack/capability decision packet"
+      ]
+    },
+    {
+      "acceptance": [
+        "history window is machine-readable and points at checked-in evidence roots",
+        "semantic regressions quarantine before any performance interpretation",
+        "timing rows are alert-only measurements and never correctness proof",
+        "no operated continuous service promotion is made from simulated history"
+      ],
+      "cadence": "simulated_from_checked_in_successor_evidence_until_runner_exists",
+      "lane_id": "continuous.history.thresholds",
+      "required_artifacts": [
+        "history/assurance_history_window.json",
+        "thresholds/regression_thresholds.json",
+        "alerts/quarantine_policy.json",
+        "operation/simulated_multi_run_evidence.json"
+      ]
+    }
+  ],
+  "run_id": "w036-continuous-assurance-operation-001",
+  "schema_version": "oxcalc.continuous_assurance.schedule.v1"
+}

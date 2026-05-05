@@ -1,0 +1,161 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001",
+  "missing_artifact_count": 0,
+  "row_count": 11,
+  "rows": [
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/run_summary.json",
+        "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/decision/continuous_scale_assurance_criteria.json"
+      ],
+      "continuous_scale_assurance_promoted": false,
+      "evidence_state": "semantic_scale_binding_present_no_continuous_promotion",
+      "failures": [],
+      "input_id": "w034_scale_semantic_binding",
+      "scale_signature_row_count": 5,
+      "validated_scale_run_count": 7
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/run_summary.json",
+        "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/decision/pack_capability_decision.json"
+      ],
+      "blocker_count": 12,
+      "evidence_state": "pack_binding_present_c5_not_promoted",
+      "failures": [],
+      "highest_honest_capability": "cap.C4.distill_valid",
+      "input_id": "w034_pack_capability_binding"
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json"
+      ],
+      "classified_uncovered_row_count": 2,
+      "covered_row_count": 15,
+      "evidence_state": "oracle_matrix_present_with_classified_uncovered_rows",
+      "failures": [],
+      "input_id": "w035_tracecalc_oracle_matrix",
+      "matrix_row_count": 17
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/run_summary.json"
+      ],
+      "evidence_state": "gap_dispositions_present_without_promotion",
+      "failures": [],
+      "gap_disposition_row_count": 6,
+      "implementation_work_count": 5,
+      "input_id": "w035_implementation_conformance",
+      "spec_evolution_deferral_count": 1
+    },
+    {
+      "artifact_paths": [
+        "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
+        "docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md",
+        "formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean",
+        "formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean",
+        "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+        "formal/tla/CoreEngineW035NonRoutineInterleavings.multi_reader.cfg",
+        "formal/tla/CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg",
+        "formal/tla/CoreEngineW035NonRoutineInterleavings.partition_gap.cfg"
+      ],
+      "evidence_state": "bounded_formal_packets_present_no_full_verification_promotion",
+      "input_id": "w035_lean_tla_formal_packets",
+      "missing_artifacts": []
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/run_summary.json",
+        "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json"
+      ],
+      "continuous_service_promoted": false,
+      "cross_engine_gate_row_count": 4,
+      "evidence_state": "w035_gate_present_without_service_promotion",
+      "failures": [],
+      "input_id": "w035_continuous_assurance_gate",
+      "missing_artifact_count": 0,
+      "scheduled_lane_count": 3,
+      "source_evidence_row_count": 5,
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_closure_criteria.json"
+      ],
+      "classified_uncovered_row_count": 1,
+      "covered_row_count": 30,
+      "evidence_state": "coverage_closure_criteria_present_no_full_oracle_claim",
+      "excluded_row_count": 1,
+      "failures": [],
+      "full_oracle_claim": false,
+      "input_id": "w036_tracecalc_coverage_closure",
+      "matrix_row_count": 32,
+      "missing_or_failed_row_count": 0
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_match_promotion_guard.json"
+      ],
+      "evidence_state": "conformance_closure_actions_present_without_match_promotion",
+      "failed_row_count": 0,
+      "failures": [],
+      "input_id": "w036_implementation_conformance_closure",
+      "w036_action_row_count": 6,
+      "w036_blocker_routed_row_count": 4,
+      "w036_first_fix_row_count": 2,
+      "w036_match_promoted_count": 0
+    },
+    {
+      "artifact_paths": [
+        "docs/spec/core-engine/w036-formalization/W036_LEAN_THEOREM_COVERAGE_EXPANSION.md",
+        "docs/spec/core-engine/w036-formalization/W036_TLA_STAGE2_PARTITION_AND_SCHEDULER_EQUIVALENCE_MODEL.md",
+        "formal/lean/OxCalc/CoreEngine/W036LeanCoverageExpansion.lean",
+        "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg"
+      ],
+      "evidence_state": "w036_bounded_formal_packets_present_no_full_verification_promotion",
+      "input_id": "w036_lean_tla_formal_packets",
+      "missing_artifacts": []
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json"
+      ],
+      "blocker_count": 5,
+      "config_count": 5,
+      "evidence_state": "bounded_tla_partition_evidence_present_no_stage2_promotion",
+      "failed_config_count": 0,
+      "failures": [],
+      "input_id": "w036_tla_stage2_partition",
+      "passed_config_count": 5
+    },
+    {
+      "artifact_paths": [
+        "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+        "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+        "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/decision/promotion_guard.json"
+      ],
+      "comparison_row_count": 15,
+      "continuous_cross_engine_service_promoted": false,
+      "declared_gap_count": 2,
+      "evidence_state": "independent_differential_harness_present_without_service_promotion",
+      "failures": [],
+      "full_independent_evaluator_promoted": false,
+      "input_id": "w036_independent_differential_harness",
+      "w036_differential_row_count": 6,
+      "w036_diversity_row_count": 5,
+      "w036_promotion_blocker_count": 6
+    }
+  ],
+  "run_id": "w036-continuous-assurance-operation-001",
+  "schema_version": "oxcalc.continuous_assurance.evidence_index.v1",
+  "unexpected_mismatch_count": 0
+}

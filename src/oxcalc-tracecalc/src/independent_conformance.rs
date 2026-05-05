@@ -156,6 +156,18 @@ struct ComparisonCounts {
     unexpected_mismatches: usize,
 }
 
+struct W036DifferentialInputs<'a> {
+    counts: ComparisonCounts,
+    comparison_rows: &'a [Value],
+    core_rows: &'a [Value],
+    tracecalc_matrix_summary_path: &'a str,
+    tracecalc_matrix_summary: Option<&'a Value>,
+    implementation_summary_path: &'a str,
+    implementation_summary: Option<&'a Value>,
+    tla_summary_path: &'a str,
+    tla_summary: Option<&'a Value>,
+}
+
 struct BaseRow<'a> {
     row_id: &'a str,
     observable_class: &'a str,
@@ -684,17 +696,17 @@ fn build_w036_packet(
         .count();
     let full_independent_evaluator_promoted = full_independent_evaluator_count > 0;
 
-    let differential_rows = w036_differential_rows(
+    let differential_rows = w036_differential_rows(W036DifferentialInputs {
         counts,
         comparison_rows,
         core_rows,
-        &tracecalc_matrix_summary_path,
-        tracecalc_matrix_summary.as_ref(),
-        &implementation_summary_path,
-        implementation_summary.as_ref(),
-        &tla_summary_path,
-        tla_summary.as_ref(),
-    );
+        tracecalc_matrix_summary_path: &tracecalc_matrix_summary_path,
+        tracecalc_matrix_summary: tracecalc_matrix_summary.as_ref(),
+        implementation_summary_path: &implementation_summary_path,
+        implementation_summary: implementation_summary.as_ref(),
+        tla_summary_path: &tla_summary_path,
+        tla_summary: tla_summary.as_ref(),
+    });
     let differential_row_count = differential_rows.len();
     let unexpected_mismatch_count = count_unexpected_mismatch_rows(&differential_rows);
     let declared_gap_count = count_declared_gap_rows(&differential_rows);
@@ -858,17 +870,17 @@ fn evaluator_diversity_rows() -> Vec<Value> {
     ]
 }
 
-fn w036_differential_rows(
-    counts: ComparisonCounts,
-    comparison_rows: &[Value],
-    core_rows: &[Value],
-    tracecalc_matrix_summary_path: &str,
-    tracecalc_matrix_summary: Option<&Value>,
-    implementation_summary_path: &str,
-    implementation_summary: Option<&Value>,
-    tla_summary_path: &str,
-    tla_summary: Option<&Value>,
-) -> Vec<Value> {
+fn w036_differential_rows(input: W036DifferentialInputs<'_>) -> Vec<Value> {
+    let counts = input.counts;
+    let comparison_rows = input.comparison_rows;
+    let core_rows = input.core_rows;
+    let tracecalc_matrix_summary_path = input.tracecalc_matrix_summary_path;
+    let tracecalc_matrix_summary = input.tracecalc_matrix_summary;
+    let implementation_summary_path = input.implementation_summary_path;
+    let implementation_summary = input.implementation_summary;
+    let tla_summary_path = input.tla_summary_path;
+    let tla_summary = input.tla_summary;
+
     vec![
         json!({
             "row_id": "w036_diff_tracecalc_treecalc_observable_surface",

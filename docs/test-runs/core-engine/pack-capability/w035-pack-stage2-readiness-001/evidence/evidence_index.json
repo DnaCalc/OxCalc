@@ -1,0 +1,153 @@
+{
+  "blocker_count": 19,
+  "evidence_profile": "w035_pack_stage2_readiness_reassessment",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "rows": [
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json;docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+      "evidence_state": "evidence_present",
+      "input_id": "retained_pack_program_decisions",
+      "observations": [
+        "pack_decision_status:capability_not_promoted",
+        "pack_highest_honest_capability:cap.C4.distill_valid",
+        "program_decision_status:capability_not_promoted"
+      ],
+      "reason_ids": [
+        "pack.grade.program_scope.unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json;docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "projection_valid_no_pack_promotion",
+      "input_id": "direct_oxfml_fixture_bridge",
+      "observations": [
+        "fixture_case_count:45",
+        "mismatch_count:0",
+        "handoff_triggered:false",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.direct_oxfml_evaluator_reexecution_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/validation/bundle_validation.json;docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "witness_bundles_validated",
+      "input_id": "let_lambda_carrier_witnesses",
+      "observations": [
+        "tracecalc_bundle_status:bundle_valid",
+        "treecalc_bundle_status:bundle_valid"
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json;docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "widened_conformance_present_with_gaps",
+      "input_id": "independent_conformance_widening",
+      "observations": [
+        "unexpected_mismatch_count:0",
+        "declared_gap_count:6",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.independent_conformance_declared_gaps",
+        "pack.grade.continuous_diff_suite_absent",
+        "pack.grade.fully_independent_evaluator_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+      "evidence_state": "capability_ceiling_snapshot_present",
+      "input_id": "treecalc_capability_snapshot",
+      "observations": [
+        "claimed_capability_levels:4",
+        "target_capability_levels:2"
+      ],
+      "reason_ids": [
+        "pack.grade.treecalc_c4_c5_unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md;docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md;formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean;formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean;formal/tla/CoreEngineW035NonRoutineInterleavings.tla;formal/tla/CoreEngineW035NonRoutineInterleavings.multi_reader.cfg;formal/tla/CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg;formal/tla/CoreEngineW035NonRoutineInterleavings.partition_gap.cfg",
+      "evidence_state": "formal_gate_packets_present_bounded_no_promotion",
+      "input_id": "w035_lean_tla_formal_gate_packets",
+      "observations": [
+        "W035 Lean artifacts classify local proof rows, external seam assumptions, and opaque OxFunc kernel boundaries.",
+        "W035 TLA artifacts check bounded non-routine scheduler/overlay models and keep Stage 2 policy unpromoted."
+      ],
+      "reason_ids": [
+        "pack.grade.w035_formal_slices_bounded_not_full_verification",
+        "pack.grade.stage2_scheduler_preconditions_not_satisfied"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w035-formalization/W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md;docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
+      "evidence_state": "watch_classified_no_current_oxcalc_request_path",
+      "input_id": "oxfml_w073_typed_conditional_formatting_watch",
+      "observations": [
+        "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only.",
+        "OxCalc artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/run_summary.json;docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json;docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/coverage_matrix.json;docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/uncovered_surface_register.json;docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/validation.json;docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "oracle_matrix_present_with_classified_uncovered_rows",
+      "input_id": "w035_tracecalc_oracle_matrix",
+      "observations": [
+        "W035 TraceCalc oracle matrix has 30 passing scenarios, 17 matrix rows, 15 covered rows, and 2 classified uncovered rows.",
+        "The matrix widens the oracle surface but is not full TraceCalc coverage of the engine universe."
+      ],
+      "reason_ids": [
+        "pack.grade.tracecalc_oracle_matrix_not_full_coverage"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/run_summary.json;docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/evidence_summary.json;docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/gap_disposition_register.json;docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/validation.json",
+      "evidence_state": "gap_dispositions_valid_without_match_promotion",
+      "input_id": "w035_implementation_conformance_hardening",
+      "observations": [
+        "W035 implementation conformance records 6 gap dispositions, 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows.",
+        "The dispositions prevent false matches; they do not promote full optimized/core-engine conformance."
+      ],
+      "reason_ids": [
+        "pack.grade.implementation_gap_dispositions_remain",
+        "pack.grade.optimized_core_engine_conformance_not_full"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/run_summary.json;docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/evidence/source_evidence_index.json;docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/differentials/cross_engine_differential_gate.json;docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json;docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "continuous_gate_defined_without_service_promotion",
+      "input_id": "w035_continuous_assurance_gate",
+      "observations": [
+        "W035 continuous assurance defines scheduled lanes and differential criteria with 0 missing artifacts and 0 unexpected mismatches.",
+        "The packet explicitly keeps continuous scale assurance, cross-engine differential service, pack C5, Stage 2, and performance-correctness claims unpromoted."
+      ],
+      "reason_ids": [
+        "pack.grade.continuous_assurance_gate_not_running_service",
+        "pack.grade.continuous_cross_engine_diff_service_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md",
+      "evidence_state": "policy_blocker_retained",
+      "input_id": "program_grade_governance",
+      "observations": [
+        "W033/W034/W035 successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid."
+      ],
+      "reason_ids": [
+        "pack.grade.program_grade_replay_governance_not_reached",
+        "pack.grade.retained_witness_promotion_not_shared_program_grade",
+        "pack.grade.continuous_scale_assurance_unpromoted",
+        "pack.grade.stage2_scheduler_policy_unpromoted",
+        "pack.grade.pack_c5_no_promotion_after_w035_reassessment",
+        "pack.grade.w035_closure_audit_not_yet_recorded"
+      ]
+    }
+  ],
+  "run_id": "w035-pack-stage2-readiness-001",
+  "satisfied_input_count": 10,
+  "schema_version": "oxcalc.pack_capability.evidence_index.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

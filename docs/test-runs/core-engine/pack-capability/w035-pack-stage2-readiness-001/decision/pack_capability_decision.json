@@ -1,0 +1,69 @@
+{
+  "capability_promoted": false,
+  "decision_status": "capability_not_promoted",
+  "evidence_index_path": "docs/test-runs/core-engine/pack-capability/w035-pack-stage2-readiness-001/evidence/evidence_index.json",
+  "evidence_profile": "w035_pack_stage2_readiness_reassessment",
+  "handoff_decision": {
+    "reason_ids": [
+      "oxfml.seam.no_new_trigger_from_pack_governance_packet",
+      "oxfml.seam.watch_lanes_only"
+    ],
+    "status": "handoff_not_required"
+  },
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "missing_paths": [],
+  "no_promotion_reason_ids": [
+    "pack.grade.program_scope.unproven",
+    "pack.grade.direct_oxfml_evaluator_reexecution_absent",
+    "pack.grade.independent_conformance_declared_gaps",
+    "pack.grade.continuous_diff_suite_absent",
+    "pack.grade.fully_independent_evaluator_absent",
+    "pack.grade.treecalc_c4_c5_unproven",
+    "pack.grade.w035_formal_slices_bounded_not_full_verification",
+    "pack.grade.stage2_scheduler_preconditions_not_satisfied",
+    "pack.grade.tracecalc_oracle_matrix_not_full_coverage",
+    "pack.grade.implementation_gap_dispositions_remain",
+    "pack.grade.optimized_core_engine_conformance_not_full",
+    "pack.grade.continuous_assurance_gate_not_running_service",
+    "pack.grade.continuous_cross_engine_diff_service_absent",
+    "pack.grade.program_grade_replay_governance_not_reached",
+    "pack.grade.retained_witness_promotion_not_shared_program_grade",
+    "pack.grade.continuous_scale_assurance_unpromoted",
+    "pack.grade.stage2_scheduler_policy_unpromoted",
+    "pack.grade.pack_c5_no_promotion_after_w035_reassessment",
+    "pack.grade.w035_closure_audit_not_yet_recorded"
+  ],
+  "run_id": "w035-pack-stage2-readiness-001",
+  "satisfied_inputs": [
+    "retained_semantic_pack_decision_present",
+    "direct_oxfml_fixture_projection_has_no_mismatch",
+    "let_lambda_carrier_witness_bundles_valid",
+    "independent_conformance_has_no_unexpected_mismatch",
+    "treecalc_capability_snapshot_present",
+    "w035_lean_tla_packets_present",
+    "oxfml_w073_formatting_watch_classified",
+    "w035_tracecalc_oracle_matrix_valid",
+    "w035_gap_dispositions_valid",
+    "w035_continuous_assurance_gate_present"
+  ],
+  "schema_version": "oxcalc.pack_capability.decision.v1",
+  "semantic_equivalence_statement": "This runner reads existing evidence and emits pack/Stage 2 readiness decisions only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, TraceCalc, TreeCalc, Lean/TLA, or OxFml evaluator behavior.",
+  "stage2_readiness": {
+    "decision_state": "not_ready_for_stage2_promotion",
+    "required_before_promotion": [
+      "concrete_partition_coverage_model",
+      "scheduler_semantic_equivalence_replay",
+      "continuous_cross_engine_differential_service",
+      "pack_grade_replay_governance"
+    ],
+    "stage2_scheduler_promoted": false
+  },
+  "successor_lanes": [
+    "calc-tkq.8",
+    "future_pack_grade_replay_governance",
+    "future_continuous_cross_engine_diff_service",
+    "future_stage2_partition_equivalence_packet"
+  ],
+  "target_capability": "cap.C5.pack_valid"
+}

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Post-W033 pack capability decision packet emission.
+//! Post-W033/W034/W035 pack capability decision packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -37,6 +37,88 @@ const W034_FORMAL_ARTIFACTS: &[&str] = &[
 const W034_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
     "docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md",
     "docs/spec/core-engine/w034-formalization/W034_FORMALIZATION_DEEPENING_PLAN.md",
+];
+const W035_TRACECALC_ORACLE_MATRIX_RUN_ID: &str = "w035-tracecalc-oracle-matrix-001";
+#[cfg(test)]
+const W035_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
+    "w035-implementation-conformance-hardening-001";
+#[cfg(test)]
+const W035_CONTINUOUS_ASSURANCE_RUN_ID: &str = "w035-continuous-assurance-gate-001";
+const W035_FORMAL_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
+    "docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md",
+    "formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean",
+    "formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.multi_reader.cfg",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.partition_gap.cfg",
+];
+const W035_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w035-formalization/W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md",
+    "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
+];
+const W035_TRACECALC_ORACLE_MATRIX_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/run_summary.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/coverage_matrix.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/uncovered_surface_register.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/validation.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/validation/bundle_validation.json",
+];
+const W035_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/run_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/evidence_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/gap_disposition_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/validation.json",
+];
+const W035_CONTINUOUS_ASSURANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/run_summary.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/evidence/source_evidence_index.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/differentials/cross_engine_differential_gate.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/replay-appliance/validation/bundle_validation.json",
+];
+const W035_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
+    SupplementalEvidenceSpec {
+        input_id: "w035_tracecalc_oracle_matrix",
+        artifact_paths: W035_TRACECALC_ORACLE_MATRIX_ARTIFACTS,
+        satisfied_input_id: "w035_tracecalc_oracle_matrix_valid",
+        evidence_state_present: "oracle_matrix_present_with_classified_uncovered_rows",
+        observations: &[
+            "W035 TraceCalc oracle matrix has 30 passing scenarios, 17 matrix rows, 15 covered rows, and 2 classified uncovered rows.",
+            "The matrix widens the oracle surface but is not full TraceCalc coverage of the engine universe.",
+        ],
+        reason_ids: &["pack.grade.tracecalc_oracle_matrix_not_full_coverage"],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w035_implementation_conformance_hardening",
+        artifact_paths: W035_IMPLEMENTATION_CONFORMANCE_ARTIFACTS,
+        satisfied_input_id: "w035_gap_dispositions_valid",
+        evidence_state_present: "gap_dispositions_valid_without_match_promotion",
+        observations: &[
+            "W035 implementation conformance records 6 gap dispositions, 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows.",
+            "The dispositions prevent false matches; they do not promote full optimized/core-engine conformance.",
+        ],
+        reason_ids: &[
+            "pack.grade.implementation_gap_dispositions_remain",
+            "pack.grade.optimized_core_engine_conformance_not_full",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w035_continuous_assurance_gate",
+        artifact_paths: W035_CONTINUOUS_ASSURANCE_ARTIFACTS,
+        satisfied_input_id: "w035_continuous_assurance_gate_present",
+        evidence_state_present: "continuous_gate_defined_without_service_promotion",
+        observations: &[
+            "W035 continuous assurance defines scheduled lanes and differential criteria with 0 missing artifacts and 0 unexpected mismatches.",
+            "The packet explicitly keeps continuous scale assurance, cross-engine differential service, pack C5, Stage 2, and performance-correctness claims unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.continuous_assurance_gate_not_running_service",
+            "pack.grade.continuous_cross_engine_diff_service_absent",
+        ],
+    },
 ];
 
 #[derive(Debug, Error)]
@@ -110,8 +192,25 @@ struct PackCapabilityProfile {
     independent_conformance_run_id: &'static str,
     program_governance_artifact: &'static str,
     formal_artifacts: &'static [&'static str],
+    formal_input_id: &'static str,
+    formal_satisfied_input_id: &'static str,
+    formal_evidence_state_present: &'static str,
+    formal_observations: &'static [&'static str],
+    formal_reason_ids: &'static [&'static str],
     formatting_watch_artifacts: &'static [&'static str],
     additional_static_blockers: &'static [&'static str],
+    supplemental_evidence: &'static [SupplementalEvidenceSpec],
+    successor_lanes: &'static [&'static str],
+}
+
+#[derive(Debug, Clone)]
+struct SupplementalEvidenceSpec {
+    input_id: &'static str,
+    artifact_paths: &'static [&'static str],
+    satisfied_input_id: &'static str,
+    evidence_state_present: &'static str,
+    observations: &'static [&'static str],
+    reason_ids: &'static [&'static str],
 }
 
 impl PackCapabilityRunner {
@@ -193,13 +292,18 @@ impl PackCapabilityRunner {
                 "satisfied_inputs": evaluation.satisfied_inputs,
                 "no_promotion_reason_ids": evaluation.blockers,
                 "evidence_index_path": format!("{relative_artifact_root}/evidence/evidence_index.json"),
-                "successor_lanes": [
-                    "calc-rcr",
-                    "calc-8lg",
-                    "future_program_grade_pack_scope",
-                    "future_continuous_cross_engine_diff_suite",
-                    "w034_closure_audit"
-                ],
+                "successor_lanes": profile.successor_lanes,
+                "stage2_readiness": {
+                    "stage2_scheduler_promoted": false,
+                    "decision_state": "not_ready_for_stage2_promotion",
+                    "required_before_promotion": [
+                        "concrete_partition_coverage_model",
+                        "scheduler_semantic_equivalence_replay",
+                        "continuous_cross_engine_differential_service",
+                        "pack_grade_replay_governance"
+                    ]
+                },
+                "semantic_equivalence_statement": "This runner reads existing evidence and emits pack/Stage 2 readiness decisions only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc semantics, publication semantics, reject policy, TraceCalc, TreeCalc, Lean/TLA, or OxFml evaluator behavior.",
                 "handoff_decision": {
                     "status": "handoff_not_required",
                     "reason_ids": [
@@ -301,8 +405,9 @@ fn evaluate_evidence(
     evaluate_let_lambda(repo_root, profile, &mut evaluation)?;
     evaluate_independent_conformance(repo_root, profile, &mut evaluation)?;
     evaluate_treecalc_capability(repo_root, profile, &mut evaluation)?;
-    evaluate_w034_formal_artifacts(repo_root, profile, &mut evaluation);
+    evaluate_formal_artifacts(repo_root, profile, &mut evaluation);
     evaluate_formatting_watch_artifacts(repo_root, profile, &mut evaluation);
+    evaluate_supplemental_evidence(repo_root, profile, &mut evaluation);
     add_static_program_blockers(profile, &mut evaluation);
     Ok(evaluation)
 }
@@ -605,7 +710,7 @@ fn evaluate_treecalc_capability(
     Ok(())
 }
 
-fn evaluate_w034_formal_artifacts(
+fn evaluate_formal_artifacts(
     repo_root: &Path,
     profile: &PackCapabilityProfile,
     evaluation: &mut EvidenceEvaluation,
@@ -622,31 +727,31 @@ fn evaluate_w034_formal_artifacts(
         .collect::<Vec<_>>();
     evaluation.missing_paths.extend(missing_paths.clone());
 
-    let reason_ids = vec![
-        "pack.grade.w034_formal_slices_bounded_not_full_verification".to_string(),
-        "pack.grade.stage2_contention_preconditions_unpromoted".to_string(),
-    ];
+    let reason_ids = profile
+        .formal_reason_ids
+        .iter()
+        .map(|reason| (*reason).to_string())
+        .collect::<Vec<_>>();
     if missing_paths.is_empty() {
         evaluation
             .satisfied_inputs
-            .push("w034_lean_tla_packets_present".to_string());
+            .push(profile.formal_satisfied_input_id.to_string());
         evaluation.blockers.extend(reason_ids.clone());
     }
 
     evaluation.rows.push(EvidenceRow {
-        input_id: "w034_lean_tla_formal_gate_packets",
+        input_id: profile.formal_input_id,
         artifact_path: profile.formal_artifacts.join(";"),
         evidence_state: if missing_paths.is_empty() {
-            "formal_gate_packets_present_bounded_no_promotion".to_string()
+            profile.formal_evidence_state_present.to_string()
         } else {
             "missing_artifact".to_string()
         },
-        observations: vec![
-            "W034 Lean/TLA artifacts are checked bounded proof/model slices, not full Lean/TLA verification."
-                .to_string(),
-            "Stage 2 contention is modeled as blocked precondition evidence, not promoted scheduler policy."
-                .to_string(),
-        ],
+        observations: profile
+            .formal_observations
+            .iter()
+            .map(|observation| (*observation).to_string())
+            .collect(),
         reason_ids,
     });
 }
@@ -684,11 +789,55 @@ fn evaluate_formatting_watch_artifacts(
         observations: vec![
             "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only."
                 .to_string(),
-            "OxCalc W034 artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
+            "OxCalc artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
                 .to_string(),
         ],
         reason_ids: Vec::new(),
     });
+}
+
+fn evaluate_supplemental_evidence(
+    repo_root: &Path,
+    profile: &PackCapabilityProfile,
+    evaluation: &mut EvidenceEvaluation,
+) {
+    for source in profile.supplemental_evidence {
+        let missing_paths = source
+            .artifact_paths
+            .iter()
+            .filter(|relative_path| !repo_root.join(relative_path).exists())
+            .map(|relative_path| (*relative_path).to_string())
+            .collect::<Vec<_>>();
+        evaluation.missing_paths.extend(missing_paths.clone());
+
+        let reason_ids = source
+            .reason_ids
+            .iter()
+            .map(|reason| (*reason).to_string())
+            .collect::<Vec<_>>();
+        if missing_paths.is_empty() {
+            evaluation
+                .satisfied_inputs
+                .push(source.satisfied_input_id.to_string());
+            evaluation.blockers.extend(reason_ids.clone());
+        }
+
+        evaluation.rows.push(EvidenceRow {
+            input_id: source.input_id,
+            artifact_path: source.artifact_paths.join(";"),
+            evidence_state: if missing_paths.is_empty() {
+                source.evidence_state_present.to_string()
+            } else {
+                "missing_artifact".to_string()
+            },
+            observations: source
+                .observations
+                .iter()
+                .map(|observation| (*observation).to_string())
+                .collect(),
+            reason_ids,
+        });
+    }
 }
 
 fn add_static_program_blockers(
@@ -711,14 +860,50 @@ fn add_static_program_blockers(
         artifact_path: profile.program_governance_artifact.to_string(),
         evidence_state: "policy_blocker_retained".to_string(),
         observations: vec![
-            "W033/W034 successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid.".to_string(),
+            "W033/W034/W035 successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid.".to_string(),
         ],
         reason_ids,
     });
 }
 
 fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
-    if run_id.starts_with("w034-") {
+    if run_id.starts_with("w035-") {
+        PackCapabilityProfile {
+            profile_id: "w035_pack_stage2_readiness_reassessment",
+            oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
+            let_lambda_tracecalc_run_id: W035_TRACECALC_ORACLE_MATRIX_RUN_ID,
+            let_lambda_treecalc_run_id: W034_TREECALC_RUN_ID,
+            independent_treecalc_run_id: W034_TREECALC_RUN_ID,
+            independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
+            program_governance_artifact: "docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md",
+            formal_artifacts: W035_FORMAL_ARTIFACTS,
+            formal_input_id: "w035_lean_tla_formal_gate_packets",
+            formal_satisfied_input_id: "w035_lean_tla_packets_present",
+            formal_evidence_state_present: "formal_gate_packets_present_bounded_no_promotion",
+            formal_observations: &[
+                "W035 Lean artifacts classify local proof rows, external seam assumptions, and opaque OxFunc kernel boundaries.",
+                "W035 TLA artifacts check bounded non-routine scheduler/overlay models and keep Stage 2 policy unpromoted.",
+            ],
+            formal_reason_ids: &[
+                "pack.grade.w035_formal_slices_bounded_not_full_verification",
+                "pack.grade.stage2_scheduler_preconditions_not_satisfied",
+            ],
+            formatting_watch_artifacts: W035_FORMATTING_WATCH_ARTIFACTS,
+            additional_static_blockers: &[
+                "pack.grade.continuous_scale_assurance_unpromoted",
+                "pack.grade.stage2_scheduler_policy_unpromoted",
+                "pack.grade.pack_c5_no_promotion_after_w035_reassessment",
+                "pack.grade.w035_closure_audit_not_yet_recorded",
+            ],
+            supplemental_evidence: W035_SUPPLEMENTAL_EVIDENCE,
+            successor_lanes: &[
+                "calc-tkq.8",
+                "future_pack_grade_replay_governance",
+                "future_continuous_cross_engine_diff_service",
+                "future_stage2_partition_equivalence_packet",
+            ],
+        }
+    } else if run_id.starts_with("w034-") {
         PackCapabilityProfile {
             profile_id: "w034_formalization_gate_binding",
             oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
@@ -728,10 +913,29 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
             program_governance_artifact: "docs/spec/core-engine/w034-formalization/W034_PACK_CAPABILITY_AND_CONTINUOUS_SCALE_GATE_BINDING.md",
             formal_artifacts: W034_FORMAL_ARTIFACTS,
+            formal_input_id: "w034_lean_tla_formal_gate_packets",
+            formal_satisfied_input_id: "w034_lean_tla_packets_present",
+            formal_evidence_state_present: "formal_gate_packets_present_bounded_no_promotion",
+            formal_observations: &[
+                "W034 Lean/TLA artifacts are checked bounded proof/model slices, not full Lean/TLA verification.",
+                "Stage 2 contention is modeled as blocked precondition evidence, not promoted scheduler policy.",
+            ],
+            formal_reason_ids: &[
+                "pack.grade.w034_formal_slices_bounded_not_full_verification",
+                "pack.grade.stage2_contention_preconditions_unpromoted",
+            ],
             formatting_watch_artifacts: W034_FORMATTING_WATCH_ARTIFACTS,
             additional_static_blockers: &[
                 "pack.grade.continuous_scale_assurance_unpromoted",
                 "pack.grade.w034_closure_audit_not_yet_recorded",
+            ],
+            supplemental_evidence: &[],
+            successor_lanes: &[
+                "calc-rcr",
+                "calc-8lg",
+                "future_program_grade_pack_scope",
+                "future_continuous_cross_engine_diff_suite",
+                "w034_closure_audit",
             ],
         }
     } else {
@@ -744,8 +948,21 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             independent_conformance_run_id: POST_W033_INDEPENDENT_CONFORMANCE_RUN_ID,
             program_governance_artifact: "docs/spec/core-engine/w033-formalization/W033_PACK_CAPABILITY_BINDING.md",
             formal_artifacts: &[],
+            formal_input_id: "",
+            formal_satisfied_input_id: "",
+            formal_evidence_state_present: "",
+            formal_observations: &[],
+            formal_reason_ids: &[],
             formatting_watch_artifacts: &[],
             additional_static_blockers: &[],
+            supplemental_evidence: &[],
+            successor_lanes: &[
+                "calc-rcr",
+                "calc-8lg",
+                "future_program_grade_pack_scope",
+                "future_continuous_cross_engine_diff_suite",
+                "w034_closure_audit",
+            ],
         }
     }
 }
@@ -928,6 +1145,13 @@ fn required_artifacts(run_id: &str, profile: &PackCapabilityProfile) -> Vec<Stri
             .iter()
             .map(|artifact| (*artifact).to_string()),
     )
+    .chain(
+        profile
+            .supplemental_evidence
+            .iter()
+            .flat_map(|source| source.artifact_paths.iter())
+            .map(|artifact| (*artifact).to_string()),
+    )
     .collect()
 }
 
@@ -1004,6 +1228,57 @@ mod tests {
         let validation = read_required_json(
             &repo_root,
             "docs/test-runs/core-engine/pack-capability/w034-pack-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn pack_capability_runner_binds_w035_reassessment_inputs() {
+        let repo_root = unique_temp_repo();
+        create_w035_source_artifacts(&repo_root);
+
+        let summary = PackCapabilityRunner::new()
+            .execute(&repo_root, "w035-pack-stage2-test")
+            .expect("W035 pack capability packet should write");
+
+        assert_eq!(summary.decision_status, "capability_not_promoted");
+        assert_eq!(summary.highest_honest_capability, "cap.C4.distill_valid");
+        assert_eq!(summary.missing_artifact_count, 0);
+
+        let decision = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w035-pack-stage2-test/decision/pack_capability_decision.json",
+        );
+        assert_eq!(
+            decision["evidence_profile"],
+            "w035_pack_stage2_readiness_reassessment"
+        );
+        assert_eq!(
+            decision["stage2_readiness"]["stage2_scheduler_promoted"],
+            false
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.stage2_scheduler_preconditions_not_satisfied"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.continuous_assurance_gate_not_running_service"))
+        );
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w035-pack-stage2-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -1165,6 +1440,62 @@ mod tests {
             .chain(W034_FORMATTING_WATCH_ARTIFACTS.iter())
         {
             write_text_test(repo_root, artifact, "W034 gate artifact\n");
+        }
+    }
+
+    fn create_w035_source_artifacts(repo_root: &Path) {
+        create_w034_source_artifacts(repo_root);
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/replay-appliance/validation/bundle_validation.json",
+            json!({
+                "status": "bundle_valid",
+            }),
+        );
+        for artifact in W035_TRACECALC_ORACLE_MATRIX_ARTIFACTS {
+            if artifact.ends_with("bundle_validation.json") {
+                continue;
+            }
+            write_json_test(
+                repo_root,
+                artifact,
+                json!({
+                    "run_id": W035_TRACECALC_ORACLE_MATRIX_RUN_ID,
+                    "status": "valid"
+                }),
+            );
+        }
+        for artifact in W035_IMPLEMENTATION_CONFORMANCE_ARTIFACTS {
+            write_json_test(
+                repo_root,
+                artifact,
+                json!({
+                    "run_id": W035_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+                    "status": "implementation_conformance_hardening_valid"
+                }),
+            );
+        }
+        for artifact in W035_CONTINUOUS_ASSURANCE_ARTIFACTS {
+            write_json_test(
+                repo_root,
+                artifact,
+                json!({
+                    "run_id": W035_CONTINUOUS_ASSURANCE_RUN_ID,
+                    "decision_status": "continuous_assurance_gate_defined_without_promotion",
+                    "status": "bundle_valid"
+                }),
+            );
+        }
+        write_text_test(
+            repo_root,
+            "docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md",
+            "W035 pack capability and Stage 2 readiness reassessment\n",
+        );
+        for artifact in W035_FORMAL_ARTIFACTS
+            .iter()
+            .chain(W035_FORMATTING_WATCH_ARTIFACTS.iter())
+        {
+            write_text_test(repo_root, artifact, "W035 gate artifact\n");
         }
     }
 

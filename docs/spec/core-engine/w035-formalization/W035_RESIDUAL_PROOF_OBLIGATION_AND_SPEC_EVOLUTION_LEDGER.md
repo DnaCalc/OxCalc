@@ -143,6 +143,16 @@ Current `calc-tkq.6` obligation disposition:
 | `W035-OBL-006` | fully independent evaluator diversity remains unpromoted and is now an explicit cross-engine differential gate blocker |
 | `W035-OBL-011` | continuous assurance packet shape, schedule lanes, cross-engine differential criteria, and no-promotion decision are machine-readable and checked in |
 
+`calc-tkq.7` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md` and `docs/test-runs/core-engine/pack-capability/w035-pack-stage2-readiness-001/`.
+
+Current `calc-tkq.7` obligation disposition:
+
+| Obligation id | `calc-tkq.7` disposition |
+|---|---|
+| `W035-OBL-006` | fully independent evaluator diversity remains unpromoted and is carried as a pack no-promotion blocker |
+| `W035-OBL-010` | Stage 2 scheduler promotion remains blocked by concrete partition modeling, replay equivalence, continuous cross-engine differential service, and pack-grade replay governance |
+| `W035-OBL-012` | pack capability is reassessed with 10 evidence rows, 10 satisfied inputs, 19 no-promotion blockers, 0 missing artifacts, and `cap.C4.distill_valid` as the highest honest capability |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

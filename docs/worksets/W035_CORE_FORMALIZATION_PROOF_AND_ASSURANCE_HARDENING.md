@@ -85,16 +85,16 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 
 ## Current Status
 
-- execution_state: `calc-tkq.6_continuous_assurance_gate_validated`
+- execution_state: `calc-tkq.7_pack_stage2_reassessment_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tkq.7` and `calc-tkq.8` remain open
+  - `calc-tkq.8` remains open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open beyond W035 conformance-hardening dispositions
-  - pack-grade replay, continuous scale assurance, and Stage 2 policy remain unpromoted
+  - pack-grade replay, continuous scale assurance, continuous cross-engine differential service, and Stage 2 policy remain unpromoted
 
 Latest W035 evidence:
 
@@ -109,3 +109,5 @@ Latest W035 evidence:
 9. `formal/tla/CoreEngineW035NonRoutineInterleavings.tla` and its three W035 configs record the checked scheduler-gate, partition-gap, and multi-reader overlay exploration.
 10. `docs/spec/core-engine/w035-formalization/W035_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_DIFFERENTIAL_GATE.md` records the continuous-assurance and cross-engine differential gate packet for `calc-tkq.6`.
 11. `docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/` records the deterministic gate run: 5 source evidence rows, 3 scheduled lanes, 4 differential rows, 0 missing artifacts, 0 unexpected mismatches, and 9 no-promotion reasons.
+12. `docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md` records the pack capability and Stage 2 readiness reassessment packet for `calc-tkq.7`.
+13. `docs/test-runs/core-engine/pack-capability/w035-pack-stage2-readiness-001/` records the deterministic reassessment run: 10 evidence rows, 10 satisfied inputs, 19 no-promotion blockers, 0 missing artifacts, and `cap.C4.distill_valid` as the highest honest capability.

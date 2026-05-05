@@ -93,16 +93,20 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 
 ## Current Status
 
-- execution_state: `calc-ubd_open_with_calc-ubd.2_ready`
+- execution_state: `calc-ubd.2_residual_full_verification_ledger_validated`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.2` is the current ready W037 bead
-  - all W037 child beads remain open
+  - `calc-ubd.1` is the next ready W037 bead
+  - `calc-ubd.3` through `calc-ubd.9` remain blocked by the sequential W037 path
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open
   - direct OxFml evaluator re-execution and `LET`/`LAMBDA` seam evidence remain open
   - Stage 2 deterministic replay and partition promotion criteria remain open
   - pack-grade replay, C5, operated continuous-assurance service, operated continuous cross-engine differential service, and enforcing alert/quarantine service remain unpromoted
+
+Latest W037 evidence:
+
+1. `docs/spec/core-engine/w037-formalization/W037_RESIDUAL_FULL_VERIFICATION_AND_PROMOTION_GATE_LEDGER.md` records the `calc-ubd.2` W037 residual full-verification and promotion-gate ledger, mapping W036 no-promotion blockers to W037 owners, evidence roots, and promotion consequences.

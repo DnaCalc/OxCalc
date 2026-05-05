@@ -8,4 +8,4 @@ The governing workset is `docs/worksets/W037_CORE_FORMALIZATION_FULL_VERIFICATIO
 
 Current packets:
 
-1. none yet; first packet is expected from `calc-ubd.2`.
+1. `W037_RESIDUAL_FULL_VERIFICATION_AND_PROMOTION_GATE_LEDGER.md`

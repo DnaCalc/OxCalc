@@ -1,0 +1,248 @@
+{
+  "automatic_dynamic_transition_row_count": 1,
+  "refinement_row_count": 9,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain W043 Rust refinement classifications as predecessor regression evidence for the W044 frontier",
+      "disposition_kind": "carried_refinement_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json",
+        "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "predecessor refinement evidence is retained but is not a full Rust-engine refinement proof",
+      "reason": "The W043 Rust packet remains valid, has zero failed rows, and records two automatic dynamic transition refinement rows.",
+      "refinement_row": true,
+      "row_id": "w044_w043_rust_refinement_regression_evidence",
+      "source_inputs": [
+        "W043 Rust totality/refinement packet"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_refinement_row_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.2; calc-b1t.3",
+      "automatic_dynamic_transition_row": true,
+      "bounded_model": false,
+      "disposition": "automatic mixed dynamic transition derives DependencyAdded, DependencyRemoved, and DependencyReclassified and forces rebind behavior in the W044 replay",
+      "disposition_kind": "direct_refinement_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+        "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/result.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "mixed_dynamic_reasons_present": true,
+        "mixed_dynamic_rejected_for_rebind": true
+      },
+      "promotion_consequence": "dynamic-transition refinement is evidenced for the exercised mixed add/release pattern, while broader dynamic coverage remains blocked",
+      "reason": "The W044 mixed post-edit closure records all three dependency transition reasons and the post-edit result rejects with HostInjectedFailure before publication.",
+      "refinement_row": true,
+      "row_id": "w044_mixed_dynamic_add_release_refinement_evidence",
+      "source_inputs": [
+        "W044 mixed dynamic add/release TreeCalc run"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_refinement_row_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.2; calc-b1t.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "bind rebind-required reject/no-publication behavior as publication-fence refinement evidence for the exercised mixed dynamic transition",
+      "disposition_kind": "direct_refinement_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/result.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "mixed_dynamic_no_publication": true,
+        "post_edit_result_state": "rejected"
+      },
+      "promotion_consequence": "publication-fence behavior is evidenced for this reject path, but production publication-fence breadth remains blocked",
+      "reason": "The W044 mixed post-edit result rejects as HostInjectedFailure and exposes an empty published-values object.",
+      "refinement_row": true,
+      "row_id": "w044_publication_fence_no_publish_refinement_evidence",
+      "source_inputs": [
+        "W044 mixed dynamic post-edit no-publication result"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_refinement_row_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "carry W043 automatic addition and release refinement rows as regression evidence under W044",
+      "disposition_kind": "carried_refinement_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "carried dynamic evidence remains regression evidence, not broad dynamic transition promotion",
+      "reason": "The W043 refinement register contains automatic addition and release transition rows that remain valid predecessor evidence.",
+      "refinement_row": true,
+      "row_id": "w044_w043_dynamic_transition_regression_evidence",
+      "source_inputs": [
+        "W043 automatic dynamic transition Rust rows"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_refinement_row_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.5",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain snapshot-fence counterpart breadth as an exact Rust refinement blocker beyond declared-profile evidence",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "snapshot-fence breadth and Stage 2 production policy remain unpromoted",
+      "reason": "W044.2 retains snapshot-fence counterpart breadth as an exact blocker.",
+      "refinement_row": true,
+      "row_id": "w044_snapshot_fence_breadth_refinement_boundary",
+      "source_inputs": [
+        "W044 exact blocker register"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.5",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain capability-view counterpart breadth as an exact Rust refinement blocker beyond declared-profile evidence",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "capability-view breadth and Stage 2 production policy remain unpromoted",
+      "reason": "W044.2 retains capability-view counterpart breadth as an exact blocker.",
+      "refinement_row": true,
+      "row_id": "w044_capability_view_breadth_refinement_boundary",
+      "source_inputs": [
+        "W044 exact blocker register"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_rust_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.5; calc-b1t.10",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain broader dynamic transition coverage as an exact Rust refinement blocker after adding mixed transition evidence",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full optimized/core and Rust refinement remain blocked until broader dynamic coverage or a sufficiency proof exists",
+      "reason": "W044.2 narrows mixed dynamic evidence but retains broader dynamic transition coverage as an exact blocker.",
+      "refinement_row": true,
+      "row_id": "w044_broader_dynamic_transition_coverage_refinement_boundary",
+      "source_inputs": [
+        "W044 exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_rust_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.8",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain callable metadata projection as an exact Rust totality/refinement blocker",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable metadata projection and callable carrier sufficiency remain unpromoted",
+      "reason": "W044.2 classifies value carrier evidence separately from metadata projection evidence.",
+      "refinement_row": true,
+      "row_id": "w044_callable_metadata_projection_totality_boundary",
+      "source_inputs": [
+        "W044 callable metadata projection register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_rust_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-015"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.10; calc-b1t.11",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain full optimized/core release-grade conformance as a Rust refinement boundary until all W044 promotion contracts are discharged",
+      "disposition_kind": "exact_release_grade_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full optimized/core verification, C5, pack-grade replay, and release-grade verification remain unpromoted",
+      "reason": "The W044 residual ledger and W044.2 conformance packet both retain no-promotion claims for full optimized/core verification.",
+      "refinement_row": true,
+      "row_id": "w044_full_optimized_core_release_grade_conformance_boundary",
+      "source_inputs": [
+        "W044 residual release-grade ledger",
+        "W044 optimized/core conformance packet"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_rust_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-014"
+    }
+  ],
+  "run_id": "w044-rust-totality-refinement-panic-surface-expansion-001",
+  "schema_version": "oxcalc.formal_assurance.w044_rust_refinement_register.v1"
+}

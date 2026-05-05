@@ -1,0 +1,40 @@
+{
+  "run_id": "w040-direct-verification-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w040.oxfml_formatting_intake.v1",
+  "source": "Current OxFml W073 typed conditional-formatting update retained for W040",
+  "contract_mode": "direct_replacement_for_aggregate_and_visualization_metadata",
+  "typed_rule_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "threshold_text_families": [
+    "scalar",
+    "operator",
+    "expression"
+  ],
+  "w072_threshold_fallback_allowed_for_aggregate_visualization": false,
+  "observed_oxfml_evidence": {
+    "workset": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "handoff": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "implementation_surface": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+    "focused_test_surface": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+    "focused_test_count": 21,
+    "typed_payload_tests": [
+      "typed_color_scale_payload_drives_interpolation",
+      "typed_data_bar_payload_controls_bounds_direction_and_bar_only",
+      "typed_icon_set_payload_uses_explicit_thresholds",
+      "typed_rank_and_average_payloads_drive_aggregate_predicates"
+    ],
+    "old_string_rejection_tests": [
+      "bounded_visualization_threshold_strings_are_not_interpreted",
+      "bounded_aggregate_option_strings_are_not_interpreted"
+    ]
+  },
+  "required_w040_disposition": "calc-tv5.8 must record direct evidence, mismatch, or handoff if any exercised OxCalc artifact assumes W072 threshold fallback for aggregate or visualization conditional-formatting metadata.",
+  "handoff_triggered_by_this_bead": false
+}

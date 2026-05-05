@@ -96,10 +96,14 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-tv5_bootstrapped_ready`
+- execution_state: `calc-tv5.1_residual_direct_verification_map_validated`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tv5.1` residual direct-verification obligation map is next
-  - all W039 non-promotion release-grade lanes remain open for direct W040 evidence
+  - `calc-tv5.2` optimized core exact blocker fixes and differentials is next
+  - Rust totality/refinement, Lean/TLA verification, Stage 2 policy, operated services, retained history, independent evaluator diversity, OxFml seam breadth, callable metadata, pack/C5, and release-grade decision remain open
+
+Latest evidence:
+
+1. `docs/spec/core-engine/w040-formalization/W040_RESIDUAL_DIRECT_VERIFICATION_OBLIGATION_MAP.md` records the `calc-tv5.1` direct-verification obligation map. The packet `w040-direct-verification-obligation-map-001` maps 12 post-W039 residual lanes into 23 W040 obligations, 11 promotion-target gates, current OxFml W073 direct typed-only conditional-formatting intake, owner beads, required evidence, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, independent evaluator diversity, broad OxFml display/publication, callable metadata, or general OxFunc kernels.

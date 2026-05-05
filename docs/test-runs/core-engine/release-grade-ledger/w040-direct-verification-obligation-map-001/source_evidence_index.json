@@ -1,0 +1,70 @@
+{
+  "run_id": "w040-direct-verification-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w040.source_index.v1",
+  "sources": [
+    {
+      "path": "docs/worksets/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md",
+      "role": "W040 scope, gate model, bead rollout, and direct-verification guard"
+    },
+    {
+      "path": "docs/spec/core-engine/w039-formalization/W039_CLOSURE_AUDIT_AND_RELEASE_GRADE_DECISION.md",
+      "role": "predecessor release decision and successor lanes"
+    },
+    {
+      "path": "docs/test-runs/core-engine/closure-audit/w039-closure-audit-release-grade-decision-001/residual_lane_ledger.json",
+      "role": "12 post-W039 residual lanes routed to W040"
+    },
+    {
+      "path": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+      "role": "predecessor W039 obligation and promotion-consequence rows"
+    },
+    {
+      "path": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+      "role": "optimized/core exact blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+      "role": "proof/model and totality blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+      "role": "Stage 2 policy and replay blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json",
+      "role": "service and retained-history blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_exact_diversity_blocker_register.json",
+      "role": "independent evaluator and diversity blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_exact_oxfml_seam_blocker_register.json",
+      "role": "OxFml seam and callable metadata blocker source"
+    },
+    {
+      "path": "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+      "role": "pack/C5 predecessor no-promotion decision"
+    },
+    {
+      "path": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "role": "inbound OxFml observation ledger"
+    },
+    {
+      "path": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "role": "current W073 direct typed-only conditional-formatting input contract for aggregate and visualization families"
+    },
+    {
+      "path": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "role": "downstream handoff text requiring typed request construction for W073 families"
+    },
+    {
+      "path": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "role": "OxFml publication/evaluation surface observed removing bounded-threshold fallback for W073 aggregate and visualization families"
+    },
+    {
+      "path": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "role": "OxFml focused evidence for typed-payload behavior and old bounded-string non-interpretation"
+    }
+  ]
+}

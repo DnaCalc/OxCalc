@@ -1,0 +1,45 @@
+{
+  "conformance_hardening": {
+    "failed_row_count": 0,
+    "gap_disposition_row_count": 6,
+    "implementation_work_count": 5,
+    "spec_evolution_deferral_count": 1,
+    "validated_row_count": 6
+  },
+  "run_id": "w035-implementation-conformance-hardening-001",
+  "schema_version": "oxcalc.implementation_conformance.evidence_summary.v1",
+  "source_paths": {
+    "w034_core_projection_differential": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json",
+    "w034_independent_conformance_summary": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+    "w034_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/run_summary.json",
+    "w034_treecalc_tracecalc_differential": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+    "w035_oracle_matrix": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/coverage_matrix.json",
+    "w035_oracle_matrix_summary": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json"
+  },
+  "w034_core_projection": {
+    "projection_present_count": 9,
+    "projection_row_count": 9
+  },
+  "w034_independent_conformance": {
+    "comparison_row_count": 15,
+    "declared_gap_count": 6,
+    "missing_artifact_count": 0,
+    "unexpected_mismatch_count": 0
+  },
+  "w034_treecalc_local": {
+    "case_count": 23,
+    "expectation_mismatch_count": 0,
+    "result_counts": {
+      "published": 14,
+      "rejected": 8,
+      "verified_clean": 1
+    }
+  },
+  "w035_oracle_matrix": {
+    "classified_uncovered_row_count": 2,
+    "covered_row_count": 15,
+    "matrix_row_count": 17,
+    "missing_or_failed_row_count": 0,
+    "tracecalc_scenario_count": 30
+  }
+}

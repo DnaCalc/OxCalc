@@ -1,0 +1,159 @@
+{
+  "failed_row_count": 0,
+  "implementation_work_count": 5,
+  "row_count": 6,
+  "rows": [
+    {
+      "authority_owner": "calc-tkq.3",
+      "carry_forward_lane": "calc-tkq.8_next_tranche_packetization",
+      "disposition": "open_dynamic_dependency_bind_projection_work",
+      "disposition_kind": "implementation_work_deferred",
+      "failures": [],
+      "reason": "W035 TraceCalc covers dynamic dependency switch publication, but TreeCalc-local still represents this surface as a rejected residual carrier instead of a published dynamic-bind update.",
+      "row_id": "ic_gap_dynamic_dependency_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_dynamic_dependency_projection_gap",
+      "source_tracecalc_scenario_id": "tc_dynamic_dep_switch_001",
+      "source_treecalc_case_id": "tc_local_dynamic_reject_001",
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "covered_by_w035_matrix",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-002",
+          "row_id": "w035_dependency_dynamic_switch_publish",
+          "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001"
+        }
+      ]
+    },
+    {
+      "authority_owner": "calc-tkq.4",
+      "carry_forward_lane": "lean_assumption_discharge_and_seam_proof_map",
+      "disposition": "defer_host_sensitive_lambda_effect_to_callable_seam_map",
+      "disposition_kind": "spec_evolution_deferral",
+      "failures": [],
+      "reason": "W035 includes the OxCalc/OxFml callable-carrier fragment, but host-sensitive lambda execution effects cross into OxFunc/OxFml-owned semantics beyond this implementation-conformance target.",
+      "row_id": "ic_gap_lambda_host_effect_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_host_sensitive_lambda_projection_gap",
+      "source_tracecalc_scenario_id": "tc_let_lambda_runtime_effect_001",
+      "source_treecalc_case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "classified_out_of_scope_oxfunc_kernel",
+          "evidence_state": "classified_uncovered_deferred",
+          "obligation_id": "W035-OBL-004",
+          "row_id": "w035_callable_full_oxfunc_semantics",
+          "scenario_id": null
+        }
+      ]
+    },
+    {
+      "authority_owner": "calc-tkq.3",
+      "carry_forward_lane": "calc-tkq.8_next_tranche_packetization",
+      "disposition": "open_dynamic_dependency_negative_projection_work",
+      "disposition_kind": "implementation_work_deferred",
+      "failures": [],
+      "reason": "TraceCalc covers unresolved dynamic dependency rejection and W035 positive dynamic update rows, but TreeCalc-local does not yet project the same dynamic shape-update evidence.",
+      "row_id": "ic_gap_w034_dynamic_dependency_negative_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_dynamic_dependency_shape_update_projection_gap",
+      "source_tracecalc_scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "source_treecalc_case_id": "tc_local_dynamic_reject_001",
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-002",
+          "row_id": "w035_dependency_dynamic_negative",
+          "scenario_id": "tc_w034_dynamic_dependency_negative_001"
+        },
+        {
+          "classification": "covered_by_w035_matrix",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-002",
+          "row_id": "w035_dependency_dynamic_release_publish",
+          "scenario_id": "tc_w035_dynamic_dependency_release_publish_001"
+        }
+      ]
+    },
+    {
+      "authority_owner": "calc-tkq.5",
+      "carry_forward_lane": "tla_non_routine_and_future_optimized_coordinator_conformance",
+      "disposition": "open_coordinator_snapshot_fence_projection_work",
+      "disposition_kind": "implementation_work_deferred",
+      "failures": [],
+      "reason": "W035 TraceCalc covers snapshot-fence rejection, but TreeCalc-local is a single-run local fixture surface and still lacks a stale candidate admission fence counterpart.",
+      "row_id": "ic_gap_w034_snapshot_fence_projection_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_snapshot_fence_projection_gap",
+      "source_tracecalc_scenario_id": "tc_w034_snapshot_fence_reject_001",
+      "source_treecalc_case_id": null,
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-001",
+          "row_id": "w035_stale_snapshot_fence_reject",
+          "scenario_id": "tc_w034_snapshot_fence_reject_001"
+        }
+      ]
+    },
+    {
+      "authority_owner": "calc-tkq.5",
+      "carry_forward_lane": "tla_non_routine_and_future_optimized_coordinator_conformance",
+      "disposition": "open_coordinator_capability_view_fence_projection_work",
+      "disposition_kind": "implementation_work_deferred",
+      "failures": [],
+      "reason": "TreeCalc-local has capability-sensitive reject evidence, but W035 TraceCalc's compatibility-fenced capability-view mismatch remains a coordinator fence surface without a local TreeCalc fixture counterpart.",
+      "row_id": "ic_gap_w034_capability_view_fence_projection_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_capability_view_fence_projection_gap",
+      "source_tracecalc_scenario_id": "tc_w034_capability_fence_reject_001",
+      "source_treecalc_case_id": null,
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-001",
+          "row_id": "w035_stale_capability_view_fence_reject",
+          "scenario_id": "tc_w034_capability_fence_reject_001"
+        }
+      ]
+    },
+    {
+      "authority_owner": "calc-tkq.4",
+      "carry_forward_lane": "lean_assumption_discharge_and_callable_seam_proof_map",
+      "disposition": "open_callable_metadata_projection_work",
+      "disposition_kind": "implementation_work_deferred",
+      "failures": [],
+      "reason": "TreeCalc-local matches the ordinary value for the W034 higher-order row, but it still does not project callable identity metadata as a conformance surface.",
+      "row_id": "ic_gap_w034_higher_order_callable_metadata_001",
+      "source_comparison_state": "declared_capability_gap",
+      "source_gap_classification": "treecalc_local_higher_order_callable_identity_projection_gap",
+      "source_tracecalc_scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "source_treecalc_case_id": null,
+      "validation_state": "disposition_validated",
+      "w035_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W035-OBL-004",
+          "row_id": "w035_callable_higher_order_publish",
+          "scenario_id": "tc_w034_let_lambda_higher_order_replay_001"
+        }
+      ]
+    }
+  ],
+  "run_id": "w035-implementation-conformance-hardening-001",
+  "schema_version": "oxcalc.implementation_conformance.gap_disposition_register.v1",
+  "source_independent_conformance_run_id": "w034-independent-conformance-001",
+  "spec_evolution_deferral_count": 1,
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001",
+  "validated_row_count": 6,
+  "w035_tracecalc_oracle_matrix_run_id": "w035-tracecalc-oracle-matrix-001"
+}

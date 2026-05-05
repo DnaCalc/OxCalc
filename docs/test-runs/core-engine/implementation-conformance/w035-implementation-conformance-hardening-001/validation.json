@@ -1,0 +1,9 @@
+{
+  "failed_row_count": 0,
+  "gap_disposition_row_count": 6,
+  "run_id": "w035-implementation-conformance-hardening-001",
+  "schema_version": "oxcalc.implementation_conformance.validation.v1",
+  "status": "implementation_conformance_hardening_valid",
+  "validated_row_count": 6,
+  "validation_failures": []
+}

@@ -103,6 +103,16 @@ Current `calc-tkq.2` obligation disposition:
 | `W035-OBL-003` | overlay-retention matrix has 2 covered TraceCalc rows; multi-reader release ordering is classified to `calc-tkq.5` |
 | `W035-OBL-004` | callable-carrier matrix has 4 covered TraceCalc rows; full OxFunc kernel semantics are classified to `calc-tkq.4` |
 
+`calc-tkq.3` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_IMPLEMENTATION_CONFORMANCE_HARDENING.md` and `docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/`.
+
+Current `calc-tkq.3` obligation disposition:
+
+| Obligation id | `calc-tkq.3` disposition |
+|---|---|
+| `W035-OBL-004` | higher-order callable value evidence remains matched; callable identity metadata is an implementation-work deferral carried into `calc-tkq.4` seam proof mapping |
+| `W035-OBL-005` | all 6 W034 declared conformance gaps have generated W035 dispositions: 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows |
+| `W035-OBL-006` | fully independent evaluator diversity remains unpromoted; W035 conformance-hardening evidence is a TreeCalc/TraceCalc/CoreEngine projection packet, not a fully independent evaluator implementation |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

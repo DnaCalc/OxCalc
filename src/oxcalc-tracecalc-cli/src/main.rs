@@ -8,6 +8,7 @@ use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
+use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
@@ -30,7 +31,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -91,6 +92,19 @@ fn run() -> Result<(), String> {
                 );
             }
             ("tracecalc-oracle-matrix", run_id)
+        }
+        "implementation-conformance" => {
+            let Some(run_id) = args.next() else {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli implementation-conformance <run-id>".to_string(),
+                );
+            };
+            if args.next().is_some() {
+                return Err(
+                    "usage: oxcalc-tracecalc-cli implementation-conformance <run-id>".to_string(),
+                );
+            }
+            ("implementation-conformance", run_id)
         }
         "retained-failures" => {
             let Some(run_id) = args.next() else {
@@ -160,6 +174,7 @@ fn run() -> Result<(), String> {
 
     match mode {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
+        "implementation-conformance" => ensure_implementation_conformance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
@@ -191,6 +206,20 @@ fn run() -> Result<(), String> {
                 summary.covered_row_count,
                 summary.uncovered_row_count,
                 summary.missing_or_failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "implementation-conformance" => {
+            let runner = ImplementationConformanceRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("implementation conformance run failed: {error}"))?;
+            println!(
+                "Implementation conformance run '{run_id}' wrote {} gap dispositions ({} implementation-work, {} spec-deferral, {} failed) to {}.",
+                summary.gap_disposition_row_count,
+                summary.implementation_work_count,
+                summary.spec_evolution_deferral_count,
+                summary.failed_row_count,
                 summary.artifact_root
             );
         }
@@ -326,6 +355,24 @@ fn ensure_independent_conformance_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for independent conformance: missing {} or {}",
             trace_run.display(),
             tree_run.display()
+        ))
+    }
+}
+
+fn ensure_implementation_conformance_root(repo_root: &Path) -> Result<(), String> {
+    let independent_summary = repo_root.join(
+        "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+    );
+    let matrix_summary = repo_root.join(
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json",
+    );
+    if independent_summary.exists() && matrix_summary.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for implementation conformance: missing {} or {}",
+            independent_summary.display(),
+            matrix_summary.display()
         ))
     }
 }

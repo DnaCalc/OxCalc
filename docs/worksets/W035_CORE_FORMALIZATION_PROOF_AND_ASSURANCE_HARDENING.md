@@ -85,15 +85,15 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 
 ## Current Status
 
-- execution_state: `calc-tkq.2_tracecalc_oracle_matrix_validated`
+- execution_state: `calc-tkq.3_implementation_conformance_hardening_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tkq.3` through `calc-tkq.8` remain open
+  - `calc-tkq.4` through `calc-tkq.8` remain open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
-  - optimized/core-engine verification remains open beyond W034 conformance
+  - full optimized/core-engine verification and fully independent evaluator diversity remain open beyond W035 conformance-hardening dispositions
   - pack-grade replay, continuous scale assurance, and Stage 2 policy remain unpromoted
 
 Latest W035 evidence:
@@ -101,3 +101,5 @@ Latest W035 evidence:
 1. `docs/spec/core-engine/w035-formalization/W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md` records the residual obligation map and OxFml W073 typed conditional-formatting watch row.
 2. `docs/spec/core-engine/w035-formalization/W035_TRACECALC_ORACLE_MATRIX_EXPANSION.md` records the TraceCalc oracle-matrix packet for `calc-tkq.2`.
 3. `docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/` records the deterministic matrix run: 30 TraceCalc scenarios, 17 matrix rows, 15 covered rows, 2 classified uncovered rows, and 0 failed/missing rows.
+4. `docs/spec/core-engine/w035-formalization/W035_IMPLEMENTATION_CONFORMANCE_HARDENING.md` records the implementation-conformance hardening packet for `calc-tkq.3`.
+5. `docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/` records the deterministic gap-disposition run: 6 W034 gap rows, 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows.

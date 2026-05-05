@@ -4,6 +4,7 @@
 
 pub mod assertions;
 pub mod contracts;
+pub mod implementation_conformance;
 pub mod independent_conformance;
 pub mod machine;
 pub mod oracle_matrix;

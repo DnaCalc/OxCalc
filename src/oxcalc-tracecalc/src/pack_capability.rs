@@ -524,6 +524,203 @@ const W038_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
         ],
     },
 ];
+const W039_FORMAL_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w039-formalization/W039_LEAN_TLA_TOTALITY_AND_PROOF_MODEL_CLOSURE_TRANCHE.md",
+    "docs/spec/core-engine/w039-formalization/W039_STAGE2_PRODUCTION_PARTITION_POLICY_AND_REPLAY_GOVERNANCE.md",
+    "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean",
+    "formal/lean/OxCalc/CoreEngine/W039Stage2ProductionPolicy.lean",
+];
+const W039_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w039-formalization/W039_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_CLOSURE.md",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+];
+const W039_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/promotion_readiness_map.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/validation.json",
+];
+const W039_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/evidence_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_blocker_disposition_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_match_promotion_guard.json",
+    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/validation.json",
+];
+const W039_FORMAL_ASSURANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_proof_model_totality_ledger.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_model_bound_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_totality_boundary_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/validation.json",
+];
+const W039_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_partition_soundness_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_replay_governance_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json",
+    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json",
+];
+const W039_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_retained_history_lifecycle.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_alert_dispatcher_enforcement.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_service_readiness_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/promotion_decision.json",
+    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/validation.json",
+];
+const W039_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/run_summary.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_independent_evaluator_row_set.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_cross_engine_diversity_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_differential_service_authority_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_exact_diversity_blocker_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json",
+    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/validation.json",
+];
+const W039_OXFML_SEAM_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_oxfml_surface_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_publication_display_boundary_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_callable_metadata_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_exact_oxfml_seam_blocker_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json",
+    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/validation.json",
+];
+const W039_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json",
+];
+const W039_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
+    SupplementalEvidenceSpec {
+        input_id: "w039_residual_successor_obligation_ledger",
+        artifact_paths: W039_RELEASE_LEDGER_ARTIFACTS,
+        satisfied_input_id: "w039_residual_successor_obligation_ledger_valid",
+        evidence_state_present: "promotion_readiness_map_present_with_pack_c5_blocked",
+        observations: &[
+            "W039 residual ledger records 10 residual lanes, 20 W039 obligations, 9 promotion targets, current W073 typed-only formatting intake, and cap.C4.distill_valid as highest honest capability.",
+            "The promotion map keeps release-grade verification, pack-grade replay, C5, Stage 2, operated service, independent evaluator, broad OxFml, and general OxFunc claims unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_release_grade_verification_not_promoted",
+            "pack.grade.w039_pack_c5_blocked_by_promotion_map",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_optimized_core_exact_blocker_disposition",
+        artifact_paths: W039_IMPLEMENTATION_CONFORMANCE_ARTIFACTS,
+        satisfied_input_id: "w039_optimized_core_exact_blocker_disposition_valid",
+        evidence_state_present: "w039_conformance_disposition_present_with_exact_blockers",
+        observations: &[
+            "W039 optimized/core conformance records 5 disposition rows, 2 direct-evidence rows, 4 exact remaining blockers, 0 match-promoted rows, and 0 failed rows.",
+            "Dynamic release/reclassification, snapshot fence, capability-view fence, and callable metadata projection remain exact optimized/core blockers.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_optimized_core_engine_conformance_not_full",
+            "pack.grade.w039_callable_metadata_projection_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_formal_assurance_totality_closure",
+        artifact_paths: W039_FORMAL_ASSURANCE_ARTIFACTS,
+        satisfied_input_id: "w039_formal_assurance_totality_closure_valid",
+        evidence_state_present: "w039_formal_assurance_present_with_totality_boundaries",
+        observations: &[
+            "W039 formal assurance records 7 proof/model rows, 3 local-proof rows, 2 bounded-model rows, 4 totality boundaries, 6 exact blockers, and 0 failed rows.",
+            "Full Lean/TLA verification, Rust-engine totality, pack-grade replay, C5, Stage 2 policy, release-grade verification, broad OxFml, and general OxFunc remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_full_lean_tla_verification_not_promoted",
+            "pack.grade.w039_rust_engine_totality_not_promoted",
+            "pack.grade.w039_general_oxfunc_kernel_not_promoted",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_stage2_production_policy_replay_governance",
+        artifact_paths: W039_STAGE2_REPLAY_ARTIFACTS,
+        satisfied_input_id: "w039_stage2_production_policy_replay_governance_valid",
+        evidence_state_present: "w039_stage2_policy_packet_present_no_policy_promotion",
+        observations: &[
+            "W039 Stage 2 records 10 policy rows, 5 satisfied bounded-profile rows, 5 partition replay rows, 6 permutation rows, 5 observable-invariance rows, 5 exact blockers, and 0 failed rows.",
+            "Stage 2 production policy, operated Stage 2 differential service, pack-grade replay, C5, retained witness lifecycle, and release-grade verification remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_stage2_policy_unpromoted",
+            "pack.grade.w039_stage2_replay_equivalence_not_pack_grade",
+            "pack.grade.w039_production_partition_soundness_absent",
+            "pack.grade.w039_pack_grade_replay_governance_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_operated_assurance_retained_history",
+        artifact_paths: W039_OPERATED_ASSURANCE_ARTIFACTS,
+        satisfied_input_id: "w039_operated_assurance_retained_history_valid",
+        evidence_state_present: "w039_service_substrate_present_no_operated_service_promotion",
+        observations: &[
+            "W039 operated assurance records 8 source rows, 18 retained-history rows, 11 evaluated alert rules, 12 readiness criteria, 5 blocked criteria, 5 exact service blockers, and 0 failed rows.",
+            "Operated continuous assurance, retained-history service, alert dispatcher, operated cross-engine differential, pack-grade replay, C5, Stage 2 policy, and release-grade verification remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_operated_continuous_assurance_service_absent",
+            "pack.grade.w039_retained_history_store_absent",
+            "pack.grade.w039_external_alert_dispatcher_absent",
+            "pack.grade.w039_operated_cross_engine_diff_service_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_independent_evaluator_cross_engine_diversity",
+        artifact_paths: W039_DIVERSITY_SEAM_ARTIFACTS,
+        satisfied_input_id: "w039_independent_evaluator_cross_engine_diversity_valid",
+        evidence_state_present: "w039_diversity_packet_present_no_independent_evaluator_promotion",
+        observations: &[
+            "W039 diversity records 10 source rows, 7 independent-evaluator rows, 7 cross-engine diversity rows, 7 differential-authority rows, 6 exact diversity blockers, and 0 failed rows.",
+            "Fully independent evaluator, operated cross-engine differential service, broad OxFml seam, callable metadata projection, pack-grade replay, C5, Stage 2 policy, and release-grade verification remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_fully_independent_evaluator_absent",
+            "pack.grade.w039_operated_cross_engine_diff_service_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_oxfml_seam_breadth_callable_metadata",
+        artifact_paths: W039_OXFML_SEAM_ARTIFACTS,
+        satisfied_input_id: "w039_oxfml_seam_breadth_callable_metadata_valid",
+        evidence_state_present: "w039_oxfml_seam_packet_present_with_callable_blockers",
+        observations: &[
+            "W039 OxFml seam records 6 source rows, 5 surface rows, 4 publication/display rows, 5 callable rows, 5 exact seam blockers, and 0 failed rows.",
+            "The current W073 typed-only formatting guard, format/display boundary, public consumer notes, LET/LAMBDA carrier rows, and callable metadata blockers are bound without broad OxFml or callable metadata promotion.",
+        ],
+        reason_ids: &[
+            "pack.grade.w039_broad_oxfml_display_publication_unpromoted",
+            "pack.grade.w039_callable_metadata_projection_absent",
+            "pack.grade.w039_general_oxfunc_kernel_not_promoted",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w039_fresh_direct_oxfml_upstream_host",
+        artifact_paths: W039_UPSTREAM_HOST_ARTIFACTS,
+        satisfied_input_id: "w039_fresh_direct_oxfml_upstream_host_valid",
+        evidence_state_present: "current_direct_oxfml_run_present_no_pack_promotion",
+        observations: &[
+            "W039 upstream-host records 12 cases, 3 direct OxFml cases, 2 LET/LAMBDA cases, 1 W073 typed-rule formatting guard, and 0 expectation mismatches.",
+            "The direct OxFml slice removes re-execution absence for the exercised surface but does not promote pack-grade replay, C5, broad OxFml, callable metadata, or general OxFunc kernels.",
+        ],
+        reason_ids: &[],
+    },
+];
 
 #[derive(Debug, Error)]
 pub enum PackCapabilityError {
@@ -919,7 +1116,10 @@ fn evaluate_bridge(
                 .satisfied_inputs
                 .push("direct_oxfml_fixture_projection_has_no_mismatch".to_string());
         }
-        if !profile.profile_id.starts_with("w037_") && !profile.profile_id.starts_with("w038_") {
+        if !profile.profile_id.starts_with("w037_")
+            && !profile.profile_id.starts_with("w038_")
+            && !profile.profile_id.starts_with("w039_")
+        {
             reason_ids.push("pack.grade.direct_oxfml_evaluator_reexecution_absent".to_string());
         }
     }
@@ -1275,7 +1475,48 @@ fn add_static_program_blockers(
 }
 
 fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
-    if run_id.starts_with("w038-") {
+    if run_id.starts_with("w039-") {
+        PackCapabilityProfile {
+            profile_id: "w039_pack_grade_replay_governance_c5_reassessment",
+            oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
+            let_lambda_tracecalc_run_id: W037_TRACECALC_OBSERVABLE_RUN_ID,
+            let_lambda_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
+            independent_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
+            independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
+            program_governance_artifact: "docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            formal_artifacts: W039_FORMAL_ARTIFACTS,
+            formal_input_id: "w039_proof_model_stage2_formal_packets",
+            formal_satisfied_input_id: "w039_proof_model_stage2_packets_present",
+            formal_evidence_state_present: "w039_formal_packets_present_with_totality_and_stage2_boundaries",
+            formal_observations: &[
+                "W039 proof/model and Stage 2 artifacts bind totality classification, bounded model evidence, production-policy predicates, and replay-governance blockers.",
+                "The artifacts are direct W039 evidence but do not promote full Lean/TLA verification, Stage 2 policy, pack-grade replay, or C5.",
+            ],
+            formal_reason_ids: &[
+                "pack.grade.w039_formal_slices_bounded_not_full_verification",
+                "pack.grade.w039_stage2_policy_unpromoted",
+                "pack.grade.w039_pack_grade_replay_governance_absent",
+            ],
+            formatting_watch_artifacts: W039_FORMATTING_WATCH_ARTIFACTS,
+            additional_static_blockers: &[
+                "pack.grade.w039_program_grade_replay_governance_not_reached",
+                "pack.grade.w039_pack_grade_replay_governance_absent",
+                "pack.grade.w039_pack_c5_no_promotion_after_reassessment",
+                "pack.grade.w039_release_grade_decision_deferred_to_calc_f7o9",
+            ],
+            supplemental_evidence: W039_SUPPLEMENTAL_EVIDENCE,
+            successor_lanes: &[
+                "calc-f7o.9",
+                "future_pack_grade_replay_governance_service",
+                "future_retained_witness_lifecycle_service",
+                "future_operated_continuous_assurance_service",
+                "future_operated_cross_engine_diff_service",
+                "future_stage2_partition_equivalence_packet",
+                "future_independent_evaluator_implementation",
+                "future_callable_metadata_projection_fixture",
+            ],
+        }
+    } else if run_id.starts_with("w038-") {
         PackCapabilityProfile {
             profile_id: "w038_pack_grade_replay_governance_c5_release_decision",
             oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
@@ -2020,6 +2261,99 @@ mod tests {
         fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
     }
 
+    #[test]
+    fn pack_capability_runner_binds_w039_c5_reassessment_inputs() {
+        let repo_root = unique_temp_repo();
+        create_w039_source_artifacts(&repo_root);
+
+        let summary = PackCapabilityRunner::new()
+            .execute(&repo_root, "w039-pack-capability-test")
+            .expect("W039 pack capability packet should write");
+
+        assert_eq!(summary.decision_status, "capability_not_promoted");
+        assert_eq!(summary.highest_honest_capability, "cap.C4.distill_valid");
+        assert_eq!(summary.missing_artifact_count, 0);
+        assert!(summary.satisfied_input_count >= 15);
+        assert!(summary.blocker_count > 25);
+
+        let decision = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w039-pack-capability-test/decision/pack_capability_decision.json",
+        );
+        assert_eq!(
+            decision["evidence_profile"],
+            "w039_pack_grade_replay_governance_c5_reassessment"
+        );
+        assert_eq!(decision["capability_promoted"], false);
+        assert_eq!(
+            decision["stage2_readiness"]["stage2_scheduler_promoted"],
+            false
+        );
+        assert!(
+            decision["satisfied_inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|input| input.as_str() == Some("w039_fresh_direct_oxfml_upstream_host_valid"))
+        );
+        assert!(
+            decision["satisfied_inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|input| input.as_str()
+                    == Some("w039_operated_assurance_retained_history_valid"))
+        );
+        assert!(
+            !decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.direct_oxfml_evaluator_reexecution_absent"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w039_pack_c5_no_promotion_after_reassessment"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w039_pack_grade_replay_governance_absent"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w039_retained_history_store_absent"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w039_callable_metadata_projection_absent"))
+        );
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w039-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
     fn unique_temp_repo() -> PathBuf {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -2394,6 +2728,51 @@ mod tests {
             repo_root,
             "docs/spec/core-engine/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md",
             "W038 pack-grade replay governance and C5 release decision\n",
+        );
+    }
+
+    fn create_w039_source_artifacts(repo_root: &Path) {
+        create_w038_source_artifacts(repo_root);
+        for artifact in W039_RELEASE_LEDGER_ARTIFACTS
+            .iter()
+            .chain(W039_IMPLEMENTATION_CONFORMANCE_ARTIFACTS.iter())
+            .chain(W039_FORMAL_ASSURANCE_ARTIFACTS.iter())
+            .chain(W039_STAGE2_REPLAY_ARTIFACTS.iter())
+            .chain(W039_OPERATED_ASSURANCE_ARTIFACTS.iter())
+            .chain(W039_DIVERSITY_SEAM_ARTIFACTS.iter())
+            .chain(W039_OXFML_SEAM_ARTIFACTS.iter())
+            .chain(W039_UPSTREAM_HOST_ARTIFACTS.iter())
+        {
+            write_json_test(
+                repo_root,
+                artifact,
+                json!({
+                    "run_id": "w039-pack-test-source",
+                    "status": "bundle_valid"
+                }),
+            );
+        }
+        for artifact in W039_FORMAL_ARTIFACTS
+            .iter()
+            .chain(W039_FORMATTING_WATCH_ARTIFACTS.iter())
+        {
+            if artifact.ends_with(".json") {
+                write_json_test(
+                    repo_root,
+                    artifact,
+                    json!({
+                        "run_id": "w039-pack-test-source",
+                        "status": "bundle_valid"
+                    }),
+                );
+            } else {
+                write_text_test(repo_root, artifact, "W039 gate artifact\n");
+            }
+        }
+        write_text_test(
+            repo_root,
+            "docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            "W039 pack-grade replay governance and C5 reassessment\n",
         );
     }
 

@@ -1,0 +1,15 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001",
+  "blocker_count": 28,
+  "bundle_validation_path": "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/replay-appliance/validation/bundle_validation.json",
+  "decision_path": "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+  "decision_status": "capability_not_promoted",
+  "evidence_index_path": "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/evidence/evidence_index.json",
+  "evidence_profile": "w039_pack_grade_replay_governance_c5_reassessment",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "run_id": "w039-pack-grade-replay-governance-c5-reassessment-001",
+  "satisfied_input_count": 15,
+  "schema_version": "oxcalc.pack_capability.run_summary.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

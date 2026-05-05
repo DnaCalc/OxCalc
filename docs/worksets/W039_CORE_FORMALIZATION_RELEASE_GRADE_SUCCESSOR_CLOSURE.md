@@ -93,14 +93,14 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-f7o.7_oxfml_seam_callable_metadata_validated`
+- execution_state: `calc-f7o.8_pack_c5_reassessment_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-f7o.8` pack-grade replay governance and C5 reassessment
+  - `calc-f7o.9` closure audit and release-grade decision
+  - pack-grade replay and C5 remain unpromoted
   - broad OxFml display/publication and callable metadata projection remain unpromoted
-  - pack-grade replay, C5, and release-grade reassessment
 
 Latest W039 evidence:
 
@@ -111,3 +111,4 @@ Latest W039 evidence:
 5. `docs/spec/core-engine/w039-formalization/W039_OPERATED_ASSURANCE_SERVICE_AND_RETAINED_HISTORY_SUBSTRATE.md` records the `calc-f7o.5` operated-assurance substrate tranche. The packet `w039-operated-assurance-retained-history-001` adds a W039 operated-assurance runner profile, emits 8 source rows, 18 retained-history rows, 11 evaluated alert rules, 12 readiness criteria, 5 blocked criteria, 5 exact service blockers, and 0 failed rows, while keeping operated continuous assurance, retained-history service, alert dispatcher, operated cross-engine differential, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
 6. `docs/spec/core-engine/w039-formalization/W039_INDEPENDENT_EVALUATOR_ROW_SET_AND_CROSS_ENGINE_DIVERSITY.md` records the `calc-f7o.6` diversity tranche. The packet `w039-independent-evaluator-cross-engine-diversity-001` adds a W039 diversity-seam runner profile, emits 10 source rows, 7 independent-evaluator rows, 7 cross-engine diversity rows, 7 differential-authority rows, 6 exact blockers, and 0 failed rows, while keeping fully independent evaluator, operated cross-engine differential service, broad OxFml seam, callable metadata projection, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
 7. `docs/spec/core-engine/w039-formalization/W039_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_CLOSURE.md` records the `calc-f7o.7` OxFml seam tranche. The packet `w039-oxfml-seam-breadth-callable-metadata-001` adds a fresh upstream-host run and W039 OxFml seam runner profile, emits 6 source rows, 5 surface rows, 4 publication/display rows, 5 callable rows, 5 exact blockers, and 0 failed rows, while keeping broad OxFml seam, broad display/publication, callable metadata projection, general OxFunc kernels, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
+8. `docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` records the `calc-f7o.8` pack/C5 reassessment tranche. The packet `w039-pack-grade-replay-governance-c5-reassessment-001` adds a W039 pack-capability runner profile, emits 15 satisfied inputs, 28 blockers, 0 missing artifacts, and `cap.C4.distill_valid` as highest honest capability, while keeping pack-grade replay, C5, Stage 2 policy, operated services, retained-history service, independent evaluator diversity, broad OxFml display/publication, callable metadata projection, general OxFunc kernels, full formalization, and release-grade verification unpromoted.

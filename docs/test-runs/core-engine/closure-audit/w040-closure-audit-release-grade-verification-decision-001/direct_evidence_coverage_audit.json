@@ -1,0 +1,85 @@
+{
+  "run_id": "w040-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w040.direct_evidence_coverage.v1",
+  "row_count": 10,
+  "rows": [
+    {
+      "coverage_lane": "residual_mapping",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/promotion_target_gate_map.json"
+      ],
+      "coverage_result": "23_obligations_11_promotion_targets_no_promotion_by_map"
+    },
+    {
+      "coverage_lane": "optimized_core_conformance",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json"
+      ],
+      "coverage_result": "dependency_release_reclassification_evidenced_exact_blockers_remain"
+    },
+    {
+      "coverage_lane": "rust_totality_refinement",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_totality_refinement_ledger.json"
+      ],
+      "coverage_result": "checked_classification_without_whole_engine_totality_promotion"
+    },
+    {
+      "coverage_lane": "lean_tla",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_discharge_ledger.json",
+        "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json"
+      ],
+      "coverage_result": "local_checked_and_bounded_rows_without_full_verification_promotion"
+    },
+    {
+      "coverage_lane": "stage2",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json"
+      ],
+      "coverage_result": "bounded_partition_and_observable_invariance_evidence_without_production_policy_promotion"
+    },
+    {
+      "coverage_lane": "operated_assurance",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_operated_runner_register.json",
+        "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json"
+      ],
+      "coverage_result": "file_backed_runner_and_history_artifacts_without_operated_service_promotion"
+    },
+    {
+      "coverage_lane": "diversity",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
+        "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_cross_engine_differential_register.json"
+      ],
+      "coverage_result": "bounded_independent_scalar_slice_without_full_breadth_or_operated_service_promotion"
+    },
+    {
+      "coverage_lane": "oxfml_seam",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_oxfml_consumed_surface_register.json",
+        "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json"
+      ],
+      "coverage_result": "current_consumed_surface_and_w073_typed_rule_case_bound_broad_surface_blocked"
+    },
+    {
+      "coverage_lane": "pack_c5",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json",
+        "docs/test-runs/core-engine/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/replay-appliance/validation/bundle_validation.json"
+      ],
+      "coverage_result": "84_required_artifacts_validated_16_inputs_satisfied_32_blockers_cap_c4"
+    },
+    {
+      "coverage_lane": "release_grade_verification",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/closure-audit/w040-closure-audit-release-grade-verification-decision-001/release_decision.json",
+        "docs/test-runs/core-engine/closure-audit/w040-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ],
+      "coverage_result": "cross_lane_blockers_named_release_grade_verification_unpromoted"
+    }
+  ]
+}

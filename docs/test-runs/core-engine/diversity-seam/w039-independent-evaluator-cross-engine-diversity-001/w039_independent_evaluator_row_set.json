@@ -1,0 +1,69 @@
+{
+  "fully_independent_evaluator_promoted": false,
+  "independent_implementation_row_count": 0,
+  "row_count": 7,
+  "rows": [
+    {
+      "comparison_row_count": 15,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "independence_state": "reference_oracle_not_independent_production_evaluator",
+      "promotion_consequence": "TraceCalc remains the correctness oracle for covered behavior, not a second production evaluator.",
+      "row_id": "independent.tracecalc_reference_oracle"
+    },
+    {
+      "disposition_kind": "projection_evidence_not_independent",
+      "evidence": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "exact_value_match_count": 5,
+      "independence_state": "shared_projection_over_oxcalc_core_behavior",
+      "promotion_consequence": "Shared TreeCalc/CoreEngine projection evidence cannot count as independent implementation authority.",
+      "row_id": "independent.treecalc_core_projection"
+    },
+    {
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+      "independence_state": "optimized_core_disposition_same_authority_family",
+      "promotion_consequence": "Optimized/core evidence strengthens conformance, but does not establish a separate evaluator implementation.",
+      "row_id": "independent.optimized_core_exact_blocker_disposition",
+      "w039_direct_evidence_bound_count": 2,
+      "w039_exact_remaining_blocker_count": 4
+    },
+    {
+      "direct_oxfml_case_count": 3,
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "independence_state": "external_formula_evaluator_slice_not_oxcalc_coordinator",
+      "let_lambda_case_count": 2,
+      "promotion_consequence": "Direct OxFml evidence counts for the consumed formula seam, including narrow LET/LAMBDA and W073 guards, but not for OxCalc coordinator implementation diversity.",
+      "row_id": "independent.direct_oxfml_external_formula_slice"
+    },
+    {
+      "differential_row_count": 6,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+      "independence_state": "file_backed_differential_not_operated_implementation",
+      "promotion_consequence": "File-backed differential rows remain useful assurance evidence and do not promote an independent evaluator.",
+      "row_id": "independent.file_backed_cross_engine_differential"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+      "independence_state": "proof_model_not_executable_runtime_evaluator",
+      "local_proof_row_count": 3,
+      "promotion_consequence": "Lean/TLA evidence strengthens specification and proof obligations but is not a separately implemented evaluator row set.",
+      "row_id": "independent.formal_model_not_runtime_evaluator",
+      "totality_boundary_count": 4
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json",
+      "independence_state": "independent_implementation_absent",
+      "promotion_consequence": "Full independent-evaluator diversity remains blocked until an independently implemented row set exists and has replay/differential evidence.",
+      "row_id": "independent.fully_independent_evaluator_row_set_absent",
+      "w038_diversity_disposition_row_count": 5,
+      "w038_rows_present": 5
+    }
+  ],
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.independent_evaluator_row_set.v1"
+}

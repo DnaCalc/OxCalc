@@ -1,0 +1,23 @@
+{
+  "accepted_boundary_count": 10,
+  "artifact_root": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001",
+  "cross_engine_diversity_row_count": 7,
+  "differential_authority_row_count": 7,
+  "exact_blocker_count": 6,
+  "failed_row_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "independent_evaluator_row_count": 7,
+  "operated_cross_engine_differential_service_promoted": false,
+  "promotion_decision_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json",
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.run_summary.v1",
+  "service_blocked_count": 4,
+  "source_evidence_index_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/source_evidence_index.json",
+  "source_evidence_row_count": 10,
+  "validation_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/validation.json",
+  "w039_cross_engine_diversity_register_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_cross_engine_diversity_register.json",
+  "w039_differential_service_authority_register_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_differential_service_authority_register.json",
+  "w039_exact_diversity_blocker_register_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_exact_diversity_blocker_register.json",
+  "w039_independent_evaluator_row_set_path": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_independent_evaluator_row_set.json",
+  "w073_typed_only_formatting_guard_retained": true
+}

@@ -1,0 +1,72 @@
+{
+  "operated_cross_engine_differential_service_promoted": false,
+  "row_count": 7,
+  "rows": [
+    {
+      "differential_row_count": 6,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+      "promotion_consequence": "The harness is retained as deterministic evidence, not as an operated service.",
+      "row_id": "cross_engine.file_backed_differential_harness",
+      "service_state": "file_backed_not_operated"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "diversity_disposition_row_count": 5,
+      "evidence": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
+      "promotion_consequence": "W038 baseline is carried forward as evidence lineage only.",
+      "row_id": "cross_engine.w038_diversity_seam_baseline",
+      "seam_watch_row_count": 8,
+      "service_state": "baseline_bound"
+    },
+    {
+      "disposition_kind": "service_dependency_blocked",
+      "evidence": "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+      "exact_remaining_blocker_count": 5,
+      "promotion_consequence": "Stage 2 service-dependent diversity cannot promote while production policy and operated Stage 2 differential evidence are blocked.",
+      "row_id": "cross_engine.stage2_service_dependency",
+      "service_state": "blocked",
+      "stage2_policy_promoted": false
+    },
+    {
+      "disposition_kind": "service_substrate_bound",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
+      "file_backed_pilot_present": true,
+      "operated_cross_engine_differential_service_present": false,
+      "promotion_consequence": "The substrate records service shape and blocked claims, but does not promote an operated cross-engine service.",
+      "row_id": "cross_engine.operated_service_substrate",
+      "service_state": "blocked"
+    },
+    {
+      "disposition_kind": "supporting_evidence_not_service",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+      "multi_run_history_row_count": 18,
+      "promotion_consequence": "Retained history supports future service operation and replay audit, but the retained-history service remains unpromoted.",
+      "retained_history_service_promoted": false,
+      "row_id": "cross_engine.retained_history_support",
+      "service_state": "supporting_history_only"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+      "promotion_consequence": "Diversity evidence must not compare formatting rows that still rely on W072 bounded threshold strings for W073 aggregate or visualization families.",
+      "row_id": "cross_engine.w073_typed_only_formatting_guard",
+      "service_state": "observable_guard_retained",
+      "thresholds_rule": "W072 bounded thresholds strings are intentionally ignored for the typed_only_families and remain meaningful only for scalar, operator, or expression families where threshold text is the actual input.",
+      "typed_only_family_count": 7
+    },
+    {
+      "alert_decision_count": 0,
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+      "promotion_consequence": "Cross-engine diversity needs an operated mismatch triage/quarantine path before service-level promotion.",
+      "quarantine_decision_count": 0,
+      "row_id": "cross_engine.mismatch_triage_and_quarantine_service",
+      "service_state": "blocked"
+    }
+  ],
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.cross_engine_diversity_register.v1",
+  "service_blocked_count": 4,
+  "w073_typed_only_formatting_guard_retained": true
+}

@@ -1,0 +1,30 @@
+{
+  "accepted_boundary_count": 10,
+  "blockers": [
+    "w039_diversity.fully_independent_evaluator_implementation_absent",
+    "w039_diversity.independent_evaluator_authority_absent",
+    "w039_diversity.operated_cross_engine_service_absent",
+    "w039_diversity.stage2_differential_service_dependency_absent",
+    "w039_diversity.mismatch_triage_and_quarantine_service_absent",
+    "w039_diversity.release_grade_promotion_authority_absent"
+  ],
+  "broad_oxfml_seam_promoted": false,
+  "c5_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "cross_engine_diversity_row_count": 7,
+  "cross_engine_diversity_service_promoted": false,
+  "decision_state": "w039_independent_evaluator_and_cross_engine_diversity_bound_without_promotion",
+  "differential_authority_row_count": 7,
+  "exact_blocker_count": 6,
+  "fully_independent_evaluator_promoted": false,
+  "independent_evaluator_row_count": 7,
+  "independent_evaluator_row_set_promoted": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "pack_grade_replay_promoted": false,
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.promotion_decision.v1",
+  "semantic_equivalence_statement": "This W039 diversity runner binds source evidence, independent-evaluator authority rows, cross-engine diversity rows, and service-authority blockers only. It does not change evaluator kernels, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics.",
+  "source_evidence_row_count": 10,
+  "stage2_policy_promoted": false,
+  "w073_formatting_handoff_triggered": false
+}

@@ -1,0 +1,115 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001",
+  "rows": [
+    {
+      "artifact": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w036_independent_conformance",
+      "semantic_state": "w036_tracecalc_treecalc_projection_differential_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w036_cross_engine_differential",
+      "semantic_state": "w036_file_backed_cross_engine_differential_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w037_direct_oxfml",
+      "semantic_state": "direct_oxfml_runtime_slice_and_w073_guard_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w038_diversity_seam_watch",
+      "semantic_state": "w038_diversity_and_seam_watch_bound_without_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w039_residual_successor_ledger",
+      "semantic_state": "w039_obligation_and_promotion_map_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "oxfml_inbound_notes_present": true,
+      "promotion_guard": true,
+      "row_id": "source.w039_w073_formatting_intake",
+      "semantic_state": "current_oxfml_w073_typed_only_formatting_intake_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w039_optimized_core_conformance",
+      "semantic_state": "optimized_core_exact_blockers_retained_without_full_core_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w039_proof_model",
+      "semantic_state": "proof_model_totality_bound_without_full_verification_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w039_stage2_policy_governance",
+      "semantic_state": "stage2_policy_governance_bound_without_production_policy_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w039_operated_assurance_substrate",
+      "semantic_state": "operated_assurance_substrate_bound_without_operated_service_promotion",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "w036_cross_engine_summary": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+    "w036_independent_summary": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+    "w037_direct_oxfml_summary": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+    "w038_diversity_blockers": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/exact_diversity_seam_blocker_register.json",
+    "w038_diversity_disposition": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json",
+    "w038_diversity_summary": "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
+    "w039_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+    "w039_cross_engine_service_substrate": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
+    "w039_formatting_intake": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+    "w039_operated_assurance_summary": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+    "w039_proof_model_summary": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+    "w039_residual_ledger_summary": "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json",
+    "w039_stage2_summary": "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json"
+  },
+  "source_evidence_row_count": 10
+}

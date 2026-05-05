@@ -17,6 +17,18 @@ const BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.diversity_seam.w038.exact_diversity_seam_blocker_register.v1";
 const PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w038.promotion_decision.v1";
 const VALIDATION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w038.validation.v1";
+const W039_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.diversity_seam.w039.run_summary.v1";
+const W039_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.diversity_seam.w039.source_evidence_index.v1";
+const W039_INDEPENDENT_EVALUATOR_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w039.independent_evaluator_row_set.v1";
+const W039_CROSS_ENGINE_DIVERSITY_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w039.cross_engine_diversity_register.v1";
+const W039_DIFFERENTIAL_AUTHORITY_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w039.differential_service_authority_register.v1";
+const W039_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w039.exact_diversity_blocker_register.v1";
+const W039_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w039.promotion_decision.v1";
+const W039_VALIDATION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w039.validation.v1";
 
 const W036_INDEPENDENT_SUMMARY: &str = "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json";
 const W036_CROSS_ENGINE_SUMMARY: &str = "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json";
@@ -28,6 +40,19 @@ const W038_FORMAL_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/formal-a
 const W038_STAGE2_REPLAY_SUMMARY: &str =
     "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json";
 const W038_OPERATED_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json";
+const W038_DIVERSITY_SUMMARY: &str =
+    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/run_summary.json";
+const W038_DIVERSITY_DISPOSITION: &str = "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json";
+const W038_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/exact_diversity_seam_blocker_register.json";
+const W039_RESIDUAL_LEDGER_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json";
+const W039_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json";
+const W039_CONFORMANCE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json";
+const W039_PROOF_MODEL_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json";
+const W039_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json";
+const W039_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json";
+const W039_OPERATED_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json";
+const W039_CROSS_ENGINE_SERVICE_SUBSTRATE: &str = "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json";
+const W039_OPERATED_SERVICE_BLOCKERS: &str = "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json";
 const OXFML_INBOUND_NOTES: &str = "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md";
 
 #[derive(Debug, Error)]
@@ -88,6 +113,10 @@ impl DiversitySeamRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<DiversitySeamRunSummary, DiversitySeamError> {
+        if run_id.starts_with("w039-") || run_id.starts_with("test-w039-") {
+            return self.execute_w039(repo_root, run_id);
+        }
+
         let relative_artifact_root =
             relative_artifact_path(&["docs", "test-runs", "core-engine", "diversity-seam", run_id]);
         let artifact_root = repo_root.join(&relative_artifact_root);
@@ -290,6 +319,298 @@ impl DiversitySeamRunner {
             diversity_disposition_row_count: diversity_rows.len(),
             seam_watch_row_count: seam_watch_rows.len(),
             aligned_seam_watch_row_count,
+            accepted_boundary_count,
+            exact_blocker_count: blockers.len(),
+            failed_row_count,
+            fully_independent_evaluator_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w039(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<DiversitySeamRunSummary, DiversitySeamError> {
+        let relative_artifact_root =
+            relative_artifact_path(&["docs", "test-runs", "core-engine", "diversity-seam", run_id]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                DiversitySeamError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            DiversitySeamError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w036_independent = read_json(repo_root, W036_INDEPENDENT_SUMMARY)?;
+        let w036_cross_engine = read_json(repo_root, W036_CROSS_ENGINE_SUMMARY)?;
+        let w037_direct_oxfml = read_json(repo_root, W037_DIRECT_OXFML_SUMMARY)?;
+        let w038_diversity = read_json(repo_root, W038_DIVERSITY_SUMMARY)?;
+        let w038_diversity_disposition = read_json(repo_root, W038_DIVERSITY_DISPOSITION)?;
+        let w038_diversity_blockers = read_json(repo_root, W038_DIVERSITY_BLOCKERS)?;
+        let w039_residual_ledger = read_json(repo_root, W039_RESIDUAL_LEDGER_SUMMARY)?;
+        let w039_formatting_intake = read_json(repo_root, W039_FORMATTING_INTAKE)?;
+        let w039_conformance = read_json(repo_root, W039_CONFORMANCE_SUMMARY)?;
+        let w039_proof_model = read_json(repo_root, W039_PROOF_MODEL_SUMMARY)?;
+        let w039_stage2 = read_json(repo_root, W039_STAGE2_SUMMARY)?;
+        let w039_stage2_blockers = read_json(repo_root, W039_STAGE2_BLOCKERS)?;
+        let w039_operated = read_json(repo_root, W039_OPERATED_ASSURANCE_SUMMARY)?;
+        let w039_cross_engine_substrate =
+            read_json(repo_root, W039_CROSS_ENGINE_SERVICE_SUBSTRATE)?;
+        let w039_operated_service_blockers = read_json(repo_root, W039_OPERATED_SERVICE_BLOCKERS)?;
+
+        let source_rows = w039_source_rows(
+            repo_root,
+            &w036_independent,
+            &w036_cross_engine,
+            &w037_direct_oxfml,
+            &w038_diversity,
+            &w039_residual_ledger,
+            &w039_formatting_intake,
+            &w039_conformance,
+            &w039_proof_model,
+            &w039_stage2,
+            &w039_operated,
+        );
+        let independent_rows = w039_independent_evaluator_rows(
+            &w036_independent,
+            &w036_cross_engine,
+            &w037_direct_oxfml,
+            &w038_diversity,
+            &w038_diversity_disposition,
+            &w039_conformance,
+            &w039_proof_model,
+        );
+        let cross_engine_rows = w039_cross_engine_diversity_rows(
+            &w036_cross_engine,
+            &w038_diversity,
+            &w039_stage2,
+            &w039_operated,
+            &w039_cross_engine_substrate,
+            &w039_formatting_intake,
+        );
+        let authority_rows = w039_differential_authority_rows(
+            &w036_independent,
+            &w036_cross_engine,
+            &w037_direct_oxfml,
+            &w039_conformance,
+            &w039_operated,
+            &w039_cross_engine_substrate,
+        );
+        let blockers = w039_exact_blockers(
+            &w038_diversity_blockers,
+            &w039_stage2_blockers,
+            &w039_operated_service_blockers,
+        );
+        let accepted_boundary_count = independent_rows
+            .iter()
+            .chain(cross_engine_rows.iter())
+            .chain(authority_rows.iter())
+            .filter(|row| {
+                row.get("disposition_kind").and_then(Value::as_str) == Some("accepted_boundary")
+                    || row.get("disposition_kind").and_then(Value::as_str)
+                        == Some("accepted_external_slice")
+            })
+            .count();
+        let service_blocked_count = cross_engine_rows
+            .iter()
+            .chain(authority_rows.iter())
+            .filter(|row| {
+                row.get("service_state").and_then(Value::as_str) == Some("blocked")
+                    || row.get("authority_state").and_then(Value::as_str)
+                        == Some("blocked_no_operated_service")
+            })
+            .count();
+
+        let mut validation_failures = source_validation_failures(&source_rows);
+        validation_failures.extend(w039_diversity_validation_failures(
+            &independent_rows,
+            &cross_engine_rows,
+            &authority_rows,
+            &blockers,
+        ));
+        let failed_row_count = validation_failures.len();
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let independent_row_set_path =
+            format!("{relative_artifact_root}/w039_independent_evaluator_row_set.json");
+        let cross_engine_diversity_path =
+            format!("{relative_artifact_root}/w039_cross_engine_diversity_register.json");
+        let differential_authority_path =
+            format!("{relative_artifact_root}/w039_differential_service_authority_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w039_exact_diversity_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        let source_evidence_index = json!({
+            "schema_version": W039_SOURCE_INDEX_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_row_count": source_rows.len(),
+            "rows": source_rows,
+            "source_artifacts": {
+                "w036_independent_summary": W036_INDEPENDENT_SUMMARY,
+                "w036_cross_engine_summary": W036_CROSS_ENGINE_SUMMARY,
+                "w037_direct_oxfml_summary": W037_DIRECT_OXFML_SUMMARY,
+                "w038_diversity_summary": W038_DIVERSITY_SUMMARY,
+                "w038_diversity_disposition": W038_DIVERSITY_DISPOSITION,
+                "w038_diversity_blockers": W038_DIVERSITY_BLOCKERS,
+                "w039_residual_ledger_summary": W039_RESIDUAL_LEDGER_SUMMARY,
+                "w039_formatting_intake": W039_FORMATTING_INTAKE,
+                "w039_conformance_summary": W039_CONFORMANCE_SUMMARY,
+                "w039_proof_model_summary": W039_PROOF_MODEL_SUMMARY,
+                "w039_stage2_summary": W039_STAGE2_SUMMARY,
+                "w039_operated_assurance_summary": W039_OPERATED_ASSURANCE_SUMMARY,
+                "w039_cross_engine_service_substrate": W039_CROSS_ENGINE_SERVICE_SUBSTRATE,
+                "oxfml_inbound_notes": OXFML_INBOUND_NOTES
+            }
+        });
+        let independent_row_set = json!({
+            "schema_version": W039_INDEPENDENT_EVALUATOR_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": independent_rows.len(),
+            "fully_independent_evaluator_promoted": false,
+            "independent_implementation_row_count": 0,
+            "rows": independent_rows
+        });
+        let cross_engine_diversity = json!({
+            "schema_version": W039_CROSS_ENGINE_DIVERSITY_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": cross_engine_rows.len(),
+            "service_blocked_count": service_blocked_count,
+            "operated_cross_engine_differential_service_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true,
+            "rows": cross_engine_rows
+        });
+        let differential_authority = json!({
+            "schema_version": W039_DIFFERENTIAL_AUTHORITY_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "operated_service_authority_promoted": false,
+            "independent_evaluator_authority_promoted": false,
+            "rows": authority_rows
+        });
+        let blocker_register = json!({
+            "schema_version": W039_BLOCKER_REGISTER_SCHEMA_V1,
+            "run_id": run_id,
+            "exact_blocker_count": blockers.len(),
+            "rows": blockers
+        });
+        let promotion_decision = json!({
+            "schema_version": W039_PROMOTION_DECISION_SCHEMA_V1,
+            "run_id": run_id,
+            "decision_state": "w039_independent_evaluator_and_cross_engine_diversity_bound_without_promotion",
+            "fully_independent_evaluator_promoted": false,
+            "independent_evaluator_row_set_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "cross_engine_diversity_service_promoted": false,
+            "broad_oxfml_seam_promoted": false,
+            "callable_metadata_projection_promoted": false,
+            "w073_formatting_handoff_triggered": false,
+            "pack_grade_replay_promoted": false,
+            "c5_promoted": false,
+            "stage2_policy_promoted": false,
+            "source_evidence_row_count": source_rows.len(),
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_diversity_row_count": cross_engine_rows.len(),
+            "differential_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "exact_blocker_count": blockers.len(),
+            "blockers": blockers
+                .iter()
+                .map(|row| row["blocker_id"].clone())
+                .collect::<Vec<_>>(),
+            "semantic_equivalence_statement": "This W039 diversity runner binds source evidence, independent-evaluator authority rows, cross-engine diversity rows, and service-authority blockers only. It does not change evaluator kernels, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics."
+        });
+        let validation = json!({
+            "schema_version": W039_VALIDATION_SCHEMA_V1,
+            "run_id": run_id,
+            "status": if validation_failures.is_empty() {
+                "w039_independent_evaluator_cross_engine_diversity_packet_valid"
+            } else {
+                "w039_independent_evaluator_cross_engine_diversity_packet_invalid"
+            },
+            "source_evidence_row_count": source_rows.len(),
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_diversity_row_count": cross_engine_rows.len(),
+            "differential_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "service_blocked_count": service_blocked_count,
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "fully_independent_evaluator_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "validation_failures": validation_failures
+        });
+        let run_summary = json!({
+            "schema_version": W039_RUN_SUMMARY_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_index_path": source_evidence_index_path,
+            "w039_independent_evaluator_row_set_path": independent_row_set_path,
+            "w039_cross_engine_diversity_register_path": cross_engine_diversity_path,
+            "w039_differential_service_authority_register_path": differential_authority_path,
+            "w039_exact_diversity_blocker_register_path": blocker_register_path,
+            "promotion_decision_path": promotion_decision_path,
+            "validation_path": validation_path,
+            "source_evidence_row_count": source_rows.len(),
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_diversity_row_count": cross_engine_rows.len(),
+            "differential_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "service_blocked_count": service_blocked_count,
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "fully_independent_evaluator_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true
+        });
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &source_evidence_index,
+        )?;
+        write_json(
+            &artifact_root.join("w039_independent_evaluator_row_set.json"),
+            &independent_row_set,
+        )?;
+        write_json(
+            &artifact_root.join("w039_cross_engine_diversity_register.json"),
+            &cross_engine_diversity,
+        )?;
+        write_json(
+            &artifact_root.join("w039_differential_service_authority_register.json"),
+            &differential_authority,
+        )?;
+        write_json(
+            &artifact_root.join("w039_exact_diversity_blocker_register.json"),
+            &blocker_register,
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &promotion_decision,
+        )?;
+        write_json(&artifact_root.join("validation.json"), &validation)?;
+        write_json(&artifact_root.join("run_summary.json"), &run_summary)?;
+
+        Ok(DiversitySeamRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W039_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            source_evidence_row_count: source_rows.len(),
+            diversity_disposition_row_count: independent_rows.len(),
+            seam_watch_row_count: cross_engine_rows.len(),
+            aligned_seam_watch_row_count: accepted_boundary_count,
             accepted_boundary_count,
             exact_blocker_count: blockers.len(),
             failed_row_count,
@@ -553,6 +874,444 @@ fn exact_blockers() -> Vec<Value> {
     ]
 }
 
+fn w039_source_rows(
+    repo_root: &Path,
+    w036_independent: &Value,
+    w036_cross_engine: &Value,
+    w037_direct_oxfml: &Value,
+    w038_diversity: &Value,
+    w039_residual_ledger: &Value,
+    w039_formatting_intake: &Value,
+    w039_conformance: &Value,
+    w039_proof_model: &Value,
+    w039_stage2: &Value,
+    w039_operated: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "source.w036_independent_conformance",
+            "artifact": W036_INDEPENDENT_SUMMARY,
+            "missing_artifact_count": number_at(w036_independent, "missing_artifact_count"),
+            "unexpected_mismatch_count": number_at(w036_independent, "unexpected_mismatch_count"),
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(w036_independent, "w036_full_independent_evaluator_promoted"),
+            "semantic_state": "w036_tracecalc_treecalc_projection_differential_bound"
+        }),
+        json!({
+            "row_id": "source.w036_cross_engine_differential",
+            "artifact": W036_CROSS_ENGINE_SUMMARY,
+            "missing_artifact_count": number_at(w036_cross_engine, "missing_artifact_count"),
+            "unexpected_mismatch_count": number_at(w036_cross_engine, "unexpected_mismatch_count"),
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(w036_cross_engine, "full_independent_evaluator_promoted")
+                && !bool_at(w036_cross_engine, "continuous_cross_engine_service_promoted"),
+            "semantic_state": "w036_file_backed_cross_engine_differential_bound"
+        }),
+        json!({
+            "row_id": "source.w037_direct_oxfml",
+            "artifact": W037_DIRECT_OXFML_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": number_at(w037_direct_oxfml, "expectation_mismatch_count"),
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(&w037_direct_oxfml["promotion_limits"], "general_oxfunc_kernel_claimed")
+                && !bool_at(&w037_direct_oxfml["promotion_limits"], "pack_grade_replay_promoted")
+                && !bool_at(&w037_direct_oxfml["promotion_limits"], "c5_promoted"),
+            "semantic_state": "direct_oxfml_runtime_slice_and_w073_guard_bound"
+        }),
+        json!({
+            "row_id": "source.w038_diversity_seam_watch",
+            "artifact": W038_DIVERSITY_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w038_diversity, "failed_row_count"),
+            "promotion_guard": !bool_at(w038_diversity, "fully_independent_evaluator_promoted"),
+            "semantic_state": "w038_diversity_and_seam_watch_bound_without_promotion"
+        }),
+        json!({
+            "row_id": "source.w039_residual_successor_ledger",
+            "artifact": W039_RESIDUAL_LEDGER_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": text_at(w039_residual_ledger, "w073_formatting_intake") == "typed_only_guard_recorded",
+            "semantic_state": "w039_obligation_and_promotion_map_bound"
+        }),
+        json!({
+            "row_id": "source.w039_w073_formatting_intake",
+            "artifact": W039_FORMATTING_INTAKE,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": text_at(w039_formatting_intake, "thresholds_rule").contains("intentionally ignored")
+                && array_len_at(w039_formatting_intake, "typed_only_families") == 7,
+            "semantic_state": "current_oxfml_w073_typed_only_formatting_intake_retained",
+            "oxfml_inbound_notes_present": repo_root.join(OXFML_INBOUND_NOTES).exists()
+        }),
+        json!({
+            "row_id": "source.w039_optimized_core_conformance",
+            "artifact": W039_CONFORMANCE_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w039_conformance, "failed_row_count"),
+            "promotion_guard": number_at(w039_conformance, "w039_match_promoted_count") == 0,
+            "semantic_state": "optimized_core_exact_blockers_retained_without_full_core_promotion"
+        }),
+        json!({
+            "row_id": "source.w039_proof_model",
+            "artifact": W039_PROOF_MODEL_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w039_proof_model, "failed_row_count"),
+            "promotion_guard": !bool_at(&w039_proof_model["promotion_claims"], "full_lean_verification_promoted")
+                && !bool_at(&w039_proof_model["promotion_claims"], "full_tla_verification_promoted")
+                && !bool_at(&w039_proof_model["promotion_claims"], "general_oxfunc_kernel_promoted"),
+            "semantic_state": "proof_model_totality_bound_without_full_verification_promotion"
+        }),
+        json!({
+            "row_id": "source.w039_stage2_policy_governance",
+            "artifact": W039_STAGE2_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w039_stage2, "failed_row_count"),
+            "promotion_guard": !bool_at(w039_stage2, "stage2_policy_promoted"),
+            "semantic_state": "stage2_policy_governance_bound_without_production_policy_promotion"
+        }),
+        json!({
+            "row_id": "source.w039_operated_assurance_substrate",
+            "artifact": W039_OPERATED_ASSURANCE_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w039_operated, "failed_row_count"),
+            "promotion_guard": !bool_at(w039_operated, "operated_continuous_assurance_service_promoted")
+                && !bool_at(w039_operated, "operated_cross_engine_differential_service_promoted")
+                && !bool_at(w039_operated, "retained_history_service_promoted"),
+            "semantic_state": "operated_assurance_substrate_bound_without_operated_service_promotion"
+        }),
+    ]
+}
+
+fn w039_independent_evaluator_rows(
+    w036_independent: &Value,
+    w036_cross_engine: &Value,
+    w037_direct_oxfml: &Value,
+    w038_diversity: &Value,
+    w038_diversity_disposition: &Value,
+    w039_conformance: &Value,
+    w039_proof_model: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "independent.tracecalc_reference_oracle",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "reference_oracle_not_independent_production_evaluator",
+            "evidence": W036_INDEPENDENT_SUMMARY,
+            "comparison_row_count": number_at(w036_independent, "comparison_row_count"),
+            "promotion_consequence": "TraceCalc remains the correctness oracle for covered behavior, not a second production evaluator."
+        }),
+        json!({
+            "row_id": "independent.treecalc_core_projection",
+            "disposition_kind": "projection_evidence_not_independent",
+            "independence_state": "shared_projection_over_oxcalc_core_behavior",
+            "evidence": W036_INDEPENDENT_SUMMARY,
+            "exact_value_match_count": number_at(w036_independent, "exact_value_match_count"),
+            "promotion_consequence": "Shared TreeCalc/CoreEngine projection evidence cannot count as independent implementation authority."
+        }),
+        json!({
+            "row_id": "independent.optimized_core_exact_blocker_disposition",
+            "disposition_kind": "same_engine_family_not_independent",
+            "independence_state": "optimized_core_disposition_same_authority_family",
+            "evidence": W039_CONFORMANCE_SUMMARY,
+            "w039_direct_evidence_bound_count": number_at(w039_conformance, "w039_direct_evidence_bound_count"),
+            "w039_exact_remaining_blocker_count": number_at(w039_conformance, "w039_exact_remaining_blocker_count"),
+            "promotion_consequence": "Optimized/core evidence strengthens conformance, but does not establish a separate evaluator implementation."
+        }),
+        json!({
+            "row_id": "independent.direct_oxfml_external_formula_slice",
+            "disposition_kind": "accepted_external_slice",
+            "independence_state": "external_formula_evaluator_slice_not_oxcalc_coordinator",
+            "evidence": W037_DIRECT_OXFML_SUMMARY,
+            "direct_oxfml_case_count": number_at(w037_direct_oxfml, "direct_oxfml_case_count"),
+            "let_lambda_case_count": number_at(w037_direct_oxfml, "let_lambda_case_count"),
+            "promotion_consequence": "Direct OxFml evidence counts for the consumed formula seam, including narrow LET/LAMBDA and W073 guards, but not for OxCalc coordinator implementation diversity."
+        }),
+        json!({
+            "row_id": "independent.file_backed_cross_engine_differential",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "file_backed_differential_not_operated_implementation",
+            "evidence": W036_CROSS_ENGINE_SUMMARY,
+            "differential_row_count": number_at(w036_cross_engine, "differential_row_count"),
+            "promotion_consequence": "File-backed differential rows remain useful assurance evidence and do not promote an independent evaluator."
+        }),
+        json!({
+            "row_id": "independent.formal_model_not_runtime_evaluator",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "proof_model_not_executable_runtime_evaluator",
+            "evidence": W039_PROOF_MODEL_SUMMARY,
+            "local_proof_row_count": number_at(w039_proof_model, "local_proof_row_count"),
+            "totality_boundary_count": number_at(w039_proof_model, "totality_boundary_count"),
+            "promotion_consequence": "Lean/TLA evidence strengthens specification and proof obligations but is not a separately implemented evaluator row set."
+        }),
+        json!({
+            "row_id": "independent.fully_independent_evaluator_row_set_absent",
+            "disposition_kind": "exact_remaining_blocker",
+            "independence_state": "independent_implementation_absent",
+            "evidence": W038_DIVERSITY_DISPOSITION,
+            "w038_diversity_disposition_row_count": number_at(w038_diversity, "diversity_disposition_row_count"),
+            "w038_rows_present": row_count_at(w038_diversity_disposition),
+            "promotion_consequence": "Full independent-evaluator diversity remains blocked until an independently implemented row set exists and has replay/differential evidence."
+        }),
+    ]
+}
+
+fn w039_cross_engine_diversity_rows(
+    w036_cross_engine: &Value,
+    w038_diversity: &Value,
+    w039_stage2: &Value,
+    w039_operated: &Value,
+    w039_cross_engine_substrate: &Value,
+    w039_formatting_intake: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "cross_engine.file_backed_differential_harness",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "file_backed_not_operated",
+            "evidence": W036_CROSS_ENGINE_SUMMARY,
+            "differential_row_count": number_at(w036_cross_engine, "differential_row_count"),
+            "promotion_consequence": "The harness is retained as deterministic evidence, not as an operated service."
+        }),
+        json!({
+            "row_id": "cross_engine.w038_diversity_seam_baseline",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "baseline_bound",
+            "evidence": W038_DIVERSITY_SUMMARY,
+            "diversity_disposition_row_count": number_at(w038_diversity, "diversity_disposition_row_count"),
+            "seam_watch_row_count": number_at(w038_diversity, "seam_watch_row_count"),
+            "promotion_consequence": "W038 baseline is carried forward as evidence lineage only."
+        }),
+        json!({
+            "row_id": "cross_engine.stage2_service_dependency",
+            "disposition_kind": "service_dependency_blocked",
+            "service_state": "blocked",
+            "evidence": W039_STAGE2_SUMMARY,
+            "stage2_policy_promoted": bool_at(w039_stage2, "stage2_policy_promoted"),
+            "exact_remaining_blocker_count": number_at(w039_stage2, "exact_remaining_blocker_count"),
+            "promotion_consequence": "Stage 2 service-dependent diversity cannot promote while production policy and operated Stage 2 differential evidence are blocked."
+        }),
+        json!({
+            "row_id": "cross_engine.operated_service_substrate",
+            "disposition_kind": "service_substrate_bound",
+            "service_state": if bool_at(w039_cross_engine_substrate, "operated_cross_engine_differential_service_present") { "present" } else { "blocked" },
+            "evidence": W039_CROSS_ENGINE_SERVICE_SUBSTRATE,
+            "file_backed_pilot_present": bool_at(w039_cross_engine_substrate, "file_backed_pilot_present"),
+            "operated_cross_engine_differential_service_present": bool_at(w039_cross_engine_substrate, "operated_cross_engine_differential_service_present"),
+            "promotion_consequence": "The substrate records service shape and blocked claims, but does not promote an operated cross-engine service."
+        }),
+        json!({
+            "row_id": "cross_engine.retained_history_support",
+            "disposition_kind": "supporting_evidence_not_service",
+            "service_state": "supporting_history_only",
+            "evidence": W039_OPERATED_ASSURANCE_SUMMARY,
+            "multi_run_history_row_count": number_at(w039_operated, "multi_run_history_row_count"),
+            "retained_history_service_promoted": bool_at(w039_operated, "retained_history_service_promoted"),
+            "promotion_consequence": "Retained history supports future service operation and replay audit, but the retained-history service remains unpromoted."
+        }),
+        json!({
+            "row_id": "cross_engine.w073_typed_only_formatting_guard",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "observable_guard_retained",
+            "evidence": W039_FORMATTING_INTAKE,
+            "typed_only_family_count": array_len_at(w039_formatting_intake, "typed_only_families"),
+            "thresholds_rule": text_at(w039_formatting_intake, "thresholds_rule"),
+            "promotion_consequence": "Diversity evidence must not compare formatting rows that still rely on W072 bounded threshold strings for W073 aggregate or visualization families."
+        }),
+        json!({
+            "row_id": "cross_engine.mismatch_triage_and_quarantine_service",
+            "disposition_kind": "exact_remaining_blocker",
+            "service_state": "blocked",
+            "evidence": W039_OPERATED_ASSURANCE_SUMMARY,
+            "alert_decision_count": number_at(w039_operated, "alert_decision_count"),
+            "quarantine_decision_count": number_at(w039_operated, "quarantine_decision_count"),
+            "promotion_consequence": "Cross-engine diversity needs an operated mismatch triage/quarantine path before service-level promotion."
+        }),
+    ]
+}
+
+fn w039_differential_authority_rows(
+    w036_independent: &Value,
+    w036_cross_engine: &Value,
+    w037_direct_oxfml: &Value,
+    w039_conformance: &Value,
+    w039_operated: &Value,
+    w039_cross_engine_substrate: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "authority.tracecalc_correctness_oracle",
+            "disposition_kind": "accepted_boundary",
+            "authority_state": "reference_oracle",
+            "evidence": W036_INDEPENDENT_SUMMARY,
+            "comparison_row_count": number_at(w036_independent, "comparison_row_count"),
+            "authority_limit": "oracle authority for covered observable behavior only"
+        }),
+        json!({
+            "row_id": "authority.optimized_core_same_implementation_family",
+            "disposition_kind": "same_authority_family",
+            "authority_state": "not_independent",
+            "evidence": W039_CONFORMANCE_SUMMARY,
+            "w039_exact_remaining_blocker_count": number_at(w039_conformance, "w039_exact_remaining_blocker_count"),
+            "authority_limit": "optimized/core conformance does not supply a separate implementation authority"
+        }),
+        json!({
+            "row_id": "authority.direct_oxfml_external_formula_evaluator",
+            "disposition_kind": "accepted_external_slice",
+            "authority_state": "external_formula_evaluator_only",
+            "evidence": W037_DIRECT_OXFML_SUMMARY,
+            "direct_oxfml_case_count": number_at(w037_direct_oxfml, "direct_oxfml_case_count"),
+            "authority_limit": "external evaluator authority is limited to the consumed OxFml seam and does not implement OxCalc scheduling/publication"
+        }),
+        json!({
+            "row_id": "authority.file_backed_cross_engine_differential",
+            "disposition_kind": "accepted_boundary",
+            "authority_state": "file_backed_artifact_authority",
+            "evidence": W036_CROSS_ENGINE_SUMMARY,
+            "differential_row_count": number_at(w036_cross_engine, "differential_row_count"),
+            "authority_limit": "file-backed row agreement cannot substitute for an operated differential service"
+        }),
+        json!({
+            "row_id": "authority.operated_cross_engine_service",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_operated_service",
+            "evidence": W039_CROSS_ENGINE_SERVICE_SUBSTRATE,
+            "operated_cross_engine_differential_service_present": bool_at(w039_cross_engine_substrate, "operated_cross_engine_differential_service_present"),
+            "authority_limit": "no recurring service endpoint, retained service history, or service-level mismatch action path exists"
+        }),
+        json!({
+            "row_id": "authority.independent_evaluator_implementation",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_independent_implementation",
+            "evidence": W039_OPERATED_ASSURANCE_SUMMARY,
+            "operated_cross_engine_differential_service_promoted": bool_at(w039_operated, "operated_cross_engine_differential_service_promoted"),
+            "authority_limit": "no independently implemented evaluator row set exists"
+        }),
+        json!({
+            "row_id": "authority.release_grade_diversity_promotion",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_release_grade_authority",
+            "evidence": W039_OPERATED_ASSURANCE_SUMMARY,
+            "exact_service_blocker_count": number_at(w039_operated, "exact_service_blocker_count"),
+            "authority_limit": "release-grade diversity authority remains unavailable while independent implementation and operated service blockers remain"
+        }),
+    ]
+}
+
+fn w039_exact_blockers(
+    w038_diversity_blockers: &Value,
+    w039_stage2_blockers: &Value,
+    w039_operated_service_blockers: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "blocker_id": "w039_diversity.fully_independent_evaluator_implementation_absent",
+            "owner": "calc-f7o.6",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W038_DIVERSITY_BLOCKERS,
+            "predecessor_blocker_present": row_with_field_exists(
+                w038_diversity_blockers,
+                "blocker_id",
+                "diversity.fully_independent_evaluator_absent"
+            ),
+            "reason": "TraceCalc, TreeCalc/CoreEngine projection, direct OxFml, formal model, and file-backed differential rows do not constitute an independently implemented OxCalc evaluator row set.",
+            "promotion_consequence": "fully independent evaluator diversity remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w039_diversity.independent_evaluator_authority_absent",
+            "owner": "calc-f7o.6",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W039_CONFORMANCE_SUMMARY,
+            "reason": "No row set is backed by a separate implementation authority with its own execution kernel and replay evidence.",
+            "promotion_consequence": "independent evaluator row-set promotion remains unavailable"
+        }),
+        json!({
+            "blocker_id": "w039_diversity.operated_cross_engine_service_absent",
+            "owner": "calc-f7o.6; calc-f7o.5",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W039_CROSS_ENGINE_SERVICE_SUBSTRATE,
+            "predecessor_blocker_present": row_with_field_exists(
+                w038_diversity_blockers,
+                "blocker_id",
+                "diversity.operated_cross_engine_service_absent"
+            ),
+            "reason": "W039 has a file-backed cross-engine substrate, not an operated recurring differential service.",
+            "promotion_consequence": "operated cross-engine diversity service remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w039_diversity.stage2_differential_service_dependency_absent",
+            "owner": "calc-f7o.4; calc-f7o.6",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W039_STAGE2_BLOCKERS,
+            "stage2_blocker_rows": row_count_at(w039_stage2_blockers),
+            "reason": "Stage 2 diversity needs production policy, partition soundness, and operated differential service evidence before strategy-level diversity promotion.",
+            "promotion_consequence": "Stage 2 diversity remains a blocked dependency for release-grade promotion"
+        }),
+        json!({
+            "blocker_id": "w039_diversity.mismatch_triage_and_quarantine_service_absent",
+            "owner": "calc-f7o.5; calc-f7o.6",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W039_OPERATED_SERVICE_BLOCKERS,
+            "service_blocker_rows": row_count_at(w039_operated_service_blockers),
+            "reason": "The retained history and alert rules are bound, but no external alert dispatcher or mismatch quarantine service is operated.",
+            "promotion_consequence": "service-level diversity assurance remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w039_diversity.release_grade_promotion_authority_absent",
+            "owner": "calc-f7o.9",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W039_OPERATED_ASSURANCE_SUMMARY,
+            "reason": "Release-grade diversity cannot be claimed from proxy evidence, file-backed rows, shared projections, or retained blockers.",
+            "promotion_consequence": "release-grade verification, pack/C5, and diversity promotion remain unavailable to this bead"
+        }),
+    ]
+}
+
+fn w039_diversity_validation_failures(
+    independent_rows: &[Value],
+    cross_engine_rows: &[Value],
+    authority_rows: &[Value],
+    blockers: &[Value],
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    if !independent_rows.iter().any(|row| {
+        row.get("independence_state").and_then(Value::as_str)
+            == Some("independent_implementation_absent")
+    }) {
+        failures.push("w039_diversity.independent_implementation_absent_row_missing".to_string());
+    }
+    if !cross_engine_rows
+        .iter()
+        .any(|row| row.get("service_state").and_then(Value::as_str) == Some("blocked"))
+    {
+        failures.push("w039_diversity.blocked_cross_engine_service_row_missing".to_string());
+    }
+    if !authority_rows.iter().any(|row| {
+        row.get("authority_state").and_then(Value::as_str) == Some("blocked_no_operated_service")
+    }) {
+        failures.push("w039_diversity.operated_service_authority_blocker_missing".to_string());
+    }
+    if blockers.len() < 6 {
+        failures.push("w039_diversity.exact_blocker_count_below_gate".to_string());
+    }
+    if independent_rows
+        .iter()
+        .chain(cross_engine_rows.iter())
+        .chain(authority_rows.iter())
+        .any(|row| row.get("disposition_kind").and_then(Value::as_str) == Some("promoted"))
+    {
+        failures.push("w039_diversity.unexpected_promotion_row".to_string());
+    }
+    failures
+}
+
 fn source_validation_failures(source_rows: &[Value]) -> Vec<String> {
     source_rows
         .iter()
@@ -633,6 +1392,14 @@ fn number_at(value: &Value, key: &str) -> u64 {
     value.get(key).and_then(Value::as_u64).unwrap_or(0)
 }
 
+fn array_len_at(value: &Value, key: &str) -> usize {
+    value.get(key).and_then(Value::as_array).map_or(0, Vec::len)
+}
+
+fn row_count_at(value: &Value) -> usize {
+    array_len_at(value, "rows")
+}
+
 fn bool_at(value: &Value, key: &str) -> bool {
     value.get(key).and_then(Value::as_bool).unwrap_or(false)
 }
@@ -690,6 +1457,65 @@ mod tests {
         .unwrap();
         assert_eq!(decision["fully_independent_evaluator_promoted"], false);
         assert_eq!(decision["oxfml_handoff_triggered"], false);
+
+        cleanup();
+    }
+
+    #[test]
+    fn diversity_seam_runner_classifies_w039_independence_without_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w039-diversity-seam-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/diversity-seam/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = DiversitySeamRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.schema_version, W039_RUN_SUMMARY_SCHEMA_V1);
+        assert_eq!(summary.source_evidence_row_count, 10);
+        assert_eq!(summary.diversity_disposition_row_count, 7);
+        assert_eq!(summary.seam_watch_row_count, 7);
+        assert_eq!(summary.accepted_boundary_count, 10);
+        assert_eq!(summary.exact_blocker_count, 6);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.fully_independent_evaluator_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/diversity-seam/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w039_independent_evaluator_cross_engine_diversity_packet_valid"
+        );
+        assert_eq!(
+            validation["operated_cross_engine_differential_service_promoted"],
+            false
+        );
+
+        let decision = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/diversity-seam/{run_id}/promotion_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(decision["fully_independent_evaluator_promoted"], false);
+        assert_eq!(
+            decision["operated_cross_engine_differential_service_promoted"],
+            false
+        );
+        assert_eq!(decision["w073_formatting_handoff_triggered"], false);
 
         cleanup();
     }

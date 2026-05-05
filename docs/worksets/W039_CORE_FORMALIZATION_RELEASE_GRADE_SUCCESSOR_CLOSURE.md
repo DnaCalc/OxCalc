@@ -93,12 +93,12 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-f7o.5_operated_service_retained_history_validated`
+- execution_state: `calc-f7o.6_independent_evaluator_cross_engine_diversity_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-f7o.6` independent evaluator row set and diversity evidence
+  - `calc-f7o.7` OxFml seam breadth and callable metadata closure
   - OxFml seam breadth, W073 typed-only conditional-formatting metadata, public consumer surfaces, and callable metadata closure
   - pack-grade replay, C5, and release-grade reassessment
 
@@ -109,3 +109,4 @@ Latest W039 evidence:
 3. `docs/spec/core-engine/w039-formalization/W039_LEAN_TLA_TOTALITY_AND_PROOF_MODEL_CLOSURE_TRANCHE.md` records the `calc-f7o.3` proof/model tranche. The packet `w039-proof-model-totality-closure-001` adds a W039 Lean classification file and formal-assurance runner profile, emits 7 proof/model rows, 3 local-proof rows, 2 bounded-model rows, 1 accepted external seam, 1 accepted boundary, 4 totality boundaries, 6 exact blockers, and 0 failed rows, while keeping full Lean/TLA verification, Rust totality, Stage 2 production policy, pack-grade replay, C5, release-grade verification, broad OxFml, and general OxFunc promotion unpromoted.
 4. `docs/spec/core-engine/w039-formalization/W039_STAGE2_PRODUCTION_PARTITION_POLICY_AND_REPLAY_GOVERNANCE.md` records the `calc-f7o.4` Stage 2 policy-governance tranche. The packet `w039-stage2-production-policy-replay-governance-001` adds a W039 Stage 2 Lean policy predicate and runner profile, emits 10 policy rows, 5 satisfied bounded-profile rows, 5 partition replay rows, 6 permutation rows, 5 observable-invariance rows, 1 formatting watch row, 5 exact blockers, and 0 failed rows, while keeping Stage 2 production policy, operated Stage 2 differential service, pack-grade replay, C5, retained witness lifecycle, and release-grade verification unpromoted.
 5. `docs/spec/core-engine/w039-formalization/W039_OPERATED_ASSURANCE_SERVICE_AND_RETAINED_HISTORY_SUBSTRATE.md` records the `calc-f7o.5` operated-assurance substrate tranche. The packet `w039-operated-assurance-retained-history-001` adds a W039 operated-assurance runner profile, emits 8 source rows, 18 retained-history rows, 11 evaluated alert rules, 12 readiness criteria, 5 blocked criteria, 5 exact service blockers, and 0 failed rows, while keeping operated continuous assurance, retained-history service, alert dispatcher, operated cross-engine differential, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
+6. `docs/spec/core-engine/w039-formalization/W039_INDEPENDENT_EVALUATOR_ROW_SET_AND_CROSS_ENGINE_DIVERSITY.md` records the `calc-f7o.6` diversity tranche. The packet `w039-independent-evaluator-cross-engine-diversity-001` adds a W039 diversity-seam runner profile, emits 10 source rows, 7 independent-evaluator rows, 7 cross-engine diversity rows, 7 differential-authority rows, 6 exact blockers, and 0 failed rows, while keeping fully independent evaluator, operated cross-engine differential service, broad OxFml seam, callable metadata projection, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.

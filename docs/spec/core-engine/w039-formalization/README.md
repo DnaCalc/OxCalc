@@ -13,7 +13,7 @@ Current OxFml formatting intake:
 3. `thresholds` remains meaningful only for scalar/operator/expression rule families where threshold text is the actual rule input.
 4. OxCalc W039 evidence must not assume a fallback from W073 typed metadata to W072 aggregate/visualization threshold strings.
 
-Expected packets:
+Packets:
 
 1. `W039_RESIDUAL_SUCCESSOR_OBLIGATION_LEDGER_AND_PROMOTION_READINESS_MAP.md`
 2. `W039_OPTIMIZED_CORE_EXACT_BLOCKER_IMPLEMENTATION_CLOSURE.md`

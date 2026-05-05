@@ -1,0 +1,70 @@
+{
+  "run_id": "w039-residual-successor-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w039.promotion_readiness.v1",
+  "promotion_target_count": 9,
+  "promotion_targets": [
+    {
+      "target": "release_grade_full_verification",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-001", "W039-OBL-002", "W039-OBL-003", "W039-OBL-004", "W039-OBL-005", "W039-OBL-006", "W039-OBL-007", "W039-OBL-008", "W039-OBL-009", "W039-OBL-010", "W039-OBL-011", "W039-OBL-012", "W039-OBL-013", "W039-OBL-014", "W039-OBL-015", "W039-OBL-016", "W039-OBL-017", "W039-OBL-018", "W039-OBL-019", "W039-OBL-020"],
+      "promotion_guard": "all target-specific evidence must be direct, replayable or checked, and no declared gap may be counted as a match",
+      "next_owner": "calc-f7o.9"
+    },
+    {
+      "target": "full_optimized_core_verification",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-002", "W039-OBL-003", "W039-OBL-004", "W039-OBL-005", "W039-OBL-008"],
+      "promotion_guard": "optimized/core claims require direct counterpart evidence or fixed behavior for exact blockers",
+      "next_owner": "calc-f7o.2"
+    },
+    {
+      "target": "full_lean_tla_verification",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-006", "W039-OBL-007", "W039-OBL-008", "W039-OBL-019"],
+      "promotion_guard": "proof/model claims must distinguish discharged proof from assumptions, bounds, and external-owner seams",
+      "next_owner": "calc-f7o.3"
+    },
+    {
+      "target": "stage2_production_policy",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-003", "W039-OBL-007", "W039-OBL-009", "W039-OBL-010", "W039-OBL-014", "W039-OBL-020"],
+      "promotion_guard": "Stage 2 policy requires partition soundness and observable-result invariance for promoted profiles",
+      "next_owner": "calc-f7o.4"
+    },
+    {
+      "target": "operated_assurance_services",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-011", "W039-OBL-012", "W039-OBL-013", "W039-OBL-014"],
+      "promotion_guard": "service claims require operated service artifacts, not local file-backed simulation",
+      "next_owner": "calc-f7o.5"
+    },
+    {
+      "target": "fully_independent_evaluator_diversity",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-014", "W039-OBL-015", "W039-OBL-016"],
+      "promotion_guard": "independence requires implementation authority distinct from TraceCalc, optimized/core, and shared projections",
+      "next_owner": "calc-f7o.6"
+    },
+    {
+      "target": "broad_oxfml_seam_and_display_publication",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-004", "W039-OBL-017", "W039-OBL-018", "W039-OBL-019"],
+      "promotion_guard": "OxFml seam claims require current consumed public surfaces and concrete mismatch/handoff handling where exercised",
+      "next_owner": "calc-f7o.7"
+    },
+    {
+      "target": "pack_grade_replay_and_cap_c5",
+      "current_readiness": "blocked",
+      "required_obligations": ["W039-OBL-001", "W039-OBL-005", "W039-OBL-010", "W039-OBL-012", "W039-OBL-014", "W039-OBL-015", "W039-OBL-016", "W039-OBL-020"],
+      "promotion_guard": "pack/C5 decision requires direct pack governance, retained witness/service, differential, proof/model, and seam evidence",
+      "next_owner": "calc-f7o.8"
+    },
+    {
+      "target": "general_oxfunc_kernels_inside_oxcalc",
+      "current_readiness": "out_of_scope_not_promoted",
+      "required_obligations": ["W039-OBL-019"],
+      "promotion_guard": "general OxFunc semantic kernels remain external owner scope; OxCalc formalization includes only the narrow LET/LAMBDA carrier seam",
+      "next_owner": "calc-f7o.7"
+    }
+  ]
+}

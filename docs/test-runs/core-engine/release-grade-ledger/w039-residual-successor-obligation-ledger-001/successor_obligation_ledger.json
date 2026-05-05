@@ -1,0 +1,187 @@
+{
+  "run_id": "w039-residual-successor-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w039.obligations.v1",
+  "obligation_count": 20,
+  "obligations": [
+    {
+      "obligation_id": "W039-OBL-001",
+      "area": "successor objective map and no-proxy promotion guard",
+      "owner_beads": ["calc-f7o.1", "calc-f7o.9"],
+      "source_lanes": ["POST-W038-LANE-001", "POST-W038-LANE-009"],
+      "required_evidence": "machine-readable W039 obligation map, promotion-readiness map, and no-proxy guard before later evidence beads start",
+      "promotion_consequence": "release-grade, C5, pack-grade, Stage 2, service, diversity, and OxFml breadth claims remain blocked unless later W039 evidence satisfies their target guards",
+      "spec_evolution_hooks": ["promotion_gate", "spec_correction"]
+    },
+    {
+      "obligation_id": "W039-OBL-002",
+      "area": "optimized/core dynamic dependency exact blocker",
+      "owner_beads": ["calc-f7o.2"],
+      "source_lanes": ["POST-W038-LANE-001"],
+      "required_evidence": "direct optimized/core counterpart for dynamic negative dependency, dependency release, and dependency reclassification profiles, or exact residual blocker",
+      "promotion_consequence": "full optimized/core verification remains blocked",
+      "spec_evolution_hooks": ["implementation_fault", "spec_correction", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-003",
+      "area": "snapshot fence and capability fence optimized counterparts",
+      "owner_beads": ["calc-f7o.2", "calc-f7o.4"],
+      "source_lanes": ["POST-W038-LANE-001", "POST-W038-LANE-003"],
+      "required_evidence": "coordinator and optimized/core evidence for stale-candidate snapshot rejection and capability-view fence mismatch behavior under promoted profiles",
+      "promotion_consequence": "snapshot/capability conformance and Stage 2 readiness remain blocked",
+      "spec_evolution_hooks": ["implementation_fault", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-004",
+      "area": "callable metadata projection and callable carrier conformance",
+      "owner_beads": ["calc-f7o.2", "calc-f7o.7"],
+      "source_lanes": ["POST-W038-LANE-001", "POST-W038-LANE-008", "POST-W038-LANE-010"],
+      "required_evidence": "callable metadata projection fixture or proof of callable carrier sufficiency across consumed OxFml LET/LAMBDA rows without general OxFunc kernel promotion",
+      "promotion_consequence": "callable metadata projection and broad callable conformance remain blocked",
+      "spec_evolution_hooks": ["implementation_fault", "handoff_watch", "authority_exclusion"]
+    },
+    {
+      "obligation_id": "W039-OBL-005",
+      "area": "declared-gap match-promotion guard",
+      "owner_beads": ["calc-f7o.2", "calc-f7o.8", "calc-f7o.9"],
+      "source_lanes": ["POST-W038-LANE-001", "POST-W038-LANE-009"],
+      "required_evidence": "zero declared-gap match promotion for optimized/core, replay, pack, service, diversity, and OxFml seam rows",
+      "promotion_consequence": "pack/C5 and release-grade decisions remain no-promotion if any target depends on a declared gap counted as a match",
+      "spec_evolution_hooks": ["promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-006",
+      "area": "Lean proof totality boundary",
+      "owner_beads": ["calc-f7o.3"],
+      "source_lanes": ["POST-W038-LANE-002"],
+      "required_evidence": "checked Lean rows that separate discharged proof, explicit assumption, external seam, and unproved totality boundary",
+      "promotion_consequence": "full Lean verification remains blocked",
+      "spec_evolution_hooks": ["proof_gap", "authority_exclusion"]
+    },
+    {
+      "obligation_id": "W039-OBL-007",
+      "area": "TLA model totality and bound discharge",
+      "owner_beads": ["calc-f7o.3", "calc-f7o.4"],
+      "source_lanes": ["POST-W038-LANE-002", "POST-W038-LANE-003"],
+      "required_evidence": "checked TLA/TLC rows with model bounds, unboundedness limits, fairness/scheduler assumptions, and promotion predicates stated",
+      "promotion_consequence": "full TLA verification and Stage 2 policy remain blocked",
+      "spec_evolution_hooks": ["proof_gap", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-008",
+      "area": "Rust-engine totality and refinement relation",
+      "owner_beads": ["calc-f7o.2", "calc-f7o.3"],
+      "source_lanes": ["POST-W038-LANE-001", "POST-W038-LANE-002"],
+      "required_evidence": "refinement relation from TraceCalc-covered reference behavior to optimized/core behavior, with totality boundaries named for non-covered Rust paths",
+      "promotion_consequence": "full formalization and optimized/core verification remain blocked",
+      "spec_evolution_hooks": ["implementation_fault", "proof_gap", "spec_correction"]
+    },
+    {
+      "obligation_id": "W039-OBL-009",
+      "area": "Stage 2 production partition analyzer soundness",
+      "owner_beads": ["calc-f7o.4"],
+      "source_lanes": ["POST-W038-LANE-003"],
+      "required_evidence": "production-relevant partition analyzer soundness statement or proof for promoted profiles, including dynamic references, soft dependencies, publication fences, and capability fences",
+      "promotion_consequence": "Stage 2 production policy remains blocked",
+      "spec_evolution_hooks": ["proof_gap", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-010",
+      "area": "Stage 2 observable invariance and replay equivalence",
+      "owner_beads": ["calc-f7o.4", "calc-f7o.8"],
+      "source_lanes": ["POST-W038-LANE-003", "POST-W038-LANE-009"],
+      "required_evidence": "baseline-versus-partition replay equivalence for published values, rejects, dependencies, topology consequences, overlays, and replay validation across promoted profiles",
+      "promotion_consequence": "Stage 2 policy and pack-grade replay remain blocked",
+      "spec_evolution_hooks": ["promotion_gate", "service_gap"]
+    },
+    {
+      "obligation_id": "W039-OBL-011",
+      "area": "operated continuous assurance runner service",
+      "owner_beads": ["calc-f7o.5"],
+      "source_lanes": ["POST-W038-LANE-004"],
+      "required_evidence": "operated runner, scheduler, run retention, regression thresholds, and service-readable run history artifacts",
+      "promotion_consequence": "operated continuous assurance service remains blocked",
+      "spec_evolution_hooks": ["service_gap"]
+    },
+    {
+      "obligation_id": "W039-OBL-012",
+      "area": "retained history and witness service lifecycle",
+      "owner_beads": ["calc-f7o.5"],
+      "source_lanes": ["POST-W038-LANE-006"],
+      "required_evidence": "retained history or witness service with lifecycle, retention, query, and replay-correlation guarantees",
+      "promotion_consequence": "retained history service and pack-grade replay governance remain blocked",
+      "spec_evolution_hooks": ["service_gap", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-013",
+      "area": "alert/quarantine dispatcher enforcement",
+      "owner_beads": ["calc-f7o.5"],
+      "source_lanes": ["POST-W038-LANE-004", "POST-W038-LANE-006"],
+      "required_evidence": "enforcing alert dispatcher wired to quarantine policy, threshold rules, and retained evidence",
+      "promotion_consequence": "alert/quarantine service remains blocked",
+      "spec_evolution_hooks": ["service_gap"]
+    },
+    {
+      "obligation_id": "W039-OBL-014",
+      "area": "operated cross-engine differential service",
+      "owner_beads": ["calc-f7o.5", "calc-f7o.6"],
+      "source_lanes": ["POST-W038-LANE-005", "POST-W038-LANE-007"],
+      "required_evidence": "operated TraceCalc, optimized/core, and OxFml differential service with retained mismatch, quarantine, and replay artifacts",
+      "promotion_consequence": "cross-engine service, independent diversity, Stage 2, pack-grade replay, and C5 remain blocked",
+      "spec_evolution_hooks": ["service_gap", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-015",
+      "area": "independent evaluator implementation row set",
+      "owner_beads": ["calc-f7o.6"],
+      "source_lanes": ["POST-W038-LANE-007"],
+      "required_evidence": "independently implemented evaluator row set with authority distinct from TraceCalc, optimized/core, and shared fixture projections",
+      "promotion_consequence": "fully independent evaluator diversity remains blocked",
+      "spec_evolution_hooks": ["authority_exclusion", "promotion_gate"]
+    },
+    {
+      "obligation_id": "W039-OBL-016",
+      "area": "diversity differential authority and mismatch handling",
+      "owner_beads": ["calc-f7o.6"],
+      "source_lanes": ["POST-W038-LANE-005", "POST-W038-LANE-007"],
+      "required_evidence": "differential rows that classify agreement, mismatch, authority, quarantine, and spec-evolution consequences without shared-projection promotion",
+      "promotion_consequence": "independent diversity and cross-engine differential promotion remain blocked",
+      "spec_evolution_hooks": ["authority_exclusion", "service_gap", "spec_correction"]
+    },
+    {
+      "obligation_id": "W039-OBL-017",
+      "area": "OxFml W073 typed-only conditional-formatting seam",
+      "owner_beads": ["calc-f7o.7"],
+      "source_lanes": ["POST-W038-LANE-008"],
+      "required_evidence": "current seam-watch row proving OxCalc does not assume W072 threshold fallback for colorScale, dataBar, iconSet, top, bottom, aboveAverage, or belowAverage metadata",
+      "promotion_consequence": "OxFml formatting seam breadth remains blocked if any exercised OxCalc artifact assumes threshold fallback for those families",
+      "spec_evolution_hooks": ["handoff_watch", "spec_correction"]
+    },
+    {
+      "obligation_id": "W039-OBL-018",
+      "area": "OxFml seam breadth, public consumer surfaces, and format/display boundary",
+      "owner_beads": ["calc-f7o.7"],
+      "source_lanes": ["POST-W038-LANE-008"],
+      "required_evidence": "current consumed OxFml public runtime/editor/replay surfaces, format_delta/display_delta distinction, callable-publication watch, provider-failure watch, and broad display/publication blockers classified",
+      "promotion_consequence": "broad OxFml display/publication closure remains blocked",
+      "spec_evolution_hooks": ["handoff_watch", "authority_exclusion"]
+    },
+    {
+      "obligation_id": "W039-OBL-019",
+      "area": "LET/LAMBDA carrier boundary and general OxFunc external owner",
+      "owner_beads": ["calc-f7o.3", "calc-f7o.7", "calc-f7o.9"],
+      "source_lanes": ["POST-W038-LANE-010"],
+      "required_evidence": "narrow LET/LAMBDA carrier rows remain in OxCalc formalization while general OxFunc semantic kernels remain external-owner exclusions",
+      "promotion_consequence": "general OxFunc kernels are not promoted inside OxCalc",
+      "spec_evolution_hooks": ["authority_exclusion", "handoff_watch"]
+    },
+    {
+      "obligation_id": "W039-OBL-020",
+      "area": "pack-grade replay governance, C5, and release decision",
+      "owner_beads": ["calc-f7o.8", "calc-f7o.9"],
+      "source_lanes": ["POST-W038-LANE-009"],
+      "required_evidence": "pack-grade replay governance, retained-witness/service evidence, cross-engine differential evidence, proof/model evidence, OxFml seam evidence, and no-proxy decision bound before C5 reassessment",
+      "promotion_consequence": "highest honest capability remains cap.C4.distill_valid unless direct W039 evidence supports a different decision",
+      "spec_evolution_hooks": ["promotion_gate", "service_gap", "proof_gap"]
+    }
+  ]
+}

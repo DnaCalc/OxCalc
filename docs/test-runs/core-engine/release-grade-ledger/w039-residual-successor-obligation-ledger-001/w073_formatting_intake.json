@@ -1,0 +1,36 @@
+{
+  "run_id": "w039-residual-successor-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w039.oxfml_formatting_intake.v1",
+  "source": "OxFml W073 conditional formatting typed visualization payload",
+  "review_date": "2026-05-05",
+  "source_repo_observation": {
+    "repo": "../OxFml",
+    "branch_status": "main...origin/main ahead 3",
+    "dirty_files_reviewed": [
+      "crates/oxfml_core/src/publication/mod.rs",
+      "crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "docs/IN_PROGRESS_FEATURE_WORKLIST.md",
+      "docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "docs/worksets/W073_conditional_formatting_typed_visualization_payload.md"
+    ],
+    "oxcalc_edit_scope": "read_only_observation"
+  },
+  "typed_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "current_rule": "VerificationConditionalFormattingRule.typed_rule is the only accepted metadata source for the typed_only_families.",
+  "thresholds_rule": "W072 bounded thresholds strings are intentionally ignored for the typed_only_families and remain meaningful only for scalar, operator, or expression families where threshold text is the actual input.",
+  "oxcalc_consequence": [
+    "W039 OxFml seam evidence must not assume aggregate or visualization fallback from typed_rule to thresholds.",
+    "Any OxCalc fixture, bridge, or replay row that constructs these W073 families must use typed_rule metadata.",
+    "If exercised OxCalc evidence still depends on W072 bounded strings for those families, calc-f7o.7 must record a mismatch or handoff trigger.",
+    "No OxFml handoff is filed by calc-f7o.1 because this bead records scope and obligations only."
+  ],
+  "promotion_consequence": "broad OxFml display/publication and pack/C5 claims remain unpromoted until W073 typed-only behavior is exercised or explicitly blocked in OxCalc evidence where relevant"
+}

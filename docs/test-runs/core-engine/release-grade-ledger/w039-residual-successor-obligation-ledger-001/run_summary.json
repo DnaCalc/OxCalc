@@ -1,0 +1,28 @@
+{
+  "run_id": "w039-residual-successor-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w039.summary.v1",
+  "workset": "W039",
+  "parent_epic": "calc-f7o",
+  "bead": "calc-f7o.1",
+  "status": "non_promoting_successor_ledger_validated",
+  "source_residual_lane_count": 10,
+  "obligation_count": 20,
+  "promotion_target_count": 9,
+  "w073_formatting_intake": "typed_only_guard_recorded",
+  "no_promotion_claims": [
+    "release_grade_full_verification",
+    "full_formalization",
+    "full_optimized_core_verification",
+    "full_lean_tla_verification",
+    "stage2_production_policy",
+    "operated_assurance_service",
+    "operated_cross_engine_service",
+    "fully_independent_evaluator_diversity",
+    "broad_oxfml_display_publication",
+    "pack_grade_replay",
+    "cap.C5.pack_valid",
+    "general_oxfunc_kernels"
+  ],
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "next_bead": "calc-f7o.2"
+}

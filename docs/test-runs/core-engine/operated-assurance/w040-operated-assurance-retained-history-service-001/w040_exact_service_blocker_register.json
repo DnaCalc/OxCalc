@@ -1,0 +1,35 @@
+{
+  "exact_service_blocker_count": 4,
+  "rows": [
+    {
+      "blocker_id": "service.operated_regression_scheduler_absent",
+      "owner": "calc-tv5.6; calc-tv5.10",
+      "promotion_consequence": "operated continuous assurance service remains unpromoted",
+      "reason": "W040 has a runnable file-backed CLI runner, but no recurring scheduler, daemon, service endpoint, or operated run queue.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.external_alert_dispatcher_absent",
+      "owner": "calc-tv5.6; calc-tv5.10",
+      "promotion_consequence": "alert/quarantine dispatcher claims remain unpromoted",
+      "reason": "W040 evaluates alert/quarantine rules locally but does not operate an external dispatcher or quarantine service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.operated_cross_engine_differential_absent",
+      "owner": "calc-tv5.6; calc-tv5.7",
+      "promotion_consequence": "operated cross-engine differential service, independent diversity, and Stage 2 service dependencies remain blocked",
+      "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retention_slo_and_pack_governance_absent",
+      "owner": "calc-tv5.6; calc-tv5.9",
+      "promotion_consequence": "retained-history service, pack-grade replay, C5, and release-grade verification remain unpromoted",
+      "reason": "W040 emits a file-backed retained-history store/query register and replay-correlation index, but no operated retention SLO or pack-grade replay governance service.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w040-operated-assurance-retained-history-service-001",
+  "schema_version": "oxcalc.operated_assurance.w040.exact_service_blocker_register.v1"
+}

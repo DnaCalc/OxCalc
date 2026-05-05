@@ -1,0 +1,18 @@
+{
+  "alert_decision_count": 0,
+  "evaluated_alert_rule_count": 14,
+  "exact_service_blocker_count": 4,
+  "failed_row_count": 0,
+  "multi_run_history_row_count": 21,
+  "operated_runner_row_count": 6,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 5,
+  "replay_correlation_row_count": 3,
+  "run_id": "w040-operated-assurance-retained-history-service-001",
+  "schema_version": "oxcalc.operated_assurance.w040.validation.v1",
+  "service_readiness_blocked_count": 4,
+  "service_readiness_criteria_count": 14,
+  "source_evidence_row_count": 10,
+  "status": "w040_operated_assurance_retained_history_service_artifacts_valid",
+  "validation_failures": []
+}

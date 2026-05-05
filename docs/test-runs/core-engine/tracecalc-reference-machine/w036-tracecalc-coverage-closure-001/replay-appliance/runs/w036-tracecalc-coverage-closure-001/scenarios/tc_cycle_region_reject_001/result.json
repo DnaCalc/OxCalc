@@ -1,0 +1,39 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.dag.cycle_iterative_semantics"
+    ],
+    "replay_classes": [
+      "oxcalc.local.scc_stage1"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ],
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "I6",
+      "C3"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_cycle_region_reject_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/replay-appliance/reductions/tc_cycle_region_reject_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/scenarios/tc_cycle_region_reject_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/replay-appliance/witnesses/tc_cycle_region_reject_001--witness-seed/lifecycle.json"
+  },
+  "validation_failures": []
+}

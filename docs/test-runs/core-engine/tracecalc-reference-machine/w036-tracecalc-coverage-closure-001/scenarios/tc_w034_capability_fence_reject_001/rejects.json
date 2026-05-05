@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"expected_capability_view\":\"capability-view:old\",\"observed_capability_view\":\"capability-view:restricted\",\"required_capability\":\"cap.exec.host_query\"}",
+      "reject_id": "rej-capability-fence",
+      "reject_kind": "capability_mismatch"
+    }
+  ],
+  "scenario_id": "tc_w034_capability_fence_reject_001"
+}

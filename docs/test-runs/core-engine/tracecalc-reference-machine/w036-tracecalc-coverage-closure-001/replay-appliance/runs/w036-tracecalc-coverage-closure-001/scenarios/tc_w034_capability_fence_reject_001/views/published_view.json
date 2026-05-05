@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "Secure",
+      "value": "7"
+    },
+    {
+      "node_id": "Source",
+      "value": "7"
+    }
+  ],
+  "scenario_id": "tc_w034_capability_fence_reject_001",
+  "snapshot_id": "s0"
+}

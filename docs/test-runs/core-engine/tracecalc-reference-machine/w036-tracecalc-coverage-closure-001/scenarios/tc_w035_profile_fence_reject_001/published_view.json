@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "Input",
+      "value": "4"
+    },
+    {
+      "node_id": "Out",
+      "value": "4"
+    }
+  ],
+  "scenario_id": "tc_w035_profile_fence_reject_001",
+  "snapshot_id": "s0"
+}

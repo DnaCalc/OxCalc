@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "1"
+    },
+    {
+      "node_id": "B",
+      "value": "2"
+    },
+    {
+      "node_id": "C",
+      "value": "3"
+    }
+  ],
+  "scenario_id": "tc_w035_static_dependency_add_publish_001",
+  "snapshot_id": "s0"
+}

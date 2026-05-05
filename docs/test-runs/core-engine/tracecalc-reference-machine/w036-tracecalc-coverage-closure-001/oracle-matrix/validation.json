@@ -1,0 +1,12 @@
+{
+  "classified_uncovered_row_count": 1,
+  "covered_row_count": 30,
+  "excluded_row_count": 1,
+  "matrix_row_count": 32,
+  "missing_crosswalk_count": 0,
+  "missing_or_failed_row_count": 0,
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.validation.v1",
+  "status": "matrix_valid",
+  "tracecalc_scenario_count": 30
+}

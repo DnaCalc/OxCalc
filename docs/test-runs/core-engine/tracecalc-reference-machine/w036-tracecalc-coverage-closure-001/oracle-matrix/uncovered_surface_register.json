@@ -1,0 +1,24 @@
+{
+  "classified_uncovered_row_count": 1,
+  "missing_or_failed_row_count": 0,
+  "rows": [
+    {
+      "artifact_paths": [],
+      "classification": "classified_uncovered_tla_stage2_owner",
+      "coverage_class": "uncovered",
+      "evidence_state": "classified_uncovered_deferred",
+      "failures": [],
+      "matrix_family": "overlay_retention",
+      "obligation_id": "W036-OBL-002",
+      "observed_trace_labels": [],
+      "owner": "calc-rqq.5",
+      "reason": "TraceCalc remains single-threaded and does not model full multi-reader interleavings; W036 TLA Stage 2 partition and scheduler-equivalence work owns this row.",
+      "required_trace_labels": [],
+      "row_id": "w035_overlay_multi_reader_release_order",
+      "scenario_id": null,
+      "surface": "multi-reader overlay release ordering across independent pins"
+    }
+  ],
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.uncovered.v1"
+}

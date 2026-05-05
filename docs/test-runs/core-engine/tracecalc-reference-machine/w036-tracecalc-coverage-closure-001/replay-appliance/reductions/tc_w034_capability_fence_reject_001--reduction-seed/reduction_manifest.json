@@ -1,0 +1,93 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_w034_capability_fence_reject_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "counters",
+    "capability_view_key"
+  ],
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "scenario_id": "tc_w034_capability_fence_reject_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_w034_capability_fence_reject_001/scenario",
+      "closure_unit_ids": [
+        "phase:capability-fence-reject",
+        "events:reject-no-publish",
+        "reject:rej-capability-fence/record",
+        "view:published/current"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "capability-fence-reject",
+      "closure_unit_ids": [
+        "events:reject-no-publish"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "phase:capability-fence-reject",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "reject-no-publish",
+      "closure_unit_ids": [
+        "reject:rej-capability-fence/record"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "events:reject-no-publish",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "rej-capability-fence/record",
+      "closure_unit_ids": [],
+      "reject_id": "rej-capability-fence",
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "reject:rej-capability-fence/record",
+      "unit_kind": "reject_record",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_w034_capability_fence_reject_001--witness-seed"
+}

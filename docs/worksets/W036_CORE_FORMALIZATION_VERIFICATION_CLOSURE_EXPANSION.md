@@ -89,14 +89,14 @@ The first W036 path is sequential to keep proof, replay, implementation, and pro
 
 ## Current Status
 
-- execution_state: `calc-rqq.1_residual_coverage_ledger_validated`
+- execution_state: `calc-rqq.2_tracecalc_coverage_closure_matrix_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-rqq.2` through `calc-rqq.9` remain blocked by the sequential W036 path
+  - `calc-rqq.3` through `calc-rqq.9` remain blocked by the sequential W036 path
   - full Lean/TLA verification remains open
-  - full TraceCalc oracle coverage remains open
+  - full TraceCalc oracle coverage remains unpromoted because the W036 matrix still has one uncovered TLA-owned row and one OxFunc-kernel exclusion
   - full optimized/core-engine verification and fully independent evaluator diversity remain open
   - concrete Stage 2 partition modeling and replay equivalence remain open
   - pack-grade replay, continuous-scale service operation, continuous cross-engine differential service, and Stage 2 policy remain unpromoted
@@ -104,3 +104,4 @@ The first W036 path is sequential to keep proof, replay, implementation, and pro
 Latest W036 evidence:
 
 1. `docs/spec/core-engine/w036-formalization/W036_RESIDUAL_COVERAGE_AND_PROMOTION_BLOCKER_LEDGER.md` records the W036 residual coverage ledger for `calc-rqq.1`, mapping W035 no-promotion blockers to 20 W036 obligations, owners, evidence roots, and promotion consequences.
+2. `docs/spec/core-engine/w036-formalization/W036_TRACECALC_COVERAGE_CLOSURE_CRITERIA_AND_MATRIX_EXPANSION.md` records the `calc-rqq.2` W036 TraceCalc coverage criteria and matrix expansion. The checked run `w036-tracecalc-coverage-closure-001` emits 32 matrix rows, 30 covered rows, 1 classified uncovered row, 1 excluded row, 0 failed/missing rows, 0 no-loss crosswalk gaps, and no full oracle claim.

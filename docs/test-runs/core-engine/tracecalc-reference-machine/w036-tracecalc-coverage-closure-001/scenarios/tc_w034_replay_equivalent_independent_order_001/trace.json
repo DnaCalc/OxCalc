@@ -1,0 +1,165 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "Left"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "Top"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "Left"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "1",
+        "nodes": "Top"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "2",
+        "nodes": "Check"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "Left"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "Left"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "Top"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "Top"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "Check"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0011",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "Check"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0012",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "Check"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0013",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-independent-order",
+        "compatibility_basis": "s0",
+        "target_count": "3"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0014",
+      "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
+      "payload": {
+        "candidate_result_id": "cand-independent-order",
+        "target_count": "3"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0015",
+      "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
+      "payload": {
+        "candidate_result_id": "cand-independent-order",
+        "publication_id": "pub-independent-order"
+      },
+      "step_id": "st4"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "R3",
+      "R8"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "candidate_publication_boundary",
+      "replay_history_projection"
+    ]
+  },
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "scenario_id": "tc_w034_replay_equivalent_independent_order_001"
+}

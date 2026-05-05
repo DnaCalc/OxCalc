@@ -1,0 +1,385 @@
+{
+  "missing_crosswalk_count": 0,
+  "relation": "w036 retains every W035 matrix row identity and maps every W033-W035 tagged corpus scenario to at least one W036 row",
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "schema_version": "oxcalc.tracecalc.oracle_matrix.no_loss_crosswalk.v1",
+  "source_w035_matrix_run_id": "w035-tracecalc-oracle-matrix-001",
+  "w033_w035_scenario_count": 18,
+  "w033_w035_scenarios": [
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_let_lambda_carrier_publish_001",
+      "source_workset": "W033",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_callable_direct_capture_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_let_lambda_invocation_reject_001",
+      "source_workset": "W033",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w036_callable_invocation_reject"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_let_lambda_runtime_effect_001",
+      "source_workset": "W033",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w036_callable_runtime_effect_visibility"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_snapshot_fence_reject_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_stale_snapshot_fence_reject"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_capability_fence_reject_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_stale_capability_view_fence_reject"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_dependency_dynamic_negative"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_overlay_retain_release"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_callable_higher_order_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+      "source_workset": "W034",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w036_replay_equivalent_independent_order"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_profile_fence_reject_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_stale_profile_version_fence_reject"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_candidate_after_emit_fence_reject_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_stale_post_candidate_fence_reject"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_static_dependency_add_publish_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_dependency_static_add_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_dynamic_dependency_switch_publish_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_dependency_dynamic_switch_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_dependency_dynamic_release_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_dependency_dirty_seed_closure"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_overlay_reuse_protected_dynamic"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_let_lambda_defined_name_callable_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_callable_defined_name_publish"
+        }
+      ]
+    },
+    {
+      "relation": "covered_or_classified",
+      "source_scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+      "source_workset": "W035",
+      "target_run_id": "w036-tracecalc-coverage-closure-001",
+      "targets": [
+        {
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "target_row_id": "w035_callable_publication_reject"
+        }
+      ]
+    }
+  ],
+  "w033_w035_scenarios_mapped_count": 18,
+  "w035_matrix_row_count": 17,
+  "w035_matrix_rows": [
+    {
+      "relation": "retained",
+      "source_row_id": "w035_stale_snapshot_fence_reject",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_stale_snapshot_fence_reject",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_stale_capability_view_fence_reject",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_stale_capability_view_fence_reject",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_stale_profile_version_fence_reject",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_stale_profile_version_fence_reject",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_stale_post_candidate_fence_reject",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_stale_post_candidate_fence_reject",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_dependency_dynamic_negative",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_dependency_dynamic_negative",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_dependency_static_add_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_dependency_static_add_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_dependency_dynamic_switch_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_dependency_dynamic_switch_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_dependency_dynamic_release_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_dependency_dynamic_release_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_dependency_dirty_seed_closure",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_dependency_dirty_seed_closure",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_overlay_retain_release",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_overlay_retain_release",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_overlay_reuse_protected_dynamic",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_overlay_reuse_protected_dynamic",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_overlay_multi_reader_release_order",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "uncovered",
+      "target_row_id": "w035_overlay_multi_reader_release_order",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_callable_direct_capture_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_callable_direct_capture_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_callable_higher_order_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_callable_higher_order_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_callable_defined_name_publish",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_callable_defined_name_publish",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_callable_publication_reject",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "covered",
+      "target_row_id": "w035_callable_publication_reject",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    },
+    {
+      "relation": "retained",
+      "source_row_id": "w035_callable_full_oxfunc_semantics",
+      "source_run_id": "w035-tracecalc-oracle-matrix-001",
+      "target_coverage_class": "excluded",
+      "target_row_id": "w035_callable_full_oxfunc_semantics",
+      "target_run_id": "w036-tracecalc-coverage-closure-001"
+    }
+  ],
+  "w035_matrix_rows_retained_count": 17
+}

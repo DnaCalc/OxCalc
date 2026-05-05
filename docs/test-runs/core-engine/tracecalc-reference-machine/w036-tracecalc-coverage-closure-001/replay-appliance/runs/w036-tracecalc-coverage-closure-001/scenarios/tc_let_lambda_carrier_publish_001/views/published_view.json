@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "10"
+    },
+    {
+      "node_id": "B",
+      "value": "15"
+    }
+  ],
+  "scenario_id": "tc_let_lambda_carrier_publish_001",
+  "snapshot_id": "s0"
+}

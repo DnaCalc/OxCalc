@@ -137,6 +137,12 @@ Any later W036 promotion candidate must include machine-readable evidence, a sem
 | `calc-rqq.8` | `W036-OBL-011`, `W036-OBL-016`, `W036-OBL-017` |
 | `calc-rqq.9` | `W036-OBL-018`, `W036-OBL-019`, `W036-OBL-020`, all open-lane audit rows |
 
+### calc-rqq.2 Disposition Update
+
+`calc-rqq.2` now records the W036 TraceCalc coverage criteria and matrix expansion in `W036_TRACECALC_COVERAGE_CLOSURE_CRITERIA_AND_MATRIX_EXPANSION.md`.
+
+Evidence run `w036-tracecalc-coverage-closure-001` emits 32 matrix rows, 30 covered rows, 1 classified uncovered row, 1 excluded row, 0 failed/missing rows, and 0 no-loss crosswalk gaps. The multi-reader overlay release-order row remains uncovered and routed to `calc-rqq.5`; the full OxFunc LAMBDA semantic-kernel row is excluded from the OxCalc TraceCalc profile and recorded for the `calc-rqq.4` boundary inventory. No full TraceCalc oracle claim is made.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

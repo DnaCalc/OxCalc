@@ -81,7 +81,7 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
   - current W035 packet examples: `W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md`, `W035_TRACECALC_ORACLE_MATRIX_EXPANSION.md`, `W035_IMPLEMENTATION_CONFORMANCE_HARDENING.md`, `W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md`, `W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md`, `W035_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_DIFFERENTIAL_GATE.md`, `W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md`, and `W035_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`.
 - `docs/spec/core-engine/w036-formalization/`
   - active W036 evidence artifact root for TraceCalc coverage closure criteria, optimized/core-engine conformance closure, Lean theorem coverage expansion, concrete TLA Stage 2 partition modeling, stronger cross-engine differential evidence, continuous-assurance operation/history, and pack-grade reassessment.
-  - current W036 packet examples: `W036_RESIDUAL_COVERAGE_AND_PROMOTION_BLOCKER_LEDGER.md`.
+  - current W036 packet examples: `W036_RESIDUAL_COVERAGE_AND_PROMOTION_BLOCKER_LEDGER.md` and `W036_TRACECALC_COVERAGE_CLOSURE_CRITERIA_AND_MATRIX_EXPANSION.md`.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 

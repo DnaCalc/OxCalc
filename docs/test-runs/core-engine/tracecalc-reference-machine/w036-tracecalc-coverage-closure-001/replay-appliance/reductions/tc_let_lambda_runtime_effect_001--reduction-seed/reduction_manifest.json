@@ -1,0 +1,80 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_let_lambda_runtime_effect_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters",
+    "runtime_effects",
+    "callable_carrier_identity"
+  ],
+  "run_id": "w036-tracecalc-coverage-closure-001",
+  "scenario_id": "tc_let_lambda_runtime_effect_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_let_lambda_runtime_effect_001/scenario",
+      "closure_unit_ids": [
+        "phase:callable-runtime-effect-publish",
+        "events:runtime-effect-visibility",
+        "view:published/current"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "callable-runtime-effect-publish",
+      "closure_unit_ids": [
+        "events:runtime-effect-visibility"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4"
+      ],
+      "unit_id": "phase:callable-runtime-effect-publish",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "runtime-effect-visibility",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "events:runtime-effect-visibility",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st4"
+      ],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_let_lambda_runtime_effect_001--witness-seed"
+}

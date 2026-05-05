@@ -212,10 +212,11 @@ fn run() -> Result<(), String> {
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("TraceCalc oracle matrix run failed: {error}"))?;
             println!(
-                "TraceCalc oracle matrix run '{run_id}' wrote {} matrix rows ({} covered, {} classified uncovered, {} failed/missing) to {}.",
+                "TraceCalc oracle matrix run '{run_id}' wrote {} matrix rows ({} covered, {} classified uncovered, {} excluded, {} failed/missing) to {}.",
                 summary.matrix_row_count,
                 summary.covered_row_count,
                 summary.uncovered_row_count,
+                summary.excluded_row_count,
                 summary.missing_or_failed_row_count,
                 summary.artifact_root
             );

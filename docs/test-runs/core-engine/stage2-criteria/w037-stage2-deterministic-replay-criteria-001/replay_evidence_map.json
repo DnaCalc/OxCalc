@@ -1,0 +1,48 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.replay_evidence_map.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "rows": [
+    {
+      "evidence_id": "w037_tracecalc_observable_closure",
+      "artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/run_summary.json",
+      "evidence_type": "deterministic_tracecalc_replay",
+      "stage2_value": "covers observable reference rows but does not execute a Stage 2 partition scheduler",
+      "promotion_use": "supporting_reference_evidence_only"
+    },
+    {
+      "evidence_id": "w036_tla_stage2_partition",
+      "artifact": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json",
+      "evidence_type": "bounded_tla_model",
+      "stage2_value": "checks bounded partition ownership, scheduler-readiness criteria, fence rejection, and multi-reader overlay release ordering",
+      "promotion_use": "necessary_model_evidence_not_deterministic_replay"
+    },
+    {
+      "evidence_id": "w037_proof_model_inventory",
+      "artifact": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+      "evidence_type": "checked_formal_inventory",
+      "stage2_value": "classifies Stage 2 replay and full TLA verification as open",
+      "promotion_use": "no_promotion"
+    },
+    {
+      "evidence_id": "w037_optimized_core_conformance",
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/run_summary.json",
+      "evidence_type": "implementation_conformance_decision",
+      "stage2_value": "keeps snapshot/capability fence rows as residual blockers for Stage 2/coordinator replay evidence",
+      "promotion_use": "blocker_context"
+    },
+    {
+      "evidence_id": "w036_pack_capability_reassessment",
+      "artifact": "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001/decision/pack_capability_decision.json",
+      "evidence_type": "pack_capability_decision",
+      "stage2_value": "requires concrete partition coverage model, scheduler semantic equivalence replay, continuous cross-engine differential service, and pack-grade replay governance",
+      "promotion_use": "no_promotion"
+    }
+  ],
+  "missing_for_promotion": [
+    "baseline_vs_stage2_partitioned_replay",
+    "partition_order_permutation_replay",
+    "production_partition_analyzer_soundness",
+    "operated_cross_engine_stage2_differential_service",
+    "pack_grade_stage2_replay_bundle_validation"
+  ]
+}

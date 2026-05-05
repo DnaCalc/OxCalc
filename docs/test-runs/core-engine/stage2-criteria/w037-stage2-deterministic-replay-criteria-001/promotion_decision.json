@@ -1,0 +1,25 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.promotion_decision.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "decision_state": "stage2_promotion_blocked",
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "satisfied_inputs": [
+    "bounded_tla_partition_model_present",
+    "scheduler_equivalence_criteria_defined",
+    "observable_result_invariance_obligations_defined"
+  ],
+  "blockers": [
+    "stage2.deterministic_partition_replay_absent",
+    "stage2.production_partition_analyzer_soundness_absent",
+    "stage2.operated_cross_engine_differential_service_absent",
+    "stage2.pack_grade_replay_governance_absent"
+  ],
+  "successor_lanes": [
+    "calc-ubd.7 operated continuous assurance and cross-engine service pilot",
+    "calc-ubd.8 pack-grade replay governance and C5 candidate decision",
+    "calc-ubd.9 closure audit and full-verification release decision",
+    "future_stage2_partition_replay_runner_if_promotion_remains_desired"
+  ],
+  "semantic_equivalence_statement": "No Stage 2 scheduler or partition strategy is promoted. This packet defines the replay and observable-result invariance criteria required before any future Stage 2 strategy can claim semantic equivalence."
+}

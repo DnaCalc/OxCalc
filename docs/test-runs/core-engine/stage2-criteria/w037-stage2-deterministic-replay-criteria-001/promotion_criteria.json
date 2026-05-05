@@ -1,0 +1,65 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.promotion_criteria.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "criteria": [
+    {
+      "criteria_id": "stage2.concrete_partition_model",
+      "status": "satisfied_bounded",
+      "evidence": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json"
+      ],
+      "promotion_consequence": "Necessary but not sufficient; bounded model evidence alone cannot promote Stage 2 policy."
+    },
+    {
+      "criteria_id": "stage2.scheduler_equivalence_criteria",
+      "status": "satisfied_criteria_defined",
+      "evidence": [
+        "BoundedReadyRequiresPreconditions",
+        "Stage2PolicyPromotionRequiresReplayEvidence",
+        "formal/lean/OxCalc/CoreEngine/W037Stage2PromotionCriteria.lean"
+      ],
+      "promotion_consequence": "Necessary but not sufficient; criteria must be backed by deterministic replay evidence."
+    },
+    {
+      "criteria_id": "stage2.observable_result_invariance_statement",
+      "status": "satisfied_criteria_defined",
+      "evidence": [
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/semantic_equivalence_requirements.json"
+      ],
+      "promotion_consequence": "Necessary but not sufficient; the invariance statement must be demonstrated by replay."
+    },
+    {
+      "criteria_id": "stage2.deterministic_partition_replay",
+      "status": "blocked",
+      "evidence": [
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/replay_evidence_map.json"
+      ],
+      "promotion_consequence": "Stage 2 policy remains blocked until partitioned and unpartitioned executions replay to the same observable result surface."
+    },
+    {
+      "criteria_id": "stage2.cross_partition_dependency_proof",
+      "status": "blocked",
+      "evidence": [
+        "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg"
+      ],
+      "promotion_consequence": "A bounded cross-partition dependency blocker exists, but no production partition analyzer proof is present."
+    },
+    {
+      "criteria_id": "stage2.operated_cross_engine_differential_service",
+      "status": "blocked",
+      "evidence": [
+        "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/decision/promotion_guard.json"
+      ],
+      "promotion_consequence": "Stage 2 promotion remains blocked until operated service evidence exists; calc-ubd.7 owns the next service lane."
+    },
+    {
+      "criteria_id": "stage2.pack_grade_replay_governance",
+      "status": "blocked",
+      "evidence": [
+        "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001/decision/pack_capability_decision.json"
+      ],
+      "promotion_consequence": "Pack-grade replay and C5 remain blocked until calc-ubd.8 reassesses after prior gates."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.semantic_equivalence_requirements.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "statement": "A Stage 2 scheduler or partition strategy is promotable only if observable results are invariant between the unpartitioned baseline execution and the Stage 2 execution for every promoted profile.",
+  "observable_result_surface": [
+    "published value payloads and extents",
+    "candidate accepted/rejected/verified-clean outcomes",
+    "reject codes and reject trace correlation identifiers",
+    "dependency consequence facts visible to later recalculation",
+    "topology and spill consequences",
+    "overlay retention/release observations visible to pinned readers",
+    "format_delta and display_delta consequences when exercised by the promoted profile",
+    "runtime effect surfaces visible to TraceCalc or pack replay",
+    "deterministic replay bundle manifests and validation status"
+  ],
+  "required_comparisons": [
+    {
+      "comparison_id": "baseline_vs_stage2_partitioned_replay",
+      "required": true,
+      "current_status": "missing"
+    },
+    {
+      "comparison_id": "stage2_partition_order_permutation_replay",
+      "required": true,
+      "current_status": "missing"
+    },
+    {
+      "comparison_id": "cross_engine_stage2_differential",
+      "required": true,
+      "current_status": "missing_operated_service"
+    },
+    {
+      "comparison_id": "pack_grade_stage2_replay_bundle_validation",
+      "required": true,
+      "current_status": "missing_pack_governance"
+    }
+  ],
+  "semantic_equivalence_statement": "This criteria packet changes no scheduler policy. It defines the observable-result invariance obligations that any future scheduler or partition strategy change must satisfy before promotion."
+}

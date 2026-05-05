@@ -94,20 +94,20 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 
 ## Current Status
 
-- execution_state: `calc-ubd.5_proof_model_inventory_validated`
+- execution_state: `calc-ubd.6_stage2_criteria_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.6` is the next ready W037 bead
-  - `calc-ubd.7` through `calc-ubd.9` remain blocked by the sequential W037 path
+  - `calc-ubd.7` is the next ready W037 bead
+  - `calc-ubd.8` through `calc-ubd.9` remain blocked by the sequential W037 path
   - W037 proof/model inventory is exercised with 12 Lean files and 11 routine TLC configs, but full Lean/TLA verification remains open
   - full TraceCalc oracle promotion remains unclaimed because authority exclusions and non-TraceCalc gates remain
   - full optimized/core-engine verification remains open with five explicit W037 residual conformance blockers
   - fully independent evaluator diversity remains open
   - direct OxFml evaluator re-execution is now exercised for the upstream-host fixture slice, but pack-grade replay remains unpromoted
   - the narrow `LET`/`LAMBDA` seam is exercised for two direct OxFml rows, while general OxFunc callable kernels remain outside OxCalc scope
-  - Stage 2 deterministic replay and partition promotion criteria remain open
+  - Stage 2 deterministic replay and partition promotion criteria are exercised as no-promotion criteria; deterministic partition replay remains absent
   - pack-grade replay, C5, operated continuous-assurance service, operated continuous cross-engine differential service, and enforcing alert/quarantine service remain unpromoted
 
 Latest W037 evidence:
@@ -117,3 +117,4 @@ Latest W037 evidence:
 3. `docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md` records the `calc-ubd.3` optimized/core-engine conformance decision slice. The TreeCalc run `w037-optimized-core-conformance-treecalc-001` emits 24 cases with 0 expectation mismatches and adds a resolved dynamic dependency publication case. The implementation-conformance run `w037-implementation-conformance-closure-001` emits 6 decision rows, 1 fixed/promoted row, 5 residual blockers, 1 match-promoted row, 0 failed rows, and no full optimized/core-engine verification claim.
 4. `docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md` records the `calc-ubd.4` direct OxFml evaluator slice. The upstream-host run `w037-direct-oxfml-evaluator-001` emits 12 cases with 0 expectation mismatches, including 3 direct-OxFml rows, 2 `LET`/`LAMBDA` rows, and 1 W073 typed conditional-formatting guard row. Pack-grade replay and C5 remain unpromoted.
 5. `docs/spec/core-engine/w037-formalization/W037_LEAN_TLA_PROOF_MODEL_CLOSURE_INVENTORY.md` records the `calc-ubd.5` proof/model inventory slice. The formal-inventory packet `w037-proof-model-closure-001` records 12 Lean files checked, 11 routine TLC configs checked, 0 explicit Lean axioms, 0 Lean `sorry`/`admit` placeholders, 0 TLC failed configs, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc kernel promotion.
+6. `docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md` records the `calc-ubd.6` Stage 2 criteria slice. The criteria packet `w037-stage2-deterministic-replay-criteria-001` records 7 criteria rows, 3 satisfied rows, 4 blocked rows, a checked Lean promotion predicate, 3 checked Stage 2 TLC configs, explicit observable-result invariance requirements, and no Stage 2 promotion candidate.

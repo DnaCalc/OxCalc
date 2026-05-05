@@ -1,0 +1,55 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.validation.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "validation_state": "w037_stage2_criteria_validated",
+  "commands": [
+    {
+      "command": "lean formal\\lean\\OxCalc\\CoreEngine\\W037Stage2PromotionCriteria.lean",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "scripts\\run-tlc.ps1 formal\\tla\\CoreEngineW036Stage2Partition.tla formal\\tla\\CoreEngineW036Stage2Partition.bounded_ready.cfg",
+      "result": "passed"
+    },
+    {
+      "command": "JSON parse for docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/*.json",
+      "result": "passed"
+    },
+    {
+      "command": "cargo test -p oxcalc-core upstream_host -- --nocapture",
+      "result": "passed"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "result": "passed"
+    },
+    {
+      "command": "scripts/check-worksets.ps1",
+      "result": "passed before bead closure"
+    },
+    {
+      "command": "scripts/check-worksets.ps1",
+      "result": "passed after bead closure"
+    },
+    {
+      "command": "br ready --json",
+      "result": "passed"
+    },
+    {
+      "command": "br dep cycles --json",
+      "result": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "oxcalc.stage2_criteria.w037.run_summary.v1",
+  "run_id": "w037-stage2-deterministic-replay-criteria-001",
+  "decision_state": "stage2_promotion_blocked",
+  "criteria_row_count": 7,
+  "satisfied_criteria_row_count": 3,
+  "blocked_criteria_row_count": 4,
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "bounded_tla_model_present": true,
+  "deterministic_partition_replay_present": false,
+  "observable_result_invariance_criteria_stated": true,
+  "primary_artifacts": [
+    "formal/lean/OxCalc/CoreEngine/W037Stage2PromotionCriteria.lean",
+    "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_criteria.json",
+    "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/semantic_equivalence_requirements.json",
+    "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/replay_evidence_map.json",
+    "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json",
+    "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/validation.json"
+  ]
+}

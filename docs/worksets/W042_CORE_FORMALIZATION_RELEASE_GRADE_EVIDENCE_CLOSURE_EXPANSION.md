@@ -99,14 +99,18 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-czd.1_residual_release_grade_closure_obligation_ledger_validated`
+- execution_state: `calc-czd.2_optimized_core_counterpart_conformance_callable_metadata_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-czd.2` optimized/core counterpart conformance and callable metadata projection is next
+  - `calc-czd.3` Rust totality/refinement and core panic-boundary closure is next
+  - broader dynamic dependency-transition coverage remains partial
+  - callable metadata projection remains an exact blocker
+  - W073 typed-only conditional-formatting request-construction uptake remains a later OxFml/public migration lane
   - optimized/core counterpart conformance, callable metadata projection, Rust totality/refinement, full Lean/TLA verification, scheduler fairness, unbounded model coverage, production partition-analyzer soundness, Stage 2 production policy, operated services, retained-history service, retained-witness lifecycle service, full independent evaluator breadth, mismatch quarantine service, broad OxFml display/publication, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication publication semantics, pack-grade replay, C5, and release-grade verification remain unpromoted
 
 Latest evidence:
 
 1. `docs/spec/core-engine/w042-formalization/W042_RESIDUAL_RELEASE_GRADE_CLOSURE_OBLIGATION_LEDGER.md` records the `calc-czd.1` residual release-grade closure obligation ledger. The packet `w042-residual-release-grade-closure-obligation-ledger-001` maps 16 post-W041 residual lanes into 33 W042 obligations and 14 promotion-target gates. It carries the current OxFml W073 typed-only conditional-formatting update, keeps W072 bounded `thresholds` strings out of the named aggregate/visualization metadata families, and keeps release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.
+2. `docs/spec/core-engine/w042-formalization/W042_OPTIMIZED_CORE_COUNTERPART_CONFORMANCE_AND_CALLABLE_METADATA_PROJECTION.md` records the `calc-czd.2` optimized/core counterpart conformance packet. The packet `w042-optimized-core-counterpart-conformance-callable-metadata-001` binds a fresh 26-case TreeCalc replay with 0 expectation mismatches, declared-profile snapshot/capability counterpart evidence, ordinary LET/LAMBDA value-carrier evidence, current OxFml W073 typed-only formatting intake, three exact remaining blockers, and zero match promotion. It keeps broader dynamic transition coverage, callable metadata projection, full optimized/core verification, release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, independent evaluator breadth, broad OxFml display/publication, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.

@@ -1,0 +1,16 @@
+{
+  "case_id": "tc_local_w034_independent_order_equiv_001",
+  "expected_evaluation_order": [
+    4,
+    5,
+    6
+  ],
+  "expected_published_values": {
+    "4": "4",
+    "5": "5",
+    "6": "9"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

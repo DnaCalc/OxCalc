@@ -1,0 +1,1094 @@
+{
+  "aggregate_counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 8
+    },
+    {
+      "counter": "accepted_candidate_results",
+      "value": 18
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 25
+    },
+    {
+      "counter": "eviction_eligibility_opened",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 8
+    },
+    {
+      "counter": "fallback_by_reason.dynamic_dependency_failure",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 7
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 35
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 35
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 9
+    },
+    {
+      "counter": "overlay_evictions",
+      "value": 3
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 9
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 9
+    },
+    {
+      "counter": "pinned_reader_count",
+      "value": 0
+    },
+    {
+      "counter": "publications_committed",
+      "value": 18
+    },
+    {
+      "counter": "reader.pinned",
+      "value": 1
+    },
+    {
+      "counter": "reader.unpinned",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.dynamic_dependency_failure",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.host_injected_failure",
+      "value": 7
+    },
+    {
+      "counter": "release_events",
+      "value": 1
+    },
+    {
+      "counter": "retention_blocked_cleanup",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "case_count": 26,
+  "case_counter_sets": [
+    {
+      "case_id": "tc_local_publish_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_verified_clean_001",
+      "counters": [
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "verified_clean_nodes",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_relative_sum_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 2
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 2
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_sibling_offset_publish_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 2
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 2
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_dynamic_reject_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.dynamic_dependency_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.dynamic_dependency_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_dynamic_resolved_publish_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_rebind_after_rename_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_remove_direct_target_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 2
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 2
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_capability_sensitive_reject_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_shape_topology_reject_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 2
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 2
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_let_lambda_capture_publish_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 1
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 1
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 3
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 3
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 1
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "case_id": "tc_local_w034_independent_order_equiv_001",
+      "counters": [
+        {
+          "counter": "accepted_candidate_results",
+          "value": 1
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 1
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 3
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 3
+        },
+        {
+          "counter": "publications_committed",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "counter_families": [
+    {
+      "counters": [
+        {
+          "counter": "abandoned_candidates",
+          "value": 8
+        },
+        {
+          "counter": "accepted_candidate_results",
+          "value": 18
+        },
+        {
+          "counter": "candidate_admissions",
+          "value": 25
+        },
+        {
+          "counter": "publications_committed",
+          "value": 18
+        },
+        {
+          "counter": "rejects_by_class.dynamic_dependency_failure",
+          "value": 1
+        },
+        {
+          "counter": "rejects_by_class.host_injected_failure",
+          "value": 7
+        }
+      ],
+      "family_id": "C1",
+      "name": "candidate_and_publication",
+      "status": "exercised_by_case_artifacts"
+    },
+    {
+      "counters": [
+        {
+          "counter": "eviction_eligibility_opened",
+          "value": 1
+        },
+        {
+          "counter": "pinned_reader_count",
+          "value": 0
+        },
+        {
+          "counter": "reader.pinned",
+          "value": 1
+        },
+        {
+          "counter": "reader.unpinned",
+          "value": 1
+        },
+        {
+          "counter": "release_events",
+          "value": 1
+        },
+        {
+          "counter": "retention_blocked_cleanup",
+          "value": 1
+        }
+      ],
+      "family_id": "C2",
+      "name": "pinned_reader_and_retention",
+      "status": "exercised_by_retention_guardrail"
+    },
+    {
+      "counters": [
+        {
+          "counter": "fallback_affected_work_volume",
+          "value": 8
+        },
+        {
+          "counter": "fallback_by_reason.dynamic_dependency_failure",
+          "value": 1
+        },
+        {
+          "counter": "fallback_by_reason.host_injected_failure",
+          "value": 7
+        },
+        {
+          "counter": "nodes_marked_dirty",
+          "value": 35
+        },
+        {
+          "counter": "nodes_marked_needed",
+          "value": 35
+        },
+        {
+          "counter": "verified_clean_nodes",
+          "value": 1
+        }
+      ],
+      "family_id": "C3",
+      "name": "invalidation_and_fallback",
+      "status": "exercised_by_case_artifacts"
+    },
+    {
+      "counters": [
+        {
+          "counter": "overlay.retained",
+          "value": 1
+        },
+        {
+          "counter": "overlay_creations",
+          "value": 9
+        },
+        {
+          "counter": "overlay_evictions",
+          "value": 3
+        },
+        {
+          "counter": "overlay_lookups",
+          "value": 9
+        },
+        {
+          "counter": "overlay_misses",
+          "value": 9
+        }
+      ],
+      "family_id": "C4",
+      "name": "overlay_economics",
+      "status": "exercised_by_runtime_effect_and_retention_artifacts"
+    },
+    {
+      "counters": [],
+      "family_id": "C5",
+      "name": "stage2_reserved",
+      "status": "reserved_not_emitted"
+    }
+  ],
+  "counter_scope": "treecalc_local_run",
+  "retention_guardrail_counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "eviction_eligibility_opened",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_evictions",
+      "value": 3
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "pinned_reader_count",
+      "value": 0
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    },
+    {
+      "counter": "reader.pinned",
+      "value": 1
+    },
+    {
+      "counter": "reader.unpinned",
+      "value": 1
+    },
+    {
+      "counter": "release_events",
+      "value": 1
+    },
+    {
+      "counter": "retention_blocked_cleanup",
+      "value": 1
+    }
+  ],
+  "schema_ref": "formal/measurement/stage1_counter_schema.json",
+  "schema_version": "oxcalc.treecalc.measurement_counter_summary.v1"
+}

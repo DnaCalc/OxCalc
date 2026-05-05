@@ -1,0 +1,52 @@
+{
+  "run_id": "w042-optimized-core-counterpart-conformance-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w042.w073_formatting_intake.v1",
+  "source_repo": "../OxFml",
+  "source_state": "working_tree_intake",
+  "source_documents": [
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md",
+    "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+    "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs"
+  ],
+  "intake_summary": "OxFml W073 now treats typed_rule as the direct input contract for aggregate and visualization conditional-formatting metadata. The earlier W072 bounded threshold-string convention is intentionally ignored for those families, while scalar/operator/expression threshold text remains available where threshold text is the real rule input.",
+  "typed_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "retained_threshold_text_scope": [
+    "scalar_operator_rule_families",
+    "expression_rule_families"
+  ],
+  "output_carrier_stability": {
+    "w071_w072_output_carrier_preserved": true,
+    "carrier_fields": [
+      "effective_fill_color",
+      "data_bar",
+      "icon"
+    ]
+  },
+  "new_oxfml_evidence_observed": [
+    "typed color-scale payload drives interpolation",
+    "typed data-bar payload controls bounds, direction, and show-bar-only",
+    "typed icon-set payload uses explicit thresholds",
+    "typed rank and average payloads drive aggregate predicates",
+    "bounded visualization threshold strings are not interpreted",
+    "bounded aggregate option strings are not interpreted"
+  ],
+  "oxcalc_w042_consequence": {
+    "core_engine_code_change_required_in_calc_czd_2": false,
+    "reason_no_core_engine_change": "calc-czd.2 binds optimized/core counterpart and callable metadata evidence only. It does not construct DNA OneCalc conditional-formatting requests or change OxFml evaluator input metadata.",
+    "seam_watch_required": true,
+    "successor_owner": "calc-czd.8",
+    "required_guard": "No W042 evidence may assume W072 bounded threshold strings are fallback metadata for the typed-only W073 aggregate and visualization families."
+  },
+  "handoff_required_from_oxcalc": false,
+  "reason_no_oxcalc_handoff": "The observed W073 change is already documented in OxFml's downstream-facing DNA OneCalc handoff. OxCalc currently records the guard and defers any seam-facing bridge uptake check to calc-czd.8 unless local evidence starts constructing the affected request families."
+}

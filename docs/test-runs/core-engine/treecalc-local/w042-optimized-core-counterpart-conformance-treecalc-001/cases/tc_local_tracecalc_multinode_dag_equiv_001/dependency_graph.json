@@ -1,0 +1,68 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:tracecalc-dag-b:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:tracecalc-dag-c:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 4,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "direct_node:node:3",
+      "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 3
+    },
+    {
+      "carrier_detail": "direct_node:node:4",
+      "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:1",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 4
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:tracecalc-dag-b:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:tracecalc-dag-b:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:tracecalc-dag-c:oxfml_ref:0",
+      "edge_id": "dep:4:2:bind:formula:tracecalc-dag-c:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 4,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:0",
+      "edge_id": "dep:5:3:bind:formula:tracecalc-dag-d:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 3
+    },
+    {
+      "descriptor_id": "bind:formula:tracecalc-dag-d:oxfml_ref:1",
+      "edge_id": "dep:5:4:bind:formula:tracecalc-dag-d:oxfml_ref:1",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 4
+    }
+  ]
+}

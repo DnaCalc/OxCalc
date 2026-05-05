@@ -1,0 +1,30 @@
+{
+  "run_id": "w042-optimized-core-counterpart-conformance-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w042.match_promotion_guard.v1",
+  "match_promoted_count": 0,
+  "guard_rows": [
+    {
+      "guard_id": "w042_declared_profile_counterpart_not_full_promotion",
+      "source_rows": [
+        "w042_snapshot_fence_counterpart_declared_profile_evidence",
+        "w042_capability_view_counterpart_declared_profile_evidence"
+      ],
+      "rule": "declared-profile snapshot/capability counterpart evidence is not full optimized/core release-grade verification"
+    },
+    {
+      "guard_id": "w042_callable_value_not_metadata_projection",
+      "source_rows": [
+        "w042_callable_value_carrier_boundary_evidence"
+      ],
+      "rule": "ordinary LET/LAMBDA value publication is not callable metadata projection"
+    },
+    {
+      "guard_id": "w042_bounded_stage2_not_production_policy",
+      "source_rows": [
+        "w041_stage2_snapshot_fence_counterpart_evidence",
+        "w041_stage2_capability_view_counterpart_evidence"
+      ],
+      "rule": "bounded or declared-profile Stage 2 rows are not production policy promotion"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "run_id": "w039-closure-audit-release-grade-decision-001",
+  "schema_version": "oxcalc.closure_audit.w039.prompt_to_artifact_checklist.v1",
+  "row_count": 11,
+  "rows": [
+    {
+      "requirement": "include OxCalc plus OxFml, with narrow LET/LAMBDA OxFunc carrier only",
+      "evidence": [
+        "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+        "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json"
+      ],
+      "coverage_result": "covered_as_boundary_classification_general_oxfunc_external"
+    },
+    {
+      "requirement": "incorporate current OxFml W073 formatting update",
+      "evidence": [
+        "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+        "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_publication_display_boundary_register.json"
+      ],
+      "coverage_result": "typed_rule_only_guard_retained_no_handoff"
+    },
+    {
+      "requirement": "formalization improves specs and implementation rather than testing a fixed initial spec",
+      "evidence": [
+        "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_blocker_disposition_register.json"
+      ],
+      "coverage_result": "spec_evolution_hooks_and_exact_blockers_retained"
+    },
+    {
+      "requirement": "TraceCalc stands as correctness oracle for spec purposes",
+      "evidence": [
+        "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+        "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/evidence/evidence_index.json"
+      ],
+      "coverage_result": "oracle_authority_consumed_without_release_grade_promotion"
+    },
+    {
+      "requirement": "verify TraceCalc and optimized implementations",
+      "evidence": [
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json"
+      ],
+      "coverage_result": "partial_optimized_core_exact_blockers_remain"
+    },
+    {
+      "requirement": "deepen Lean/TLA and formal modelling leverage",
+      "evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json"
+      ],
+      "coverage_result": "bounded_and_totality_classification_without_full_verification_promotion"
+    },
+    {
+      "requirement": "Stage 2 evidence distinguishes bounded replay from production policy",
+      "evidence": [
+        "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json"
+      ],
+      "coverage_result": "stage2_policy_unpromoted"
+    },
+    {
+      "requirement": "operated assurance and scaling lanes rest on semantic evidence",
+      "evidence": [
+        "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/promotion_decision.json"
+      ],
+      "coverage_result": "service_substrate_bound_operated_services_unpromoted"
+    },
+    {
+      "requirement": "independent evaluator diversity requires independent implementation authority",
+      "evidence": [
+        "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json"
+      ],
+      "coverage_result": "exact_independence_blocker_retained"
+    },
+    {
+      "requirement": "make pack C5 and release-grade decisions from direct evidence only",
+      "evidence": [
+        "docs/test-runs/core-engine/pack-capability/w039-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+        "docs/test-runs/core-engine/closure-audit/w039-closure-audit-release-grade-decision-001/release_decision.json"
+      ],
+      "coverage_result": "no_promotion_decisions_cap_c4_highest_honest_capability"
+    },
+    {
+      "requirement": "keep spec documents accurate during the improvement pass",
+      "evidence": [
+        "docs/spec/core-engine/w039-formalization/W039_CLOSURE_AUDIT_AND_RELEASE_GRADE_DECISION.md",
+        "docs/worksets/W039_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_CLOSURE.md",
+        "docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+      ],
+      "coverage_result": "status_surfaces_updated_for_w039_target"
+    }
+  ]
+}

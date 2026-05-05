@@ -93,12 +93,12 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-f7o.8_pack_c5_reassessment_validated`
+- execution_state: `calc-f7o.9_closure_audit_release_grade_decision`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-f7o.9` closure audit and release-grade decision
+  - post-W039 release-grade successor scope is recommended
   - pack-grade replay and C5 remain unpromoted
   - broad OxFml display/publication and callable metadata projection remain unpromoted
 
@@ -112,3 +112,4 @@ Latest W039 evidence:
 6. `docs/spec/core-engine/w039-formalization/W039_INDEPENDENT_EVALUATOR_ROW_SET_AND_CROSS_ENGINE_DIVERSITY.md` records the `calc-f7o.6` diversity tranche. The packet `w039-independent-evaluator-cross-engine-diversity-001` adds a W039 diversity-seam runner profile, emits 10 source rows, 7 independent-evaluator rows, 7 cross-engine diversity rows, 7 differential-authority rows, 6 exact blockers, and 0 failed rows, while keeping fully independent evaluator, operated cross-engine differential service, broad OxFml seam, callable metadata projection, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
 7. `docs/spec/core-engine/w039-formalization/W039_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_CLOSURE.md` records the `calc-f7o.7` OxFml seam tranche. The packet `w039-oxfml-seam-breadth-callable-metadata-001` adds a fresh upstream-host run and W039 OxFml seam runner profile, emits 6 source rows, 5 surface rows, 4 publication/display rows, 5 callable rows, 5 exact blockers, and 0 failed rows, while keeping broad OxFml seam, broad display/publication, callable metadata projection, general OxFunc kernels, pack-grade replay, C5, Stage 2 policy, and release-grade verification unpromoted.
 8. `docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` records the `calc-f7o.8` pack/C5 reassessment tranche. The packet `w039-pack-grade-replay-governance-c5-reassessment-001` adds a W039 pack-capability runner profile, emits 15 satisfied inputs, 28 blockers, 0 missing artifacts, and `cap.C4.distill_valid` as highest honest capability, while keeping pack-grade replay, C5, Stage 2 policy, operated services, retained-history service, independent evaluator diversity, broad OxFml display/publication, callable metadata projection, general OxFunc kernels, full formalization, and release-grade verification unpromoted.
+9. `docs/spec/core-engine/w039-formalization/W039_CLOSURE_AUDIT_AND_RELEASE_GRADE_DECISION.md` records the `calc-f7o.9` closure audit and release-grade decision. The packet `w039-closure-audit-release-grade-decision-001` audits 8 W039 evidence packets, keeps release-grade verification, full formalization, pack-grade replay, C5, Stage 2 policy, operated services, retained-history service, independent evaluator diversity, broad OxFml display/publication, callable metadata projection, and general OxFunc kernels unpromoted, records `cap.C4.distill_valid` as highest honest capability, and recommends post-W039 release-grade successor scope.

@@ -12,7 +12,7 @@ Packets:
 2. `W038_TRACECALC_ORACLE_AUTHORITY_AND_AUTHORITY_EXCLUSION_DISCHARGE.md`
 3. `W038_OPTIMIZED_CORE_ENGINE_CONFORMANCE_BLOCKER_CLOSURE_AND_FIXES.md`
 4. `W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md`
-5. W038 Stage 2 partition replay and semantic-equivalence execution.
+5. `W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md`
 6. W038 operated assurance alert-quarantine and cross-engine service.
 7. W038 independent evaluator diversity and OxFml seam watch closure.
 8. W038 pack-grade replay governance and C5 release decision.

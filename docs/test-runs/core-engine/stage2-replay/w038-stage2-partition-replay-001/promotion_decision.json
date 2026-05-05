@@ -1,0 +1,24 @@
+{
+  "blockers": [
+    "stage2.production_partition_analyzer_soundness_absent",
+    "stage2.operated_cross_engine_differential_service_absent",
+    "stage2.pack_grade_replay_governance_absent"
+  ],
+  "bounded_partition_replay_present": true,
+  "decision_state": "w038_bounded_stage2_replay_validated_policy_unpromoted",
+  "observable_result_invariance_evidenced_for_declared_profiles": true,
+  "partition_order_permutation_replay_present": true,
+  "run_id": "w038-stage2-partition-replay-001",
+  "satisfied_inputs": [
+    "bounded_tla_partition_model_present",
+    "observable_result_invariance_obligations_defined",
+    "bounded_baseline_vs_stage2_replay_profiles_present",
+    "bounded_partition_order_permutation_replay_present",
+    "w073_typed_formatting_guard_carried"
+  ],
+  "schema_version": "oxcalc.stage2_replay.w038.promotion_decision.v1",
+  "semantic_equivalence_statement": "Observable-result invariance is evidenced for the declared bounded profiles only. Production Stage 2 scheduler or partition policy remains unpromoted until partition-analyzer soundness, operated cross-engine service evidence, and pack-grade replay governance are present.",
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "w073_typed_formatting_guard_carried": true
+}

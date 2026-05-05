@@ -1,0 +1,59 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001",
+  "profile_sources": [
+    {
+      "formatting_watch": false,
+      "profile_id": "tracecalc_accept_publish_single_partition",
+      "row_id": "w038_stage2_tracecalc_accept_publish_reference",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_accept_publish_001/result.json",
+      "source_kind": "tracecalc_reference_machine",
+      "stage2_partition_shape": "single_partition_reference_replay"
+    },
+    {
+      "formatting_watch": false,
+      "profile_id": "treecalc_independent_left_top_then_check",
+      "row_id": "w038_stage2_treecalc_independent_partition_permutation",
+      "source_artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+      "source_kind": "treecalc_local",
+      "stage2_partition_shape": "left_and_top_independent_partitions_before_check_partition"
+    },
+    {
+      "formatting_watch": false,
+      "profile_id": "treecalc_dynamic_reference_late_bound_partition",
+      "row_id": "w038_stage2_treecalc_dynamic_dependency_resolution",
+      "source_artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+      "source_kind": "treecalc_local",
+      "stage2_partition_shape": "dynamic_reference_owner_partition_after_late_bound_resolution"
+    },
+    {
+      "formatting_watch": false,
+      "profile_id": "tracecalc_dynamic_dependency_release_reference",
+      "row_id": "w038_stage2_tracecalc_dynamic_dependency_reference",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/result.json",
+      "source_kind": "tracecalc_reference_machine",
+      "stage2_partition_shape": "tracecalc_reference_dynamic_dependency_release"
+    },
+    {
+      "formatting_watch": true,
+      "profile_id": "direct_oxfml_w073_typed_rule_only_formatting_watch",
+      "row_id": "w038_stage2_w073_typed_formatting_guard",
+      "source_artifact": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_typed_cf_top_rank_guard_001/result.json",
+      "source_kind": "direct_oxfml_upstream_host",
+      "stage2_partition_shape": "single_formula_direct_oxfml_formatting_watch"
+    }
+  ],
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.source_evidence_index.v1",
+  "source_artifacts": {
+    "w036_stage2_tla_run_summary": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json",
+    "w037_direct_oxfml_summary": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+    "w037_stage2_promotion_decision": "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json",
+    "w037_stage2_semantic_requirements": "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/semantic_equivalence_requirements.json"
+  },
+  "source_counts": {
+    "w036_stage2_tla_failed_config_count": 0,
+    "w036_stage2_tla_passed_config_count": 5,
+    "w037_direct_oxfml_w073_typed_rule_case_count": 1,
+    "w037_stage2_policy_promoted": false
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "failed_row_count": 0,
+  "nontrivial_permutation_row_count": 1,
+  "row_count": 6,
+  "rows": [
+    {
+      "dependency_validation": {
+        "valid": true,
+        "validation_kind": "no_dependency_graph_required_for_source",
+        "violations": []
+      },
+      "permutation_order": [
+        1
+      ],
+      "profile_id": "tracecalc_accept_publish_single_partition",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_tracecalc_accept_publish_reference.permute_0",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_accept_publish_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    },
+    {
+      "dependency_validation": {
+        "order": [
+          5,
+          4,
+          6
+        ],
+        "valid": true,
+        "validation_kind": "dependency_order_precedence_check",
+        "violations": []
+      },
+      "permutation_order": [
+        5,
+        4,
+        6
+      ],
+      "profile_id": "treecalc_independent_left_top_then_check",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_treecalc_independent_partition_permutation.permute_0",
+      "source_artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    },
+    {
+      "dependency_validation": {
+        "order": [
+          4,
+          5,
+          6
+        ],
+        "valid": true,
+        "validation_kind": "dependency_order_precedence_check",
+        "violations": []
+      },
+      "permutation_order": [
+        4,
+        5,
+        6
+      ],
+      "profile_id": "treecalc_independent_left_top_then_check",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_treecalc_independent_partition_permutation.permute_1",
+      "source_artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    },
+    {
+      "dependency_validation": {
+        "order": [
+          3
+        ],
+        "valid": true,
+        "validation_kind": "dependency_order_precedence_check",
+        "violations": []
+      },
+      "permutation_order": [
+        3
+      ],
+      "profile_id": "treecalc_dynamic_reference_late_bound_partition",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_treecalc_dynamic_dependency_resolution.permute_0",
+      "source_artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    },
+    {
+      "dependency_validation": {
+        "valid": true,
+        "validation_kind": "no_dependency_graph_required_for_source",
+        "violations": []
+      },
+      "permutation_order": [],
+      "profile_id": "tracecalc_dynamic_dependency_release_reference",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_tracecalc_dynamic_dependency_reference.permute_0",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w035_dynamic_dependency_release_publish_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    },
+    {
+      "dependency_validation": {
+        "valid": true,
+        "validation_kind": "no_dependency_graph_required_for_source",
+        "violations": []
+      },
+      "permutation_order": [
+        1
+      ],
+      "profile_id": "direct_oxfml_w073_typed_rule_only_formatting_watch",
+      "projection_equals_baseline": true,
+      "row_id": "w038_stage2_w073_typed_formatting_guard.permute_0",
+      "source_artifact": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_typed_cf_top_rank_guard_001/result.json",
+      "validation_state": "partition_order_permutation_valid"
+    }
+  ],
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.partition_order_permutation_replay.v1"
+}

@@ -19,6 +19,7 @@ use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
 use oxcalc_tracecalc::retained_failures::TraceCalcRetainedFailureRunner;
 use oxcalc_tracecalc::runner::TraceCalcRunner;
 use oxcalc_tracecalc::scale_semantic_binding::ScaleSemanticBindingRunner;
+use oxcalc_tracecalc::stage2_replay::Stage2ReplayRunner;
 
 fn main() -> ExitCode {
     match run() {
@@ -34,7 +35,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -117,6 +118,15 @@ fn run() -> Result<(), String> {
                 return Err("usage: oxcalc-tracecalc-cli formal-assurance <run-id>".to_string());
             }
             ("formal-assurance", run_id)
+        }
+        "stage2-replay" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli stage2-replay <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli stage2-replay <run-id>".to_string());
+            }
+            ("stage2-replay", run_id)
         }
         "continuous-assurance" => {
             let Some(run_id) = args.next() else {
@@ -206,6 +216,7 @@ fn run() -> Result<(), String> {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
         "implementation-conformance" => ensure_implementation_conformance_root(&repo_root)?,
         "formal-assurance" => ensure_formal_assurance_root(&repo_root)?,
+        "stage2-replay" => ensure_stage2_replay_root(&repo_root)?,
         "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
@@ -301,6 +312,21 @@ fn run() -> Result<(), String> {
                 summary.local_proof_row_count,
                 summary.bounded_model_row_count,
                 summary.accepted_external_seam_count,
+                summary.exact_remaining_blocker_count,
+                summary.failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "stage2-replay" => {
+            let runner = Stage2ReplayRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("Stage 2 replay run failed: {error}"))?;
+            println!(
+                "Stage 2 replay run '{run_id}' wrote {} partition rows, {} permutation rows, {} invariant rows, {} exact blockers, and {} failed rows to {}.",
+                summary.partition_replay_row_count,
+                summary.permutation_replay_row_count,
+                summary.observable_invariance_row_count,
                 summary.exact_remaining_blocker_count,
                 summary.failed_row_count,
                 summary.artifact_root
@@ -575,6 +601,24 @@ fn ensure_formal_assurance_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for formal assurance: missing {} or {}",
             formal_summary.display(),
             conformance_blockers.display()
+        ))
+    }
+}
+
+fn ensure_stage2_replay_root(repo_root: &Path) -> Result<(), String> {
+    let stage2_requirements = repo_root.join(
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/semantic_equivalence_requirements.json",
+    );
+    let treecalc_case = repo_root.join(
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+    );
+    if stage2_requirements.exists() && treecalc_case.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for Stage 2 replay: missing {} or {}",
+            stage2_requirements.display(),
+            treecalc_case.display()
         ))
     }
 }

@@ -1,0 +1,14 @@
+{
+  "exact_remaining_blocker_count": 3,
+  "failed_row_count": 0,
+  "formatting_watch_row_count": 1,
+  "nontrivial_permutation_row_count": 1,
+  "observable_invariance_row_count": 5,
+  "partition_replay_row_count": 5,
+  "permutation_replay_row_count": 6,
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.validation.v1",
+  "stage2_policy_promoted": false,
+  "status": "w038_stage2_replay_valid",
+  "validation_failures": []
+}

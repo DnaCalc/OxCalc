@@ -1,0 +1,28 @@
+{
+  "formatting_watch_row_count": 1,
+  "observable_invariance_row_count": 5,
+  "partition_replay_row_count": 5,
+  "permutation_replay_row_count": 6,
+  "production_stage2_policy_promoted": false,
+  "remaining_exact_blockers": [
+    "stage2.production_partition_analyzer_soundness_absent",
+    "stage2.operated_cross_engine_differential_service_absent",
+    "stage2.pack_grade_replay_governance_absent"
+  ],
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.semantic_equivalence_report.v1",
+  "semantic_equivalence_statement": "For the bounded profiles in this run, the materialized observable projection is invariant between the baseline schedule, the declared Stage 2 partition schedule, and every admissible partition-order permutation. This is bounded replay evidence only; it is not production scheduler or partition-analyzer promotion.",
+  "w037_absent_replay_blocker_disposition": "narrowed_to_bounded_replay_present_for_declared_profiles",
+  "w037_required_observable_surface": [
+    "published value payloads and extents",
+    "candidate accepted/rejected/verified-clean outcomes",
+    "reject codes and reject trace correlation identifiers",
+    "dependency consequence facts visible to later recalculation",
+    "topology and spill consequences",
+    "overlay retention/release observations visible to pinned readers",
+    "format_delta and display_delta consequences when exercised by the promoted profile",
+    "runtime effect surfaces visible to TraceCalc or pack replay",
+    "deterministic replay bundle manifests and validation status"
+  ],
+  "w037_requirement_statement": "A Stage 2 scheduler or partition strategy is promotable only if observable results are invariant between the unpartitioned baseline execution and the Stage 2 execution for every promoted profile."
+}

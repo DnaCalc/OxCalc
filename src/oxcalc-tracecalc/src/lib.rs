@@ -17,4 +17,5 @@ pub mod replay_mappings;
 pub mod retained_failures;
 pub mod runner;
 pub mod scale_semantic_binding;
+pub mod stage2_replay;
 pub mod witness;

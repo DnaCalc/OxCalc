@@ -1,0 +1,28 @@
+{
+  "exact_remaining_blocker_count": 3,
+  "rows": [
+    {
+      "blocker_id": "stage2.production_partition_analyzer_soundness_absent",
+      "owner": "calc-zsr.5; calc-zsr.9",
+      "promotion_consequence": "Stage 2 policy remains unpromoted until production partition construction has a proof, model, or equivalent deterministic replay corpus for the claimed scope.",
+      "reason": "This run validates declared bounded replay schedules and admissible order permutations; it does not prove the production partition analyzer sound for all dependency graphs, dynamic references, fences, or publication consequences.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "stage2.operated_cross_engine_differential_service_absent",
+      "owner": "calc-zsr.6",
+      "promotion_consequence": "Cross-engine service evidence remains required before any Stage 2 strategy can be promoted beyond bounded local evidence.",
+      "reason": "The current run is local bounded replay evidence and does not operate a continuous cross-engine Stage 2 differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "stage2.pack_grade_replay_governance_absent",
+      "owner": "calc-zsr.8",
+      "promotion_consequence": "Pack-grade replay and C5 remain blocked until replay governance, witness policy, and promotion decision evidence are bound.",
+      "reason": "The replay packet is deterministic and checkable but is not a pack-grade governed replay bundle with retained-witness service guarantees.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.stage2_exact_blocker_register.v1"
+}

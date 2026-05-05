@@ -94,13 +94,12 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 
 ## Current Status
 
-- execution_state: `calc-ubd.7_operated_assurance_service_pilot_validated`
+- execution_state: `calc-ubd.8_pack_c5_candidate_decision_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.8` is the next ready W037 bead
-  - `calc-ubd.9` remains blocked by the sequential W037 path
+  - `calc-ubd.9` is the next ready W037 bead
   - W037 proof/model inventory is exercised with 12 Lean files and 11 routine TLC configs, but full Lean/TLA verification remains open
   - full TraceCalc oracle promotion remains unclaimed because authority exclusions and non-TraceCalc gates remain
   - full optimized/core-engine verification remains open with five explicit W037 residual conformance blockers
@@ -108,7 +107,7 @@ The bead suffix order reflects creation timing for the first W037 children. Read
   - direct OxFml evaluator re-execution is now exercised for the upstream-host fixture slice, but pack-grade replay remains unpromoted
   - the narrow `LET`/`LAMBDA` seam is exercised for two direct OxFml rows, while general OxFunc callable kernels remain outside OxCalc scope
   - Stage 2 deterministic replay and partition promotion criteria are exercised as no-promotion criteria; deterministic partition replay remains absent
-  - W037 service-readiness evidence is file-backed with 10 criteria and 4 blocked service claims; pack-grade replay, C5, operated continuous-assurance service, operated continuous cross-engine differential service, fully independent evaluator diversity, and enforcing alert/quarantine service remain unpromoted
+  - W037 pack/C5 candidate decision records 13 satisfied inputs and 22 blockers; pack-grade replay, C5, operated continuous-assurance service, operated continuous cross-engine differential service, fully independent evaluator diversity, and enforcing alert/quarantine service remain unpromoted
 
 Latest W037 evidence:
 
@@ -119,3 +118,4 @@ Latest W037 evidence:
 5. `docs/spec/core-engine/w037-formalization/W037_LEAN_TLA_PROOF_MODEL_CLOSURE_INVENTORY.md` records the `calc-ubd.5` proof/model inventory slice. The formal-inventory packet `w037-proof-model-closure-001` records 12 Lean files checked, 11 routine TLC configs checked, 0 explicit Lean axioms, 0 Lean `sorry`/`admit` placeholders, 0 TLC failed configs, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc kernel promotion.
 6. `docs/spec/core-engine/w037-formalization/W037_STAGE2_DETERMINISTIC_REPLAY_AND_PARTITION_PROMOTION_CRITERIA.md` records the `calc-ubd.6` Stage 2 criteria slice. The criteria packet `w037-stage2-deterministic-replay-criteria-001` records 7 criteria rows, 3 satisfied rows, 4 blocked rows, a checked Lean promotion predicate, 3 checked Stage 2 TLC configs, explicit observable-result invariance requirements, and no Stage 2 promotion candidate.
 7. `docs/spec/core-engine/w037-formalization/W037_OPERATED_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_SERVICE_PILOT.md` records the `calc-ubd.7` operated assurance/service pilot slice. The continuous-assurance packet `w037-operated-assurance-service-pilot-001` records 16 source rows, 5 scheduled lanes, 9 differential rows, 11 history rows, 7 threshold rules, 8 quarantine rules, 10 readiness criteria, 4 blocked service criteria, 0 missing artifacts, 0 unexpected mismatches, 12 no-promotion reasons, and no operated service or cross-engine service promotion.
+8. `docs/spec/core-engine/w037-formalization/W037_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_CANDIDATE_DECISION.md` records the `calc-ubd.8` pack/C5 candidate slice. The pack-capability packet `w037-pack-c5-candidate-decision-001` records 13 satisfied inputs, 22 blockers, 0 missing artifacts, highest honest capability `cap.C4.distill_valid`, no direct OxFml evaluator absence blocker for the exercised slice, no C5 promotion, and no Stage 2 policy promotion.

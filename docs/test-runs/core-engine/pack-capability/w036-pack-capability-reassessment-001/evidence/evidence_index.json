@@ -1,0 +1,179 @@
+{
+  "blocker_count": 22,
+  "evidence_profile": "w036_pack_grade_replay_capability_reassessment",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "rows": [
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/pack_grade_decision.json;docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/replay-appliance/validation/program_grade_decision.json",
+      "evidence_state": "evidence_present",
+      "input_id": "retained_pack_program_decisions",
+      "observations": [
+        "pack_decision_status:capability_not_promoted",
+        "pack_highest_honest_capability:cap.C4.distill_valid",
+        "program_decision_status:capability_not_promoted"
+      ],
+      "reason_ids": [
+        "pack.grade.program_scope.unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json;docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "projection_valid_no_pack_promotion",
+      "input_id": "direct_oxfml_fixture_bridge",
+      "observations": [
+        "fixture_case_count:45",
+        "mismatch_count:0",
+        "handoff_triggered:false",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.direct_oxfml_evaluator_reexecution_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/replay-appliance/validation/bundle_validation.json;docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "witness_bundles_validated",
+      "input_id": "let_lambda_carrier_witnesses",
+      "observations": [
+        "tracecalc_bundle_status:bundle_valid",
+        "treecalc_bundle_status:bundle_valid"
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json;docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "widened_conformance_present_with_gaps",
+      "input_id": "independent_conformance_widening",
+      "observations": [
+        "unexpected_mismatch_count:0",
+        "declared_gap_count:6",
+        "bundle_status:bundle_valid"
+      ],
+      "reason_ids": [
+        "pack.grade.independent_conformance_declared_gaps",
+        "pack.grade.continuous_diff_suite_absent",
+        "pack.grade.fully_independent_evaluator_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+      "evidence_state": "capability_ceiling_snapshot_present",
+      "input_id": "treecalc_capability_snapshot",
+      "observations": [
+        "claimed_capability_levels:4",
+        "target_capability_levels:2"
+      ],
+      "reason_ids": [
+        "pack.grade.treecalc_c4_c5_unproven"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w036-formalization/W036_LEAN_THEOREM_COVERAGE_EXPANSION.md;docs/spec/core-engine/w036-formalization/W036_TLA_STAGE2_PARTITION_AND_SCHEDULER_EQUIVALENCE_MODEL.md;formal/lean/OxCalc/CoreEngine/W036LeanCoverageExpansion.lean;formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean;formal/tla/CoreEngineW036Stage2Partition.tla;formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg;formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg;formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg;formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg;formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg",
+      "evidence_state": "w036_formal_packets_present_bounded_no_promotion",
+      "input_id": "w036_lean_tla_formal_gate_packets",
+      "observations": [
+        "W036 Lean artifacts expand theorem coverage inventory and callable boundary classification without full Lean verification.",
+        "W036 TLA artifacts add bounded Stage 2 partition evidence but keep Stage 2 policy unpromoted."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_formal_slices_bounded_not_full_verification",
+        "pack.grade.w036_stage2_scheduler_policy_unpromoted"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w036-formalization/W036_RESIDUAL_COVERAGE_AND_PROMOTION_BLOCKER_LEDGER.md;docs/spec/core-engine/w036-formalization/W036_CONTINUOUS_ASSURANCE_OPERATION_AND_HISTORY_WINDOW.md",
+      "evidence_state": "watch_classified_no_current_oxcalc_request_path",
+      "input_id": "oxfml_w073_typed_conditional_formatting_watch",
+      "observations": [
+        "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only.",
+        "OxCalc artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
+      ],
+      "reason_ids": []
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/run_summary.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_closure_criteria.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/no_loss_crosswalk.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/validation.json;docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "coverage_closure_criteria_present_no_full_oracle_claim",
+      "input_id": "w036_tracecalc_coverage_closure",
+      "observations": [
+        "W036 TraceCalc coverage has 32 matrix rows, 30 covered rows, 1 classified uncovered row, 1 excluded row, and 0 failed/missing rows.",
+        "The coverage criteria are stronger than W035 but still do not promote a full TraceCalc oracle claim."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_tracecalc_oracle_not_full_coverage"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/run_summary.json;docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/evidence_summary.json;docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json;docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_blocker_register.json;docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_match_promotion_guard.json;docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/validation.json",
+      "evidence_state": "closure_actions_present_no_match_promotion",
+      "input_id": "w036_implementation_conformance_closure",
+      "observations": [
+        "W036 implementation conformance emits 6 action rows, 2 harness first-fix rows, 4 blocker-routed rows, and 0 failed rows.",
+        "No declared W035 gap is promoted as an optimized/core-engine match."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_declared_gap_blockers_remain",
+        "pack.grade.w036_optimized_core_engine_conformance_not_full"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json;docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json;docs/test-runs/core-engine/tla/w036-stage2-partition-001/validation.json",
+      "evidence_state": "bounded_stage2_partition_model_present_no_policy_promotion",
+      "input_id": "w036_tla_stage2_partition",
+      "observations": [
+        "W036 TLA Stage 2 partition checks 5 configs, 0 failed configs, and explicit scheduler-readiness criteria.",
+        "The model is bounded evidence and does not promote Stage 2 policy or pack-grade replay."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_stage2_scheduler_policy_unpromoted",
+        "pack.grade.w036_stage2_replay_equivalence_not_pack_grade"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json;docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/diversity/evaluator_diversity_register.json;docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/differentials/cross_engine_differential_harness.json;docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/decision/promotion_guard.json;docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/replay-appliance/validation/bundle_validation.json;docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json;docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/differentials/cross_engine_differential_harness.json;docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/decision/promotion_guard.json;docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/validation.json",
+      "evidence_state": "differential_harness_present_no_service_promotion",
+      "input_id": "w036_independent_differential_harness",
+      "observations": [
+        "W036 independent diversity records 0 fully independent evaluator rows and 6 promotion blockers.",
+        "W036 cross-engine differentials record 0 unexpected mismatches and no continuous service promotion."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_fully_independent_evaluator_absent",
+        "pack.grade.w036_continuous_cross_engine_diff_service_absent"
+      ]
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/run_summary.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/evidence/source_evidence_index.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/schedule/continuous_assurance_schedule.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/history/assurance_history_window.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/thresholds/regression_thresholds.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/alerts/quarantine_policy.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/operation/simulated_multi_run_evidence.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/decision/continuous_assurance_decision.json;docs/test-runs/core-engine/continuous-assurance/w036-continuous-assurance-operation-001/replay-appliance/validation/bundle_validation.json",
+      "evidence_state": "simulated_history_thresholds_present_no_service_promotion",
+      "input_id": "w036_continuous_assurance_history",
+      "observations": [
+        "W036 continuous assurance emits 6 simulated history rows, 7 threshold rules, 7 quarantine/alert rules, and 0 unexpected mismatches.",
+        "The packet is simulated multi-run evidence, not an operated assurance service or alert dispatcher."
+      ],
+      "reason_ids": [
+        "pack.grade.w036_continuous_assurance_simulated_not_operated",
+        "pack.grade.w036_quarantine_policy_not_enforced_by_service",
+        "pack.grade.w036_timing_not_correctness_proof"
+      ]
+    },
+    {
+      "artifact_path": "docs/spec/core-engine/w036-formalization/W036_PACK_GRADE_REPLAY_AND_CAPABILITY_PROMOTION_GATE_REASSESSMENT.md",
+      "evidence_state": "policy_blocker_retained",
+      "input_id": "program_grade_governance",
+      "observations": [
+        "Successor evidence widens local proof/replay/conformance but does not establish cap.C5.pack_valid without direct pack-grade replay governance."
+      ],
+      "reason_ids": [
+        "pack.grade.program_grade_replay_governance_not_reached",
+        "pack.grade.retained_witness_promotion_not_shared_program_grade",
+        "pack.grade.w036_program_grade_replay_governance_not_reached",
+        "pack.grade.w036_direct_oxfml_evaluator_reexecution_absent",
+        "pack.grade.w036_pack_c5_no_promotion_after_reassessment"
+      ]
+    }
+  ],
+  "run_id": "w036-pack-capability-reassessment-001",
+  "satisfied_input_count": 12,
+  "schema_version": "oxcalc.pack_capability.evidence_index.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

@@ -322,8 +322,12 @@ fn run() -> Result<(), String> {
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("pack capability run failed: {error}"))?;
             println!(
-                "Pack capability run '{run_id}' wrote decision '{}' with {} blockers to {}.",
-                summary.decision_status, summary.blocker_count, summary.artifact_root
+                "Pack capability run '{run_id}' wrote decision '{}' with {} satisfied inputs, {} blockers, and highest honest capability '{}' to {}.",
+                summary.decision_status,
+                summary.satisfied_input_count,
+                summary.blocker_count,
+                summary.highest_honest_capability,
+                summary.artifact_root
             );
         }
         "scale-semantic-binding" => {

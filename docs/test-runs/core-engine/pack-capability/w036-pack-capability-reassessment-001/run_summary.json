@@ -1,0 +1,15 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001",
+  "blocker_count": 22,
+  "bundle_validation_path": "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001/replay-appliance/validation/bundle_validation.json",
+  "decision_path": "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001/decision/pack_capability_decision.json",
+  "decision_status": "capability_not_promoted",
+  "evidence_index_path": "docs/test-runs/core-engine/pack-capability/w036-pack-capability-reassessment-001/evidence/evidence_index.json",
+  "evidence_profile": "w036_pack_grade_replay_capability_reassessment",
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "missing_artifact_count": 0,
+  "run_id": "w036-pack-capability-reassessment-001",
+  "satisfied_input_count": 12,
+  "schema_version": "oxcalc.pack_capability.run_summary.v1",
+  "target_capability": "cap.C5.pack_valid"
+}

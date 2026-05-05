@@ -173,6 +173,12 @@ Evidence run `w036-independent-diversity-differential-001` emits 15 base TraceCa
 
 Evidence run `w036-continuous-assurance-operation-001` emits 11 source evidence rows, 4 scheduled lanes, 6 cross-engine gate rows, 6 simulated history rows, 7 regression threshold rules, 7 quarantine/alert rules, 6 simulated multi-run rows, 0 missing artifacts, 0 unexpected mismatches, and 11 no-promotion reasons. The packet defines semantic-first acceptance and quarantine criteria, but it does not promote an operated continuous-assurance service, an alert dispatcher, continuous cross-engine differential service, timing-based correctness, pack C5, or Stage 2 policy.
 
+### calc-rqq.8 Disposition Update
+
+`calc-rqq.8` now records the W036 pack-grade replay and capability promotion gate reassessment in `W036_PACK_GRADE_REPLAY_AND_CAPABILITY_PROMOTION_GATE_REASSESSMENT.md`.
+
+Evidence run `w036-pack-capability-reassessment-001` emits 12 satisfied inputs, 22 no-promotion blockers, 0 missing artifacts, `cap.C4.distill_valid` as the highest honest capability, no `cap.C5.pack_valid` promotion, and no Stage 2 policy promotion. The decision binds the W036 TraceCalc, implementation-conformance, Lean/TLA, differential, continuous-assurance, and OxFml watch inputs while refusing promotion from proxy, bounded-only, simulated-service, or declared-gap evidence.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

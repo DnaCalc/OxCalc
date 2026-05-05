@@ -597,6 +597,7 @@ fn write_case_artifacts(
                 "candidate_result_id": candidate_result.candidate_result_id,
                 "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
                 "value_updates": candidate_result.value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "dependency_shape_updates": candidate_result.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "runtime_effects": candidate_result.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             })),
             "publication_bundle": artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
@@ -987,6 +988,17 @@ fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
         "family": format!("{:?}", runtime_effect.family),
         "family_owner": "oxcalc_local_projection",
         "detail": runtime_effect.detail,
+    })
+}
+
+fn dependency_shape_update_json(update: &DependencyShapeUpdate) -> serde_json::Value {
+    json!({
+        "kind": update.kind,
+        "affected_node_ids": update
+            .affected_node_ids
+            .iter()
+            .map(|node_id| node_id.0)
+            .collect::<Vec<_>>(),
     })
 }
 
@@ -2066,7 +2078,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 23);
+        assert_eq!(summary.case_count, 24);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2199,7 +2211,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 23);
+        assert_eq!(replay_manifest["case_count"], 24);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()
@@ -2640,6 +2652,27 @@ mod tests {
             "oxcalc_local_projection"
         );
         assert_eq!(dynamic_runtime_effects[0]["family"], "DynamicDependency");
+
+        let dynamic_resolved_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join("cases/tc_local_dynamic_resolved_publish_001/result.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(dynamic_resolved_result["result_state"], "published");
+        assert_eq!(
+            dynamic_resolved_result["candidate_result"]["dependency_shape_updates"][0]["kind"],
+            "dynamic_dependency_bound"
+        );
+        assert_eq!(
+            dynamic_resolved_result["publication_bundle"]["carriage_classification"]["dependency_shape_update_count"],
+            1
+        );
+        assert_eq!(
+            dynamic_resolved_result["publication_bundle"]["published_runtime_effects"][0]["family"],
+            "DynamicDependency"
+        );
 
         let host_sensitive_explain = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(

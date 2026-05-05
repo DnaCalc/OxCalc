@@ -8,8 +8,13 @@ Define a concrete, implementation-facing model for:
 
 This document is a focused companion to:
 1. `EXCEL_CELL_CONCRETE_MODEL.md` (`ECM-FMT-*` lanes),
-2. `fec-f3e/FEC_F3E_REDESIGN_SPEC.md` (locale/profile and seam policy lanes),
+2. `fec-f3e/FEC_F3E_DESIGN_SPEC.md` (locale/profile and seam policy lanes),
 3. `CONFORMANCE_REQUIREMENTS.csv` (`XLS-CF-FM-*` lanes).
+
+It should also be read with the current OxFml-owned formatting and evaluator boundary surfaces:
+1. `../OxFml/docs/spec/OXFML_SYSTEM_DESIGN.md`,
+2. `../OxFml/docs/spec/OXFML_FORMALIZATION_AND_VERIFICATION.md`,
+3. `../OxFml/docs/spec/formula-language/OXFML_OXFUNC_SEMANTIC_BOUNDARY.md`.
 
 ## 2. Formatting Object Families (SpreadsheetML-facing)
 Working model for worksheet-visible formatting stacks:
@@ -113,6 +118,16 @@ Key promoted anchors used here:
 3. locale profile matrix for format parse/render effects,
 4. formula-visible formatting and conditional-format observability (`TEXT`, `CELL`, `INFO`, legacy compatibility probes).
 
-## 11. Status
+## 11. Formalization Hooks
+Formatting and visibility semantics should participate in the near-formal stack where practical.
+
+Important formalizable surfaces include:
+1. explicit separation between value semantics and formatting-observable semantics,
+2. format dependency token families and invalidation rules,
+3. locale/date-system service inputs,
+4. provisional conditional-format observability boundaries,
+5. replayable format-sensitive evaluation outcomes.
+
+## 12. Status
 1. This is a draft model intended to tighten conformance lanes and empirical plans.
 2. Unresolved assertions are intentionally tracked as provisional in linked requirement/open-question artifacts.

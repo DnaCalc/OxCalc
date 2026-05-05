@@ -1,0 +1,288 @@
+{
+  "decision_row_count": 6,
+  "failed_row_count": 0,
+  "fixed_or_promoted_count": 1,
+  "match_promoted_count": 1,
+  "residual_blocker_count": 5,
+  "rows": [
+    {
+      "authority_owner": "calc-ubd.3",
+      "conformance_match_state": "promoted_match",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_plus_treecalc_dynamic_resolved_publication_evidence",
+      "promotion_consequence": "the positive dynamic-bind projection gap no longer blocks optimized/core-engine conformance, but broader dynamic negative, release, and reclassification surfaces remain residual blockers.",
+      "reason": "W037 adds a resolved dynamic-potential TreeCalc carrier that publishes through the OxFml-backed value path, emits a DynamicDependency runtime effect, and records a dependency_shape_updates sidecar on the accepted candidate.",
+      "residual_blocker_bead": null,
+      "row_id": "w037_decision_dynamic_dependency_bind_projection_fixed",
+      "source_w036_action": {
+        "blocker_bead": null,
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "w036_harness_evidence_bound",
+        "implementation_evidence_state": "tracecalc_replay_plus_treecalc_projection_evidence",
+        "row_id": "w036_action_dynamic_dependency_bind_projection",
+        "w036_disposition": "bind_dynamic_projection_to_positive_replay_and_current_treecalc_runtime_effect_boundary",
+        "w036_disposition_kind": "harness_first_fix"
+      },
+      "source_w036_action_row_id": "w036_action_dynamic_dependency_bind_projection",
+      "treecalc_evidence": {
+        "carriage_dependency_shape_update_count": 1,
+        "case_id": "tc_local_dynamic_resolved_publish_001",
+        "dependency_shape_update_count": 1,
+        "dynamic_runtime_effect_count": 1,
+        "result_path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "result_state": "published",
+        "treecalc_run_id": "w037-optimized-core-conformance-treecalc-001"
+      },
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "promote_positive_dynamic_bind_projection_from_w036_first_fix_to_direct_treecalc_differential",
+      "w037_decision_kind": "implementation_fixed_with_treecalc_differential",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w035_matrix",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_dependency_dynamic_switch_publish",
+          "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001"
+        },
+        {
+          "classification": "covered_by_w036_closure_matrix",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w036_dynamic_dependency_switch_seed",
+          "scenario_id": "tc_dynamic_dep_switch_001"
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-003"
+    },
+    {
+      "authority_owner": "calc-ubd.3; calc-ubd.9",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json"
+      ],
+      "implementation_evidence_state": "tracecalc_negative_release_replay_without_treecalc_release_reclassification_differential",
+      "promotion_consequence": "full optimized/core-engine conformance remains blocked until dynamic negative, release, and reclassification surfaces receive direct optimized-lane differential evidence or successor scope.",
+      "reason": "The W037 resolved dynamic carrier proves the positive bind projection only. It does not exercise unresolved dynamic negative handling, release, or dependency reclassification as an optimized TreeCalc differential.",
+      "residual_blocker_bead": "calc-ubd.9",
+      "row_id": "w037_decision_dynamic_negative_release_residual_blocker",
+      "source_w036_action": {
+        "blocker_bead": null,
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "w036_harness_evidence_bound",
+        "implementation_evidence_state": "tracecalc_negative_release_replay_plus_treecalc_boundary_evidence",
+        "row_id": "w036_action_dynamic_dependency_negative_shape_update",
+        "w036_disposition": "bind_dynamic_negative_and_release_rows_to_shape_update_harness_requirements",
+        "w036_disposition_kind": "harness_first_fix"
+      },
+      "source_w036_action_row_id": "w036_action_dynamic_dependency_negative_shape_update",
+      "treecalc_evidence": null,
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "carry_dynamic_negative_release_and_reclassification_surfaces_as_residual_blockers",
+      "w037_decision_kind": "residual_blocker",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_dependency_dynamic_negative",
+          "scenario_id": "tc_w034_dynamic_dependency_negative_001"
+        },
+        {
+          "classification": "covered_by_w035_matrix",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_dependency_dynamic_release_publish",
+          "scenario_id": "tc_w035_dynamic_dependency_release_publish_001"
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-003"
+    },
+    {
+      "authority_owner": "calc-ubd.3; calc-ubd.4",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json"
+      ],
+      "implementation_evidence_state": "tracecalc_carrier_replay_with_direct_oxfml_evaluator_absent",
+      "promotion_consequence": "LET/LAMBDA carrier conformance remains blocked until direct OxFml evaluator evidence and callable carrier boundary inventory are bound.",
+      "reason": "The host-sensitive callable effect crosses the narrow OxCalc/OxFml/OxFunc carrier fragment and cannot be promoted from TreeCalc-local value evidence alone.",
+      "residual_blocker_bead": "calc-ubd.4",
+      "row_id": "w037_decision_lambda_host_effect_residual_blocker",
+      "source_w036_action": {
+        "blocker_bead": "calc-rqq.4",
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "no_first_fix",
+        "implementation_evidence_state": "tracecalc_carrier_replay_plus_oxfunc_kernel_exclusion",
+        "row_id": "w036_action_lambda_host_effect_boundary",
+        "w036_disposition": "route_host_sensitive_lambda_effect_to_let_lambda_boundary_inventory",
+        "w036_disposition_kind": "formal_deferral_with_blocker"
+      },
+      "source_w036_action_row_id": "w036_action_lambda_host_effect_boundary",
+      "treecalc_evidence": null,
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "carry_lambda_host_effect_to_direct_oxfml_and_let_lambda_seam_beads",
+      "w037_decision_kind": "residual_blocker",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w033_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w036_callable_runtime_effect_visibility",
+          "scenario_id": "tc_let_lambda_runtime_effect_001"
+        },
+        {
+          "classification": "classified_out_of_scope_oxfunc_kernel",
+          "coverage_class": "excluded",
+          "evidence_state": "excluded_by_authority",
+          "obligation_id": "W037-OBL-006",
+          "owner": "external:OxFunc; calc-ubd.4/calc-ubd.5 record boundary",
+          "row_id": "w035_callable_full_oxfunc_semantics",
+          "scenario_id": null
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-006"
+    },
+    {
+      "authority_owner": "calc-ubd.3; calc-ubd.6",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_without_treecalc_stale_candidate_counterpart",
+      "promotion_consequence": "snapshot-fence conformance remains blocked until deterministic coordinator replay or Stage 2 partition evidence supplies an optimized counterpart.",
+      "reason": "TreeCalc-local remains a single-run local fixture lane and does not exercise stale accepted-candidate admission against an older structural snapshot.",
+      "residual_blocker_bead": "calc-ubd.6",
+      "row_id": "w037_decision_snapshot_fence_projection_residual_blocker",
+      "source_w036_action": {
+        "blocker_bead": "calc-rqq.5",
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "no_first_fix",
+        "implementation_evidence_state": "tracecalc_replay_evidence_with_missing_treecalc_counterpart",
+        "row_id": "w036_action_snapshot_fence_projection",
+        "w036_disposition": "route_snapshot_fence_projection_to_tla_and_coordinator_replay_lane",
+        "w036_disposition_kind": "coordinator_harness_blocker"
+      },
+      "source_w036_action_row_id": "w036_action_snapshot_fence_projection",
+      "treecalc_evidence": null,
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "carry_snapshot_fence_projection_to_stage2_and_coordinator_replay",
+      "w037_decision_kind": "residual_blocker",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_stale_snapshot_fence_reject",
+          "scenario_id": "tc_w034_snapshot_fence_reject_001"
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-009"
+    },
+    {
+      "authority_owner": "calc-ubd.3; calc-ubd.6",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_without_treecalc_capability_view_fence_counterpart",
+      "promotion_consequence": "capability-view fence conformance remains blocked until deterministic coordinator replay or Stage 2 partition evidence supplies an optimized counterpart.",
+      "reason": "TreeCalc-local has capability-sensitive reject evidence, but not compatibility-fenced capability-view mismatch evidence.",
+      "residual_blocker_bead": "calc-ubd.6",
+      "row_id": "w037_decision_capability_view_fence_projection_residual_blocker",
+      "source_w036_action": {
+        "blocker_bead": "calc-rqq.5",
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "no_first_fix",
+        "implementation_evidence_state": "tracecalc_replay_evidence_with_missing_treecalc_counterpart",
+        "row_id": "w036_action_capability_view_fence_projection",
+        "w036_disposition": "route_capability_view_fence_projection_to_tla_and_coordinator_replay_lane",
+        "w036_disposition_kind": "coordinator_harness_blocker"
+      },
+      "source_w036_action_row_id": "w036_action_capability_view_fence_projection",
+      "treecalc_evidence": null,
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "carry_capability_view_fence_projection_to_stage2_and_coordinator_replay",
+      "w037_decision_kind": "residual_blocker",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_stale_capability_view_fence_reject",
+          "scenario_id": "tc_w034_capability_fence_reject_001"
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-009"
+    },
+    {
+      "authority_owner": "calc-ubd.3; calc-ubd.5",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json"
+      ],
+      "implementation_evidence_state": "tracecalc_callable_carrier_replay_with_treecalc_value_only_counterpart",
+      "promotion_consequence": "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture is added.",
+      "reason": "TreeCalc-local still compares the ordinary value for the higher-order row; callable identity metadata is not yet projected as an optimized conformance surface.",
+      "residual_blocker_bead": "calc-ubd.5",
+      "row_id": "w037_decision_callable_metadata_projection_residual_blocker",
+      "source_w036_action": {
+        "blocker_bead": "calc-rqq.4",
+        "conformance_match_state": "not_promoted",
+        "first_fix_state": "no_first_fix",
+        "implementation_evidence_state": "tracecalc_callable_carrier_replay_with_metadata_gap",
+        "row_id": "w036_action_callable_metadata_projection",
+        "w036_disposition": "route_callable_metadata_projection_to_lean_callable_boundary_inventory",
+        "w036_disposition_kind": "formal_deferral_with_blocker"
+      },
+      "source_w036_action_row_id": "w036_action_callable_metadata_projection",
+      "treecalc_evidence": null,
+      "validation_state": "w037_decision_validated",
+      "w037_decision": "carry_callable_metadata_projection_to_let_lambda_and_proof_inventory",
+      "w037_decision_kind": "residual_blocker",
+      "w037_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W037-OBL-001",
+          "owner": "calc-ubd.1",
+          "row_id": "w035_callable_higher_order_publish",
+          "scenario_id": "tc_w034_let_lambda_higher_order_replay_001"
+        }
+      ],
+      "w037_obligation_id": "W037-OBL-006"
+    }
+  ],
+  "run_id": "w037-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w037_decision_register.v1",
+  "source_w036_implementation_conformance_run_id": "w036-implementation-conformance-closure-001",
+  "validated_row_count": 6,
+  "w037_tracecalc_oracle_matrix_run_id": "w037-tracecalc-observable-closure-001",
+  "w037_treecalc_reference_run_id": "w037-optimized-core-conformance-treecalc-001"
+}

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W035/W036 implementation-conformance packet emission.
+//! W035/W036/W037 implementation-conformance packet emission.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -23,6 +23,12 @@ const IMPLEMENTATION_CONFORMANCE_W036_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.implementation_conformance.w036_blocker_register.v1";
 const IMPLEMENTATION_CONFORMANCE_W036_MATCH_GUARD_SCHEMA_V1: &str =
     "oxcalc.implementation_conformance.w036_match_guard.v1";
+const IMPLEMENTATION_CONFORMANCE_W037_DECISION_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w037_decision_register.v1";
+const IMPLEMENTATION_CONFORMANCE_W037_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w037_blocker_register.v1";
+const IMPLEMENTATION_CONFORMANCE_W037_MATCH_GUARD_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w037_match_guard.v1";
 
 const W034_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "w034-independent-conformance-001";
 const W034_TREECALC_RUN_ID: &str = "w034-independent-conformance-treecalc-001";
@@ -30,6 +36,9 @@ const W035_ORACLE_MATRIX_RUN_ID: &str = "w035-tracecalc-oracle-matrix-001";
 const W035_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w035-implementation-conformance-hardening-001";
 const W036_ORACLE_MATRIX_RUN_ID: &str = "w036-tracecalc-coverage-closure-001";
+const W036_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str = "w036-implementation-conformance-closure-001";
+const W037_ORACLE_MATRIX_RUN_ID: &str = "w037-tracecalc-observable-closure-001";
+const W037_TREECALC_RUN_ID: &str = "w037-optimized-core-conformance-treecalc-001";
 
 #[derive(Debug, Error)]
 pub enum ImplementationConformanceError {
@@ -73,6 +82,10 @@ pub struct ImplementationConformanceRunSummary {
     pub w036_first_fix_row_count: usize,
     pub w036_blocker_routed_row_count: usize,
     pub w036_match_promoted_count: usize,
+    pub w037_decision_row_count: usize,
+    pub w037_fixed_or_promoted_count: usize,
+    pub w037_residual_blocker_count: usize,
+    pub w037_match_promoted_count: usize,
     pub artifact_root: String,
 }
 
@@ -126,6 +139,34 @@ struct EvaluatedW036ClosureRow {
     valid: bool,
 }
 
+#[derive(Debug, Clone)]
+struct W037DecisionSpec {
+    row_id: &'static str,
+    source_w036_action_row_id: &'static str,
+    source_w036_disposition_kind: &'static str,
+    w037_obligation_id: &'static str,
+    w037_decision_kind: &'static str,
+    w037_decision: &'static str,
+    conformance_match_state: &'static str,
+    implementation_evidence_state: &'static str,
+    residual_blocker_bead: Option<&'static str>,
+    authority_owner: &'static str,
+    promotion_consequence: &'static str,
+    reason: &'static str,
+    implementation_evidence_sources: &'static [&'static str],
+    w037_matrix_row_ids: &'static [&'static str],
+    required_treecalc_case_id: Option<&'static str>,
+}
+
+#[derive(Debug, Clone)]
+struct EvaluatedW037DecisionRow {
+    row: Value,
+    fixed_or_promoted: bool,
+    residual_blocker: bool,
+    match_promoted: bool,
+    valid: bool,
+}
+
 impl ImplementationConformanceRunner {
     #[must_use]
     pub fn new() -> Self {
@@ -137,6 +178,9 @@ impl ImplementationConformanceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<ImplementationConformanceRunSummary, ImplementationConformanceError> {
+        if run_id.contains("w037") {
+            return self.execute_w037(repo_root, run_id);
+        }
         if run_id.contains("w036") {
             return self.execute_w036(repo_root, run_id);
         }
@@ -349,6 +393,10 @@ impl ImplementationConformanceRunner {
             w036_first_fix_row_count: 0,
             w036_blocker_routed_row_count: 0,
             w036_match_promoted_count: 0,
+            w037_decision_row_count: 0,
+            w037_fixed_or_promoted_count: 0,
+            w037_residual_blocker_count: 0,
+            w037_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -365,6 +413,10 @@ impl ImplementationConformanceRunner {
                 "w036_first_fix_row_count": summary.w036_first_fix_row_count,
                 "w036_blocker_routed_row_count": summary.w036_blocker_routed_row_count,
                 "w036_match_promoted_count": summary.w036_match_promoted_count,
+                "w037_decision_row_count": summary.w037_decision_row_count,
+                "w037_fixed_or_promoted_count": summary.w037_fixed_or_promoted_count,
+                "w037_residual_blocker_count": summary.w037_residual_blocker_count,
+                "w037_match_promoted_count": summary.w037_match_promoted_count,
                 "artifact_root": summary.artifact_root,
                 "gap_disposition_register_path": format!("{relative_artifact_root}/gap_disposition_register.json"),
                 "evidence_summary_path": format!("{relative_artifact_root}/evidence_summary.json"),
@@ -603,6 +655,10 @@ impl ImplementationConformanceRunner {
             w036_first_fix_row_count: first_fix_row_count,
             w036_blocker_routed_row_count: blocker_routed_row_count,
             w036_match_promoted_count: match_promoted_count,
+            w037_decision_row_count: 0,
+            w037_fixed_or_promoted_count: 0,
+            w037_residual_blocker_count: 0,
+            w037_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -619,10 +675,302 @@ impl ImplementationConformanceRunner {
                 "w036_first_fix_row_count": summary.w036_first_fix_row_count,
                 "w036_blocker_routed_row_count": summary.w036_blocker_routed_row_count,
                 "w036_match_promoted_count": summary.w036_match_promoted_count,
+                "w037_decision_row_count": summary.w037_decision_row_count,
+                "w037_fixed_or_promoted_count": summary.w037_fixed_or_promoted_count,
+                "w037_residual_blocker_count": summary.w037_residual_blocker_count,
+                "w037_match_promoted_count": summary.w037_match_promoted_count,
                 "artifact_root": summary.artifact_root,
                 "w036_closure_action_register_path": format!("{relative_artifact_root}/w036_closure_action_register.json"),
                 "w036_blocker_register_path": format!("{relative_artifact_root}/w036_blocker_register.json"),
                 "w036_match_promotion_guard_path": format!("{relative_artifact_root}/w036_match_promotion_guard.json"),
+                "evidence_summary_path": format!("{relative_artifact_root}/evidence_summary.json"),
+                "validation_path": format!("{relative_artifact_root}/validation.json"),
+            }),
+        )?;
+
+        Ok(summary)
+    }
+
+    fn execute_w037(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<ImplementationConformanceRunSummary, ImplementationConformanceError> {
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/implementation-conformance/{run_id}"
+        ));
+        let relative_artifact_root = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            run_id,
+        ]);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                ImplementationConformanceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        create_directory(&artifact_root)?;
+
+        let w036_action_register_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W036_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w036_closure_action_register.json",
+        ]);
+        let w037_matrix_summary_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            W037_ORACLE_MATRIX_RUN_ID,
+            "oracle-matrix",
+            "run_summary.json",
+        ]);
+        let w037_matrix_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            W037_ORACLE_MATRIX_RUN_ID,
+            "oracle-matrix",
+            "coverage_matrix.json",
+        ]);
+        let w037_treecalc_summary_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            W037_TREECALC_RUN_ID,
+            "run_summary.json",
+        ]);
+
+        let w036_action_register = read_json(repo_root, &w036_action_register_path)?;
+        let w037_matrix_summary = read_json(repo_root, &w037_matrix_summary_path)?;
+        let w037_matrix = read_json(repo_root, &w037_matrix_path)?;
+        let w037_treecalc_summary = read_json(repo_root, &w037_treecalc_summary_path)?;
+
+        let source_rows = rows_by_id(&w036_action_register, "row_id");
+        let matrix_rows = rows_by_id(&w037_matrix, "row_id");
+        let evaluated_rows = W037_DECISION_SPECS
+            .iter()
+            .map(|spec| {
+                evaluate_w037_decision_row(
+                    repo_root,
+                    spec,
+                    &source_rows,
+                    &matrix_rows,
+                    &w037_treecalc_summary,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let fixed_or_promoted_count = evaluated_rows
+            .iter()
+            .filter(|row| row.fixed_or_promoted)
+            .count();
+        let residual_blocker_count = evaluated_rows
+            .iter()
+            .filter(|row| row.residual_blocker)
+            .count();
+        let match_promoted_count = evaluated_rows
+            .iter()
+            .filter(|row| row.match_promoted)
+            .count();
+        let validated_row_count = evaluated_rows.iter().filter(|row| row.valid).count();
+        let failed_row_count = evaluated_rows.iter().filter(|row| !row.valid).count();
+        let implementation_work_count = number_at(&w036_action_register, "first_fix_row_count")
+            .try_into()
+            .unwrap_or_default();
+        let spec_evolution_deferral_count = array_at(&w036_action_register, "rows")
+            .iter()
+            .filter(|row| string_at(row, "w036_disposition_kind").contains("deferral"))
+            .count();
+
+        let decision_rows = evaluated_rows
+            .iter()
+            .map(|row| row.row.clone())
+            .collect::<Vec<_>>();
+        let residual_rows = decision_rows
+            .iter()
+            .filter(|row| !row["residual_blocker_bead"].is_null())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let validation_failures = w037_validation_failures(
+            &w036_action_register,
+            &w037_matrix_summary,
+            &w037_treecalc_summary,
+            failed_row_count,
+            match_promoted_count,
+            residual_blocker_count,
+        );
+        let validation_status = if validation_failures.is_empty() {
+            "implementation_conformance_w037_decisions_valid"
+        } else {
+            "implementation_conformance_w037_decisions_failed"
+        };
+
+        write_json(
+            &artifact_root.join("w037_conformance_decision_register.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W037_DECISION_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "source_w036_implementation_conformance_run_id": W036_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+                "w037_tracecalc_oracle_matrix_run_id": W037_ORACLE_MATRIX_RUN_ID,
+                "w037_treecalc_reference_run_id": W037_TREECALC_RUN_ID,
+                "decision_row_count": decision_rows.len(),
+                "fixed_or_promoted_count": fixed_or_promoted_count,
+                "residual_blocker_count": residual_blocker_count,
+                "match_promoted_count": match_promoted_count,
+                "validated_row_count": validated_row_count,
+                "failed_row_count": failed_row_count,
+                "rows": decision_rows,
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("w037_residual_blocker_register.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W037_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "residual_blocker_count": residual_rows.len(),
+                "rows": residual_rows,
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("w037_match_promotion_guard.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W037_MATCH_GUARD_SCHEMA_V1,
+                "run_id": run_id,
+                "source_declared_gap_row_count": number_at(&w036_action_register, "action_row_count"),
+                "promoted_match_count": match_promoted_count,
+                "allowed_promoted_rows": ["w037_decision_dynamic_dependency_bind_projection_fixed"],
+                "non_promoted_row_count": evaluated_rows.len().saturating_sub(match_promoted_count),
+                "guard_status": if match_promoted_count == 1 {
+                    "w037_declared_gap_promotion_guard_holds"
+                } else {
+                    "w037_declared_gap_promotion_guard_failed"
+                },
+                "policy": "W037 calc-ubd.3 permits a declared-gap row to become a conformance match only when new direct TreeCalc differential evidence and TraceCalc replay evidence are both bound. All other declared gaps remain non-promoted residual blockers.",
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("evidence_summary.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_EVIDENCE_SCHEMA_V1,
+                "run_id": run_id,
+                "source_paths": {
+                    "w036_action_register": w036_action_register_path,
+                    "w037_oracle_matrix_summary": w037_matrix_summary_path,
+                    "w037_oracle_matrix": w037_matrix_path,
+                    "w037_treecalc_summary": w037_treecalc_summary_path,
+                    "w037_dynamic_resolved_treecalc_result": relative_artifact_path([
+                        "docs",
+                        "test-runs",
+                        "core-engine",
+                        "treecalc-local",
+                        W037_TREECALC_RUN_ID,
+                        "cases",
+                        "tc_local_dynamic_resolved_publish_001",
+                        "result.json",
+                    ]),
+                },
+                "w036_actions": {
+                    "action_row_count": number_at(&w036_action_register, "action_row_count"),
+                    "first_fix_row_count": number_at(&w036_action_register, "first_fix_row_count"),
+                    "blocker_routed_row_count": number_at(&w036_action_register, "blocker_routed_row_count"),
+                    "match_promoted_count": number_at(&w036_action_register, "match_promoted_count"),
+                    "failed_row_count": number_at(&w036_action_register, "failed_row_count"),
+                },
+                "w037_oracle_matrix": {
+                    "matrix_row_count": number_at(&w037_matrix_summary, "matrix_row_count"),
+                    "covered_row_count": number_at(&w037_matrix_summary, "covered_row_count"),
+                    "classified_uncovered_row_count": number_at(&w037_matrix_summary, "classified_uncovered_row_count"),
+                    "excluded_row_count": number_at(&w037_matrix_summary, "excluded_row_count"),
+                    "missing_or_failed_row_count": number_at(&w037_matrix_summary, "missing_or_failed_row_count"),
+                },
+                "w037_treecalc_local": {
+                    "case_count": number_at(&w037_treecalc_summary, "case_count"),
+                    "expectation_mismatch_count": number_at(&w037_treecalc_summary, "expectation_mismatch_count"),
+                    "result_counts": w037_treecalc_summary.get("result_counts").cloned().unwrap_or_else(|| json!({})),
+                },
+                "w037_decisions": {
+                    "decision_row_count": evaluated_rows.len(),
+                    "fixed_or_promoted_count": fixed_or_promoted_count,
+                    "residual_blocker_count": residual_blocker_count,
+                    "match_promoted_count": match_promoted_count,
+                    "validated_row_count": validated_row_count,
+                    "failed_row_count": failed_row_count,
+                },
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "validation_failures": validation_failures,
+                "source_w036_action_row_count": number_at(&w036_action_register, "action_row_count"),
+                "w037_decision_row_count": evaluated_rows.len(),
+                "validated_row_count": validated_row_count,
+                "failed_row_count": failed_row_count,
+                "fixed_or_promoted_count": fixed_or_promoted_count,
+                "residual_blocker_count": residual_blocker_count,
+                "match_promoted_count": match_promoted_count,
+            }),
+        )?;
+
+        let summary = ImplementationConformanceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: IMPLEMENTATION_CONFORMANCE_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            gap_disposition_row_count: evaluated_rows.len(),
+            implementation_work_count,
+            spec_evolution_deferral_count,
+            validated_row_count,
+            failed_row_count,
+            w036_action_row_count: 0,
+            w036_first_fix_row_count: 0,
+            w036_blocker_routed_row_count: 0,
+            w036_match_promoted_count: 0,
+            w037_decision_row_count: evaluated_rows.len(),
+            w037_fixed_or_promoted_count: fixed_or_promoted_count,
+            w037_residual_blocker_count: residual_blocker_count,
+            w037_match_promoted_count: match_promoted_count,
+            artifact_root: relative_artifact_root.clone(),
+        };
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": summary.schema_version,
+                "run_id": summary.run_id,
+                "gap_disposition_row_count": summary.gap_disposition_row_count,
+                "implementation_work_count": summary.implementation_work_count,
+                "spec_evolution_deferral_count": summary.spec_evolution_deferral_count,
+                "validated_row_count": summary.validated_row_count,
+                "failed_row_count": summary.failed_row_count,
+                "w036_action_row_count": summary.w036_action_row_count,
+                "w036_first_fix_row_count": summary.w036_first_fix_row_count,
+                "w036_blocker_routed_row_count": summary.w036_blocker_routed_row_count,
+                "w036_match_promoted_count": summary.w036_match_promoted_count,
+                "w037_decision_row_count": summary.w037_decision_row_count,
+                "w037_fixed_or_promoted_count": summary.w037_fixed_or_promoted_count,
+                "w037_residual_blocker_count": summary.w037_residual_blocker_count,
+                "w037_match_promoted_count": summary.w037_match_promoted_count,
+                "artifact_root": summary.artifact_root,
+                "w037_conformance_decision_register_path": format!("{relative_artifact_root}/w037_conformance_decision_register.json"),
+                "w037_residual_blocker_register_path": format!("{relative_artifact_root}/w037_residual_blocker_register.json"),
+                "w037_match_promotion_guard_path": format!("{relative_artifact_root}/w037_match_promotion_guard.json"),
                 "evidence_summary_path": format!("{relative_artifact_root}/evidence_summary.json"),
                 "validation_path": format!("{relative_artifact_root}/validation.json"),
             }),
@@ -797,6 +1145,165 @@ fn evaluate_w036_closure_row(
     }
 }
 
+fn evaluate_w037_decision_row(
+    repo_root: &Path,
+    spec: &W037DecisionSpec,
+    source_rows: &BTreeMap<String, Value>,
+    matrix_rows: &BTreeMap<String, Value>,
+    treecalc_summary: &Value,
+) -> Result<EvaluatedW037DecisionRow, ImplementationConformanceError> {
+    let mut failures = Vec::new();
+    let source_row = source_rows.get(spec.source_w036_action_row_id);
+    if let Some(row) = source_row {
+        if string_at(row, "validation_state") != "w036_disposition_validated" {
+            failures.push("source_w036_action_not_validated".to_string());
+        }
+        if string_at(row, "w036_disposition_kind") != spec.source_w036_disposition_kind {
+            failures.push("source_w036_disposition_kind_mismatch".to_string());
+        }
+        if !array_at(row, "failures").is_empty() {
+            failures.push("source_w036_action_has_failures".to_string());
+        }
+    } else {
+        failures.push("source_w036_action_missing".to_string());
+    }
+
+    let mut matrix_evidence = Vec::new();
+    for matrix_row_id in spec.w037_matrix_row_ids {
+        if let Some(matrix_row) = matrix_rows.get(*matrix_row_id) {
+            let evidence_state = string_at(matrix_row, "evidence_state");
+            if !matches!(
+                evidence_state.as_str(),
+                "covered_passed" | "excluded_by_authority" | "classified_uncovered_deferred"
+            ) {
+                failures.push(format!("w037_matrix_row_invalid_state:{matrix_row_id}"));
+            }
+            matrix_evidence.push(json!({
+                "row_id": matrix_row_id,
+                "obligation_id": matrix_row["obligation_id"],
+                "coverage_class": matrix_row["coverage_class"],
+                "evidence_state": evidence_state,
+                "classification": matrix_row["classification"],
+                "scenario_id": matrix_row["scenario_id"],
+                "owner": matrix_row["owner"],
+            }));
+        } else {
+            failures.push(format!("w037_matrix_row_missing:{matrix_row_id}"));
+        }
+    }
+
+    let treecalc_evidence = if let Some(case_id) = spec.required_treecalc_case_id {
+        let result_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            W037_TREECALC_RUN_ID,
+            "cases",
+            case_id,
+            "result.json",
+        ]);
+        let result = read_json(repo_root, &result_path)?;
+        let dependency_shape_update_count = result
+            .pointer("/candidate_result/dependency_shape_updates")
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
+        let dynamic_runtime_effect_count = result
+            .pointer("/publication_bundle/published_runtime_effects")
+            .and_then(Value::as_array)
+            .map_or(0, |effects| {
+                effects
+                    .iter()
+                    .filter(|effect| string_at(effect, "family") == "DynamicDependency")
+                    .count()
+            });
+        let carriage_shape_update_count = result
+            .pointer("/publication_bundle/carriage_classification/dependency_shape_update_count")
+            .and_then(Value::as_u64)
+            .unwrap_or_default();
+
+        if string_at(&result, "result_state") != "published" {
+            failures.push("treecalc_dynamic_resolved_case_not_published".to_string());
+        }
+        if dependency_shape_update_count == 0 {
+            failures.push("treecalc_dynamic_resolved_shape_update_missing".to_string());
+        }
+        if dynamic_runtime_effect_count == 0 {
+            failures.push("treecalc_dynamic_resolved_runtime_effect_missing".to_string());
+        }
+        if carriage_shape_update_count == 0 {
+            failures.push("treecalc_dynamic_resolved_carriage_count_missing".to_string());
+        }
+        if number_at(treecalc_summary, "expectation_mismatch_count") != 0 {
+            failures.push("w037_treecalc_expectation_mismatch_count_nonzero".to_string());
+        }
+
+        json!({
+            "treecalc_run_id": W037_TREECALC_RUN_ID,
+            "case_id": case_id,
+            "result_path": result_path,
+            "result_state": string_at(&result, "result_state"),
+            "dependency_shape_update_count": dependency_shape_update_count,
+            "dynamic_runtime_effect_count": dynamic_runtime_effect_count,
+            "carriage_dependency_shape_update_count": carriage_shape_update_count,
+        })
+    } else {
+        Value::Null
+    };
+
+    if spec.conformance_match_state == "promoted_match"
+        && (matrix_evidence.is_empty() || treecalc_evidence.is_null())
+    {
+        failures.push("promoted_match_without_tracecalc_and_treecalc_evidence".to_string());
+    }
+    if spec.w037_decision_kind == "residual_blocker" && spec.residual_blocker_bead.is_none() {
+        failures.push("residual_blocker_without_owner_bead".to_string());
+    }
+
+    let residual_blocker_bead = spec
+        .residual_blocker_bead
+        .map_or(Value::Null, |blocker| json!(blocker));
+    let source_w036_action = source_row
+        .map(|row| {
+            json!({
+                "row_id": row["row_id"],
+                "w036_disposition_kind": row["w036_disposition_kind"],
+                "w036_disposition": row["w036_disposition"],
+                "conformance_match_state": row["conformance_match_state"],
+                "first_fix_state": row["first_fix_state"],
+                "implementation_evidence_state": row["implementation_evidence_state"],
+                "blocker_bead": row["blocker_bead"],
+            })
+        })
+        .unwrap_or(Value::Null);
+
+    Ok(EvaluatedW037DecisionRow {
+        row: json!({
+            "row_id": spec.row_id,
+            "source_w036_action_row_id": spec.source_w036_action_row_id,
+            "w037_obligation_id": spec.w037_obligation_id,
+            "source_w036_action": source_w036_action,
+            "w037_decision_kind": spec.w037_decision_kind,
+            "w037_decision": spec.w037_decision,
+            "conformance_match_state": spec.conformance_match_state,
+            "implementation_evidence_state": spec.implementation_evidence_state,
+            "implementation_evidence_sources": spec.implementation_evidence_sources,
+            "residual_blocker_bead": residual_blocker_bead,
+            "authority_owner": spec.authority_owner,
+            "promotion_consequence": spec.promotion_consequence,
+            "reason": spec.reason,
+            "w037_matrix_evidence": matrix_evidence,
+            "treecalc_evidence": treecalc_evidence,
+            "validation_state": if failures.is_empty() { "w037_decision_validated" } else { "w037_decision_failed" },
+            "failures": failures,
+        }),
+        fixed_or_promoted: spec.w037_decision_kind != "residual_blocker",
+        residual_blocker: spec.residual_blocker_bead.is_some(),
+        match_promoted: spec.conformance_match_state == "promoted_match",
+        valid: failures.is_empty(),
+    })
+}
+
 fn validation_failures(
     w034_summary: &Value,
     treecalc_summary: &Value,
@@ -849,6 +1356,45 @@ fn w036_validation_failures(
     }
     if match_promoted_count != 0 {
         failures.push("w036_declared_gap_match_promotion_present".to_string());
+    }
+    failures
+}
+
+fn w037_validation_failures(
+    w036_action_register: &Value,
+    w037_matrix_summary: &Value,
+    w037_treecalc_summary: &Value,
+    failed_row_count: usize,
+    match_promoted_count: usize,
+    residual_blocker_count: usize,
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    if number_at(w036_action_register, "action_row_count") != 6 {
+        failures.push("w036_action_row_count_changed".to_string());
+    }
+    if number_at(w036_action_register, "failed_row_count") != 0 {
+        failures.push("w036_action_failed_row_count_nonzero".to_string());
+    }
+    if number_at(w037_matrix_summary, "matrix_row_count") != 32 {
+        failures.push("w037_matrix_row_count_changed".to_string());
+    }
+    if number_at(w037_matrix_summary, "missing_or_failed_row_count") != 0 {
+        failures.push("w037_matrix_missing_or_failed_row_count_nonzero".to_string());
+    }
+    if number_at(w037_treecalc_summary, "expectation_mismatch_count") != 0 {
+        failures.push("w037_treecalc_expectation_mismatch_count_nonzero".to_string());
+    }
+    if number_at(w037_treecalc_summary, "case_count") < 24 {
+        failures.push("w037_treecalc_case_count_too_low".to_string());
+    }
+    if failed_row_count != 0 {
+        failures.push("w037_decision_row_failures_present".to_string());
+    }
+    if match_promoted_count != 1 {
+        failures.push("w037_expected_one_dynamic_match_promotion".to_string());
+    }
+    if residual_blocker_count != 5 {
+        failures.push("w037_expected_five_residual_blockers".to_string());
     }
     failures
 }
@@ -1126,6 +1672,136 @@ const W036_CLOSURE_SPECS: &[W036ClosureSpec] = &[
     },
 ];
 
+const W037_DECISION_SPECS: &[W037DecisionSpec] = &[
+    W037DecisionSpec {
+        row_id: "w037_decision_dynamic_dependency_bind_projection_fixed",
+        source_w036_action_row_id: "w036_action_dynamic_dependency_bind_projection",
+        source_w036_disposition_kind: "harness_first_fix",
+        w037_obligation_id: "W037-OBL-003",
+        w037_decision_kind: "implementation_fixed_with_treecalc_differential",
+        w037_decision: "promote_positive_dynamic_bind_projection_from_w036_first_fix_to_direct_treecalc_differential",
+        conformance_match_state: "promoted_match",
+        implementation_evidence_state: "tracecalc_replay_plus_treecalc_dynamic_resolved_publication_evidence",
+        residual_blocker_bead: None,
+        authority_owner: "calc-ubd.3",
+        promotion_consequence: "the positive dynamic-bind projection gap no longer blocks optimized/core-engine conformance, but broader dynamic negative, release, and reclassification surfaces remain residual blockers.",
+        reason: "W037 adds a resolved dynamic-potential TreeCalc carrier that publishes through the OxFml-backed value path, emits a DynamicDependency runtime effect, and records a dependency_shape_updates sidecar on the accepted candidate.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        ],
+        w037_matrix_row_ids: &[
+            "w035_dependency_dynamic_switch_publish",
+            "w036_dynamic_dependency_switch_seed",
+        ],
+        required_treecalc_case_id: Some("tc_local_dynamic_resolved_publish_001"),
+    },
+    W037DecisionSpec {
+        row_id: "w037_decision_dynamic_negative_release_residual_blocker",
+        source_w036_action_row_id: "w036_action_dynamic_dependency_negative_shape_update",
+        source_w036_disposition_kind: "harness_first_fix",
+        w037_obligation_id: "W037-OBL-003",
+        w037_decision_kind: "residual_blocker",
+        w037_decision: "carry_dynamic_negative_release_and_reclassification_surfaces_as_residual_blockers",
+        conformance_match_state: "not_promoted",
+        implementation_evidence_state: "tracecalc_negative_release_replay_without_treecalc_release_reclassification_differential",
+        residual_blocker_bead: Some("calc-ubd.9"),
+        authority_owner: "calc-ubd.3; calc-ubd.9",
+        promotion_consequence: "full optimized/core-engine conformance remains blocked until dynamic negative, release, and reclassification surfaces receive direct optimized-lane differential evidence or successor scope.",
+        reason: "The W037 resolved dynamic carrier proves the positive bind projection only. It does not exercise unresolved dynamic negative handling, release, or dependency reclassification as an optimized TreeCalc differential.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+            "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json",
+        ],
+        w037_matrix_row_ids: &[
+            "w035_dependency_dynamic_negative",
+            "w035_dependency_dynamic_release_publish",
+        ],
+        required_treecalc_case_id: None,
+    },
+    W037DecisionSpec {
+        row_id: "w037_decision_lambda_host_effect_residual_blocker",
+        source_w036_action_row_id: "w036_action_lambda_host_effect_boundary",
+        source_w036_disposition_kind: "formal_deferral_with_blocker",
+        w037_obligation_id: "W037-OBL-006",
+        w037_decision_kind: "residual_blocker",
+        w037_decision: "carry_lambda_host_effect_to_direct_oxfml_and_let_lambda_seam_beads",
+        conformance_match_state: "not_promoted",
+        implementation_evidence_state: "tracecalc_carrier_replay_with_direct_oxfml_evaluator_absent",
+        residual_blocker_bead: Some("calc-ubd.4"),
+        authority_owner: "calc-ubd.3; calc-ubd.4",
+        promotion_consequence: "LET/LAMBDA carrier conformance remains blocked until direct OxFml evaluator evidence and callable carrier boundary inventory are bound.",
+        reason: "The host-sensitive callable effect crosses the narrow OxCalc/OxFml/OxFunc carrier fragment and cannot be promoted from TreeCalc-local value evidence alone.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+            "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json",
+        ],
+        w037_matrix_row_ids: &[
+            "w036_callable_runtime_effect_visibility",
+            "w035_callable_full_oxfunc_semantics",
+        ],
+        required_treecalc_case_id: None,
+    },
+    W037DecisionSpec {
+        row_id: "w037_decision_snapshot_fence_projection_residual_blocker",
+        source_w036_action_row_id: "w036_action_snapshot_fence_projection",
+        source_w036_disposition_kind: "coordinator_harness_blocker",
+        w037_obligation_id: "W037-OBL-009",
+        w037_decision_kind: "residual_blocker",
+        w037_decision: "carry_snapshot_fence_projection_to_stage2_and_coordinator_replay",
+        conformance_match_state: "not_promoted",
+        implementation_evidence_state: "tracecalc_replay_without_treecalc_stale_candidate_counterpart",
+        residual_blocker_bead: Some("calc-ubd.6"),
+        authority_owner: "calc-ubd.3; calc-ubd.6",
+        promotion_consequence: "snapshot-fence conformance remains blocked until deterministic coordinator replay or Stage 2 partition evidence supplies an optimized counterpart.",
+        reason: "TreeCalc-local remains a single-run local fixture lane and does not exercise stale accepted-candidate admission against an older structural snapshot.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        ],
+        w037_matrix_row_ids: &["w035_stale_snapshot_fence_reject"],
+        required_treecalc_case_id: None,
+    },
+    W037DecisionSpec {
+        row_id: "w037_decision_capability_view_fence_projection_residual_blocker",
+        source_w036_action_row_id: "w036_action_capability_view_fence_projection",
+        source_w036_disposition_kind: "coordinator_harness_blocker",
+        w037_obligation_id: "W037-OBL-009",
+        w037_decision_kind: "residual_blocker",
+        w037_decision: "carry_capability_view_fence_projection_to_stage2_and_coordinator_replay",
+        conformance_match_state: "not_promoted",
+        implementation_evidence_state: "tracecalc_replay_without_treecalc_capability_view_fence_counterpart",
+        residual_blocker_bead: Some("calc-ubd.6"),
+        authority_owner: "calc-ubd.3; calc-ubd.6",
+        promotion_consequence: "capability-view fence conformance remains blocked until deterministic coordinator replay or Stage 2 partition evidence supplies an optimized counterpart.",
+        reason: "TreeCalc-local has capability-sensitive reject evidence, but not compatibility-fenced capability-view mismatch evidence.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+        ],
+        w037_matrix_row_ids: &["w035_stale_capability_view_fence_reject"],
+        required_treecalc_case_id: None,
+    },
+    W037DecisionSpec {
+        row_id: "w037_decision_callable_metadata_projection_residual_blocker",
+        source_w036_action_row_id: "w036_action_callable_metadata_projection",
+        source_w036_disposition_kind: "formal_deferral_with_blocker",
+        w037_obligation_id: "W037-OBL-006",
+        w037_decision_kind: "residual_blocker",
+        w037_decision: "carry_callable_metadata_projection_to_let_lambda_and_proof_inventory",
+        conformance_match_state: "not_promoted",
+        implementation_evidence_state: "tracecalc_callable_carrier_replay_with_treecalc_value_only_counterpart",
+        residual_blocker_bead: Some("calc-ubd.5"),
+        authority_owner: "calc-ubd.3; calc-ubd.5",
+        promotion_consequence: "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture is added.",
+        reason: "TreeCalc-local still compares the ordinary value for the higher-order row; callable identity metadata is not yet projected as an optimized conformance surface.",
+        implementation_evidence_sources: &[
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+            "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json",
+        ],
+        w037_matrix_row_ids: &["w035_callable_higher_order_publish"],
+        required_treecalc_case_id: None,
+    },
+];
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -1229,6 +1905,66 @@ mod tests {
         )
         .unwrap();
         assert_eq!(guard["promoted_match_count"], 0);
+
+        cleanup();
+    }
+
+    #[test]
+    fn implementation_conformance_runner_classifies_w037_decisions() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!(
+            "test-w037-implementation-conformance-{}",
+            std::process::id()
+        );
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/implementation-conformance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = ImplementationConformanceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.gap_disposition_row_count, 6);
+        assert_eq!(summary.w037_decision_row_count, 6);
+        assert_eq!(summary.w037_fixed_or_promoted_count, 1);
+        assert_eq!(summary.w037_residual_blocker_count, 5);
+        assert_eq!(summary.w037_match_promoted_count, 1);
+        assert_eq!(summary.validated_row_count, 6);
+        assert_eq!(summary.failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/implementation-conformance/{run_id}/validation.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "implementation_conformance_w037_decisions_valid"
+        );
+
+        let guard = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/implementation-conformance/{run_id}/w037_match_promotion_guard.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(guard["promoted_match_count"], 1);
+        assert_eq!(
+            guard["guard_status"],
+            "w037_declared_gap_promotion_guard_holds"
+        );
 
         cleanup();
     }

@@ -436,7 +436,7 @@ mod tests {
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
 
-        assert_eq!(manifest.cases.len(), 23);
+        assert_eq!(manifest.cases.len(), 24);
 
         for entry in &manifest.cases {
             let case_path = repo_root

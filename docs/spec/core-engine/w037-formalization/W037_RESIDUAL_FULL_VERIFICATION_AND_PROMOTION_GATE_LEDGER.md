@@ -73,6 +73,7 @@ W037 starts with these limits:
 12. alert/quarantine enforcement service is not promoted.
 13. timing or scaling evidence is not semantic correctness proof.
 14. W073 conditional-formatting typed metadata remains watch/input-contract evidence until an exercised OxCalc artifact constructs that payload family.
+15. the semantic-format versus display-facing boundary remains watch/input-contract evidence: `format_delta` and `display_delta` must stay distinct, and broader display closure is not assumed.
 
 Any later W037 promotion candidate must include direct artifacts, a semantic-equivalence statement, and an updated pack/capability decision.
 
@@ -121,7 +122,7 @@ Any later W037 promotion candidate must include direct artifacts, a semantic-equ
 | `W037-OBL-012` | operated continuous assurance and quarantine | W036 emits simulated multi-run history, thresholds, and policy only | `calc-ubd.7` | establish operated evidence or preserve non-promotion with retention, alert, and quarantine blockers |
 | `W037-OBL-013` | pack-grade replay governance and C5 | W036 highest honest capability is `cap.C4.distill_valid` with 22 blockers | `calc-ubd.8` | reassess C5 only after direct evaluator, conformance, proof/model, service, and Stage 2 gates are bound |
 | `W037-OBL-014` | closure audit and release decision | W036 keeps broader objective `in_progress` | `calc-ubd.9` | map the active objective to artifacts and decide release-grade verification, successor scope, or spec/scope revision |
-| `W037-OBL-015` | OxFml inbound seam/watch updates | current OxFml notes include W073 formatting guard, consumer public surface, host/runtime, table, immutable-edit, stand-in, and registered-external packet convergence | `calc-ubd.4`, all beads where exercised | consume current OxFml surfaces without direct sibling edits; file handoff only on concrete mismatch |
+| `W037-OBL-015` | OxFml inbound seam/watch updates | current OxFml notes include W073 formatting guard, semantic-format/display boundary, consumer public surface, host/runtime, table, immutable-edit, stand-in, and registered-external packet convergence | `calc-ubd.4`, all beads where exercised | consume current OxFml surfaces without direct sibling edits; file handoff only on concrete mismatch |
 | `W037-OBL-016` | spec evolution discipline | W037 is not a fixed-spec test pass | every W037 bead | patch specs, create implementation work, file handoffs, or record deferrals when evidence changes understanding |
 | `W037-OBL-017` | evidence non-mutation and lineage | W033-W036 checked baselines exist | every W037 bead | declare new run ids and avoid accidental mutation of older baselines |
 
@@ -147,12 +148,16 @@ Current watch and consumed-now rows:
 1. W073 aggregate and visualization conditional-formatting metadata remains `typed_rule`-only for `colorScale`, `dataBar`, `iconSet`, `top`, `bottom`, `aboveAverage`, and `belowAverage`.
 2. bounded `thresholds` strings remain intentionally ignored for those W073 families.
 3. `thresholds` remains an OxFml input only for scalar/operator/expression rule families where threshold text is the rule input.
-4. ordinary downstream use should target `consumer::runtime`, `consumer::editor`, and `consumer::replay`; public `substrate::...` access is not an ordinary downstream integration contract.
-5. host/runtime, table-context, immutable-edit, fixture stand-in, and registered-external packet lanes are converged enough for current planning, but not treated as broad production coordinator API freeze.
-6. direct OxFml evaluator re-execution remains a W037 evidence lane and pack-grade blocker until exercised.
-7. `LET`/`LAMBDA` remains a narrow OxCalc/OxFml/OxFunc carrier fragment; general OxFunc semantic kernels remain out of OxCalc scope.
+4. `format_delta` and `display_delta` remain distinct consequence categories; broader display-facing closure is not assumed from semantic-format evidence.
+5. format dependency tokens, locale/date-system inputs, and replayable format-sensitive outcomes are formalization hooks only until an exercised OxCalc artifact requires them.
+6. ordinary downstream use should target `consumer::runtime`, `consumer::editor`, and `consumer::replay`; public `substrate::...` access is not an ordinary downstream integration contract.
+7. host/runtime, table-context, immutable-edit, fixture stand-in, and registered-external packet lanes are converged enough for current planning, but not treated as broad production coordinator API freeze.
+8. direct OxFml evaluator re-execution remains a W037 evidence lane and pack-grade blocker until exercised.
+9. `LET`/`LAMBDA` remains a narrow OxCalc/OxFml/OxFunc carrier fragment; general OxFunc semantic kernels remain out of OxCalc scope.
 
 No OxFml handoff is filed by this bead. A W037 handoff is required only if evidence shows an OxFml-owned evaluator, FEC/F3E, runtime facade, formatting, or fixture/host packet clause is insufficient for an exercised OxCalc artifact.
+
+Post-ledger intake note: the `format_delta`/`display_delta` and formalization-hook rows above were sharpened during the later `calc-ubd.3` intake of OxFml formatting updates. They update the W037 watch/input-contract surface and do not change the original `calc-ubd.2` runtime, replay, proof, model, or promotion evidence.
 
 ## 9. Semantic-Equivalence Statement
 

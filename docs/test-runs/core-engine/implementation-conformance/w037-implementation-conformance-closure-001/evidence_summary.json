@@ -1,0 +1,42 @@
+{
+  "run_id": "w037-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.evidence_summary.v1",
+  "source_paths": {
+    "w036_action_register": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json",
+    "w037_dynamic_resolved_treecalc_result": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+    "w037_oracle_matrix": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_matrix.json",
+    "w037_oracle_matrix_summary": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/run_summary.json",
+    "w037_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/run_summary.json"
+  },
+  "w036_actions": {
+    "action_row_count": 6,
+    "blocker_routed_row_count": 4,
+    "failed_row_count": 0,
+    "first_fix_row_count": 2,
+    "match_promoted_count": 0
+  },
+  "w037_decisions": {
+    "decision_row_count": 6,
+    "failed_row_count": 0,
+    "fixed_or_promoted_count": 1,
+    "match_promoted_count": 1,
+    "residual_blocker_count": 5,
+    "validated_row_count": 6
+  },
+  "w037_oracle_matrix": {
+    "classified_uncovered_row_count": 0,
+    "covered_row_count": 31,
+    "excluded_row_count": 1,
+    "matrix_row_count": 32,
+    "missing_or_failed_row_count": 0
+  },
+  "w037_treecalc_local": {
+    "case_count": 24,
+    "expectation_mismatch_count": 0,
+    "result_counts": {
+      "published": 15,
+      "rejected": 8,
+      "verified_clean": 1
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "counter_scope": "treecalc_local_post_edit_case",
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    }
+  ],
+  "phase": "post_edit",
+  "schema_ref": "formal/measurement/stage1_counter_schema.json"
+}

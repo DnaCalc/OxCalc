@@ -48,6 +48,11 @@ pub enum TreeReference {
         carrier_id: String,
         detail: String,
     },
+    DynamicResolved {
+        target_node_id: TreeNodeId,
+        carrier_id: String,
+        detail: String,
+    },
     Unresolved {
         token: String,
     },
@@ -243,8 +248,9 @@ impl TreeReference {
             TreeReference::HostSensitive { .. }
             | TreeReference::CapabilitySensitive { .. }
             | TreeReference::ShapeTopology { .. }
-            | TreeReference::DynamicPotential { .. }
             | TreeReference::Unresolved { .. } => None,
+            TreeReference::DynamicPotential { .. } => None,
+            TreeReference::DynamicResolved { target_node_id, .. } => Some(*target_node_id),
         }
     }
 
@@ -262,7 +268,9 @@ impl TreeReference {
                 DependencyDescriptorKind::CapabilitySensitive
             }
             TreeReference::ShapeTopology { .. } => DependencyDescriptorKind::ShapeTopology,
-            TreeReference::DynamicPotential { .. } => DependencyDescriptorKind::DynamicPotential,
+            TreeReference::DynamicPotential { .. } | TreeReference::DynamicResolved { .. } => {
+                DependencyDescriptorKind::DynamicPotential
+            }
             TreeReference::Unresolved { .. } => DependencyDescriptorKind::Unresolved,
         }
     }
@@ -276,6 +284,7 @@ impl TreeReference {
                 | TreeReference::HostSensitive { .. }
                 | TreeReference::CapabilitySensitive { .. }
                 | TreeReference::ShapeTopology { .. }
+                | TreeReference::DynamicResolved { .. }
                 | TreeReference::Unresolved { .. }
         )
     }
@@ -310,6 +319,13 @@ impl TreeReference {
             }
             TreeReference::DynamicPotential { carrier_id, detail } => {
                 format!("dynamic_potential:{carrier_id}:{detail}")
+            }
+            TreeReference::DynamicResolved {
+                target_node_id,
+                carrier_id,
+                detail,
+            } => {
+                format!("dynamic_resolved:{target_node_id}:{carrier_id}:{detail}")
             }
             TreeReference::Unresolved { token } => format!("unresolved:{token}"),
         }
@@ -475,6 +491,35 @@ mod tests {
     }
 
     #[test]
+    fn formula_catalog_lowers_resolved_dynamic_reference_as_dynamic_edge() {
+        let snapshot = snapshot();
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:dynamic-resolved".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:dynamic-resolved".to_string())),
+            expression: TreeFormula::Reference(TreeReference::DynamicResolved {
+                target_node_id: TreeNodeId(3),
+                carrier_id: "carrier:dynamic".to_string(),
+                detail: "resolved_late_bound_projection".to_string(),
+            }),
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+
+        assert_eq!(descriptors.len(), 1);
+        assert_eq!(
+            descriptors[0].kind,
+            DependencyDescriptorKind::DynamicPotential
+        );
+        assert_eq!(descriptors[0].target_node_id, Some(TreeNodeId(3)));
+        assert!(descriptors[0].requires_rebind_on_structural_change);
+        assert_eq!(
+            descriptors[0].carrier_detail,
+            "dynamic_resolved:node:3:carrier:dynamic:resolved_late_bound_projection"
+        );
+    }
+
+    #[test]
     fn first_closed_subset_rebind_flags_match_w026_floor() {
         assert!(
             !TreeReference::DirectNode {
@@ -512,6 +557,14 @@ mod tests {
         );
         assert!(
             !TreeReference::DynamicPotential {
+                carrier_id: "runtime.topic".to_string(),
+                detail: "late bound".to_string(),
+            }
+            .requires_rebind_on_structural_change()
+        );
+        assert!(
+            TreeReference::DynamicResolved {
+                target_node_id: TreeNodeId(2),
                 carrier_id: "runtime.topic".to_string(),
                 detail: "late bound".to_string(),
             }

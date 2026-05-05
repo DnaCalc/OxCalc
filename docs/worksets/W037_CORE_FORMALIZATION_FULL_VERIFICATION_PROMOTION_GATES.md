@@ -25,7 +25,7 @@ W037 is not a fixed-spec test pass. It treats current specs, current implementat
 3. Convert W036 optimized/core-engine conformance blockers into implementation fixes, direct differential matches, spec corrections, or explicit residual blockers.
 4. Exercise or explicitly block direct OxFml evaluator re-execution needed for pack-grade replay evidence.
 5. Include the narrow `LET`/`LAMBDA` OxFml/OxFunc carrier fragment that threads through OxCalc and OxFml core-engine work while keeping general OxFunc kernels outside scope.
-6. Preserve W073 typed conditional-formatting metadata as a watch/input-contract guardrail for any direct OxFml evaluator path.
+6. Preserve OxFml formatting watch/input-contract guardrails for any direct OxFml evaluator path: W073 typed conditional-formatting metadata, distinct `format_delta` versus `display_delta`, and no broad display-facing closure claim from semantic-format evidence.
 7. Convert W036 Lean/TLA inventories into stronger proof/model closure claims only where runnable artifacts and assumption ledgers support them.
 8. Define Stage 2 deterministic replay and partition promotion criteria, including observable-result invariance under scheduler or partition strategy changes.
 9. Move simulated continuous assurance toward operated multi-run evidence and, where feasible, a cross-engine service pilot.
@@ -90,18 +90,21 @@ The bead suffix order reflects creation timing for the first W037 children. Read
 7. Continuous assurance requires operated recurring evidence for service claims; simulated history remains non-promoting.
 8. Any strategy or scheduler change must include a semantic-equivalence statement that observable results are invariant for the affected profile.
 9. W073 conditional-formatting aggregate or visualization payloads must emit `VerificationConditionalFormattingRule.typed_rule`; `thresholds` remains only for scalar/operator/expression rule families where threshold text is the actual input.
+10. `format_delta` and `display_delta` remain distinct consequence categories; format dependency tokens, locale/date-system inputs, and replayable format-sensitive outcomes are hooks to carry when exercised, not implicit publication obligations for every W037 artifact.
 
 ## Current Status
 
-- execution_state: `calc-ubd.1_tracecalc_observable_closure_validated`
+- execution_state: `calc-ubd.3_optimized_core_conformance_decisions_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-ubd.3` through `calc-ubd.9` remain blocked by the sequential W037 path
+  - `calc-ubd.4` is the next ready W037 bead
+  - `calc-ubd.5` through `calc-ubd.9` remain blocked by the sequential W037 path
   - full Lean/TLA verification remains open
   - full TraceCalc oracle promotion remains unclaimed because authority exclusions and non-TraceCalc gates remain
-  - full optimized/core-engine verification and fully independent evaluator diversity remain open
+  - full optimized/core-engine verification remains open with five explicit W037 residual conformance blockers
+  - fully independent evaluator diversity remains open
   - direct OxFml evaluator re-execution and `LET`/`LAMBDA` seam evidence remain open
   - Stage 2 deterministic replay and partition promotion criteria remain open
   - pack-grade replay, C5, operated continuous-assurance service, operated continuous cross-engine differential service, and enforcing alert/quarantine service remain unpromoted
@@ -110,3 +113,4 @@ Latest W037 evidence:
 
 1. `docs/spec/core-engine/w037-formalization/W037_RESIDUAL_FULL_VERIFICATION_AND_PROMOTION_GATE_LEDGER.md` records the `calc-ubd.2` W037 residual full-verification and promotion-gate ledger, mapping W036 no-promotion blockers to W037 owners, evidence roots, and promotion consequences.
 2. `docs/spec/core-engine/w037-formalization/W037_TRACECALC_OBSERVABLE_CLOSURE_AND_MULTI_READER_REPLAY.md` records the `calc-ubd.1` TraceCalc observable-closure slice and the W037 oracle matrix run with 32 rows, 31 covered rows, 0 uncovered rows, 1 authority-excluded row, 0 failed/missing rows, and no full oracle claim.
+3. `docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md` records the `calc-ubd.3` optimized/core-engine conformance decision slice. The TreeCalc run `w037-optimized-core-conformance-treecalc-001` emits 24 cases with 0 expectation mismatches and adds a resolved dynamic dependency publication case. The implementation-conformance run `w037-implementation-conformance-closure-001` emits 6 decision rows, 1 fixed/promoted row, 5 residual blockers, 1 match-promoted row, 0 failed rows, and no full optimized/core-engine verification claim.

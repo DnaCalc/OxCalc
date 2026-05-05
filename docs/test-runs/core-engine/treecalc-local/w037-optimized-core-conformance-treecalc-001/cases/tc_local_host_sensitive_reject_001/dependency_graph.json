@@ -1,0 +1,21 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "residual:carrier:host:active_selection",
+      "descriptor_id": "bind:formula:host:oxfml_residual:0",
+      "kind": "HostSensitive",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:host:oxfml_residual:0",
+      "detail": "residual:carrier:host:active_selection",
+      "kind": "HostSensitiveReference"
+    }
+  ],
+  "edges": []
+}

@@ -226,7 +226,17 @@ fn run() -> Result<(), String> {
             let summary = runner
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("implementation conformance run failed: {error}"))?;
-            if summary.w036_action_row_count > 0 {
+            if summary.w037_decision_row_count > 0 {
+                println!(
+                    "Implementation conformance run '{run_id}' wrote {} W037 decisions ({} fixed/promoted, {} residual blockers, {} match-promoted, {} failed) to {}.",
+                    summary.w037_decision_row_count,
+                    summary.w037_fixed_or_promoted_count,
+                    summary.w037_residual_blocker_count,
+                    summary.w037_match_promoted_count,
+                    summary.failed_row_count,
+                    summary.artifact_root
+                );
+            } else if summary.w036_action_row_count > 0 {
                 println!(
                     "Implementation conformance run '{run_id}' wrote {} W036 closure actions ({} first-fix harness rows, {} blocker-routed, {} match-promoted, {} failed) to {}.",
                     summary.w036_action_row_count,

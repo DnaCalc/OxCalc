@@ -1,0 +1,12 @@
+{
+  "allowed_promoted_rows": [
+    "w037_decision_dynamic_dependency_bind_projection_fixed"
+  ],
+  "guard_status": "w037_declared_gap_promotion_guard_holds",
+  "non_promoted_row_count": 5,
+  "policy": "W037 calc-ubd.3 permits a declared-gap row to become a conformance match only when new direct TreeCalc differential evidence and TraceCalc replay evidence are both bound. All other declared gaps remain non-promoted residual blockers.",
+  "promoted_match_count": 1,
+  "run_id": "w037-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w037_match_guard.v1",
+  "source_declared_gap_row_count": 6
+}

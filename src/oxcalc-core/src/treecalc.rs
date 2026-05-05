@@ -16,8 +16,8 @@ use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use thiserror::Error;
 
 use crate::coordinator::{
-    AcceptedCandidateResult, CoordinatorError, PublicationBundle, RejectDetail, RejectKind,
-    RuntimeEffect, RuntimeEffectFamily, TreeCalcCoordinator,
+    AcceptedCandidateResult, CoordinatorError, DependencyShapeUpdate, PublicationBundle,
+    RejectDetail, RejectKind, RuntimeEffect, RuntimeEffectFamily, TreeCalcCoordinator,
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
@@ -187,6 +187,7 @@ pub struct LocalEvaluatorCandidate {
     pub candidate_result_id: String,
     pub target_set: Vec<TreeNodeId>,
     pub value_updates: BTreeMap<TreeNodeId, String>,
+    pub dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub diagnostic_events: Vec<String>,
 }
@@ -433,6 +434,7 @@ impl LocalTreeCalcEngine {
                             candidate_result_id: input.candidate_result_id.clone(),
                             target_set: formula_owner_ids.clone(),
                             value_updates,
+                            dependency_shape_updates: Vec::new(),
                             runtime_effects: failure_runtime_effects,
                             diagnostic_events: vec![failure.error.to_string()],
                         }),
@@ -485,10 +487,18 @@ impl LocalTreeCalcEngine {
         }
 
         let phase_start = Instant::now();
+        let dependency_shape_updates = dynamic_dependency_shape_updates(&dependency_graph);
+        runtime_effects.extend(dynamic_dependency_runtime_effects(&dependency_graph));
+        diagnostics.extend(
+            dependency_shape_updates
+                .iter()
+                .map(|update| format!("dependency_shape_update:{}", update.kind)),
+        );
         let local_candidate = LocalEvaluatorCandidate {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
             value_updates,
+            dependency_shape_updates,
             runtime_effects,
             diagnostic_events: diagnostics.clone(),
         };
@@ -662,10 +672,57 @@ fn adapt_local_candidate(
         compatibility_basis: input.compatibility_basis.clone(),
         target_set: local_candidate.target_set.clone(),
         value_updates: local_candidate.value_updates.clone(),
-        dependency_shape_updates: vec![],
+        dependency_shape_updates: local_candidate.dependency_shape_updates.clone(),
         runtime_effects: local_candidate.runtime_effects.clone(),
         diagnostic_events: local_candidate.diagnostic_events.clone(),
     }
+}
+
+fn dynamic_dependency_shape_updates(
+    dependency_graph: &DependencyGraph,
+) -> Vec<DependencyShapeUpdate> {
+    let mut updates = dependency_graph
+        .descriptors_by_owner
+        .values()
+        .flatten()
+        .filter_map(|descriptor| {
+            if descriptor.kind != DependencyDescriptorKind::DynamicPotential {
+                return None;
+            }
+            let target_node_id = descriptor.target_node_id?;
+            let mut affected_node_ids = vec![descriptor.owner_node_id, target_node_id];
+            affected_node_ids.sort();
+            affected_node_ids.dedup();
+            Some(DependencyShapeUpdate {
+                kind: "dynamic_dependency_bound".to_string(),
+                affected_node_ids,
+            })
+        })
+        .collect::<Vec<_>>();
+    updates.sort_by(|left, right| left.affected_node_ids.cmp(&right.affected_node_ids));
+    updates
+}
+
+fn dynamic_dependency_runtime_effects(dependency_graph: &DependencyGraph) -> Vec<RuntimeEffect> {
+    dependency_graph
+        .descriptors_by_owner
+        .values()
+        .flatten()
+        .filter_map(|descriptor| {
+            let target_node_id = descriptor.target_node_id?;
+            if descriptor.kind != DependencyDescriptorKind::DynamicPotential {
+                return None;
+            }
+            Some(RuntimeEffect {
+                kind: "runtime_effect.dynamic_reference".to_string(),
+                family: RuntimeEffectFamily::DynamicDependency,
+                detail: format!(
+                    "owner_node:{};target_node:{};detail:{}",
+                    descriptor.owner_node_id, target_node_id, descriptor.carrier_detail
+                ),
+            })
+        })
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1521,6 +1578,12 @@ impl TranslationState<'_> {
                 reference.carrier_detail(),
                 reference.requires_rebind_on_structural_change(),
             ),
+            TreeReference::DynamicResolved { target_node_id, .. } => self.bind_target(
+                *target_node_id,
+                reference.descriptor_kind(),
+                reference.carrier_detail(),
+                reference.requires_rebind_on_structural_change(),
+            ),
             TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. } => {
@@ -2135,6 +2198,56 @@ mod tests {
                 .payload_identity
                 .as_deref(),
             Some("cand:dynamic:runtime_effect:0")
+        );
+    }
+
+    #[test]
+    fn local_treecalc_engine_publishes_resolved_dynamic_reference_shape_update() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                    owner_node_id: TreeNodeId(3),
+                    formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                    expression: TreeFormula::Reference(TreeReference::DynamicResolved {
+                        target_node_id: TreeNodeId(2),
+                        carrier_id: "carrier:dynamic".to_string(),
+                        detail: "resolved_late_bound_projection".to_string(),
+                    }),
+                }]),
+                seeded_published_values: BTreeMap::new(),
+                invalidation_seeds: Vec::new(),
+                candidate_result_id: "cand:dynamic:resolved".to_string(),
+                publication_id: "pub:dynamic:resolved".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(run.runtime_effects.len(), 1);
+        assert_eq!(
+            run.runtime_effects[0].family,
+            RuntimeEffectFamily::DynamicDependency
+        );
+        assert_eq!(
+            run.candidate_result
+                .as_ref()
+                .map(|candidate| candidate.dependency_shape_updates.clone())
+                .unwrap(),
+            vec![DependencyShapeUpdate {
+                kind: "dynamic_dependency_bound".to_string(),
+                affected_node_ids: vec![TreeNodeId(2), TreeNodeId(3)],
+            }]
+        );
+        assert_eq!(
+            run.publication_bundle
+                .as_ref()
+                .map(|bundle| bundle.published_runtime_effects.len()),
+            Some(1)
         );
     }
 

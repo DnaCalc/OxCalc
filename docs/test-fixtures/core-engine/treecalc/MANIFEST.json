@@ -55,6 +55,17 @@
       ]
     },
     {
+      "case_id": "tc_local_dynamic_resolved_publish_001",
+      "path": "cases/tc_local_dynamic_resolved_publish_001.json",
+      "tags": [
+        "local-sequential",
+        "dynamic-reference",
+        "dependency-shape-update",
+        "publish",
+        "W037"
+      ]
+    },
+    {
       "case_id": "tc_local_rebind_after_rename_001",
       "path": "cases/tc_local_rebind_after_rename_001.json",
       "tags": [

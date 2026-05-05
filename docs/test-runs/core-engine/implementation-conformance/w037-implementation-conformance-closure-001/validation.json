@@ -1,0 +1,13 @@
+{
+  "failed_row_count": 0,
+  "fixed_or_promoted_count": 1,
+  "match_promoted_count": 1,
+  "residual_blocker_count": 5,
+  "run_id": "w037-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.validation.v1",
+  "source_w036_action_row_count": 6,
+  "status": "implementation_conformance_w037_decisions_valid",
+  "validated_row_count": 6,
+  "validation_failures": [],
+  "w037_decision_row_count": 6
+}

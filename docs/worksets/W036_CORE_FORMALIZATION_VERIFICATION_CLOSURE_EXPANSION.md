@@ -89,15 +89,18 @@ The first W036 path is sequential to keep proof, replay, implementation, and pro
 
 ## Current Status
 
-- execution_state: `w036_successor_packetized_first_bead_ready`
+- execution_state: `calc-rqq.1_residual_coverage_ledger_validated`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-rqq.1` is ready
   - `calc-rqq.2` through `calc-rqq.9` remain blocked by the sequential W036 path
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open
   - concrete Stage 2 partition modeling and replay equivalence remain open
   - pack-grade replay, continuous-scale service operation, continuous cross-engine differential service, and Stage 2 policy remain unpromoted
+
+Latest W036 evidence:
+
+1. `docs/spec/core-engine/w036-formalization/W036_RESIDUAL_COVERAGE_AND_PROMOTION_BLOCKER_LEDGER.md` records the W036 residual coverage ledger for `calc-rqq.1`, mapping W035 no-promotion blockers to 20 W036 obligations, owners, evidence roots, and promotion consequences.

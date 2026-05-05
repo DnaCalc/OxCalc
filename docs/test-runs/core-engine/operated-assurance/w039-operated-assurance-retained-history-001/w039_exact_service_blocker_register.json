@@ -1,0 +1,42 @@
+{
+  "exact_service_blocker_count": 5,
+  "rows": [
+    {
+      "blocker_id": "service.operated_regression_runner_absent",
+      "owner": "calc-f7o.5; calc-f7o.9",
+      "promotion_consequence": "operated continuous assurance service remains unpromoted",
+      "reason": "W039 binds a retained history lifecycle ledger, but no recurring runner or scheduler is operated.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_history_store_absent",
+      "owner": "calc-f7o.5; calc-f7o.8; calc-f7o.9",
+      "promotion_consequence": "retained history service, pack-grade replay, and C5 remain unpromoted",
+      "reason": "history remains checked-in evidence rather than an operated retained store with retention guarantees.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_history_query_api_absent",
+      "owner": "calc-f7o.5; calc-f7o.8",
+      "promotion_consequence": "program-grade replay governance remains unpromoted",
+      "reason": "no retained-history query API or replay-correlation service is operated.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.external_alert_dispatcher_absent",
+      "owner": "calc-f7o.5; calc-f7o.9",
+      "promotion_consequence": "alert/quarantine dispatcher claims remain unpromoted",
+      "reason": "W039 evaluates alert/quarantine rules locally but does not operate an external dispatcher or quarantine service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.operated_cross_engine_differential_absent",
+      "owner": "calc-f7o.5; calc-f7o.6",
+      "promotion_consequence": "operated cross-engine differential service and fully independent diversity promotion remain blocked",
+      "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.exact_service_blocker_register.v1"
+}

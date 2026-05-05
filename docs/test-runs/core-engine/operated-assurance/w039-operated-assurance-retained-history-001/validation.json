@@ -1,0 +1,15 @@
+{
+  "alert_decision_count": 0,
+  "evaluated_alert_rule_count": 11,
+  "exact_service_blocker_count": 5,
+  "failed_row_count": 0,
+  "multi_run_history_row_count": 18,
+  "quarantine_decision_count": 0,
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.validation.v1",
+  "service_readiness_blocked_count": 5,
+  "service_readiness_criteria_count": 12,
+  "source_evidence_row_count": 8,
+  "status": "w039_operated_service_substrate_valid",
+  "validation_failures": []
+}

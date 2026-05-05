@@ -1,0 +1,17 @@
+{
+  "blocked_service_claims": [
+    "recurring_cross_engine_diff_scheduler",
+    "cross_engine_service_endpoint",
+    "service_retained_history_store",
+    "external_alert_dispatcher"
+  ],
+  "file_backed_pilot_present": true,
+  "operated_cross_engine_differential_service_present": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.cross_engine_service_substrate.v1",
+  "service_state": "file_backed_cross_engine_substrate_bound_without_operated_service",
+  "w038_file_backed_gate_row_count": 9,
+  "w039_stage2_policy_row_count": 10,
+  "w039_stage2_service_dependency_blocker_present": true
+}

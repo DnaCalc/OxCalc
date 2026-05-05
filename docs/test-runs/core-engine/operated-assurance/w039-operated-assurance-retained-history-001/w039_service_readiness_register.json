@@ -1,0 +1,80 @@
+{
+  "alert_decision_count": 0,
+  "artifact_root": "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001",
+  "blocked_criteria_count": 5,
+  "criteria": [
+    {
+      "criterion_id": "readiness.w039_retained_history_lifecycle_bound",
+      "evidence_or_blocker": "W039 extends W038 history with Stage 2 service dependency and pack retained-history blockers",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w039_alert_dispatch_policy_evaluated",
+      "evidence_or_blocker": "W039 evaluates local alert/quarantine dispatch rules against operated-service and pack promotion flags",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w039_cross_engine_substrate_bound",
+      "evidence_or_blocker": "W039 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.no_quarantine_decisions",
+      "evidence_or_blocker": "W039 source rows have no missing artifacts, unexpected mismatches, failed semantic rows, or unsupported service promotion",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.stage2_service_dependency_classified",
+      "evidence_or_blocker": "W039 Stage 2 policy-governance retains operated service as an exact dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.pack_retained_history_blocker_classified",
+      "evidence_or_blocker": "W038 pack/C5 decision retains retained-history and program-grade replay governance blockers",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.source_artifacts_retained",
+      "evidence_or_blocker": "all W038 and W039 source artifacts required by this substrate packet are present",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "service.operated_regression_runner",
+      "evidence_or_blocker": "no recurring operated regression runner or scheduler is present",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_history_store",
+      "evidence_or_blocker": "history is checked-in evidence rather than an operated retained store with retention guarantees",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_history_query_api",
+      "evidence_or_blocker": "no retained-history query API or replay-correlation service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.enforcing_alert_dispatcher",
+      "evidence_or_blocker": "local rule evaluation is present, but no external alert dispatcher or quarantine service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.operated_cross_engine_differential",
+      "evidence_or_blocker": "cross-engine differential evidence remains file-backed rather than an operated service",
+      "state": "blocked"
+    }
+  ],
+  "criteria_count": 12,
+  "cross_engine_differential_service_promoted": false,
+  "evaluated_alert_rule_count": 11,
+  "external_alert_dispatcher_promoted": false,
+  "file_backed_cross_engine_substrate_present": true,
+  "history_window_row_count": 18,
+  "operated_continuous_assurance_service_promoted": false,
+  "quarantine_decision_count": 0,
+  "readiness_state": "w039_operated_service_substrate_bound_without_service_promotion",
+  "retained_history_service_promoted": false,
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "satisfied_criteria_count": 7,
+  "schema_version": "oxcalc.operated_assurance.w039.service_readiness_register.v1"
+}

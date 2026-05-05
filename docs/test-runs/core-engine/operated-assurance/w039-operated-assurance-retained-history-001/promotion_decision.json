@@ -1,0 +1,26 @@
+{
+  "blockers": [
+    "service.operated_regression_runner_absent",
+    "service.retained_history_store_absent",
+    "service.retained_history_query_api_absent",
+    "service.external_alert_dispatcher_absent",
+    "service.operated_cross_engine_differential_absent"
+  ],
+  "c5_promoted": false,
+  "cross_engine_file_backed_substrate_bound": true,
+  "decision_state": "w039_operated_service_substrate_validated_service_unpromoted",
+  "exact_service_blocker_count": 5,
+  "external_alert_dispatcher_promoted": false,
+  "local_alert_quarantine_enforcement_evidenced": true,
+  "operated_continuous_assurance_service_promoted": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "pack_grade_replay_promoted": false,
+  "retained_history_lifecycle_bound": true,
+  "retained_history_service_promoted": false,
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.promotion_decision.v1",
+  "semantic_equivalence_statement": "This W039 runner binds checked W038 operated-assurance evidence, W039 Stage 2 service dependencies, retained-history lifecycle rows, and alert-dispatcher policy rows only. It does not change scheduler, recalc, publication, replay, pack, service, alert-dispatch, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics.",
+  "service_readiness_blocked_count": 5,
+  "service_readiness_criteria_count": 12,
+  "stage2_policy_promoted": false
+}

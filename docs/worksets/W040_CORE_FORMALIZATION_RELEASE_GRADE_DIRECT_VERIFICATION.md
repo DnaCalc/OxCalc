@@ -96,16 +96,17 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-tv5.3_rust_totality_refinement_classified_no_promotion`
+- execution_state: `calc-tv5.4_lean_tla_discharge_classified_no_promotion`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tv5.4` Lean/TLA full-verification discharge tranche is next
-  - automatic dynamic dependency-set transition differential, panic-free whole-engine Rust totality, snapshot-fence counterpart, capability-view fence counterpart, callable metadata projection, Lean/TLA verification, Stage 2 policy, operated services, retained history, independent evaluator diversity, OxFml seam breadth, pack/C5, and release-grade decision remain open
+  - `calc-tv5.5` Stage 2 production policy and equivalence implementation is next
+  - full Lean verification, full TLA verification, fairness and unbounded scheduler coverage, Rust totality/refinement dependencies, automatic dynamic dependency-set transition differential, panic-free whole-engine Rust totality, snapshot-fence counterpart, capability-view fence counterpart, callable metadata projection, Stage 2 policy, operated services, retained history, independent evaluator diversity, OxFml seam breadth, pack/C5, and release-grade decision remain open
 
 Latest evidence:
 
 1. `docs/spec/core-engine/w040-formalization/W040_RESIDUAL_DIRECT_VERIFICATION_OBLIGATION_MAP.md` records the `calc-tv5.1` direct-verification obligation map. The packet `w040-direct-verification-obligation-map-001` maps 12 post-W039 residual lanes into 23 W040 obligations, 11 promotion-target gates, current OxFml W073 direct typed-only conditional-formatting intake, owner beads, required evidence, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, independent evaluator diversity, broad OxFml display/publication, callable metadata, or general OxFunc kernels.
 2. `docs/spec/core-engine/w040-formalization/W040_OPTIMIZED_CORE_EXACT_BLOCKER_FIXES_AND_DIFFERENTIALS.md` records the `calc-tv5.2` optimized/core exact-blocker slice. The packet `w040-optimized-core-exact-blocker-fixes-differentials-001` adds explicit dependency-change invalidation fixture support, emits `w040-optimized-core-dynamic-release-reclassification-001` with 25 TreeCalc cases and 0 expectation mismatches, binds direct evidence that `DependencyRemoved` and `DependencyReclassified` force rebind/no-publication behavior, and retains four exact blockers without match promotion.
 3. `docs/spec/core-engine/w040-formalization/W040_RUST_TOTALITY_AND_REFINEMENT_PROOF_TRANCHE.md` records the `calc-tv5.3` Rust totality/refinement slice. The packet `w040-rust-totality-refinement-proof-tranche-001` adds a checked W040 Lean classification file and formal-assurance runner profile, records 10 Rust/proof rows, 7 local checked-proof classification rows, 5 totality boundaries, 5 refinement rows, 5 exact blockers, and 0 failed rows, while retaining whole-engine Rust totality, panic-free core domain, automatic dynamic transition detection, snapshot/capability counterparts, callable metadata projection, broad OxFml, general OxFunc, Stage 2, pack/C5, and release-grade promotion blockers.
+4. `docs/spec/core-engine/w040-formalization/W040_LEAN_TLA_FULL_VERIFICATION_DISCHARGE_TRANCHE.md` records the `calc-tv5.4` Lean/TLA proof/model slice. The packet `w040-lean-tla-full-verification-discharge-001` adds a checked W040 Lean classification file and formal-assurance runner profile, records 11 proof/model rows, 6 local checked-proof rows, 3 bounded-model rows, 1 accepted external seam, 2 accepted boundaries, 5 totality boundaries, 5 exact blockers, and 0 failed rows. It also reruns the five W036 Stage 2 partition TLC configs locally for W040, while retaining full Lean verification, full TLA verification, unbounded fairness/scheduler coverage, Rust totality/refinement dependencies, Stage 2 production policy, broad OxFml, general OxFunc, pack/C5, and release-grade promotion blockers.

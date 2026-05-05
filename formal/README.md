@@ -81,14 +81,22 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - W038 proof/model assumption-discharge, totality-boundary, exact-blocker, external-seam, and non-promotion proof slice.
 12. `docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/`
    - W038 formal-assurance packet: 8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 1 external-seam row, 3 totality boundaries, 6 exact blockers, 0 failed rows, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc promotion.
+13. `formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean`
+   - W040 Rust totality/refinement classification proof slice for Result/error carrier evidence, dependency rebind refinement, totality/refinement blockers, LET/LAMBDA carrier boundary, and spec-evolution guard.
+14. `docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/`
+   - W040 Rust totality/refinement packet: 10 Rust/proof rows, 7 local checked-proof rows, 5 totality boundaries, 5 refinement rows, 5 exact blockers, 0 failed rows, and no Rust totality, optimized/core, Stage 2, pack, C5, broad OxFml, general OxFunc, or release-grade promotion.
+15. `formal/lean/OxCalc/CoreEngine/W040LeanTlaFullVerificationDischarge.lean`
+   - W040 Lean/TLA proof-model classification proof slice for Lean inventory, Rust bridge, Stage 2 policy predicate, bounded TLA evidence, exact proof/model blockers, LET/LAMBDA external seam, and spec-evolution guard.
+16. `docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/`
+   - W040 Lean/TLA packet: 11 proof/model rows, 6 local checked-proof rows, 3 bounded-model rows, 1 accepted external seam, 2 accepted boundaries, 5 totality boundaries, 5 exact blockers, 0 failed rows, and no full Lean, full TLA, Rust totality, Stage 2, pack, C5, general OxFunc, or release-grade promotion.
 
 ## Status
-- execution_state: `calc-zsr.4_proof_model_assumption_discharge_validated`
+- execution_state: `calc-tv5.4_lean_tla_discharge_classified_no_promotion`
 - scope_completeness: scope_partial
 - target_completeness: target_complete
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, and W038 adds checked assumption-discharge and totality-boundary classification
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, and W040 adds checked Rust plus Lean/TLA classification slices
   - full Lean verification remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
   - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, and `formal/tla/CoreEngineW036Stage2Partition.tla` have bounded configs for routine TLC checks

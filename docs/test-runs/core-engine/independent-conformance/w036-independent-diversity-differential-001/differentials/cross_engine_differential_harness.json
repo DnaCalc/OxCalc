@@ -1,0 +1,95 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001",
+  "continuous_cross_engine_service_promoted": false,
+  "cross_engine_root": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001",
+  "declared_gap_count": 2,
+  "full_independent_evaluator_promoted": false,
+  "missing_artifact_count": 0,
+  "row_count": 6,
+  "rows": [
+    {
+      "comparison_row_count": 15,
+      "core_projection_row_count": 9,
+      "declared_gap_count": 6,
+      "differential_state": "matched_with_declared_gaps",
+      "engine_pair": "TraceCalc reference machine vs TreeCalc/CoreEngine projection",
+      "exact_value_match_count": 5,
+      "failures": [],
+      "lifecycle_surface_match_count": 1,
+      "missing_artifact_count": 0,
+      "no_publication_match_count": 3,
+      "promotion_consequence": "Declared gaps remain non-matches; this row does not promote full optimized/core-engine verification.",
+      "row_id": "w036_diff_tracecalc_treecalc_observable_surface",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+        "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json"
+      ],
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "classified_uncovered_row_count": 1,
+      "covered_row_count": 30,
+      "differential_state": "coverage_matrix_valid_with_classified_uncovered_or_excluded_rows",
+      "engine_pair": "TraceCalc oracle matrix vs W036 coverage criteria",
+      "excluded_row_count": 1,
+      "failures": [],
+      "matrix_row_count": 32,
+      "missing_or_failed_row_count": 0,
+      "promotion_consequence": "Full TraceCalc oracle remains unpromoted because non-replay and external-kernel rows remain classified.",
+      "row_id": "w036_diff_tracecalc_coverage_closure",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json"
+      ]
+    },
+    {
+      "differential_state": "closure_actions_valid_no_declared_gap_promoted",
+      "engine_pair": "W036 implementation-conformance actions vs declared gap guard",
+      "failed_row_count": 0,
+      "failures": [],
+      "promotion_consequence": "Harness first-fix rows are evidence-binding rows, not full optimized/core-engine conformance matches.",
+      "row_id": "w036_diff_implementation_conformance_closure",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/run_summary.json"
+      ],
+      "w036_action_row_count": 6,
+      "w036_blocker_routed_row_count": 4,
+      "w036_first_fix_row_count": 2,
+      "w036_match_promoted_count": 0
+    },
+    {
+      "config_count": 5,
+      "differential_state": "bounded_model_checked_without_policy_promotion",
+      "engine_pair": "TLA bounded model vs scheduler/differential promotion gate",
+      "failed_config_count": 0,
+      "failures": [],
+      "promotion_consequence": "TLA model evidence remains bounded model-check evidence; Stage 2 policy and pack-grade replay stay unpromoted.",
+      "row_id": "w036_diff_tla_stage2_partition_model",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json"
+      ]
+    },
+    {
+      "differential_state": "declared_gap_direct_evaluator_absent",
+      "engine_pair": "OxCalc evidence vs direct OxFml evaluator re-execution",
+      "failures": [],
+      "promotion_consequence": "Direct OxFml evaluator re-execution is not present in this W036 bead and remains a pack-grade evidence question.",
+      "row_id": "w036_diff_direct_oxfml_evaluator_reexecution",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json"
+      ]
+    },
+    {
+      "differential_state": "declared_gap_full_independent_evaluator_absent",
+      "engine_pair": "current engine set vs full independent evaluator criterion",
+      "failures": [],
+      "promotion_consequence": "Current evidence has reference-oracle, projection, external seam, and formal-model diversity, but no promoted fully independent evaluator implementation.",
+      "row_id": "w036_diff_independent_evaluator_diversity",
+      "source_artifacts": [
+        "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json"
+      ]
+    }
+  ],
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.cross_engine_differential.w036_harness.v1",
+  "unexpected_mismatch_count": 0
+}

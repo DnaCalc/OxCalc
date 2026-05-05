@@ -89,17 +89,18 @@ The first W036 path is sequential to keep proof, replay, implementation, and pro
 
 ## Current Status
 
-- execution_state: `calc-rqq.5_tla_stage2_partition_model_validated`
+- execution_state: `calc-rqq.6_independent_diversity_differential_harness_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-rqq.6` through `calc-rqq.9` remain blocked by the sequential W036 path
+  - `calc-rqq.7` through `calc-rqq.9` remain blocked by the sequential W036 path
   - full Lean verification remains partial because W036 adds checked proof-inventory slices, not total Rust-engine proof
   - full TLA verification remains partial because W036 adds bounded model-check evidence, not total proof
   - full TraceCalc oracle coverage remains unpromoted because the multi-reader row is now bounded TLA model evidence rather than TraceCalc replay and the OxFunc-kernel exclusion remains external
   - full optimized/core-engine verification remains open because the W036 implementation-conformance closure run promotes zero W035 declared gaps as matches
-  - fully independent evaluator diversity remains open
+  - fully independent evaluator diversity remains partial because W036 classifies 0 fully independent evaluator rows
+  - continuous cross-engine differential service remains open because W036 emits deterministic harness artifacts, not operated service/history
   - bounded Stage 2 partition ownership modeling exists, while production partitioning and deterministic scheduler replay equivalence remain open
   - pack-grade replay, continuous-scale service operation, continuous cross-engine differential service, and Stage 2 policy remain unpromoted
 
@@ -110,3 +111,4 @@ Latest W036 evidence:
 3. `docs/spec/core-engine/w036-formalization/W036_OPTIMIZED_CORE_ENGINE_CONFORMANCE_CLOSURE_PLAN_AND_FIRST_FIXES.md` records the `calc-rqq.3` W036 optimized/core-engine conformance closure plan and first-fix harness evidence. The checked run `w036-implementation-conformance-closure-001` emits 6 closure action rows, 2 harness first-fix rows, 4 blocker-routed rows, 0 match-promoted rows, and 0 failed rows.
 4. `docs/spec/core-engine/w036-formalization/W036_LEAN_THEOREM_COVERAGE_EXPANSION.md` records the `calc-rqq.4` W036 Lean theorem coverage expansion. It adds checked Lean artifacts for W036 coverage inventory and callable boundary inventory, with zero explicit axioms, zero match-promoted rows, zero full Lean promotion, and explicit routing for callable/OxFunc, TLA, and conformance/harness boundaries.
 5. `docs/spec/core-engine/w036-formalization/W036_TLA_STAGE2_PARTITION_AND_SCHEDULER_EQUIVALENCE_MODEL.md` records the `calc-rqq.5` W036 TLA Stage 2 partition and scheduler-equivalence model. The checked TLC run `w036-stage2-partition-001` covers five configs, 0 failed configs, bounded partition ownership, snapshot/capability fence rejection, multi-reader overlay release ordering, scheduler-readiness criteria, and no Stage 2 policy promotion.
+6. `docs/spec/core-engine/w036-formalization/W036_INDEPENDENT_EVALUATOR_DIVERSITY_AND_CROSS_ENGINE_DIFFERENTIAL_HARNESS.md` records the `calc-rqq.6` W036 independent evaluator diversity and cross-engine differential harness. The checked run `w036-independent-diversity-differential-001` emits 15 base comparison rows, 5 diversity rows, 6 cross-engine differential rows, 6 promotion blockers, 0 unexpected mismatches, 0 missing artifacts, 0 fully independent evaluator rows, and no continuous cross-engine service promotion.

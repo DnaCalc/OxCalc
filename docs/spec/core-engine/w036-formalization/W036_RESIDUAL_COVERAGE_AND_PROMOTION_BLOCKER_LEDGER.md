@@ -161,6 +161,12 @@ Checked Lean files `formal/lean/OxCalc/CoreEngine/W036LeanCoverageExpansion.lean
 
 Checked TLA artifacts `formal/tla/CoreEngineW036Stage2Partition.tla` and five configs record bounded concrete partition ownership, scheduler-readiness criteria, stale snapshot and capability-view fence rejection, and multi-reader overlay release ordering. Evidence run `w036-stage2-partition-001` has 5 TLC configs, 5 passed configs, 0 failed configs, raw TLC logs, state counts, promotion blockers, and no Stage 2 policy promotion. Full TLA verification, full TraceCalc oracle coverage, optimized/core-engine conformance, pack-grade replay, and Stage 2 policy remain unpromoted.
 
+### calc-rqq.6 Disposition Update
+
+`calc-rqq.6` now records the W036 independent evaluator diversity and cross-engine differential harness in `W036_INDEPENDENT_EVALUATOR_DIVERSITY_AND_CROSS_ENGINE_DIFFERENTIAL_HARNESS.md`.
+
+Evidence run `w036-independent-diversity-differential-001` emits 15 base TraceCalc-to-TreeCalc comparison rows, 5 evaluator diversity rows, 6 cross-engine differential rows, 6 promotion blockers, 0 missing artifacts, 0 unexpected mismatches, 0 fully independent evaluator rows, and no continuous cross-engine service promotion. Direct OxFml evaluator re-execution, full independent evaluator implementation diversity, full optimized/core-engine verification, pack-grade replay, and Stage 2 policy remain unpromoted.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

@@ -1,0 +1,10 @@
+{
+  "continuous_cross_engine_service_promoted": false,
+  "declared_gap_count": 2,
+  "full_independent_evaluator_promoted": false,
+  "missing_artifact_count": 0,
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.cross_engine_differential.validation.v1",
+  "status": "cross_engine_differential_harness_valid",
+  "unexpected_mismatch_count": 0
+}

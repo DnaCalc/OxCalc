@@ -1,0 +1,52 @@
+{
+  "blockers": [
+    {
+      "blocker_id": "w036.independent_evaluator.full_diversity_absent",
+      "owner": "calc-rqq.6",
+      "promotion_consequence": "Fully independent evaluator diversity is not promoted.",
+      "state": "blocked"
+    },
+    {
+      "blocker_id": "w036.cross_engine.continuous_service_absent",
+      "owner": "calc-rqq.7",
+      "promotion_consequence": "Cross-engine differential harness evidence is a deterministic packet, not a running continuous service.",
+      "state": "blocked"
+    },
+    {
+      "blocker_id": "w036.optimized_core.declared_gaps_remain",
+      "declared_gap_count": 6,
+      "owner": "calc-rqq.8",
+      "promotion_consequence": "Declared conformance gaps are not counted as matches.",
+      "state": "blocked",
+      "w036_declared_gap_count": 2
+    },
+    {
+      "blocker_id": "w036.oxfml.direct_evaluator_reexecution_absent",
+      "owner": "calc-rqq.8",
+      "promotion_consequence": "OxFml direct evaluator re-execution remains a later pack-grade evidence question.",
+      "state": "blocked"
+    },
+    {
+      "blocker_id": "w036.formal_slices.not_total_verification",
+      "owner": "calc-rqq.9",
+      "promotion_consequence": "Lean/TLA evidence is bounded or inventory evidence, not full formal verification.",
+      "state": "blocked"
+    },
+    {
+      "blocker_id": "w036.pack_and_stage2.not_promoted",
+      "owner": "calc-rqq.8",
+      "promotion_consequence": "Pack C5 and Stage 2 policy remain unpromoted until later evidence gates.",
+      "state": "blocked"
+    }
+  ],
+  "continuous_cross_engine_service_promoted": false,
+  "declared_gap_count": 6,
+  "full_independent_evaluator_promoted": false,
+  "pack_grade_promoted": false,
+  "promotion_guard_state": "no_w036_cross_engine_or_independent_evaluator_promotion",
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.cross_engine_differential.w036_promotion_guard.v1",
+  "stage2_policy_promoted": false,
+  "unexpected_mismatch_count": 0,
+  "w036_declared_gap_or_blocker_count": 6
+}

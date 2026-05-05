@@ -21,9 +21,22 @@ const INDEPENDENT_CONFORMANCE_BUNDLE_SCHEMA_V1: &str =
     "oxcalc.independent_conformance.bundle_manifest.v1";
 const INDEPENDENT_CONFORMANCE_VALIDATION_SCHEMA_V1: &str =
     "oxcalc.independent_conformance.bundle_validation.v1";
+const W036_DIVERSITY_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.independent_conformance.w036_diversity_register.v1";
+const W036_DIFFERENTIAL_HARNESS_SCHEMA_V1: &str =
+    "oxcalc.cross_engine_differential.w036_harness.v1";
+const W036_PROMOTION_GUARD_SCHEMA_V1: &str =
+    "oxcalc.cross_engine_differential.w036_promotion_guard.v1";
+const W036_CROSS_ENGINE_RUN_SUMMARY_SCHEMA_V1: &str =
+    "oxcalc.cross_engine_differential.run_summary.v1";
+const W036_CROSS_ENGINE_VALIDATION_SCHEMA_V1: &str =
+    "oxcalc.cross_engine_differential.validation.v1";
 
 const TRACECALC_REFERENCE_RUN_ID: &str = "w034-tracecalc-oracle-deepening-001";
 const TREECALC_REFERENCE_RUN_ID: &str = "w034-independent-conformance-treecalc-001";
+const W036_TRACECALC_MATRIX_RUN_ID: &str = "w036-tracecalc-coverage-closure-001";
+const W036_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str = "w036-implementation-conformance-closure-001";
+const W036_TLA_STAGE2_RUN_ID: &str = "w036-stage2-partition-001";
 
 #[derive(Debug, Error)]
 pub enum IndependentConformanceError {
@@ -66,6 +79,10 @@ pub struct IndependentConformanceRunSummary {
     pub missing_artifact_count: usize,
     pub unexpected_mismatch_count: usize,
     pub artifact_root: String,
+    pub w036_diversity_row_count: usize,
+    pub w036_differential_row_count: usize,
+    pub w036_promotion_blocker_count: usize,
+    pub w036_full_independent_evaluator_promoted: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -148,6 +165,19 @@ struct BaseRow<'a> {
     missing_artifacts: Vec<String>,
     failures: Vec<String>,
     details: Value,
+}
+
+#[derive(Debug, Clone)]
+struct W036Packet {
+    diversity_register: Value,
+    differential_harness: Value,
+    promotion_guard: Value,
+    cross_engine_run_summary: Value,
+    cross_engine_validation: Value,
+    diversity_row_count: usize,
+    differential_row_count: usize,
+    promotion_blocker_count: usize,
+    full_independent_evaluator_promoted: bool,
 }
 
 const ACCEPT_VALUE_MAPPINGS: &[NodeValueMapping] = &[NodeValueMapping {
@@ -375,6 +405,11 @@ impl IndependentConformanceRunner {
 
         create_directory(&artifact_root)?;
         create_directory(&artifact_root.join("comparisons"))?;
+        if is_w036_run(run_id) {
+            create_directory(&artifact_root.join("decision"))?;
+            create_directory(&artifact_root.join("differentials"))?;
+            create_directory(&artifact_root.join("diversity"))?;
+        }
         create_directory(&artifact_root.join("replay-appliance"))?;
         create_directory(&artifact_root.join("replay-appliance/validation"))?;
 
@@ -420,6 +455,18 @@ impl IndependentConformanceRunner {
         )?;
 
         let core_rows = core_projection_rows(repo_root)?;
+        let w036_packet = if is_w036_run(run_id) {
+            Some(build_w036_packet(
+                repo_root,
+                run_id,
+                &relative_artifact_root,
+                &comparison_rows,
+                &core_rows,
+                counts,
+            )?)
+        } else {
+            None
+        };
         write_json(
             &artifact_root.join("comparisons/core_engine_projection_differential.json"),
             &json!({
@@ -430,6 +477,50 @@ impl IndependentConformanceRunner {
                 "rows": core_rows,
             }),
         )?;
+
+        if let Some(packet) = &w036_packet {
+            write_json(
+                &artifact_root.join("diversity/evaluator_diversity_register.json"),
+                &packet.diversity_register,
+            )?;
+            write_json(
+                &artifact_root.join("differentials/cross_engine_differential_harness.json"),
+                &packet.differential_harness,
+            )?;
+            write_json(
+                &artifact_root.join("decision/promotion_guard.json"),
+                &packet.promotion_guard,
+            )?;
+
+            let cross_engine_root = repo_root.join(cross_engine_differential_root(run_id));
+            if cross_engine_root.exists() {
+                fs::remove_dir_all(&cross_engine_root).map_err(|source| {
+                    IndependentConformanceError::RemoveDirectory {
+                        path: cross_engine_root.display().to_string(),
+                        source,
+                    }
+                })?;
+            }
+            create_directory(&cross_engine_root)?;
+            create_directory(&cross_engine_root.join("decision"))?;
+            create_directory(&cross_engine_root.join("differentials"))?;
+            write_json(
+                &cross_engine_root.join("run_summary.json"),
+                &packet.cross_engine_run_summary,
+            )?;
+            write_json(
+                &cross_engine_root.join("differentials/cross_engine_differential_harness.json"),
+                &packet.differential_harness,
+            )?;
+            write_json(
+                &cross_engine_root.join("decision/promotion_guard.json"),
+                &packet.promotion_guard,
+            )?;
+            write_json(
+                &cross_engine_root.join("validation.json"),
+                &packet.cross_engine_validation,
+            )?;
+        }
 
         let required_artifacts = required_artifacts(run_id);
         write_json(
@@ -446,9 +537,24 @@ impl IndependentConformanceRunner {
                     "pack_grade_replay",
                     "continuous_cross_engine_differential_suite"
                 ],
+                "w036_artifact_profile": if is_w036_run(run_id) { "w036_independent_diversity_and_cross_engine_differential" } else { "base_independent_conformance" },
                 "required_artifacts": required_artifacts,
             }),
         )?;
+
+        let (
+            w036_diversity_row_count,
+            w036_differential_row_count,
+            w036_promotion_blocker_count,
+            w036_full_independent_evaluator_promoted,
+        ) = w036_packet.as_ref().map_or((0, 0, 0, false), |packet| {
+            (
+                packet.diversity_row_count,
+                packet.differential_row_count,
+                packet.promotion_blocker_count,
+                packet.full_independent_evaluator_promoted,
+            )
+        });
 
         let summary = IndependentConformanceRunSummary {
             run_id: run_id.to_string(),
@@ -461,6 +567,10 @@ impl IndependentConformanceRunner {
             missing_artifact_count: counts.missing_artifacts,
             unexpected_mismatch_count: counts.unexpected_mismatches,
             artifact_root: relative_artifact_root.clone(),
+            w036_diversity_row_count,
+            w036_differential_row_count,
+            w036_promotion_blocker_count,
+            w036_full_independent_evaluator_promoted,
         };
         write_json(
             &artifact_root.join("run_summary.json"),
@@ -477,10 +587,18 @@ impl IndependentConformanceRunner {
                 "missing_artifact_count": summary.missing_artifact_count,
                 "unexpected_mismatch_count": summary.unexpected_mismatch_count,
                 "handoff_triggered": summary.unexpected_mismatch_count > 0,
+                "w036_diversity_row_count": summary.w036_diversity_row_count,
+                "w036_differential_row_count": summary.w036_differential_row_count,
+                "w036_promotion_blocker_count": summary.w036_promotion_blocker_count,
+                "w036_full_independent_evaluator_promoted": summary.w036_full_independent_evaluator_promoted,
                 "artifact_root": summary.artifact_root,
                 "surface_mapping_path": format!("{relative_artifact_root}/surface_mapping.json"),
                 "treecalc_tracecalc_differential_path": format!("{relative_artifact_root}/comparisons/treecalc_tracecalc_differential.json"),
                 "core_engine_projection_differential_path": format!("{relative_artifact_root}/comparisons/core_engine_projection_differential.json"),
+                "w036_diversity_register_path": if is_w036_run(run_id) { Some(format!("{relative_artifact_root}/diversity/evaluator_diversity_register.json")) } else { None },
+                "w036_cross_engine_differential_harness_path": if is_w036_run(run_id) { Some(format!("{relative_artifact_root}/differentials/cross_engine_differential_harness.json")) } else { None },
+                "w036_promotion_guard_path": if is_w036_run(run_id) { Some(format!("{relative_artifact_root}/decision/promotion_guard.json")) } else { None },
+                "w036_cross_engine_root": if is_w036_run(run_id) { Some(cross_engine_differential_root(run_id)) } else { None },
                 "bundle_validation_path": format!("{relative_artifact_root}/replay-appliance/validation/bundle_validation.json"),
             }),
         )?;
@@ -511,11 +629,405 @@ impl IndependentConformanceRunner {
                 "validated_required_artifact_count": required_artifacts.len(),
                 "unexpected_mismatch_count": summary.unexpected_mismatch_count,
                 "declared_gap_count": summary.declared_gap_count,
+                "w036_differential_row_count": summary.w036_differential_row_count,
+                "w036_full_independent_evaluator_promoted": summary.w036_full_independent_evaluator_promoted,
             }),
         )?;
 
         Ok(summary)
     }
+}
+
+fn build_w036_packet(
+    repo_root: &Path,
+    run_id: &str,
+    relative_artifact_root: &str,
+    comparison_rows: &[Value],
+    core_rows: &[Value],
+    counts: ComparisonCounts,
+) -> Result<W036Packet, IndependentConformanceError> {
+    let tracecalc_matrix_summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "tracecalc-reference-machine",
+        W036_TRACECALC_MATRIX_RUN_ID,
+        "oracle-matrix",
+        "run_summary.json",
+    ]);
+    let implementation_summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "implementation-conformance",
+        W036_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+        "run_summary.json",
+    ]);
+    let tla_summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "tla",
+        W036_TLA_STAGE2_RUN_ID,
+        "run_summary.json",
+    ]);
+
+    let tracecalc_matrix_summary = read_json(repo_root, &tracecalc_matrix_summary_path)?;
+    let implementation_summary = read_json(repo_root, &implementation_summary_path)?;
+    let tla_summary = read_json(repo_root, &tla_summary_path)?;
+
+    let diversity_rows = evaluator_diversity_rows();
+    let diversity_row_count = diversity_rows.len();
+    let full_independent_evaluator_count = diversity_rows
+        .iter()
+        .filter(|row| bool_at(row, "promotable_as_fully_independent_evaluator"))
+        .count();
+    let full_independent_evaluator_promoted = full_independent_evaluator_count > 0;
+
+    let differential_rows = w036_differential_rows(
+        counts,
+        comparison_rows,
+        core_rows,
+        &tracecalc_matrix_summary_path,
+        tracecalc_matrix_summary.as_ref(),
+        &implementation_summary_path,
+        implementation_summary.as_ref(),
+        &tla_summary_path,
+        tla_summary.as_ref(),
+    );
+    let differential_row_count = differential_rows.len();
+    let unexpected_mismatch_count = count_unexpected_mismatch_rows(&differential_rows);
+    let declared_gap_count = count_declared_gap_rows(&differential_rows);
+    let missing_artifact_count = [
+        (&tracecalc_matrix_summary_path, &tracecalc_matrix_summary),
+        (&implementation_summary_path, &implementation_summary),
+        (&tla_summary_path, &tla_summary),
+    ]
+    .into_iter()
+    .filter(|(_, artifact)| artifact.is_none())
+    .count();
+
+    let blockers = w036_promotion_blockers(
+        counts,
+        full_independent_evaluator_promoted,
+        declared_gap_count,
+        missing_artifact_count,
+    );
+    let blocker_count = blockers.len();
+    let cross_engine_root = cross_engine_differential_root(run_id);
+    let harness_path =
+        format!("{cross_engine_root}/differentials/cross_engine_differential_harness.json");
+    let promotion_guard_path = format!("{cross_engine_root}/decision/promotion_guard.json");
+    let validation_path = format!("{cross_engine_root}/validation.json");
+
+    let diversity_register = json!({
+        "schema_version": W036_DIVERSITY_REGISTER_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "row_count": diversity_row_count,
+        "fully_independent_evaluator_count": full_independent_evaluator_count,
+        "full_independent_evaluator_promoted": full_independent_evaluator_promoted,
+        "diversity_grade": if full_independent_evaluator_promoted {
+            "full_independent_evaluator_candidate"
+        } else {
+            "projection_diversity_with_formal_model_support"
+        },
+        "rows": diversity_rows,
+    });
+    let differential_harness = json!({
+        "schema_version": W036_DIFFERENTIAL_HARNESS_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "cross_engine_root": cross_engine_root,
+        "row_count": differential_row_count,
+        "unexpected_mismatch_count": unexpected_mismatch_count,
+        "declared_gap_count": declared_gap_count,
+        "missing_artifact_count": missing_artifact_count,
+        "full_independent_evaluator_promoted": full_independent_evaluator_promoted,
+        "continuous_cross_engine_service_promoted": false,
+        "rows": differential_rows,
+    });
+    let promotion_guard = json!({
+        "schema_version": W036_PROMOTION_GUARD_SCHEMA_V1,
+        "run_id": run_id,
+        "promotion_guard_state": "no_w036_cross_engine_or_independent_evaluator_promotion",
+        "full_independent_evaluator_promoted": full_independent_evaluator_promoted,
+        "continuous_cross_engine_service_promoted": false,
+        "pack_grade_promoted": false,
+        "stage2_policy_promoted": false,
+        "unexpected_mismatch_count": unexpected_mismatch_count,
+        "declared_gap_count": counts.declared_gaps,
+        "w036_declared_gap_or_blocker_count": blocker_count,
+        "blockers": blockers,
+    });
+    let cross_engine_run_summary = json!({
+        "schema_version": W036_CROSS_ENGINE_RUN_SUMMARY_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": cross_engine_root,
+        "source_independent_conformance_root": relative_artifact_root,
+        "differential_row_count": number_at(&differential_harness, "row_count"),
+        "unexpected_mismatch_count": unexpected_mismatch_count,
+        "declared_gap_count": declared_gap_count,
+        "missing_artifact_count": missing_artifact_count,
+        "full_independent_evaluator_promoted": full_independent_evaluator_promoted,
+        "continuous_cross_engine_service_promoted": false,
+        "differential_harness_path": harness_path,
+        "promotion_guard_path": promotion_guard_path,
+        "validation_path": validation_path,
+    });
+    let cross_engine_validation = json!({
+        "schema_version": W036_CROSS_ENGINE_VALIDATION_SCHEMA_V1,
+        "run_id": run_id,
+        "status": if missing_artifact_count == 0 && unexpected_mismatch_count == 0 {
+            "cross_engine_differential_harness_valid"
+        } else {
+            "cross_engine_differential_harness_has_gaps"
+        },
+        "missing_artifact_count": missing_artifact_count,
+        "unexpected_mismatch_count": unexpected_mismatch_count,
+        "declared_gap_count": declared_gap_count,
+        "full_independent_evaluator_promoted": full_independent_evaluator_promoted,
+        "continuous_cross_engine_service_promoted": false,
+    });
+
+    Ok(W036Packet {
+        diversity_register,
+        differential_harness,
+        promotion_guard,
+        cross_engine_run_summary,
+        cross_engine_validation,
+        diversity_row_count,
+        differential_row_count,
+        promotion_blocker_count: blocker_count,
+        full_independent_evaluator_promoted,
+    })
+}
+
+fn evaluator_diversity_rows() -> Vec<Value> {
+    vec![
+        json!({
+            "engine_id": "tracecalc_reference_machine",
+            "engine_role": "reference_oracle_for_covered_rows",
+            "implementation_basis": "OxCalc-local reference machine and scenario corpus",
+            "input_schema_independent_from_treecalc": true,
+            "implementation_independent_from_treecalc": true,
+            "promotable_as_fully_independent_evaluator": false,
+            "evidence_state": "covered_reference_oracle_not_total_engine",
+            "promotion_consequence": "TraceCalc remains the correctness oracle for covered rows only; it is not a second production evaluator."
+        }),
+        json!({
+            "engine_id": "treecalc_core_projection",
+            "engine_role": "optimized_core_projection_lane",
+            "implementation_basis": "OxCalc TreeCalc/CoreEngine local runner",
+            "input_schema_independent_from_treecalc": false,
+            "implementation_independent_from_treecalc": false,
+            "promotable_as_fully_independent_evaluator": false,
+            "evidence_state": "projection_evidence_not_independent_evaluator",
+            "promotion_consequence": "TreeCalc/CoreEngine differentials are useful conformance evidence but do not satisfy full evaluator diversity."
+        }),
+        json!({
+            "engine_id": "oxfml_direct_evaluator",
+            "engine_role": "external_evaluator_candidate",
+            "implementation_basis": "OxFml-owned evaluator and FEC/F3E seam",
+            "input_schema_independent_from_treecalc": true,
+            "implementation_independent_from_treecalc": true,
+            "promotable_as_fully_independent_evaluator": false,
+            "evidence_state": "fixture_bridge_projection_only_direct_reexecution_absent",
+            "promotion_consequence": "Direct OxFml evaluator re-execution remains a later pack-grade evidence question."
+        }),
+        json!({
+            "engine_id": "tla_model_family",
+            "engine_role": "formal_model_checker",
+            "implementation_basis": "TLA+ bounded model family",
+            "input_schema_independent_from_treecalc": true,
+            "implementation_independent_from_treecalc": true,
+            "promotable_as_fully_independent_evaluator": false,
+            "evidence_state": "formal_model_not_runtime_evaluator",
+            "promotion_consequence": "TLA evidence strengthens interleaving and policy reasoning but does not count as runtime evaluator diversity."
+        }),
+        json!({
+            "engine_id": "lean_proof_inventory",
+            "engine_role": "formal_proof_inventory",
+            "implementation_basis": "Lean theorem and boundary inventory files",
+            "input_schema_independent_from_treecalc": true,
+            "implementation_independent_from_treecalc": true,
+            "promotable_as_fully_independent_evaluator": false,
+            "evidence_state": "proof_inventory_not_runtime_evaluator",
+            "promotion_consequence": "Lean proof inventory is formal assurance evidence, not an independently executing evaluator."
+        }),
+    ]
+}
+
+fn w036_differential_rows(
+    counts: ComparisonCounts,
+    comparison_rows: &[Value],
+    core_rows: &[Value],
+    tracecalc_matrix_summary_path: &str,
+    tracecalc_matrix_summary: Option<&Value>,
+    implementation_summary_path: &str,
+    implementation_summary: Option<&Value>,
+    tla_summary_path: &str,
+    tla_summary: Option<&Value>,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "w036_diff_tracecalc_treecalc_observable_surface",
+            "engine_pair": "TraceCalc reference machine vs TreeCalc/CoreEngine projection",
+            "differential_state": if counts.unexpected_mismatches == 0 && counts.missing_artifacts == 0 {
+                "matched_with_declared_gaps"
+            } else {
+                "unexpected_mismatch_or_missing_artifact"
+            },
+            "source_artifacts": [
+                "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+                "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json"
+            ],
+            "comparison_row_count": comparison_rows.len(),
+            "core_projection_row_count": core_rows.len(),
+            "exact_value_match_count": counts.exact_value_matches,
+            "no_publication_match_count": counts.no_publication_matches,
+            "lifecycle_surface_match_count": counts.lifecycle_surface_matches,
+            "declared_gap_count": counts.declared_gaps,
+            "missing_artifact_count": counts.missing_artifacts,
+            "unexpected_mismatch_count": counts.unexpected_mismatches,
+            "failures": if counts.unexpected_mismatches == 0 && counts.missing_artifacts == 0 { Vec::<String>::new() } else { vec!["base_independent_conformance_has_unexpected_mismatch_or_missing_artifact".to_string()] },
+            "promotion_consequence": "Declared gaps remain non-matches; this row does not promote full optimized/core-engine verification."
+        }),
+        json!({
+            "row_id": "w036_diff_tracecalc_coverage_closure",
+            "engine_pair": "TraceCalc oracle matrix vs W036 coverage criteria",
+            "differential_state": if tracecalc_matrix_summary.is_some_and(|summary| number_at(summary, "missing_or_failed_row_count") == 0) {
+                "coverage_matrix_valid_with_classified_uncovered_or_excluded_rows"
+            } else {
+                "coverage_matrix_missing_or_failed"
+            },
+            "source_artifacts": [tracecalc_matrix_summary_path],
+            "matrix_row_count": tracecalc_matrix_summary.map_or(0, |summary| number_at(summary, "matrix_row_count")),
+            "covered_row_count": tracecalc_matrix_summary.map_or(0, |summary| number_at(summary, "covered_row_count")),
+            "classified_uncovered_row_count": tracecalc_matrix_summary.map_or(0, |summary| number_at(summary, "classified_uncovered_row_count")),
+            "excluded_row_count": tracecalc_matrix_summary.map_or(0, |summary| number_at(summary, "excluded_row_count")),
+            "missing_or_failed_row_count": tracecalc_matrix_summary.map_or(1, |summary| number_at(summary, "missing_or_failed_row_count")),
+            "failures": if tracecalc_matrix_summary.is_some_and(|summary| number_at(summary, "missing_or_failed_row_count") == 0) { Vec::<String>::new() } else { vec!["w036_tracecalc_matrix_missing_or_failed".to_string()] },
+            "promotion_consequence": "Full TraceCalc oracle remains unpromoted because non-replay and external-kernel rows remain classified."
+        }),
+        json!({
+            "row_id": "w036_diff_implementation_conformance_closure",
+            "engine_pair": "W036 implementation-conformance actions vs declared gap guard",
+            "differential_state": if implementation_summary.is_some_and(|summary| {
+                number_at(summary, "failed_row_count") == 0 && number_at(summary, "w036_match_promoted_count") == 0
+            }) {
+                "closure_actions_valid_no_declared_gap_promoted"
+            } else {
+                "implementation_conformance_guard_failed_or_missing"
+            },
+            "source_artifacts": [implementation_summary_path],
+            "w036_action_row_count": implementation_summary.map_or(0, |summary| number_at(summary, "w036_action_row_count")),
+            "w036_first_fix_row_count": implementation_summary.map_or(0, |summary| number_at(summary, "w036_first_fix_row_count")),
+            "w036_blocker_routed_row_count": implementation_summary.map_or(0, |summary| number_at(summary, "w036_blocker_routed_row_count")),
+            "w036_match_promoted_count": implementation_summary.map_or(1, |summary| number_at(summary, "w036_match_promoted_count")),
+            "failed_row_count": implementation_summary.map_or(1, |summary| number_at(summary, "failed_row_count")),
+            "failures": if implementation_summary.is_some_and(|summary| {
+                number_at(summary, "failed_row_count") == 0 && number_at(summary, "w036_match_promoted_count") == 0
+            }) { Vec::<String>::new() } else { vec!["w036_implementation_conformance_guard_failed_or_missing".to_string()] },
+            "promotion_consequence": "Harness first-fix rows are evidence-binding rows, not full optimized/core-engine conformance matches."
+        }),
+        json!({
+            "row_id": "w036_diff_tla_stage2_partition_model",
+            "engine_pair": "TLA bounded model vs scheduler/differential promotion gate",
+            "differential_state": if tla_summary.is_some_and(|summary| {
+                text_at(summary, "result") == "passed" && number_at(summary, "failed_config_count") == 0
+            }) {
+                "bounded_model_checked_without_policy_promotion"
+            } else {
+                "tla_model_missing_or_failed"
+            },
+            "source_artifacts": [tla_summary_path],
+            "config_count": tla_summary.map_or(0, |summary| number_at(summary, "config_count")),
+            "failed_config_count": tla_summary.map_or(1, |summary| number_at(summary, "failed_config_count")),
+            "failures": if tla_summary.is_some_and(|summary| {
+                text_at(summary, "result") == "passed" && number_at(summary, "failed_config_count") == 0
+            }) { Vec::<String>::new() } else { vec!["w036_tla_stage2_partition_model_missing_or_failed".to_string()] },
+            "promotion_consequence": "TLA model evidence remains bounded model-check evidence; Stage 2 policy and pack-grade replay stay unpromoted."
+        }),
+        json!({
+            "row_id": "w036_diff_direct_oxfml_evaluator_reexecution",
+            "engine_pair": "OxCalc evidence vs direct OxFml evaluator re-execution",
+            "differential_state": "declared_gap_direct_evaluator_absent",
+            "source_artifacts": [
+                "docs/test-runs/core-engine/oxfml-fixture-bridge/post-w033-direct-oxfml-fixture-bridge-001/run_summary.json"
+            ],
+            "failures": [],
+            "promotion_consequence": "Direct OxFml evaluator re-execution is not present in this W036 bead and remains a pack-grade evidence question."
+        }),
+        json!({
+            "row_id": "w036_diff_independent_evaluator_diversity",
+            "engine_pair": "current engine set vs full independent evaluator criterion",
+            "differential_state": "declared_gap_full_independent_evaluator_absent",
+            "source_artifacts": [
+                "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json"
+            ],
+            "failures": [],
+            "promotion_consequence": "Current evidence has reference-oracle, projection, external seam, and formal-model diversity, but no promoted fully independent evaluator implementation."
+        }),
+    ]
+}
+
+fn w036_promotion_blockers(
+    counts: ComparisonCounts,
+    full_independent_evaluator_promoted: bool,
+    declared_gap_count: usize,
+    missing_artifact_count: usize,
+) -> Vec<Value> {
+    let mut blockers = vec![
+        json!({
+            "blocker_id": "w036.independent_evaluator.full_diversity_absent",
+            "owner": "calc-rqq.6",
+            "state": if full_independent_evaluator_promoted { "cleared" } else { "blocked" },
+            "promotion_consequence": "Fully independent evaluator diversity is not promoted."
+        }),
+        json!({
+            "blocker_id": "w036.cross_engine.continuous_service_absent",
+            "owner": "calc-rqq.7",
+            "state": "blocked",
+            "promotion_consequence": "Cross-engine differential harness evidence is a deterministic packet, not a running continuous service."
+        }),
+        json!({
+            "blocker_id": "w036.optimized_core.declared_gaps_remain",
+            "owner": "calc-rqq.8",
+            "state": if counts.declared_gaps == 0 && declared_gap_count == 0 { "cleared" } else { "blocked" },
+            "declared_gap_count": counts.declared_gaps,
+            "w036_declared_gap_count": declared_gap_count,
+            "promotion_consequence": "Declared conformance gaps are not counted as matches."
+        }),
+        json!({
+            "blocker_id": "w036.oxfml.direct_evaluator_reexecution_absent",
+            "owner": "calc-rqq.8",
+            "state": "blocked",
+            "promotion_consequence": "OxFml direct evaluator re-execution remains a later pack-grade evidence question."
+        }),
+        json!({
+            "blocker_id": "w036.formal_slices.not_total_verification",
+            "owner": "calc-rqq.9",
+            "state": "blocked",
+            "promotion_consequence": "Lean/TLA evidence is bounded or inventory evidence, not full formal verification."
+        }),
+        json!({
+            "blocker_id": "w036.pack_and_stage2.not_promoted",
+            "owner": "calc-rqq.8",
+            "state": "blocked",
+            "promotion_consequence": "Pack C5 and Stage 2 policy remain unpromoted until later evidence gates."
+        }),
+    ];
+    if missing_artifact_count > 0 {
+        blockers.push(json!({
+            "blocker_id": "w036.cross_engine.required_artifact_missing",
+            "owner": "calc-rqq.6",
+            "state": "blocked",
+            "missing_artifact_count": missing_artifact_count,
+            "promotion_consequence": "Cross-engine differential harness cannot be promoted while required artifacts are missing."
+        }));
+    }
+    blockers
 }
 
 fn value_comparison_row(
@@ -1154,6 +1666,60 @@ fn comparison_counts(rows: &[Value]) -> ComparisonCounts {
     counts
 }
 
+fn is_w036_run(run_id: &str) -> bool {
+    run_id.starts_with("w036-")
+}
+
+fn cross_engine_differential_root(run_id: &str) -> String {
+    relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "cross-engine-differential",
+        run_id,
+    ])
+}
+
+fn count_unexpected_mismatch_rows(rows: &[Value]) -> usize {
+    rows.iter()
+        .filter(|row| {
+            row.get("failures")
+                .and_then(Value::as_array)
+                .is_some_and(|failures| !failures.is_empty())
+        })
+        .count()
+}
+
+fn count_declared_gap_rows(rows: &[Value]) -> usize {
+    rows.iter()
+        .filter(|row| {
+            row.get("differential_state")
+                .and_then(Value::as_str)
+                .is_some_and(|state| state.starts_with("declared_gap"))
+        })
+        .count()
+}
+
+fn number_at(value: &Value, key: &str) -> usize {
+    value
+        .get(key)
+        .and_then(Value::as_u64)
+        .and_then(|number| usize::try_from(number).ok())
+        .unwrap_or(0)
+}
+
+fn text_at(value: &Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or("<missing>")
+        .to_string()
+}
+
+fn bool_at(value: &Value, key: &str) -> bool {
+    value.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
 fn trace_result_is_clean_pass(result: &Value) -> bool {
     result.get("result_state").and_then(Value::as_str) == Some("passed")
         && empty_array(result.get("assertion_failures"))
@@ -1341,7 +1907,7 @@ fn tree_root_artifact_path(artifact_name: &str) -> String {
 }
 
 fn required_artifacts(run_id: &str) -> Vec<String> {
-    [
+    let mut artifacts = [
         "run_summary.json",
         "surface_mapping.json",
         "comparisons/treecalc_tracecalc_differential.json",
@@ -1378,7 +1944,40 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
             "run_summary.json",
         ]),
     ])
-    .collect()
+    .collect::<Vec<_>>();
+
+    if is_w036_run(run_id) {
+        artifacts.extend(
+            [
+                "decision/promotion_guard.json",
+                "differentials/cross_engine_differential_harness.json",
+                "diversity/evaluator_diversity_register.json",
+            ]
+            .iter()
+            .map(|artifact| {
+                relative_artifact_path([
+                    "docs",
+                    "test-runs",
+                    "core-engine",
+                    "independent-conformance",
+                    run_id,
+                    artifact,
+                ])
+            }),
+        );
+        artifacts.extend(
+            [
+                "run_summary.json",
+                "differentials/cross_engine_differential_harness.json",
+                "decision/promotion_guard.json",
+                "validation.json",
+            ]
+            .iter()
+            .map(|artifact| format!("{}/{}", cross_engine_differential_root(run_id), artifact)),
+        );
+    }
+
+    artifacts
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
@@ -1409,12 +2008,52 @@ mod tests {
         assert_eq!(summary.declared_gap_count, 6);
         assert_eq!(summary.missing_artifact_count, 0);
         assert_eq!(summary.unexpected_mismatch_count, 0);
+        assert_eq!(summary.w036_diversity_row_count, 0);
+        assert_eq!(summary.w036_differential_row_count, 0);
+        assert_eq!(summary.w036_promotion_blocker_count, 0);
+        assert!(!summary.w036_full_independent_evaluator_promoted);
 
         let validation = read_required_json(
             &repo_root,
             "docs/test-runs/core-engine/independent-conformance/independent-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn independent_conformance_runner_writes_w036_diversity_packet() {
+        let repo_root = unique_temp_repo();
+        create_tracecalc_artifacts(&repo_root);
+        create_treecalc_artifacts(&repo_root);
+        create_w036_artifacts(&repo_root);
+
+        let summary = IndependentConformanceRunner::new()
+            .execute(&repo_root, "w036-independent-diversity-test")
+            .expect("W036 independent conformance packet should write");
+
+        assert_eq!(summary.comparison_row_count, 15);
+        assert_eq!(summary.w036_diversity_row_count, 5);
+        assert_eq!(summary.w036_differential_row_count, 6);
+        assert_eq!(summary.w036_promotion_blocker_count, 6);
+        assert!(!summary.w036_full_independent_evaluator_promoted);
+
+        let diversity = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-test/diversity/evaluator_diversity_register.json",
+        );
+        assert_eq!(diversity["fully_independent_evaluator_count"], 0);
+        assert_eq!(diversity["full_independent_evaluator_promoted"], false);
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-test/validation.json",
+        );
+        assert_eq!(
+            validation["status"],
+            "cross_engine_differential_harness_valid"
+        );
 
         fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
     }
@@ -1619,6 +2258,43 @@ mod tests {
             &["ExecutionRestriction"],
         );
         tree_retention_guardrail(repo_root);
+    }
+
+    fn create_w036_artifacts(repo_root: &Path) {
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json",
+            json!({
+                "run_id": W036_TRACECALC_MATRIX_RUN_ID,
+                "matrix_row_count": 32,
+                "covered_row_count": 30,
+                "classified_uncovered_row_count": 1,
+                "excluded_row_count": 1,
+                "missing_or_failed_row_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/run_summary.json",
+            json!({
+                "run_id": W036_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+                "w036_action_row_count": 6,
+                "w036_first_fix_row_count": 2,
+                "w036_blocker_routed_row_count": 4,
+                "w036_match_promoted_count": 0,
+                "failed_row_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json",
+            json!({
+                "run_id": W036_TLA_STAGE2_RUN_ID,
+                "result": "passed",
+                "config_count": 5,
+                "failed_config_count": 0,
+            }),
+        );
     }
 
     fn trace_result(repo_root: &Path, scenario_id: &str) {

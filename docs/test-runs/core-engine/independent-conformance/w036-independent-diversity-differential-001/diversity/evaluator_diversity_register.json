@@ -1,0 +1,61 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001",
+  "diversity_grade": "projection_diversity_with_formal_model_support",
+  "full_independent_evaluator_promoted": false,
+  "fully_independent_evaluator_count": 0,
+  "row_count": 5,
+  "rows": [
+    {
+      "engine_id": "tracecalc_reference_machine",
+      "engine_role": "reference_oracle_for_covered_rows",
+      "evidence_state": "covered_reference_oracle_not_total_engine",
+      "implementation_basis": "OxCalc-local reference machine and scenario corpus",
+      "implementation_independent_from_treecalc": true,
+      "input_schema_independent_from_treecalc": true,
+      "promotable_as_fully_independent_evaluator": false,
+      "promotion_consequence": "TraceCalc remains the correctness oracle for covered rows only; it is not a second production evaluator."
+    },
+    {
+      "engine_id": "treecalc_core_projection",
+      "engine_role": "optimized_core_projection_lane",
+      "evidence_state": "projection_evidence_not_independent_evaluator",
+      "implementation_basis": "OxCalc TreeCalc/CoreEngine local runner",
+      "implementation_independent_from_treecalc": false,
+      "input_schema_independent_from_treecalc": false,
+      "promotable_as_fully_independent_evaluator": false,
+      "promotion_consequence": "TreeCalc/CoreEngine differentials are useful conformance evidence but do not satisfy full evaluator diversity."
+    },
+    {
+      "engine_id": "oxfml_direct_evaluator",
+      "engine_role": "external_evaluator_candidate",
+      "evidence_state": "fixture_bridge_projection_only_direct_reexecution_absent",
+      "implementation_basis": "OxFml-owned evaluator and FEC/F3E seam",
+      "implementation_independent_from_treecalc": true,
+      "input_schema_independent_from_treecalc": true,
+      "promotable_as_fully_independent_evaluator": false,
+      "promotion_consequence": "Direct OxFml evaluator re-execution remains a later pack-grade evidence question."
+    },
+    {
+      "engine_id": "tla_model_family",
+      "engine_role": "formal_model_checker",
+      "evidence_state": "formal_model_not_runtime_evaluator",
+      "implementation_basis": "TLA+ bounded model family",
+      "implementation_independent_from_treecalc": true,
+      "input_schema_independent_from_treecalc": true,
+      "promotable_as_fully_independent_evaluator": false,
+      "promotion_consequence": "TLA evidence strengthens interleaving and policy reasoning but does not count as runtime evaluator diversity."
+    },
+    {
+      "engine_id": "lean_proof_inventory",
+      "engine_role": "formal_proof_inventory",
+      "evidence_state": "proof_inventory_not_runtime_evaluator",
+      "implementation_basis": "Lean theorem and boundary inventory files",
+      "implementation_independent_from_treecalc": true,
+      "input_schema_independent_from_treecalc": true,
+      "promotable_as_fully_independent_evaluator": false,
+      "promotion_consequence": "Lean proof inventory is formal assurance evidence, not an independently executing evaluator."
+    }
+  ],
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.independent_conformance.w036_diversity_register.v1"
+}

@@ -1,0 +1,15 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001",
+  "continuous_cross_engine_service_promoted": false,
+  "declared_gap_count": 2,
+  "differential_harness_path": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/differentials/cross_engine_differential_harness.json",
+  "differential_row_count": 6,
+  "full_independent_evaluator_promoted": false,
+  "missing_artifact_count": 0,
+  "promotion_guard_path": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/decision/promotion_guard.json",
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.cross_engine_differential.run_summary.v1",
+  "source_independent_conformance_root": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001",
+  "unexpected_mismatch_count": 0,
+  "validation_path": "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/validation.json"
+}

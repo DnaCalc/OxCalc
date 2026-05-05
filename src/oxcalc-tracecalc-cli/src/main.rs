@@ -286,10 +286,21 @@ fn run() -> Result<(), String> {
             let summary = runner
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("independent conformance run failed: {error}"))?;
-            println!(
-                "Independent conformance run '{run_id}' wrote {} comparison rows to {}.",
-                summary.comparison_row_count, summary.artifact_root
-            );
+            if summary.w036_differential_row_count > 0 {
+                println!(
+                    "Independent conformance run '{run_id}' wrote {} comparison rows, {} W036 diversity rows, {} W036 differential rows, and {} promotion blockers to {}.",
+                    summary.comparison_row_count,
+                    summary.w036_diversity_row_count,
+                    summary.w036_differential_row_count,
+                    summary.w036_promotion_blocker_count,
+                    summary.artifact_root
+                );
+            } else {
+                println!(
+                    "Independent conformance run '{run_id}' wrote {} comparison rows to {}.",
+                    summary.comparison_row_count, summary.artifact_root
+                );
+            }
         }
         "pack-capability" => {
             let runner = PackCapabilityRunner::new();

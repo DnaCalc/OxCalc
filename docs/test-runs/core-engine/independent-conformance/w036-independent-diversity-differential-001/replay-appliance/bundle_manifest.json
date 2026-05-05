@@ -1,0 +1,31 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001",
+  "claimed_capability": "independent_treecalc_tracecalc_observable_surface_comparison",
+  "excluded_capabilities": [
+    "fully_independent_evaluator_implementation",
+    "pack_grade_replay",
+    "continuous_cross_engine_differential_suite"
+  ],
+  "required_artifacts": [
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/surface_mapping.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/core_engine_projection_differential.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w034-tracecalc-oracle-deepening-001/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-local/w034-independent-conformance-treecalc-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/decision/promotion_guard.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/differentials/cross_engine_differential_harness.json",
+    "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/diversity/evaluator_diversity_register.json",
+    "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+    "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/differentials/cross_engine_differential_harness.json",
+    "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/decision/promotion_guard.json",
+    "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/validation.json"
+  ],
+  "run_id": "w036-independent-diversity-differential-001",
+  "schema_version": "oxcalc.independent_conformance.bundle_manifest.v1",
+  "tracecalc_reference_run_id": "w034-tracecalc-oracle-deepening-001",
+  "treecalc_reference_run_id": "w034-independent-conformance-treecalc-001",
+  "w036_artifact_profile": "w036_independent_diversity_and_cross_engine_differential"
+}

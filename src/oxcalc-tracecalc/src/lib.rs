@@ -9,6 +9,7 @@ pub mod formal_assurance;
 pub mod implementation_conformance;
 pub mod independent_conformance;
 pub mod machine;
+pub mod operated_assurance;
 pub mod oracle_matrix;
 pub mod oxfml_fixture_bridge;
 pub mod pack_capability;

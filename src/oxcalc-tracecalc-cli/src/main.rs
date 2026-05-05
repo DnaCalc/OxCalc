@@ -13,6 +13,7 @@ use oxcalc_tracecalc::continuous_assurance::ContinuousAssuranceRunner;
 use oxcalc_tracecalc::formal_assurance::FormalAssuranceRunner;
 use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
+use oxcalc_tracecalc::operated_assurance::OperatedAssuranceRunner;
 use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
 use oxcalc_tracecalc::oxfml_fixture_bridge::OxFmlFixtureBridgeRunner;
 use oxcalc_tracecalc::pack_capability::PackCapabilityRunner;
@@ -35,7 +36,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | formal-assurance <run-id> | stage2-replay <run-id> | operated-assurance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -128,6 +129,15 @@ fn run() -> Result<(), String> {
             }
             ("stage2-replay", run_id)
         }
+        "operated-assurance" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli operated-assurance <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli operated-assurance <run-id>".to_string());
+            }
+            ("operated-assurance", run_id)
+        }
         "continuous-assurance" => {
             let Some(run_id) = args.next() else {
                 return Err("usage: oxcalc-tracecalc-cli continuous-assurance <run-id>".to_string());
@@ -217,6 +227,7 @@ fn run() -> Result<(), String> {
         "implementation-conformance" => ensure_implementation_conformance_root(&repo_root)?,
         "formal-assurance" => ensure_formal_assurance_root(&repo_root)?,
         "stage2-replay" => ensure_stage2_replay_root(&repo_root)?,
+        "operated-assurance" => ensure_operated_assurance_root(&repo_root)?,
         "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
@@ -328,6 +339,21 @@ fn run() -> Result<(), String> {
                 summary.permutation_replay_row_count,
                 summary.observable_invariance_row_count,
                 summary.exact_remaining_blocker_count,
+                summary.failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "operated-assurance" => {
+            let runner = OperatedAssuranceRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("operated assurance run failed: {error}"))?;
+            println!(
+                "Operated assurance run '{run_id}' wrote {} source rows, {} history rows, {} alert rules, {} exact blockers, and {} failed rows to {}.",
+                summary.source_evidence_row_count,
+                summary.multi_run_history_row_count,
+                summary.evaluated_alert_rule_count,
+                summary.exact_service_blocker_count,
                 summary.failed_row_count,
                 summary.artifact_root
             );
@@ -619,6 +645,24 @@ fn ensure_stage2_replay_root(repo_root: &Path) -> Result<(), String> {
             "current directory is not ready for Stage 2 replay: missing {} or {}",
             stage2_requirements.display(),
             treecalc_case.display()
+        ))
+    }
+}
+
+fn ensure_operated_assurance_root(repo_root: &Path) -> Result<(), String> {
+    let w037_service_readiness = repo_root.join(
+        "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/service/service_readiness.json",
+    );
+    let w038_stage2 = repo_root.join(
+        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+    );
+    if w037_service_readiness.exists() && w038_stage2.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for operated assurance: missing {} or {}",
+            w037_service_readiness.display(),
+            w038_stage2.display()
         ))
     }
 }

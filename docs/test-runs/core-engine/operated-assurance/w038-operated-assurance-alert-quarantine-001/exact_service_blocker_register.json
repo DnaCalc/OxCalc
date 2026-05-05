@@ -1,0 +1,35 @@
+{
+  "exact_service_blocker_count": 4,
+  "rows": [
+    {
+      "blocker_id": "service.operated_regression_runner_absent",
+      "owner": "calc-zsr.6; calc-zsr.9",
+      "promotion_consequence": "operated continuous assurance service remains unpromoted",
+      "reason": "W038 binds a multi-run evidence ledger but does not operate a recurring runner or scheduler.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.external_alert_dispatcher_absent",
+      "owner": "calc-zsr.6; calc-zsr.9",
+      "promotion_consequence": "alert/quarantine dispatcher claims remain unpromoted",
+      "reason": "W038 evaluates alert/quarantine rules locally but does not operate an external dispatcher or quarantine service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.operated_cross_engine_differential_absent",
+      "owner": "calc-zsr.6; calc-zsr.7",
+      "promotion_consequence": "operated cross-engine differential service remains unpromoted",
+      "reason": "cross-engine evidence remains file-backed and does not run as a continuous differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "service.retained_history_store_absent",
+      "owner": "calc-zsr.6; calc-zsr.8",
+      "promotion_consequence": "pack-grade replay and service-retained history claims remain unpromoted",
+      "reason": "multi-run history is checked-in evidence rather than a retained service store with lifecycle and retention guarantees.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w038-operated-assurance-alert-quarantine-001",
+  "schema_version": "oxcalc.operated_assurance.w038.exact_service_blocker_register.v1"
+}

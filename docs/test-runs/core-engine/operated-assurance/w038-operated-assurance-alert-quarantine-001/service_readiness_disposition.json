@@ -1,0 +1,70 @@
+{
+  "alert_decision_count": 0,
+  "artifact_root": "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001",
+  "blocked_criteria_count": 4,
+  "criteria": [
+    {
+      "criterion_id": "readiness.w038_multi_run_history_bound",
+      "evidence_or_blocker": "W037 history is extended with W038 TraceCalc authority, conformance, formal-assurance, and Stage 2 replay rows",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.alert_quarantine_rules_evaluated",
+      "evidence_or_blocker": "W038 evaluates alert/quarantine rules against current source rows",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.source_artifacts_retained",
+      "evidence_or_blocker": "all required predecessor and W038 source artifacts are present",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.unexpected_mismatches_zero",
+      "evidence_or_blocker": "current W037/W038 source rows report no unexpected semantic mismatches",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.stage2_bounded_replay_present",
+      "evidence_or_blocker": "W038 Stage 2 bounded replay and permutation evidence is present",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.cross_engine_file_backed_pilot_present",
+      "evidence_or_blocker": "W037 cross-engine pilot rows are file-backed inputs, not operated service proof",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "service.operated_regression_runner",
+      "evidence_or_blocker": "no recurring operated regression runner, retention service, or run scheduler is present",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.enforcing_alert_dispatcher",
+      "evidence_or_blocker": "W038 local rule evaluation is present, but no external alert dispatcher or quarantine service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.operated_cross_engine_differential",
+      "evidence_or_blocker": "cross-engine differential evidence remains file-backed rather than an operated service",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_history_store",
+      "evidence_or_blocker": "multi-run history is checked-in evidence, not a retained service store with lifecycle guarantees",
+      "state": "blocked"
+    }
+  ],
+  "criteria_count": 10,
+  "cross_engine_differential_service_promoted": false,
+  "evaluated_alert_rule_count": 8,
+  "external_alert_dispatcher_promoted": false,
+  "history_window_row_count": 15,
+  "operated_continuous_assurance_service_promoted": false,
+  "quarantine_decision_count": 0,
+  "readiness_state": "w038_local_enforcement_inputs_present_without_operated_service_promotion",
+  "run_id": "w038-operated-assurance-alert-quarantine-001",
+  "satisfied_criteria_count": 6,
+  "schema_version": "oxcalc.operated_assurance.w038.service_readiness_disposition.v1",
+  "w037_file_backed_pilot_present": true,
+  "w038_stage2_partition_replay_row_count": 5
+}

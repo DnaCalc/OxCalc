@@ -1,0 +1,17 @@
+{
+  "blocked_service_claims": [
+    "recurring_cross_engine_diff_scheduler",
+    "service_retained_history_store",
+    "external_alert_dispatcher",
+    "operated_cross_engine_endpoint"
+  ],
+  "disposition": "file_backed_cross_engine_rows_and_bounded_stage2_replay_are_bound_as_inputs_only",
+  "file_backed_pilot_present": true,
+  "operated_cross_engine_differential_service_present": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "run_id": "w038-operated-assurance-alert-quarantine-001",
+  "schema_version": "oxcalc.operated_assurance.w038.cross_engine_service_disposition.v1",
+  "w037_cross_engine_gate_row_count": 9,
+  "w037_cross_engine_unexpected_mismatch_count": 0,
+  "w038_stage2_bounded_replay_present": true
+}

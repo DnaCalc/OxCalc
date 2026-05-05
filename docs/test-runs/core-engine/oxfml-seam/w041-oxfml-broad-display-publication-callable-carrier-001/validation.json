@@ -1,0 +1,16 @@
+{
+  "broad_oxfml_seam_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "callable_metadata_row_count": 8,
+  "exact_blocker_count": 8,
+  "failed_row_count": 0,
+  "oxfml_handoff_triggered": false,
+  "publication_display_row_count": 8,
+  "registered_external_row_count": 6,
+  "run_id": "w041-oxfml-broad-display-publication-callable-carrier-001",
+  "schema_version": "oxcalc.oxfml_seam.w041.validation.v1",
+  "source_evidence_row_count": 12,
+  "status": "w041_oxfml_broad_publication_callable_carrier_packet_valid",
+  "surface_row_count": 10,
+  "validation_failures": []
+}

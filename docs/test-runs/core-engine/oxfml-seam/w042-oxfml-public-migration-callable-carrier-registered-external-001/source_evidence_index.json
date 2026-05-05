@@ -1,0 +1,178 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001",
+  "rows": [
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_upstream_host_direct_oxfml",
+      "semantic_state": "fresh_w042_direct_oxfml_runtime_slice_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_upstream_host_case_index",
+      "semantic_state": "case_index_covers_w042_direct_oxfml_let_lambda_w073_provider_and_table_surfaces",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_closure_obligation_map",
+      "semantic_state": "w042_oxfml_callable_public_migration_provider_obligations_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_w073_formatting_intake",
+      "semantic_state": "w073_typed_only_formatting_intake_bound_for_w042",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_direct_replacement_workset",
+      "semantic_state": "current_oxfml_w073_direct_replacement_contract_reviewed",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_downstream_handoff",
+      "semantic_state": "w073_public_request_construction_uptake_remains_downstream_handoff",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_callable_metadata_projection_blocker",
+      "semantic_state": "w042_callable_metadata_exact_blocker_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_optimized_core_no_callable_or_registered_promotion",
+      "semantic_state": "w042_optimized_core_callable_projection_no_promotion_guard_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_oxfml_predecessor_no_promotion",
+      "semantic_state": "predecessor_w041_oxfml_packet_preserves_no_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_diversity_no_broad_oxfml_promotion",
+      "semantic_state": "w042_diversity_packet_preserves_oxfml_no_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_diversity_oxfml_callable_blocker",
+      "semantic_state": "w042_diversity_retains_oxfml_callable_dependency_blocker",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_current_public_consumer_surface",
+      "semantic_state": "current_oxfml_public_consumer_surface_bound_as_watch_lane",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_runtime_facade_contract_notes",
+      "semantic_state": "runtime_facade_contract_named_without_oxcalc_api_freeze",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_registered_external_notes",
+      "semantic_state": "registered_external_packet_bound_at_note_level",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_fixture_standin_notes",
+      "semantic_state": "fixture_host_standin_packet_bound_without_production_api_freeze",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_publication_topology_residual_notes",
+      "semantic_state": "publication_topology_residuals_bound_as_note_level_narrower_scope",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_registered_external_snapshot_consequence_notes",
+      "semantic_state": "registered_external_snapshot_and_invalidation_consequences_bound_as_note_level",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w042-oxfml-public-migration-callable-carrier-registered-external-001",
+  "schema_version": "oxcalc.oxfml_seam.w042.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "oxfml_w073_handoff": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "oxfml_w073_workset": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "w041_oxfml_seam_decision": "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json",
+    "w042_callable_metadata_register": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json",
+    "w042_diversity_blockers": "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
+    "w042_diversity_decision": "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json",
+    "w042_formatting_intake": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+    "w042_implementation_summary": "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
+    "w042_let_lexical_result": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+    "w042_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+    "w042_returned_lambda_result": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+    "w042_upstream_host_case_index": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json",
+    "w042_upstream_host_summary": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
+    "w042_w073_result": "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json"
+  },
+  "source_evidence_row_count": 17
+}

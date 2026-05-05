@@ -23,10 +23,10 @@ Current packets:
 4. `W041_LEAN_TLA_FULL_VERIFICATION_AND_FAIRNESS_DISCHARGE.md` - `calc-sui.4` Lean/TLA proof-model classification, bounded model evidence, and retained fairness/unbounded blockers.
 5. `W041_STAGE2_PRODUCTION_ANALYZER_AND_PACK_EQUIVALENCE_PROOF_TRANCHE.md` - `calc-sui.5` Stage 2 analyzer input classification, declared-profile pack-equivalence evidence, and retained production/fairness/service/pack blockers.
 6. `W041_OPERATED_ASSURANCE_RETAINED_HISTORY_AND_ALERT_DISPATCH_SERVICE_TRANCHE.md` - `calc-sui.6` operated-assurance service envelope, retained-history query contract, retained-witness lifecycle register, alert-dispatch service contract, and retained service blockers.
+7. `W041_INDEPENDENT_EVALUATOR_BREADTH_AND_OPERATED_DIFFERENTIAL_SERVICE_TRANCHE.md` - `calc-sui.7` broadened independent formula-fragment evaluator, diversity/service authority routing, and retained full-breadth/service blockers.
 
 Planned packets:
 
-1. `W041_INDEPENDENT_EVALUATOR_BREADTH_AND_OPERATED_DIFFERENTIAL_SERVICE_TRANCHE.md`
-2. `W041_OXFML_BROAD_DISPLAY_PUBLICATION_AND_CALLABLE_CARRIER_CLOSURE.md`
-3. `W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md`
-4. `W041_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`
+1. `W041_OXFML_BROAD_DISPLAY_PUBLICATION_AND_CALLABLE_CARRIER_CLOSURE.md`
+2. `W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md`
+3. `W041_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`

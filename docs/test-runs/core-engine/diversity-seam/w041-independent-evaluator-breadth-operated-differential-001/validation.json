@@ -1,0 +1,18 @@
+{
+  "accepted_boundary_count": 15,
+  "broadened_independent_implementation_case_count": 8,
+  "broadened_independent_implementation_match_count": 8,
+  "cross_engine_differential_row_count": 9,
+  "exact_blocker_count": 6,
+  "failed_row_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "independent_evaluator_row_count": 10,
+  "mismatch_authority_row_count": 9,
+  "operated_cross_engine_differential_service_promoted": false,
+  "run_id": "w041-independent-evaluator-breadth-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w041.validation.v1",
+  "service_blocked_count": 7,
+  "source_evidence_row_count": 12,
+  "status": "w041_broadened_independent_evaluator_diversity_packet_valid",
+  "validation_failures": []
+}

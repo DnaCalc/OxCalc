@@ -1,0 +1,93 @@
+{
+  "broadened_independent_implementation_case_count": 8,
+  "broadened_independent_implementation_match_count": 8,
+  "fully_independent_evaluator_promoted": false,
+  "row_count": 10,
+  "rows": [
+    {
+      "case_count": 8,
+      "disposition_kind": "broadened_independent_implementation",
+      "evidence": "w041_independent_formula_evaluator_implementation.json",
+      "independence_state": "broadened_independent_formula_fragment_present",
+      "match_count": 8,
+      "promotion_consequence": "W041 broadens the independent slice beyond W040 scalar arithmetic, but still does not cover full TreeCalc/OxCalc evaluator breadth.",
+      "row_id": "independent.w041_broadened_formula_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_evaluator_row_set.json",
+      "independence_state": "predecessor_bounded_scalar_slice_subsumed_by_formula_fragment",
+      "promotion_consequence": "W040 bounded scalar evidence remains evidence lineage only.",
+      "row_id": "independent.w040_bounded_scalar_predecessor_narrowed",
+      "w040_fully_independent_evaluator_promoted": false,
+      "w040_row_count": 8
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+      "independence_state": "tracecalc_reference_oracle_not_independent_runtime",
+      "promotion_consequence": "TraceCalc-backed expectations remain oracle/reference evidence, not a second full evaluator.",
+      "row_id": "independent.tracecalc_reference_oracle_boundary",
+      "treecalc_case_count": 26
+    },
+    {
+      "direct_evidence_bound_count": 2,
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+      "exact_remaining_blocker_count": 3,
+      "independence_state": "optimized_core_conformance_same_authority_family",
+      "promotion_consequence": "Optimized/core evidence strengthens conformance but is not independent implementation authority.",
+      "row_id": "independent.optimized_core_same_family"
+    },
+    {
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+      "expectation_mismatch_count": 0,
+      "independence_state": "treecalc_dynamic_transition_same_oxcalc_family",
+      "promotion_consequence": "TreeCalc dynamic-transition evidence is core conformance evidence, not independent evaluator diversity.",
+      "row_id": "independent.treecalc_dynamic_transition_same_family"
+    },
+    {
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "independence_state": "external_formula_evaluator_not_oxcalc_coordinator",
+      "promotion_consequence": "OxFml formula evidence remains an external formula-evaluator slice, including narrow LET/LAMBDA seam evidence, not OxCalc coordinator breadth.",
+      "row_id": "independent.direct_oxfml_external_formula_slice"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+      "independence_state": "proof_model_not_executable_runtime_evaluator",
+      "lean_local_proof_row_count": 7,
+      "promotion_consequence": "Proof/model evidence supports specification and refinement, but does not supply runtime diversity.",
+      "row_id": "independent.proof_model_not_runtime_evaluator",
+      "rust_refinement_row_count": 5
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+      "independence_state": "stage2_policy_profiles_not_second_evaluator",
+      "policy_row_count": 14,
+      "promotion_consequence": "Stage 2 profile evidence remains policy/replay evidence, not separate evaluator implementation authority.",
+      "row_id": "independent.stage2_declared_profile_not_independent_runtime",
+      "stage2_policy_promoted": false
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+      "independence_state": "full_independent_implementation_breadth_absent",
+      "promotion_consequence": "Full independent-evaluator diversity remains blocked beyond the broadened formula-fragment slice.",
+      "row_id": "independent.full_independent_evaluator_breadth_blocked",
+      "service_readiness_blocked_count": 5
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+      "independence_state": "callable_and_publication_breadth_dependency_retained",
+      "promotion_consequence": "LET/LAMBDA and callable-carrier interaction remains in scope for later breadth, with OxFunc peeking only where the seam threads through OxCalc/OxFml.",
+      "row_id": "independent.oxfml_callable_breadth_dependency"
+    }
+  ],
+  "run_id": "w041-independent-evaluator-breadth-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w041.independent_evaluator_breadth_register.v1"
+}

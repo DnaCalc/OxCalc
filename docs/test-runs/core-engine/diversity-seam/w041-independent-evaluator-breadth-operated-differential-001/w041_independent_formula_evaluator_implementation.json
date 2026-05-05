@@ -1,0 +1,211 @@
+{
+  "case_count": 8,
+  "failed_case_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "implementation_authority": "local_w041_diversity_runner_independent_from_tracecalc_optimized_core_oxfml_and_oxfunc",
+  "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+  "match_count": 8,
+  "rows": [
+    {
+      "actual_value": 2,
+      "case_id": "formula.literal",
+      "environment": [],
+      "error": null,
+      "expected_value": 2,
+      "expression": "2",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 14,
+      "case_id": "formula.precedence",
+      "environment": [],
+      "error": null,
+      "expected_value": 14,
+      "expression": "2+3*4",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 2,
+      "case_id": "formula.subtraction_unary",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        }
+      ],
+      "error": null,
+      "expected_value": 2,
+      "expression": "-(X-5)",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 21,
+      "case_id": "formula.division",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        }
+      ],
+      "error": null,
+      "expected_value": 21,
+      "expression": "Y/X+1",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": true,
+      "case_id": "formula.comparison_equal",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        }
+      ],
+      "error": null,
+      "expected_value": true,
+      "expression": "X*20=Y",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 60,
+      "case_id": "formula.if_branch",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        }
+      ],
+      "error": null,
+      "expected_value": 60,
+      "expression": "IF(X>2,Y,X)",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 63,
+      "case_id": "formula.incremental_chain_z",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        }
+      ],
+      "error": null,
+      "expected_value": 63,
+      "expression": "X+Y",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    },
+    {
+      "actual_value": 63,
+      "case_id": "formula.not_equal_guard",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        }
+      ],
+      "error": null,
+      "expected_value": 63,
+      "expression": "IF(X<>2,63,0)",
+      "implementation_kind": "broadened_independent_formula_fragment_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_formula_fragment",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+    }
+  ],
+  "run_id": "w041-independent-evaluator-breadth-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w041.independent_formula_evaluator_implementation.v1",
+  "scope_limit": "integer names and literals with +, -, *, /, parentheses, comparisons, and IF(condition, true_expr, false_expr)"
+}

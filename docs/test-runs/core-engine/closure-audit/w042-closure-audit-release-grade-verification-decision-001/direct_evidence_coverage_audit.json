@@ -1,0 +1,94 @@
+{
+  "run_id": "w042-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w042.direct_evidence_coverage.v1",
+  "row_count": 10,
+  "rows": [
+    {
+      "coverage_lane": "closure_obligation_mapping",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json"
+      ],
+      "coverage_result": "33_obligations_14_promotion_targets_no_promotion_by_map"
+    },
+    {
+      "coverage_lane": "optimized_core_conformance",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/run_summary.json"
+      ],
+      "coverage_result": "declared_counterparts_and_callable_value_carriers_evidenced_exact_blockers_remain"
+    },
+    {
+      "coverage_lane": "rust_totality_refinement",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_totality_refinement_ledger.json",
+        "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_exact_blocker_register.json"
+      ],
+      "coverage_result": "checked_classification_refinement_and_totality_boundaries_without_whole_engine_totality_promotion"
+    },
+    {
+      "coverage_lane": "lean_tla",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_discharge_ledger.json",
+        "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json",
+        "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json"
+      ],
+      "coverage_result": "local_checked_and_bounded_rows_without_full_lean_tla_or_fairness_promotion"
+    },
+    {
+      "coverage_lane": "stage2",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json"
+      ],
+      "coverage_result": "declared_profile_pack_grade_equivalence_bound_production_policy_and_pack_grade_replay_unpromoted"
+    },
+    {
+      "coverage_lane": "operated_assurance",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_operated_service_envelope.json",
+        "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_history_service_query.json",
+        "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_witness_lifecycle_register.json"
+      ],
+      "coverage_result": "service_envelope_history_query_and_retained_witness_lifecycle_bound_without_operated_service_or_retention_slo_promotion"
+    },
+    {
+      "coverage_lane": "diversity_and_mismatch",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
+        "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json",
+        "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json"
+      ],
+      "coverage_result": "independent_reference_model_bound_full_breadth_operated_service_and_mismatch_quarantine_blocked"
+    },
+    {
+      "coverage_lane": "oxfml_seam",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_oxfml_consumed_surface_register.json",
+        "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_callable_carrier_and_metadata_register.json",
+        "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_registered_external_provider_register.json",
+        "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json"
+      ],
+      "coverage_result": "current_consumed_surface_w073_typed_guard_let_lambda_registered_external_and_callable_rows_bound_broad_surface_and_projection_blocked"
+    },
+    {
+      "coverage_lane": "pack_c5",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+        "docs/test-runs/core-engine/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/replay-appliance/validation/bundle_validation.json"
+      ],
+      "coverage_result": "89_required_artifacts_validated_16_inputs_satisfied_40_blockers_cap_c4"
+    },
+    {
+      "coverage_lane": "release_grade_verification",
+      "direct_evidence": [
+        "docs/test-runs/core-engine/closure-audit/w042-closure-audit-release-grade-verification-decision-001/release_decision.json",
+        "docs/test-runs/core-engine/closure-audit/w042-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ],
+      "coverage_result": "cross_lane_blockers_named_release_grade_verification_unpromoted"
+    }
+  ]
+}

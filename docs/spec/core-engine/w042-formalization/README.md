@@ -26,7 +26,8 @@ Current packets:
 7. `W042_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-czd.7` independent evaluator breadth, mismatch quarantine, and operated differential service.
 8. `W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md` - `calc-czd.8` OxFml public migration, callable carrier, and registered-external closure.
 9. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
+10. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.
 
 Planned packets:
 
-1. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.
+1. Post-W042 successor scope is recommended by the closure-audit packet; no W042 packet remains planned.

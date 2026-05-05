@@ -1,0 +1,66 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001",
+  "rule_count": 7,
+  "rules": [
+    {
+      "metric": "missing_artifact_count",
+      "operator": "eq",
+      "reason": "missing evidence invalidates the assurance window",
+      "rule_id": "threshold.semantic.missing_artifacts_zero",
+      "severity": "quarantine",
+      "value": 0
+    },
+    {
+      "metric": "unexpected_mismatch_count",
+      "operator": "eq",
+      "reason": "unexpected cross-engine or oracle mismatches block assurance",
+      "rule_id": "threshold.semantic.unexpected_mismatches_zero",
+      "severity": "quarantine",
+      "value": 0
+    },
+    {
+      "metric": "failed_row_count",
+      "operator": "eq",
+      "reason": "failed oracle, conformance, or TLC rows block progression",
+      "rule_id": "threshold.semantic.failed_rows_zero",
+      "severity": "quarantine",
+      "value": 0
+    },
+    {
+      "metric": "declared_gap_promoted_as_match_count",
+      "operator": "eq",
+      "reason": "declared gaps remain blockers until replay or differential evidence promotes them",
+      "rule_id": "threshold.semantic.declared_gaps_not_matches",
+      "severity": "quarantine",
+      "value": 0
+    },
+    {
+      "metric": "history_window_row_count",
+      "operator": "gte",
+      "reason": "W037 requires a machine-readable history window across predecessor and W037 service-readiness evidence",
+      "rule_id": "threshold.history.minimum_window_rows",
+      "severity": "quarantine",
+      "value": 11
+    },
+    {
+      "metric": "continuous_service_promoted",
+      "operator": "eq",
+      "reason": "simulated multi-run evidence does not promote an operated assurance service",
+      "rule_id": "threshold.service.no_simulated_service_promotion",
+      "severity": "quarantine",
+      "value": false
+    },
+    {
+      "metric": "timing_regression",
+      "operator": "report_only",
+      "reason": "timing can trigger investigation but cannot prove or disprove semantic correctness by itself",
+      "rule_id": "threshold.timing.measurement_only",
+      "severity": "alert",
+      "value": "no_correctness_consequence_without_semantic_failure"
+    }
+  ],
+  "run_id": "w037-operated-assurance-service-pilot-001",
+  "schema_version": "oxcalc.continuous_assurance.regression_thresholds.v1",
+  "semantic_first": true,
+  "timing_can_quarantine": false
+}

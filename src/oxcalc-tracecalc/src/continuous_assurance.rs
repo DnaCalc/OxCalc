@@ -20,6 +20,9 @@ const REGRESSION_THRESHOLDS_SCHEMA_V1: &str =
     "oxcalc.continuous_assurance.regression_thresholds.v1";
 const QUARANTINE_POLICY_SCHEMA_V1: &str = "oxcalc.continuous_assurance.quarantine_policy.v1";
 const SIMULATED_MULTI_RUN_SCHEMA_V1: &str = "oxcalc.continuous_assurance.simulated_multi_run.v1";
+const SERVICE_READINESS_SCHEMA_V1: &str = "oxcalc.continuous_assurance.service_readiness.v1";
+const CROSS_ENGINE_SERVICE_PILOT_SCHEMA_V1: &str =
+    "oxcalc.continuous_assurance.cross_engine_service_pilot.v1";
 
 const W034_SCALE_BINDING_RUN_ID: &str = "w034-continuous-scale-gate-binding-001";
 const W034_PACK_RUN_ID: &str = "w034-pack-capability-gate-binding-001";
@@ -31,6 +34,11 @@ const W036_TRACECALC_COVERAGE_RUN_ID: &str = "w036-tracecalc-coverage-closure-00
 const W036_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str = "w036-implementation-conformance-closure-001";
 const W036_TLA_STAGE2_RUN_ID: &str = "w036-stage2-partition-001";
 const W036_INDEPENDENT_DIFFERENTIAL_RUN_ID: &str = "w036-independent-diversity-differential-001";
+const W037_TRACECALC_OBSERVABLE_RUN_ID: &str = "w037-tracecalc-observable-closure-001";
+const W037_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str = "w037-implementation-conformance-closure-001";
+const W037_DIRECT_OXFML_RUN_ID: &str = "w037-direct-oxfml-evaluator-001";
+const W037_FORMAL_INVENTORY_RUN_ID: &str = "w037-proof-model-closure-001";
+const W037_STAGE2_CRITERIA_RUN_ID: &str = "w037-stage2-deterministic-replay-criteria-001";
 
 const W035_FORMAL_ARTIFACTS: &[&str] = &[
     "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
@@ -100,6 +108,9 @@ pub struct ContinuousAssuranceRunSummary {
     pub regression_threshold_count: usize,
     pub quarantine_rule_count: usize,
     pub simulated_multi_run_count: usize,
+    pub service_readiness_criteria_count: usize,
+    pub service_readiness_blocked_count: usize,
+    pub cross_engine_service_pilot_present: bool,
     pub continuous_service_promoted: bool,
     pub artifact_root: String,
 }
@@ -117,11 +128,13 @@ struct Evaluation {
 }
 
 #[derive(Debug, Clone)]
-struct W036OperationArtifacts {
+struct OperationArtifacts {
     history_window: Value,
     regression_thresholds: Value,
     quarantine_policy: Value,
     simulated_multi_run: Value,
+    service_readiness: Option<Value>,
+    cross_engine_service_pilot: Option<Value>,
 }
 
 impl ContinuousAssuranceRunner {
@@ -159,19 +172,22 @@ impl ContinuousAssuranceRunner {
         create_directory(&artifact_root.join("decision"))?;
         create_directory(&artifact_root.join("differentials"))?;
         create_directory(&artifact_root.join("evidence"))?;
-        if is_w036_run(run_id) {
+        if is_operation_history_run(run_id) {
             create_directory(&artifact_root.join("alerts"))?;
             create_directory(&artifact_root.join("history"))?;
             create_directory(&artifact_root.join("operation"))?;
             create_directory(&artifact_root.join("thresholds"))?;
+        }
+        if is_w037_run(run_id) {
+            create_directory(&artifact_root.join("service"))?;
         }
         create_directory(&artifact_root.join("schedule"))?;
         create_directory(&artifact_root.join("replay-appliance"))?;
         create_directory(&artifact_root.join("replay-appliance/validation"))?;
 
         let evaluation = evaluate(repo_root, run_id)?;
-        let w036_artifacts = if is_w036_run(run_id) {
-            Some(w036_operation_artifacts(
+        let operation_artifacts = if is_operation_history_run(run_id) {
+            Some(operation_artifacts(
                 run_id,
                 &relative_artifact_root,
                 &evaluation,
@@ -180,7 +196,7 @@ impl ContinuousAssuranceRunner {
             None
         };
         let schedule = continuous_assurance_schedule(run_id, &relative_artifact_root);
-        let decision = decision_packet(run_id, &evaluation, w036_artifacts.as_ref());
+        let decision = decision_packet(run_id, &evaluation, operation_artifacts.as_ref());
 
         write_json(
             &artifact_root.join("evidence/source_evidence_index.json"),
@@ -213,23 +229,37 @@ impl ContinuousAssuranceRunner {
             &artifact_root.join("decision/continuous_assurance_decision.json"),
             &decision,
         )?;
-        if let Some(w036_artifacts) = &w036_artifacts {
+        if let Some(operation_artifacts) = &operation_artifacts {
             write_json(
                 &artifact_root.join("history/assurance_history_window.json"),
-                &w036_artifacts.history_window,
+                &operation_artifacts.history_window,
             )?;
             write_json(
                 &artifact_root.join("thresholds/regression_thresholds.json"),
-                &w036_artifacts.regression_thresholds,
+                &operation_artifacts.regression_thresholds,
             )?;
             write_json(
                 &artifact_root.join("alerts/quarantine_policy.json"),
-                &w036_artifacts.quarantine_policy,
+                &operation_artifacts.quarantine_policy,
             )?;
             write_json(
                 &artifact_root.join("operation/simulated_multi_run_evidence.json"),
-                &w036_artifacts.simulated_multi_run,
+                &operation_artifacts.simulated_multi_run,
             )?;
+            if let Some(service_readiness) = &operation_artifacts.service_readiness {
+                write_json(
+                    &artifact_root.join("service/service_readiness.json"),
+                    service_readiness,
+                )?;
+            }
+            if let Some(cross_engine_service_pilot) =
+                &operation_artifacts.cross_engine_service_pilot
+            {
+                write_json(
+                    &artifact_root.join("service/cross_engine_service_pilot.json"),
+                    cross_engine_service_pilot,
+                )?;
+            }
         }
 
         let required_artifacts = required_artifacts(run_id);
@@ -239,7 +269,9 @@ impl ContinuousAssuranceRunner {
                 "schema_version": BUNDLE_MANIFEST_SCHEMA_V1,
                 "run_id": run_id,
                 "artifact_root": relative_artifact_root,
-                "claimed_capability": if is_w036_run(run_id) {
+                "claimed_capability": if is_w037_run(run_id) {
+                    "operated_assurance_service_readiness_packet"
+                } else if is_w036_run(run_id) {
                     "simulated_continuous_assurance_history_packet"
                 } else {
                     "continuous_assurance_gate_packet"
@@ -268,18 +300,31 @@ impl ContinuousAssuranceRunner {
             missing_artifact_count: evaluation.missing_artifacts.len(),
             unexpected_mismatch_count: evaluation.unexpected_mismatches.len(),
             no_promotion_reason_count: evaluation.no_promotion_reasons.len(),
-            history_window_row_count: w036_artifacts.as_ref().map_or(0, |artifacts| {
+            history_window_row_count: operation_artifacts.as_ref().map_or(0, |artifacts| {
                 number_at(&artifacts.history_window, "row_count") as usize
             }),
-            regression_threshold_count: w036_artifacts.as_ref().map_or(0, |artifacts| {
+            regression_threshold_count: operation_artifacts.as_ref().map_or(0, |artifacts| {
                 number_at(&artifacts.regression_thresholds, "rule_count") as usize
             }),
-            quarantine_rule_count: w036_artifacts.as_ref().map_or(0, |artifacts| {
+            quarantine_rule_count: operation_artifacts.as_ref().map_or(0, |artifacts| {
                 number_at(&artifacts.quarantine_policy, "rule_count") as usize
             }),
-            simulated_multi_run_count: w036_artifacts.as_ref().map_or(0, |artifacts| {
+            simulated_multi_run_count: operation_artifacts.as_ref().map_or(0, |artifacts| {
                 number_at(&artifacts.simulated_multi_run, "row_count") as usize
             }),
+            service_readiness_criteria_count: operation_artifacts
+                .as_ref()
+                .and_then(|artifacts| artifacts.service_readiness.as_ref())
+                .map_or(0, |value| number_at(value, "criteria_count") as usize),
+            service_readiness_blocked_count: operation_artifacts
+                .as_ref()
+                .and_then(|artifacts| artifacts.service_readiness.as_ref())
+                .map_or(0, |value| {
+                    number_at(value, "blocked_criteria_count") as usize
+                }),
+            cross_engine_service_pilot_present: operation_artifacts
+                .as_ref()
+                .is_some_and(|artifacts| artifacts.cross_engine_service_pilot.is_some()),
             continuous_service_promoted: false,
             artifact_root: relative_artifact_root.clone(),
         };
@@ -300,16 +345,21 @@ impl ContinuousAssuranceRunner {
                 "regression_threshold_count": summary.regression_threshold_count,
                 "quarantine_rule_count": summary.quarantine_rule_count,
                 "simulated_multi_run_count": summary.simulated_multi_run_count,
+                "service_readiness_criteria_count": summary.service_readiness_criteria_count,
+                "service_readiness_blocked_count": summary.service_readiness_blocked_count,
+                "cross_engine_service_pilot_present": summary.cross_engine_service_pilot_present,
                 "continuous_service_promoted": summary.continuous_service_promoted,
                 "artifact_root": summary.artifact_root,
                 "source_evidence_index_path": format!("{relative_artifact_root}/evidence/source_evidence_index.json"),
                 "schedule_path": format!("{relative_artifact_root}/schedule/continuous_assurance_schedule.json"),
                 "cross_engine_differential_gate_path": format!("{relative_artifact_root}/differentials/cross_engine_differential_gate.json"),
                 "decision_path": format!("{relative_artifact_root}/decision/continuous_assurance_decision.json"),
-                "history_window_path": if is_w036_run(run_id) { Value::String(format!("{relative_artifact_root}/history/assurance_history_window.json")) } else { Value::Null },
-                "regression_thresholds_path": if is_w036_run(run_id) { Value::String(format!("{relative_artifact_root}/thresholds/regression_thresholds.json")) } else { Value::Null },
-                "quarantine_policy_path": if is_w036_run(run_id) { Value::String(format!("{relative_artifact_root}/alerts/quarantine_policy.json")) } else { Value::Null },
-                "simulated_multi_run_path": if is_w036_run(run_id) { Value::String(format!("{relative_artifact_root}/operation/simulated_multi_run_evidence.json")) } else { Value::Null },
+                "history_window_path": if is_operation_history_run(run_id) { Value::String(format!("{relative_artifact_root}/history/assurance_history_window.json")) } else { Value::Null },
+                "regression_thresholds_path": if is_operation_history_run(run_id) { Value::String(format!("{relative_artifact_root}/thresholds/regression_thresholds.json")) } else { Value::Null },
+                "quarantine_policy_path": if is_operation_history_run(run_id) { Value::String(format!("{relative_artifact_root}/alerts/quarantine_policy.json")) } else { Value::Null },
+                "simulated_multi_run_path": if is_operation_history_run(run_id) { Value::String(format!("{relative_artifact_root}/operation/simulated_multi_run_evidence.json")) } else { Value::Null },
+                "service_readiness_path": if is_w037_run(run_id) { Value::String(format!("{relative_artifact_root}/service/service_readiness.json")) } else { Value::Null },
+                "cross_engine_service_pilot_path": if is_w037_run(run_id) { Value::String(format!("{relative_artifact_root}/service/cross_engine_service_pilot.json")) } else { Value::Null },
                 "bundle_validation_path": format!("{relative_artifact_root}/replay-appliance/validation/bundle_validation.json"),
             }),
         )?;
@@ -344,6 +394,9 @@ impl ContinuousAssuranceRunner {
                 "regression_threshold_count": summary.regression_threshold_count,
                 "quarantine_rule_count": summary.quarantine_rule_count,
                 "simulated_multi_run_count": summary.simulated_multi_run_count,
+                "service_readiness_criteria_count": summary.service_readiness_criteria_count,
+                "service_readiness_blocked_count": summary.service_readiness_blocked_count,
+                "cross_engine_service_pilot_present": summary.cross_engine_service_pilot_present,
                 "continuous_service_promoted": summary.continuous_service_promoted,
                 "decision_status": summary.decision_status,
             }),
@@ -362,13 +415,20 @@ fn evaluate(repo_root: &Path, run_id: &str) -> Result<Evaluation, ContinuousAssu
     evaluate_implementation_conformance(repo_root, &mut evaluation)?;
     evaluate_formal_artifacts(repo_root, &mut evaluation);
 
-    if is_w036_run(run_id) {
+    if is_operation_history_run(run_id) {
         evaluate_w035_continuous_gate(repo_root, &mut evaluation)?;
         evaluate_w036_tracecalc_coverage(repo_root, &mut evaluation)?;
         evaluate_w036_implementation_conformance(repo_root, &mut evaluation)?;
         evaluate_w036_formal_artifacts(repo_root, &mut evaluation);
         evaluate_w036_tla_stage2_partition(repo_root, &mut evaluation)?;
         evaluate_w036_independent_differential(repo_root, &mut evaluation)?;
+    }
+    if is_w037_run(run_id) {
+        evaluate_w037_tracecalc_observable(repo_root, &mut evaluation)?;
+        evaluate_w037_implementation_conformance(repo_root, &mut evaluation)?;
+        evaluate_w037_direct_oxfml(repo_root, &mut evaluation)?;
+        evaluate_w037_formal_inventory(repo_root, &mut evaluation)?;
+        evaluate_w037_stage2_criteria(repo_root, &mut evaluation)?;
     }
 
     evaluation.cross_engine_rows = cross_engine_rows(run_id);
@@ -896,6 +956,298 @@ fn evaluate_w036_independent_differential(
     Ok(())
 }
 
+fn evaluate_w037_tracecalc_observable(
+    repo_root: &Path,
+    evaluation: &mut Evaluation,
+) -> Result<(), ContinuousAssuranceError> {
+    let summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "tracecalc-reference-machine",
+        W037_TRACECALC_OBSERVABLE_RUN_ID,
+        "oracle-matrix",
+        "run_summary.json",
+    ]);
+    let criteria_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "tracecalc-reference-machine",
+        W037_TRACECALC_OBSERVABLE_RUN_ID,
+        "oracle-matrix",
+        "coverage_closure_criteria.json",
+    ]);
+    let summary = read_json(repo_root, &summary_path)?;
+    let criteria = read_json(repo_root, &criteria_path)?;
+    add_missing_if_absent(evaluation, &summary_path, &summary);
+    add_missing_if_absent(evaluation, &criteria_path, &criteria);
+
+    let mut failures = Vec::new();
+    if let Some(summary) = &summary {
+        if number_at(summary, "missing_or_failed_row_count") != 0 {
+            failures.push("w037_tracecalc_has_missing_or_failed_rows".to_string());
+        }
+        if number_at(summary, "classified_uncovered_row_count") != 0 {
+            failures.push("w037_tracecalc_has_uncovered_rows".to_string());
+        }
+    }
+    if criteria
+        .as_ref()
+        .is_some_and(|value| bool_at(value, "full_oracle_claim"))
+    {
+        failures.push("unexpected_w037_full_tracecalc_oracle_claim".to_string());
+    }
+    evaluation.unexpected_mismatches.extend(failures.clone());
+    evaluation.source_rows.push(json!({
+        "input_id": "w037_tracecalc_observable_closure",
+        "artifact_paths": [summary_path, criteria_path],
+        "evidence_state": if failures.is_empty() && summary.is_some() && criteria.is_some() {
+            "observable_closure_present_with_authority_exclusion_no_full_oracle_claim"
+        } else {
+            "source_gap"
+        },
+        "matrix_row_count": summary.as_ref().map_or(0, |value| number_at(value, "matrix_row_count")),
+        "covered_row_count": summary.as_ref().map_or(0, |value| number_at(value, "covered_row_count")),
+        "classified_uncovered_row_count": summary.as_ref().map_or(0, |value| number_at(value, "classified_uncovered_row_count")),
+        "excluded_row_count": summary.as_ref().map_or(0, |value| number_at(value, "excluded_row_count")),
+        "missing_or_failed_row_count": summary.as_ref().map_or(0, |value| number_at(value, "missing_or_failed_row_count")),
+        "full_oracle_claim": criteria.as_ref().is_some_and(|value| bool_at(value, "full_oracle_claim")),
+        "failures": failures,
+    }));
+    Ok(())
+}
+
+fn evaluate_w037_implementation_conformance(
+    repo_root: &Path,
+    evaluation: &mut Evaluation,
+) -> Result<(), ContinuousAssuranceError> {
+    let summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "implementation-conformance",
+        W037_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+        "run_summary.json",
+    ]);
+    let guard_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "implementation-conformance",
+        W037_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+        "w037_match_promotion_guard.json",
+    ]);
+    let summary = read_json(repo_root, &summary_path)?;
+    let guard = read_json(repo_root, &guard_path)?;
+    add_missing_if_absent(evaluation, &summary_path, &summary);
+    add_missing_if_absent(evaluation, &guard_path, &guard);
+
+    let mut failures = Vec::new();
+    if let Some(summary) = &summary {
+        if number_at(summary, "failed_row_count") != 0 {
+            failures.push("w037_implementation_conformance_has_failed_rows".to_string());
+        }
+        if number_at(summary, "w037_match_promoted_count") != 1 {
+            failures.push("w037_expected_exactly_one_match_promoted_row".to_string());
+        }
+    }
+    if let Some(guard) = &guard
+        && number_at(guard, "promoted_match_count") != 1
+    {
+        failures.push("w037_declared_gap_promotion_guard_unexpected_count".to_string());
+    }
+    evaluation.unexpected_mismatches.extend(failures.clone());
+    evaluation.source_rows.push(json!({
+        "input_id": "w037_implementation_conformance_closure",
+        "artifact_paths": [summary_path, guard_path],
+        "evidence_state": if failures.is_empty() && summary.is_some() && guard.is_some() {
+            "one_declared_gap_promoted_with_guard_and_residual_blockers_preserved"
+        } else {
+            "source_gap"
+        },
+        "w037_decision_row_count": summary.as_ref().map_or(0, |value| number_at(value, "w037_decision_row_count")),
+        "w037_fixed_or_promoted_count": summary.as_ref().map_or(0, |value| number_at(value, "w037_fixed_or_promoted_count")),
+        "w037_residual_blocker_count": summary.as_ref().map_or(0, |value| number_at(value, "w037_residual_blocker_count")),
+        "w037_match_promoted_count": summary.as_ref().map_or(0, |value| number_at(value, "w037_match_promoted_count")),
+        "failed_row_count": summary.as_ref().map_or(0, |value| number_at(value, "failed_row_count")),
+        "failures": failures,
+    }));
+    Ok(())
+}
+
+fn evaluate_w037_direct_oxfml(
+    repo_root: &Path,
+    evaluation: &mut Evaluation,
+) -> Result<(), ContinuousAssuranceError> {
+    let summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "upstream-host",
+        W037_DIRECT_OXFML_RUN_ID,
+        "run_summary.json",
+    ]);
+    let summary = read_json(repo_root, &summary_path)?;
+    add_missing_if_absent(evaluation, &summary_path, &summary);
+
+    let mut failures = Vec::new();
+    if let Some(summary) = &summary {
+        if number_at(summary, "expectation_mismatch_count") != 0 {
+            failures.push("w037_direct_oxfml_expectation_mismatch".to_string());
+        }
+        if number_at(summary, "w073_typed_rule_case_count") == 0 {
+            failures.push("w037_direct_oxfml_missing_w073_typed_rule_guard".to_string());
+        }
+        if summary.get("promotion_limits").is_some_and(|limits| {
+            bool_at(limits, "pack_grade_replay_promoted")
+                || bool_at(limits, "c5_promoted")
+                || bool_at(limits, "general_oxfunc_kernel_claimed")
+        }) {
+            failures.push("unexpected_w037_direct_oxfml_promotion_claim".to_string());
+        }
+    }
+    evaluation.unexpected_mismatches.extend(failures.clone());
+    evaluation.source_rows.push(json!({
+        "input_id": "w037_direct_oxfml_evaluator",
+        "artifact_paths": [summary_path],
+        "evidence_state": if failures.is_empty() && summary.is_some() {
+            "direct_oxfml_slice_present_with_let_lambda_and_w073_guard"
+        } else {
+            "source_gap"
+        },
+        "fixture_case_count": summary.as_ref().map_or(0, |value| number_at(value, "fixture_case_count")),
+        "direct_oxfml_case_count": summary.as_ref().map_or(0, |value| number_at(value, "direct_oxfml_case_count")),
+        "let_lambda_case_count": summary.as_ref().map_or(0, |value| number_at(value, "let_lambda_case_count")),
+        "w073_typed_rule_case_count": summary.as_ref().map_or(0, |value| number_at(value, "w073_typed_rule_case_count")),
+        "expectation_mismatch_count": summary.as_ref().map_or(0, |value| number_at(value, "expectation_mismatch_count")),
+        "failures": failures,
+    }));
+    Ok(())
+}
+
+fn evaluate_w037_formal_inventory(
+    repo_root: &Path,
+    evaluation: &mut Evaluation,
+) -> Result<(), ContinuousAssuranceError> {
+    let summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "formal-inventory",
+        W037_FORMAL_INVENTORY_RUN_ID,
+        "run_summary.json",
+    ]);
+    let validation_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "formal-inventory",
+        W037_FORMAL_INVENTORY_RUN_ID,
+        "validation.json",
+    ]);
+    let summary = read_json(repo_root, &summary_path)?;
+    let validation = read_json(repo_root, &validation_path)?;
+    add_missing_if_absent(evaluation, &summary_path, &summary);
+    add_missing_if_absent(evaluation, &validation_path, &validation);
+
+    let mut failures = Vec::new();
+    if let Some(summary) = &summary {
+        if !bool_at(summary, "all_checked_artifacts_passed") {
+            failures.push("w037_formal_inventory_checked_artifacts_not_all_passed".to_string());
+        }
+        if number_at(summary, "lean_explicit_axiom_count") != 0 {
+            failures.push("w037_formal_inventory_has_explicit_axioms".to_string());
+        }
+        if number_at(summary, "lean_sorry_placeholder_count") != 0 {
+            failures.push("w037_formal_inventory_has_sorry_placeholders".to_string());
+        }
+        if number_at(summary, "tla_failed_config_count") != 0 {
+            failures.push("w037_formal_inventory_has_failed_tla_configs".to_string());
+        }
+    }
+    evaluation.unexpected_mismatches.extend(failures.clone());
+    evaluation.source_rows.push(json!({
+        "input_id": "w037_proof_model_inventory",
+        "artifact_paths": [summary_path, validation_path],
+        "evidence_state": if failures.is_empty() && summary.is_some() && validation.is_some() {
+            "proof_model_inventory_checked_without_full_verification_promotion"
+        } else {
+            "source_gap"
+        },
+        "lean_file_count": summary.as_ref().map_or(0, |value| number_at(value, "lean_file_count")),
+        "lean_files_checked": summary.as_ref().map_or(0, |value| number_at(value, "lean_files_checked")),
+        "lean_explicit_axiom_count": summary.as_ref().map_or(0, |value| number_at(value, "lean_explicit_axiom_count")),
+        "lean_sorry_placeholder_count": summary.as_ref().map_or(0, |value| number_at(value, "lean_sorry_placeholder_count")),
+        "tla_routine_config_count": summary.as_ref().map_or(0, |value| number_at(value, "tla_routine_config_count")),
+        "tla_failed_config_count": summary.as_ref().map_or(0, |value| number_at(value, "tla_failed_config_count")),
+        "failures": failures,
+    }));
+    Ok(())
+}
+
+fn evaluate_w037_stage2_criteria(
+    repo_root: &Path,
+    evaluation: &mut Evaluation,
+) -> Result<(), ContinuousAssuranceError> {
+    let summary_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "stage2-criteria",
+        W037_STAGE2_CRITERIA_RUN_ID,
+        "run_summary.json",
+    ]);
+    let decision_path = relative_artifact_path([
+        "docs",
+        "test-runs",
+        "core-engine",
+        "stage2-criteria",
+        W037_STAGE2_CRITERIA_RUN_ID,
+        "promotion_decision.json",
+    ]);
+    let summary = read_json(repo_root, &summary_path)?;
+    let decision = read_json(repo_root, &decision_path)?;
+    add_missing_if_absent(evaluation, &summary_path, &summary);
+    add_missing_if_absent(evaluation, &decision_path, &decision);
+
+    let mut failures = Vec::new();
+    if let Some(summary) = &summary {
+        if bool_at(summary, "stage2_policy_promoted") {
+            failures.push("unexpected_w037_stage2_policy_promotion".to_string());
+        }
+        if bool_at(summary, "stage2_promotion_candidate") {
+            failures.push("unexpected_w037_stage2_promotion_candidate".to_string());
+        }
+        if number_at(summary, "blocked_criteria_row_count") == 0 {
+            failures.push("w037_stage2_criteria_expected_blocked_rows".to_string());
+        }
+    }
+    if decision
+        .as_ref()
+        .is_some_and(|value| bool_at(value, "stage2_policy_promoted"))
+    {
+        failures.push("unexpected_w037_stage2_decision_policy_promotion".to_string());
+    }
+    evaluation.unexpected_mismatches.extend(failures.clone());
+    evaluation.source_rows.push(json!({
+        "input_id": "w037_stage2_criteria",
+        "artifact_paths": [summary_path, decision_path],
+        "evidence_state": if failures.is_empty() && summary.is_some() && decision.is_some() {
+            "stage2_criteria_present_with_deterministic_replay_blockers"
+        } else {
+            "source_gap"
+        },
+        "criteria_row_count": summary.as_ref().map_or(0, |value| number_at(value, "criteria_row_count")),
+        "satisfied_criteria_row_count": summary.as_ref().map_or(0, |value| number_at(value, "satisfied_criteria_row_count")),
+        "blocked_criteria_row_count": summary.as_ref().map_or(0, |value| number_at(value, "blocked_criteria_row_count")),
+        "stage2_policy_promoted": summary.as_ref().is_some_and(|value| bool_at(value, "stage2_policy_promoted")),
+        "stage2_promotion_candidate": summary.as_ref().is_some_and(|value| bool_at(value, "stage2_promotion_candidate")),
+        "failures": failures,
+    }));
+    Ok(())
+}
+
 fn continuous_assurance_schedule(run_id: &str, artifact_root: &str) -> Value {
     let mut lanes = vec![
         json!({
@@ -944,10 +1296,14 @@ fn continuous_assurance_schedule(run_id: &str, artifact_root: &str) -> Value {
         }),
     ];
 
-    if is_w036_run(run_id) {
+    if is_operation_history_run(run_id) {
         lanes.push(json!({
             "lane_id": "continuous.history.thresholds",
-            "cadence": "simulated_from_checked_in_successor_evidence_until_runner_exists",
+            "cadence": if is_w037_run(run_id) {
+                "file_backed_service_readiness_from_checked_in_successor_evidence_until_runner_exists"
+            } else {
+                "simulated_from_checked_in_successor_evidence_until_runner_exists"
+            },
             "required_artifacts": [
                 "history/assurance_history_window.json",
                 "thresholds/regression_thresholds.json",
@@ -959,6 +1315,22 @@ fn continuous_assurance_schedule(run_id: &str, artifact_root: &str) -> Value {
                 "semantic regressions quarantine before any performance interpretation",
                 "timing rows are alert-only measurements and never correctness proof",
                 "no operated continuous service promotion is made from simulated history"
+            ]
+        }));
+    }
+    if is_w037_run(run_id) {
+        lanes.push(json!({
+            "lane_id": "continuous.service.readiness",
+            "cadence": "release_candidate_and_before_pack_or_service_promotion",
+            "required_artifacts": [
+                "service/service_readiness.json",
+                "service/cross_engine_service_pilot.json",
+                "differentials/cross_engine_differential_gate.json"
+            ],
+            "acceptance": [
+                "service-readiness criteria distinguish satisfied file-backed inputs from blocked operated-service claims",
+                "cross-engine service pilot remains file-backed until an operated runner and alert dispatcher exist",
+                "full independent evaluator diversity remains a blocker until a qualifying evaluator implementation is present"
             ]
         }));
     }
@@ -1003,7 +1375,7 @@ fn cross_engine_rows(run_id: &str) -> Vec<Value> {
         }),
     ];
 
-    if is_w036_run(run_id) {
+    if is_operation_history_run(run_id) {
         rows.push(json!({
             "row_id": "diff.w036_cross_engine_differential_harness",
             "comparison_state": "deterministic_harness_present_without_operated_service",
@@ -1019,6 +1391,29 @@ fn cross_engine_rows(run_id: &str) -> Vec<Value> {
             "failures": []
         }));
     }
+    if is_w037_run(run_id) {
+        rows.push(json!({
+            "row_id": "diff.w037_direct_oxfml_guard",
+            "comparison_state": "direct_oxfml_fixture_slice_present_without_pack_grade_replay",
+            "required_for_promotion": true,
+            "current_limit": "W037 exercises the direct OxFml runtime facade, narrow LET/LAMBDA rows, and W073 typed formatting guard, but does not promote pack-grade replay",
+            "failures": []
+        }));
+        rows.push(json!({
+            "row_id": "diff.w037_stage2_partition_service_blocker",
+            "comparison_state": "stage2_criteria_present_without_operated_differential_service",
+            "required_for_promotion": true,
+            "current_limit": "Stage 2 criteria state deterministic replay and operated differential requirements, but deterministic partition replay and operated service remain absent",
+            "failures": []
+        }));
+        rows.push(json!({
+            "row_id": "diff.w037_operated_service_pilot",
+            "comparison_state": "file_backed_pilot_present_without_operated_service_promotion",
+            "required_for_promotion": true,
+            "current_limit": "W037 records readiness inputs and blockers, not a scheduled runner, enforcing alert dispatcher, or continuous cross-engine service",
+            "failures": []
+        }));
+    }
 
     rows
 }
@@ -1026,19 +1421,23 @@ fn cross_engine_rows(run_id: &str) -> Vec<Value> {
 fn decision_packet(
     run_id: &str,
     evaluation: &Evaluation,
-    w036_artifacts: Option<&W036OperationArtifacts>,
+    operation_artifacts: Option<&OperationArtifacts>,
 ) -> Value {
     json!({
         "schema_version": DECISION_SCHEMA_V1,
         "run_id": run_id,
         "decision_status": if evaluation.missing_artifacts.is_empty() && evaluation.unexpected_mismatches.is_empty() {
-            if is_w036_run(run_id) {
+            if is_w037_run(run_id) {
+                "w037_operated_assurance_service_pilot_recorded_without_service_promotion"
+            } else if is_w036_run(run_id) {
                 "w036_simulated_continuous_assurance_history_defined_without_service_promotion"
             } else {
                 "continuous_assurance_gate_defined_without_promotion"
             }
         } else {
-            if is_w036_run(run_id) {
+            if is_w037_run(run_id) {
+                "w037_operated_assurance_service_pilot_has_source_gaps"
+            } else if is_w036_run(run_id) {
                 "w036_continuous_assurance_operation_has_source_gaps"
             } else {
                 "continuous_assurance_gate_has_source_gaps"
@@ -1047,12 +1446,21 @@ fn decision_packet(
         "continuous_scale_assurance_promoted": false,
         "cross_engine_differential_service_promoted": false,
         "operated_continuous_assurance_service_promoted": false,
-        "simulated_history_window_present": w036_artifacts.is_some(),
-        "regression_thresholds_present": w036_artifacts.is_some(),
-        "quarantine_alert_policy_present": w036_artifacts.is_some(),
-        "history_window_row_count": w036_artifacts.map_or(0, |artifacts| number_at(&artifacts.history_window, "row_count")),
-        "regression_threshold_count": w036_artifacts.map_or(0, |artifacts| number_at(&artifacts.regression_thresholds, "rule_count")),
-        "quarantine_rule_count": w036_artifacts.map_or(0, |artifacts| number_at(&artifacts.quarantine_policy, "rule_count")),
+        "fully_independent_evaluator_promoted": false,
+        "simulated_history_window_present": operation_artifacts.is_some(),
+        "regression_thresholds_present": operation_artifacts.is_some(),
+        "quarantine_alert_policy_present": operation_artifacts.is_some(),
+        "service_readiness_present": operation_artifacts.is_some_and(|artifacts| artifacts.service_readiness.is_some()),
+        "cross_engine_service_pilot_present": operation_artifacts.is_some_and(|artifacts| artifacts.cross_engine_service_pilot.is_some()),
+        "history_window_row_count": operation_artifacts.map_or(0, |artifacts| number_at(&artifacts.history_window, "row_count")),
+        "regression_threshold_count": operation_artifacts.map_or(0, |artifacts| number_at(&artifacts.regression_thresholds, "rule_count")),
+        "quarantine_rule_count": operation_artifacts.map_or(0, |artifacts| number_at(&artifacts.quarantine_policy, "rule_count")),
+        "service_readiness_criteria_count": operation_artifacts
+            .and_then(|artifacts| artifacts.service_readiness.as_ref())
+            .map_or(0, |value| number_at(value, "criteria_count")),
+        "service_readiness_blocked_count": operation_artifacts
+            .and_then(|artifacts| artifacts.service_readiness.as_ref())
+            .map_or(0, |value| number_at(value, "blocked_criteria_count")),
         "pack_capability_promoted": false,
         "stage2_scheduler_promoted": false,
         "performance_claim_promoted": false,
@@ -1060,7 +1468,9 @@ fn decision_packet(
         "source_missing_artifact_count": evaluation.missing_artifacts.len(),
         "unexpected_mismatch_count": evaluation.unexpected_mismatches.len(),
         "no_promotion_reason_ids": evaluation.no_promotion_reasons,
-        "semantic_equivalence_statement": if is_w036_run(run_id) {
+        "semantic_equivalence_statement": if is_w037_run(run_id) {
+            "This runner reads existing W034/W035/W036/W037 evidence and emits file-backed service-readiness and cross-engine pilot artifacts only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc, publication, reject, TraceCalc, TreeCalc, Lean/TLA model, pack-decision, service operation, alert dispatch, or OxFml/OxFunc evaluator behavior."
+        } else if is_w036_run(run_id) {
             "This runner reads existing W034/W035/W036 evidence and emits simulated continuous-assurance operation, history-window, threshold, and quarantine-policy artifacts only. It does not change coordinator scheduling, invalidation, dependency graph construction, soft-reference resolution, recalc, publication, reject, TraceCalc, TreeCalc, Lean/TLA model, pack-decision, or OxFml/OxFunc evaluator behavior."
         } else {
             "This runner reads existing W034/W035 evidence and emits continuous-assurance gate criteria only. It does not change coordinator scheduling, invalidation, recalc, publication, reject, TraceCalc, TreeCalc, or evaluator behavior."
@@ -1079,12 +1489,18 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
         "replay-appliance/validation/bundle_validation.json",
     ];
 
-    if is_w036_run(run_id) {
+    if is_operation_history_run(run_id) {
         artifacts.extend([
             "history/assurance_history_window.json",
             "thresholds/regression_thresholds.json",
             "alerts/quarantine_policy.json",
             "operation/simulated_multi_run_evidence.json",
+        ]);
+    }
+    if is_w037_run(run_id) {
+        artifacts.extend([
+            "service/service_readiness.json",
+            "service/cross_engine_service_pilot.json",
         ]);
     }
 
@@ -1106,8 +1522,11 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
 
 fn source_artifacts_for_run(run_id: &str) -> Vec<String> {
     let mut artifacts = source_artifacts();
-    if is_w036_run(run_id) {
+    if is_operation_history_run(run_id) {
         artifacts.extend(w036_source_artifacts());
+    }
+    if is_w037_run(run_id) {
+        artifacts.extend(w037_source_artifacts());
     }
     artifacts
 }
@@ -1269,15 +1688,98 @@ fn w036_source_artifacts() -> Vec<String> {
     artifacts
 }
 
-fn w036_operation_artifacts(
+fn w037_source_artifacts() -> Vec<String> {
+    vec![
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            W037_TRACECALC_OBSERVABLE_RUN_ID,
+            "oracle-matrix",
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "tracecalc-reference-machine",
+            W037_TRACECALC_OBSERVABLE_RUN_ID,
+            "oracle-matrix",
+            "coverage_closure_criteria.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W037_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W037_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w037_match_promotion_guard.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "upstream-host",
+            W037_DIRECT_OXFML_RUN_ID,
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-inventory",
+            W037_FORMAL_INVENTORY_RUN_ID,
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-inventory",
+            W037_FORMAL_INVENTORY_RUN_ID,
+            "validation.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-criteria",
+            W037_STAGE2_CRITERIA_RUN_ID,
+            "run_summary.json",
+        ]),
+        relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-criteria",
+            W037_STAGE2_CRITERIA_RUN_ID,
+            "promotion_decision.json",
+        ]),
+    ]
+}
+
+fn operation_artifacts(
     run_id: &str,
     artifact_root: &str,
     evaluation: &Evaluation,
-) -> W036OperationArtifacts {
-    let history_rows = w036_history_rows(evaluation);
+) -> OperationArtifacts {
+    let history_rows = operation_history_rows(run_id, evaluation);
     let semantic_acceptance_state =
         if evaluation.missing_artifacts.is_empty() && evaluation.unexpected_mismatches.is_empty() {
-            "history_window_semantic_inputs_valid_with_known_promotion_blockers"
+            if is_w037_run(run_id) {
+                "w037_service_readiness_inputs_valid_with_known_promotion_blockers"
+            } else {
+                "history_window_semantic_inputs_valid_with_known_promotion_blockers"
+            }
         } else {
             "history_window_has_source_gaps"
         };
@@ -1285,7 +1787,11 @@ fn w036_operation_artifacts(
         "schema_version": HISTORY_WINDOW_SCHEMA_V1,
         "run_id": run_id,
         "artifact_root": artifact_root,
-        "window_kind": "simulated_multi_run_history_from_checked_in_evidence",
+        "window_kind": if is_w037_run(run_id) {
+            "file_backed_service_readiness_history_from_checked_in_evidence"
+        } else {
+            "simulated_multi_run_history_from_checked_in_evidence"
+        },
         "continuous_service_present": false,
         "semantic_acceptance_state": semantic_acceptance_state,
         "timing_correctness_role": "measurement_only_not_correctness_evidence",
@@ -1293,7 +1799,7 @@ fn w036_operation_artifacts(
         "rows": history_rows,
     });
 
-    let regression_rules = regression_threshold_rules();
+    let regression_rules = regression_threshold_rules(run_id);
     let regression_thresholds = json!({
         "schema_version": REGRESSION_THRESHOLDS_SCHEMA_V1,
         "run_id": run_id,
@@ -1304,7 +1810,7 @@ fn w036_operation_artifacts(
         "rules": regression_rules,
     });
 
-    let quarantine_rules = quarantine_policy_rules();
+    let quarantine_rules = quarantine_policy_rules(run_id);
     let quarantine_policy = json!({
         "schema_version": QUARANTINE_POLICY_SCHEMA_V1,
         "run_id": run_id,
@@ -1319,7 +1825,11 @@ fn w036_operation_artifacts(
         "schema_version": SIMULATED_MULTI_RUN_SCHEMA_V1,
         "run_id": run_id,
         "artifact_root": artifact_root,
-        "operation_mode": "simulated_from_checked_in_evidence_epochs",
+        "operation_mode": if is_w037_run(run_id) {
+            "file_backed_service_pilot_from_checked_in_evidence_epochs"
+        } else {
+            "simulated_from_checked_in_evidence_epochs"
+        },
         "continuous_service_present": false,
         "continuous_service_promoted": false,
         "row_count": history_window.get("rows").and_then(Value::as_array).map_or(0, Vec::len),
@@ -1332,22 +1842,41 @@ fn w036_operation_artifacts(
         ],
     });
 
-    W036OperationArtifacts {
+    let service_readiness = is_w037_run(run_id).then(|| {
+        w037_service_readiness(
+            run_id,
+            artifact_root,
+            evaluation,
+            &history_window,
+            &regression_thresholds,
+            &quarantine_policy,
+        )
+    });
+    let cross_engine_service_pilot = is_w037_run(run_id).then(|| {
+        w037_cross_engine_service_pilot(
+            run_id,
+            artifact_root,
+            evaluation,
+            service_readiness.as_ref().expect("W037 readiness exists"),
+            &history_window,
+        )
+    });
+
+    OperationArtifacts {
         history_window,
         regression_thresholds,
         quarantine_policy,
         simulated_multi_run,
+        service_readiness,
+        cross_engine_service_pilot,
     }
 }
 
-fn w036_history_rows(evaluation: &Evaluation) -> Vec<Value> {
-    [
+fn operation_history_rows(run_id: &str, evaluation: &Evaluation) -> Vec<Value> {
+    let mut row_inputs = vec![
         ("w034.scale_binding", "w034_scale_semantic_binding"),
         ("w035.continuous_gate", "w035_continuous_assurance_gate"),
-        (
-            "w036.tracecalc_coverage",
-            "w036_tracecalc_coverage_closure",
-        ),
+        ("w036.tracecalc_coverage", "w036_tracecalc_coverage_closure"),
         (
             "w036.implementation_conformance",
             "w036_implementation_conformance_closure",
@@ -1357,8 +1886,24 @@ fn w036_history_rows(evaluation: &Evaluation) -> Vec<Value> {
             "w036.independent_differential",
             "w036_independent_differential_harness",
         ),
-    ]
-    .into_iter()
+    ];
+    if is_w037_run(run_id) {
+        row_inputs.extend([
+            (
+                "w037.tracecalc_observable",
+                "w037_tracecalc_observable_closure",
+            ),
+            (
+                "w037.implementation_conformance",
+                "w037_implementation_conformance_closure",
+            ),
+            ("w037.direct_oxfml", "w037_direct_oxfml_evaluator"),
+            ("w037.proof_model_inventory", "w037_proof_model_inventory"),
+            ("w037.stage2_criteria", "w037_stage2_criteria"),
+        ]);
+    }
+    row_inputs
+        .into_iter()
     .enumerate()
     .map(|(index, (evidence_epoch, input_id))| {
         let source = source_row(evaluation, input_id);
@@ -1383,7 +1928,13 @@ fn w036_history_rows(evaluation: &Evaluation) -> Vec<Value> {
     .collect()
 }
 
-fn regression_threshold_rules() -> Vec<Value> {
+fn regression_threshold_rules(run_id: &str) -> Vec<Value> {
+    let minimum_window_rows = if is_w037_run(run_id) { 11 } else { 6 };
+    let minimum_window_reason = if is_w037_run(run_id) {
+        "W037 requires a machine-readable history window across predecessor and W037 service-readiness evidence"
+    } else {
+        "W036 requires a machine-readable history window across predecessor and successor evidence"
+    };
     vec![
         json!({
             "rule_id": "threshold.semantic.missing_artifacts_zero",
@@ -1422,8 +1973,8 @@ fn regression_threshold_rules() -> Vec<Value> {
             "severity": "quarantine",
             "metric": "history_window_row_count",
             "operator": "gte",
-            "value": 6,
-            "reason": "W036 requires a machine-readable history window across predecessor and successor evidence"
+            "value": minimum_window_rows,
+            "reason": minimum_window_reason
         }),
         json!({
             "rule_id": "threshold.service.no_simulated_service_promotion",
@@ -1444,51 +1995,226 @@ fn regression_threshold_rules() -> Vec<Value> {
     ]
 }
 
-fn quarantine_policy_rules() -> Vec<Value> {
-    vec![
+fn quarantine_policy_rules(run_id: &str) -> Vec<Value> {
+    let owner = if is_w037_run(run_id) {
+        "calc-ubd.7"
+    } else {
+        "calc-rqq.7"
+    };
+    let mut rules = vec![
         json!({
             "rule_id": "quarantine.source_missing_artifact",
             "trigger": "any source evidence row has missing_artifact_count > 0",
             "action": "quarantine_run",
-            "owner": "calc-rqq.7"
+            "owner": owner
         }),
         json!({
             "rule_id": "quarantine.unexpected_mismatch",
             "trigger": "any TraceCalc, implementation-conformance, TLA, independent, or cross-engine row reports an unexpected mismatch",
             "action": "quarantine_run_and_open_blocker",
-            "owner": "calc-rqq.7"
+            "owner": owner
         }),
         json!({
             "rule_id": "quarantine.failed_semantic_row",
             "trigger": "any oracle, conformance, or TLC failed-row/config count is non-zero",
             "action": "quarantine_run_and_block_pack_reassessment",
-            "owner": "calc-rqq.7; calc-rqq.8"
+            "owner": if is_w037_run(run_id) { "calc-ubd.7; calc-ubd.8" } else { "calc-rqq.7; calc-rqq.8" }
         }),
         json!({
             "rule_id": "quarantine.declared_gap_promoted_as_match",
             "trigger": "a declared gap is counted as a match without replay/diff evidence",
             "action": "quarantine_run_and_reopen_conformance_lane",
-            "owner": "calc-rqq.3; calc-rqq.7"
+            "owner": if is_w037_run(run_id) { "calc-ubd.3; calc-ubd.7" } else { "calc-rqq.3; calc-rqq.7" }
         }),
         json!({
             "rule_id": "quarantine.unsupported_promotion_flag",
             "trigger": "full oracle, operated continuous service, pack C5, or Stage 2 policy is promoted without its required evidence bundle",
             "action": "quarantine_run_and_block_decision",
-            "owner": "calc-rqq.7; calc-rqq.8; calc-rqq.9"
+            "owner": if is_w037_run(run_id) { "calc-ubd.7; calc-ubd.8; calc-ubd.9" } else { "calc-rqq.7; calc-rqq.8; calc-rqq.9" }
         }),
         json!({
             "rule_id": "alert.oxfml_w073_formatting_payload_mismatch",
             "trigger": "an exercised conditional-formatting payload uses thresholds for W073 aggregate or visualization rule families instead of typed_rule",
             "action": "file_or_update_oxfml_handoff",
-            "owner": "calc-rqq.7; OxFml watch lane"
+            "owner": if is_w037_run(run_id) { "calc-ubd.7; OxFml watch lane" } else { "calc-rqq.7; OxFml watch lane" }
         }),
         json!({
             "rule_id": "alert.timing_regression_only",
             "trigger": "timing changes while semantic thresholds pass",
             "action": "record_performance_alert_without_correctness_failure",
-            "owner": "calc-rqq.7"
+            "owner": owner
         }),
-    ]
+    ];
+    if is_w037_run(run_id) {
+        rules.push(json!({
+            "rule_id": "quarantine.operated_service_claim_without_artifacts",
+            "trigger": "an operated assurance or cross-engine service claim is made without recurring runner, retention, and enforcing alert artifacts",
+            "action": "quarantine_run_and_block_service_promotion",
+            "owner": "calc-ubd.7; calc-ubd.9"
+        }));
+    }
+    rules
+}
+
+fn w037_service_readiness(
+    run_id: &str,
+    artifact_root: &str,
+    evaluation: &Evaluation,
+    history_window: &Value,
+    regression_thresholds: &Value,
+    quarantine_policy: &Value,
+) -> Value {
+    let direct_oxfml_ready =
+        source_row(evaluation, "w037_direct_oxfml_evaluator").is_some_and(|row| {
+            text_at(row, "evidence_state")
+                == "direct_oxfml_slice_present_with_let_lambda_and_w073_guard"
+        });
+    let criteria = vec![
+        service_readiness_criterion(
+            "readiness.history_window_present",
+            "satisfied",
+            "checked-in W034-W037 history window is retained and machine-readable",
+        ),
+        service_readiness_criterion(
+            "readiness.regression_thresholds_present",
+            "satisfied",
+            "semantic-first regression thresholds are retained",
+        ),
+        service_readiness_criterion(
+            "readiness.quarantine_policy_defined",
+            "satisfied",
+            "quarantine and alert policy is machine-readable",
+        ),
+        service_readiness_criterion(
+            "readiness.source_artifacts_retained",
+            if evaluation.missing_artifacts.is_empty() {
+                "satisfied"
+            } else {
+                "blocked"
+            },
+            "all required predecessor and W037 source artifacts are present",
+        ),
+        service_readiness_criterion(
+            "readiness.unexpected_mismatches_zero",
+            if evaluation.unexpected_mismatches.is_empty() {
+                "satisfied"
+            } else {
+                "blocked"
+            },
+            "TraceCalc, TreeCalc/CoreEngine, OxFml, proof/model, and Stage 2 source rows report no unexpected semantic mismatches",
+        ),
+        service_readiness_criterion(
+            "readiness.direct_oxfml_guard_present",
+            if direct_oxfml_ready {
+                "satisfied"
+            } else {
+                "blocked"
+            },
+            "direct OxFml evaluator fixture slice includes LET/LAMBDA and W073 typed conditional-formatting guard evidence",
+        ),
+        service_readiness_criterion(
+            "service.operated_regression_runner",
+            "blocked",
+            "no recurring operated regression runner, retention service, or run scheduler is present",
+        ),
+        service_readiness_criterion(
+            "service.enforcing_alert_dispatcher",
+            "blocked",
+            "quarantine policy is not enforced by an alert dispatcher",
+        ),
+        service_readiness_criterion(
+            "service.operated_cross_engine_differential",
+            "blocked",
+            "cross-engine differential evidence is file-backed, not an operated service",
+        ),
+        service_readiness_criterion(
+            "service.fully_independent_evaluator",
+            "blocked",
+            "W037 still has no qualifying fully independent evaluator implementation",
+        ),
+    ];
+    let blocked_criteria_count = count_criteria_state(&criteria, "blocked");
+    let satisfied_criteria_count = count_criteria_state(&criteria, "satisfied");
+
+    json!({
+        "schema_version": SERVICE_READINESS_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": artifact_root,
+        "readiness_state": if evaluation.missing_artifacts.is_empty() && evaluation.unexpected_mismatches.is_empty() {
+            "w037_service_readiness_inputs_present_without_operated_service_promotion"
+        } else {
+            "w037_service_readiness_has_source_gaps"
+        },
+        "criteria_count": criteria.len(),
+        "satisfied_criteria_count": satisfied_criteria_count,
+        "blocked_criteria_count": blocked_criteria_count,
+        "history_window_row_count": number_at(history_window, "row_count"),
+        "regression_threshold_count": number_at(regression_thresholds, "rule_count"),
+        "quarantine_rule_count": number_at(quarantine_policy, "rule_count"),
+        "missing_artifact_count": evaluation.missing_artifacts.len(),
+        "unexpected_mismatch_count": evaluation.unexpected_mismatches.len(),
+        "operated_continuous_assurance_service_promoted": false,
+        "cross_engine_differential_service_promoted": false,
+        "fully_independent_evaluator_promoted": false,
+        "criteria": criteria,
+    })
+}
+
+fn w037_cross_engine_service_pilot(
+    run_id: &str,
+    artifact_root: &str,
+    evaluation: &Evaluation,
+    service_readiness: &Value,
+    history_window: &Value,
+) -> Value {
+    json!({
+        "schema_version": CROSS_ENGINE_SERVICE_PILOT_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": artifact_root,
+        "pilot_mode": "file_backed_cross_engine_service_readiness_packet",
+        "operated_service_present": false,
+        "operated_service_promoted": false,
+        "alert_dispatcher_present": false,
+        "continuous_cross_engine_service_promoted": false,
+        "source_evidence_row_count": evaluation.source_rows.len(),
+        "cross_engine_gate_row_count": evaluation.cross_engine_rows.len(),
+        "history_window_row_count": number_at(history_window, "row_count"),
+        "service_readiness_criteria_count": number_at(service_readiness, "criteria_count"),
+        "service_readiness_blocked_count": number_at(service_readiness, "blocked_criteria_count"),
+        "blocked_service_claims": [
+            "operated_continuous_assurance_service",
+            "enforcing_alert_dispatcher",
+            "operated_cross_engine_differential_service",
+            "fully_independent_evaluator_implementation"
+        ],
+        "pilot_inputs": [
+            "history/assurance_history_window.json",
+            "thresholds/regression_thresholds.json",
+            "alerts/quarantine_policy.json",
+            "differentials/cross_engine_differential_gate.json",
+            "service/service_readiness.json"
+        ],
+        "promotion_consequence": "The pilot records readiness inputs and service blockers only. It does not promote operated assurance, cross-engine service, C5, pack-grade replay, or Stage 2 policy."
+    })
+}
+
+fn service_readiness_criterion(
+    criterion_id: &str,
+    state: &str,
+    evidence_or_blocker: &str,
+) -> Value {
+    json!({
+        "criterion_id": criterion_id,
+        "state": state,
+        "evidence_or_blocker": evidence_or_blocker,
+    })
+}
+
+fn count_criteria_state(criteria: &[Value], state: &str) -> usize {
+    criteria
+        .iter()
+        .filter(|criterion| criterion.get("state").and_then(Value::as_str) == Some(state))
+        .count()
 }
 
 fn source_row<'a>(evaluation: &'a Evaluation, input_id: &str) -> Option<&'a Value> {
@@ -1505,6 +2231,23 @@ fn failure_count(row: &Value) -> u64 {
 }
 
 fn no_promotion_reasons(run_id: &str) -> Vec<String> {
+    if is_w037_run(run_id) {
+        return [
+            "continuous.no_operated_regression_runner".to_string(),
+            "continuous.service_pilot_file_backed_not_daemon".to_string(),
+            "continuous.quarantine_policy_not_enforced_by_alert_service".to_string(),
+            "continuous.cross_engine_diff_service_not_operated".to_string(),
+            "continuous.independent_evaluator_diversity_not_full".to_string(),
+            "continuous.stage2_partition_replay_absent".to_string(),
+            "continuous.stage2_differential_service_not_operated".to_string(),
+            "continuous.pack_c5_not_promoted".to_string(),
+            "continuous.performance_not_correctness_proof".to_string(),
+            "continuous.formal_evidence_bounded_not_full_verification".to_string(),
+            "continuous.full_verification_not_released".to_string(),
+            "continuous.pack_grade_replay_governance_absent".to_string(),
+        ]
+        .into();
+    }
     if is_w036_run(run_id) {
         return [
             "continuous.no_operated_regression_runner".to_string(),
@@ -1538,6 +2281,14 @@ fn no_promotion_reasons(run_id: &str) -> Vec<String> {
 
 fn is_w036_run(run_id: &str) -> bool {
     run_id.starts_with("w036-")
+}
+
+fn is_w037_run(run_id: &str) -> bool {
+    run_id.starts_with("w037-")
+}
+
+fn is_operation_history_run(run_id: &str) -> bool {
+    is_w036_run(run_id) || is_w037_run(run_id)
 }
 
 fn collect_failures(row: &Value, failures: &mut Vec<String>) {
@@ -1655,6 +2406,9 @@ mod tests {
         assert_eq!(summary.regression_threshold_count, 0);
         assert_eq!(summary.quarantine_rule_count, 0);
         assert_eq!(summary.simulated_multi_run_count, 0);
+        assert_eq!(summary.service_readiness_criteria_count, 0);
+        assert_eq!(summary.service_readiness_blocked_count, 0);
+        assert!(!summary.cross_engine_service_pilot_present);
         assert!(!summary.continuous_service_promoted);
 
         let decision = read_required_json(
@@ -1697,6 +2451,9 @@ mod tests {
         assert_eq!(summary.regression_threshold_count, 7);
         assert_eq!(summary.quarantine_rule_count, 7);
         assert_eq!(summary.simulated_multi_run_count, 6);
+        assert_eq!(summary.service_readiness_criteria_count, 0);
+        assert_eq!(summary.service_readiness_blocked_count, 0);
+        assert!(!summary.cross_engine_service_pilot_present);
         assert!(!summary.continuous_service_promoted);
 
         let decision = read_required_json(
@@ -1729,6 +2486,75 @@ mod tests {
             "docs/test-runs/core-engine/continuous-assurance/w036-continuous-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn continuous_assurance_runner_writes_w037_service_pilot_without_promotion() {
+        let repo_root = unique_temp_repo();
+        create_source_artifacts(&repo_root);
+        create_w036_source_artifacts(&repo_root);
+        create_w037_source_artifacts(&repo_root);
+
+        let summary = ContinuousAssuranceRunner::new()
+            .execute(&repo_root, "w037-continuous-test")
+            .expect("W037 continuous assurance service pilot packet should write");
+
+        assert_eq!(
+            summary.decision_status,
+            "w037_operated_assurance_service_pilot_recorded_without_service_promotion"
+        );
+        assert_eq!(summary.source_evidence_row_count, 16);
+        assert_eq!(summary.scheduled_lane_count, 5);
+        assert_eq!(summary.cross_engine_gate_row_count, 9);
+        assert_eq!(summary.missing_artifact_count, 0);
+        assert_eq!(summary.unexpected_mismatch_count, 0);
+        assert_eq!(summary.no_promotion_reason_count, 12);
+        assert_eq!(summary.history_window_row_count, 11);
+        assert_eq!(summary.regression_threshold_count, 7);
+        assert_eq!(summary.quarantine_rule_count, 8);
+        assert_eq!(summary.simulated_multi_run_count, 11);
+        assert_eq!(summary.service_readiness_criteria_count, 10);
+        assert_eq!(summary.service_readiness_blocked_count, 4);
+        assert!(summary.cross_engine_service_pilot_present);
+        assert!(!summary.continuous_service_promoted);
+
+        let readiness = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/continuous-assurance/w037-continuous-test/service/service_readiness.json",
+        );
+        assert_eq!(
+            readiness["readiness_state"],
+            "w037_service_readiness_inputs_present_without_operated_service_promotion"
+        );
+        assert_eq!(readiness["criteria_count"], 10);
+        assert_eq!(readiness["blocked_criteria_count"], 4);
+        assert_eq!(
+            readiness["operated_continuous_assurance_service_promoted"],
+            false
+        );
+        assert_eq!(
+            readiness["cross_engine_differential_service_promoted"],
+            false
+        );
+
+        let pilot = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/continuous-assurance/w037-continuous-test/service/cross_engine_service_pilot.json",
+        );
+        assert_eq!(pilot["operated_service_present"], false);
+        assert_eq!(pilot["continuous_cross_engine_service_promoted"], false);
+        assert_eq!(pilot["service_readiness_blocked_count"], 4);
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/continuous-assurance/w037-continuous-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+        assert_eq!(validation["service_readiness_criteria_count"], 10);
+        assert_eq!(validation["service_readiness_blocked_count"], 4);
+        assert_eq!(validation["cross_engine_service_pilot_present"], true);
 
         fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
     }
@@ -1912,6 +2738,99 @@ mod tests {
         for artifact in W036_FORMAL_ARTIFACTS {
             write_text_test(repo_root, artifact, "W036 formal artifact\n");
         }
+    }
+
+    fn create_w037_source_artifacts(repo_root: &Path) {
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[0],
+            json!({
+                "matrix_row_count": 32,
+                "covered_row_count": 31,
+                "classified_uncovered_row_count": 0,
+                "excluded_row_count": 1,
+                "missing_or_failed_row_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[1],
+            json!({
+                "full_oracle_claim": false,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[2],
+            json!({
+                "w037_decision_row_count": 6,
+                "w037_fixed_or_promoted_count": 1,
+                "w037_residual_blocker_count": 5,
+                "w037_match_promoted_count": 1,
+                "failed_row_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[3],
+            json!({
+                "promoted_match_count": 1,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[4],
+            json!({
+                "fixture_case_count": 12,
+                "direct_oxfml_case_count": 3,
+                "let_lambda_case_count": 2,
+                "w073_typed_rule_case_count": 1,
+                "expectation_mismatch_count": 0,
+                "promotion_limits": {
+                    "pack_grade_replay_promoted": false,
+                    "c5_promoted": false,
+                    "general_oxfunc_kernel_claimed": false
+                }
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[5],
+            json!({
+                "all_checked_artifacts_passed": true,
+                "lean_file_count": 12,
+                "lean_files_checked": 12,
+                "lean_explicit_axiom_count": 0,
+                "lean_sorry_placeholder_count": 0,
+                "tla_routine_config_count": 11,
+                "tla_failed_config_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[6],
+            json!({
+                "validation_state": "w037_proof_model_closure_inventory_validated",
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[7],
+            json!({
+                "criteria_row_count": 7,
+                "satisfied_criteria_row_count": 3,
+                "blocked_criteria_row_count": 4,
+                "stage2_policy_promoted": false,
+                "stage2_promotion_candidate": false,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            &w037_source_artifacts()[8],
+            json!({
+                "stage2_policy_promoted": false,
+            }),
+        );
     }
 
     fn write_json_test(repo_root: &Path, relative_path: &str, value: Value) {

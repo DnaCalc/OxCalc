@@ -1,0 +1,204 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001",
+  "continuous_service_present": false,
+  "continuous_service_promoted": false,
+  "operation_mode": "file_backed_service_pilot_from_checked_in_evidence_epochs",
+  "row_count": 11,
+  "rows": [
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w034.scale_binding",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "semantic_scale_binding_present_no_continuous_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/run_summary.json",
+        "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/decision/continuous_scale_assurance_criteria.json"
+      ],
+      "source_input_id": "w034_scale_semantic_binding",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 1
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w035.continuous_gate",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "w035_gate_present_without_service_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/run_summary.json",
+        "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json"
+      ],
+      "source_input_id": "w035_continuous_assurance_gate",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 2
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w036.tracecalc_coverage",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "coverage_closure_criteria_present_no_full_oracle_claim",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_closure_criteria.json"
+      ],
+      "source_input_id": "w036_tracecalc_coverage_closure",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 3
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w036.implementation_conformance",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "conformance_closure_actions_present_without_match_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_match_promotion_guard.json"
+      ],
+      "source_input_id": "w036_implementation_conformance_closure",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 4
+    },
+    {
+      "blocker_count": 5,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w036.tla_stage2_partition",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "bounded_tla_partition_evidence_present_no_stage2_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json"
+      ],
+      "source_input_id": "w036_tla_stage2_partition",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 5
+    },
+    {
+      "blocker_count": 6,
+      "declared_gap_count": 2,
+      "evidence_epoch": "w036.independent_differential",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "independent_differential_harness_present_without_service_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+        "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json",
+        "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/decision/promotion_guard.json"
+      ],
+      "source_input_id": "w036_independent_differential_harness",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 6
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w037.tracecalc_observable",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "observable_closure_present_with_authority_exclusion_no_full_oracle_claim",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/run_summary.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/coverage_closure_criteria.json"
+      ],
+      "source_input_id": "w037_tracecalc_observable_closure",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 7
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w037.implementation_conformance",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "one_declared_gap_promoted_with_guard_and_residual_blockers_preserved",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/w037_match_promotion_guard.json"
+      ],
+      "source_input_id": "w037_implementation_conformance_closure",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 8
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w037.direct_oxfml",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "direct_oxfml_slice_present_with_let_lambda_and_w073_guard",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json"
+      ],
+      "source_input_id": "w037_direct_oxfml_evaluator",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 9
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w037.proof_model_inventory",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "proof_model_inventory_checked_without_full_verification_promotion",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json"
+      ],
+      "source_input_id": "w037_proof_model_inventory",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 10
+    },
+    {
+      "blocker_count": 0,
+      "declared_gap_count": 0,
+      "evidence_epoch": "w037.stage2_criteria",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_consequence": "source may feed later pack-grade decisions only when semantic thresholds pass and declared gaps are not counted as matches",
+      "semantic_state": "stage2_criteria_present_with_deterministic_replay_blockers",
+      "source_artifact_paths": [
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+      ],
+      "source_input_id": "w037_stage2_criteria",
+      "timing_role": "measurement_only",
+      "unexpected_mismatch_count": 0,
+      "window_order": 11
+    }
+  ],
+  "run_id": "w037-operated-assurance-service-pilot-001",
+  "schema_version": "oxcalc.continuous_assurance.simulated_multi_run.v1",
+  "simulation_limits": [
+    "not a scheduled runner",
+    "not an alert dispatcher",
+    "not a continuous cross-engine differential service",
+    "not timing-based correctness evidence"
+  ]
+}

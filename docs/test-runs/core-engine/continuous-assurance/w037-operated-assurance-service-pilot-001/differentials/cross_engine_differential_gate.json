@@ -1,0 +1,72 @@
+{
+  "continuous_service_present": false,
+  "row_count": 9,
+  "rows": [
+    {
+      "comparison_state": "bounded_semantic_match_with_classified_uncovered_rows",
+      "current_limit": "TraceCalc covers W035 matrix rows but not full engine universe",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.tracecalc_oracle_matrix_to_engine_projection"
+    },
+    {
+      "comparison_state": "gap_dispositions_valid_without_match_promotion",
+      "current_limit": "implementation-work and spec-evolution deferrals remain",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.implementation_conformance_gap_dispositions"
+    },
+    {
+      "comparison_state": "scale_signatures_matched_without_continuous_service",
+      "current_limit": "single checked-in W034 binding is not recurring assurance",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.scale_semantic_signatures"
+    },
+    {
+      "comparison_state": "not_fully_independent",
+      "current_limit": "TreeCalc/CoreEngine projection is useful but not fully independent evaluator implementation diversity",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.independent_evaluator_diversity"
+    },
+    {
+      "comparison_state": "deterministic_harness_present_without_operated_service",
+      "current_limit": "W036 emits machine-readable differential rows and promotion blockers, not a continuous cross-engine service",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.w036_cross_engine_differential_harness"
+    },
+    {
+      "comparison_state": "simulated_history_thresholds_present_without_service_promotion",
+      "current_limit": "W036 history, thresholds, and quarantine policy are checked-in simulated evidence, not an enforcing scheduler or alert service",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.w036_history_threshold_quarantine"
+    },
+    {
+      "comparison_state": "direct_oxfml_fixture_slice_present_without_pack_grade_replay",
+      "current_limit": "W037 exercises the direct OxFml runtime facade, narrow LET/LAMBDA rows, and W073 typed formatting guard, but does not promote pack-grade replay",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.w037_direct_oxfml_guard"
+    },
+    {
+      "comparison_state": "stage2_criteria_present_without_operated_differential_service",
+      "current_limit": "Stage 2 criteria state deterministic replay and operated differential requirements, but deterministic partition replay and operated service remain absent",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.w037_stage2_partition_service_blocker"
+    },
+    {
+      "comparison_state": "file_backed_pilot_present_without_operated_service_promotion",
+      "current_limit": "W037 records readiness inputs and blockers, not a scheduled runner, enforcing alert dispatcher, or continuous cross-engine service",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.w037_operated_service_pilot"
+    }
+  ],
+  "run_id": "w037-operated-assurance-service-pilot-001",
+  "schema_version": "oxcalc.continuous_assurance.cross_engine_gate.v1",
+  "unexpected_mismatch_count": 0
+}

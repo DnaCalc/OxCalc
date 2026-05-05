@@ -1,0 +1,15 @@
+{
+  "broad_oxfml_seam_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "callable_metadata_row_count": 6,
+  "exact_blocker_count": 6,
+  "failed_row_count": 0,
+  "oxfml_handoff_triggered": false,
+  "publication_display_row_count": 5,
+  "run_id": "w040-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.oxfml_seam.w040.validation.v1",
+  "source_evidence_row_count": 8,
+  "status": "w040_oxfml_seam_breadth_callable_metadata_packet_valid",
+  "surface_row_count": 6,
+  "validation_failures": []
+}

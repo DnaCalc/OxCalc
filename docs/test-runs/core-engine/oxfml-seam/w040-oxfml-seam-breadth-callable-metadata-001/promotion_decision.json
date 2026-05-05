@@ -1,0 +1,31 @@
+{
+  "blockers": [
+    "w040_oxfml.callable_metadata_projection_absent",
+    "w040_oxfml.callable_carrier_sufficiency_proof_absent",
+    "w040_oxfml.broad_display_publication_breadth_unexercised",
+    "w040_oxfml.public_consumer_surface_migration_not_verified",
+    "w040_oxfml.registered_external_callable_projection_deferred",
+    "w040_oxfml.general_oxfunc_kernel_external"
+  ],
+  "broad_display_publication_promoted": false,
+  "broad_oxfml_seam_promoted": false,
+  "c5_promoted": false,
+  "callable_carrier_sufficiency_proven": false,
+  "callable_metadata_projection_promoted": false,
+  "callable_metadata_row_count": 6,
+  "decision_state": "w040_oxfml_seam_breadth_callable_metadata_bound_without_promotion",
+  "exact_blocker_count": 6,
+  "general_oxfunc_kernel_promoted": false,
+  "oxfml_handoff_triggered": false,
+  "pack_grade_replay_promoted": false,
+  "public_consumer_surface_migration_verified": false,
+  "publication_display_row_count": 5,
+  "run_id": "w040-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.oxfml_seam.w040.promotion_decision.v1",
+  "semantic_equivalence_statement": "This W040 OxFml seam runner binds fresh direct upstream-host evidence, W040 obligation-map rows, current OxFml public-surface notes, W073 typed-only formatting guards, publication/display boundary rows, callable carrier rows, registered-external watch rows, and exact blockers only. It does not change evaluator kernels, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics.",
+  "source_evidence_row_count": 8,
+  "stage2_policy_promoted": false,
+  "surface_row_count": 6,
+  "w073_formatting_handoff_triggered": false,
+  "w073_typed_only_formatting_guard_retained": true
+}

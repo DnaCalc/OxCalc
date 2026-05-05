@@ -268,3 +268,19 @@ It does mean:
    residual proof-obligation ledger, TraceCalc oracle matrix expansion, implementation conformance hardening, Lean assumption discharge, TLA non-routine exploration, continuous assurance and cross-engine differential gate, pack/Stage 2 readiness reassessment, closure audit
 7. rollout_mode:
    `execution_target`
+
+### W036 Core Formalization Verification Closure Expansion
+1. purpose:
+   continue after W035 by converting no-promotion blockers and bounded evidence into a deeper verification tranche aimed at TraceCalc coverage-closure criteria, optimized/core-engine conformance closure, stronger Lean/TLA proof obligations, concrete Stage 2 equivalence evidence, continuous assurance operation, and pack-grade replay readiness without treating W035 evidence as final proof.
+2. depends_on:
+   `W035`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W036_CORE_FORMALIZATION_VERIFICATION_CLOSURE_EXPANSION.md`, `docs/spec/core-engine/w035-formalization/W035_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W035 open lanes and no-promotion blockers are explicitly mapped to W036 obligations, TraceCalc coverage closure criteria are machine-readable, optimized/core-engine conformance gaps are resolved or carried as blockers, Lean/TLA proof/model artifacts are expanded without overclaiming total verification, independent-evaluator diversity and cross-engine differential evidence state actual limits, continuous-assurance operation/history is evidenced or blocked, pack/Stage 2 promotion decisions state exact evidence consequence, and the closure audit maps the active full-formalization objective to concrete artifacts before any completion claim.
+6. initial_epic_lanes:
+   residual coverage and promotion-blocker ledger, TraceCalc coverage closure criteria and matrix expansion, optimized/core-engine conformance closure plan and first fixes, Lean theorem coverage expansion, TLA Stage 2 partition and scheduler equivalence model, independent evaluator diversity and cross-engine differential harness, continuous assurance operation and history window, pack-grade replay and capability promotion gate reassessment, closure audit and successor/full-verification decision
+7. rollout_mode:
+   `execution_target`

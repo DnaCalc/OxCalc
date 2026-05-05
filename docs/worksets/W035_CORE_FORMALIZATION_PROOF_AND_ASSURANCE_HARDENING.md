@@ -85,12 +85,12 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 
 ## Current Status
 
-- execution_state: `calc-tkq.7_pack_stage2_reassessment_validated`
+- execution_state: `calc-tkq.8_closure_audit_and_successor_packet`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tkq.8` remains open
+  - W036 successor tranche remains open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open beyond W035 conformance-hardening dispositions
@@ -111,3 +111,5 @@ Latest W035 evidence:
 11. `docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/` records the deterministic gate run: 5 source evidence rows, 3 scheduled lanes, 4 differential rows, 0 missing artifacts, 0 unexpected mismatches, and 9 no-promotion reasons.
 12. `docs/spec/core-engine/w035-formalization/W035_PACK_CAPABILITY_AND_STAGE2_READINESS_REASSESSMENT.md` records the pack capability and Stage 2 readiness reassessment packet for `calc-tkq.7`.
 13. `docs/test-runs/core-engine/pack-capability/w035-pack-stage2-readiness-001/` records the deterministic reassessment run: 10 evidence rows, 10 satisfied inputs, 19 no-promotion blockers, 0 missing artifacts, and `cap.C4.distill_valid` as the highest honest capability.
+14. `docs/spec/core-engine/w035-formalization/W035_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md` records the W035 closure audit, prompt-to-artifact active-objective checklist, and W036 successor packet for `calc-tkq.8`.
+15. `docs/worksets/W036_CORE_FORMALIZATION_VERIFICATION_CLOSURE_EXPANSION.md` records the next ordered successor tranche.

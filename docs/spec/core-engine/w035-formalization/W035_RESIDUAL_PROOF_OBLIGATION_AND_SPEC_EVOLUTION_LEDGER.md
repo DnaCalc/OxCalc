@@ -153,6 +153,16 @@ Current `calc-tkq.7` obligation disposition:
 | `W035-OBL-010` | Stage 2 scheduler promotion remains blocked by concrete partition modeling, replay equivalence, continuous cross-engine differential service, and pack-grade replay governance |
 | `W035-OBL-012` | pack capability is reassessed with 10 evidence rows, 10 satisfied inputs, 19 no-promotion blockers, 0 missing artifacts, and `cap.C4.distill_valid` as the highest honest capability |
 
+`calc-tkq.8` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`, `docs/worksets/W036_CORE_FORMALIZATION_VERIFICATION_CLOSURE_EXPANSION.md`, and the W036 bead graph rooted at `calc-rqq`.
+
+Current `calc-tkq.8` obligation disposition:
+
+| Obligation id | `calc-tkq.8` disposition |
+|---|---|
+| `W035-OBL-014` | W035 spec-evolution surfaces are audited and W036 successor obligations are packetized |
+| `W035-OBL-015` | W035 evidence roots use distinct run ids and W034 baselines remain unmodified |
+| all open-lane audit rows | W036 carries full Lean/TLA verification, full TraceCalc coverage, optimized/core-engine verification, independent evaluator diversity, concrete Stage 2 partition/replay equivalence, pack-grade replay, continuous service operation, and Stage 2 policy |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

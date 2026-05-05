@@ -1,0 +1,499 @@
+{
+  "case_count": 6,
+  "failed_case_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "implementation_authority": "local_w043_diversity_runner_independent_from_tracecalc_optimized_core_treecalc_oxfml_and_oxfunc",
+  "implementation_kind": "independent_reference_model_evaluator",
+  "match_count": 6,
+  "rows": [
+    {
+      "actual_bindings": [
+        {
+          "name": "X",
+          "value": 2
+        },
+        {
+          "name": "Y",
+          "value": 40
+        },
+        {
+          "name": "Z",
+          "value": 42
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "2",
+          "name": "X"
+        },
+        {
+          "formula": "X*20",
+          "name": "Y"
+        },
+        {
+          "formula": "X+Y",
+          "name": "Z"
+        }
+      ],
+      "case_id": "reference_model.xyz_x2",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "X",
+          "value": 2
+        },
+        {
+          "name": "Y",
+          "value": 40
+        },
+        {
+          "name": "Z",
+          "value": 42
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    },
+    {
+      "actual_bindings": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        },
+        {
+          "name": "Z",
+          "value": 63
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "3",
+          "name": "X"
+        },
+        {
+          "formula": "X*20",
+          "name": "Y"
+        },
+        {
+          "formula": "X+Y",
+          "name": "Z"
+        }
+      ],
+      "case_id": "reference_model.xyz_x3",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        },
+        {
+          "name": "Z",
+          "value": 63
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    },
+    {
+      "actual_bindings": [
+        {
+          "name": "Top",
+          "value": 5
+        },
+        {
+          "name": "Left",
+          "value": 7
+        },
+        {
+          "name": "Sum",
+          "value": 12
+        },
+        {
+          "name": "Gate",
+          "value": 24
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "5",
+          "name": "Top"
+        },
+        {
+          "formula": "7",
+          "name": "Left"
+        },
+        {
+          "formula": "Top+Left",
+          "name": "Sum"
+        },
+        {
+          "formula": "IF(Sum>10,Sum*2,0)",
+          "name": "Gate"
+        }
+      ],
+      "case_id": "reference_model.row_column_gate",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "Top",
+          "value": 5
+        },
+        {
+          "name": "Left",
+          "value": 7
+        },
+        {
+          "name": "Sum",
+          "value": 12
+        },
+        {
+          "name": "Gate",
+          "value": 24
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    },
+    {
+      "actual_bindings": [
+        {
+          "name": "BeforeX",
+          "value": 2
+        },
+        {
+          "name": "BeforeY",
+          "value": 40
+        },
+        {
+          "name": "BeforeZ",
+          "value": 42
+        },
+        {
+          "name": "AfterX",
+          "value": 3
+        },
+        {
+          "name": "AfterY",
+          "value": 60
+        },
+        {
+          "name": "AfterZ",
+          "value": 63
+        },
+        {
+          "name": "DeltaZ",
+          "value": 21
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "2",
+          "name": "BeforeX"
+        },
+        {
+          "formula": "BeforeX*20",
+          "name": "BeforeY"
+        },
+        {
+          "formula": "BeforeX+BeforeY",
+          "name": "BeforeZ"
+        },
+        {
+          "formula": "3",
+          "name": "AfterX"
+        },
+        {
+          "formula": "AfterX*20",
+          "name": "AfterY"
+        },
+        {
+          "formula": "AfterX+AfterY",
+          "name": "AfterZ"
+        },
+        {
+          "formula": "AfterZ-BeforeZ",
+          "name": "DeltaZ"
+        }
+      ],
+      "case_id": "reference_model.edit_delta",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "BeforeX",
+          "value": 2
+        },
+        {
+          "name": "BeforeY",
+          "value": 40
+        },
+        {
+          "name": "BeforeZ",
+          "value": 42
+        },
+        {
+          "name": "AfterX",
+          "value": 3
+        },
+        {
+          "name": "AfterY",
+          "value": 60
+        },
+        {
+          "name": "AfterZ",
+          "value": 63
+        },
+        {
+          "name": "DeltaZ",
+          "value": 21
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    },
+    {
+      "actual_bindings": [
+        {
+          "name": "Top",
+          "value": 4
+        },
+        {
+          "name": "Left",
+          "value": 6
+        },
+        {
+          "name": "Bias",
+          "value": 3
+        },
+        {
+          "name": "Row",
+          "value": 10
+        },
+        {
+          "name": "Column",
+          "value": 24
+        },
+        {
+          "name": "Checksum",
+          "value": 37
+        },
+        {
+          "name": "Gate",
+          "value": 37
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "4",
+          "name": "Top"
+        },
+        {
+          "formula": "6",
+          "name": "Left"
+        },
+        {
+          "formula": "3",
+          "name": "Bias"
+        },
+        {
+          "formula": "Top+Left",
+          "name": "Row"
+        },
+        {
+          "formula": "Top*Left",
+          "name": "Column"
+        },
+        {
+          "formula": "Row+Column+Bias",
+          "name": "Checksum"
+        },
+        {
+          "formula": "IF(Checksum>=37,Checksum,0)",
+          "name": "Gate"
+        }
+      ],
+      "case_id": "reference_model.fan_in_checksum",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "Top",
+          "value": 4
+        },
+        {
+          "name": "Left",
+          "value": 6
+        },
+        {
+          "name": "Bias",
+          "value": 3
+        },
+        {
+          "name": "Row",
+          "value": 10
+        },
+        {
+          "name": "Column",
+          "value": 24
+        },
+        {
+          "name": "Checksum",
+          "value": 37
+        },
+        {
+          "name": "Gate",
+          "value": 37
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    },
+    {
+      "actual_bindings": [
+        {
+          "name": "Left",
+          "value": 8
+        },
+        {
+          "name": "Top",
+          "value": 5
+        },
+        {
+          "name": "Actual",
+          "value": 13
+        },
+        {
+          "name": "Oracle",
+          "value": 14
+        },
+        {
+          "name": "Match",
+          "value": 0
+        },
+        {
+          "name": "Quarantine",
+          "value": 1
+        }
+      ],
+      "assignments": [
+        {
+          "formula": "8",
+          "name": "Left"
+        },
+        {
+          "formula": "5",
+          "name": "Top"
+        },
+        {
+          "formula": "Left+Top",
+          "name": "Actual"
+        },
+        {
+          "formula": "14",
+          "name": "Oracle"
+        },
+        {
+          "formula": "IF(Actual=Oracle,1,0)",
+          "name": "Match"
+        },
+        {
+          "formula": "IF(Match=1,0,1)",
+          "name": "Quarantine"
+        }
+      ],
+      "case_id": "reference_model.mismatch_routing_control",
+      "error": null,
+      "expected_bindings": [
+        {
+          "name": "Left",
+          "value": 8
+        },
+        {
+          "name": "Top",
+          "value": 5
+        },
+        {
+          "name": "Actual",
+          "value": 13
+        },
+        {
+          "name": "Oracle",
+          "value": 14
+        },
+        {
+          "name": "Match",
+          "value": 0
+        },
+        {
+          "name": "Quarantine",
+          "value": 1
+        }
+      ],
+      "implementation_kind": "independent_reference_model_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "TreeCalc",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+    }
+  ],
+  "run_id": "w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w043.independent_reference_model_implementation.v1",
+  "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows"
+}

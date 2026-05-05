@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W038/W039/W040/W041/W042 independent-evaluator diversity and OxFml seam-watch packet emission.
+//! W038/W039/W040/W041/W042/W043 independent-evaluator diversity and OxFml seam-watch packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -71,6 +71,20 @@ const W042_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.diversity_seam.w042.exact_diversity_blocker_register.v1";
 const W042_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w042.promotion_decision.v1";
 const W042_VALIDATION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w042.validation.v1";
+const W043_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.diversity_seam.w043.run_summary.v1";
+const W043_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.diversity_seam.w043.source_evidence_index.v1";
+const W043_INDEPENDENT_IMPLEMENTATION_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w043.independent_reference_model_implementation.v1";
+const W043_INDEPENDENT_EVALUATOR_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w043.independent_evaluator_breadth_register.v1";
+const W043_CROSS_ENGINE_DIVERSITY_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w043.cross_engine_differential_service_register.v1";
+const W043_MISMATCH_AUTHORITY_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w043.mismatch_quarantine_authority_router.v1";
+const W043_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.diversity_seam.w043.exact_diversity_blocker_register.v1";
+const W043_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w043.promotion_decision.v1";
+const W043_VALIDATION_SCHEMA_V1: &str = "oxcalc.diversity_seam.w043.validation.v1";
 
 const W036_INDEPENDENT_SUMMARY: &str = "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json";
 const W036_CROSS_ENGINE_SUMMARY: &str = "docs/test-runs/core-engine/cross-engine-differential/w036-independent-diversity-differential-001/run_summary.json";
@@ -154,6 +168,26 @@ const W042_CROSS_ENGINE_SERVICE_REGISTER: &str = "docs/test-runs/core-engine/ope
 const W042_ALERT_DISPATCH_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_alert_dispatch_service_register.json";
 const W042_OPERATED_SERVICE_BLOCKERS: &str = "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_exact_service_blocker_register.json";
 const W042_OPERATED_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/promotion_decision.json";
+const W042_DIVERSITY_SUMMARY: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json";
+const W042_INDEPENDENT_IMPLEMENTATION: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json";
+const W042_INDEPENDENT_ROW_SET: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_evaluator_breadth_register.json";
+const W042_CROSS_ENGINE_DIVERSITY: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json";
+const W042_MISMATCH_AUTHORITY: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json";
+const W042_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json";
+const W042_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json";
+const W042_PACK_DECISION: &str = "docs/test-runs/core-engine/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json";
+const W043_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json";
+const W043_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
+const W043_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json";
+const W043_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
+const W043_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json";
+const W043_OPERATED_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json";
+const W043_RETAINED_HISTORY_QUERY: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json";
+const W043_RETAINED_WITNESS_LIFECYCLE: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json";
+const W043_CROSS_ENGINE_SERVICE_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json";
+const W043_ALERT_DISPATCH_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json";
+const W043_OPERATED_SERVICE_BLOCKERS: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json";
+const W043_OPERATED_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json";
 const OXFML_INBOUND_NOTES: &str = "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md";
 
 #[derive(Debug, Error)]
@@ -214,6 +248,9 @@ impl DiversitySeamRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<DiversitySeamRunSummary, DiversitySeamError> {
+        if run_id.starts_with("w043-") || run_id.starts_with("test-w043-") {
+            return self.execute_w043(repo_root, run_id);
+        }
         if run_id.starts_with("w042-") || run_id.starts_with("test-w042-") {
             return self.execute_w042(repo_root, run_id);
         }
@@ -429,6 +466,368 @@ impl DiversitySeamRunner {
             diversity_disposition_row_count: diversity_rows.len(),
             seam_watch_row_count: seam_watch_rows.len(),
             aligned_seam_watch_row_count,
+            accepted_boundary_count,
+            exact_blocker_count: blockers.len(),
+            failed_row_count,
+            fully_independent_evaluator_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w043(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<DiversitySeamRunSummary, DiversitySeamError> {
+        let relative_artifact_root =
+            relative_artifact_path(&["docs", "test-runs", "core-engine", "diversity-seam", run_id]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                DiversitySeamError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            DiversitySeamError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w043_obligation_summary = read_json(repo_root, W043_OBLIGATION_SUMMARY)?;
+        let w043_obligation_map = read_json(repo_root, W043_OBLIGATION_MAP)?;
+        let w043_oxfml_intake = read_json(repo_root, W043_OXFML_INBOUND_INTAKE)?;
+        let w042_diversity = read_json(repo_root, W042_DIVERSITY_SUMMARY)?;
+        let w042_implementation = read_json(repo_root, W042_INDEPENDENT_IMPLEMENTATION)?;
+        let w042_independent = read_json(repo_root, W042_INDEPENDENT_ROW_SET)?;
+        let w042_cross_engine = read_json(repo_root, W042_CROSS_ENGINE_DIVERSITY)?;
+        let w042_authority = read_json(repo_root, W042_MISMATCH_AUTHORITY)?;
+        let w042_blockers = read_json(repo_root, W042_DIVERSITY_BLOCKERS)?;
+        let w042_decision = read_json(repo_root, W042_DIVERSITY_DECISION)?;
+        let w043_stage2 = read_json(repo_root, W043_STAGE2_SUMMARY)?;
+        let w043_stage2_blockers = read_json(repo_root, W043_STAGE2_BLOCKERS)?;
+        let w043_operated = read_json(repo_root, W043_OPERATED_ASSURANCE_SUMMARY)?;
+        let w043_retained = read_json(repo_root, W043_RETAINED_HISTORY_QUERY)?;
+        let w043_witness = read_json(repo_root, W043_RETAINED_WITNESS_LIFECYCLE)?;
+        let w043_cross_engine_service = read_json(repo_root, W043_CROSS_ENGINE_SERVICE_REGISTER)?;
+        let w043_alert_dispatch = read_json(repo_root, W043_ALERT_DISPATCH_REGISTER)?;
+        let w043_service_blockers = read_json(repo_root, W043_OPERATED_SERVICE_BLOCKERS)?;
+        let w043_operated_decision = read_json(repo_root, W043_OPERATED_PROMOTION_DECISION)?;
+        let w042_pack_decision = read_json(repo_root, W042_PACK_DECISION)?;
+
+        let implementation_rows = w043_independent_reference_model_rows();
+        let source_rows = w043_source_rows(
+            &w043_obligation_summary,
+            &w043_obligation_map,
+            &w043_oxfml_intake,
+            &w042_diversity,
+            &w042_implementation,
+            &w042_independent,
+            &w042_cross_engine,
+            &w042_authority,
+            &w042_blockers,
+            &w042_decision,
+            &w043_stage2,
+            &w043_operated,
+            &w043_retained,
+            &w043_witness,
+            &w043_cross_engine_service,
+            &w043_alert_dispatch,
+            &w043_service_blockers,
+            &w043_operated_decision,
+            &w042_pack_decision,
+        );
+        let independent_rows = w043_independent_evaluator_rows(
+            &w042_independent,
+            &w042_implementation,
+            &w042_diversity,
+            &w043_stage2,
+            &w043_operated,
+            &implementation_rows,
+        );
+        let cross_engine_rows = w043_cross_engine_differential_rows(
+            &w042_cross_engine,
+            &w043_stage2,
+            &w043_operated,
+            &w043_retained,
+            &w043_witness,
+            &w043_cross_engine_service,
+            &w043_alert_dispatch,
+            &w043_oxfml_intake,
+            &implementation_rows,
+        );
+        let authority_rows = w043_mismatch_authority_rows(
+            &w042_authority,
+            &w043_operated,
+            &w043_cross_engine_service,
+            &w043_alert_dispatch,
+            &implementation_rows,
+        );
+        let blockers = w043_exact_blockers(
+            &w042_blockers,
+            &w043_stage2_blockers,
+            &w043_service_blockers,
+            &w043_cross_engine_service,
+        );
+        let accepted_boundary_count = independent_rows
+            .iter()
+            .chain(cross_engine_rows.iter())
+            .chain(authority_rows.iter())
+            .filter(|row| {
+                matches!(
+                    row.get("disposition_kind").and_then(Value::as_str),
+                    Some("accepted_boundary")
+                        | Some("accepted_external_slice")
+                        | Some("broadened_independent_implementation")
+                        | Some("service_contract_boundary")
+                )
+            })
+            .count();
+        let service_blocked_count = cross_engine_rows
+            .iter()
+            .chain(authority_rows.iter())
+            .filter(|row| {
+                row.get("service_state").and_then(Value::as_str) == Some("blocked")
+                    || row
+                        .get("authority_state")
+                        .and_then(Value::as_str)
+                        .is_some_and(|state| state.starts_with("blocked"))
+            })
+            .count();
+
+        let mut validation_failures = source_validation_failures(&source_rows);
+        validation_failures.extend(w043_diversity_validation_failures(
+            &implementation_rows,
+            &independent_rows,
+            &cross_engine_rows,
+            &authority_rows,
+            &blockers,
+        ));
+        let failed_row_count = validation_failures.len();
+        let implementation_case_count = implementation_rows.len();
+        let implementation_match_count = implementation_rows
+            .iter()
+            .filter(|row| bool_at(row, "matches_expected"))
+            .count();
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let independent_implementation_path = format!(
+            "{relative_artifact_root}/w043_independent_reference_model_implementation.json"
+        );
+        let independent_row_set_path =
+            format!("{relative_artifact_root}/w043_independent_evaluator_breadth_register.json");
+        let cross_engine_path = format!(
+            "{relative_artifact_root}/w043_cross_engine_differential_service_register.json"
+        );
+        let mismatch_authority_path =
+            format!("{relative_artifact_root}/w043_mismatch_quarantine_authority_router.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w043_exact_diversity_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        let source_evidence_index = json!({
+            "schema_version": W043_SOURCE_INDEX_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_row_count": source_rows.len(),
+            "rows": source_rows,
+            "source_artifacts": {
+                "w043_obligation_summary": W043_OBLIGATION_SUMMARY,
+                "w043_obligation_map": W043_OBLIGATION_MAP,
+                "w043_oxfml_inbound_intake": W043_OXFML_INBOUND_INTAKE,
+                "w042_diversity_summary": W042_DIVERSITY_SUMMARY,
+                "w042_independent_implementation": W042_INDEPENDENT_IMPLEMENTATION,
+                "w042_independent_row_set": W042_INDEPENDENT_ROW_SET,
+                "w042_cross_engine_differential": W042_CROSS_ENGINE_DIVERSITY,
+                "w042_mismatch_authority": W042_MISMATCH_AUTHORITY,
+                "w042_diversity_blockers": W042_DIVERSITY_BLOCKERS,
+                "w042_diversity_decision": W042_DIVERSITY_DECISION,
+                "w043_stage2_summary": W043_STAGE2_SUMMARY,
+                "w043_stage2_blockers": W043_STAGE2_BLOCKERS,
+                "w043_operated_assurance_summary": W043_OPERATED_ASSURANCE_SUMMARY,
+                "w043_retained_history_query": W043_RETAINED_HISTORY_QUERY,
+                "w043_retained_witness_lifecycle": W043_RETAINED_WITNESS_LIFECYCLE,
+                "w043_cross_engine_service_register": W043_CROSS_ENGINE_SERVICE_REGISTER,
+                "w043_alert_dispatch_register": W043_ALERT_DISPATCH_REGISTER,
+                "w043_operated_service_blockers": W043_OPERATED_SERVICE_BLOCKERS,
+                "w043_operated_promotion_decision": W043_OPERATED_PROMOTION_DECISION,
+                "w042_pack_decision": W042_PACK_DECISION,
+                "oxfml_inbound_notes": OXFML_INBOUND_NOTES
+            }
+        });
+        let independent_implementation = json!({
+            "schema_version": W043_INDEPENDENT_IMPLEMENTATION_SCHEMA_V1,
+            "run_id": run_id,
+            "implementation_kind": "independent_reference_model_evaluator",
+            "implementation_authority": "local_w043_diversity_runner_independent_from_tracecalc_optimized_core_treecalc_oxfml_and_oxfunc",
+            "case_count": implementation_case_count,
+            "match_count": implementation_match_count,
+            "failed_case_count": implementation_case_count - implementation_match_count,
+            "fully_independent_evaluator_promoted": false,
+            "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows",
+            "rows": implementation_rows
+        });
+        let independent_row_set = json!({
+            "schema_version": W043_INDEPENDENT_EVALUATOR_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": independent_rows.len(),
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "w043_independent_reference_model_match_count": implementation_match_count,
+            "fully_independent_evaluator_promoted": false,
+            "rows": independent_rows
+        });
+        let cross_engine = json!({
+            "schema_version": W043_CROSS_ENGINE_DIVERSITY_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": cross_engine_rows.len(),
+            "service_blocked_count": service_blocked_count,
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "operated_cross_engine_differential_service_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true,
+            "rows": cross_engine_rows
+        });
+        let mismatch_authority = json!({
+            "schema_version": W043_MISMATCH_AUTHORITY_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "operated_service_authority_promoted": false,
+            "fully_independent_evaluator_promoted": false,
+            "mismatch_quarantine_service_promoted": false,
+            "rows": authority_rows
+        });
+        let blocker_register = json!({
+            "schema_version": W043_BLOCKER_REGISTER_SCHEMA_V1,
+            "run_id": run_id,
+            "exact_blocker_count": blockers.len(),
+            "rows": blockers
+        });
+        let promotion_decision = json!({
+            "schema_version": W043_PROMOTION_DECISION_SCHEMA_V1,
+            "run_id": run_id,
+            "decision_state": "w043_independent_reference_model_extended_without_full_diversity_or_service_promotion",
+            "independent_reference_model_evaluator_present": true,
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "w043_independent_reference_model_match_count": implementation_match_count,
+            "fully_independent_evaluator_promoted": false,
+            "independent_evaluator_breadth_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "cross_engine_diversity_service_promoted": false,
+            "mismatch_quarantine_service_promoted": false,
+            "broad_oxfml_seam_promoted": false,
+            "callable_metadata_projection_promoted": false,
+            "w073_formatting_handoff_triggered": false,
+            "pack_grade_replay_promoted": false,
+            "c5_promoted": false,
+            "stage2_policy_promoted": false,
+            "source_evidence_row_count": source_rows.len(),
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_differential_row_count": cross_engine_rows.len(),
+            "mismatch_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "service_blocked_count": service_blocked_count,
+            "exact_blocker_count": blockers.len(),
+            "blockers": blockers
+                .iter()
+                .map(|row| row["blocker_id"].clone())
+                .collect::<Vec<_>>(),
+            "semantic_equivalence_statement": "This W043 diversity runner extends the bounded independent named-reference model, binds W043 operated-assurance and Stage 2 evidence, and classifies diversity, differential-service, mismatch-quarantine, and spec-evolution authority rows only. It does not change evaluator kernels used by OxCalc, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics."
+        });
+        let validation = json!({
+            "schema_version": W043_VALIDATION_SCHEMA_V1,
+            "run_id": run_id,
+            "status": if validation_failures.is_empty() {
+                "w043_independent_reference_model_diversity_packet_valid"
+            } else {
+                "w043_independent_reference_model_diversity_packet_invalid"
+            },
+            "source_evidence_row_count": source_rows.len(),
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "w043_independent_reference_model_match_count": implementation_match_count,
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_differential_row_count": cross_engine_rows.len(),
+            "mismatch_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "service_blocked_count": service_blocked_count,
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "fully_independent_evaluator_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "mismatch_quarantine_service_promoted": false,
+            "validation_failures": validation_failures
+        });
+        let run_summary = json!({
+            "schema_version": W043_RUN_SUMMARY_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_index_path": source_evidence_index_path,
+            "w043_independent_reference_model_implementation_path": independent_implementation_path,
+            "w043_independent_evaluator_breadth_register_path": independent_row_set_path,
+            "w043_cross_engine_differential_service_register_path": cross_engine_path,
+            "w043_mismatch_quarantine_authority_router_path": mismatch_authority_path,
+            "w043_exact_diversity_blocker_register_path": blocker_register_path,
+            "promotion_decision_path": promotion_decision_path,
+            "validation_path": validation_path,
+            "source_evidence_row_count": source_rows.len(),
+            "w043_independent_reference_model_case_count": implementation_case_count,
+            "w043_independent_reference_model_match_count": implementation_match_count,
+            "independent_evaluator_row_count": independent_rows.len(),
+            "cross_engine_differential_row_count": cross_engine_rows.len(),
+            "mismatch_authority_row_count": authority_rows.len(),
+            "accepted_boundary_count": accepted_boundary_count,
+            "service_blocked_count": service_blocked_count,
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "fully_independent_evaluator_promoted": false,
+            "operated_cross_engine_differential_service_promoted": false,
+            "mismatch_quarantine_service_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true
+        });
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &source_evidence_index,
+        )?;
+        write_json(
+            &artifact_root.join("w043_independent_reference_model_implementation.json"),
+            &independent_implementation,
+        )?;
+        write_json(
+            &artifact_root.join("w043_independent_evaluator_breadth_register.json"),
+            &independent_row_set,
+        )?;
+        write_json(
+            &artifact_root.join("w043_cross_engine_differential_service_register.json"),
+            &cross_engine,
+        )?;
+        write_json(
+            &artifact_root.join("w043_mismatch_quarantine_authority_router.json"),
+            &mismatch_authority,
+        )?;
+        write_json(
+            &artifact_root.join("w043_exact_diversity_blocker_register.json"),
+            &blocker_register,
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &promotion_decision,
+        )?;
+        write_json(&artifact_root.join("validation.json"), &validation)?;
+        write_json(&artifact_root.join("run_summary.json"), &run_summary)?;
+
+        Ok(DiversitySeamRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W043_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            source_evidence_row_count: source_rows.len(),
+            diversity_disposition_row_count: independent_rows.len(),
+            seam_watch_row_count: cross_engine_rows.len(),
+            aligned_seam_watch_row_count: authority_rows.len(),
             accepted_boundary_count,
             exact_blocker_count: blockers.len(),
             failed_row_count,
@@ -3762,6 +4161,813 @@ fn w042_diversity_validation_failures(
     failures
 }
 
+fn w043_reference_model_cases() -> Vec<ReferenceModelCase> {
+    const FAN_IN_CHECKSUM_ASSIGNMENTS: &[(&str, &str)] = &[
+        ("Top", "4"),
+        ("Left", "6"),
+        ("Bias", "3"),
+        ("Row", "Top+Left"),
+        ("Column", "Top*Left"),
+        ("Checksum", "Row+Column+Bias"),
+        ("Gate", "IF(Checksum>=37,Checksum,0)"),
+    ];
+    const FAN_IN_CHECKSUM_EXPECTED: &[(&str, FormulaValue)] = &[
+        ("Top", FormulaValue::Int(4)),
+        ("Left", FormulaValue::Int(6)),
+        ("Bias", FormulaValue::Int(3)),
+        ("Row", FormulaValue::Int(10)),
+        ("Column", FormulaValue::Int(24)),
+        ("Checksum", FormulaValue::Int(37)),
+        ("Gate", FormulaValue::Int(37)),
+    ];
+    const MISMATCH_ROUTING_ASSIGNMENTS: &[(&str, &str)] = &[
+        ("Left", "8"),
+        ("Top", "5"),
+        ("Actual", "Left+Top"),
+        ("Oracle", "14"),
+        ("Match", "IF(Actual=Oracle,1,0)"),
+        ("Quarantine", "IF(Match=1,0,1)"),
+    ];
+    const MISMATCH_ROUTING_EXPECTED: &[(&str, FormulaValue)] = &[
+        ("Left", FormulaValue::Int(8)),
+        ("Top", FormulaValue::Int(5)),
+        ("Actual", FormulaValue::Int(13)),
+        ("Oracle", FormulaValue::Int(14)),
+        ("Match", FormulaValue::Int(0)),
+        ("Quarantine", FormulaValue::Int(1)),
+    ];
+
+    let mut cases = w042_reference_model_cases();
+    cases.push(ReferenceModelCase {
+        case_id: "reference_model.fan_in_checksum",
+        assignments: FAN_IN_CHECKSUM_ASSIGNMENTS,
+        expected: FAN_IN_CHECKSUM_EXPECTED,
+    });
+    cases.push(ReferenceModelCase {
+        case_id: "reference_model.mismatch_routing_control",
+        assignments: MISMATCH_ROUTING_ASSIGNMENTS,
+        expected: MISMATCH_ROUTING_EXPECTED,
+    });
+    cases
+}
+
+fn w043_independent_reference_model_rows() -> Vec<Value> {
+    w043_reference_model_cases()
+        .into_iter()
+        .map(|case| {
+            let result = eval_reference_model(case.assignments);
+            let (actual_bindings, error) = match result {
+                Ok(bindings) => (bindings, None),
+                Err(err) => (Vec::new(), Some(err)),
+            };
+            let matches_expected = error.is_none() && actual_bindings == case.expected;
+            let assignment_rows = case
+                .assignments
+                .iter()
+                .map(|(name, expression)| {
+                    json!({
+                        "name": name,
+                        "formula": expression
+                    })
+                })
+                .collect::<Vec<_>>();
+            json!({
+                "case_id": case.case_id,
+                "assignments": assignment_rows,
+                "expected_bindings": reference_bindings_json(case.expected),
+                "actual_bindings": reference_bindings_json(&actual_bindings),
+                "error": error,
+                "matches_expected": matches_expected,
+                "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_reference_model",
+                "implementation_kind": "independent_reference_model_evaluator",
+                "scope_limit": "acyclic named-reference models evaluated in declaration order with integer formulas, IF, comparisons, deterministic before/after edit checks, fan-in checksum rows, and mismatch-routing control rows",
+                "independent_from": ["TraceCalc", "optimized_core", "TreeCalc", "OxFml", "OxFunc"]
+            })
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w043_source_rows(
+    w043_obligation_summary: &Value,
+    w043_obligation_map: &Value,
+    w043_oxfml_intake: &Value,
+    w042_diversity: &Value,
+    w042_implementation: &Value,
+    w042_independent: &Value,
+    w042_cross_engine: &Value,
+    w042_authority: &Value,
+    w042_blockers: &Value,
+    w042_decision: &Value,
+    w043_stage2: &Value,
+    w043_operated: &Value,
+    w043_retained: &Value,
+    w043_witness: &Value,
+    w043_cross_engine_service: &Value,
+    w043_alert_dispatch: &Value,
+    w043_service_blockers: &Value,
+    w043_operated_decision: &Value,
+    w042_pack_decision: &Value,
+) -> Vec<Value> {
+    let w073 = w043_oxfml_intake
+        .get("w073_formatting")
+        .unwrap_or(&Value::Null);
+    vec![
+        json!({
+            "row_id": "source.w043_proof_service_obligation_map",
+            "artifact": W043_OBLIGATION_MAP,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": text_at(w043_obligation_summary, "status") == "residual_release_grade_proof_service_obligation_map_validated"
+                && number_at(w043_obligation_map, "obligation_count") == 36
+                && bool_at(w043_obligation_summary, "oxfml_formatting_update_incorporated"),
+            "semantic_state": "w043_diversity_obligations_bound_with_no_proxy_guard"
+        }),
+        json!({
+            "row_id": "source.w043_w073_typed_formatting_guard",
+            "artifact": W043_OXFML_INBOUND_INTAKE,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": w073.get("status").and_then(Value::as_str) == Some("typed_only_direct_replacement_guard_retained")
+                && array_len_at(w073, "typed_rule_only_families") == 7
+                && !bool_at(w073, "threshold_fallback_allowed_for_typed_families")
+                && !bool_at(w073, "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata"),
+            "semantic_state": "w073_typed_rule_only_formatting_guard_retained_for_w043_diversity"
+        }),
+        json!({
+            "row_id": "source.w043_oxfml_watch_lanes",
+            "artifact": W043_OXFML_INBOUND_INTAKE,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": text_at(w043_oxfml_intake, "status") == "reviewed_as_watch_and_handoff_trigger_inputs"
+                && array_len_at(w043_oxfml_intake, "note_level_watch_lanes") == 7
+                && !bool_at(w043_oxfml_intake, "handoff_required"),
+            "semantic_state": "w043_oxfml_notes_are_watch_lanes_not_seam_freeze_text"
+        }),
+        json!({
+            "row_id": "source.w042_diversity_predecessor",
+            "artifact": W042_DIVERSITY_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w042_diversity, "failed_row_count"),
+            "promotion_guard": !bool_at(w042_diversity, "fully_independent_evaluator_promoted")
+                && !bool_at(w042_diversity, "operated_cross_engine_differential_service_promoted")
+                && !bool_at(w042_diversity, "mismatch_quarantine_service_promoted")
+                && !bool_at(w042_decision, "fully_independent_evaluator_promoted")
+                && number_at(w042_diversity, "exact_blocker_count") == 7,
+            "semantic_state": "w042_diversity_predecessor_bound_without_promotion"
+        }),
+        json!({
+            "row_id": "source.w042_reference_model_predecessor",
+            "artifact": W042_INDEPENDENT_IMPLEMENTATION,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w042_implementation, "failed_case_count"),
+            "promotion_guard": number_at(w042_implementation, "case_count") == 4
+                && number_at(w042_implementation, "match_count") == 4
+                && !bool_at(w042_implementation, "fully_independent_evaluator_promoted"),
+            "semantic_state": "w042_reference_model_extended_by_w043_cases"
+        }),
+        json!({
+            "row_id": "source.w042_independent_breadth_register",
+            "artifact": W042_INDEPENDENT_ROW_SET,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w042_independent, "row_count") == 11
+                && !bool_at(w042_independent, "fully_independent_evaluator_promoted"),
+            "semantic_state": "w042_independent_breadth_register_bound"
+        }),
+        json!({
+            "row_id": "source.w042_cross_engine_differential_predecessor",
+            "artifact": W042_CROSS_ENGINE_DIVERSITY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w042_cross_engine, "row_count") == 10
+                && !bool_at(w042_cross_engine, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w042_file_backed_cross_engine_rows_bound_without_operated_service"
+        }),
+        json!({
+            "row_id": "source.w042_mismatch_authority_predecessor",
+            "artifact": W042_MISMATCH_AUTHORITY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w042_authority, "row_count") == 10
+                && !bool_at(w042_authority, "fully_independent_evaluator_promoted")
+                && !bool_at(w042_authority, "operated_service_authority_promoted")
+                && !bool_at(w042_authority, "mismatch_quarantine_service_promoted"),
+            "semantic_state": "w042_mismatch_authority_bound_without_service_promotion"
+        }),
+        json!({
+            "row_id": "source.w042_diversity_blockers",
+            "artifact": W042_DIVERSITY_BLOCKERS,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w042_blockers, "exact_blocker_count") == 7,
+            "semantic_state": "w042_exact_diversity_blockers_bound_for_w043"
+        }),
+        json!({
+            "row_id": "source.w043_stage2_service_dependency",
+            "artifact": W043_STAGE2_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w043_stage2, "failed_row_count"),
+            "promotion_guard": !bool_at(w043_stage2, "stage2_policy_promoted")
+                && !bool_at(w043_stage2, "stage2_promotion_candidate")
+                && number_at(w043_stage2, "exact_remaining_blocker_count") == 6
+                && number_at(w043_stage2, "policy_row_count") == 20,
+            "semantic_state": "w043_stage2_service_dependency_bound_without_policy_promotion"
+        }),
+        json!({
+            "row_id": "source.w043_operated_assurance_service_packet",
+            "artifact": W043_OPERATED_ASSURANCE_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w043_operated, "failed_row_count"),
+            "promotion_guard": bool_at(w043_operated, "file_backed_service_envelope_present")
+                && bool_at(w043_operated, "retained_history_query_api_contract_present")
+                && bool_at(w043_operated, "retained_witness_lifecycle_register_present")
+                && !bool_at(w043_operated, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w043_file_backed_service_packet_bound_without_operated_service_promotion"
+        }),
+        json!({
+            "row_id": "source.w043_retained_history_witness_support",
+            "artifact": W043_RETAINED_HISTORY_QUERY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w043_retained, "query_register_row_count") == 13
+                && number_at(w043_retained, "replay_correlation_row_count") == 11
+                && bool_at(w043_witness, "retained_witness_lifecycle_register_present")
+                && number_at(w043_witness, "pack_eligible_witness_count") == 0
+                && !bool_at(w043_witness, "retained_witness_lifecycle_service_promoted"),
+            "semantic_state": "w043_retained_history_and_witness_support_bound"
+        }),
+        json!({
+            "row_id": "source.w043_cross_engine_service_blocker",
+            "artifact": W043_CROSS_ENGINE_SERVICE_REGISTER,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": bool_at(w043_cross_engine_service, "file_backed_cross_engine_substrate_present")
+                && !bool_at(w043_cross_engine_service, "operated_cross_engine_differential_service_present")
+                && array_contains_string(
+                    w043_cross_engine_service,
+                    "blocked_service_claims",
+                    "operated_mismatch_quarantine_dispatcher"
+                ),
+            "semantic_state": "w043_cross_engine_service_blocker_retained"
+        }),
+        json!({
+            "row_id": "source.w043_alert_quarantine_contract",
+            "artifact": W043_ALERT_DISPATCH_REGISTER,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w043_alert_dispatch, "evaluated_rule_count") == 29
+                && number_at(w043_alert_dispatch, "quarantine_decision_count") == 0
+                && number_at(w043_alert_dispatch, "alert_decision_count") == 0
+                && !bool_at(w043_alert_dispatch, "external_alert_dispatcher_promoted")
+                && !bool_at(w043_alert_dispatch, "quarantine_service_promoted"),
+            "semantic_state": "w043_local_alert_quarantine_contract_clean"
+        }),
+        json!({
+            "row_id": "source.w043_service_and_pack_blockers",
+            "artifact": W043_OPERATED_SERVICE_BLOCKERS,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w043_service_blockers, "exact_service_blocker_count") == 6
+                && text_at(w042_pack_decision, "decision_status") == "capability_not_promoted"
+                && !bool_at(w042_pack_decision, "capability_promoted"),
+            "semantic_state": "w043_service_and_pack_no_promotion_blockers_bound"
+        }),
+        json!({
+            "row_id": "source.w043_diversity_no_proxy_promotion_guard",
+            "artifact": W043_OPERATED_PROMOTION_DECISION,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(w042_decision, "fully_independent_evaluator_promoted")
+                && !bool_at(w042_decision, "operated_cross_engine_differential_service_promoted")
+                && !bool_at(w043_operated_decision, "operated_cross_engine_differential_service_promoted")
+                && !bool_at(w043_operated_decision, "quarantine_service_promoted")
+                && !bool_at(w043_stage2, "stage2_policy_promoted")
+                && !bool_at(w042_pack_decision, "capability_promoted"),
+            "semantic_state": "w043_diversity_stage2_pack_service_promotion_guard_clean"
+        }),
+        json!({
+            "row_id": "source.w043_diversity_obligation_coverage",
+            "artifact": W043_OBLIGATION_MAP,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(w043_obligation_map, "obligation_count") == 36
+                && number_at(w043_obligation_map, "source_residual_lane_count") == 18,
+            "semantic_state": "w043_obligations_023_026_diversity_service_spec_evolution_lanes_bound"
+        }),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w043_independent_evaluator_rows(
+    w042_independent: &Value,
+    w042_implementation: &Value,
+    w042_diversity: &Value,
+    w043_stage2: &Value,
+    w043_operated: &Value,
+    implementation_rows: &[Value],
+) -> Vec<Value> {
+    let match_count = implementation_rows
+        .iter()
+        .filter(|row| bool_at(row, "matches_expected"))
+        .count();
+    vec![
+        json!({
+            "row_id": "independent.w043_reference_model_evaluator",
+            "disposition_kind": "broadened_independent_implementation",
+            "independence_state": "independent_reference_model_slice_present",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "case_count": implementation_rows.len(),
+            "match_count": match_count,
+            "promotion_consequence": "W043 broadens the independent slice with fan-in checksum and mismatch-routing control rows, but still does not cover full TreeCalc/OxCalc evaluator breadth."
+        }),
+        json!({
+            "row_id": "independent.w042_reference_model_predecessor",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "predecessor_reference_model_slice_subsumed_by_w043_slice",
+            "evidence": W042_INDEPENDENT_IMPLEMENTATION,
+            "w042_case_count": number_at(w042_implementation, "case_count"),
+            "w042_row_count": number_at(w042_independent, "row_count"),
+            "w042_fully_independent_evaluator_promoted": bool_at(w042_diversity, "fully_independent_evaluator_promoted"),
+            "promotion_consequence": "W042 reference-model evidence remains evidence lineage only."
+        }),
+        json!({
+            "row_id": "independent.w043_fan_in_and_mismatch_control_rows",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "bounded_fan_in_and_mismatch_routing_controls_present",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "promotion_consequence": "The added W043 cases are deterministic control rows for later service comparisons, not broad evaluator authority."
+        }),
+        json!({
+            "row_id": "independent.tracecalc_reference_oracle_boundary",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "tracecalc_is_correctness_oracle_not_independent_implementation",
+            "evidence": "TraceCalc",
+            "promotion_consequence": "TraceCalc remains the correctness oracle for covered behavior, not a diversity implementation."
+        }),
+        json!({
+            "row_id": "independent.optimized_core_same_family",
+            "disposition_kind": "same_engine_family_not_independent",
+            "independence_state": "optimized_core_same_implementation_family",
+            "evidence": "W043 optimized/core counterpart packet",
+            "promotion_consequence": "Optimized/core evidence strengthens conformance but is not independent implementation authority."
+        }),
+        json!({
+            "row_id": "independent.treecalc_same_family",
+            "disposition_kind": "same_engine_family_not_independent",
+            "independence_state": "treecalc_same_oxcalc_family",
+            "evidence": "W043 TreeCalc counterpart evidence",
+            "promotion_consequence": "TreeCalc evidence is core conformance evidence, not independent evaluator diversity."
+        }),
+        json!({
+            "row_id": "independent.direct_oxfml_external_formula_slice",
+            "disposition_kind": "accepted_external_slice",
+            "independence_state": "external_formula_evaluator_not_oxcalc_coordinator",
+            "evidence": W037_DIRECT_OXFML_SUMMARY,
+            "promotion_consequence": "OxFml formula evidence remains an external formula-evaluator slice, including narrow LET/LAMBDA seam evidence, not OxCalc coordinator breadth."
+        }),
+        json!({
+            "row_id": "independent.proof_model_not_runtime_evaluator",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "proof_model_not_executable_runtime_evaluator",
+            "evidence": "W043 Lean/TLA proof/model packet",
+            "promotion_consequence": "Proof/model evidence supports specification and refinement, but does not supply runtime diversity."
+        }),
+        json!({
+            "row_id": "independent.stage2_declared_profile_not_independent_runtime",
+            "disposition_kind": "accepted_boundary",
+            "independence_state": "stage2_policy_profiles_not_second_evaluator",
+            "evidence": W043_STAGE2_SUMMARY,
+            "policy_row_count": number_at(w043_stage2, "policy_row_count"),
+            "stage2_policy_promoted": bool_at(w043_stage2, "stage2_policy_promoted"),
+            "promotion_consequence": "Stage 2 profile evidence remains policy/replay evidence, not separate evaluator implementation authority."
+        }),
+        json!({
+            "row_id": "independent.w043_service_packet_not_independent_runtime",
+            "disposition_kind": "service_contract_boundary",
+            "independence_state": "service_packet_file_backed_not_independent_evaluator",
+            "evidence": W043_OPERATED_ASSURANCE_SUMMARY,
+            "service_readiness_blocked_count": number_at(w043_operated, "service_readiness_blocked_count"),
+            "promotion_consequence": "Service evidence improves retention and authority routing but is not independent evaluator breadth."
+        }),
+        json!({
+            "row_id": "independent.mismatch_quarantine_contract_not_independent_runtime",
+            "disposition_kind": "service_contract_boundary",
+            "independence_state": "mismatch_contract_not_second_evaluator",
+            "evidence": W043_ALERT_DISPATCH_REGISTER,
+            "promotion_consequence": "Mismatch/quarantine contract rows classify later service behavior but do not add evaluator implementation breadth."
+        }),
+        json!({
+            "row_id": "independent.full_independent_evaluator_breadth_blocked",
+            "disposition_kind": "exact_remaining_blocker",
+            "independence_state": "full_independent_implementation_breadth_absent",
+            "evidence": W043_OBLIGATION_MAP,
+            "promotion_consequence": "Full independent-evaluator diversity remains blocked beyond the bounded named-reference model slice."
+        }),
+        json!({
+            "row_id": "independent.oxfml_callable_breadth_dependency",
+            "disposition_kind": "exact_remaining_blocker",
+            "independence_state": "callable_and_publication_breadth_dependency_retained",
+            "evidence": W043_OBLIGATION_MAP,
+            "promotion_consequence": "LET/LAMBDA and callable-carrier interaction remains in scope for later breadth, with OxFunc peeking only where the seam threads through OxCalc/OxFml."
+        }),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w043_cross_engine_differential_rows(
+    w042_cross_engine: &Value,
+    w043_stage2: &Value,
+    w043_operated: &Value,
+    w043_retained: &Value,
+    w043_witness: &Value,
+    w043_cross_engine_service: &Value,
+    w043_alert_dispatch: &Value,
+    w043_oxfml_intake: &Value,
+    implementation_rows: &[Value],
+) -> Vec<Value> {
+    let w073 = w043_oxfml_intake
+        .get("w073_formatting")
+        .unwrap_or(&Value::Null);
+    let match_count = implementation_rows
+        .iter()
+        .filter(|row| bool_at(row, "matches_expected"))
+        .count();
+    vec![
+        json!({
+            "row_id": "cross_engine.w043_reference_model_differential",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "file_backed_reference_model_rows",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "case_count": implementation_rows.len(),
+            "match_count": match_count,
+            "promotion_consequence": "Reference-model rows can feed later cross-engine service work but are not an operated service."
+        }),
+        json!({
+            "row_id": "cross_engine.w042_file_backed_differential_predecessor",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "file_backed_not_operated",
+            "evidence": W042_CROSS_ENGINE_DIVERSITY,
+            "w042_row_count": number_at(w042_cross_engine, "row_count"),
+            "promotion_consequence": "W042 file-backed diversity remains evidence lineage, not service promotion."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_service_envelope_contract",
+            "disposition_kind": "service_contract_boundary",
+            "service_state": "file_backed_service_envelope_only",
+            "evidence": W043_OPERATED_ASSURANCE_SUMMARY,
+            "service_envelope_row_count": number_at(w043_operated, "service_envelope_row_count"),
+            "file_backed_service_envelope_present": bool_at(w043_operated, "file_backed_service_envelope_present"),
+            "promotion_consequence": "The W043 service envelope records rows needed by a future operated service without claiming operation."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_retained_history_query_support",
+            "disposition_kind": "supporting_evidence_not_service",
+            "service_state": "supporting_history_query_and_correlation_only",
+            "evidence": W043_RETAINED_HISTORY_QUERY,
+            "query_register_row_count": number_at(w043_retained, "query_register_row_count"),
+            "replay_correlation_row_count": number_at(w043_retained, "replay_correlation_row_count"),
+            "promotion_consequence": "Retained query/correlation artifacts support later differential service operation but are not themselves a service."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_retained_witness_lifecycle_support",
+            "disposition_kind": "supporting_evidence_not_service",
+            "service_state": "supporting_witness_lifecycle_only",
+            "evidence": W043_RETAINED_WITNESS_LIFECYCLE,
+            "retained_witness_lifecycle_row_count": number_at(w043_witness, "witness_lifecycle_row_count"),
+            "pack_eligible_witness_count": number_at(w043_witness, "pack_eligible_witness_count"),
+            "promotion_consequence": "Retained-witness lifecycle rows support later differential and pack governance work but are not an operated lifecycle service."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_stage2_service_dependency",
+            "disposition_kind": "service_dependency_blocked",
+            "service_state": "blocked",
+            "evidence": W043_STAGE2_SUMMARY,
+            "stage2_policy_promoted": bool_at(w043_stage2, "stage2_policy_promoted"),
+            "exact_remaining_blocker_count": number_at(w043_stage2, "exact_remaining_blocker_count"),
+            "promotion_consequence": "Stage 2 service-dependent diversity remains blocked by operated service and pack-governance dependencies."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_cross_engine_service_register",
+            "disposition_kind": "service_substrate_bound",
+            "service_state": if bool_at(w043_cross_engine_service, "operated_cross_engine_differential_service_present") { "present" } else { "blocked" },
+            "evidence": W043_CROSS_ENGINE_SERVICE_REGISTER,
+            "file_backed_cross_engine_substrate_present": bool_at(w043_cross_engine_service, "file_backed_cross_engine_substrate_present"),
+            "operated_cross_engine_differential_service_present": bool_at(w043_cross_engine_service, "operated_cross_engine_differential_service_present"),
+            "promotion_consequence": "The W043 service register records the operated-service blocker exactly."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_mismatch_triage_and_quarantine_contract",
+            "disposition_kind": "exact_remaining_blocker",
+            "service_state": "blocked",
+            "evidence": W043_ALERT_DISPATCH_REGISTER,
+            "evaluated_rule_count": number_at(w043_alert_dispatch, "evaluated_rule_count"),
+            "external_alert_dispatcher_promoted": bool_at(w043_alert_dispatch, "external_alert_dispatcher_promoted"),
+            "quarantine_service_promoted": bool_at(w043_alert_dispatch, "quarantine_service_promoted"),
+            "promotion_consequence": "Local alert/quarantine rules are evaluated, but no external mismatch triage/quarantine service is operated."
+        }),
+        json!({
+            "row_id": "cross_engine.w073_typed_only_formatting_guard",
+            "disposition_kind": "accepted_boundary",
+            "service_state": "observable_guard_retained",
+            "evidence": W043_OXFML_INBOUND_INTAKE,
+            "typed_rule_only_family_count": array_len_at(w073, "typed_rule_only_families"),
+            "threshold_fallback_allowed_for_typed_families": bool_at(w073, "threshold_fallback_allowed_for_typed_families"),
+            "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata": bool_at(w073, "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata"),
+            "promotion_consequence": "Diversity comparisons must preserve the W073 typed_rule-only aggregate/visualization formatting guard."
+        }),
+        json!({
+            "row_id": "cross_engine.w043_spec_evolution_mismatch_route",
+            "disposition_kind": "service_contract_boundary",
+            "service_state": "spec_evolution_route_declared_not_operated",
+            "evidence": W043_OBLIGATION_MAP,
+            "promotion_consequence": "Mismatch handling can route to spec correction or implementation fault only after operated differential and quarantine evidence exists."
+        }),
+        json!({
+            "row_id": "cross_engine.pack_governance_dependency",
+            "disposition_kind": "exact_remaining_blocker",
+            "service_state": "blocked",
+            "evidence": W042_PACK_DECISION,
+            "promotion_consequence": "Pack/C5 and release-grade diversity remain unavailable while operated differential service, mismatch quarantine, and independent breadth are blocked."
+        }),
+        json!({
+            "row_id": "cross_engine.public_migration_dependency",
+            "disposition_kind": "exact_remaining_blocker",
+            "service_state": "blocked",
+            "evidence": W043_OXFML_INBOUND_INTAKE,
+            "promotion_consequence": "Public migration and broad OxFml display/publication coverage remain successor dependencies and cannot be inferred from diversity rows."
+        }),
+    ]
+}
+
+fn w043_mismatch_authority_rows(
+    w042_authority: &Value,
+    w043_operated: &Value,
+    w043_cross_engine_service: &Value,
+    w043_alert_dispatch: &Value,
+    implementation_rows: &[Value],
+) -> Vec<Value> {
+    let match_count = implementation_rows
+        .iter()
+        .filter(|row| bool_at(row, "matches_expected"))
+        .count();
+    vec![
+        json!({
+            "row_id": "authority.w043_independent_reference_model_evaluator",
+            "disposition_kind": "broadened_independent_implementation",
+            "authority_state": "independent_reference_model_runtime",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "case_count": implementation_rows.len(),
+            "match_count": match_count,
+            "authority_limit": "named-reference model slice only; no scheduling, publication, effects, callable-carrier, broad OxFml seam, or full OxFunc kernel authority"
+        }),
+        json!({
+            "row_id": "authority.w042_reference_model_predecessor",
+            "disposition_kind": "accepted_boundary",
+            "authority_state": "predecessor_reference_model_runtime",
+            "evidence": W042_MISMATCH_AUTHORITY,
+            "w042_authority_row_count": number_at(w042_authority, "row_count"),
+            "authority_limit": "predecessor authority remains a narrower reference-model slice"
+        }),
+        json!({
+            "row_id": "authority.tracecalc_correctness_oracle",
+            "disposition_kind": "accepted_boundary",
+            "authority_state": "reference_oracle",
+            "evidence": "TraceCalc",
+            "authority_limit": "oracle authority for covered observable behavior only"
+        }),
+        json!({
+            "row_id": "authority.optimized_core_same_implementation_family",
+            "disposition_kind": "same_authority_family",
+            "authority_state": "not_independent",
+            "evidence": "W043 optimized/core counterpart packet",
+            "authority_limit": "optimized/core conformance does not supply separate implementation authority"
+        }),
+        json!({
+            "row_id": "authority.direct_oxfml_external_formula_evaluator",
+            "disposition_kind": "accepted_external_slice",
+            "authority_state": "external_formula_evaluator_only",
+            "evidence": W037_DIRECT_OXFML_SUMMARY,
+            "authority_limit": "external evaluator authority is limited to the consumed OxFml seam and does not implement OxCalc scheduling/publication"
+        }),
+        json!({
+            "row_id": "authority.service_envelope_file_backed_authority",
+            "disposition_kind": "service_contract_boundary",
+            "authority_state": "file_backed_artifact_authority",
+            "evidence": W043_OPERATED_ASSURANCE_SUMMARY,
+            "service_envelope_row_count": number_at(w043_operated, "service_envelope_row_count"),
+            "authority_limit": "file-backed row agreement and retained artifacts cannot substitute for an operated differential service"
+        }),
+        json!({
+            "row_id": "authority.mismatch_router_contract",
+            "disposition_kind": "service_contract_boundary",
+            "authority_state": "local_router_contract_not_service",
+            "evidence": W043_ALERT_DISPATCH_REGISTER,
+            "evaluated_rule_count": number_at(w043_alert_dispatch, "evaluated_rule_count"),
+            "authority_limit": "local alert dispatch classification is a contract row set, not an external quarantine service"
+        }),
+        json!({
+            "row_id": "authority.spec_evolution_route",
+            "disposition_kind": "service_contract_boundary",
+            "authority_state": "spec_evolution_route_not_service",
+            "evidence": W043_OBLIGATION_MAP,
+            "authority_limit": "agreement, mismatch, implementation-fault, and spec-correction routes remain declared classification until operated service evidence exists"
+        }),
+        json!({
+            "row_id": "authority.operated_cross_engine_service",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_operated_service",
+            "evidence": W043_CROSS_ENGINE_SERVICE_REGISTER,
+            "operated_cross_engine_differential_service_present": bool_at(w043_cross_engine_service, "operated_cross_engine_differential_service_present"),
+            "authority_limit": "no recurring service endpoint, retained service history, or service-level mismatch action path exists"
+        }),
+        json!({
+            "row_id": "authority.mismatch_quarantine_service",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_quarantine_service",
+            "evidence": W043_ALERT_DISPATCH_REGISTER,
+            "quarantine_service_promoted": bool_at(w043_alert_dispatch, "quarantine_service_promoted"),
+            "authority_limit": "local clean dispatch rows cannot stand in for an enforcing mismatch quarantine service"
+        }),
+        json!({
+            "row_id": "authority.full_independent_evaluator_breadth",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_beyond_reference_model_slice",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "authority_limit": "reference model slice does not cover TreeCalc scheduling, references outside declared order, publication, effects, broad OxFml seam breadth, or callable metadata"
+        }),
+        json!({
+            "row_id": "authority.release_grade_diversity_promotion",
+            "disposition_kind": "exact_remaining_blocker",
+            "authority_state": "blocked_no_release_grade_authority",
+            "evidence": W043_OBLIGATION_MAP,
+            "exact_service_blocker_count": number_at(w043_operated, "exact_service_blocker_count"),
+            "authority_limit": "release-grade diversity authority remains unavailable while full independent implementation and operated service blockers remain"
+        }),
+    ]
+}
+
+fn w043_exact_blockers(
+    w042_blockers: &Value,
+    w043_stage2_blockers: &Value,
+    w043_service_blockers: &Value,
+    w043_cross_engine_service: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "blocker_id": "w043_diversity.full_independent_evaluator_breadth_absent",
+            "owner": "calc-2p3.7",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": "w043_independent_reference_model_implementation.json",
+            "predecessor_blocker_present": row_with_field_exists(
+                w042_blockers,
+                "blocker_id",
+                "w042_diversity.full_independent_evaluator_breadth_absent"
+            ),
+            "reason": "W043 extends the independent named-reference model evaluator with fan-in and mismatch-routing controls, but full TreeCalc/OxCalc evaluator breadth remains absent.",
+            "promotion_consequence": "fully independent evaluator diversity remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.operated_cross_engine_differential_service_absent",
+            "owner": "calc-2p3.6; calc-2p3.7",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_CROSS_ENGINE_SERVICE_REGISTER,
+            "file_backed_cross_engine_substrate_present": bool_at(w043_cross_engine_service, "file_backed_cross_engine_substrate_present"),
+            "operated_cross_engine_differential_service_present": bool_at(w043_cross_engine_service, "operated_cross_engine_differential_service_present"),
+            "reason": "W043 service artifacts are file-backed and do not operate a recurring cross-engine differential service.",
+            "promotion_consequence": "operated cross-engine diversity service remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.mismatch_quarantine_service_absent",
+            "owner": "calc-2p3.6; calc-2p3.7",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_OPERATED_SERVICE_BLOCKERS,
+            "service_blocker_rows": row_count_at(w043_service_blockers),
+            "reason": "Local alert/quarantine rows are evaluated, but no external mismatch triage/quarantine service is operated.",
+            "promotion_consequence": "service-level diversity assurance and mismatch quarantine remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.stage2_operated_differential_dependency_absent",
+            "owner": "calc-2p3.5; calc-2p3.7",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_STAGE2_BLOCKERS,
+            "stage2_blocker_rows": row_count_at(w043_stage2_blockers),
+            "reason": "Stage 2 diversity still needs production partition-analyzer soundness, scheduler equivalence, pack governance, and operated differential service evidence before strategy-level diversity promotion.",
+            "promotion_consequence": "Stage 2 diversity remains a blocked dependency for release-grade promotion"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.retained_witness_attachment_service_absent",
+            "owner": "calc-2p3.6; calc-2p3.7; calc-2p3.9",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_OPERATED_SERVICE_BLOCKERS,
+            "reason": "Retained-witness lifecycle rows exist, but no service attaches mismatch witnesses to quarantine, pack replay, or retained-history lifecycle operation.",
+            "promotion_consequence": "mismatch quarantine, pack-grade replay, C5, and release-grade diversity remain blocked"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.oxfml_callable_breadth_dependency_absent",
+            "owner": "calc-2p3.7; calc-2p3.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_OBLIGATION_MAP,
+            "reason": "The independent reference-model slice does not settle broad OxFml display publication, callable-carrier sufficiency, registered-external callable projection, or LET/LAMBDA threading through OxFunc-adjacent behavior.",
+            "promotion_consequence": "broad OxFml callable/display publication remains a successor dependency"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.pack_grade_replay_governance_dependency_absent",
+            "owner": "calc-2p3.7; calc-2p3.9",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W042_PACK_DECISION,
+            "reason": "Pack-grade replay governance cannot be inferred from local retained-history, retained-witness, file-backed differential, or bounded mismatch-control rows.",
+            "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "w043_diversity.release_grade_promotion_authority_absent",
+            "owner": "calc-2p3.10",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W043_OBLIGATION_MAP,
+            "reason": "Release-grade diversity cannot be claimed from bounded reference-model rows, proxy evidence, file-backed rows, shared projections, or retained blockers.",
+            "promotion_consequence": "release-grade verification, pack/C5, and diversity promotion remain unavailable to this bead"
+        }),
+    ]
+}
+
+fn w043_diversity_validation_failures(
+    implementation_rows: &[Value],
+    independent_rows: &[Value],
+    cross_engine_rows: &[Value],
+    authority_rows: &[Value],
+    blockers: &[Value],
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    if implementation_rows.len() < 6
+        || implementation_rows
+            .iter()
+            .any(|row| !bool_at(row, "matches_expected"))
+    {
+        failures.push("w043_diversity.independent_reference_model_case_mismatch".to_string());
+    }
+    if !independent_rows.iter().any(|row| {
+        row.get("independence_state").and_then(Value::as_str)
+            == Some("independent_reference_model_slice_present")
+    }) {
+        failures.push("w043_diversity.reference_model_row_missing".to_string());
+    }
+    if !independent_rows.iter().any(|row| {
+        row.get("independence_state").and_then(Value::as_str)
+            == Some("full_independent_implementation_breadth_absent")
+    }) {
+        failures.push("w043_diversity.full_breadth_blocker_row_missing".to_string());
+    }
+    if !cross_engine_rows
+        .iter()
+        .any(|row| row.get("service_state").and_then(Value::as_str) == Some("blocked"))
+    {
+        failures.push("w043_diversity.blocked_cross_engine_service_row_missing".to_string());
+    }
+    if !authority_rows.iter().any(|row| {
+        row.get("authority_state").and_then(Value::as_str) == Some("blocked_no_operated_service")
+    }) {
+        failures.push("w043_diversity.operated_service_authority_blocker_missing".to_string());
+    }
+    if !authority_rows.iter().any(|row| {
+        row.get("authority_state").and_then(Value::as_str) == Some("blocked_no_quarantine_service")
+    }) {
+        failures.push("w043_diversity.mismatch_quarantine_authority_blocker_missing".to_string());
+    }
+    if blockers.len() < 8 {
+        failures.push("w043_diversity.exact_blocker_count_too_low".to_string());
+    }
+    if independent_rows
+        .iter()
+        .chain(cross_engine_rows.iter())
+        .chain(authority_rows.iter())
+        .any(|row| {
+            bool_at(row, "fully_independent_evaluator_promoted")
+                || bool_at(row, "operated_cross_engine_differential_service_promoted")
+                || bool_at(row, "mismatch_quarantine_service_promoted")
+        })
+    {
+        failures.push("w043_diversity.unexpected_promotion_row".to_string());
+    }
+    failures
+}
+
 #[allow(clippy::too_many_arguments)]
 fn w041_source_rows(
     w041_obligation_summary: &Value,
@@ -5259,6 +6465,87 @@ mod tests {
         assert_eq!(decision["mismatch_quarantine_service_promoted"], false);
         assert_eq!(decision["w073_formatting_handoff_triggered"], false);
         assert_eq!(decision["exact_blocker_count"], 7);
+
+        cleanup();
+    }
+
+    #[test]
+    fn diversity_seam_runner_binds_w043_reference_model_without_service_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w043-diversity-seam-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/diversity-seam/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = DiversitySeamRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.schema_version, W043_RUN_SUMMARY_SCHEMA_V1);
+        assert_eq!(summary.source_evidence_row_count, 17);
+        assert_eq!(summary.diversity_disposition_row_count, 13);
+        assert_eq!(summary.seam_watch_row_count, 12);
+        assert_eq!(summary.aligned_seam_watch_row_count, 12);
+        assert_eq!(summary.accepted_boundary_count, 21);
+        assert_eq!(summary.exact_blocker_count, 8);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.fully_independent_evaluator_promoted);
+
+        let implementation = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/diversity-seam/{run_id}/w043_independent_reference_model_implementation.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(implementation["case_count"], 6);
+        assert_eq!(implementation["match_count"], 6);
+        assert_eq!(
+            implementation["fully_independent_evaluator_promoted"],
+            false
+        );
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/diversity-seam/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w043_independent_reference_model_diversity_packet_valid"
+        );
+        assert_eq!(
+            validation["operated_cross_engine_differential_service_promoted"],
+            false
+        );
+        assert_eq!(validation["mismatch_quarantine_service_promoted"], false);
+
+        let decision = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/diversity-seam/{run_id}/promotion_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            decision["independent_reference_model_evaluator_present"],
+            true
+        );
+        assert_eq!(decision["fully_independent_evaluator_promoted"], false);
+        assert_eq!(
+            decision["operated_cross_engine_differential_service_promoted"],
+            false
+        );
+        assert_eq!(decision["mismatch_quarantine_service_promoted"], false);
+        assert_eq!(decision["w073_formatting_handoff_triggered"], false);
+        assert_eq!(decision["exact_blocker_count"], 8);
 
         cleanup();
     }

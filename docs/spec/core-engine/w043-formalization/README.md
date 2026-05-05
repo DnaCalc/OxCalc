@@ -25,22 +25,22 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
 4. `W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md` - `calc-2p3.4` Lean/TLA full-verification and unbounded fairness discharge.
 5. `W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md` - `calc-2p3.5` Stage 2 production partition analyzer and scheduler equivalence.
 6. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-2p3.6` operated assurance, retained-history, witness, SLO, and alert service.
+7. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
 
 ## Planned Packets
 
-1. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service.
-2. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
-3. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
-4. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
+1. `W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md` - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam.
+2. `W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md` - `calc-2p3.9` pack-grade replay governance and C5 release reassessment.
+3. `W043_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-2p3.10` closure audit and release-grade verification decision.
 
 ## Current Status
 
-- execution_state: `calc-2p3.7_ready_independent_evaluator_breadth_mismatch_quarantine_and_differential_service`
+- execution_state: `calc-2p3.8_ready_oxfml_public_migration_formatting_callable_and_registered_external_seam`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-2p3.7` independent evaluator breadth, mismatch quarantine, and differential service is next
+  - `calc-2p3.8` OxFml public migration, formatting, callable, and registered-external seam is next
   - full Lean verification remains blocked
   - full TLA verification remains blocked
   - scheduler fairness and unbounded model coverage remain exact blockers
@@ -51,12 +51,14 @@ The governing workset is `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PR
   - external alert/quarantine dispatcher remains blocked
   - operated continuous-assurance service remains blocked
   - pack-grade replay governance remains blocked
+  - callable metadata projection remains an exact blocker
+  - callable carrier sufficiency remains blocked
   - runtime panic-surface proof remains an exact blocker
   - Rust-engine totality and Rust refinement remain unpromoted
   - broader dynamic dependency-transition coverage remains partial beyond fixture-scale addition/release and reclassification patterns
-  - callable metadata projection remains an exact blocker
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, full independent evaluator breadth, broad OxFml closure, public migration, callable metadata/carrier, registered-external projection, provider-publication, and general OxFunc kernels remain unpromoted
 
 ## Latest Evidence
 
 1. `W043_OPERATED_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` records the `calc-2p3.6` operated-assurance packet. The packet `w043-operated-assurance-retained-history-witness-slo-alert-service-001` records 15 source rows, 10 service-envelope rows, 33 retained-history rows, 13 query rows, 11 replay-correlation rows, 8 retained-witness lifecycle rows, 29 alert/quarantine rows, 22 readiness criteria, 6 exact service blockers, and 0 failed rows. It incorporates the latest OxFml W073 typed-only direct-replacement formatting update as a watch row while keeping operated continuous-assurance service, retained-history service, retained-witness lifecycle service, retention SLO enforcement, external alert/quarantine dispatcher, operated cross-engine differential service, pack-grade replay, C5, Stage 2 policy, release-grade verification, independent evaluator breadth, broad OxFml display/publication, callable metadata projection, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.
+2. `W043_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE.md` records the `calc-2p3.7` diversity packet. The packet `w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001` records 17 source rows, 6 independent reference-model cases, 6 matches, 13 independent-evaluator rows, 12 cross-engine differential rows, 12 mismatch-authority rows, 21 accepted boundary rows, 9 service-blocked rows, 8 exact diversity/service blockers, and 0 failed rows. It extends the bounded independent reference-model slice with fan-in checksum and mismatch-routing control cases, binds W043 operated-assurance and Stage 2 service evidence, carries the current W073 typed-only formatting guard, and keeps full independent evaluator breadth, operated cross-engine differential service, mismatch quarantine service, retained-witness attachment service, broad OxFml display/publication, public migration, callable metadata projection, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, pack-grade replay, C5, Stage 2 policy, release-grade verification, and general OxFunc kernels unpromoted.

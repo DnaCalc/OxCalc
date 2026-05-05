@@ -85,12 +85,12 @@ The first W035 path is sequential to keep the successor tranche auditable. Later
 
 ## Current Status
 
-- execution_state: `calc-tkq.5_tla_non_routine_exploration_validated`
+- execution_state: `calc-tkq.6_continuous_assurance_gate_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-tkq.6` through `calc-tkq.8` remain open
+  - `calc-tkq.7` and `calc-tkq.8` remain open
   - full Lean/TLA verification remains open
   - full TraceCalc oracle coverage remains open
   - full optimized/core-engine verification and fully independent evaluator diversity remain open beyond W035 conformance-hardening dispositions
@@ -107,3 +107,5 @@ Latest W035 evidence:
 7. `formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean` and `formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean` record the checked W035 Lean classification artifacts, including W073 as an OxFml-owned external seam assumption.
 8. `docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md` records the TLA non-routine exploration packet for `calc-tkq.5`.
 9. `formal/tla/CoreEngineW035NonRoutineInterleavings.tla` and its three W035 configs record the checked scheduler-gate, partition-gap, and multi-reader overlay exploration.
+10. `docs/spec/core-engine/w035-formalization/W035_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_DIFFERENTIAL_GATE.md` records the continuous-assurance and cross-engine differential gate packet for `calc-tkq.6`.
+11. `docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/` records the deterministic gate run: 5 source evidence rows, 3 scheduled lanes, 4 differential rows, 0 missing artifacts, 0 unexpected mismatches, and 9 no-promotion reasons.

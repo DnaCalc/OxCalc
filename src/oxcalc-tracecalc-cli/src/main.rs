@@ -8,6 +8,7 @@ use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
+use oxcalc_tracecalc::continuous_assurance::ContinuousAssuranceRunner;
 use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
 use oxcalc_tracecalc::oracle_matrix::TraceCalcOracleMatrixRunner;
@@ -31,7 +32,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -106,6 +107,15 @@ fn run() -> Result<(), String> {
             }
             ("implementation-conformance", run_id)
         }
+        "continuous-assurance" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli continuous-assurance <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli continuous-assurance <run-id>".to_string());
+            }
+            ("continuous-assurance", run_id)
+        }
         "retained-failures" => {
             let Some(run_id) = args.next() else {
                 return Err("usage: oxcalc-tracecalc-cli retained-failures <run-id>".to_string());
@@ -175,6 +185,7 @@ fn run() -> Result<(), String> {
     match mode {
         "retained-failures" => ensure_retained_failure_root(&repo_root)?,
         "implementation-conformance" => ensure_implementation_conformance_root(&repo_root)?,
+        "continuous-assurance" => ensure_continuous_assurance_root(&repo_root)?,
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
@@ -220,6 +231,20 @@ fn run() -> Result<(), String> {
                 summary.implementation_work_count,
                 summary.spec_evolution_deferral_count,
                 summary.failed_row_count,
+                summary.artifact_root
+            );
+        }
+        "continuous-assurance" => {
+            let runner = ContinuousAssuranceRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("continuous assurance run failed: {error}"))?;
+            println!(
+                "Continuous assurance run '{run_id}' wrote decision '{}' with {} source rows, {} differential rows, and {} no-promotion reasons to {}.",
+                summary.decision_status,
+                summary.source_evidence_row_count,
+                summary.cross_engine_gate_row_count,
+                summary.no_promotion_reason_count,
                 summary.artifact_root
             );
         }
@@ -373,6 +398,24 @@ fn ensure_implementation_conformance_root(repo_root: &Path) -> Result<(), String
             "current directory is not ready for implementation conformance: missing {} or {}",
             independent_summary.display(),
             matrix_summary.display()
+        ))
+    }
+}
+
+fn ensure_continuous_assurance_root(repo_root: &Path) -> Result<(), String> {
+    let scale_summary = repo_root.join(
+        "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/run_summary.json",
+    );
+    let implementation_summary = repo_root.join(
+        "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/run_summary.json",
+    );
+    if scale_summary.exists() && implementation_summary.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not ready for continuous assurance: missing {} or {}",
+            scale_summary.display(),
+            implementation_summary.display()
         ))
     }
 }

@@ -1,0 +1,17 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001",
+  "bundle_validation_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/replay-appliance/validation/bundle_validation.json",
+  "cross_engine_differential_gate_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/differentials/cross_engine_differential_gate.json",
+  "cross_engine_gate_row_count": 4,
+  "decision_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json",
+  "decision_status": "continuous_assurance_gate_defined_without_promotion",
+  "missing_artifact_count": 0,
+  "no_promotion_reason_count": 9,
+  "run_id": "w035-continuous-assurance-gate-001",
+  "schedule_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/schedule/continuous_assurance_schedule.json",
+  "scheduled_lane_count": 3,
+  "schema_version": "oxcalc.continuous_assurance.run_summary.v1",
+  "source_evidence_index_path": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/evidence/source_evidence_index.json",
+  "source_evidence_row_count": 5,
+  "unexpected_mismatch_count": 0
+}

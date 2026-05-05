@@ -134,6 +134,15 @@ Current `calc-tkq.5` obligation disposition:
 | `W035-OBL-009` | W035 adds non-routine TLA configs beyond W034 smoke and records exact state counts and model limits |
 | `W035-OBL-010` | Stage 2 scheduler promotion remains blocked unless evidence and partition preconditions are visible; no Stage 2 policy is promoted |
 
+`calc-tkq.6` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_CONTINUOUS_ASSURANCE_AND_CROSS_ENGINE_DIFFERENTIAL_GATE.md` and `docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/`.
+
+Current `calc-tkq.6` obligation disposition:
+
+| Obligation id | `calc-tkq.6` disposition |
+|---|---|
+| `W035-OBL-006` | fully independent evaluator diversity remains unpromoted and is now an explicit cross-engine differential gate blocker |
+| `W035-OBL-011` | continuous assurance packet shape, schedule lanes, cross-engine differential criteria, and no-promotion decision are machine-readable and checked in |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

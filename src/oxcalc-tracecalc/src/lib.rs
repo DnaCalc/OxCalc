@@ -3,6 +3,7 @@
 //! `TraceCalc` runtime and artifact lane.
 
 pub mod assertions;
+pub mod continuous_assurance;
 pub mod contracts;
 pub mod implementation_conformance;
 pub mod independent_conformance;

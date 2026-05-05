@@ -1,0 +1,35 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001",
+  "claimed_capability": "continuous_assurance_gate_packet",
+  "excluded_capabilities": [
+    "continuous_scale_assurance",
+    "continuous_cross_engine_diff_service",
+    "cap.C5.pack_valid",
+    "stage2_scheduler_promotion"
+  ],
+  "required_artifacts": [
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/run_summary.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/evidence/source_evidence_index.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/schedule/continuous_assurance_schedule.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/differentials/cross_engine_differential_gate.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/decision/continuous_assurance_decision.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/continuous-assurance/w035-continuous-assurance-gate-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/run_summary.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w034-continuous-scale-gate-binding-001/decision/continuous_scale_assurance_criteria.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/run_summary.json",
+    "docs/test-runs/core-engine/pack-capability/w034-pack-capability-gate-binding-001/decision/pack_capability_decision.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/oracle-matrix/run_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/run_summary.json",
+    "docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md",
+    "docs/spec/core-engine/w035-formalization/W035_TLA_NON_ROUTINE_EXPLORATION_AND_SCHEDULER_PRECONDITIONS.md",
+    "formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean",
+    "formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.tla",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.multi_reader.cfg",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.scheduler_gate.cfg",
+    "formal/tla/CoreEngineW035NonRoutineInterleavings.partition_gap.cfg"
+  ],
+  "run_id": "w035-continuous-assurance-gate-001",
+  "schema_version": "oxcalc.continuous_assurance.bundle_manifest.v1"
+}

@@ -1,0 +1,24 @@
+{
+  "continuous_scale_assurance_promoted": false,
+  "cross_engine_differential_service_promoted": false,
+  "decision_status": "continuous_assurance_gate_defined_without_promotion",
+  "no_promotion_reason_ids": [
+    "continuous.no_scheduled_regression_runner",
+    "continuous.no_cross_engine_diff_service",
+    "continuous.no_history_window_for_regression_thresholds",
+    "continuous.no_alerting_or_quarantine_policy",
+    "continuous.performance_not_correctness_proof",
+    "continuous.independent_evaluator_diversity_not_full",
+    "continuous.pack_c5_not_promoted",
+    "continuous.stage2_scheduler_not_promoted",
+    "continuous.formal_evidence_bounded_not_full_verification"
+  ],
+  "pack_capability_promoted": false,
+  "performance_claim_promoted": false,
+  "run_id": "w035-continuous-assurance-gate-001",
+  "schema_version": "oxcalc.continuous_assurance.decision.v1",
+  "semantic_equivalence_statement": "This runner reads existing W034/W035 evidence and emits continuous-assurance gate criteria only. It does not change coordinator scheduling, invalidation, recalc, publication, reject, TraceCalc, TreeCalc, or evaluator behavior.",
+  "source_missing_artifact_count": 0,
+  "stage2_scheduler_promoted": false,
+  "unexpected_mismatch_count": 0
+}

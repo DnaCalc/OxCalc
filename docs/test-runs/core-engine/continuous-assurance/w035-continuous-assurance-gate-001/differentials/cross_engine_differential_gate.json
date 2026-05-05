@@ -1,0 +1,37 @@
+{
+  "continuous_service_present": false,
+  "row_count": 4,
+  "rows": [
+    {
+      "comparison_state": "bounded_semantic_match_with_classified_uncovered_rows",
+      "current_limit": "TraceCalc covers W035 matrix rows but not full engine universe",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.tracecalc_oracle_matrix_to_engine_projection"
+    },
+    {
+      "comparison_state": "gap_dispositions_valid_without_match_promotion",
+      "current_limit": "implementation-work and spec-evolution deferrals remain",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.implementation_conformance_gap_dispositions"
+    },
+    {
+      "comparison_state": "scale_signatures_matched_without_continuous_service",
+      "current_limit": "single checked-in W034 binding is not recurring assurance",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.scale_semantic_signatures"
+    },
+    {
+      "comparison_state": "not_fully_independent",
+      "current_limit": "TreeCalc/CoreEngine projection is useful but not fully independent evaluator implementation diversity",
+      "failures": [],
+      "required_for_promotion": true,
+      "row_id": "diff.independent_evaluator_diversity"
+    }
+  ],
+  "run_id": "w035-continuous-assurance-gate-001",
+  "schema_version": "oxcalc.continuous_assurance.cross_engine_gate.v1",
+  "unexpected_mismatch_count": 0
+}

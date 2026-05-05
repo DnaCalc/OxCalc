@@ -1,0 +1,10 @@
+{
+  "decision_status": "continuous_assurance_gate_defined_without_promotion",
+  "missing_paths": [],
+  "run_id": "w035-continuous-assurance-gate-001",
+  "schema_version": "oxcalc.continuous_assurance.bundle_validation.v1",
+  "source_missing_artifact_count": 0,
+  "status": "bundle_valid",
+  "unexpected_mismatch_count": 0,
+  "validated_required_artifact_count": 21
+}

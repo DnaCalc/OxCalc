@@ -99,10 +99,14 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-czd.1_residual_release_grade_closure_obligation_ledger_ready`
+- execution_state: `calc-czd.1_residual_release_grade_closure_obligation_ledger_validated`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - `calc-czd.1` residual release-grade closure obligation ledger is first
+  - `calc-czd.2` optimized/core counterpart conformance and callable metadata projection is next
   - optimized/core counterpart conformance, callable metadata projection, Rust totality/refinement, full Lean/TLA verification, scheduler fairness, unbounded model coverage, production partition-analyzer soundness, Stage 2 production policy, operated services, retained-history service, retained-witness lifecycle service, full independent evaluator breadth, mismatch quarantine service, broad OxFml display/publication, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication publication semantics, pack-grade replay, C5, and release-grade verification remain unpromoted
+
+Latest evidence:
+
+1. `docs/spec/core-engine/w042-formalization/W042_RESIDUAL_RELEASE_GRADE_CLOSURE_OBLIGATION_LEDGER.md` records the `calc-czd.1` residual release-grade closure obligation ledger. The packet `w042-residual-release-grade-closure-obligation-ledger-001` maps 16 post-W041 residual lanes into 33 W042 obligations and 14 promotion-target gates. It carries the current OxFml W073 typed-only conditional-formatting update, keeps W072 bounded `thresholds` strings out of the named aggregate/visualization metadata families, and keeps release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.

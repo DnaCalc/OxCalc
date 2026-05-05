@@ -1,0 +1,24 @@
+{
+  "run_id": "w042-residual-release-grade-closure-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w042.w073_formatting_intake.v1",
+  "status": "typed_only_direct_replacement_guard_retained",
+  "source_workset": "OxFml W073",
+  "typed_rule_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "threshold_fallback_allowed_for_typed_families": false,
+  "thresholds_remain_meaningful_for": [
+    "scalar",
+    "operator",
+    "expression"
+  ],
+  "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata": false,
+  "required_w042_disposition": "Any W042 evidence that exercises aggregate or visualization conditional-formatting metadata must use VerificationConditionalFormattingRule.typed_rule for the named families; reliance on old W072 threshold strings must be recorded as mismatch or blocker.",
+  "handoff_required": false
+}

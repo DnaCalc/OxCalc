@@ -1,0 +1,400 @@
+{
+  "run_id": "w042-residual-release-grade-closure-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w042.closure_obligation_map.v1",
+  "source_residual_lane_count": 16,
+  "obligation_count": 33,
+  "obligations": [
+    {
+      "id": "W042-OBL-001",
+      "area": "release-grade objective map and no-proxy guard",
+      "owner_beads": [
+        "calc-czd.1",
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.release_grade_full_verification"
+      ],
+      "required_disposition": "maintain machine-readable obligations, release-grade target gates, no-proxy promotion guard, and successor consequences"
+    },
+    {
+      "id": "W042-OBL-002",
+      "area": "broader automatic dynamic dependency-set transition coverage",
+      "owner_beads": [
+        "calc-czd.2"
+      ],
+      "source_lanes": [
+        "w041_residual.optimized_core_dynamic_dependency_transitions"
+      ],
+      "required_disposition": "expand beyond the W041 exercised resolved-to-potential pattern or retain exact optimized/core blocker"
+    },
+    {
+      "id": "W042-OBL-003",
+      "area": "snapshot-fence optimized/core counterpart",
+      "owner_beads": [
+        "calc-czd.2",
+        "calc-czd.5"
+      ],
+      "source_lanes": [
+        "w041_residual.snapshot_capability_callable_counterparts"
+      ],
+      "required_disposition": "prove stale-candidate reject/no-publish counterpart for promoted profiles or retain exact blocker"
+    },
+    {
+      "id": "W042-OBL-004",
+      "area": "capability-view optimized/core counterpart",
+      "owner_beads": [
+        "calc-czd.2",
+        "calc-czd.5"
+      ],
+      "source_lanes": [
+        "w041_residual.snapshot_capability_callable_counterparts"
+      ],
+      "required_disposition": "prove capability-view mismatch reject/no-publish counterpart for promoted profiles or retain exact blocker"
+    },
+    {
+      "id": "W042-OBL-005",
+      "area": "callable metadata projection implementation",
+      "owner_beads": [
+        "calc-czd.2",
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.snapshot_capability_callable_counterparts",
+        "w041_residual.callable_metadata_and_carrier_sufficiency"
+      ],
+      "required_disposition": "add projection fixture/implementation evidence or exact blocker without treating callable carrier rows as metadata projection"
+    },
+    {
+      "id": "W042-OBL-006",
+      "area": "declared-gap and proxy-promotion guard",
+      "owner_beads": [
+        "calc-czd.2",
+        "calc-czd.9",
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.release_grade_full_verification",
+        "w041_residual.pack_grade_replay_and_c5"
+      ],
+      "required_disposition": "keep declared gaps, file-backed-only artifacts, bounded rows, and aggregate confidence out of promotion counts"
+    },
+    {
+      "id": "W042-OBL-007",
+      "area": "Rust panic-free core domain",
+      "owner_beads": [
+        "calc-czd.3"
+      ],
+      "source_lanes": [
+        "w041_residual.rust_totality_refinement"
+      ],
+      "required_disposition": "discharge or retain panic-surface blockers for promoted Rust paths"
+    },
+    {
+      "id": "W042-OBL-008",
+      "area": "Rust totality across dependency, publication, and callable transitions",
+      "owner_beads": [
+        "calc-czd.3"
+      ],
+      "source_lanes": [
+        "w041_residual.rust_totality_refinement",
+        "w041_residual.callable_metadata_and_carrier_sufficiency"
+      ],
+      "required_disposition": "bind totality evidence for dependency changes, publication fences, and callable carriers or retain exact blockers"
+    },
+    {
+      "id": "W042-OBL-009",
+      "area": "Rust refinement relation",
+      "owner_beads": [
+        "calc-czd.3",
+        "calc-czd.4"
+      ],
+      "source_lanes": [
+        "w041_residual.rust_totality_refinement",
+        "w041_residual.optimized_core_dynamic_dependency_transitions"
+      ],
+      "required_disposition": "relate TraceCalc-covered reference behavior to optimized/core behavior for W042 promoted profiles"
+    },
+    {
+      "id": "W042-OBL-010",
+      "area": "Lean proof discharge",
+      "owner_beads": [
+        "calc-czd.4"
+      ],
+      "source_lanes": [
+        "w041_residual.lean_tla_full_verification"
+      ],
+      "required_disposition": "discharge or retain proof blockers with checked Lean artifacts and axiom/sorry/admit audit"
+    },
+    {
+      "id": "W042-OBL-011",
+      "area": "TLA model coverage and unbounded scheduler/fairness assumptions",
+      "owner_beads": [
+        "calc-czd.4",
+        "calc-czd.5"
+      ],
+      "source_lanes": [
+        "w041_residual.lean_tla_full_verification",
+        "w041_residual.stage2_production_policy_and_pack_equivalence"
+      ],
+      "required_disposition": "state model bounds, unboundedness limits, fairness assumptions, scheduler equivalence, and promotion predicates"
+    },
+    {
+      "id": "W042-OBL-012",
+      "area": "callable carrier proof boundary",
+      "owner_beads": [
+        "calc-czd.4",
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.callable_metadata_and_carrier_sufficiency",
+        "w041_residual.general_oxfunc_kernels"
+      ],
+      "required_disposition": "prove or block the narrow LET/LAMBDA carrier seam without promoting general OxFunc kernels"
+    },
+    {
+      "id": "W042-OBL-013",
+      "area": "Stage 2 production partition-analyzer soundness",
+      "owner_beads": [
+        "calc-czd.5"
+      ],
+      "source_lanes": [
+        "w041_residual.stage2_production_policy_and_pack_equivalence"
+      ],
+      "required_disposition": "prove or block production analyzer soundness for promoted profiles"
+    },
+    {
+      "id": "W042-OBL-014",
+      "area": "Stage 2 scheduler equivalence",
+      "owner_beads": [
+        "calc-czd.5"
+      ],
+      "source_lanes": [
+        "w041_residual.stage2_production_policy_and_pack_equivalence",
+        "w041_residual.lean_tla_full_verification"
+      ],
+      "required_disposition": "show observable-result invariance under scheduler/partition strategy for promoted profiles or retain exact blocker"
+    },
+    {
+      "id": "W042-OBL-015",
+      "area": "pack-grade replay equivalence",
+      "owner_beads": [
+        "calc-czd.5",
+        "calc-czd.9"
+      ],
+      "source_lanes": [
+        "w041_residual.stage2_production_policy_and_pack_equivalence",
+        "w041_residual.pack_grade_replay_and_c5"
+      ],
+      "required_disposition": "show baseline-versus-partition equivalence for values, rejects, dependencies, topology, overlays, retained witnesses, and replay validation"
+    },
+    {
+      "id": "W042-OBL-016",
+      "area": "operated continuous-assurance service",
+      "owner_beads": [
+        "calc-czd.6"
+      ],
+      "source_lanes": [
+        "w041_residual.operated_assurance_service"
+      ],
+      "required_disposition": "replace file-backed/service-envelope evidence with operated scheduler/service evidence or exact blocker"
+    },
+    {
+      "id": "W042-OBL-017",
+      "area": "retained-history service lifecycle and query API",
+      "owner_beads": [
+        "calc-czd.6"
+      ],
+      "source_lanes": [
+        "w041_residual.retained_history_and_witness_lifecycle"
+      ],
+      "required_disposition": "provide lifecycle, retention, query, and replay-correlation guarantees or exact blocker"
+    },
+    {
+      "id": "W042-OBL-018",
+      "area": "retained-witness lifecycle and retention SLO",
+      "owner_beads": [
+        "calc-czd.6",
+        "calc-czd.9"
+      ],
+      "source_lanes": [
+        "w041_residual.retained_history_and_witness_lifecycle",
+        "w041_residual.pack_grade_replay_and_c5"
+      ],
+      "required_disposition": "connect retained witnesses to pack-grade replay governance with lifecycle and retention SLO evidence"
+    },
+    {
+      "id": "W042-OBL-019",
+      "area": "external alert/quarantine dispatcher enforcement",
+      "owner_beads": [
+        "calc-czd.6"
+      ],
+      "source_lanes": [
+        "w041_residual.external_alert_dispatcher"
+      ],
+      "required_disposition": "wire quarantine policy to enforcing external dispatcher evidence or exact blocker"
+    },
+    {
+      "id": "W042-OBL-020",
+      "area": "operated cross-engine differential service",
+      "owner_beads": [
+        "calc-czd.6",
+        "calc-czd.7"
+      ],
+      "source_lanes": [
+        "w041_residual.operated_cross_engine_differential"
+      ],
+      "required_disposition": "replace file-backed differential rows with operated differential service evidence or exact blocker"
+    },
+    {
+      "id": "W042-OBL-021",
+      "area": "mismatch quarantine service",
+      "owner_beads": [
+        "calc-czd.7"
+      ],
+      "source_lanes": [
+        "w041_residual.mismatch_quarantine_service"
+      ],
+      "required_disposition": "bind mismatch authority routing to service behavior, retained witness attachment, and alert/quarantine semantics"
+    },
+    {
+      "id": "W042-OBL-022",
+      "area": "independent evaluator breadth and authority",
+      "owner_beads": [
+        "calc-czd.7"
+      ],
+      "source_lanes": [
+        "w041_residual.fully_independent_evaluator"
+      ],
+      "required_disposition": "broaden independent implementation beyond current formula-fragment rows or retain exact blocker"
+    },
+    {
+      "id": "W042-OBL-023",
+      "area": "diversity mismatch handling and spec-evolution routing",
+      "owner_beads": [
+        "calc-czd.7",
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.fully_independent_evaluator",
+        "w041_residual.mismatch_quarantine_service"
+      ],
+      "required_disposition": "classify agreement, mismatch, authority, quarantine, spec correction, and implementation-fault consequences"
+    },
+    {
+      "id": "W042-OBL-024",
+      "area": "OxFml W073 typed-only formatting seam",
+      "owner_beads": [
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.oxfml_broad_display_publication_public_migration"
+      ],
+      "required_disposition": "prevent W072 threshold fallback assumptions for W073 aggregate/visualization families"
+    },
+    {
+      "id": "W042-OBL-025",
+      "area": "OxFml broad display/publication and public migration",
+      "owner_beads": [
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.oxfml_broad_display_publication_public_migration"
+      ],
+      "required_disposition": "exercise broad consumed surfaces, display/publication deltas, and public migration evidence or exact blockers"
+    },
+    {
+      "id": "W042-OBL-026",
+      "area": "callable carrier sufficiency for LET/LAMBDA",
+      "owner_beads": [
+        "calc-czd.4",
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.callable_metadata_and_carrier_sufficiency"
+      ],
+      "required_disposition": "prove narrow callable carrier sufficiency without general OxFunc kernel promotion"
+    },
+    {
+      "id": "W042-OBL-027",
+      "area": "callable metadata publication surface",
+      "owner_beads": [
+        "calc-czd.2",
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.callable_metadata_and_carrier_sufficiency"
+      ],
+      "required_disposition": "separate callable value carrier sufficiency from callable metadata projection and publication surface"
+    },
+    {
+      "id": "W042-OBL-028",
+      "area": "registered-external callable projection",
+      "owner_beads": [
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.callable_metadata_and_carrier_sufficiency",
+        "w041_residual.oxfml_broad_display_publication_public_migration"
+      ],
+      "required_disposition": "classify registered-external callable projection rows, provider boundaries, and handoff triggers"
+    },
+    {
+      "id": "W042-OBL-029",
+      "area": "provider-failure/callable-publication semantics",
+      "owner_beads": [
+        "calc-czd.8"
+      ],
+      "source_lanes": [
+        "w041_residual.oxfml_broad_display_publication_public_migration"
+      ],
+      "required_disposition": "bind provider failure and callable-publication observable semantics or retain exact blocker"
+    },
+    {
+      "id": "W042-OBL-030",
+      "area": "pack-grade replay governance",
+      "owner_beads": [
+        "calc-czd.9"
+      ],
+      "source_lanes": [
+        "w041_residual.pack_grade_replay_and_c5"
+      ],
+      "required_disposition": "bind retained witnesses, services, proof/model, differential, Stage 2, and OxFml seam evidence before pack-grade promotion"
+    },
+    {
+      "id": "W042-OBL-031",
+      "area": "C5 promotion decision",
+      "owner_beads": [
+        "calc-czd.9",
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.pack_grade_replay_and_c5"
+      ],
+      "required_disposition": "reassess C5 from direct W042 evidence only"
+    },
+    {
+      "id": "W042-OBL-032",
+      "area": "release-grade full-verification decision",
+      "owner_beads": [
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.release_grade_full_verification"
+      ],
+      "required_disposition": "decide release-grade promotion or successor scope from direct evidence only"
+    },
+    {
+      "id": "W042-OBL-033",
+      "area": "general OxFunc owner boundary",
+      "owner_beads": [
+        "calc-czd.4",
+        "calc-czd.8",
+        "calc-czd.10"
+      ],
+      "source_lanes": [
+        "w041_residual.general_oxfunc_kernels"
+      ],
+      "required_disposition": "keep general OxFunc kernels external except the narrow LET/LAMBDA carrier seam"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "run_id": "w042-residual-release-grade-closure-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w042.source_evidence_index.v1",
+  "predecessor_workset": "W041",
+  "predecessor_closure_packet": "docs/spec/core-engine/w041-formalization/W041_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+  "predecessor_artifacts": [
+    "docs/test-runs/core-engine/closure-audit/w041-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json",
+    "docs/test-runs/core-engine/closure-audit/w041-closure-audit-release-grade-verification-decision-001/direct_evidence_coverage_audit.json",
+    "docs/test-runs/core-engine/closure-audit/w041-closure-audit-release-grade-verification-decision-001/release_decision.json",
+    "docs/test-runs/core-engine/pack-capability/w041-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/run_summary.json",
+    "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/run_summary.json"
+  ],
+  "current_workset_surfaces": [
+    "docs/worksets/W042_CORE_FORMALIZATION_RELEASE_GRADE_EVIDENCE_CLOSURE_EXPANSION.md",
+    "docs/spec/core-engine/w042-formalization/README.md",
+    "docs/WORKSET_REGISTER.md",
+    "docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+  ],
+  "upstream_observation_surfaces": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "oxfml_handoff_required": false,
+  "reason_no_handoff": "This bead records W042 obligations and carries current W073 typed-only formatting intake; it does not expose a new exercised OxCalc/OxFml mismatch."
+}

@@ -1,0 +1,82 @@
+{
+  "bounded_independent_implementation_case_count": 5,
+  "operated_cross_engine_differential_service_promoted": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "case_count": 5,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "w040_independent_scalar_evaluator_implementation.json",
+      "match_count": 5,
+      "promotion_consequence": "Bounded scalar rows can feed later differential service work but are not an operated cross-engine service.",
+      "row_id": "cross_engine.w040_bounded_scalar_independent_differential",
+      "service_state": "file_backed_bounded_independent_rows"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_cross_engine_diversity_register.json",
+      "promotion_consequence": "W039 file-backed diversity remains evidence lineage, not service promotion.",
+      "row_id": "cross_engine.w039_file_backed_differential_predecessor",
+      "service_state": "file_backed_not_operated",
+      "w039_row_count": 7
+    },
+    {
+      "disposition_kind": "service_dependency_blocked",
+      "evidence": "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+      "exact_remaining_blocker_count": 4,
+      "promotion_consequence": "Stage 2 service-dependent diversity remains blocked by operated service and pack-governance dependencies.",
+      "row_id": "cross_engine.w040_stage2_service_dependency",
+      "service_state": "blocked",
+      "stage2_policy_promoted": false
+    },
+    {
+      "disposition_kind": "service_artifacts_bound",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+      "file_backed_operated_runner_present": true,
+      "operated_cross_engine_differential_service_promoted": false,
+      "promotion_consequence": "W040 service artifacts improve evidence retention and queryability but do not operate a differential service.",
+      "row_id": "cross_engine.w040_operated_service_artifacts",
+      "service_state": "file_backed_artifacts_without_operated_service"
+    },
+    {
+      "disposition_kind": "service_substrate_bound",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+      "file_backed_cross_engine_substrate_present": true,
+      "operated_cross_engine_differential_service_present": false,
+      "promotion_consequence": "The W040 service register records the operated-service blocker exactly.",
+      "row_id": "cross_engine.w040_cross_engine_service_register",
+      "service_state": "blocked"
+    },
+    {
+      "disposition_kind": "supporting_evidence_not_service",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json",
+      "promotion_consequence": "Retained query/correlation artifacts support later differential service operation but are not themselves a service.",
+      "query_register_row_count": 5,
+      "replay_correlation_row_count": 3,
+      "row_id": "cross_engine.w040_retained_history_query_support",
+      "service_state": "supporting_history_and_query_only",
+      "store_record_count": 21
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+      "promotion_consequence": "Diversity comparisons must preserve the W073 typed-only aggregate/visualization formatting guard.",
+      "row_id": "cross_engine.w073_typed_only_formatting_guard",
+      "service_state": "observable_guard_retained",
+      "w072_threshold_fallback_allowed": false
+    },
+    {
+      "alert_decision_count": 0,
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+      "promotion_consequence": "Cross-engine diversity needs an operated mismatch triage/quarantine service before service-level promotion.",
+      "quarantine_decision_count": 0,
+      "row_id": "cross_engine.mismatch_triage_and_quarantine_service",
+      "service_state": "blocked"
+    }
+  ],
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.cross_engine_differential_register.v1",
+  "service_blocked_count": 4,
+  "w073_typed_only_formatting_guard_retained": true
+}

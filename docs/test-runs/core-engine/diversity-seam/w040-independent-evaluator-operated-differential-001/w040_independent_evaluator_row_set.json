@@ -1,0 +1,78 @@
+{
+  "bounded_independent_implementation_case_count": 5,
+  "bounded_independent_implementation_match_count": 5,
+  "fully_independent_evaluator_promoted": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "case_count": 5,
+      "disposition_kind": "bounded_independent_implementation",
+      "evidence": "w040_independent_scalar_evaluator_implementation.json",
+      "independence_state": "bounded_independent_scalar_implementation_present",
+      "match_count": 5,
+      "promotion_consequence": "This is real independent implementation evidence for a bounded arithmetic slice, not full independent evaluator promotion.",
+      "row_id": "independent.w040_bounded_scalar_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_independent_evaluator_row_set.json",
+      "independence_state": "predecessor_full_independent_absence_narrowed_by_bounded_slice",
+      "promotion_consequence": "W039 full absence is narrowed only for the W040 bounded scalar evaluator slice.",
+      "row_id": "independent.w039_predecessor_absence_narrowed",
+      "w039_fully_independent_evaluator_promoted": false,
+      "w039_independent_implementation_row_count": 0
+    },
+    {
+      "direct_evidence_bound_count": 3,
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json",
+      "exact_remaining_blocker_count": 4,
+      "independence_state": "optimized_core_conformance_same_authority_family",
+      "promotion_consequence": "Optimized/core evidence strengthens conformance but is not independent implementation authority.",
+      "row_id": "independent.optimized_core_same_family"
+    },
+    {
+      "case_count": 25,
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json",
+      "expectation_mismatch_count": 0,
+      "independence_state": "treecalc_evidence_same_oxcalc_family",
+      "promotion_consequence": "TreeCalc direct evidence is core conformance evidence, not independent evaluator diversity.",
+      "row_id": "independent.treecalc_direct_evidence_same_family"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+      "independence_state": "proof_and_refinement_support_not_second_runtime",
+      "promotion_consequence": "Rust refinement evidence supports correctness, but is not a separately implemented evaluator.",
+      "refinement_row_count": 5,
+      "row_id": "independent.rust_totality_refinement_not_diversity",
+      "totality_boundary_count": 5
+    },
+    {
+      "bounded_model_row_count": 3,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
+      "independence_state": "proof_model_not_executable_runtime_evaluator",
+      "local_proof_row_count": 6,
+      "promotion_consequence": "Lean/TLA evidence strengthens specification and model coverage but is not runtime evaluator implementation authority.",
+      "row_id": "independent.lean_tla_not_runtime_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "independence_state": "external_formula_evaluator_not_oxcalc_coordinator",
+      "promotion_consequence": "OxFml remains valid external formula-evaluator evidence, but does not independently implement OxCalc scheduling/publication.",
+      "row_id": "independent.general_oxfml_formula_slice_external"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+      "independence_state": "full_independent_implementation_breadth_absent",
+      "promotion_consequence": "Full independent-evaluator diversity remains blocked beyond the bounded scalar implementation slice.",
+      "row_id": "independent.full_independent_evaluator_breadth_blocked"
+    }
+  ],
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.independent_evaluator_row_set.v1"
+}

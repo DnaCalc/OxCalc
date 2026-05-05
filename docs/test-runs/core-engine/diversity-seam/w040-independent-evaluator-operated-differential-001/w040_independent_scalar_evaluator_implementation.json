@@ -1,0 +1,112 @@
+{
+  "case_count": 5,
+  "failed_case_count": 0,
+  "fully_independent_evaluator_promoted": false,
+  "implementation_authority": "local_w040_diversity_runner_independent_from_tracecalc_and_optimized_core",
+  "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+  "match_count": 5,
+  "rows": [
+    {
+      "actual_value": 2,
+      "case_id": "scalar.literal",
+      "environment": [],
+      "expected_value": 2,
+      "expression": "2",
+      "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_scalar_expression",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer literals, names, +, *, and parentheses only"
+    },
+    {
+      "actual_value": 14,
+      "case_id": "scalar.precedence",
+      "environment": [],
+      "expected_value": 14,
+      "expression": "2+3*4",
+      "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_scalar_expression",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer literals, names, +, *, and parentheses only"
+    },
+    {
+      "actual_value": 20,
+      "case_id": "scalar.parentheses",
+      "environment": [],
+      "expected_value": 20,
+      "expression": "(2+3)*4",
+      "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_scalar_expression",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer literals, names, +, *, and parentheses only"
+    },
+    {
+      "actual_value": 60,
+      "case_id": "scalar.named_reference_y",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        }
+      ],
+      "expected_value": 60,
+      "expression": "X*20",
+      "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_scalar_expression",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer literals, names, +, *, and parentheses only"
+    },
+    {
+      "actual_value": 63,
+      "case_id": "scalar.incremental_chain_z",
+      "environment": [
+        {
+          "name": "X",
+          "value": 3
+        },
+        {
+          "name": "Y",
+          "value": 60
+        }
+      ],
+      "expected_value": 63,
+      "expression": "X+Y",
+      "implementation_kind": "bounded_independent_scalar_arithmetic_evaluator",
+      "implementation_path": "src/oxcalc-tracecalc/src/diversity_seam.rs::eval_scalar_expression",
+      "independent_from": [
+        "TraceCalc",
+        "optimized_core",
+        "OxFml",
+        "OxFunc"
+      ],
+      "matches_expected": true,
+      "scope_limit": "integer literals, names, +, *, and parentheses only"
+    }
+  ],
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.independent_scalar_evaluator_implementation.v1",
+  "scope_limit": "integer arithmetic literals, names, +, *, and parentheses only"
+}

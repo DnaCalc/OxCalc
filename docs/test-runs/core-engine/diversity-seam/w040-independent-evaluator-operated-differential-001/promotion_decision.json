@@ -1,0 +1,32 @@
+{
+  "accepted_boundary_count": 11,
+  "blockers": [
+    "w040_diversity.full_independent_evaluator_breadth_absent",
+    "w040_diversity.operated_cross_engine_service_absent",
+    "w040_diversity.stage2_differential_service_dependency_absent",
+    "w040_diversity.mismatch_triage_and_quarantine_service_absent",
+    "w040_diversity.release_grade_promotion_authority_absent"
+  ],
+  "bounded_independent_implementation_case_count": 5,
+  "bounded_independent_implementation_match_count": 5,
+  "bounded_independent_scalar_evaluator_present": true,
+  "broad_oxfml_seam_promoted": false,
+  "c5_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "cross_engine_differential_row_count": 8,
+  "cross_engine_diversity_service_promoted": false,
+  "decision_state": "w040_bounded_independent_scalar_evaluator_bound_without_diversity_promotion",
+  "differential_authority_row_count": 7,
+  "exact_blocker_count": 5,
+  "fully_independent_evaluator_promoted": false,
+  "independent_evaluator_row_count": 8,
+  "independent_evaluator_row_set_promoted": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "pack_grade_replay_promoted": false,
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.promotion_decision.v1",
+  "semantic_equivalence_statement": "This W040 diversity runner adds a bounded independent scalar arithmetic evaluator and classifies diversity/service authority evidence only. It does not change evaluator kernels used by OxCalc, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics.",
+  "source_evidence_row_count": 10,
+  "stage2_policy_promoted": false,
+  "w073_formatting_handoff_triggered": false
+}

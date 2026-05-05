@@ -1,0 +1,50 @@
+{
+  "exact_blocker_count": 5,
+  "rows": [
+    {
+      "blocker_id": "w040_diversity.full_independent_evaluator_breadth_absent",
+      "evidence": "w040_independent_scalar_evaluator_implementation.json",
+      "owner": "calc-tv5.7",
+      "predecessor_blocker_count": 6,
+      "promotion_consequence": "fully independent evaluator diversity remains unpromoted",
+      "reason": "W040 introduces a bounded independent scalar arithmetic evaluator, but full TreeCalc/OxCalc evaluator breadth remains absent.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w040_diversity.operated_cross_engine_service_absent",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+      "owner": "calc-tv5.7; calc-tv5.6",
+      "promotion_consequence": "operated cross-engine diversity service remains unpromoted",
+      "reason": "W040 service artifacts are file-backed and do not operate a recurring cross-engine differential service.",
+      "service_blocker_rows": 4,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w040_diversity.stage2_differential_service_dependency_absent",
+      "evidence": "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json",
+      "owner": "calc-tv5.5; calc-tv5.7",
+      "promotion_consequence": "Stage 2 diversity remains a blocked dependency for release-grade promotion",
+      "reason": "Stage 2 diversity still needs production policy, partition soundness, pack governance, and operated differential service evidence before strategy-level diversity promotion.",
+      "stage2_blocker_rows": 4,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w040_diversity.mismatch_triage_and_quarantine_service_absent",
+      "evidence": "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_exact_service_blocker_register.json",
+      "owner": "calc-tv5.6; calc-tv5.7",
+      "promotion_consequence": "service-level diversity assurance remains unpromoted",
+      "reason": "Local alert/quarantine rows are evaluated, but no external mismatch triage/quarantine service is operated.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w040_diversity.release_grade_promotion_authority_absent",
+      "evidence": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+      "owner": "calc-tv5.10",
+      "promotion_consequence": "release-grade verification, pack/C5, and diversity promotion remain unavailable to this bead",
+      "reason": "Release-grade diversity cannot be claimed from bounded scalar rows, proxy evidence, file-backed rows, shared projections, or retained blockers.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.exact_diversity_blocker_register.v1"
+}

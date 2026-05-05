@@ -1,0 +1,18 @@
+{
+  "blocked_service_claims": [
+    "recurring_cross_engine_diff_scheduler",
+    "cross_engine_service_endpoint",
+    "operated_mismatch_quarantine_dispatcher",
+    "stage2_operated_cross_engine_differential_service"
+  ],
+  "file_backed_cross_engine_substrate_present": true,
+  "operated_cross_engine_differential_service_present": false,
+  "operated_cross_engine_differential_service_promoted": false,
+  "run_id": "w043-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "schema_version": "oxcalc.operated_assurance.w043.cross_engine_service_register.v1",
+  "service_endpoint_present": false,
+  "service_state": "file_backed_cross_engine_substrate_and_w043_stage2_dependency_bound_without_operated_service",
+  "w042_stage2_service_dependency_blocker_present": true,
+  "w043_stage2_policy_row_count": 20,
+  "w043_stage2_service_dependency_blocker_present": true
+}

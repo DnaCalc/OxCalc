@@ -1,0 +1,19 @@
+{
+  "alert_decision_count": 0,
+  "evaluated_alert_rule_count": 29,
+  "exact_service_blocker_count": 6,
+  "failed_row_count": 0,
+  "multi_run_history_row_count": 33,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 13,
+  "replay_correlation_row_count": 11,
+  "retained_witness_lifecycle_row_count": 8,
+  "run_id": "w043-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "schema_version": "oxcalc.operated_assurance.w043.validation.v1",
+  "service_envelope_row_count": 10,
+  "service_readiness_blocked_count": 6,
+  "service_readiness_criteria_count": 22,
+  "source_evidence_row_count": 15,
+  "status": "w043_operated_assurance_retained_history_witness_slo_alert_service_valid",
+  "validation_failures": []
+}

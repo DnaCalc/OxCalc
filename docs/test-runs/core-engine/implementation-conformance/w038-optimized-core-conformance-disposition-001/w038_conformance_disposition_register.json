@@ -1,0 +1,352 @@
+{
+  "accepted_boundary_count": 1,
+  "direct_evidence_bound_count": 3,
+  "disposition_row_count": 5,
+  "exact_remaining_blocker_count": 4,
+  "failed_row_count": 0,
+  "match_promoted_count": 0,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "authority_owner": "calc-zsr.3; calc-zsr.9",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/runtime_effect_overlays.json"
+          ],
+          "check_id": "w037_treecalc_dynamic_negative_reject",
+          "observed": {
+            "dynamic_overlay_count": 1,
+            "reject_kind": "DynamicDependencyFailure",
+            "result_state": "rejected"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json"
+          ],
+          "check_id": "w037_treecalc_dynamic_resolved_publish",
+          "observed": {
+            "dependency_shape_update_count": 1,
+            "dynamic_runtime_effect_count": 1,
+            "result_state": "published"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/retention_guardrail.json"
+          ],
+          "check_id": "w037_treecalc_dynamic_retention_release",
+          "observed": {
+            "claims_exercised": [
+              "R4.pinned_reader_stability",
+              "R5.overlay_retention_release",
+              "C2.pinned_reader_and_retention",
+              "C4.overlay_economics_eviction"
+            ],
+            "evicted_overlay_count_after_release": 3,
+            "release_events": 1
+          },
+          "status": "passed"
+        }
+      ],
+      "exact_remaining_blocker_bead": "calc-zsr.9",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/retention_guardrail.json"
+      ],
+      "implementation_evidence_state": "dynamic_negative_and_retention_guardrails_bound_without_release_reclassification_match",
+      "promotion_consequence": "the dynamic negative/release row is narrowed but not promoted; W038 still lacks an optimized differential that proves dependency release and reclassification against the TraceCalc release row.",
+      "reason": "TreeCalc-local now supplies direct evidence for dynamic-potential rejection, resolved dynamic publication, and retained dynamic overlay release, but those artifacts do not constitute the missing release/reclassification differential.",
+      "row_id": "w038_disposition_dynamic_negative_release_reclassification",
+      "source_w037_residual": {
+        "conformance_match_state": "not_promoted",
+        "implementation_evidence_state": "tracecalc_negative_release_replay_without_treecalc_release_reclassification_differential",
+        "residual_blocker_bead": "calc-ubd.9",
+        "row_id": "w037_decision_dynamic_negative_release_residual_blocker",
+        "source_w036_action_row_id": "w036_action_dynamic_dependency_negative_shape_update",
+        "w037_decision": "carry_dynamic_negative_release_and_reclassification_surfaces_as_residual_blockers",
+        "w037_decision_kind": "residual_blocker",
+        "w037_obligation_id": "W037-OBL-003"
+      },
+      "source_w037_residual_row_id": "w037_decision_dynamic_negative_release_residual_blocker",
+      "validation_state": "w038_disposition_validated",
+      "w038_disposition": "bind dynamic negative reject, resolved dynamic publish, and retention-release guardrail evidence while carrying release/reclassification differential as an exact remaining blocker",
+      "w038_disposition_kind": "partial_direct_evidence_exact_remaining_blocker",
+      "w038_obligation_id": "W038-OBL-003"
+    },
+    {
+      "accepted_boundary": true,
+      "authority_owner": "calc-zsr.3; calc-zsr.7; external:OxFunc",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+            "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json"
+          ],
+          "check_id": "w037_direct_oxfml_let_lambda",
+          "observed": {
+            "expectation_mismatch_count": 0,
+            "let_lambda_case_count": 2,
+            "lexical_status": "matched",
+            "returned_status": "matched"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+          ],
+          "check_id": "w038_tracecalc_authority_discharge",
+          "observed": {
+            "accepted_external_exclusion_count": 1,
+            "general_oxfunc_kernel_promoted": false,
+            "remaining_tracecalc_authority_blocker_count": 0
+          },
+          "status": "passed"
+        }
+      ],
+      "exact_remaining_blocker_bead": null,
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+      ],
+      "implementation_evidence_state": "direct_oxfml_let_lambda_evidence_bound_with_general_oxfunc_kernel_excluded",
+      "promotion_consequence": "the direct OxFml absence no longer blocks the exercised LET/LAMBDA carrier slice, but OxCalc still makes no general OxFunc LAMBDA-kernel or optimized TreeCalc value-only match claim.",
+      "reason": "W037 direct upstream-host evidence exercises lexical LET/LAMBDA capture and returned-lambda invocation through OxFml; W038 TraceCalc authority accepts the general OxFunc kernel row as external owner scope.",
+      "row_id": "w038_disposition_lambda_host_effect_direct_oxfml_boundary_accepted",
+      "source_w037_residual": {
+        "conformance_match_state": "not_promoted",
+        "implementation_evidence_state": "tracecalc_carrier_replay_with_direct_oxfml_evaluator_absent",
+        "residual_blocker_bead": "calc-ubd.4",
+        "row_id": "w037_decision_lambda_host_effect_residual_blocker",
+        "source_w036_action_row_id": "w036_action_lambda_host_effect_boundary",
+        "w037_decision": "carry_lambda_host_effect_to_direct_oxfml_and_let_lambda_seam_beads",
+        "w037_decision_kind": "residual_blocker",
+        "w037_obligation_id": "W037-OBL-006"
+      },
+      "source_w037_residual_row_id": "w037_decision_lambda_host_effect_residual_blocker",
+      "validation_state": "w038_disposition_validated",
+      "w038_disposition": "replace the stale direct-OxFml-absence blocker with an accepted narrow LET/LAMBDA carrier boundary and external OxFunc-kernel exclusion",
+      "w038_disposition_kind": "accepted_boundary_after_direct_oxfml_evidence",
+      "w038_obligation_id": "W038-OBL-004"
+    },
+    {
+      "accepted_boundary": false,
+      "authority_owner": "calc-zsr.3; calc-zsr.5",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+          ],
+          "check_id": "w037_stage2_replay_blocker_named",
+          "observed": {
+            "blockers": [
+              "stage2.deterministic_partition_replay_absent",
+              "stage2.production_partition_analyzer_soundness_absent",
+              "stage2.operated_cross_engine_differential_service_absent",
+              "stage2.pack_grade_replay_governance_absent"
+            ],
+            "stage2_policy_promoted": false
+          },
+          "status": "passed"
+        }
+      ],
+      "exact_remaining_blocker_bead": "calc-zsr.5",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_present_without_optimized_stale_candidate_counterpart",
+      "promotion_consequence": "snapshot-fence conformance and Stage 2 promotion remain blocked until deterministic coordinator or partition replay supplies an optimized counterpart.",
+      "reason": "W037 Stage 2 criteria explicitly names deterministic partition replay absence; TreeCalc-local still has no stale accepted-candidate admission fence counterpart.",
+      "row_id": "w038_disposition_snapshot_fence_projection_exact_blocker",
+      "source_w037_residual": {
+        "conformance_match_state": "not_promoted",
+        "implementation_evidence_state": "tracecalc_replay_without_treecalc_stale_candidate_counterpart",
+        "residual_blocker_bead": "calc-ubd.6",
+        "row_id": "w037_decision_snapshot_fence_projection_residual_blocker",
+        "source_w036_action_row_id": "w036_action_snapshot_fence_projection",
+        "w037_decision": "carry_snapshot_fence_projection_to_stage2_and_coordinator_replay",
+        "w037_decision_kind": "residual_blocker",
+        "w037_obligation_id": "W037-OBL-009"
+      },
+      "source_w037_residual_row_id": "w037_decision_snapshot_fence_projection_residual_blocker",
+      "validation_state": "w038_disposition_validated",
+      "w038_disposition": "carry snapshot-fence projection as an exact Stage 2/coordinator replay blocker",
+      "w038_disposition_kind": "exact_remaining_blocker",
+      "w038_obligation_id": "W038-OBL-005"
+    },
+    {
+      "accepted_boundary": false,
+      "authority_owner": "calc-zsr.3; calc-zsr.5",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json"
+          ],
+          "check_id": "w037_treecalc_capability_reject",
+          "observed": {
+            "diagnostic_count": 11,
+            "reject_kind": "HostInjectedFailure",
+            "result_state": "rejected"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+          ],
+          "check_id": "w037_stage2_replay_blocker_named",
+          "observed": {
+            "blockers": [
+              "stage2.deterministic_partition_replay_absent",
+              "stage2.production_partition_analyzer_soundness_absent",
+              "stage2.operated_cross_engine_differential_service_absent",
+              "stage2.pack_grade_replay_governance_absent"
+            ],
+            "stage2_policy_promoted": false
+          },
+          "status": "passed"
+        }
+      ],
+      "exact_remaining_blocker_bead": "calc-zsr.5",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json"
+      ],
+      "implementation_evidence_state": "broader_treecalc_capability_reject_present_without_compatibility_fence_counterpart",
+      "promotion_consequence": "capability-view fence conformance remains blocked until deterministic coordinator or partition replay exercises the compatibility-view fence mismatch directly.",
+      "reason": "TreeCalc-local retains broader capability-sensitive reject evidence, but W038 still cannot count that as the TraceCalc compatibility-fenced capability-view mismatch.",
+      "row_id": "w038_disposition_capability_view_fence_projection_exact_blocker",
+      "source_w037_residual": {
+        "conformance_match_state": "not_promoted",
+        "implementation_evidence_state": "tracecalc_replay_without_treecalc_capability_view_fence_counterpart",
+        "residual_blocker_bead": "calc-ubd.6",
+        "row_id": "w037_decision_capability_view_fence_projection_residual_blocker",
+        "source_w036_action_row_id": "w036_action_capability_view_fence_projection",
+        "w037_decision": "carry_capability_view_fence_projection_to_stage2_and_coordinator_replay",
+        "w037_decision_kind": "residual_blocker",
+        "w037_obligation_id": "W037-OBL-009"
+      },
+      "source_w037_residual_row_id": "w037_decision_capability_view_fence_projection_residual_blocker",
+      "validation_state": "w038_disposition_validated",
+      "w038_disposition": "carry compatibility-fenced capability-view projection as an exact Stage 2/coordinator replay blocker",
+      "w038_disposition_kind": "exact_remaining_blocker",
+      "w038_obligation_id": "W038-OBL-006"
+    },
+    {
+      "accepted_boundary": false,
+      "authority_owner": "calc-zsr.3; calc-zsr.4; calc-zsr.7; external:OxFunc",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json"
+          ],
+          "check_id": "w037_callable_treecalc_value_only",
+          "observed": {
+            "dependency_shape_update_count": 0,
+            "published_runtime_effect_count": 0,
+            "published_value_delta": {
+              "3": "17"
+            },
+            "result_state": "published"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json"
+          ],
+          "check_id": "w037_direct_oxfml_returned_lambda",
+          "observed": {
+            "general_oxfunc_kernel_claimed": false,
+            "status": "matched",
+            "value_payload": "Number(15)"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json"
+          ],
+          "check_id": "w037_proof_callable_boundary",
+          "observed": {
+            "blocker_id": "callable.general_oxfunc_kernel_not_promoted",
+            "evidence": [
+              "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
+              "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean"
+            ],
+            "owner": "OxFunc; calc-ubd.5 boundary classification",
+            "promotion_consequence": "OxCalc closes only the narrow carrier classification consumed by its proof/model inventory; it does not own general OxFunc LAMBDA kernel semantics.",
+            "state": "opaque_external_boundary"
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+          ],
+          "check_id": "w038_tracecalc_authority_discharge",
+          "observed": {
+            "accepted_external_exclusion_count": 1,
+            "general_oxfunc_kernel_promoted": false,
+            "remaining_tracecalc_authority_blocker_count": 0
+          },
+          "status": "passed"
+        }
+      ],
+      "exact_remaining_blocker_bead": "calc-zsr.4; calc-zsr.7",
+      "failures": [],
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+        "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+      ],
+      "implementation_evidence_state": "treecalc_value_only_counterpart_plus_direct_oxfml_returned_lambda_without_metadata_projection",
+      "promotion_consequence": "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture exists.",
+      "reason": "The optimized TreeCalc counterpart publishes the ordinary higher-order value only; direct OxFml exercises the narrow returned-lambda carrier, and W037 proof inventory keeps the general OxFunc callable kernel external.",
+      "row_id": "w038_disposition_callable_metadata_projection_exact_blocker",
+      "source_w037_residual": {
+        "conformance_match_state": "not_promoted",
+        "implementation_evidence_state": "tracecalc_callable_carrier_replay_with_treecalc_value_only_counterpart",
+        "residual_blocker_bead": "calc-ubd.5",
+        "row_id": "w037_decision_callable_metadata_projection_residual_blocker",
+        "source_w036_action_row_id": "w036_action_callable_metadata_projection",
+        "w037_decision": "carry_callable_metadata_projection_to_let_lambda_and_proof_inventory",
+        "w037_decision_kind": "residual_blocker",
+        "w037_obligation_id": "W037-OBL-006"
+      },
+      "source_w037_residual_row_id": "w037_decision_callable_metadata_projection_residual_blocker",
+      "validation_state": "w038_disposition_validated",
+      "w038_disposition": "carry callable metadata projection as an exact proof/seam blocker while preserving value-only TreeCalc and direct OxFml callable-carrier evidence",
+      "w038_disposition_kind": "exact_remaining_blocker",
+      "w038_obligation_id": "W038-OBL-007"
+    }
+  ],
+  "run_id": "w038-optimized-core-conformance-disposition-001",
+  "schema_version": "oxcalc.implementation_conformance.w038_disposition_register.v1",
+  "source_w037_implementation_conformance_run_id": "w037-implementation-conformance-closure-001",
+  "source_w037_residual_blocker_count": 5,
+  "validated_row_count": 5
+}

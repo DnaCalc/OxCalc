@@ -1,0 +1,14 @@
+{
+  "accepted_boundary_count": 1,
+  "direct_evidence_bound_count": 3,
+  "exact_remaining_blocker_count": 4,
+  "failed_row_count": 0,
+  "match_promoted_count": 0,
+  "run_id": "w038-optimized-core-conformance-disposition-001",
+  "schema_version": "oxcalc.implementation_conformance.validation.v1",
+  "source_w037_residual_blocker_count": 5,
+  "status": "implementation_conformance_w038_dispositions_valid",
+  "validated_row_count": 5,
+  "validation_failures": [],
+  "w038_disposition_row_count": 5
+}

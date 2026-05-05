@@ -165,3 +165,5 @@ No cargo, Lean, or TLC command is required for this ledger bead because it emits
   - pack-grade replay governance, C5, and W038 release decision remain open
 
 Post-`calc-zsr.2` note: `w038-tracecalc-authority-discharge-001` accepts the single W037 authority-excluded row, `w035_callable_full_oxfunc_semantics`, as an external OxFunc-owned semantic-kernel exclusion. It leaves zero uncovered TraceCalc rows for the current OxCalc-owned observable profile and keeps non-TraceCalc release gates open.
+
+Post-`calc-zsr.3` note: `w038-optimized-core-conformance-disposition-001` rechecks the five W037 optimized/core residual blockers, binds three direct-evidence rows, accepts one boundary row, preserves four exact remaining blockers, promotes zero declared gaps as matches, and routes proof/model, Stage 2/coordinator, OxFml seam/watch, operated-service, pack/C5, and release-decision lanes to later W038 beads.

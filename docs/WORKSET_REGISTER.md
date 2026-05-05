@@ -284,3 +284,19 @@ It does mean:
    residual coverage and promotion-blocker ledger, TraceCalc coverage closure criteria and matrix expansion, optimized/core-engine conformance closure plan and first fixes, Lean theorem coverage expansion, TLA Stage 2 partition and scheduler equivalence model, independent evaluator diversity and cross-engine differential harness, continuous assurance operation and history window, pack-grade replay and capability promotion gate reassessment, closure audit and successor/full-verification decision
 7. rollout_mode:
    `execution_target`
+
+### W037 Core Formalization Full-Verification Promotion Gates
+1. purpose:
+   continue after W036 by converting remaining no-promotion blockers into direct full-verification, implementation-conformance, direct OxFml evaluator, operated-assurance, pack-grade replay, and Stage 2 promotion-gate evidence where possible, while allowing specs and scope to evolve from new evidence rather than treating earlier specs or implementations as immutable targets.
+2. depends_on:
+   `W036`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W037_CORE_FORMALIZATION_FULL_VERIFICATION_PROMOTION_GATES.md`, `docs/spec/core-engine/w036-formalization/W036_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W036 residuals are assigned to W037 proof, implementation, replay, direct-OxFml, operated-service, pack, deferral, or successor obligations; TraceCalc observable closure and optimized/core-engine conformance are directly evidenced or blocked; direct OxFml evaluator and narrow `LET`/`LAMBDA` seam evidence is exercised or named as a blocker; Lean/TLA proof/model claims are checked and assumption-bounded; Stage 2 deterministic replay and partition promotion criteria include semantic-equivalence evidence; operated assurance/service claims use operated artifacts rather than simulation; pack/C5 decisions state exact evidence consequence; and the closure audit maps the full-formalization objective to artifacts before any release-grade claim.
+6. initial_epic_lanes:
+   residual full-verification and promotion-gate ledger, TraceCalc observable closure and multi-reader replay, optimized/core-engine conformance implementation closure, direct OxFml evaluator and `LET`/`LAMBDA` seam evidence, Lean/TLA proof and model closure inventory, Stage 2 deterministic replay and partition promotion criteria, operated continuous assurance and cross-engine service pilot, pack-grade replay governance and C5 candidate decision, closure audit and full-verification release decision
+7. rollout_mode:
+   `execution_target`

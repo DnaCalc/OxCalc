@@ -89,17 +89,18 @@ The first W036 path is sequential to keep proof, replay, implementation, and pro
 
 ## Current Status
 
-- execution_state: `calc-rqq.8_pack_capability_reassessment_validated`
+- execution_state: `calc-rqq.9_closure_audit_and_successor_packet`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-rqq.9` remains blocked by the sequential W036 path
+  - W037 successor tranche remains open
   - full Lean verification remains partial because W036 adds checked proof-inventory slices, not total Rust-engine proof
   - full TLA verification remains partial because W036 adds bounded model-check evidence, not total proof
   - full TraceCalc oracle coverage remains unpromoted because the multi-reader row is now bounded TLA model evidence rather than TraceCalc replay and the OxFunc-kernel exclusion remains external
   - full optimized/core-engine verification remains open because the W036 implementation-conformance closure run promotes zero W035 declared gaps as matches
   - fully independent evaluator diversity remains partial because W036 classifies 0 fully independent evaluator rows
+  - direct OxFml evaluator re-execution and the narrow `LET`/`LAMBDA` seam evidence remain open
   - operated continuous-assurance service and continuous cross-engine differential service remain open because W036 emits simulated multi-run history and deterministic harness artifacts, not an operated service
   - alert/quarantine execution remains open because W036 defines policy, not an enforcing alert dispatcher
   - bounded Stage 2 partition ownership modeling exists, while production partitioning and deterministic scheduler replay equivalence remain open
@@ -115,3 +116,4 @@ Latest W036 evidence:
 6. `docs/spec/core-engine/w036-formalization/W036_INDEPENDENT_EVALUATOR_DIVERSITY_AND_CROSS_ENGINE_DIFFERENTIAL_HARNESS.md` records the `calc-rqq.6` W036 independent evaluator diversity and cross-engine differential harness. The checked run `w036-independent-diversity-differential-001` emits 15 base comparison rows, 5 diversity rows, 6 cross-engine differential rows, 6 promotion blockers, 0 unexpected mismatches, 0 missing artifacts, 0 fully independent evaluator rows, and no continuous cross-engine service promotion.
 7. `docs/spec/core-engine/w036-formalization/W036_CONTINUOUS_ASSURANCE_OPERATION_AND_HISTORY_WINDOW.md` records the `calc-rqq.7` W036 continuous-assurance operation/history packet. The checked run `w036-continuous-assurance-operation-001` emits 11 source rows, 4 scheduled lanes, 6 differential rows, 6 simulated history rows, 7 regression threshold rules, 7 quarantine/alert rules, 0 missing artifacts, 0 unexpected mismatches, 11 no-promotion reasons, and no operated continuous service promotion.
 8. `docs/spec/core-engine/w036-formalization/W036_PACK_GRADE_REPLAY_AND_CAPABILITY_PROMOTION_GATE_REASSESSMENT.md` records the `calc-rqq.8` W036 pack-grade replay and capability reassessment. The checked run `w036-pack-capability-reassessment-001` emits 12 satisfied inputs, 22 no-promotion blockers, 0 missing artifacts, `cap.C4.distill_valid` as highest honest capability, no C5 promotion, and no Stage 2 policy promotion.
+9. `docs/spec/core-engine/w036-formalization/W036_CLOSURE_AUDIT_AND_SUCCESSOR_PACKET.md` records the `calc-rqq.9` W036 closure audit and successor/full-verification decision. It maps the active formalization objective to W036 evidence, keeps the broader objective partial, and registers W037 as the next direct-evidence tranche.

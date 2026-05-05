@@ -49,7 +49,8 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 9. `W033` OxCalc + OxFml core formalization pass,
 10. `W034` core formalization deepening and implementation verification,
 11. `W035` core formalization proof and assurance hardening,
-12. `W036` core formalization verification closure expansion.
+12. `W036` core formalization verification closure expansion,
+13. `W037` core formalization full-verification promotion gates.
 
 ## Historical Note
 

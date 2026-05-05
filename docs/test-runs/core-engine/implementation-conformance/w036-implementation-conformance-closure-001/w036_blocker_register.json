@@ -1,0 +1,174 @@
+{
+  "blocker_row_count": 4,
+  "rows": [
+    {
+      "authority_owner": "calc-rqq.3; calc-rqq.4",
+      "blocker_bead": "calc-rqq.4",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "first_fix_state": "no_first_fix",
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json",
+        "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/gap_disposition_register.json"
+      ],
+      "implementation_evidence_state": "tracecalc_carrier_replay_plus_oxfunc_kernel_exclusion",
+      "promotion_consequence": "LET/LAMBDA carrier conformance remains bounded to OxCalc/OxFml carrier evidence until calc-rqq.4 records the Lean/OxFunc-opaque boundary inventory.",
+      "reason": "W036 keeps callable runtime-effect visibility covered in TraceCalc while excluding the general OxFunc LAMBDA semantic kernel from OxCalc-local TraceCalc oracle scope.",
+      "row_id": "w036_action_lambda_host_effect_boundary",
+      "source_w034_gap_row_id": "ic_gap_lambda_host_effect_001",
+      "source_w035_disposition": {
+        "authority_owner": "calc-tkq.4",
+        "carry_forward_lane": "lean_assumption_discharge_and_seam_proof_map",
+        "disposition": "defer_host_sensitive_lambda_effect_to_callable_seam_map",
+        "disposition_kind": "spec_evolution_deferral",
+        "row_id": "ic_gap_lambda_host_effect_001",
+        "source_tracecalc_scenario_id": "tc_let_lambda_runtime_effect_001",
+        "source_treecalc_case_id": "tc_local_lambda_host_sensitive_reject_001"
+      },
+      "validation_state": "w036_disposition_validated",
+      "w036_disposition": "route_host_sensitive_lambda_effect_to_let_lambda_boundary_inventory",
+      "w036_disposition_kind": "formal_deferral_with_blocker",
+      "w036_matrix_evidence": [
+        {
+          "classification": "covered_by_w033_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W036-OBL-001",
+          "owner": "calc-rqq.2",
+          "row_id": "w036_callable_runtime_effect_visibility",
+          "scenario_id": "tc_let_lambda_runtime_effect_001"
+        },
+        {
+          "classification": "classified_out_of_scope_oxfunc_kernel",
+          "coverage_class": "excluded",
+          "evidence_state": "excluded_by_authority",
+          "obligation_id": "W036-OBL-002",
+          "owner": "external:OxFunc; calc-rqq.4 records boundary",
+          "row_id": "w035_callable_full_oxfunc_semantics",
+          "scenario_id": null
+        }
+      ],
+      "w036_obligation_id": "W036-OBL-004"
+    },
+    {
+      "authority_owner": "calc-rqq.3; calc-rqq.5",
+      "blocker_bead": "calc-rqq.5",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "first_fix_state": "no_first_fix",
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_evidence_with_missing_treecalc_counterpart",
+      "promotion_consequence": "snapshot-fence conformance remains blocked until W036 TLA/coordinator work supplies a local counterpart or proves the boundary external to optimized conformance.",
+      "reason": "W036 TraceCalc covers snapshot-fence rejection, but the local TreeCalc fixture lane still has no stale-candidate admission fence counterpart.",
+      "row_id": "w036_action_snapshot_fence_projection",
+      "source_w034_gap_row_id": "ic_gap_w034_snapshot_fence_projection_001",
+      "source_w035_disposition": {
+        "authority_owner": "calc-tkq.5",
+        "carry_forward_lane": "tla_non_routine_and_future_optimized_coordinator_conformance",
+        "disposition": "open_coordinator_snapshot_fence_projection_work",
+        "disposition_kind": "implementation_work_deferred",
+        "row_id": "ic_gap_w034_snapshot_fence_projection_001",
+        "source_tracecalc_scenario_id": "tc_w034_snapshot_fence_reject_001",
+        "source_treecalc_case_id": null
+      },
+      "validation_state": "w036_disposition_validated",
+      "w036_disposition": "route_snapshot_fence_projection_to_tla_and_coordinator_replay_lane",
+      "w036_disposition_kind": "coordinator_harness_blocker",
+      "w036_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W036-OBL-001",
+          "owner": "calc-rqq.2",
+          "row_id": "w035_stale_snapshot_fence_reject",
+          "scenario_id": "tc_w034_snapshot_fence_reject_001"
+        }
+      ],
+      "w036_obligation_id": "W036-OBL-006"
+    },
+    {
+      "authority_owner": "calc-rqq.3; calc-rqq.5",
+      "blocker_bead": "calc-rqq.5",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "first_fix_state": "no_first_fix",
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_replay_evidence_with_missing_treecalc_counterpart",
+      "promotion_consequence": "capability-view fence conformance remains blocked until W036 TLA/coordinator work supplies a local counterpart or proves the boundary external to optimized conformance.",
+      "reason": "W036 TraceCalc covers compatibility-fenced capability-view rejection, while TreeCalc-local only has broader capability-sensitive reject evidence.",
+      "row_id": "w036_action_capability_view_fence_projection",
+      "source_w034_gap_row_id": "ic_gap_w034_capability_view_fence_projection_001",
+      "source_w035_disposition": {
+        "authority_owner": "calc-tkq.5",
+        "carry_forward_lane": "tla_non_routine_and_future_optimized_coordinator_conformance",
+        "disposition": "open_coordinator_capability_view_fence_projection_work",
+        "disposition_kind": "implementation_work_deferred",
+        "row_id": "ic_gap_w034_capability_view_fence_projection_001",
+        "source_tracecalc_scenario_id": "tc_w034_capability_fence_reject_001",
+        "source_treecalc_case_id": null
+      },
+      "validation_state": "w036_disposition_validated",
+      "w036_disposition": "route_capability_view_fence_projection_to_tla_and_coordinator_replay_lane",
+      "w036_disposition_kind": "coordinator_harness_blocker",
+      "w036_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W036-OBL-001",
+          "owner": "calc-rqq.2",
+          "row_id": "w035_stale_capability_view_fence_reject",
+          "scenario_id": "tc_w034_capability_fence_reject_001"
+        }
+      ],
+      "w036_obligation_id": "W036-OBL-007"
+    },
+    {
+      "authority_owner": "calc-rqq.3; calc-rqq.4",
+      "blocker_bead": "calc-rqq.4",
+      "conformance_match_state": "not_promoted",
+      "failures": [],
+      "first_fix_state": "no_first_fix",
+      "implementation_evidence_sources": [
+        "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/treecalc_tracecalc_differential.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json"
+      ],
+      "implementation_evidence_state": "tracecalc_callable_carrier_replay_with_metadata_gap",
+      "promotion_consequence": "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture is added.",
+      "reason": "W036 TraceCalc covers higher-order callable carrier publication, but TreeCalc-local still compares ordinary value only and does not project callable identity metadata.",
+      "row_id": "w036_action_callable_metadata_projection",
+      "source_w034_gap_row_id": "ic_gap_w034_higher_order_callable_metadata_001",
+      "source_w035_disposition": {
+        "authority_owner": "calc-tkq.4",
+        "carry_forward_lane": "lean_assumption_discharge_and_callable_seam_proof_map",
+        "disposition": "open_callable_metadata_projection_work",
+        "disposition_kind": "implementation_work_deferred",
+        "row_id": "ic_gap_w034_higher_order_callable_metadata_001",
+        "source_tracecalc_scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+        "source_treecalc_case_id": null
+      },
+      "validation_state": "w036_disposition_validated",
+      "w036_disposition": "route_callable_metadata_projection_to_lean_callable_boundary_inventory",
+      "w036_disposition_kind": "formal_deferral_with_blocker",
+      "w036_matrix_evidence": [
+        {
+          "classification": "covered_by_w034_seed",
+          "coverage_class": "covered",
+          "evidence_state": "covered_passed",
+          "obligation_id": "W036-OBL-001",
+          "owner": "calc-rqq.2",
+          "row_id": "w035_callable_higher_order_publish",
+          "scenario_id": "tc_w034_let_lambda_higher_order_replay_001"
+        }
+      ],
+      "w036_obligation_id": "W036-OBL-008"
+    }
+  ],
+  "run_id": "w036-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w036_blocker_register.v1"
+}

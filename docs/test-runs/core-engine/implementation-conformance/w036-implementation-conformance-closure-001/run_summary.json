@@ -1,0 +1,19 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001",
+  "evidence_summary_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/evidence_summary.json",
+  "failed_row_count": 0,
+  "gap_disposition_row_count": 6,
+  "implementation_work_count": 5,
+  "run_id": "w036-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.run_summary.v1",
+  "spec_evolution_deferral_count": 1,
+  "validated_row_count": 6,
+  "validation_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/validation.json",
+  "w036_action_row_count": 6,
+  "w036_blocker_register_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_blocker_register.json",
+  "w036_blocker_routed_row_count": 4,
+  "w036_closure_action_register_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_closure_action_register.json",
+  "w036_first_fix_row_count": 2,
+  "w036_match_promoted_count": 0,
+  "w036_match_promotion_guard_path": "docs/test-runs/core-engine/implementation-conformance/w036-implementation-conformance-closure-001/w036_match_promotion_guard.json"
+}

@@ -1,0 +1,11 @@
+{
+  "failed_row_count": 0,
+  "match_promoted_count": 0,
+  "run_id": "w036-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.validation.v1",
+  "source_gap_row_count": 6,
+  "status": "implementation_conformance_w036_closure_plan_valid",
+  "validated_row_count": 6,
+  "validation_failures": [],
+  "w036_action_row_count": 6
+}

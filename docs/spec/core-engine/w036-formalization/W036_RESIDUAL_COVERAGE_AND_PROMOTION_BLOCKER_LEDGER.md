@@ -143,6 +143,12 @@ Any later W036 promotion candidate must include machine-readable evidence, a sem
 
 Evidence run `w036-tracecalc-coverage-closure-001` emits 32 matrix rows, 30 covered rows, 1 classified uncovered row, 1 excluded row, 0 failed/missing rows, and 0 no-loss crosswalk gaps. The multi-reader overlay release-order row remains uncovered and routed to `calc-rqq.5`; the full OxFunc LAMBDA semantic-kernel row is excluded from the OxCalc TraceCalc profile and recorded for the `calc-rqq.4` boundary inventory. No full TraceCalc oracle claim is made.
 
+### calc-rqq.3 Disposition Update
+
+`calc-rqq.3` now records the W036 optimized/core-engine conformance closure plan and first-fix harness evidence in `W036_OPTIMIZED_CORE_ENGINE_CONFORMANCE_CLOSURE_PLAN_AND_FIRST_FIXES.md`.
+
+Evidence run `w036-implementation-conformance-closure-001` emits 6 closure action rows, 2 harness first-fix rows, 4 blocker-routed rows, 0 match-promoted rows, and 0 failed rows. Dynamic dependency bind and dynamic negative/shape-update rows are bound to W036 harness evidence but remain non-matches. LET/LAMBDA host effect and callable metadata rows route to `calc-rqq.4`; snapshot-fence and capability-view fence rows route to `calc-rqq.5`. Full optimized/core-engine verification remains unpromoted.
+
 ## 8. OxFml Watch And Handoff Rules
 
 Current watch rows:

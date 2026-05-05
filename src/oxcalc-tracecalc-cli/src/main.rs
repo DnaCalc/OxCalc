@@ -226,14 +226,26 @@ fn run() -> Result<(), String> {
             let summary = runner
                 .execute(&repo_root, &run_id)
                 .map_err(|error| format!("implementation conformance run failed: {error}"))?;
-            println!(
-                "Implementation conformance run '{run_id}' wrote {} gap dispositions ({} implementation-work, {} spec-deferral, {} failed) to {}.",
-                summary.gap_disposition_row_count,
-                summary.implementation_work_count,
-                summary.spec_evolution_deferral_count,
-                summary.failed_row_count,
-                summary.artifact_root
-            );
+            if summary.w036_action_row_count > 0 {
+                println!(
+                    "Implementation conformance run '{run_id}' wrote {} W036 closure actions ({} first-fix harness rows, {} blocker-routed, {} match-promoted, {} failed) to {}.",
+                    summary.w036_action_row_count,
+                    summary.w036_first_fix_row_count,
+                    summary.w036_blocker_routed_row_count,
+                    summary.w036_match_promoted_count,
+                    summary.failed_row_count,
+                    summary.artifact_root
+                );
+            } else {
+                println!(
+                    "Implementation conformance run '{run_id}' wrote {} gap dispositions ({} implementation-work, {} spec-deferral, {} failed) to {}.",
+                    summary.gap_disposition_row_count,
+                    summary.implementation_work_count,
+                    summary.spec_evolution_deferral_count,
+                    summary.failed_row_count,
+                    summary.artifact_root
+                );
+            }
         }
         "continuous-assurance" => {
             let runner = ContinuousAssuranceRunner::new();

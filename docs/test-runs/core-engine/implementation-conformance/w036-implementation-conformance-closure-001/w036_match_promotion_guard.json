@@ -1,0 +1,9 @@
+{
+  "guard_status": "no_declared_gap_promoted_as_match",
+  "non_promoted_row_count": 6,
+  "policy": "W036 calc-rqq.3 forbids counting a W035 declared gap as an optimized/core-engine match without replay/diff evidence; this run promotes no declared gaps as matches.",
+  "promoted_match_count": 0,
+  "run_id": "w036-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.w036_match_guard.v1",
+  "source_declared_gap_row_count": 6
+}

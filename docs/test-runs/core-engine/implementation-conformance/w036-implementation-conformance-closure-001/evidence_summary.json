@@ -1,0 +1,35 @@
+{
+  "run_id": "w036-implementation-conformance-closure-001",
+  "schema_version": "oxcalc.implementation_conformance.evidence_summary.v1",
+  "source_paths": {
+    "w034_core_projection_differential": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/comparisons/core_engine_projection_differential.json",
+    "w035_gap_disposition_register": "docs/test-runs/core-engine/implementation-conformance/w035-implementation-conformance-hardening-001/gap_disposition_register.json",
+    "w036_oracle_matrix": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/coverage_matrix.json",
+    "w036_oracle_matrix_summary": "docs/test-runs/core-engine/tracecalc-reference-machine/w036-tracecalc-coverage-closure-001/oracle-matrix/run_summary.json"
+  },
+  "w034_core_projection": {
+    "projection_present_count": 9,
+    "projection_row_count": 9
+  },
+  "w035_gap_dispositions": {
+    "failed_row_count": 0,
+    "implementation_work_count": 5,
+    "row_count": 6,
+    "spec_evolution_deferral_count": 1
+  },
+  "w036_closure_actions": {
+    "action_row_count": 6,
+    "blocker_routed_row_count": 4,
+    "failed_row_count": 0,
+    "first_fix_row_count": 2,
+    "match_promoted_count": 0,
+    "validated_row_count": 6
+  },
+  "w036_oracle_matrix": {
+    "classified_uncovered_row_count": 1,
+    "covered_row_count": 30,
+    "excluded_row_count": 1,
+    "matrix_row_count": 32,
+    "missing_or_failed_row_count": 0
+  }
+}

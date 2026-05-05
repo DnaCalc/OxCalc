@@ -26,7 +26,8 @@ Current packets:
 7. `W041_INDEPENDENT_EVALUATOR_BREADTH_AND_OPERATED_DIFFERENTIAL_SERVICE_TRANCHE.md` - `calc-sui.7` broadened independent formula-fragment evaluator, diversity/service authority routing, and retained full-breadth/service blockers.
 8. `W041_OXFML_BROAD_DISPLAY_PUBLICATION_AND_CALLABLE_CARRIER_CLOSURE.md` - `calc-sui.8` OxFml consumed-surface, W073 typed-only formatting, distinct format/display, `LET`/`LAMBDA`, registered-external/provider watch, and retained broad OxFml/callable blockers.
 9. `W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-sui.9` W041 pack/C5 no-promotion decision, direct-evidence tranche binding, and retained pack-grade replay, C5, service, proof, diversity, OxFml, callable, and release-grade blockers.
+10. `W041_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-sui.10` W041 closure audit, direct-evidence coverage audit, prompt-to-artifact checklist, release-grade no-promotion decision, and successor-scope routing.
 
 Planned packets:
 
-1. `W041_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`
+None.

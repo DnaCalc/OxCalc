@@ -113,6 +113,17 @@ Current `calc-tkq.3` obligation disposition:
 | `W035-OBL-005` | all 6 W034 declared conformance gaps have generated W035 dispositions: 5 implementation-work deferrals, 1 spec-evolution deferral, and 0 failed rows |
 | `W035-OBL-006` | fully independent evaluator diversity remains unpromoted; W035 conformance-hardening evidence is a TreeCalc/TraceCalc/CoreEngine projection packet, not a fully independent evaluator implementation |
 
+`calc-tkq.4` evidence is now recorded in `docs/spec/core-engine/w035-formalization/W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md`, `formal/lean/OxCalc/CoreEngine/W035AssumptionDischarge.lean`, and `formal/lean/OxCalc/CoreEngine/W035SeamProofMap.lean`.
+
+Current `calc-tkq.4` obligation disposition:
+
+| Obligation id | `calc-tkq.4` disposition |
+|---|---|
+| `W035-OBL-004` | callable carrier identity is represented as a local checked Lean classification row; full OxFunc callable semantics remain an opaque kernel boundary |
+| `W035-OBL-007` | local proof rows for snapshot fences, dependency closure, protected overlay retention, and callable carrier identity are represented in checked Lean artifacts |
+| `W035-OBL-008` | imported OxFml/OxFunc facts are split into external seam assumptions and opaque kernel boundaries rather than promoted as OxCalc-local proofs |
+| `W035-OBL-013` | current OxFml W073 typed-only conditional-formatting metadata is carried as an OxFml-owned external seam assumption; no OxCalc request-construction path or handoff trigger is exercised |
+
 ## 7. OxFml Watch And Handoff Rules
 
 Current watch rows:

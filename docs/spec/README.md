@@ -78,7 +78,7 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
   - active W034 planning and evidence artifact root for post-W033 formalization deepening, TraceCalc oracle widening, optimized/core-engine conformance widening, Lean/TLA model-family deepening, pack/capability gate binding, and OxFml seam-watch intake.
 - `docs/spec/core-engine/w035-formalization/`
   - active W035 planning and evidence artifact root for residual proof-obligation mapping, TraceCalc oracle matrix expansion, implementation conformance hardening, Lean assumption discharge, TLA non-routine exploration, continuous assurance, pack/Stage 2 reassessment, and current OxFml seam-watch intake such as W073 typed conditional-formatting metadata.
-  - current W035 packet examples: `W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md`, `W035_TRACECALC_ORACLE_MATRIX_EXPANSION.md`, and `W035_IMPLEMENTATION_CONFORMANCE_HARDENING.md`.
+  - current W035 packet examples: `W035_RESIDUAL_PROOF_OBLIGATION_AND_SPEC_EVOLUTION_LEDGER.md`, `W035_TRACECALC_ORACLE_MATRIX_EXPANSION.md`, `W035_IMPLEMENTATION_CONFORMANCE_HARDENING.md`, and `W035_LEAN_ASSUMPTION_DISCHARGE_AND_SEAM_PROOF_MAP.md`.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 

@@ -1,0 +1,36 @@
+{
+  "run_id": "w043-rust-totality-refinement-panic-free-frontier-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w042_rust_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json",
+    "w042_rust_formal_assurance_validation": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json",
+    "w042_rust_refinement_register": "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json",
+    "w043_callable_metadata_projection_register": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+    "w043_dynamic_transition_evidence": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_dynamic_transition_evidence.json",
+    "w043_implementation_conformance_exact_blockers": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json",
+    "w043_implementation_conformance_register": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
+    "w043_implementation_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json",
+    "w043_lean_rust_totality_file": "formal/lean/OxCalc/CoreEngine/W043RustTotalityAndRefinement.lean",
+    "w043_proof_service_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+    "w043_proof_service_obligation_summary": "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json",
+    "w043_treecalc_addition_post_edit_closure": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/invalidation_closure.json",
+    "w043_treecalc_addition_post_edit_result": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/result.json",
+    "w043_treecalc_addition_post_edit_seeds": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/invalidation_seeds.json",
+    "w043_treecalc_capability_result": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+    "w043_treecalc_let_lambda_result": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+    "w043_treecalc_release_post_edit_closure": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_closure.json",
+    "w043_treecalc_release_post_edit_result": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/result.json",
+    "w043_treecalc_release_post_edit_seeds": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/invalidation_seeds.json",
+    "w043_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json",
+    "w043_w073_formatting_intake": "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json"
+  },
+  "source_counts": {
+    "panic_marker_count": 152,
+    "w042_rust_exact_blocker_count": 4,
+    "w043_conformance_exact_blocker_count": 3,
+    "w043_dynamic_transition_row_count": 2,
+    "w043_obligation_count": 36,
+    "w043_treecalc_case_count": 27,
+    "w073_typed_only_family_count": 7
+  }
+}

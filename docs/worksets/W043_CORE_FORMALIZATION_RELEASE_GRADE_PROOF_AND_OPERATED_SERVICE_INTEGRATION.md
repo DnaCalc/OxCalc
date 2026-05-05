@@ -102,16 +102,17 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-2p3.3_ready_rust_totality_refinement_and_panic_free_core_proof_frontier`
+- execution_state: `calc-2p3.4_ready_lean_tla_full_verification_and_unbounded_fairness_discharge`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-2p3.3` Rust totality/refinement and panic-free core proof frontier is next
+  - `calc-2p3.4` Lean/TLA full-verification and unbounded fairness discharge is next
   - broader dynamic dependency-transition coverage remains partial beyond the new addition/reclassification and carried removal/reclassification fixture families
   - callable metadata projection remains an exact blocker
   - callable carrier sufficiency proof remains blocked
   - runtime panic-surface proof remains an exact blocker
+  - Rust-engine totality and Rust refinement remain unpromoted
   - scheduler fairness and unbounded model coverage remain exact blockers
   - full production partition-analyzer soundness remains blocked
   - operated cross-engine Stage 2 differential service remains blocked
@@ -132,3 +133,4 @@ Latest evidence:
 
 1. `docs/spec/core-engine/w043-formalization/W043_RESIDUAL_RELEASE_GRADE_PROOF_SERVICE_OBLIGATION_MAP.md` records the `calc-2p3.1` residual release-grade proof-service obligation map. The packet `w043-residual-release-grade-proof-service-obligation-map-001` maps 18 post-W042 residual lanes into 36 W043 obligations and 16 promotion-target gates. It carries current OxFml W073 typed-only conditional-formatting intake, records runtime-facade, host/runtime, structured-reference, stand-in fixture-host, registered-external, provider-failure/callable-publication, public-migration, and `format_delta`/`display_delta` notes as watch or handoff-trigger inputs, requires no OxFml handoff, and keeps release-grade verification, full formalization, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, retention SLO, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.
 2. `docs/spec/core-engine/w043-formalization/W043_OPTIMIZED_CORE_BROAD_CONFORMANCE_AND_CALLABLE_METADATA_CLOSURE.md` records the `calc-2p3.2` optimized/core conformance packet. The packet `w043-optimized-core-broad-conformance-callable-metadata-closure-001` adds a TreeCalc fixture for automatic `DependencyAdded` plus `DependencyReclassified` dynamic transition derivation, binds a fresh 27-case TreeCalc run with 0 expectation mismatches, carries declared-profile snapshot/capability counterpart evidence, carries LET/LAMBDA value-carrier evidence, records current W073 typed-only formatting intake, retains callable metadata projection and full optimized/core release-grade conformance as exact blockers, and records zero match promotion.
+3. `docs/spec/core-engine/w043-formalization/W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md` records the `calc-2p3.3` Rust totality/refinement packet. The packet `w043-rust-totality-refinement-panic-free-frontier-001` adds a checked Lean classification file, emits 14 formal-assurance rows with 11 local checked-proof classification rows, 2 automatic dynamic-transition refinement rows, 4 totality-boundary rows, 4 exact blockers, and 0 failed rows, binds W043 dynamic addition/release evidence, W042 Rust predecessor evidence, declared-profile snapshot/capability rows, LET/LAMBDA value-carrier evidence, and current W073 typed-only intake, and keeps Rust-engine totality, Rust refinement, panic-free core-domain proof, callable metadata projection, full optimized/core verification, and release-grade verification unpromoted.

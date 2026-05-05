@@ -1,0 +1,125 @@
+{
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.3; calc-2p3.10",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain a whole-engine panic-free proof blocker while panic/unwrap/expect markers remain in audited Rust surfaces",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "src/oxcalc-core/src/coordinator.rs",
+        "src/oxcalc-core/src/dependency.rs",
+        "src/oxcalc-core/src/formula.rs",
+        "src/oxcalc-core/src/recalc.rs",
+        "src/oxcalc-core/src/structural.rs",
+        "src/oxcalc-core/src/treecalc.rs",
+        "src/oxcalc-core/src/treecalc_fixture.rs",
+        "src/oxcalc-core/src/treecalc_runner.rs",
+        "src/oxcalc-core/src/treecalc_scale.rs",
+        "src/oxcalc-core/src/upstream_host.rs",
+        "src/oxcalc-core/src/upstream_host_fixture.rs",
+        "src/oxcalc-core/src/upstream_host_runner.rs"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "audited_file_count": 12,
+        "panic_marker_count": 152
+      },
+      "promotion_consequence": "Rust-engine totality and panic-free core domain remain unpromoted",
+      "reason": "The marker census is a guard, not a semantic proof; observed panic-family markers require review or proof before a panic-free claim.",
+      "refinement_row": false,
+      "row_id": "w043_runtime_panic_surface_totality_boundary",
+      "source_inputs": [
+        "Rust panic-marker audit",
+        "formal/lean/OxCalc/CoreEngine/W043RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w043_rust_exact_blocker_validated",
+      "w043_obligation_id": "W043-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.3; calc-2p3.4; calc-2p3.5; calc-2p3.10",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain broader automatic dynamic dependency transition coverage as a Rust refinement boundary beyond the exercised addition and release patterns",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "broader dynamic dependency transition coverage and full optimized/core verification remain unpromoted",
+      "reason": "W043.2 adds dependency-addition evidence and carries dependency-release evidence, but it retains broader transition coverage as an exact blocker.",
+      "refinement_row": true,
+      "row_id": "w043_broader_dynamic_transition_coverage_refinement_boundary",
+      "source_inputs": [
+        "W043 optimized/core exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w043_rust_exact_blocker_validated",
+      "w043_obligation_id": "W043-OBL-011"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.4; calc-2p3.8; external:OxFunc",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "carry callable metadata projection as an exact totality/refinement blocker while retaining value-carrier evidence separately",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+        "formal/lean/OxCalc/CoreEngine/W043RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable metadata projection and broad callable conformance remain unpromoted",
+      "reason": "The narrow LET/LAMBDA carrier seam is in scope, but general OxFunc kernels and metadata projection sufficiency are not discharged.",
+      "refinement_row": true,
+      "row_id": "w043_callable_metadata_projection_totality_boundary",
+      "source_inputs": [
+        "W043 callable metadata projection register",
+        "LET/LAMBDA carrier boundary"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w043_rust_exact_blocker_validated",
+      "w043_obligation_id": "W043-OBL-010"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.10",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain full optimized/core release-grade conformance as a boundary over the Rust tranche until later W043 proof, service, diversity, OxFml, Stage 2, and pack gates are discharged",
+      "disposition_kind": "exact_release_grade_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full optimized/core verification and release-grade verification remain unpromoted",
+      "reason": "W043.2 records full optimized/core release-grade conformance as blocked by later W043 lanes.",
+      "refinement_row": true,
+      "row_id": "w043_full_optimized_core_release_grade_conformance_boundary",
+      "source_inputs": [
+        "W043 optimized/core exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w043_rust_exact_blocker_validated",
+      "w043_obligation_id": "W043-OBL-011"
+    }
+  ],
+  "run_id": "w043-rust-totality-refinement-panic-free-frontier-001",
+  "schema_version": "oxcalc.formal_assurance.w043_rust_totality_boundary_register.v1",
+  "totality_boundary_count": 4
+}

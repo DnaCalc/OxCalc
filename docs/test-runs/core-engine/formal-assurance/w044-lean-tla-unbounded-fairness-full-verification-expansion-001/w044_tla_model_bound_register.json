@@ -1,0 +1,117 @@
+{
+  "bounded_model_row_count": 4,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4",
+      "bounded_model": true,
+      "disposition": "carry routine TLC config coverage as bounded model evidence and exact totality boundary",
+      "disposition_kind": "bounded_model_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "routine_tla_config_count": 11,
+        "routine_tla_failed_count": 0,
+        "tla_inventory_passed_count": 11
+      },
+      "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+      "reason": "The routine TLC inventory remains bounded model evidence with 11 passed configs and 0 failed configs, not unbounded verification.",
+      "row_id": "w044_tla_routine_config_bounded_model_boundary",
+      "source_inputs": [
+        "W037 routine TLC inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_tla_model_bound_row_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.5; calc-b1t.4; calc-b1t.5",
+      "bounded_model": true,
+      "disposition": "carry W043 bounded Stage 2 partition replay and production-analyzer evidence as bounded model evidence",
+      "disposition_kind": "bounded_stage2_model_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "bounded_partition_analyzer_evidenced": true,
+        "partition_replay_row_count": 5
+      },
+      "promotion_consequence": "Stage 2 production partition-analyzer soundness remains unpromoted",
+      "reason": "The W043 Stage 2 packet has bounded partition replay and analyzer evidence, not full production analyzer soundness.",
+      "row_id": "w044_tla_stage2_partition_bounded_model_evidence",
+      "source_inputs": [
+        "W043 Stage 2 partition replay"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_tla_model_bound_row_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-2p3.5; calc-b1t.4; calc-b1t.5",
+      "bounded_model": true,
+      "disposition": "carry declared-profile scheduler-equivalence and observable-invariance rows as bounded model input",
+      "disposition_kind": "bounded_stage2_equivalence_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_policy_gate_register.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "observable_invariance_row_count": 5,
+        "scheduler_equivalence_evidenced_for_declared_profiles": true
+      },
+      "promotion_consequence": "Stage 2 production policy and pack-grade replay remain unpromoted",
+      "reason": "W043 scheduler equivalence is evidenced for declared profiles with retained exact blockers.",
+      "row_id": "w044_stage2_equivalence_bounded_model_input",
+      "source_inputs": [
+        "W043 Stage 2 scheduler equivalence and pack input"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w044_tla_model_bound_row_validated",
+      "w044_obligation_id": "W044-OBL-018"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4; calc-b1t.11",
+      "bounded_model": true,
+      "disposition": "retain full TLA verification as an exact model blocker beyond bounded TLC configs",
+      "disposition_kind": "exact_tla_verification_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+      "reason": "TLA evidence is bounded model evidence and does not discharge unbounded fairness or production scheduler coverage.",
+      "row_id": "w044_full_tla_verification_exact_blocker",
+      "source_inputs": [
+        "W044 residual no-promotion guard",
+        "bounded TLA inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_lean_tla_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    }
+  ],
+  "run_id": "w044-lean-tla-unbounded-fairness-full-verification-expansion-001",
+  "schema_version": "oxcalc.formal_assurance.w044_tla_model_bound_register.v1"
+}

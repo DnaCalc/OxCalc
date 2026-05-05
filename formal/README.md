@@ -89,20 +89,24 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - W040 Lean/TLA proof-model classification proof slice for Lean inventory, Rust bridge, Stage 2 policy predicate, bounded TLA evidence, exact proof/model blockers, LET/LAMBDA external seam, and spec-evolution guard.
 16. `docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/`
    - W040 Lean/TLA packet: 11 proof/model rows, 6 local checked-proof rows, 3 bounded-model rows, 1 accepted external seam, 2 accepted boundaries, 5 totality boundaries, 5 exact blockers, 0 failed rows, and no full Lean, full TLA, Rust totality, Stage 2, pack, C5, general OxFunc, or release-grade promotion.
+17. `formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean`
+   - W040 Stage 2 policy/equivalence predicate for declared-profile replay, fence counterparts, bounded analyzer evidence, full production analyzer soundness, fairness/scheduler coverage, operated service dependency, pack governance, and no-promotion claims.
+18. `docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/`
+   - W040 Stage 2 packet: 12 policy rows, 8 satisfied rows, snapshot/capability fence counterparts evidenced, bounded analyzer evidence, 4 exact blockers, 0 failed rows, and no Stage 2 production policy, operated service, pack, C5, or release-grade promotion.
 
 ## Status
-- execution_state: `calc-tv5.4_lean_tla_discharge_classified_no_promotion`
+- execution_state: `calc-tv5.5_stage2_policy_equivalence_validated_no_promotion`
 - scope_completeness: scope_partial
 - target_completeness: target_complete
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, and W040 adds checked Rust plus Lean/TLA classification slices
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, and W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices
   - full Lean verification remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
   - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, and `formal/tla/CoreEngineW036Stage2Partition.tla` have bounded configs for routine TLC checks
   - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - full TLA verification remains open
-  - deterministic Stage 2 partition replay remains absent; the W037 criteria packet defines the promotion requirements, validates the no-promotion decision, W038 carries replay/equivalence as an exact blocker, and Stage 2 policy remains unpromoted
+  - W040 now binds declared-profile Stage 2 policy/equivalence evidence and snapshot/capability fence counterparts, but full production partition analyzer soundness, fairness/unbounded scheduler coverage, operated cross-engine service evidence, and pack-grade replay governance remain open; Stage 2 policy remains unpromoted
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
   - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface
   - the artifact set is still a first assurance floor rather than a fully matured proof, model-check, replay-pack, or instrumentation lane

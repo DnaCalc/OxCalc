@@ -1,0 +1,35 @@
+{
+  "blockers": [
+    "stage2.full_production_partition_analyzer_soundness_absent",
+    "stage2.fairness_scheduler_unbounded_coverage_absent",
+    "stage2.operated_cross_engine_differential_service_absent",
+    "stage2.pack_grade_replay_governance_absent"
+  ],
+  "bounded_partition_analyzer_soundness_evidenced": true,
+  "bounded_partition_replay_present": true,
+  "capability_view_fence_counterpart_evidenced": true,
+  "decision_state": "w040_stage2_policy_equivalence_validated_policy_unpromoted",
+  "dynamic_and_soft_reference_replay_evidenced_for_declared_profiles": true,
+  "fairness_scheduler_unbounded_coverage_promoted": false,
+  "observable_result_invariance_evidenced_for_declared_profiles": true,
+  "operated_cross_engine_stage2_service_promoted": false,
+  "pack_grade_replay_governance_promoted": false,
+  "partition_order_permutation_replay_present": true,
+  "production_partition_analyzer_soundness_promoted": false,
+  "run_id": "w040-stage2-production-policy-equivalence-001",
+  "satisfied_inputs": [
+    "bounded_partition_replay_present",
+    "partition_order_permutation_replay_present",
+    "observable_result_invariance_for_declared_profiles",
+    "bounded_dynamic_soft_reference_replay_present",
+    "snapshot_fence_counterpart_evidenced",
+    "capability_view_fence_counterpart_evidenced",
+    "bounded_partition_analyzer_soundness_evidenced",
+    "w073_typed_formatting_guard_carried"
+  ],
+  "schema_version": "oxcalc.stage2_replay.w040.promotion_decision.v1",
+  "semantic_equivalence_statement": "Observable-result invariance is evidenced for the declared W040 profiles, including snapshot and capability fence no-publish counterparts. Production Stage 2 scheduler or partition policy remains unpromoted until full production partition analyzer soundness, fairness and unbounded scheduler coverage, operated cross-engine service evidence, and pack-grade replay governance are present.",
+  "snapshot_fence_counterpart_evidenced": true,
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false
+}

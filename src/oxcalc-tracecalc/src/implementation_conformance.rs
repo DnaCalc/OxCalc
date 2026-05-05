@@ -35,6 +35,12 @@ const IMPLEMENTATION_CONFORMANCE_W038_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.implementation_conformance.w038_blocker_register.v1";
 const IMPLEMENTATION_CONFORMANCE_W038_MATCH_GUARD_SCHEMA_V1: &str =
     "oxcalc.implementation_conformance.w038_match_guard.v1";
+const IMPLEMENTATION_CONFORMANCE_W039_DISPOSITION_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w039_disposition_register.v1";
+const IMPLEMENTATION_CONFORMANCE_W039_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w039_blocker_register.v1";
+const IMPLEMENTATION_CONFORMANCE_W039_MATCH_GUARD_SCHEMA_V1: &str =
+    "oxcalc.implementation_conformance.w039_match_guard.v1";
 
 const W034_INDEPENDENT_CONFORMANCE_RUN_ID: &str = "w034-independent-conformance-001";
 const W034_TREECALC_RUN_ID: &str = "w034-independent-conformance-treecalc-001";
@@ -50,6 +56,9 @@ const W037_UPSTREAM_HOST_RUN_ID: &str = "w037-direct-oxfml-evaluator-001";
 const W037_STAGE2_CRITERIA_RUN_ID: &str = "w037-stage2-deterministic-replay-criteria-001";
 const W037_FORMAL_INVENTORY_RUN_ID: &str = "w037-proof-model-closure-001";
 const W038_TRACECALC_AUTHORITY_RUN_ID: &str = "w038-tracecalc-authority-discharge-001";
+const W038_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
+    "w038-optimized-core-conformance-disposition-001";
+const W039_RESIDUAL_LEDGER_RUN_ID: &str = "w039-residual-successor-obligation-ledger-001";
 
 #[derive(Debug, Error)]
 pub enum ImplementationConformanceError {
@@ -102,6 +111,10 @@ pub struct ImplementationConformanceRunSummary {
     pub w038_accepted_boundary_count: usize,
     pub w038_exact_remaining_blocker_count: usize,
     pub w038_match_promoted_count: usize,
+    pub w039_disposition_row_count: usize,
+    pub w039_direct_evidence_bound_count: usize,
+    pub w039_exact_remaining_blocker_count: usize,
+    pub w039_match_promoted_count: usize,
     pub artifact_root: String,
 }
 
@@ -212,6 +225,15 @@ struct EvaluatedW038DispositionRow {
     valid: bool,
 }
 
+#[derive(Debug, Clone)]
+struct EvaluatedW039DispositionRow {
+    row: Value,
+    direct_evidence_bound: bool,
+    exact_remaining_blocker: bool,
+    match_promoted: bool,
+    valid: bool,
+}
+
 impl ImplementationConformanceRunner {
     #[must_use]
     pub fn new() -> Self {
@@ -223,6 +245,9 @@ impl ImplementationConformanceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<ImplementationConformanceRunSummary, ImplementationConformanceError> {
+        if run_id.contains("w039") {
+            return self.execute_w039(repo_root, run_id);
+        }
         if run_id.contains("w038") {
             return self.execute_w038(repo_root, run_id);
         }
@@ -450,6 +475,10 @@ impl ImplementationConformanceRunner {
             w038_accepted_boundary_count: 0,
             w038_exact_remaining_blocker_count: 0,
             w038_match_promoted_count: 0,
+            w039_disposition_row_count: 0,
+            w039_direct_evidence_bound_count: 0,
+            w039_exact_remaining_blocker_count: 0,
+            w039_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -722,6 +751,10 @@ impl ImplementationConformanceRunner {
             w038_accepted_boundary_count: 0,
             w038_exact_remaining_blocker_count: 0,
             w038_match_promoted_count: 0,
+            w039_disposition_row_count: 0,
+            w039_direct_evidence_bound_count: 0,
+            w039_exact_remaining_blocker_count: 0,
+            w039_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -1020,6 +1053,10 @@ impl ImplementationConformanceRunner {
             w038_accepted_boundary_count: 0,
             w038_exact_remaining_blocker_count: 0,
             w038_match_promoted_count: 0,
+            w039_disposition_row_count: 0,
+            w039_direct_evidence_bound_count: 0,
+            w039_exact_remaining_blocker_count: 0,
+            w039_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -1342,6 +1379,10 @@ impl ImplementationConformanceRunner {
             w038_accepted_boundary_count: accepted_boundary_count,
             w038_exact_remaining_blocker_count: exact_remaining_blocker_count,
             w038_match_promoted_count: match_promoted_count,
+            w039_disposition_row_count: 0,
+            w039_direct_evidence_bound_count: 0,
+            w039_exact_remaining_blocker_count: 0,
+            w039_match_promoted_count: 0,
             artifact_root: relative_artifact_root.clone(),
         };
         write_json(
@@ -1371,6 +1412,355 @@ impl ImplementationConformanceRunner {
                 "w038_conformance_disposition_register_path": format!("{relative_artifact_root}/w038_conformance_disposition_register.json"),
                 "w038_exact_remaining_blocker_register_path": format!("{relative_artifact_root}/w038_exact_remaining_blocker_register.json"),
                 "w038_match_promotion_guard_path": format!("{relative_artifact_root}/w038_match_promotion_guard.json"),
+                "evidence_summary_path": format!("{relative_artifact_root}/evidence_summary.json"),
+                "validation_path": format!("{relative_artifact_root}/validation.json"),
+            }),
+        )?;
+
+        Ok(summary)
+    }
+
+    fn execute_w039(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<ImplementationConformanceRunSummary, ImplementationConformanceError> {
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/implementation-conformance/{run_id}"
+        ));
+        let relative_artifact_root = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            run_id,
+        ]);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                ImplementationConformanceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        create_directory(&artifact_root)?;
+
+        let w039_ledger_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W039_RESIDUAL_LEDGER_RUN_ID,
+            "successor_obligation_ledger.json",
+        ]);
+        let w039_formatting_intake_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W039_RESIDUAL_LEDGER_RUN_ID,
+            "w073_formatting_intake.json",
+        ]);
+        let w038_summary_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W038_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w038_disposition_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W038_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w038_conformance_disposition_register.json",
+        ]);
+        let w038_blocker_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W038_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w038_exact_remaining_blocker_register.json",
+        ]);
+        let w038_match_guard_path = relative_artifact_path([
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W038_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w038_match_promotion_guard.json",
+        ]);
+
+        let w039_ledger = read_json(repo_root, &w039_ledger_path)?;
+        let w039_formatting_intake = read_json(repo_root, &w039_formatting_intake_path)?;
+        let w038_summary = read_json(repo_root, &w038_summary_path)?;
+        let w038_disposition_register = read_json(repo_root, &w038_disposition_path)?;
+        let w038_blocker_register = read_json(repo_root, &w038_blocker_path)?;
+        let w038_match_guard = read_json(repo_root, &w038_match_guard_path)?;
+
+        let source_blocker_rows = rows_by_id(&w038_blocker_register, "row_id");
+        let obligation_rows = rows_by_id_from_array(&w039_ledger, "obligations", "obligation_id");
+
+        let mut evaluated_rows = vec![
+            evaluate_w039_exact_blocker_row(
+                &source_blocker_rows,
+                &obligation_rows,
+                "w039_dynamic_release_reclassification_exact_blocker",
+                "w038_disposition_dynamic_negative_release_reclassification",
+                "W039-OBL-002",
+                "retained_exact_blocker_after_w038_direct_evidence",
+                "retain dynamic release/reclassification as an exact optimized/core blocker until a direct release/reclassification differential exists",
+                "calc-f7o.2",
+                "full optimized/core verification remains blocked",
+                "W038 bound dynamic rejection, resolved dynamic publication, and retention-release guardrail evidence, but not the missing dependency release/reclassification differential.",
+            ),
+            evaluate_w039_exact_blocker_row(
+                &source_blocker_rows,
+                &obligation_rows,
+                "w039_snapshot_fence_counterpart_exact_blocker",
+                "w038_disposition_snapshot_fence_projection_exact_blocker",
+                "W039-OBL-003",
+                "retained_exact_stage2_coordinator_blocker",
+                "retain snapshot-fence optimized counterpart as an exact blocker for Stage 2/coordinator replay",
+                "calc-f7o.2; calc-f7o.4",
+                "snapshot-fence conformance and Stage 2 production policy remain blocked",
+                "W038 still lacks a deterministic stale accepted-candidate counterpart in the optimized/coordinator lane.",
+            ),
+            evaluate_w039_exact_blocker_row(
+                &source_blocker_rows,
+                &obligation_rows,
+                "w039_capability_view_fence_counterpart_exact_blocker",
+                "w038_disposition_capability_view_fence_projection_exact_blocker",
+                "W039-OBL-003",
+                "retained_exact_stage2_coordinator_blocker",
+                "retain capability-view fence optimized counterpart as an exact blocker for Stage 2/coordinator replay",
+                "calc-f7o.2; calc-f7o.4",
+                "capability-view fence conformance and Stage 2 production policy remain blocked",
+                "W038 has broader capability-sensitive reject evidence, but not the compatibility-fenced capability-view mismatch counterpart.",
+            ),
+            evaluate_w039_exact_blocker_row(
+                &source_blocker_rows,
+                &obligation_rows,
+                "w039_callable_metadata_projection_exact_blocker",
+                "w038_disposition_callable_metadata_projection_exact_blocker",
+                "W039-OBL-004",
+                "retained_exact_callable_metadata_blocker",
+                "retain callable metadata projection as an exact proof/seam blocker until a projection fixture or carrier sufficiency proof exists",
+                "calc-f7o.2; calc-f7o.7",
+                "callable metadata projection and broad callable conformance remain blocked",
+                "W038 preserves value-only TreeCalc and direct OxFml carrier evidence, but no metadata projection surface exists.",
+            ),
+        ];
+        evaluated_rows.push(evaluate_w039_match_guard_row(
+            &obligation_rows,
+            &w038_match_guard,
+            "W039-OBL-005",
+        ));
+
+        let direct_evidence_bound_count = evaluated_rows
+            .iter()
+            .filter(|row| row.direct_evidence_bound)
+            .count();
+        let exact_remaining_blocker_count = evaluated_rows
+            .iter()
+            .filter(|row| row.exact_remaining_blocker)
+            .count();
+        let match_promoted_count = evaluated_rows
+            .iter()
+            .filter(|row| row.match_promoted)
+            .count();
+        let validated_row_count = evaluated_rows.iter().filter(|row| row.valid).count();
+        let failed_row_count = evaluated_rows.iter().filter(|row| !row.valid).count();
+        let disposition_rows = evaluated_rows
+            .iter()
+            .map(|row| row.row.clone())
+            .collect::<Vec<_>>();
+        let exact_blocker_rows = disposition_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let validation_failures = w039_validation_failures(
+            &w039_ledger,
+            &w039_formatting_intake,
+            &w038_summary,
+            &w038_disposition_register,
+            &w038_blocker_register,
+            &w038_match_guard,
+            failed_row_count,
+            match_promoted_count,
+            exact_remaining_blocker_count,
+        );
+        let validation_status = if validation_failures.is_empty() {
+            "implementation_conformance_w039_exact_blockers_valid"
+        } else {
+            "implementation_conformance_w039_exact_blockers_failed"
+        };
+
+        write_json(
+            &artifact_root.join("w039_exact_blocker_disposition_register.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W039_DISPOSITION_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "source_w039_residual_ledger_run_id": W039_RESIDUAL_LEDGER_RUN_ID,
+                "source_w038_implementation_conformance_run_id": W038_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+                "disposition_row_count": disposition_rows.len(),
+                "direct_evidence_bound_count": direct_evidence_bound_count,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "match_promoted_count": match_promoted_count,
+                "validated_row_count": validated_row_count,
+                "failed_row_count": failed_row_count,
+                "rows": disposition_rows,
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("w039_exact_remaining_blocker_register.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W039_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": exact_blocker_rows.len(),
+                "rows": exact_blocker_rows,
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("w039_match_promotion_guard.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_W039_MATCH_GUARD_SCHEMA_V1,
+                "run_id": run_id,
+                "source_w038_promoted_match_count": number_at(&w038_match_guard, "promoted_match_count"),
+                "promoted_match_count": match_promoted_count,
+                "non_promoted_row_count": evaluated_rows.len().saturating_sub(match_promoted_count),
+                "guard_status": if match_promoted_count == 0 {
+                    "w039_declared_gap_promotion_guard_holds"
+                } else {
+                    "w039_declared_gap_promotion_guard_failed"
+                },
+                "policy": "W039 calc-f7o.2 does not count any W038 exact blocker, declared gap, accepted boundary, or retained blocker as an optimized/core-engine match. Direct evidence may narrow a blocker, but match promotion remains zero in this slice.",
+                "allowed_promoted_rows": Vec::<String>::new(),
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("evidence_summary.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_EVIDENCE_SCHEMA_V1,
+                "run_id": run_id,
+                "source_paths": {
+                    "w039_successor_obligation_ledger": w039_ledger_path,
+                    "w039_w073_formatting_intake": w039_formatting_intake_path,
+                    "w038_run_summary": w038_summary_path,
+                    "w038_conformance_disposition_register": w038_disposition_path,
+                    "w038_exact_remaining_blocker_register": w038_blocker_path,
+                    "w038_match_promotion_guard": w038_match_guard_path,
+                },
+                "w039_ledger": {
+                    "obligation_count": number_at(&w039_ledger, "obligation_count"),
+                    "optimized_core_obligations": ["W039-OBL-002", "W039-OBL-003", "W039-OBL-004", "W039-OBL-005", "W039-OBL-008"],
+                },
+                "w038_disposition_inputs": {
+                    "w038_disposition_row_count": number_at(&w038_summary, "w038_disposition_row_count"),
+                    "w038_direct_evidence_bound_count": number_at(&w038_summary, "w038_direct_evidence_bound_count"),
+                    "w038_accepted_boundary_count": number_at(&w038_summary, "w038_accepted_boundary_count"),
+                    "w038_exact_remaining_blocker_count": number_at(&w038_summary, "w038_exact_remaining_blocker_count"),
+                    "w038_match_promoted_count": number_at(&w038_summary, "w038_match_promoted_count"),
+                },
+                "w039_dispositions": {
+                    "disposition_row_count": evaluated_rows.len(),
+                    "direct_evidence_bound_count": direct_evidence_bound_count,
+                    "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                    "match_promoted_count": match_promoted_count,
+                    "validated_row_count": validated_row_count,
+                    "failed_row_count": failed_row_count,
+                },
+                "w073_formatting_intake": {
+                    "typed_only_family_count": array_at(&w039_formatting_intake, "typed_only_families").len(),
+                    "rule": w039_formatting_intake["current_rule"].clone(),
+                    "thresholds_rule": w039_formatting_intake["thresholds_rule"].clone(),
+                },
+            }),
+        )?;
+
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": IMPLEMENTATION_CONFORMANCE_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "validation_failures": validation_failures,
+                "source_w038_exact_remaining_blocker_count": number_at(&w038_blocker_register, "exact_remaining_blocker_count"),
+                "w039_disposition_row_count": evaluated_rows.len(),
+                "validated_row_count": validated_row_count,
+                "failed_row_count": failed_row_count,
+                "direct_evidence_bound_count": direct_evidence_bound_count,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "match_promoted_count": match_promoted_count,
+            }),
+        )?;
+
+        let summary = ImplementationConformanceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: IMPLEMENTATION_CONFORMANCE_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            gap_disposition_row_count: evaluated_rows.len(),
+            implementation_work_count: direct_evidence_bound_count,
+            spec_evolution_deferral_count: 0,
+            validated_row_count,
+            failed_row_count,
+            w036_action_row_count: 0,
+            w036_first_fix_row_count: 0,
+            w036_blocker_routed_row_count: 0,
+            w036_match_promoted_count: 0,
+            w037_decision_row_count: 0,
+            w037_fixed_or_promoted_count: 0,
+            w037_residual_blocker_count: 0,
+            w037_match_promoted_count: 0,
+            w038_disposition_row_count: 0,
+            w038_direct_evidence_bound_count: 0,
+            w038_accepted_boundary_count: 0,
+            w038_exact_remaining_blocker_count: 0,
+            w038_match_promoted_count: 0,
+            w039_disposition_row_count: evaluated_rows.len(),
+            w039_direct_evidence_bound_count: direct_evidence_bound_count,
+            w039_exact_remaining_blocker_count: exact_remaining_blocker_count,
+            w039_match_promoted_count: match_promoted_count,
+            artifact_root: relative_artifact_root.clone(),
+        };
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": summary.schema_version,
+                "run_id": summary.run_id,
+                "gap_disposition_row_count": summary.gap_disposition_row_count,
+                "implementation_work_count": summary.implementation_work_count,
+                "spec_evolution_deferral_count": summary.spec_evolution_deferral_count,
+                "validated_row_count": summary.validated_row_count,
+                "failed_row_count": summary.failed_row_count,
+                "w036_action_row_count": summary.w036_action_row_count,
+                "w036_first_fix_row_count": summary.w036_first_fix_row_count,
+                "w036_blocker_routed_row_count": summary.w036_blocker_routed_row_count,
+                "w036_match_promoted_count": summary.w036_match_promoted_count,
+                "w037_decision_row_count": summary.w037_decision_row_count,
+                "w037_fixed_or_promoted_count": summary.w037_fixed_or_promoted_count,
+                "w037_residual_blocker_count": summary.w037_residual_blocker_count,
+                "w037_match_promoted_count": summary.w037_match_promoted_count,
+                "w038_disposition_row_count": summary.w038_disposition_row_count,
+                "w038_direct_evidence_bound_count": summary.w038_direct_evidence_bound_count,
+                "w038_accepted_boundary_count": summary.w038_accepted_boundary_count,
+                "w038_exact_remaining_blocker_count": summary.w038_exact_remaining_blocker_count,
+                "w038_match_promoted_count": summary.w038_match_promoted_count,
+                "w039_disposition_row_count": summary.w039_disposition_row_count,
+                "w039_direct_evidence_bound_count": summary.w039_direct_evidence_bound_count,
+                "w039_exact_remaining_blocker_count": summary.w039_exact_remaining_blocker_count,
+                "w039_match_promoted_count": summary.w039_match_promoted_count,
+                "artifact_root": summary.artifact_root,
+                "w039_exact_blocker_disposition_register_path": format!("{relative_artifact_root}/w039_exact_blocker_disposition_register.json"),
+                "w039_exact_remaining_blocker_register_path": format!("{relative_artifact_root}/w039_exact_remaining_blocker_register.json"),
+                "w039_match_promotion_guard_path": format!("{relative_artifact_root}/w039_match_promotion_guard.json"),
                 "evidence_summary_path": format!("{relative_artifact_root}/evidence_summary.json"),
                 "validation_path": format!("{relative_artifact_root}/validation.json"),
             }),
@@ -1443,6 +1833,128 @@ fn evaluate_disposition_row(
             "failures": failures,
         }),
         disposition_kind: spec.disposition_kind,
+        valid: failures.is_empty(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn evaluate_w039_exact_blocker_row(
+    source_blocker_rows: &BTreeMap<String, Value>,
+    obligation_rows: &BTreeMap<String, Value>,
+    row_id: &'static str,
+    source_w038_row_id: &'static str,
+    w039_obligation_id: &'static str,
+    w039_disposition_kind: &'static str,
+    w039_disposition: &'static str,
+    authority_owner: &'static str,
+    promotion_consequence: &'static str,
+    reason: &'static str,
+) -> EvaluatedW039DispositionRow {
+    let mut failures = Vec::new();
+    let source_row = source_blocker_rows.get(source_w038_row_id);
+    if let Some(row) = source_row {
+        if string_at(row, "validation_state") != "w038_disposition_validated" {
+            failures.push("source_w038_blocker_not_validated".to_string());
+        }
+        if string_at(row, "conformance_match_state") != "not_promoted" {
+            failures.push("source_w038_blocker_unexpectedly_promoted".to_string());
+        }
+        if !array_at(row, "failures").is_empty() {
+            failures.push("source_w038_blocker_has_failures".to_string());
+        }
+    } else {
+        failures.push("source_w038_exact_blocker_missing".to_string());
+    }
+    let obligation = obligation_rows.get(w039_obligation_id);
+    if obligation.is_none() {
+        failures.push("w039_obligation_missing".to_string());
+    }
+
+    let source_direct_evidence_bound =
+        source_row.is_some_and(|row| bool_at(row, "direct_evidence_bound"));
+    let source_disposition_kind = source_row
+        .map(|row| string_at(row, "w038_disposition_kind"))
+        .unwrap_or_default();
+    let source_is_exact = source_disposition_kind.contains("exact_remaining_blocker");
+    if !source_is_exact {
+        failures.push("source_w038_row_is_not_exact_blocker".to_string());
+    }
+
+    EvaluatedW039DispositionRow {
+        row: json!({
+            "row_id": row_id,
+            "source_w038_row_id": source_w038_row_id,
+            "w039_obligation_id": w039_obligation_id,
+            "source_w038_disposition": source_row.map(|row| json!({
+                "row_id": row["row_id"],
+                "w038_obligation_id": row["w038_obligation_id"],
+                "w038_disposition_kind": row["w038_disposition_kind"],
+                "w038_disposition": row["w038_disposition"],
+                "direct_evidence_bound": row["direct_evidence_bound"],
+                "accepted_boundary": row["accepted_boundary"],
+                "exact_remaining_blocker_bead": row["exact_remaining_blocker_bead"],
+                "implementation_evidence_state": row["implementation_evidence_state"],
+                "promotion_consequence": row["promotion_consequence"],
+            })).unwrap_or(Value::Null),
+            "w039_obligation": obligation.map(|row| json!({
+                "obligation_id": row["obligation_id"],
+                "area": row["area"],
+                "owner_beads": row["owner_beads"],
+                "required_evidence": row["required_evidence"],
+                "promotion_consequence": row["promotion_consequence"],
+            })).unwrap_or(Value::Null),
+            "w039_disposition_kind": w039_disposition_kind,
+            "w039_disposition": w039_disposition,
+            "conformance_match_state": "not_promoted",
+            "direct_evidence_bound": source_direct_evidence_bound,
+            "exact_remaining_blocker": true,
+            "match_promoted": false,
+            "authority_owner": authority_owner,
+            "promotion_consequence": promotion_consequence,
+            "reason": reason,
+            "validation_state": if failures.is_empty() { "w039_exact_blocker_validated" } else { "w039_exact_blocker_failed" },
+            "failures": failures,
+        }),
+        direct_evidence_bound: source_direct_evidence_bound,
+        exact_remaining_blocker: true,
+        match_promoted: false,
+        valid: failures.is_empty(),
+    }
+}
+
+fn evaluate_w039_match_guard_row(
+    obligation_rows: &BTreeMap<String, Value>,
+    w038_match_guard: &Value,
+    w039_obligation_id: &'static str,
+) -> EvaluatedW039DispositionRow {
+    let mut failures = Vec::new();
+    if number_at(w038_match_guard, "promoted_match_count") != 0 {
+        failures.push("source_w038_match_guard_has_promoted_matches".to_string());
+    }
+    if obligation_rows.get(w039_obligation_id).is_none() {
+        failures.push("w039_match_guard_obligation_missing".to_string());
+    }
+
+    EvaluatedW039DispositionRow {
+        row: json!({
+            "row_id": "w039_declared_gap_match_promotion_guard",
+            "source_w038_guard_status": w038_match_guard["guard_status"],
+            "w039_obligation_id": w039_obligation_id,
+            "w039_disposition_kind": "match_promotion_guard",
+            "w039_disposition": "retain zero match promotion for W038 exact blockers and declared gaps",
+            "conformance_match_state": "not_promoted",
+            "direct_evidence_bound": false,
+            "exact_remaining_blocker": false,
+            "match_promoted": false,
+            "authority_owner": "calc-f7o.2; calc-f7o.8; calc-f7o.9",
+            "promotion_consequence": "full optimized/core verification, pack-grade replay, C5, and release-grade claims remain blocked if any declared gap or exact blocker is counted as a match",
+            "reason": "W039 preserves the W038 declared-gap guard and records no promoted optimized/core match rows in this slice.",
+            "validation_state": if failures.is_empty() { "w039_match_guard_validated" } else { "w039_match_guard_failed" },
+            "failures": failures,
+        }),
+        direct_evidence_bound: false,
+        exact_remaining_blocker: false,
+        match_promoted: false,
         valid: failures.is_empty(),
     }
 }
@@ -2265,8 +2777,63 @@ fn w038_validation_failures(
     failures
 }
 
+fn w039_validation_failures(
+    w039_ledger: &Value,
+    w039_formatting_intake: &Value,
+    w038_summary: &Value,
+    w038_disposition_register: &Value,
+    w038_blocker_register: &Value,
+    w038_match_guard: &Value,
+    failed_row_count: usize,
+    match_promoted_count: usize,
+    exact_remaining_blocker_count: usize,
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    if number_at(w039_ledger, "obligation_count") != 20 {
+        failures.push("w039_successor_obligation_count_changed".to_string());
+    }
+    if array_at(w039_formatting_intake, "typed_only_families").len() != 7 {
+        failures.push("w039_w073_typed_only_family_count_changed".to_string());
+    }
+    if !string_at(w039_formatting_intake, "thresholds_rule").contains("intentionally ignored") {
+        failures.push("w039_w073_threshold_fallback_guard_missing".to_string());
+    }
+    if number_at(w038_summary, "w038_disposition_row_count") != 5 {
+        failures.push("w038_disposition_row_count_changed".to_string());
+    }
+    if number_at(w038_summary, "w038_exact_remaining_blocker_count") != 4 {
+        failures.push("w038_summary_exact_blocker_count_changed".to_string());
+    }
+    if number_at(w038_disposition_register, "disposition_row_count") != 5 {
+        failures.push("w038_disposition_register_row_count_changed".to_string());
+    }
+    if number_at(w038_blocker_register, "exact_remaining_blocker_count") != 4 {
+        failures.push("w038_blocker_register_count_changed".to_string());
+    }
+    if number_at(w038_match_guard, "promoted_match_count") != 0 {
+        failures.push("w038_match_guard_promoted_matches_present".to_string());
+    }
+    if failed_row_count != 0 {
+        failures.push("w039_disposition_row_failures_present".to_string());
+    }
+    if match_promoted_count != 0 {
+        failures.push("w039_declared_gap_match_promotion_present".to_string());
+    }
+    if exact_remaining_blocker_count != 4 {
+        failures.push("w039_expected_four_exact_remaining_blockers".to_string());
+    }
+    failures
+}
+
 fn rows_by_id(document: &Value, key: &str) -> BTreeMap<String, Value> {
     array_at(document, "rows")
+        .iter()
+        .filter_map(|row| Some((row.get(key)?.as_str()?.to_string(), row.clone())))
+        .collect()
+}
+
+fn rows_by_id_from_array(document: &Value, array_key: &str, key: &str) -> BTreeMap<String, Value> {
+    array_at(document, array_key)
         .iter()
         .filter_map(|row| Some((row.get(key)?.as_str()?.to_string(), row.clone())))
         .collect()
@@ -2350,6 +2917,10 @@ fn string_pointer(value: &Value, pointer: &str) -> String {
 
 fn number_at(value: &Value, key: &str) -> u64 {
     value.get(key).and_then(Value::as_u64).unwrap_or_default()
+}
+
+fn bool_at(value: &Value, key: &str) -> bool {
+    value.get(key).and_then(Value::as_bool).unwrap_or(false)
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
@@ -3058,6 +3629,66 @@ mod tests {
         assert_eq!(
             guard["guard_status"],
             "w038_declared_gap_promotion_guard_holds"
+        );
+
+        cleanup();
+    }
+
+    #[test]
+    fn implementation_conformance_runner_classifies_w039_exact_blockers() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!(
+            "test-w039-implementation-conformance-{}",
+            std::process::id()
+        );
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/implementation-conformance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = ImplementationConformanceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.gap_disposition_row_count, 5);
+        assert_eq!(summary.w039_disposition_row_count, 5);
+        assert_eq!(summary.w039_direct_evidence_bound_count, 2);
+        assert_eq!(summary.w039_exact_remaining_blocker_count, 4);
+        assert_eq!(summary.w039_match_promoted_count, 0);
+        assert_eq!(summary.validated_row_count, 5);
+        assert_eq!(summary.failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/implementation-conformance/{run_id}/validation.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "implementation_conformance_w039_exact_blockers_valid"
+        );
+
+        let guard = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/implementation-conformance/{run_id}/w039_match_promotion_guard.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(guard["promoted_match_count"], 0);
+        assert_eq!(
+            guard["guard_status"],
+            "w039_declared_gap_promotion_guard_holds"
         );
 
         cleanup();

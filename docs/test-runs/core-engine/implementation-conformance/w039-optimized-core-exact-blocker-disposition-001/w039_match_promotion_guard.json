@@ -1,0 +1,10 @@
+{
+  "allowed_promoted_rows": [],
+  "guard_status": "w039_declared_gap_promotion_guard_holds",
+  "non_promoted_row_count": 5,
+  "policy": "W039 calc-f7o.2 does not count any W038 exact blocker, declared gap, accepted boundary, or retained blocker as an optimized/core-engine match. Direct evidence may narrow a blocker, but match promotion remains zero in this slice.",
+  "promoted_match_count": 0,
+  "run_id": "w039-optimized-core-exact-blocker-disposition-001",
+  "schema_version": "oxcalc.implementation_conformance.w039_match_guard.v1",
+  "source_w038_promoted_match_count": 0
+}

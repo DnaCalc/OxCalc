@@ -1,0 +1,177 @@
+{
+  "direct_evidence_bound_count": 2,
+  "disposition_row_count": 5,
+  "exact_remaining_blocker_count": 4,
+  "failed_row_count": 0,
+  "match_promoted_count": 0,
+  "rows": [
+    {
+      "authority_owner": "calc-f7o.2",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "promotion_consequence": "full optimized/core verification remains blocked",
+      "reason": "W038 bound dynamic rejection, resolved dynamic publication, and retention-release guardrail evidence, but not the missing dependency release/reclassification differential.",
+      "row_id": "w039_dynamic_release_reclassification_exact_blocker",
+      "source_w038_disposition": {
+        "accepted_boundary": false,
+        "direct_evidence_bound": true,
+        "exact_remaining_blocker_bead": "calc-zsr.9",
+        "implementation_evidence_state": "dynamic_negative_and_retention_guardrails_bound_without_release_reclassification_match",
+        "promotion_consequence": "the dynamic negative/release row is narrowed but not promoted; W038 still lacks an optimized differential that proves dependency release and reclassification against the TraceCalc release row.",
+        "row_id": "w038_disposition_dynamic_negative_release_reclassification",
+        "w038_disposition": "bind dynamic negative reject, resolved dynamic publish, and retention-release guardrail evidence while carrying release/reclassification differential as an exact remaining blocker",
+        "w038_disposition_kind": "partial_direct_evidence_exact_remaining_blocker",
+        "w038_obligation_id": "W038-OBL-003"
+      },
+      "source_w038_row_id": "w038_disposition_dynamic_negative_release_reclassification",
+      "validation_state": "w039_exact_blocker_validated",
+      "w039_disposition": "retain dynamic release/reclassification as an exact optimized/core blocker until a direct release/reclassification differential exists",
+      "w039_disposition_kind": "retained_exact_blocker_after_w038_direct_evidence",
+      "w039_obligation": {
+        "area": "optimized/core dynamic dependency exact blocker",
+        "obligation_id": "W039-OBL-002",
+        "owner_beads": [
+          "calc-f7o.2"
+        ],
+        "promotion_consequence": "full optimized/core verification remains blocked",
+        "required_evidence": "direct optimized/core counterpart for dynamic negative dependency, dependency release, and dependency reclassification profiles, or exact residual blocker"
+      },
+      "w039_obligation_id": "W039-OBL-002"
+    },
+    {
+      "authority_owner": "calc-f7o.2; calc-f7o.4",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "promotion_consequence": "snapshot-fence conformance and Stage 2 production policy remain blocked",
+      "reason": "W038 still lacks a deterministic stale accepted-candidate counterpart in the optimized/coordinator lane.",
+      "row_id": "w039_snapshot_fence_counterpart_exact_blocker",
+      "source_w038_disposition": {
+        "accepted_boundary": false,
+        "direct_evidence_bound": false,
+        "exact_remaining_blocker_bead": "calc-zsr.5",
+        "implementation_evidence_state": "tracecalc_replay_present_without_optimized_stale_candidate_counterpart",
+        "promotion_consequence": "snapshot-fence conformance and Stage 2 promotion remain blocked until deterministic coordinator or partition replay supplies an optimized counterpart.",
+        "row_id": "w038_disposition_snapshot_fence_projection_exact_blocker",
+        "w038_disposition": "carry snapshot-fence projection as an exact Stage 2/coordinator replay blocker",
+        "w038_disposition_kind": "exact_remaining_blocker",
+        "w038_obligation_id": "W038-OBL-005"
+      },
+      "source_w038_row_id": "w038_disposition_snapshot_fence_projection_exact_blocker",
+      "validation_state": "w039_exact_blocker_validated",
+      "w039_disposition": "retain snapshot-fence optimized counterpart as an exact blocker for Stage 2/coordinator replay",
+      "w039_disposition_kind": "retained_exact_stage2_coordinator_blocker",
+      "w039_obligation": {
+        "area": "snapshot fence and capability fence optimized counterparts",
+        "obligation_id": "W039-OBL-003",
+        "owner_beads": [
+          "calc-f7o.2",
+          "calc-f7o.4"
+        ],
+        "promotion_consequence": "snapshot/capability conformance and Stage 2 readiness remain blocked",
+        "required_evidence": "coordinator and optimized/core evidence for stale-candidate snapshot rejection and capability-view fence mismatch behavior under promoted profiles"
+      },
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "authority_owner": "calc-f7o.2; calc-f7o.4",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "promotion_consequence": "capability-view fence conformance and Stage 2 production policy remain blocked",
+      "reason": "W038 has broader capability-sensitive reject evidence, but not the compatibility-fenced capability-view mismatch counterpart.",
+      "row_id": "w039_capability_view_fence_counterpart_exact_blocker",
+      "source_w038_disposition": {
+        "accepted_boundary": false,
+        "direct_evidence_bound": false,
+        "exact_remaining_blocker_bead": "calc-zsr.5",
+        "implementation_evidence_state": "broader_treecalc_capability_reject_present_without_compatibility_fence_counterpart",
+        "promotion_consequence": "capability-view fence conformance remains blocked until deterministic coordinator or partition replay exercises the compatibility-view fence mismatch directly.",
+        "row_id": "w038_disposition_capability_view_fence_projection_exact_blocker",
+        "w038_disposition": "carry compatibility-fenced capability-view projection as an exact Stage 2/coordinator replay blocker",
+        "w038_disposition_kind": "exact_remaining_blocker",
+        "w038_obligation_id": "W038-OBL-006"
+      },
+      "source_w038_row_id": "w038_disposition_capability_view_fence_projection_exact_blocker",
+      "validation_state": "w039_exact_blocker_validated",
+      "w039_disposition": "retain capability-view fence optimized counterpart as an exact blocker for Stage 2/coordinator replay",
+      "w039_disposition_kind": "retained_exact_stage2_coordinator_blocker",
+      "w039_obligation": {
+        "area": "snapshot fence and capability fence optimized counterparts",
+        "obligation_id": "W039-OBL-003",
+        "owner_beads": [
+          "calc-f7o.2",
+          "calc-f7o.4"
+        ],
+        "promotion_consequence": "snapshot/capability conformance and Stage 2 readiness remain blocked",
+        "required_evidence": "coordinator and optimized/core evidence for stale-candidate snapshot rejection and capability-view fence mismatch behavior under promoted profiles"
+      },
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "authority_owner": "calc-f7o.2; calc-f7o.7",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "match_promoted": false,
+      "promotion_consequence": "callable metadata projection and broad callable conformance remain blocked",
+      "reason": "W038 preserves value-only TreeCalc and direct OxFml carrier evidence, but no metadata projection surface exists.",
+      "row_id": "w039_callable_metadata_projection_exact_blocker",
+      "source_w038_disposition": {
+        "accepted_boundary": false,
+        "direct_evidence_bound": true,
+        "exact_remaining_blocker_bead": "calc-zsr.4; calc-zsr.7",
+        "implementation_evidence_state": "treecalc_value_only_counterpart_plus_direct_oxfml_returned_lambda_without_metadata_projection",
+        "promotion_consequence": "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture exists.",
+        "row_id": "w038_disposition_callable_metadata_projection_exact_blocker",
+        "w038_disposition": "carry callable metadata projection as an exact proof/seam blocker while preserving value-only TreeCalc and direct OxFml callable-carrier evidence",
+        "w038_disposition_kind": "exact_remaining_blocker",
+        "w038_obligation_id": "W038-OBL-007"
+      },
+      "source_w038_row_id": "w038_disposition_callable_metadata_projection_exact_blocker",
+      "validation_state": "w039_exact_blocker_validated",
+      "w039_disposition": "retain callable metadata projection as an exact proof/seam blocker until a projection fixture or carrier sufficiency proof exists",
+      "w039_disposition_kind": "retained_exact_callable_metadata_blocker",
+      "w039_obligation": {
+        "area": "callable metadata projection and callable carrier conformance",
+        "obligation_id": "W039-OBL-004",
+        "owner_beads": [
+          "calc-f7o.2",
+          "calc-f7o.7"
+        ],
+        "promotion_consequence": "callable metadata projection and broad callable conformance remain blocked",
+        "required_evidence": "callable metadata projection fixture or proof of callable carrier sufficiency across consumed OxFml LET/LAMBDA rows without general OxFunc kernel promotion"
+      },
+      "w039_obligation_id": "W039-OBL-004"
+    },
+    {
+      "authority_owner": "calc-f7o.2; calc-f7o.8; calc-f7o.9",
+      "conformance_match_state": "not_promoted",
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "match_promoted": false,
+      "promotion_consequence": "full optimized/core verification, pack-grade replay, C5, and release-grade claims remain blocked if any declared gap or exact blocker is counted as a match",
+      "reason": "W039 preserves the W038 declared-gap guard and records no promoted optimized/core match rows in this slice.",
+      "row_id": "w039_declared_gap_match_promotion_guard",
+      "source_w038_guard_status": "w038_declared_gap_promotion_guard_holds",
+      "validation_state": "w039_match_guard_validated",
+      "w039_disposition": "retain zero match promotion for W038 exact blockers and declared gaps",
+      "w039_disposition_kind": "match_promotion_guard",
+      "w039_obligation_id": "W039-OBL-005"
+    }
+  ],
+  "run_id": "w039-optimized-core-exact-blocker-disposition-001",
+  "schema_version": "oxcalc.implementation_conformance.w039_disposition_register.v1",
+  "source_w038_implementation_conformance_run_id": "w038-optimized-core-conformance-disposition-001",
+  "source_w039_residual_ledger_run_id": "w039-residual-successor-obligation-ledger-001",
+  "validated_row_count": 5
+}

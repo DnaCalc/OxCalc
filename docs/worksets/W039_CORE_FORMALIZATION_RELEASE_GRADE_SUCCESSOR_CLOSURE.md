@@ -93,13 +93,12 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-f7o.1_residual_successor_ledger_validated`
+- execution_state: `calc-f7o.2_optimized_core_exact_blocker_disposition_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-f7o.2` optimized core exact blocker implementation closure
-  - Lean/TLA totality and proof-model strengthening
+  - `calc-f7o.3` Lean/TLA totality and proof-model strengthening
   - Stage 2 production partition policy and pack-grade replay governance
   - operated assurance service, alert/quarantine dispatcher, cross-engine differential service, and retained history substrate
   - independent evaluator row set and diversity evidence
@@ -109,3 +108,4 @@ Child path:
 Latest W039 evidence:
 
 1. `docs/spec/core-engine/w039-formalization/W039_RESIDUAL_SUCCESSOR_OBLIGATION_LEDGER_AND_PROMOTION_READINESS_MAP.md` records the `calc-f7o.1` residual successor obligation ledger and promotion-readiness map. The packet `w039-residual-successor-obligation-ledger-001` maps 10 post-W038 residual lanes into 20 W039 obligations, 9 promotion targets, W073 typed-only conditional-formatting intake, owner beads, evidence roots, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, independent evaluator diversity, broad OxFml display/publication, or general OxFunc kernels.
+2. `docs/spec/core-engine/w039-formalization/W039_OPTIMIZED_CORE_EXACT_BLOCKER_IMPLEMENTATION_CLOSURE.md` records the `calc-f7o.2` optimized/core exact-blocker disposition. The packet `w039-optimized-core-exact-blocker-disposition-001` adds a W039 implementation-conformance runner/CLI profile, emits 5 disposition rows, carries 2 direct-evidence rows from W038, retains 4 exact blockers, promotes 0 matches, records 0 failed rows, and keeps full optimized/core verification unpromoted.

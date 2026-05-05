@@ -9,6 +9,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::dependency::InvalidationReasonKind;
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralEditOutcome, StructuralError,
@@ -59,10 +60,18 @@ pub struct TreeCalcFixtureCase {
 pub struct TreeCalcFixturePostEditPlan {
     pub successor_snapshot_start_id: u64,
     pub edits: Vec<TreeCalcFixtureStructuralEdit>,
+    #[serde(default)]
+    pub invalidation_seeds: Vec<TreeCalcFixtureInvalidationSeed>,
     pub expected_impacts: Vec<String>,
     #[serde(default)]
     pub expected_affected_node_ids: Option<Vec<Vec<u64>>>,
     pub expected: TreeCalcFixtureExpected,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TreeCalcFixtureInvalidationSeed {
+    pub node_id: u64,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -168,6 +177,8 @@ pub enum TreeCalcFixtureError {
         #[source]
         source: LocalTreeCalcError,
     },
+    #[error("fixture case '{case_id}' uses unsupported invalidation reason '{reason}'")]
+    UnsupportedInvalidationReason { case_id: String, reason: String },
 }
 
 pub fn load_manifest(path: &Path) -> Result<TreeCalcFixtureManifest, TreeCalcFixtureError> {
@@ -303,12 +314,19 @@ fn execute_post_edit_plan(
         .map(|outcome| outcome.snapshot.clone())
         .unwrap_or_else(|| structural_snapshot.clone());
 
-    let invalidation_seeds = derive_structural_invalidation_seeds(
-        structural_snapshot,
-        &rerun_snapshot,
-        formula_catalog,
-        &edit_outcomes,
-    );
+    let invalidation_seeds = if plan.invalidation_seeds.is_empty() {
+        derive_structural_invalidation_seeds(
+            structural_snapshot,
+            &rerun_snapshot,
+            formula_catalog,
+            &edit_outcomes,
+        )
+    } else {
+        plan.invalidation_seeds
+            .iter()
+            .map(|seed| to_invalidation_seed(case, seed))
+            .collect::<Result<Vec<_>, _>>()?
+    };
 
     let rerun_artifacts = engine
         .execute(LocalTreeCalcInput {
@@ -418,6 +436,45 @@ fn to_structural_edit(edit: &TreeCalcFixtureStructuralEdit) -> StructuralEdit {
     }
 }
 
+fn to_invalidation_seed(
+    case: &TreeCalcFixtureCase,
+    seed: &TreeCalcFixtureInvalidationSeed,
+) -> Result<crate::dependency::InvalidationSeed, TreeCalcFixtureError> {
+    Ok(crate::dependency::InvalidationSeed {
+        node_id: TreeNodeId(seed.node_id),
+        reason: parse_invalidation_reason(case, &seed.reason)?,
+    })
+}
+
+fn parse_invalidation_reason(
+    case: &TreeCalcFixtureCase,
+    reason: &str,
+) -> Result<InvalidationReasonKind, TreeCalcFixtureError> {
+    let parsed = match reason {
+        "StructuralRebindRequired" | "structural_rebind_required" => {
+            InvalidationReasonKind::StructuralRebindRequired
+        }
+        "StructuralRecalcOnly" | "structural_recalc_only" => {
+            InvalidationReasonKind::StructuralRecalcOnly
+        }
+        "UpstreamPublication" | "upstream_publication" => {
+            InvalidationReasonKind::UpstreamPublication
+        }
+        "DependencyAdded" | "dependency_added" => InvalidationReasonKind::DependencyAdded,
+        "DependencyRemoved" | "dependency_removed" => InvalidationReasonKind::DependencyRemoved,
+        "DependencyReclassified" | "dependency_reclassified" => {
+            InvalidationReasonKind::DependencyReclassified
+        }
+        _ => {
+            return Err(TreeCalcFixtureError::UnsupportedInvalidationReason {
+                case_id: case.case_id.clone(),
+                reason: reason.to_string(),
+            });
+        }
+    };
+    Ok(parsed)
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -436,7 +493,7 @@ mod tests {
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
 
-        assert_eq!(manifest.cases.len(), 24);
+        assert_eq!(manifest.cases.len(), 25);
 
         for entry in &manifest.cases {
             let case_path = repo_root

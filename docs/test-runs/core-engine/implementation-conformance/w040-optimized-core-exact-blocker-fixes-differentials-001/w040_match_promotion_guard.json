@@ -1,0 +1,10 @@
+{
+  "run_id": "w040-optimized-core-exact-blocker-fixes-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w040.match_guard.v1",
+  "source_w039_promoted_match_count": 0,
+  "promoted_match_count": 0,
+  "non_promoted_row_count": 5,
+  "guard_status": "w040_declared_gap_promotion_guard_holds",
+  "policy": "W040 calc-tv5.2 does not count dynamic release/reclassification seed handling, retained fence blockers, retained callable metadata blockers, or declared gaps as full optimized/core matches.",
+  "allowed_promoted_rows": []
+}

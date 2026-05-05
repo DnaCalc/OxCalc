@@ -713,6 +713,12 @@ fn write_post_edit_artifacts(
         ),
     )?;
     write_json(
+        post_edit_directory
+            .join("invalidation_closure.json")
+            .as_path(),
+        &invalidation_closure_json(&execution.rerun_artifacts.invalidation_closure),
+    )?;
+    write_json(
         post_edit_directory.join("phase_timings.json").as_path(),
         &phase_timings_json(&execution.rerun_artifacts),
     )?;
@@ -724,6 +730,7 @@ fn write_post_edit_artifacts(
             "evaluation_order": execution.rerun_artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
             "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
+            "invalidation_closure_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_closure.json"),
             "counters": counter_entries_json(&post_edit_counters),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
@@ -762,6 +769,7 @@ fn write_post_edit_artifacts(
     Ok(json!({
         "edit_outcomes": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/edit_outcomes.json"),
         "invalidation_seeds": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_seeds.json"),
+        "invalidation_closure": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_closure.json"),
         "counters": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/counters.json"),
         "runtime_effects": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effects.json"),
         "runtime_effect_overlays": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/runtime_effect_overlays.json"),
@@ -2078,7 +2086,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 24);
+        assert_eq!(summary.case_count, 25);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2211,7 +2219,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 24);
+        assert_eq!(replay_manifest["case_count"], 25);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()
@@ -2672,6 +2680,72 @@ mod tests {
         assert_eq!(
             dynamic_resolved_result["publication_bundle"]["published_runtime_effects"][0]["family"],
             "DynamicDependency"
+        );
+
+        let dynamic_release_reclass_seeds = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_seeds.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            dynamic_release_reclass_seeds.as_array().map(Vec::len),
+            Some(2)
+        );
+        assert!(
+            dynamic_release_reclass_seeds
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| seed["reason"] == "DependencyRemoved"))
+        );
+        assert!(
+            dynamic_release_reclass_seeds
+                .as_array()
+                .is_some_and(|seeds| seeds
+                    .iter()
+                    .any(|seed| seed["reason"] == "DependencyReclassified"))
+        );
+
+        let dynamic_release_reclass_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/result.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(dynamic_release_reclass_result["result_state"], "rejected");
+        assert_eq!(
+            dynamic_release_reclass_result["reject_detail"]["kind"],
+            "HostInjectedFailure"
+        );
+        let dynamic_release_reclass_closure = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(
+                artifact_root.join(
+                    "cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_closure.json",
+                ),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            dynamic_release_reclass_closure
+                .as_array()
+                .is_some_and(|records| records.iter().any(|record| {
+                    record["node_id"] == 3
+                        && record["requires_rebind"] == true
+                        && record["reasons"].as_array().is_some_and(|reasons| {
+                            reasons.iter().any(|reason| reason == "DependencyRemoved")
+                                && reasons
+                                    .iter()
+                                    .any(|reason| reason == "DependencyReclassified")
+                        })
+                }))
         );
 
         let host_sensitive_explain = serde_json::from_str::<serde_json::Value>(

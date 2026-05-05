@@ -1,0 +1,38 @@
+{
+  "run_id": "w040-optimized-core-exact-blocker-fixes-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w040.source_index.v1",
+  "sources": [
+    {
+      "path": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+      "role": "W040 obligation owners and promotion consequences"
+    },
+    {
+      "path": "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+      "role": "four source W039 optimized/core exact blockers"
+    },
+    {
+      "path": "docs/spec/core-engine/w039-formalization/W039_OPTIMIZED_CORE_EXACT_BLOCKER_IMPLEMENTATION_CLOSURE.md",
+      "role": "predecessor optimized/core disposition"
+    },
+    {
+      "path": "docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_release_reclassification_post_edit_001.json",
+      "role": "new W040 fixture for explicit dynamic release and reclassification invalidation seeds"
+    },
+    {
+      "path": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json",
+      "role": "W040 TreeCalc run summary with 25 cases and zero expectation mismatches"
+    },
+    {
+      "path": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_seeds.json",
+      "role": "direct DependencyRemoved and DependencyReclassified optimized-lane seeds"
+    },
+    {
+      "path": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_closure.json",
+      "role": "direct rebind-required invalidation closure for dependency release/reclassification"
+    },
+    {
+      "path": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/result.json",
+      "role": "direct rejected no-publication rerun result for dependency release/reclassification"
+    }
+  ]
+}

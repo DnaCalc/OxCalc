@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001",
+  "case_count": 25,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 16,
+    "rejected": 8,
+    "verified_clean": 1
+  },
+  "run_id": "w040-optimized-core-dynamic-release-reclassification-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

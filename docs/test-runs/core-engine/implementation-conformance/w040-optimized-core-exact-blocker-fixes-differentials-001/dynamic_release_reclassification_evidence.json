@@ -1,0 +1,37 @@
+{
+  "run_id": "w040-optimized-core-exact-blocker-fixes-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w040.dynamic_release_reclassification.v1",
+  "treecalc_run_id": "w040-optimized-core-dynamic-release-reclassification-001",
+  "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+  "initial_phase": {
+    "result_state": "published",
+    "published_values": {
+      "3": "11"
+    },
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ],
+    "dependency_shape_update_expected": "dynamic_dependency_bound"
+  },
+  "post_edit_phase": {
+    "manual_dependency_change_seeds": [
+      "DependencyRemoved",
+      "DependencyReclassified"
+    ],
+    "invalidation_closure": {
+      "node_id": 3,
+      "requires_rebind": true,
+      "reasons": [
+        "DependencyRemoved",
+        "DependencyReclassified"
+      ]
+    },
+    "result_state": "rejected",
+    "reject_kind": "HostInjectedFailure",
+    "reject_detail_contains": "requires rebind before reevaluation",
+    "publication_behavior": "no_new_publication_after_dependency_release_or_reclassification_seed"
+  },
+  "evidence_consequence": "The optimized local runner now has direct executable evidence that dependency release and dependency reclassification invalidation seeds are not match-promoted as clean recalc; they force rebind/no-publication behavior.",
+  "remaining_blocker": "This does not yet prove automatic dependency-set transition detection from a changed dynamic binding. A full dynamic release/reclassification differential still requires comparing predecessor and successor dependency descriptors against the TraceCalc release row without manual seed injection.",
+  "promotion_consequence": "full optimized/core verification remains blocked"
+}

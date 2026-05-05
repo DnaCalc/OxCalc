@@ -66,6 +66,18 @@
       ]
     },
     {
+      "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+      "path": "cases/tc_local_dynamic_release_reclassification_post_edit_001.json",
+      "tags": [
+        "local-sequential",
+        "dynamic-reference",
+        "dependency-release",
+        "dependency-reclassification",
+        "post-edit",
+        "W040"
+      ]
+    },
+    {
       "case_id": "tc_local_rebind_after_rename_001",
       "path": "cases/tc_local_rebind_after_rename_001.json",
       "tags": [

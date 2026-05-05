@@ -1,0 +1,28 @@
+{
+  "run_id": "w040-optimized-core-exact-blocker-fixes-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w040.summary.v1",
+  "workset": "W040",
+  "parent_epic": "calc-tv5",
+  "bead": "calc-tv5.2",
+  "status": "optimized_core_exact_blockers_narrowed_no_promotion",
+  "source_w039_exact_blocker_count": 4,
+  "disposition_row_count": 5,
+  "direct_evidence_bound_count": 3,
+  "new_w040_treecalc_case_count": 1,
+  "exact_remaining_blocker_count": 4,
+  "match_promoted_count": 0,
+  "failed_row_count": 0,
+  "treecalc_run_id": "w040-optimized-core-dynamic-release-reclassification-001",
+  "treecalc_case_count": 25,
+  "treecalc_expectation_mismatch_count": 0,
+  "no_promotion_claims": [
+    "full_optimized_core_verification",
+    "release_grade_full_verification",
+    "stage2_production_policy",
+    "callable_metadata_projection",
+    "broad_oxfml_callable_conformance",
+    "pack_grade_replay",
+    "cap.C5.pack_valid"
+  ],
+  "next_bead": "calc-tv5.3"
+}

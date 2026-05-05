@@ -1,0 +1,53 @@
+{
+  "run_id": "w040-optimized-core-exact-blocker-fixes-differentials-001",
+  "schema_version": "oxcalc.implementation_conformance.w040.validation.v1",
+  "status": "optimized_core_exact_blockers_narrowed_no_promotion_valid",
+  "validation_failures": [],
+  "commands": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "result": "passed"
+    },
+    {
+      "command": "cargo test -p oxcalc-core treecalc -- --nocapture",
+      "result": "passed; 29 tests"
+    },
+    {
+      "command": "cargo run -p oxcalc-tracecalc-cli -- treecalc w040-optimized-core-dynamic-release-reclassification-001",
+      "result": "passed; emitted 25 cases with 0 expectation mismatches"
+    },
+    {
+      "command": "JSON parse for W040 implementation-conformance and TreeCalc run artifacts",
+      "result": "passed"
+    },
+    {
+      "command": "scripts/check-worksets.ps1",
+      "result": "passed after bead closure"
+    },
+    {
+      "command": "br ready --json",
+      "result": "passed after bead closure; next ready bead is calc-tv5.3"
+    },
+    {
+      "command": "br dep cycles --json",
+      "result": "passed; count=0"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed; CRLF normalization warnings only"
+    }
+  ],
+  "post_closure_bead_state": {
+    "closed_bead": "calc-tv5.2",
+    "ready_bead": "calc-tv5.3",
+    "open": 9,
+    "in_progress": 0,
+    "ready": 1,
+    "blocked": 7,
+    "closed": 121
+  },
+  "direct_evidence_bound_count": 3,
+  "exact_remaining_blocker_count": 4,
+  "match_promoted_count": 0,
+  "failed_row_count": 0
+}

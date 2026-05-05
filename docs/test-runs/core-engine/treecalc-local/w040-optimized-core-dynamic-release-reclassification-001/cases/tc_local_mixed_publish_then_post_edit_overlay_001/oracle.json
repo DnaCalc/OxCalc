@@ -1,0 +1,14 @@
+{
+  "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+  "expected_evaluation_order": [
+    4,
+    5
+  ],
+  "expected_published_values": {
+    "4": "5",
+    "5": "5"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

@@ -1,0 +1,80 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    }
+  ],
+  "diagnostic_events": [
+    "constant_value_changed:node:2:7"
+  ],
+  "edit_impacts": [
+    "RecalcOnly"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "phase_timings": {
+    "timings_micros": {
+      "candidate_publication": 51,
+      "dependency_descriptor_lowering": 10,
+      "dependency_descriptor_owner_index": 3,
+      "dependency_diagnostic_reject_scan": 0,
+      "dependency_graph_build_and_cycle_scan": 27,
+      "diagnostic_seed_collection": 2,
+      "evaluation_loop_total": 422,
+      "invalidation_closure_derivation": 10,
+      "oxfml_formula_evaluation": 401,
+      "oxfml_prepare_formulas": 103,
+      "rebind_gate_scan": 1,
+      "recalc_tracker_mark_dirty_needed": 4,
+      "runtime_setup": 22,
+      "topological_formula_order": 10,
+      "total_engine_execute": 679
+    },
+    "timings_ms": {
+      "candidate_publication": 0.051,
+      "dependency_descriptor_lowering": 0.01,
+      "dependency_descriptor_owner_index": 0.003,
+      "dependency_diagnostic_reject_scan": 0.0,
+      "dependency_graph_build_and_cycle_scan": 0.027,
+      "diagnostic_seed_collection": 0.002,
+      "evaluation_loop_total": 0.422,
+      "invalidation_closure_derivation": 0.01,
+      "oxfml_formula_evaluation": 0.401,
+      "oxfml_prepare_formulas": 0.103,
+      "rebind_gate_scan": 0.001,
+      "recalc_tracker_mark_dirty_needed": 0.004,
+      "runtime_setup": 0.022,
+      "topological_formula_order": 0.01,
+      "total_engine_execute": 0.679
+    },
+    "unit": "microseconds"
+  },
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

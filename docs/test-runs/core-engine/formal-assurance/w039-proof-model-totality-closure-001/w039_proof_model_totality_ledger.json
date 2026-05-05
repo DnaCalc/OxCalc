@@ -1,0 +1,182 @@
+{
+  "accepted_boundary_count": 1,
+  "accepted_external_seam_count": 1,
+  "bounded_model_row_count": 2,
+  "exact_remaining_blocker_count": 6,
+  "local_proof_row_count": 3,
+  "proof_model_row_count": 7,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.3; calc-f7o.9",
+      "bounded_model": false,
+      "disposition": "bind W039 checked Lean classification while carrying full Lean and Rust-engine totality as exact boundaries",
+      "disposition_kind": "explicit_totality_boundary",
+      "evidence_paths": [
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean",
+        "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted",
+      "reason": "W039 adds a checked Lean classification file, but total Rust-engine proof and all external seams are not discharged.",
+      "row_id": "w039_proof_lean_totality_boundary",
+      "source_inputs": [
+        "W038 proof/model assumption-discharge",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "totality_boundary": true,
+      "w039_obligation_id": "W039-OBL-006"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.3; calc-f7o.4; calc-f7o.9",
+      "bounded_model": true,
+      "disposition": "retain the checked TLA/TLC surface as bounded model evidence while carrying unbounded/model-completeness as exact blocker",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "W039 preserves bounded model evidence and promotion predicates, but does not claim unbounded scheduler/partition model coverage.",
+      "row_id": "w039_model_tla_bounded_model_boundary",
+      "source_inputs": [
+        "W038 bounded TLC routine floor",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "totality_boundary": true,
+      "w039_obligation_id": "W039-OBL-007"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.2; calc-f7o.3; calc-f7o.9",
+      "bounded_model": false,
+      "disposition": "carry Rust-engine totality and refinement as exact blockers while optimized/core exact blockers remain",
+      "disposition_kind": "exact_optimized_core_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full formalization and optimized/core verification remain unpromoted",
+      "reason": "The W039 implementation-conformance packet retains four exact optimized/core blockers, so refinement cannot be promoted.",
+      "row_id": "w039_rust_engine_refinement_boundary",
+      "source_inputs": [
+        "W039 optimized/core exact blocker disposition",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "totality_boundary": true,
+      "w039_obligation_id": "W039-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.3; calc-f7o.7; external:OxFunc",
+      "bounded_model": false,
+      "disposition": "carry callable metadata projection as an exact proof/seam blocker",
+      "disposition_kind": "exact_callable_metadata_totality_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable metadata projection remains unpromoted",
+      "reason": "A metadata projection fixture or carrier sufficiency proof is still absent.",
+      "row_id": "w039_callable_metadata_projection_totality_boundary",
+      "source_inputs": [
+        "W039 optimized/core exact blocker disposition",
+        "W038 callable metadata proof/seam blocker"
+      ],
+      "totality_boundary": true,
+      "w039_obligation_id": "W039-OBL-004"
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": true,
+      "authority_owner": "calc-f7o.3; calc-f7o.7; external:OxFunc",
+      "bounded_model": false,
+      "disposition": "keep LET/LAMBDA as a narrow carrier seam and general OxFunc kernels as external-owner scope",
+      "disposition_kind": "accepted_external_seam_boundary",
+      "evidence_paths": [
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean",
+        "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "general OxFunc kernels are not promoted inside OxCalc",
+      "reason": "OxCalc formalization includes only the carrier seam it consumes.",
+      "row_id": "w039_let_lambda_external_oxfunc_boundary",
+      "source_inputs": [
+        "W038 external OxFunc boundary",
+        "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean"
+      ],
+      "totality_boundary": false,
+      "w039_obligation_id": "W039-OBL-019"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.4",
+      "bounded_model": true,
+      "disposition": "carry Stage 2 partition policy as exact proof/model and replay-governance blocker",
+      "disposition_kind": "exact_promotion_gate_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "Production partition analyzer soundness and observable-result invariance are owned by calc-f7o.4.",
+      "row_id": "w039_stage2_partition_policy_proof_gate",
+      "source_inputs": [
+        "W038 proof/model blocker register",
+        "W039 promotion-readiness map"
+      ],
+      "totality_boundary": false,
+      "w039_obligation_id": "W039-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.8; calc-f7o.9",
+      "bounded_model": false,
+      "disposition": "carry pack-grade replay and C5 as release-decision blockers rather than deriving them from proof/model evidence",
+      "disposition_kind": "exact_promotion_gate_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+        "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "reason": "Proof/model evidence is necessary but insufficient for pack-grade replay or C5.",
+      "row_id": "w039_pack_c5_release_proof_gate",
+      "source_inputs": [
+        "W039 promotion-readiness map",
+        "W038 proof/model blocker register"
+      ],
+      "totality_boundary": false,
+      "w039_obligation_id": "W039-OBL-020"
+    }
+  ],
+  "run_id": "w039-proof-model-totality-closure-001",
+  "schema_version": "oxcalc.formal_assurance.w039_proof_model_totality_ledger.v1",
+  "totality_boundary_count": 4
+}

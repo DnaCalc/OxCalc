@@ -348,3 +348,19 @@ It does mean:
    residual direct-verification obligation map, optimized core exact blocker fixes and differentials, Rust totality and refinement proof tranche, Lean/TLA full-verification discharge tranche, Stage 2 production policy and equivalence implementation, operated assurance and retained-history service implementation, independent evaluator implementation and operated differential, OxFml seam breadth and callable metadata implementation, pack-grade replay governance and C5 promotion decision, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`
+
+### W041 Core Formalization Release-Grade Successor Verification
+1. purpose:
+   continue after W040 by converting the remaining release-grade blockers into direct implementation, proof, model, operated-service, diversity, OxFml/callable, pack/C5, and release-grade verification evidence where possible, while preserving exact blockers where direct evidence is still insufficient.
+2. depends_on:
+   `W040`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md`, `docs/spec/core-engine/w040-formalization/W040_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W040 residual lanes are mapped to W041 obligations; optimized/core residual blockers are fixed, directly evidenced, spec-evolved, or retained without declared-gap match promotion; Rust totality/refinement and Lean/TLA verification claims are checked or blocked; Stage 2 production policy claims have production-relevant partition soundness and observable-result invariance evidence; operated service claims use operated service artifacts and retained lifecycle evidence; independent evaluator claims use independent implementation authority and breadth; OxFml W073 typed-only formatting, broad display/publication, public migration, callable metadata, and callable carrier sufficiency are evidenced, handed off, or blocked; pack/C5 and release-grade decisions state exact evidence consequence before any promotion claim.
+6. initial_epic_lanes:
+   residual release-grade successor obligation map, optimized core residual blocker implementation and differential closure, Rust totality refinement and panic-boundary discharge, Lean/TLA full-verification and fairness discharge, Stage 2 production analyzer and pack-equivalence proof tranche, operated assurance retained-history and alert-dispatch service tranche, independent evaluator breadth and operated differential service tranche, OxFml broad display/publication and callable-carrier closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade verification decision
+7. rollout_mode:
+   `execution_target`

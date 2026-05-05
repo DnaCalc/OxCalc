@@ -1493,6 +1493,7 @@ fn build_upstream_host_packet(
             registered_external_present: false,
         },
         runtime_catalog: MinimalRuntimeCatalogFacts::default(),
+        publication_context: None,
     }
 }
 

@@ -15,7 +15,16 @@ use crate::upstream_host::{
     UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
 use oxfml_core::EvaluationBackend;
-use oxfml_core::interface::{TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef};
+use oxfml_core::binding::NameKind;
+use oxfml_core::interface::{
+    HostProviderOutcomeKind, LibraryContextSnapshotRef, ReturnedValueSurfaceKind,
+    TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef,
+};
+use oxfml_core::publication::{
+    AverageRuleOptions, ConditionalFormattingRank, ConditionalFormattingTypedRule, RankRuleOptions,
+    VerificationConditionalFormattingRule, VerificationPublicationContext,
+};
+use oxfml_core::seam::ValuePayload;
 use oxfml_core::semantics::{
     LibraryAvailabilityState, LibraryContextSnapshot, LibraryContextSnapshotEntry,
     RegistrationSourceKind,
@@ -54,6 +63,8 @@ pub struct UpstreamHostFixtureCase {
     pub typed_query_facts: UpstreamHostFixtureTypedQueryFacts,
     #[serde(default)]
     pub runtime_catalog: UpstreamHostFixtureRuntimeCatalogFacts,
+    #[serde(default)]
+    pub publication_context: Option<UpstreamHostFixturePublicationContext>,
     #[serde(default = "default_backend")]
     pub evaluation_backend: String,
     pub expected: UpstreamHostFixtureExpected,
@@ -196,11 +207,60 @@ pub struct UpstreamHostFixtureRuntimeCatalogFacts {
     pub surface_names: Vec<String>,
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixturePublicationContext {
+    pub format_profile: Option<String>,
+    pub number_format_code: Option<String>,
+    pub style_id: Option<String>,
+    #[serde(default)]
+    pub style_hierarchy: Vec<String>,
+    pub font_color: Option<String>,
+    pub fill_color: Option<String>,
+    #[serde(default)]
+    pub conditional_formatting_rules: Vec<UpstreamHostFixtureConditionalFormattingRule>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureConditionalFormattingRule {
+    #[serde(default)]
+    pub target_ranges: Vec<String>,
+    pub rule_kind: String,
+    pub operator: Option<String>,
+    #[serde(default)]
+    pub thresholds: Vec<String>,
+    pub typed_rule: Option<UpstreamHostFixtureConditionalFormattingTypedRule>,
+    pub font_color: Option<String>,
+    pub fill_color: Option<String>,
+    pub effective_display_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureConditionalFormattingTypedRule {
+    pub rank: Option<UpstreamHostFixtureRankRuleOptions>,
+    pub average: Option<UpstreamHostFixtureAverageRuleOptions>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureRankRuleOptions {
+    pub kind: String,
+    pub value: f64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureAverageRuleOptions {
+    pub include_equal: bool,
+    pub stddev_multiplier: Option<f64>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpstreamHostFixtureExpected {
     pub returned_surface_kind: String,
     #[serde(default)]
     pub payload_summary: Option<String>,
+    #[serde(default)]
+    pub candidate_value_payload: Option<String>,
+    #[serde(default)]
+    pub trace_function_ids: Vec<String>,
     #[serde(default)]
     pub host_provider_outcome_kind: Option<String>,
     #[serde(default)]
@@ -214,6 +274,14 @@ pub struct UpstreamHostFixtureExpected {
     pub table_catalog_len: Option<usize>,
     pub enclosing_table_ref: Option<String>,
     pub caller_table_region: Option<UpstreamHostFixtureCallerTableRegion>,
+    #[serde(default)]
+    pub conditional_formatting_typed_rule_families: Vec<String>,
+    #[serde(default)]
+    pub conditional_formatting_effective_fill_colors: Option<Vec<Vec<Option<String>>>>,
+    #[serde(default)]
+    pub format_delta_present: Option<bool>,
+    #[serde(default)]
+    pub display_delta_present: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -333,6 +401,313 @@ pub fn execute_fixture_case(
     })
 }
 
+#[must_use]
+pub fn fixture_expectation_mismatches(
+    case: &UpstreamHostFixtureCase,
+    execution: &UpstreamHostFixtureExecution,
+) -> Vec<String> {
+    let mut mismatches = Vec::new();
+    let expected = &case.expected;
+    let output = &execution.recalc_output;
+
+    match parse_returned_surface_kind(&expected.returned_surface_kind) {
+        Some(expected_kind) if output.returned_value_surface.kind != expected_kind => {
+            mismatches.push(format!(
+                "returned_surface_kind expected {:?}, observed {:?}",
+                expected_kind, output.returned_value_surface.kind
+            ));
+        }
+        Some(_) => {}
+        None => mismatches.push(format!(
+            "unsupported expected returned_surface_kind '{}'",
+            expected.returned_surface_kind
+        )),
+    }
+
+    if let Some(expected_payload_summary) = &expected.payload_summary
+        && output.returned_value_surface.payload_summary != *expected_payload_summary
+    {
+        mismatches.push(format!(
+            "payload_summary expected '{}', observed '{}'",
+            expected_payload_summary, output.returned_value_surface.payload_summary
+        ));
+    }
+
+    if let Some(expected_value_payload) = &expected.candidate_value_payload {
+        let observed =
+            value_payload_summary(&output.candidate_result.value_delta.published_payload);
+        if observed != *expected_value_payload {
+            mismatches.push(format!(
+                "candidate_value_payload expected '{}', observed '{}'",
+                expected_value_payload, observed
+            ));
+        }
+    }
+
+    if !expected.trace_function_ids.is_empty() {
+        let observed = trace_function_ids(output);
+        if observed != expected.trace_function_ids {
+            mismatches.push(format!(
+                "trace_function_ids expected {:?}, observed {:?}",
+                expected.trace_function_ids, observed
+            ));
+        }
+    }
+
+    if let Some(expected_outcome_kind) = &expected.host_provider_outcome_kind {
+        match parse_host_provider_outcome_kind(expected_outcome_kind) {
+            Some(expected_kind) => {
+                let observed = output
+                    .returned_value_surface
+                    .host_provider_outcome
+                    .as_ref()
+                    .map(|surface| surface.outcome_kind);
+                if observed != Some(expected_kind) {
+                    mismatches.push(format!(
+                        "host_provider_outcome_kind expected {:?}, observed {:?}",
+                        expected_kind, observed
+                    ));
+                }
+            }
+            None => mismatches.push(format!(
+                "unsupported expected host_provider_outcome_kind '{}'",
+                expected_outcome_kind
+            )),
+        }
+    }
+
+    if let Some(expected_worksheet_error) = &expected.worksheet_error {
+        match parse_worksheet_error_code(expected_worksheet_error) {
+            Ok(expected_error) => {
+                let observed = output
+                    .returned_value_surface
+                    .host_provider_outcome
+                    .as_ref()
+                    .and_then(|surface| surface.worksheet_error);
+                if observed != Some(expected_error) {
+                    mismatches.push(format!(
+                        "worksheet_error expected {:?}, observed {:?}",
+                        expected_error, observed
+                    ));
+                }
+            }
+            Err(error) => mismatches.push(error.to_string()),
+        }
+    }
+
+    if let Some(expected_capture_snapshot_ref) = &expected.capture_snapshot_ref {
+        let expected_ref = LibraryContextSnapshotRef::new(
+            expected_capture_snapshot_ref.snapshot_id.clone(),
+            expected_capture_snapshot_ref.snapshot_version.clone(),
+        );
+        let observed = execution
+            .replay_projection
+            .as_ref()
+            .and_then(|packet| packet.library_context_snapshot_ref.clone());
+        if observed != Some(expected_ref.clone()) {
+            mismatches.push(format!(
+                "capture_snapshot_ref expected {:?}, observed {:?}",
+                expected_ref, observed
+            ));
+        }
+    }
+
+    for (name, expected_kind) in &expected.bind_name_kinds {
+        match parse_name_kind(expected_kind) {
+            Some(expected_kind) => {
+                let observed = execution.bind_context.names.get(name);
+                if observed != Some(&expected_kind) {
+                    mismatches.push(format!(
+                        "bind_name_kind for '{}' expected {:?}, observed {:?}",
+                        name, expected_kind, observed
+                    ));
+                }
+            }
+            None => mismatches.push(format!(
+                "unsupported expected bind_name_kind '{}' for '{}'",
+                expected_kind, name
+            )),
+        }
+    }
+
+    if let Some(expected_table_catalog_len) = expected.table_catalog_len
+        && execution.bind_context.table_catalog.len() != expected_table_catalog_len
+    {
+        mismatches.push(format!(
+            "table_catalog_len expected {}, observed {}",
+            expected_table_catalog_len,
+            execution.bind_context.table_catalog.len()
+        ));
+    }
+
+    if let Some(expected_enclosing_table_ref) = &expected.enclosing_table_ref {
+        let observed = execution
+            .bind_context
+            .enclosing_table_ref
+            .as_ref()
+            .map(|table_ref| table_ref.table_id.clone());
+        if observed.as_ref() != Some(expected_enclosing_table_ref) {
+            mismatches.push(format!(
+                "enclosing_table_ref expected '{}', observed {:?}",
+                expected_enclosing_table_ref, observed
+            ));
+        }
+    }
+
+    if let Some(expected_caller_table_region) = &expected.caller_table_region {
+        match execution.bind_context.caller_table_region.as_ref() {
+            Some(observed_region) => {
+                if observed_region.table_id != expected_caller_table_region.table_id {
+                    mismatches.push(format!(
+                        "caller_table_region.table_id expected '{}', observed '{}'",
+                        expected_caller_table_region.table_id, observed_region.table_id
+                    ));
+                }
+                match parse_table_region_kind(&expected_caller_table_region.region_kind) {
+                    Ok(expected_kind) if observed_region.region_kind != expected_kind => {
+                        mismatches.push(format!(
+                            "caller_table_region.region_kind expected {:?}, observed {:?}",
+                            expected_kind, observed_region.region_kind
+                        ));
+                    }
+                    Ok(_) => {}
+                    Err(error) => mismatches.push(error.to_string()),
+                }
+                if observed_region.data_row_offset != expected_caller_table_region.data_row_offset {
+                    mismatches.push(format!(
+                        "caller_table_region.data_row_offset expected {:?}, observed {:?}",
+                        expected_caller_table_region.data_row_offset,
+                        observed_region.data_row_offset
+                    ));
+                }
+            }
+            None => mismatches.push("caller_table_region expected but absent".to_string()),
+        }
+    }
+
+    if !expected
+        .conditional_formatting_typed_rule_families
+        .is_empty()
+    {
+        let observed = conditional_formatting_typed_rule_families(output);
+        if observed != expected.conditional_formatting_typed_rule_families {
+            mismatches.push(format!(
+                "conditional_formatting_typed_rule_families expected {:?}, observed {:?}",
+                expected.conditional_formatting_typed_rule_families, observed
+            ));
+        }
+    }
+
+    if let Some(expected_fills) = &expected.conditional_formatting_effective_fill_colors {
+        let observed = array_cell_effective_fill_colors(output);
+        if observed.as_ref() != Some(expected_fills) {
+            mismatches.push(format!(
+                "conditional_formatting_effective_fill_colors expected {:?}, observed {:?}",
+                expected_fills, observed
+            ));
+        }
+    }
+
+    if let Some(expected_present) = expected.format_delta_present {
+        let observed = output
+            .verification_publication_surface
+            .format_delta
+            .is_some();
+        if observed != expected_present {
+            mismatches.push(format!(
+                "format_delta_present expected {}, observed {}",
+                expected_present, observed
+            ));
+        }
+    }
+
+    if let Some(expected_present) = expected.display_delta_present {
+        let observed = output
+            .verification_publication_surface
+            .display_delta
+            .is_some();
+        if observed != expected_present {
+            mismatches.push(format!(
+                "display_delta_present expected {}, observed {}",
+                expected_present, observed
+            ));
+        }
+    }
+
+    mismatches
+}
+
+pub fn trace_function_ids(
+    output: &oxfml_core::consumer::runtime::RuntimeFormulaResult,
+) -> Vec<String> {
+    output
+        .evaluation
+        .trace
+        .prepared_calls
+        .iter()
+        .map(|call| call.function_id.to_string())
+        .collect()
+}
+
+pub fn value_payload_summary(payload: &ValuePayload) -> String {
+    match payload {
+        ValuePayload::Number(value) => format!("Number({value})"),
+        ValuePayload::Text(value) => format!("Text({value})"),
+        ValuePayload::Logical(value) => format!("Logical({value})"),
+        ValuePayload::ErrorCode(value) => format!("Error({value})"),
+        ValuePayload::Blank => "Blank".to_string(),
+    }
+}
+
+pub fn conditional_formatting_typed_rule_families(
+    output: &oxfml_core::consumer::runtime::RuntimeFormulaResult,
+) -> Vec<String> {
+    output
+        .verification_publication_surface
+        .conditional_formatting_rules
+        .iter()
+        .filter_map(|rule| rule.typed_rule.as_ref())
+        .flat_map(|typed_rule| {
+            let mut families = Vec::new();
+            if typed_rule.color_scale.is_some() {
+                families.push("color_scale".to_string());
+            }
+            if typed_rule.data_bar.is_some() {
+                families.push("data_bar".to_string());
+            }
+            if typed_rule.icon_set.is_some() {
+                families.push("icon_set".to_string());
+            }
+            if typed_rule.rank.is_some() {
+                families.push("rank".to_string());
+            }
+            if typed_rule.average.is_some() {
+                families.push("average".to_string());
+            }
+            families
+        })
+        .collect()
+}
+
+pub fn array_cell_effective_fill_colors(
+    output: &oxfml_core::consumer::runtime::RuntimeFormulaResult,
+) -> Option<Vec<Vec<Option<String>>>> {
+    output
+        .verification_publication_surface
+        .array_cell_format
+        .as_ref()
+        .map(|grid| {
+            grid.rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|cell| cell.effective_fill_color.clone())
+                        .collect()
+                })
+                .collect()
+        })
+}
+
 fn build_packet(
     case: &UpstreamHostFixtureCase,
 ) -> Result<MinimalUpstreamHostPacket, UpstreamHostFixtureError> {
@@ -413,6 +788,10 @@ fn build_packet(
             library_context_snapshot: (!case.runtime_catalog.surface_names.is_empty())
                 .then(|| snapshot_with_entries(&case.runtime_catalog.surface_names)),
         },
+        publication_context: case
+            .publication_context
+            .as_ref()
+            .map(to_publication_context),
     })
 }
 
@@ -541,6 +920,37 @@ fn parse_worksheet_error_code(code: &str) -> Result<WorksheetErrorCode, Upstream
     }
 }
 
+fn parse_returned_surface_kind(kind: &str) -> Option<ReturnedValueSurfaceKind> {
+    match kind {
+        "ordinary_value" => Some(ReturnedValueSurfaceKind::OrdinaryValue),
+        "typed_host_provider_outcome" => Some(ReturnedValueSurfaceKind::TypedHostProviderOutcome),
+        "value_with_presentation" => Some(ReturnedValueSurfaceKind::ValueWithPresentation),
+        "rich_value" => Some(ReturnedValueSurfaceKind::RichValue),
+        _ => None,
+    }
+}
+
+fn parse_host_provider_outcome_kind(kind: &str) -> Option<HostProviderOutcomeKind> {
+    match kind {
+        "value" => Some(HostProviderOutcomeKind::Value),
+        "unsupported_query" => Some(HostProviderOutcomeKind::UnsupportedQuery),
+        "provider_failure" => Some(HostProviderOutcomeKind::ProviderFailure),
+        "provider_error" => Some(HostProviderOutcomeKind::ProviderError),
+        "capability_denied" => Some(HostProviderOutcomeKind::CapabilityDenied),
+        "no_value_yet" => Some(HostProviderOutcomeKind::NoValueYet),
+        "connection_failed" => Some(HostProviderOutcomeKind::ConnectionFailed),
+        _ => None,
+    }
+}
+
+fn parse_name_kind(kind: &str) -> Option<NameKind> {
+    match kind {
+        "value_like" => Some(NameKind::ValueLike),
+        "reference_like" => Some(NameKind::ReferenceLike),
+        _ => None,
+    }
+}
+
 fn to_table_descriptor(descriptor: &UpstreamHostFixtureTableDescriptor) -> TableDescriptor {
     TableDescriptor {
         table_id: descriptor.table_id.clone(),
@@ -580,6 +990,68 @@ fn to_caller_table_region(
         region_kind: parse_table_region_kind(&region.region_kind)?,
         data_row_offset: region.data_row_offset,
     })
+}
+
+fn to_publication_context(
+    context: &UpstreamHostFixturePublicationContext,
+) -> VerificationPublicationContext {
+    VerificationPublicationContext {
+        format_profile: context.format_profile.clone(),
+        number_format_code: context.number_format_code.clone(),
+        style_id: context.style_id.clone(),
+        style_hierarchy: context.style_hierarchy.clone(),
+        font_color: context.font_color.clone(),
+        fill_color: context.fill_color.clone(),
+        conditional_formatting_rules: context
+            .conditional_formatting_rules
+            .iter()
+            .map(to_conditional_formatting_rule)
+            .collect(),
+    }
+}
+
+fn to_conditional_formatting_rule(
+    rule: &UpstreamHostFixtureConditionalFormattingRule,
+) -> VerificationConditionalFormattingRule {
+    VerificationConditionalFormattingRule {
+        target_ranges: rule.target_ranges.clone(),
+        rule_kind: rule.rule_kind.clone(),
+        operator: rule.operator.clone(),
+        thresholds: rule.thresholds.clone(),
+        typed_rule: rule.typed_rule.as_ref().map(to_typed_rule),
+        font_color: rule.font_color.clone(),
+        fill_color: rule.fill_color.clone(),
+        effective_display_text: rule.effective_display_text.clone(),
+        applies: None,
+        effective_font_color: None,
+        effective_fill_color: None,
+    }
+}
+
+fn to_typed_rule(
+    typed_rule: &UpstreamHostFixtureConditionalFormattingTypedRule,
+) -> ConditionalFormattingTypedRule {
+    ConditionalFormattingTypedRule {
+        rank: typed_rule.rank.as_ref().map(to_rank_rule_options),
+        average: typed_rule.average.as_ref().map(to_average_rule_options),
+        ..ConditionalFormattingTypedRule::default()
+    }
+}
+
+fn to_rank_rule_options(options: &UpstreamHostFixtureRankRuleOptions) -> RankRuleOptions {
+    let rank = match options.kind.as_str() {
+        "count" => ConditionalFormattingRank::Count(options.value.max(0.0) as usize),
+        "percent" => ConditionalFormattingRank::Percent(options.value),
+        _ => ConditionalFormattingRank::Count(0),
+    };
+    RankRuleOptions { rank }
+}
+
+fn to_average_rule_options(options: &UpstreamHostFixtureAverageRuleOptions) -> AverageRuleOptions {
+    AverageRuleOptions {
+        include_equal: options.include_equal,
+        stddev_multiplier: options.stddev_multiplier,
+    }
 }
 
 fn parse_table_region_kind(
@@ -648,7 +1120,7 @@ mod tests {
             repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
         let manifest = load_manifest(&manifest_path).unwrap();
 
-        assert_eq!(manifest.cases.len(), 9);
+        assert_eq!(manifest.cases.len(), 12);
 
         for entry in &manifest.cases {
             let case_path = repo_root
@@ -656,6 +1128,11 @@ mod tests {
                 .join(entry.path.replace('/', "\\"));
             let case = load_case(&case_path).unwrap();
             let execution = execute_fixture_case(&case).unwrap();
+
+            assert_eq!(
+                fixture_expectation_mismatches(&case, &execution),
+                Vec::<String>::new()
+            );
 
             assert_eq!(
                 execution.recalc_output.returned_value_surface.kind,

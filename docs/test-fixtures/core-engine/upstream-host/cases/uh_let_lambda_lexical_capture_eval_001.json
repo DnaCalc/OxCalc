@@ -1,0 +1,34 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_let_lambda_lexical_capture_eval_001",
+  "description": "Direct OxFml runtime-facade evaluation of a LET-bound LAMBDA proves lexical capture rather than dynamic helper rebinding for the narrow OxCalc carrier seam.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:w037:let_lambda:001",
+    "formula_slot_id": "node:slot:upstream_host:w037:let_lambda:001",
+    "formula_stable_id": "formula:upstream_host:w037:let_lambda:001",
+    "formula_text": "=LET(x,10,f,LAMBDA(y,x+y),LET(x,20,f(2)))",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "active_selection_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:w037:v1"
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "payload_summary": "Number",
+    "candidate_value_payload": "Number(12)",
+    "trace_function_ids": [
+      "SPECIAL.LAMBDA",
+      "SPECIAL.LAMBDA_INVOKE",
+      "FUNC.OP_ADD",
+      "SPECIAL.LET",
+      "SPECIAL.LET"
+    ]
+  }
+}

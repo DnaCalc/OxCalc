@@ -1,0 +1,52 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_typed_cf_top_rank_guard_001",
+  "description": "Direct OxFml runtime-facade evaluation with a W073 typed top-rank conditional-formatting payload proves that typed_rule drives aggregate formatting while legacy threshold strings are not interpreted for this family.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:w037:formatting:001",
+    "formula_slot_id": "node:slot:upstream_host:w037:formatting:001",
+    "formula_stable_id": "formula:upstream_host:w037:formatting:001",
+    "formula_text": "=SEQUENCE(3)",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "active_selection_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:w037:v1"
+  },
+  "publication_context": {
+    "format_profile": "w037-w073-typed-rule-guard",
+    "conditional_formatting_rules": [
+      {
+        "target_ranges": ["A1:A3"],
+        "rule_kind": "top",
+        "thresholds": ["legacy-count:1"],
+        "typed_rule": {
+          "rank": {
+            "kind": "count",
+            "value": 2.0
+          }
+        },
+        "fill_color": "#00FF00"
+      }
+    ]
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "payload_summary": "Array(3x1)",
+    "trace_function_ids": ["FUNC.SEQUENCE"],
+    "conditional_formatting_typed_rule_families": ["rank"],
+    "conditional_formatting_effective_fill_colors": [
+      [null],
+      ["#00FF00"],
+      ["#00FF00"]
+    ],
+    "format_delta_present": false,
+    "display_delta_present": false
+  }
+}

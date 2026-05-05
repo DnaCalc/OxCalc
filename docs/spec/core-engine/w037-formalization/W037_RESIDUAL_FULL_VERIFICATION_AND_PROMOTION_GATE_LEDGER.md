@@ -65,7 +65,7 @@ W037 starts with these limits:
 4. full TraceCalc oracle coverage is not claimed.
 5. full optimized/core-engine verification is not claimed.
 6. fully independent evaluator implementation diversity is not claimed.
-7. direct OxFml evaluator re-execution is not exercised yet.
+7. direct OxFml evaluator re-execution is exercised for the `calc-ubd.4` upstream-host fixture slice only; pack-grade replay remains unpromoted.
 8. full Lean verification is not claimed.
 9. full TLA+ verification is not claimed.
 10. operated continuous assurance is not promoted.
@@ -112,8 +112,8 @@ Any later W037 promotion candidate must include direct artifacts, a semantic-equ
 | `W037-OBL-002` | multi-reader overlay release ordering | W036 has bounded TLA model evidence, not TraceCalc replay | `calc-ubd.1`, `calc-ubd.6` | add direct replay, justify authority exclusion, or retain exact blocker and promotion consequence |
 | `W037-OBL-003` | optimized/core-engine declared gap closure | W036 has 2 harness first-fix rows, 4 blocker-routed rows, and 0 match-promoted rows | `calc-ubd.3` | convert gaps into implementation fixes, direct differential matches, spec evolution, or residual blockers |
 | `W037-OBL-004` | match-promotion guard and conformance proof | W036 forbids counting declared gaps as matches | `calc-ubd.3` | preserve the guard and define what evidence is sufficient to promote each gap row |
-| `W037-OBL-005` | direct OxFml evaluator re-execution | W036 has projection evidence and direct evaluator absence as pack blocker | `calc-ubd.4` | exercise direct OxFml evaluator re-execution or keep absence as explicit pack blocker |
-| `W037-OBL-006` | `LET`/`LAMBDA` OxFml/OxFunc carrier seam | W036 checked callable-carrier boundary inventory and kept full OxFunc kernel opaque | `calc-ubd.4`, `calc-ubd.5` | provide seam evidence for OxCalc-consumed carrier behavior while preserving general OxFunc kernel exclusion |
+| `W037-OBL-005` | direct OxFml evaluator re-execution | W036 has projection evidence and direct evaluator absence as pack blocker | `calc-ubd.4` | exercised for the upstream-host fixture slice by `w037-direct-oxfml-evaluator-001`; pack-grade replay still awaits later gates |
+| `W037-OBL-006` | `LET`/`LAMBDA` OxFml/OxFunc carrier seam | W036 checked callable-carrier boundary inventory and kept full OxFunc kernel opaque | `calc-ubd.4`, `calc-ubd.5` | `calc-ubd.4` exercises lexical capture and returned-lambda invocation through OxFml; `calc-ubd.5` still owns proof/model inventory and general OxFunc kernel exclusion |
 | `W037-OBL-007` | Lean proof closure inventory | W036 Lean artifacts have zero explicit axioms but remain inventory slices | `calc-ubd.5` | classify theorem families as proved, assumed, bounded, external, blocked, or out of scope with runnable checks |
 | `W037-OBL-008` | TLA model closure inventory | W036 checks bounded Stage 2 partition configs and no policy promotion | `calc-ubd.5`, `calc-ubd.6` | classify invariants, bounds, liveness/coverage gaps, and production-policy blockers |
 | `W037-OBL-009` | Stage 2 deterministic replay and partition promotion criteria | W036 has bounded partition model and scheduler-readiness criteria, but no deterministic replay equivalence | `calc-ubd.6`, `calc-ubd.8` | define replayable promotion criteria and semantic-equivalence obligations before any Stage 2 claim |
@@ -152,12 +152,14 @@ Current watch and consumed-now rows:
 5. format dependency tokens, locale/date-system inputs, and replayable format-sensitive outcomes are formalization hooks only until an exercised OxCalc artifact requires them.
 6. ordinary downstream use should target `consumer::runtime`, `consumer::editor`, and `consumer::replay`; public `substrate::...` access is not an ordinary downstream integration contract.
 7. host/runtime, table-context, immutable-edit, fixture stand-in, and registered-external packet lanes are converged enough for current planning, but not treated as broad production coordinator API freeze.
-8. direct OxFml evaluator re-execution remains a W037 evidence lane and pack-grade blocker until exercised.
-9. `LET`/`LAMBDA` remains a narrow OxCalc/OxFml/OxFunc carrier fragment; general OxFunc semantic kernels remain out of OxCalc scope.
+8. direct OxFml evaluator re-execution is now exercised for `calc-ubd.4` upstream-host fixtures; this removes direct-evaluator absence for that slice but does not promote pack-grade replay.
+9. `LET`/`LAMBDA` remains a narrow OxCalc/OxFml/OxFunc carrier fragment; `calc-ubd.4` exercises two direct rows, while general OxFunc semantic kernels remain out of OxCalc scope.
 
 No OxFml handoff is filed by this bead. A W037 handoff is required only if evidence shows an OxFml-owned evaluator, FEC/F3E, runtime facade, formatting, or fixture/host packet clause is insufficient for an exercised OxCalc artifact.
 
 Post-ledger intake note: the `format_delta`/`display_delta` and formalization-hook rows above were sharpened during the later `calc-ubd.3` intake of OxFml formatting updates. They update the W037 watch/input-contract surface and do not change the original `calc-ubd.2` runtime, replay, proof, model, or promotion evidence.
+
+Post-`calc-ubd.4` note: `w037-direct-oxfml-evaluator-001` exercises the direct OxFml runtime facade, two narrow `LET`/`LAMBDA` carrier rows, and one W073 typed conditional-formatting guard row. The run has 12 upstream-host cases and 0 expectation mismatches. It does not promote pack-grade replay, C5, full optimized/core-engine verification, full Lean/TLA verification, or broad display-facing closure.
 
 ## 9. Semantic-Equivalence Statement
 

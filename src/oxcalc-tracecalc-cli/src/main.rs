@@ -8,6 +8,7 @@ use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
 };
+use oxcalc_core::upstream_host_runner::UpstreamHostRunner;
 use oxcalc_tracecalc::continuous_assurance::ContinuousAssuranceRunner;
 use oxcalc_tracecalc::implementation_conformance::ImplementationConformanceRunner;
 use oxcalc_tracecalc::independent_conformance::IndependentConformanceRunner;
@@ -32,7 +33,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | implementation-conformance <run-id> | continuous-assurance <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | pack-capability <run-id> | scale-semantic-binding <run-id> | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -134,6 +135,15 @@ fn run() -> Result<(), String> {
             }
             ("oxfml-bridge", run_id)
         }
+        "upstream-host" => {
+            let Some(run_id) = args.next() else {
+                return Err("usage: oxcalc-tracecalc-cli upstream-host <run-id>".to_string());
+            };
+            if args.next().is_some() {
+                return Err("usage: oxcalc-tracecalc-cli upstream-host <run-id>".to_string());
+            }
+            ("upstream-host", run_id)
+        }
         "independent-conformance" => {
             let Some(run_id) = args.next() else {
                 return Err(
@@ -189,6 +199,7 @@ fn run() -> Result<(), String> {
         "tracecalc-oracle-matrix" => ensure_repo_root(&repo_root)?,
         "treecalc" => ensure_treecalc_root(&repo_root)?,
         "oxfml-bridge" => ensure_oxfml_bridge_root(&repo_root)?,
+        "upstream-host" => ensure_upstream_host_root(&repo_root)?,
         "independent-conformance" => ensure_independent_conformance_root(&repo_root)?,
         "pack-capability" => ensure_pack_capability_root(&repo_root)?,
         "scale-semantic-binding" => ensure_scale_semantic_binding_root(&repo_root)?,
@@ -305,6 +316,21 @@ fn run() -> Result<(), String> {
                 summary.fixture_case_count, summary.family_count, summary.artifact_root
             );
         }
+        "upstream-host" => {
+            let runner = UpstreamHostRunner::new();
+            let summary = runner
+                .execute(&repo_root, &run_id)
+                .map_err(|error| format!("upstream-host run failed: {error}"))?;
+            println!(
+                "Upstream-host direct OxFml run '{run_id}' wrote {} cases ({} direct OxFml, {} LET/LAMBDA, {} W073 formatting guard, {} mismatches) to {}.",
+                summary.fixture_case_count,
+                summary.direct_oxfml_case_count,
+                summary.let_lambda_case_count,
+                summary.w073_typed_rule_case_count,
+                summary.expectation_mismatch_count,
+                summary.artifact_root
+            );
+        }
         "independent-conformance" => {
             let runner = IndependentConformanceRunner::new();
             let summary = runner
@@ -414,6 +440,19 @@ fn ensure_oxfml_bridge_root(repo_root: &Path) -> Result<(), String> {
         Err(format!(
             "current directory is not the OxCalc repo root for OxFml fixture bridge runs: missing {}",
             fixture_path.display()
+        ))
+    }
+}
+
+fn ensure_upstream_host_root(repo_root: &Path) -> Result<(), String> {
+    let manifest_path =
+        repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
+    if manifest_path.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not the OxCalc repo root for upstream-host runs: missing {}",
+            manifest_path.display()
         ))
     }
 }

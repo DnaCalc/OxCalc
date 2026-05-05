@@ -17,6 +17,7 @@ use oxfml_core::format::{oxfml_current_excel_host_locale_context, oxfml_en_us_lo
 use oxfml_core::interface::{
     TableCallerRegion, TableDescriptor, TableRef, TypedContextQueryBundle,
 };
+use oxfml_core::publication::VerificationPublicationContext;
 use oxfml_core::semantics::LibraryContextSnapshot;
 use oxfml_core::source::{
     FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
@@ -130,6 +131,7 @@ pub struct MinimalUpstreamHostPacket {
     pub binding_world: MinimalBindingWorld,
     pub typed_query_facts: MinimalTypedQueryFacts,
     pub runtime_catalog: MinimalRuntimeCatalogFacts,
+    pub publication_context: Option<VerificationPublicationContext>,
 }
 
 impl MinimalUpstreamHostPacket {
@@ -234,10 +236,14 @@ impl MinimalUpstreamHostPacket {
             self.typed_query_facts.random_value,
         );
 
-        self.build_runtime_environment().execute(
+        let mut request =
             RuntimeFormulaRequest::new(self.build_formula_source_record(), query_bundle)
-                .with_backend(backend),
-        )
+                .with_backend(backend);
+        if let Some(publication_context) = &self.publication_context {
+            request = request.with_verification_publication_context(publication_context.clone());
+        }
+
+        self.build_runtime_environment().execute(request)
     }
 
     pub fn recalc_with_replay_projection(
@@ -361,6 +367,7 @@ mod tests {
             binding_world: MinimalBindingWorld::default(),
             typed_query_facts: MinimalTypedQueryFacts::default(),
             runtime_catalog: MinimalRuntimeCatalogFacts::default(),
+            publication_context: None,
         }
     }
 

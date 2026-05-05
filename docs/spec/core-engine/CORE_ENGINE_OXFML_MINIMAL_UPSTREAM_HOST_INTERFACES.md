@@ -80,7 +80,11 @@ The first minimal upstream host interface package is:
 ### 4.4 Runtime catalog facts
 1. optional `library_context_snapshot`
 
-### 4.5 First replay projection
+### 4.5 Verification publication context
+1. optional `VerificationPublicationContext`
+2. optional formatting/profile inputs and conditional-formatting rules for deterministic publication-surface checks
+
+### 4.6 First replay projection
 1. deterministic replay projection from the same minimal packet through `consumer::replay::ReplayProjectionService`
 2. carried `library_context_snapshot_ref` projection derived from the runtime result and runtime catalog snapshot
 
@@ -104,7 +108,10 @@ It supports:
 9. typed RTD stand-ins,
 10. locale-context selection,
 11. in-memory library-context snapshot carriage,
-12. first replay projection through `consumer::replay::{ ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService }` from the same deterministic host packet.
+12. optional verification publication context carriage into `RuntimeFormulaRequest`,
+13. narrow W037 direct `LET`/`LAMBDA` carrier rows through the public OxFml runtime facade,
+14. one W073 typed conditional-formatting guard row proving `typed_rule.rank` drives an aggregate formatting family while retained legacy threshold text is not interpreted for that family,
+15. first replay projection through `consumer::replay::{ ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService }` from the same deterministic host packet.
 
 It does not yet widen to:
 1. production coordinator API freeze,
@@ -128,9 +135,14 @@ For authority and interpretation:
 ## 7. Current Code Surface
 The current implementation lives in:
 1. `src/oxcalc-core/src/upstream_host.rs`
+2. `src/oxcalc-core/src/upstream_host_fixture.rs`
+3. `src/oxcalc-core/src/upstream_host_runner.rs`
 
 The current live consumer is:
 1. `src/oxcalc-core/src/treecalc.rs`
+
+The current W037 direct-OxFml evidence runner is:
+1. `cargo run -p oxcalc-tracecalc-cli -- upstream-host w037-direct-oxfml-evaluator-001`
 
 The current deterministic compare discipline is exercised through:
 1. `scripts/compare-treecalc-local-run.ps1`
@@ -163,4 +175,5 @@ Immediate intended use is:
   - broader W026 bind/reference intake remains open beyond this minimal packet
   - caller-anchor/address-mode breadth, execution-restriction transport breadth, and broader publication/topology breadth remain narrower seam lanes
   - first table-context carriage and four bounded evaluator-facing structured-reference families are fixture-covered in the first corpus, but richer structured-reference evaluator families are not yet fixture-covered
+  - W037 direct OxFml runtime-facade evidence covers two narrow `LET`/`LAMBDA` carrier rows and one W073 typed conditional-formatting guard row
   - this packet is ready for deterministic automated scaffolding, first replay-projection testing, and first data-driven fixture use, but not a production coordinator API freeze

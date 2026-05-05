@@ -37,6 +37,7 @@ fn packet(formula_text: &str) -> MinimalUpstreamHostPacket {
         binding_world: Default::default(),
         typed_query_facts: Default::default(),
         runtime_catalog: Default::default(),
+        publication_context: None,
     }
 }
 
@@ -182,7 +183,7 @@ fn public_fixture_loader_executes_checked_in_upstream_host_corpus() {
         repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
     let manifest = upstream_host_fixture::load_manifest(&manifest_path).unwrap();
 
-    assert_eq!(manifest.cases.len(), 9);
+    assert_eq!(manifest.cases.len(), 12);
 
     for entry in &manifest.cases {
         let case_path = repo_root
@@ -190,6 +191,11 @@ fn public_fixture_loader_executes_checked_in_upstream_host_corpus() {
             .join(entry.path.replace('/', "\\"));
         let case = upstream_host_fixture::load_case(&case_path).unwrap();
         let execution = upstream_host_fixture::execute_fixture_case(&case).unwrap();
+
+        assert_eq!(
+            upstream_host_fixture::fixture_expectation_mismatches(&case, &execution),
+            Vec::<String>::new()
+        );
 
         assert_eq!(
             execution.packet.formula_slot.formula_stable_id,

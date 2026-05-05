@@ -1,11 +1,10 @@
 {
-  "schema_version": "oxcalc.upstream_host.fixture_manifest.v1",
-  "corpus_id": "upstream-host-scaffolding-v1",
-  "base_path": "docs/test-fixtures/core-engine/upstream-host",
   "cases": [
     {
       "case_id": "uh_info_directory_capture_001",
-      "path": "cases/uh_info_directory_capture_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_info_directory_capture_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "host-info",
@@ -14,7 +13,9 @@
     },
     {
       "case_id": "uh_info_unsupported_query_001",
-      "path": "cases/uh_info_unsupported_query_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_info_unsupported_query_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "host-info",
@@ -23,7 +24,9 @@
     },
     {
       "case_id": "uh_rtd_provider_error_001",
-      "path": "cases/uh_rtd_provider_error_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_rtd_provider_error_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "rtd",
@@ -32,7 +35,9 @@
     },
     {
       "case_id": "uh_sum_defined_name_bind_001",
-      "path": "cases/uh_sum_defined_name_bind_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_sum_defined_name_bind_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "bind-context",
@@ -41,7 +46,9 @@
     },
     {
       "case_id": "uh_let_lambda_lexical_capture_eval_001",
-      "path": "cases/uh_let_lambda_lexical_capture_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "direct-oxfml",
         "let-lambda",
@@ -51,7 +58,9 @@
     },
     {
       "case_id": "uh_returned_lambda_invocation_eval_001",
-      "path": "cases/uh_returned_lambda_invocation_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_returned_lambda_invocation_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "direct-oxfml",
         "let-lambda",
@@ -61,7 +70,9 @@
     },
     {
       "case_id": "uh_typed_cf_top_rank_guard_001",
-      "path": "cases/uh_typed_cf_top_rank_guard_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_typed_cf_top_rank_guard_001/result.json",
+      "status": "matched",
       "tags": [
         "direct-oxfml",
         "formatting",
@@ -71,7 +82,9 @@
     },
     {
       "case_id": "uh_table_context_bind_001",
-      "path": "cases/uh_table_context_bind_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_table_context_bind_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "table-context",
@@ -80,7 +93,9 @@
     },
     {
       "case_id": "uh_structured_reference_eval_001",
-      "path": "cases/uh_structured_reference_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_reference_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "table-context",
@@ -90,7 +105,9 @@
     },
     {
       "case_id": "uh_structured_column_sum_eval_001",
-      "path": "cases/uh_structured_column_sum_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_column_sum_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "table-context",
@@ -101,7 +118,9 @@
     },
     {
       "case_id": "uh_structured_headers_section_eval_001",
-      "path": "cases/uh_structured_headers_section_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_headers_section_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "table-context",
@@ -112,7 +131,9 @@
     },
     {
       "case_id": "uh_structured_data_multicol_sum_eval_001",
-      "path": "cases/uh_structured_data_multicol_sum_eval_001.json",
+      "expectation_mismatch_count": 0,
+      "path": "cases/uh_structured_data_multicol_sum_eval_001/result.json",
+      "status": "matched",
       "tags": [
         "scaffolding",
         "table-context",
@@ -123,5 +144,7 @@
         "aggregate"
       ]
     }
-  ]
+  ],
+  "run_id": "w037-direct-oxfml-evaluator-001",
+  "schema_version": "oxcalc.upstream_host.direct_case_index.v1"
 }

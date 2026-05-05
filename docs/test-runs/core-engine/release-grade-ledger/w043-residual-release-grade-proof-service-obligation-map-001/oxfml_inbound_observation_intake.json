@@ -1,0 +1,68 @@
+{
+  "run_id": "w043-residual-release-grade-proof-service-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w043.oxfml_inbound_observation_intake.v1",
+  "status": "reviewed_as_watch_and_handoff_trigger_inputs",
+  "sources": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "w073_formatting": {
+    "status": "typed_only_direct_replacement_guard_retained",
+    "typed_rule_only_families": [
+      "colorScale",
+      "dataBar",
+      "iconSet",
+      "top",
+      "bottom",
+      "aboveAverage",
+      "belowAverage"
+    ],
+    "threshold_fallback_allowed_for_typed_families": false,
+    "thresholds_remain_meaningful_for": [
+      "scalar",
+      "operator",
+      "expression"
+    ],
+    "old_aggregate_visualization_option_strings_interpreted_as_typed_metadata": false,
+    "required_w043_disposition": "Any W043 evidence that exercises aggregate or visualization conditional-formatting metadata must use VerificationConditionalFormattingRule.typed_rule for the named families; reliance on old W072 threshold strings must be recorded as mismatch or blocker."
+  },
+  "note_level_watch_lanes": [
+    {
+      "lane": "runtime_facade",
+      "current_read": "consumer-facing runtime facade is the intended OxFml_V1 downstream surface, but coordinator policy and publication semantics remain OxCalc-owned above it",
+      "w043_disposition": "watch; do not build new long-term OxCalc wrappers around old flat roots when direct implementation work touches the runtime facade"
+    },
+    {
+      "lane": "host_runtime_external_requirements",
+      "current_read": "settled enough for first implementation planning, not shared seam-freeze text",
+      "w043_disposition": "watch; use as bounded implementation input and file handoff only on concrete mismatch"
+    },
+    {
+      "lane": "structured_reference_table_packet",
+      "current_read": "table_catalog + enclosing_table_ref + caller_table_region is converged as the first semantic packet",
+      "w043_disposition": "watch; preserve host/OxCalc ownership of table context and keep totals/header/data/current-row-sensitive region identity explicit when this lane enters OxCalc evidence"
+    },
+    {
+      "lane": "stand_in_fixture_host_packet",
+      "current_read": "settled enough for deterministic fixture-host and TreeCalc-facing integration reuse on the current first wave",
+      "w043_disposition": "watch; do not freeze production coordinator API from the stand-in packet alone"
+    },
+    {
+      "lane": "registered_external_provider_boundary",
+      "current_read": "host- or coordinator-initiated registration remains typed mutation requests funneled into OxFunc-owned catalog truth",
+      "w043_disposition": "watch; preserve registration-channel identity and stable registration identity where later TreeCalc-facing integration uses the lane"
+    },
+    {
+      "lane": "provider_failure_callable_publication",
+      "current_read": "likely future formal-handoff trigger, but still watch lane until coordinator-visible evidence creates pressure",
+      "w043_disposition": "watch; do not promote provider-failure or callable-publication semantics from note-level text"
+    },
+    {
+      "lane": "format_delta_display_delta_boundary",
+      "current_read": "format_delta and display_delta are distinct canonical bundle categories",
+      "w043_disposition": "carry into OxFml seam evidence and prevent collapse of display-facing consequences into semantic formatting consequences"
+    }
+  ],
+  "handoff_required": false
+}

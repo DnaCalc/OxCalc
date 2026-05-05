@@ -102,13 +102,12 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-2p3.1_ready_residual_release_grade_proof_service_obligation_map`
+- execution_state: `calc-2p3.2_ready_optimized_core_broad_conformance_and_callable_metadata_closure`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - W043 evidence packets remain to be produced
-  - post-W042 residual release-grade lanes require W043 obligation mapping
+  - `calc-2p3.2` optimized core broad conformance and callable metadata closure is next
   - broader dynamic dependency-transition coverage remains partial
   - callable metadata projection remains an exact blocker
   - callable carrier sufficiency proof remains blocked
@@ -129,6 +128,6 @@ Child path:
   - W073 typed-only conditional-formatting request-construction uptake remains a downstream public-migration watch lane
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, full independent evaluator breadth, broad OxFml closure, public migration, callable metadata/carrier, registered-external projection, provider-publication, and general OxFunc kernels remain unpromoted
 
-Planned first packet:
+Latest evidence:
 
-1. `docs/spec/core-engine/w043-formalization/W043_RESIDUAL_RELEASE_GRADE_PROOF_SERVICE_OBLIGATION_MAP.md` will record the `calc-2p3.1` residual release-grade proof-service obligation map.
+1. `docs/spec/core-engine/w043-formalization/W043_RESIDUAL_RELEASE_GRADE_PROOF_SERVICE_OBLIGATION_MAP.md` records the `calc-2p3.1` residual release-grade proof-service obligation map. The packet `w043-residual-release-grade-proof-service-obligation-map-001` maps 18 post-W042 residual lanes into 36 W043 obligations and 16 promotion-target gates. It carries current OxFml W073 typed-only conditional-formatting intake, records runtime-facade, host/runtime, structured-reference, stand-in fixture-host, registered-external, provider-failure/callable-publication, public-migration, and `format_delta`/`display_delta` notes as watch or handoff-trigger inputs, requires no OxFml handoff, and keeps release-grade verification, full formalization, C5, pack-grade replay, Stage 2 policy, operated services, retained-history/witness services, retention SLO, independent evaluator breadth, mismatch quarantine, broad OxFml display/publication, public migration, callable metadata, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and general OxFunc kernels unpromoted.

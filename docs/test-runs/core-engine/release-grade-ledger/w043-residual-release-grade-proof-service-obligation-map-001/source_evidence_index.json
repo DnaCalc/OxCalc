@@ -1,0 +1,46 @@
+{
+  "run_id": "w043-residual-release-grade-proof-service-obligation-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w043.source_evidence_index.v1",
+  "predecessor_workset": "W042",
+  "predecessor_closure_packet": "docs/spec/core-engine/w042-formalization/W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+  "predecessor_artifacts": [
+    "docs/test-runs/core-engine/closure-audit/w042-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json",
+    "docs/test-runs/core-engine/closure-audit/w042-closure-audit-release-grade-verification-decision-001/direct_evidence_coverage_audit.json",
+    "docs/test-runs/core-engine/closure-audit/w042-closure-audit-release-grade-verification-decision-001/release_decision.json",
+    "docs/test-runs/core-engine/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json",
+    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json",
+    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/run_summary.json",
+    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
+    "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json"
+  ],
+  "current_workset_surfaces": [
+    "docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md",
+    "docs/spec/core-engine/w043-formalization/README.md",
+    "docs/WORKSET_REGISTER.md",
+    "docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+  ],
+  "upstream_observation_surfaces": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "reviewed_inbound_observations": [
+    "runtime_facade_current_surface",
+    "host_runtime_and_external_requirements",
+    "structured_reference_table_catalog_enclosing_table_ref_caller_table_region",
+    "stand_in_fixture_host_packet",
+    "registered_external_provider_boundary",
+    "provider_failure_callable_publication_watch_lane",
+    "format_delta_display_delta_boundary",
+    "w073_typed_conditional_formatting_metadata"
+  ],
+  "oxfml_handoff_required": false,
+  "reason_no_handoff": "This bead records W043 obligations and carries current inbound OxFml observations as watch lanes; it does not expose a new exercised OxCalc/OxFml mismatch or propose coordinator-facing FEC/F3E clause changes."
+}

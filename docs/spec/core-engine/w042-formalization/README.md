@@ -28,6 +28,7 @@ Current packets:
 9. `W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md` - `calc-czd.9` pack-grade replay governance and C5 reassessment.
 10. `W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-czd.10` closure audit and release-grade verification decision.
 
-Planned packets:
+Successor scope:
 
-1. Post-W042 successor scope is recommended by the closure-audit packet; no W042 packet remains planned.
+1. Post-W042 successor scope is now registered as `W043` in `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md` with parent epic `calc-2p3`.
+2. No W042 packet remains planned.

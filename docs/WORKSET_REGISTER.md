@@ -380,3 +380,19 @@ It does mean:
    residual release-grade closure obligation ledger, optimized core counterpart conformance and callable metadata projection, Rust totality refinement and core panic-boundary closure, Lean/TLA fairness and full-verification expansion, Stage 2 production analyzer and pack-grade equivalence closure, operated assurance retained-history retained-witness and alert service closure, independent evaluator breadth mismatch quarantine and operated differential service, OxFml public migration callable carrier and registered-external closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`
+
+### W043 Core Formalization Release-Grade Proof And Operated-Service Integration
+1. purpose:
+   continue after W042 by converting remaining release-grade blockers into stronger direct proof, implementation, operated-service, independent-evaluator, OxFml/callable, pack/C5, and release-grade verification evidence where possible, while preserving exact blockers where direct evidence is still insufficient.
+2. depends_on:
+   `W042`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md`, `docs/spec/core-engine/w042-formalization/W042_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W042 residual lanes are mapped to W043 obligations; optimized/core broad conformance and callable metadata blockers are fixed, directly evidenced, spec-evolved, or retained without declared-gap match promotion; Rust totality/refinement and panic-free core claims are checked or blocked; Lean/TLA verification and unbounded fairness claims are checked or blocked; Stage 2 and pack-equivalence claims have production-relevant partition soundness, scheduler equivalence, and observable-result invariance evidence; operated service claims use operated artifacts and retained lifecycle evidence; independent evaluator and mismatch quarantine claims use implementation authority and service behavior; OxFml W073 typed-only formatting, broad display/publication, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, and current inbound observation-ledger lanes are evidenced, handed off, watched, or blocked; pack/C5 and release-grade decisions state exact evidence consequence before any promotion claim.
+6. initial_epic_lanes:
+   residual release-grade proof-service obligation map, optimized core broad conformance and callable metadata closure, Rust totality refinement and panic-free core proof frontier, Lean/TLA full-verification and unbounded fairness discharge, Stage 2 production partition analyzer and scheduler equivalence, operated assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service, OxFml public migration formatting callable and registered-external seam, pack-grade replay governance and C5 release reassessment, closure audit and release-grade verification decision
+7. rollout_mode:
+   `execution_target`

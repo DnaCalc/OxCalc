@@ -1,0 +1,22 @@
+{
+  "automatic_dynamic_transition_evidenced": true,
+  "bounded_partition_analyzer_evidenced": true,
+  "capability_counterpart_evidenced": true,
+  "declared_pack_equivalence_evidenced": true,
+  "exact_remaining_blocker_count": 4,
+  "failed_row_count": 0,
+  "formatting_watch_row_count": 1,
+  "no_proxy_promotion_guard_evidenced": true,
+  "nontrivial_permutation_row_count": 1,
+  "observable_invariance_row_count": 5,
+  "partition_replay_row_count": 5,
+  "permutation_replay_row_count": 6,
+  "policy_row_count": 14,
+  "run_id": "w041-stage2-production-analyzer-pack-equivalence-001",
+  "satisfied_policy_row_count": 10,
+  "schema_version": "oxcalc.stage2_replay.w041.validation.v1",
+  "snapshot_counterpart_evidenced": true,
+  "stage2_policy_promoted": false,
+  "status": "w041_stage2_analyzer_pack_equivalence_valid",
+  "validation_failures": []
+}

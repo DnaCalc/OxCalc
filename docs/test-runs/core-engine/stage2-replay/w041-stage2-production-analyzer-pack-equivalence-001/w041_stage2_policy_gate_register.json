@@ -1,0 +1,216 @@
+{
+  "exact_remaining_blocker_count": 4,
+  "policy_row_count": 14,
+  "rows": [
+    {
+      "disposition": "carry W040 bounded baseline-versus-Stage-2 replay rows into W041 pack-equivalence classification",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_baseline_vs_stage2_replay",
+      "promotion_consequence": "bounded replay remains declared-profile evidence only",
+      "row_id": "w041_stage2_bounded_replay_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-013"
+    },
+    {
+      "disposition": "carry one nontrivial partition-order permutation row and six total permutation rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "partition_order_permutation_replay",
+      "promotion_consequence": "bounded permutation replay does not discharge production scheduler fairness",
+      "row_id": "w041_stage2_partition_order_permutation_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-013"
+    },
+    {
+      "disposition": "carry W040 observable-result invariance rows for values, rejects, and formatting watch surfaces",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "observable_result_invariance",
+      "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+      "row_id": "w041_stage2_observable_invariance_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-013"
+    },
+    {
+      "disposition": "bind W041 automatic resolved-to-potential dynamic transition evidence to Stage 2 analyzer preconditions",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "dynamic_and_soft_reference_transition",
+      "promotion_consequence": "automatic dynamic transition evidence narrows declared-profile analyzer inputs but does not prove production analyzer soundness",
+      "row_id": "w041_stage2_automatic_dynamic_transition_bound",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json",
+        "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json"
+      ],
+      "w041_obligation_id": "W041-OBL-012"
+    },
+    {
+      "disposition": "bind W041 retained snapshot blocker to W040 direct Stage 2 stale-snapshot reject/no-publish counterpart evidence without match promotion",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "snapshot_fence_counterpart",
+      "promotion_consequence": "the calc-sui.5 Stage 2 counterpart is evidenced for declared profiles; full optimized/core and production policy remain blocked by broader gates",
+      "row_id": "w041_stage2_snapshot_fence_counterpart_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json"
+      ],
+      "w041_obligation_id": "W041-OBL-003"
+    },
+    {
+      "disposition": "bind W041 retained capability-view blocker to W040 direct Stage 2 capability mismatch reject/no-publish counterpart evidence without match promotion",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "capability_view_fence_counterpart",
+      "promotion_consequence": "the calc-sui.5 Stage 2 counterpart is evidenced for declared profiles; full optimized/core and production policy remain blocked by broader gates",
+      "row_id": "w041_stage2_capability_view_counterpart_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json"
+      ],
+      "w041_obligation_id": "W041-OBL-004"
+    },
+    {
+      "disposition": "bind W040 bounded partition-analyzer evidence and W041 bounded Stage 2 model input under the W041 Lean predicate",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_partition_analyzer_soundness",
+      "promotion_consequence": "bounded analyzer preconditions are evidenced, but full production analyzer soundness remains blocked",
+      "row_id": "w041_stage2_bounded_partition_analyzer_predicate_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json",
+        "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean"
+      ],
+      "w041_obligation_id": "W041-OBL-012"
+    },
+    {
+      "disposition": "retain the W073 direct-replacement rule: typed_rule is the sole metadata source for aggregate and visualization conditional-formatting families",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "w073_typed_formatting_watch",
+      "promotion_consequence": "typed-only formatting is carried as an observable-surface guard; broad OxFml seam breadth remains under calc-sui.8",
+      "row_id": "w041_stage2_w073_typed_formatting_guard_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json"
+      ],
+      "w041_obligation_id": "W041-OBL-021"
+    },
+    {
+      "disposition": "classify values, rejects, fence no-publish behavior, typed-formatting watch, and replay validation as declared-profile pack-equivalence inputs",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "declared_profile_pack_replay_equivalence",
+      "promotion_consequence": "declared-profile equivalence evidence is not pack-grade replay governance",
+      "row_id": "w041_stage2_declared_pack_replay_equivalence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json"
+      ],
+      "w041_obligation_id": "W041-OBL-013"
+    },
+    {
+      "disposition": "keep bounded-only, declared-profile, and retained-blocker evidence out of promotion counts",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "no_proxy_promotion_guard",
+      "promotion_consequence": "Stage 2, pack, and release-grade gates remain blocked unless direct target evidence is present",
+      "row_id": "w041_stage2_no_proxy_promotion_guard",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json"
+      ],
+      "w041_obligation_id": "W041-OBL-006"
+    },
+    {
+      "disposition": "retain full production partition-analyzer soundness as exact blocker beyond bounded declared-profile evidence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "full_production_partition_analyzer_soundness",
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "row_id": "w041_stage2_full_production_analyzer_soundness_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json",
+        "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean"
+      ],
+      "w041_obligation_id": "W041-OBL-012"
+    },
+    {
+      "disposition": "retain fairness, unbounded scheduler coverage, and model-completeness limits as exact Stage 2 blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "fairness_scheduler_unbounded_coverage",
+      "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+      "row_id": "w041_stage2_fairness_scheduler_unbounded_coverage_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-011"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w041_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-018"
+    },
+    {
+      "disposition": "retain pack-grade replay governance and retained-witness lifecycle as release-decision blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "row_id": "w041_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+        "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json"
+      ],
+      "w041_obligation_id": "W041-OBL-025"
+    }
+  ],
+  "run_id": "w041-stage2-production-analyzer-pack-equivalence-001",
+  "satisfied_policy_row_count": 10,
+  "schema_version": "oxcalc.stage2_replay.w041.stage2_policy_gate_register.v1",
+  "stage2_policy_promoted": false
+}

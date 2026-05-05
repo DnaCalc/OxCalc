@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W038/W039/W040 bounded Stage 2 partition replay and policy-governance evidence.
+//! W038/W039/W040/W041 bounded Stage 2 partition replay and policy-governance evidence.
 
 use std::collections::HashMap;
 use std::fs;
@@ -42,6 +42,17 @@ const W040_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.stage2_replay.w040.stage2_exact_blocker_register.v1";
 const W040_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w040.promotion_decision.v1";
 const W040_VALIDATION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w040.validation.v1";
+const W041_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.stage2_replay.w041.run_summary.v1";
+const W041_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.stage2_replay.w041.source_evidence_index.v1";
+const W041_POLICY_GATE_SCHEMA_V1: &str = "oxcalc.stage2_replay.w041.stage2_policy_gate_register.v1";
+const W041_PRODUCTION_ANALYZER_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w041.production_analyzer_soundness_register.v1";
+const W041_PACK_EQUIVALENCE_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w041.pack_equivalence_register.v1";
+const W041_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.stage2_replay.w041.stage2_exact_blocker_register.v1";
+const W041_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w041.promotion_decision.v1";
+const W041_VALIDATION_SCHEMA_V1: &str = "oxcalc.stage2_replay.w041.validation.v1";
 
 const W036_STAGE2_TLA_RUN_SUMMARY: &str =
     "docs/test-runs/core-engine/tla/w036-stage2-partition-001/run_summary.json";
@@ -76,6 +87,28 @@ const W040_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assura
 const W040_LEAN_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json";
 const W040_STAGE2_LEAN_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean";
+const W040_STAGE2_RUN_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json";
+const W040_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json";
+const W040_STAGE2_POLICY_GATE: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json";
+const W040_STAGE2_PARTITION_ANALYZER: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json";
+const W040_STAGE2_OBSERVABLE_EQUIVALENCE: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json";
+const W040_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json";
+const W040_STAGE2_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json";
+const W041_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json";
+const W041_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
+const W041_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json";
+const W041_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json";
+const W041_OPTIMIZED_CORE_DISPOSITIONS: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json";
+const W041_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json";
+const W041_DYNAMIC_AUTO_TRANSITION: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json";
+const W041_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json";
+const W041_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json";
+const W041_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json";
+const W041_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json";
+const W041_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/validation.json";
+const W041_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json";
+const W041_STAGE2_LEAN_FILE: &str =
+    "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean";
 const W036_STAGE2_TLA_PROMOTION_BLOCKERS: &str =
     "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json";
 
@@ -193,6 +226,9 @@ impl Stage2ReplayRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<Stage2ReplayRunSummary, Stage2ReplayError> {
+        if run_id.contains("w041") {
+            return self.execute_w041(repo_root, run_id);
+        }
         if run_id.contains("w040") {
             return self.execute_w040(repo_root, run_id);
         }
@@ -450,6 +486,715 @@ impl Stage2ReplayRunner {
             formatting_watch_row_count,
             exact_remaining_blocker_count,
             failed_row_count,
+            stage2_policy_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w041(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<Stage2ReplayRunSummary, Stage2ReplayError> {
+        let relative_artifact_root =
+            relative_artifact_path(&["docs", "test-runs", "core-engine", "stage2-replay", run_id]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                Stage2ReplayError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            Stage2ReplayError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w041_obligation_summary = read_json(repo_root, W041_OBLIGATION_SUMMARY)?;
+        let w041_obligation_map = read_json(repo_root, W041_OBLIGATION_MAP)?;
+        let w041_formatting_intake = read_json(repo_root, W041_FORMATTING_INTAKE)?;
+        let w041_optimized_summary = read_json(repo_root, W041_OPTIMIZED_CORE_SUMMARY)?;
+        let w041_optimized_dispositions = read_json(repo_root, W041_OPTIMIZED_CORE_DISPOSITIONS)?;
+        let w041_optimized_blockers = read_json(repo_root, W041_OPTIMIZED_CORE_BLOCKERS)?;
+        let w041_dynamic_auto_transition = read_json(repo_root, W041_DYNAMIC_AUTO_TRANSITION)?;
+        let w041_treecalc_summary = read_json(repo_root, W041_TREECALC_SUMMARY)?;
+        let w041_rust_summary = read_json(repo_root, W041_RUST_SUMMARY)?;
+        let w041_rust_validation = read_json(repo_root, W041_RUST_VALIDATION)?;
+        let w041_lean_tla_summary = read_json(repo_root, W041_LEAN_TLA_SUMMARY)?;
+        let w041_lean_tla_validation = read_json(repo_root, W041_LEAN_TLA_VALIDATION)?;
+        let w041_tla_model_register = read_json(repo_root, W041_TLA_MODEL_REGISTER)?;
+        let w040_stage2_summary = read_json(repo_root, W040_STAGE2_RUN_SUMMARY)?;
+        let w040_stage2_validation = read_json(repo_root, W040_STAGE2_VALIDATION)?;
+        let w040_stage2_policy_gate = read_json(repo_root, W040_STAGE2_POLICY_GATE)?;
+        let w040_stage2_partition_analyzer = read_json(repo_root, W040_STAGE2_PARTITION_ANALYZER)?;
+        let w040_stage2_observable_equivalence =
+            read_json(repo_root, W040_STAGE2_OBSERVABLE_EQUIVALENCE)?;
+        let w040_stage2_blockers = read_json(repo_root, W040_STAGE2_BLOCKERS)?;
+        let w040_stage2_promotion_decision = read_json(repo_root, W040_STAGE2_PROMOTION_DECISION)?;
+        let lean_file_present = repo_root.join(W041_STAGE2_LEAN_FILE).exists();
+
+        let w041_obligation_valid = number_at(&w041_obligation_summary, "obligation_count") == 28
+            && bool_at(
+                &w041_obligation_summary,
+                "oxfml_formatting_update_incorporated",
+            );
+        let w041_optimized_valid = number_at(&w041_optimized_summary, "failed_row_count") == 0
+            && number_at(
+                &w041_optimized_summary,
+                "dynamic_transition_implementation_evidence_count",
+            ) == 1
+            && number_at(&w041_optimized_summary, "match_promoted_count") == 0
+            && number_at(&w041_optimized_summary, "exact_remaining_blocker_count") == 3;
+        let w041_treecalc_valid = number_at(&w041_treecalc_summary, "case_count") == 26
+            && number_at(&w041_treecalc_summary, "expectation_mismatch_count") == 0;
+        let dynamic_auto_phase = &w041_dynamic_auto_transition["post_edit_phase"];
+        let automatic_dynamic_transition_valid = w041_optimized_valid
+            && w041_treecalc_valid
+            && string_at(dynamic_auto_phase, "result_state") == "rejected"
+            && array_field_contains_string(
+                dynamic_auto_phase,
+                "automatic_dependency_change_seeds",
+                "DependencyRemoved",
+            )
+            && array_field_contains_string(
+                dynamic_auto_phase,
+                "automatic_dependency_change_seeds",
+                "DependencyReclassified",
+            )
+            && bool_at(
+                &dynamic_auto_phase["invalidation_closure"],
+                "requires_rebind",
+            );
+        let w041_rust_valid = string_at(&w041_rust_validation, "status")
+            == "formal_assurance_w041_rust_totality_refinement_valid"
+            && number_at(&w041_rust_summary, "automatic_dynamic_transition_row_count") == 1
+            && !bool_at(
+                &w041_rust_summary["promotion_claims"],
+                "stage2_policy_promoted",
+            );
+        let w041_lean_tla_valid = string_at(&w041_lean_tla_validation, "status")
+            == "formal_assurance_w041_lean_tla_discharge_valid"
+            && number_at(&w041_lean_tla_summary, "bounded_model_row_count") == 4
+            && !bool_at(
+                &w041_lean_tla_summary["promotion_claims"],
+                "stage2_policy_promoted",
+            );
+        let w040_stage2_valid = string_at(&w040_stage2_validation, "status")
+            == "w040_stage2_policy_equivalence_valid"
+            && !bool_at(&w040_stage2_summary, "stage2_policy_promoted")
+            && !bool_at(&w040_stage2_promotion_decision, "stage2_policy_promoted");
+
+        let partition_replay_row_count =
+            number_at(&w040_stage2_summary, "partition_replay_row_count") as usize;
+        let permutation_replay_row_count =
+            number_at(&w040_stage2_summary, "permutation_replay_row_count") as usize;
+        let nontrivial_permutation_row_count =
+            number_at(&w040_stage2_summary, "nontrivial_permutation_row_count") as usize;
+        let observable_invariance_row_count =
+            number_at(&w040_stage2_summary, "observable_invariance_row_count") as usize;
+        let formatting_watch_row_count =
+            number_at(&w040_stage2_summary, "formatting_watch_row_count") as usize;
+        let bounded_replay_valid = w040_stage2_valid && partition_replay_row_count == 5;
+        let permutation_replay_valid = w040_stage2_valid
+            && permutation_replay_row_count == 6
+            && nontrivial_permutation_row_count == 1;
+        let observable_invariance_valid = w040_stage2_valid && observable_invariance_row_count == 5;
+        let snapshot_blocker_retained = row_with_field_exists(
+            &w041_optimized_blockers,
+            "row_id",
+            "w041_snapshot_fence_counterpart_exact_blocker",
+        ) && row_with_field_exists(
+            &w041_optimized_dispositions,
+            "row_id",
+            "w041_snapshot_fence_counterpart_exact_blocker",
+        );
+        let capability_blocker_retained = row_with_field_exists(
+            &w041_optimized_blockers,
+            "row_id",
+            "w041_capability_view_fence_counterpart_exact_blocker",
+        ) && row_with_field_exists(
+            &w041_optimized_dispositions,
+            "row_id",
+            "w041_capability_view_fence_counterpart_exact_blocker",
+        );
+        let snapshot_counterpart_valid =
+            bool_at(&w040_stage2_summary, "snapshot_counterpart_evidenced")
+                && bool_at(
+                    &w040_stage2_promotion_decision,
+                    "snapshot_fence_counterpart_evidenced",
+                )
+                && row_with_field_exists(
+                    &w040_stage2_observable_equivalence,
+                    "row_id",
+                    "w040_stage2_snapshot_fence_counterpart_direct_evidence",
+                )
+                && snapshot_blocker_retained;
+        let capability_counterpart_valid =
+            bool_at(&w040_stage2_summary, "capability_counterpart_evidenced")
+                && bool_at(
+                    &w040_stage2_promotion_decision,
+                    "capability_view_fence_counterpart_evidenced",
+                )
+                && row_with_field_exists(
+                    &w040_stage2_observable_equivalence,
+                    "row_id",
+                    "w040_stage2_capability_view_fence_counterpart_direct_evidence",
+                )
+                && capability_blocker_retained;
+        let bounded_analyzer_valid =
+            bool_at(&w040_stage2_summary, "bounded_partition_analyzer_evidenced")
+                && number_at(&w040_stage2_partition_analyzer, "row_count") == 6
+                && row_with_field_exists(
+                    &w041_tla_model_register,
+                    "row_id",
+                    "w041_stage2_equivalence_bounded_model_input",
+                )
+                && w041_lean_tla_valid
+                && lean_file_present;
+        let w073_guard_valid = formatting_watch_row_count == 1
+            && string_at(&w041_formatting_intake, "accepted_metadata_source")
+                == "VerificationConditionalFormattingRule.typed_rule"
+            && string_at(
+                &w041_formatting_intake,
+                "ignored_legacy_metadata_source_for_named_families",
+            ) == "W072 bounded thresholds strings"
+            && array_field_contains_string(
+                &w041_formatting_intake,
+                "typed_rule_only_families",
+                "colorScale",
+            )
+            && array_field_contains_string(
+                &w041_formatting_intake,
+                "typed_rule_only_families",
+                "dataBar",
+            )
+            && bool_at(
+                &w041_obligation_summary,
+                "oxfml_formatting_update_incorporated",
+            );
+        let declared_pack_equivalence_valid = observable_invariance_valid
+            && snapshot_counterpart_valid
+            && capability_counterpart_valid
+            && number_at(&w040_stage2_observable_equivalence, "row_count") == 8
+            && !bool_at(&w040_stage2_summary, "stage2_policy_promoted");
+        let no_proxy_guard_valid = w041_obligation_valid
+            && number_at(&w041_optimized_summary, "match_promoted_count") == 0
+            && !bool_at(&w040_stage2_summary, "stage2_policy_promoted")
+            && !bool_at(
+                &w040_stage2_promotion_decision,
+                "stage2_promotion_candidate",
+            );
+
+        let policy_rows = vec![
+            json!({
+                "row_id": "w041_stage2_bounded_replay_carried",
+                "w041_obligation_id": "W041-OBL-013",
+                "policy_area": "bounded_baseline_vs_stage2_replay",
+                "source_artifacts": [W040_STAGE2_RUN_SUMMARY, W040_STAGE2_POLICY_GATE],
+                "satisfied_for_declared_profile": bounded_replay_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded replay remains declared-profile evidence only",
+                "disposition": "carry W040 bounded baseline-versus-Stage-2 replay rows into W041 pack-equivalence classification",
+                "failures": if bounded_replay_valid { Vec::<String>::new() } else { vec!["w041_bounded_replay_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_partition_order_permutation_carried",
+                "w041_obligation_id": "W041-OBL-013",
+                "policy_area": "partition_order_permutation_replay",
+                "source_artifacts": [W040_STAGE2_RUN_SUMMARY, W040_STAGE2_POLICY_GATE],
+                "satisfied_for_declared_profile": permutation_replay_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded permutation replay does not discharge production scheduler fairness",
+                "disposition": "carry one nontrivial partition-order permutation row and six total permutation rows",
+                "failures": if permutation_replay_valid { Vec::<String>::new() } else { vec!["w041_partition_permutation_replay_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_observable_invariance_carried",
+                "w041_obligation_id": "W041-OBL-013",
+                "policy_area": "observable_result_invariance",
+                "source_artifacts": [W040_STAGE2_RUN_SUMMARY, W040_STAGE2_OBSERVABLE_EQUIVALENCE],
+                "satisfied_for_declared_profile": observable_invariance_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+                "disposition": "carry W040 observable-result invariance rows for values, rejects, and formatting watch surfaces",
+                "failures": if observable_invariance_valid { Vec::<String>::new() } else { vec!["w041_observable_invariance_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_automatic_dynamic_transition_bound",
+                "w041_obligation_id": "W041-OBL-012",
+                "policy_area": "dynamic_and_soft_reference_transition",
+                "source_artifacts": [W041_OPTIMIZED_CORE_SUMMARY, W041_DYNAMIC_AUTO_TRANSITION, W041_TREECALC_SUMMARY, W041_RUST_SUMMARY],
+                "satisfied_for_declared_profile": automatic_dynamic_transition_valid && w041_rust_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "automatic dynamic transition evidence narrows declared-profile analyzer inputs but does not prove production analyzer soundness",
+                "disposition": "bind W041 automatic resolved-to-potential dynamic transition evidence to Stage 2 analyzer preconditions",
+                "failures": if automatic_dynamic_transition_valid && w041_rust_valid { Vec::<String>::new() } else { vec!["w041_automatic_dynamic_transition_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_snapshot_fence_counterpart_evidence",
+                "w041_obligation_id": "W041-OBL-003",
+                "policy_area": "snapshot_fence_counterpart",
+                "source_artifacts": [W041_OPTIMIZED_CORE_BLOCKERS, W041_OPTIMIZED_CORE_DISPOSITIONS, W040_STAGE2_OBSERVABLE_EQUIVALENCE, W040_STAGE2_PROMOTION_DECISION],
+                "satisfied_for_declared_profile": snapshot_counterpart_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "the calc-sui.5 Stage 2 counterpart is evidenced for declared profiles; full optimized/core and production policy remain blocked by broader gates",
+                "disposition": "bind W041 retained snapshot blocker to W040 direct Stage 2 stale-snapshot reject/no-publish counterpart evidence without match promotion",
+                "failures": if snapshot_counterpart_valid { Vec::<String>::new() } else { vec!["w041_snapshot_counterpart_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_capability_view_counterpart_evidence",
+                "w041_obligation_id": "W041-OBL-004",
+                "policy_area": "capability_view_fence_counterpart",
+                "source_artifacts": [W041_OPTIMIZED_CORE_BLOCKERS, W041_OPTIMIZED_CORE_DISPOSITIONS, W040_STAGE2_OBSERVABLE_EQUIVALENCE, W040_STAGE2_PROMOTION_DECISION],
+                "satisfied_for_declared_profile": capability_counterpart_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "the calc-sui.5 Stage 2 counterpart is evidenced for declared profiles; full optimized/core and production policy remain blocked by broader gates",
+                "disposition": "bind W041 retained capability-view blocker to W040 direct Stage 2 capability mismatch reject/no-publish counterpart evidence without match promotion",
+                "failures": if capability_counterpart_valid { Vec::<String>::new() } else { vec!["w041_capability_counterpart_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_bounded_partition_analyzer_predicate_evidence",
+                "w041_obligation_id": "W041-OBL-012",
+                "policy_area": "bounded_partition_analyzer_soundness",
+                "source_artifacts": [W040_STAGE2_PARTITION_ANALYZER, W041_TLA_MODEL_REGISTER, W041_STAGE2_LEAN_FILE],
+                "satisfied_for_declared_profile": bounded_analyzer_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "bounded analyzer preconditions are evidenced, but full production analyzer soundness remains blocked",
+                "disposition": "bind W040 bounded partition-analyzer evidence and W041 bounded Stage 2 model input under the W041 Lean predicate",
+                "failures": if bounded_analyzer_valid { Vec::<String>::new() } else { vec!["w041_bounded_partition_analyzer_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_w073_typed_formatting_guard_carried",
+                "w041_obligation_id": "W041-OBL-021",
+                "policy_area": "w073_typed_formatting_watch",
+                "source_artifacts": [W041_FORMATTING_INTAKE, W040_STAGE2_RUN_SUMMARY],
+                "satisfied_for_declared_profile": w073_guard_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "typed-only formatting is carried as an observable-surface guard; broad OxFml seam breadth remains under calc-sui.8",
+                "disposition": "retain the W073 direct-replacement rule: typed_rule is the sole metadata source for aggregate and visualization conditional-formatting families",
+                "failures": if w073_guard_valid { Vec::<String>::new() } else { vec!["w041_w073_formatting_guard_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_declared_pack_replay_equivalence",
+                "w041_obligation_id": "W041-OBL-013",
+                "policy_area": "declared_profile_pack_replay_equivalence",
+                "source_artifacts": [W040_STAGE2_RUN_SUMMARY, W040_STAGE2_OBSERVABLE_EQUIVALENCE, W040_STAGE2_PROMOTION_DECISION],
+                "satisfied_for_declared_profile": declared_pack_equivalence_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "declared-profile equivalence evidence is not pack-grade replay governance",
+                "disposition": "classify values, rejects, fence no-publish behavior, typed-formatting watch, and replay validation as declared-profile pack-equivalence inputs",
+                "failures": if declared_pack_equivalence_valid { Vec::<String>::new() } else { vec!["w041_declared_pack_equivalence_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_no_proxy_promotion_guard",
+                "w041_obligation_id": "W041-OBL-006",
+                "policy_area": "no_proxy_promotion_guard",
+                "source_artifacts": [W041_OBLIGATION_SUMMARY, W041_OPTIMIZED_CORE_SUMMARY, W040_STAGE2_PROMOTION_DECISION],
+                "satisfied_for_declared_profile": no_proxy_guard_valid,
+                "exact_remaining_blocker": false,
+                "promotion_consequence": "Stage 2, pack, and release-grade gates remain blocked unless direct target evidence is present",
+                "disposition": "keep bounded-only, declared-profile, and retained-blocker evidence out of promotion counts",
+                "failures": if no_proxy_guard_valid { Vec::<String>::new() } else { vec!["w041_no_proxy_guard_not_valid".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_full_production_analyzer_soundness_blocker",
+                "w041_obligation_id": "W041-OBL-012",
+                "policy_area": "full_production_partition_analyzer_soundness",
+                "source_artifacts": [W041_OBLIGATION_MAP, W040_STAGE2_BLOCKERS, W041_STAGE2_LEAN_FILE],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "Stage 2 production policy remains unpromoted",
+                "disposition": "retain full production partition-analyzer soundness as exact blocker beyond bounded declared-profile evidence",
+                "failures": if obligation_exists(&w041_obligation_map, "W041-OBL-012") && row_with_field_exists(&w040_stage2_blockers, "row_id", "w040_stage2_full_production_analyzer_soundness_blocker") { Vec::<String>::new() } else { vec!["w041_production_analyzer_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_fairness_scheduler_unbounded_coverage_blocker",
+                "w041_obligation_id": "W041-OBL-011",
+                "policy_area": "fairness_scheduler_unbounded_coverage",
+                "source_artifacts": [W041_LEAN_TLA_SUMMARY, W041_TLA_MODEL_REGISTER],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+                "disposition": "retain fairness, unbounded scheduler coverage, and model-completeness limits as exact Stage 2 blockers",
+                "failures": if obligation_exists(&w041_obligation_map, "W041-OBL-011") && w041_lean_tla_valid { Vec::<String>::new() } else { vec!["w041_fairness_scheduler_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_operated_cross_engine_service_dependency_blocker",
+                "w041_obligation_id": "W041-OBL-018",
+                "policy_area": "operated_cross_engine_stage2_differential_service",
+                "source_artifacts": [W041_OBLIGATION_MAP, W040_STAGE2_BLOCKERS],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+                "disposition": "retain operated cross-engine differential service as successor dependency",
+                "failures": if obligation_exists(&w041_obligation_map, "W041-OBL-018") && row_with_field_exists(&w040_stage2_blockers, "row_id", "w040_stage2_operated_cross_engine_service_dependency_blocker") { Vec::<String>::new() } else { vec!["w041_operated_stage2_service_blocker_input_missing".to_string()] },
+            }),
+            json!({
+                "row_id": "w041_stage2_pack_grade_replay_governance_blocker",
+                "w041_obligation_id": "W041-OBL-025",
+                "policy_area": "pack_grade_replay_governance",
+                "source_artifacts": [W041_OBLIGATION_MAP, W040_STAGE2_BLOCKERS],
+                "satisfied_for_declared_profile": false,
+                "exact_remaining_blocker": true,
+                "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+                "disposition": "retain pack-grade replay governance and retained-witness lifecycle as release-decision blockers",
+                "failures": if obligation_exists(&w041_obligation_map, "W041-OBL-025") && row_with_field_exists(&w040_stage2_blockers, "row_id", "w040_stage2_pack_grade_replay_governance_blocker") { Vec::<String>::new() } else { vec!["w041_pack_grade_replay_governance_blocker_input_missing".to_string()] },
+            }),
+        ];
+
+        let satisfied_policy_row_count = policy_rows
+            .iter()
+            .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+            .count();
+        let policy_blocker_rows = policy_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let policy_failed_row_count = policy_rows
+            .iter()
+            .filter(|row| {
+                !row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            })
+            .count();
+        let exact_remaining_blocker_count = policy_blocker_rows.len();
+        let policy_row_count = policy_rows.len();
+
+        let production_analyzer_rows = policy_rows
+            .iter()
+            .filter(|row| {
+                matches!(
+                    string_at(row, "policy_area"),
+                    "dynamic_and_soft_reference_transition"
+                        | "snapshot_fence_counterpart"
+                        | "capability_view_fence_counterpart"
+                        | "bounded_partition_analyzer_soundness"
+                        | "full_production_partition_analyzer_soundness"
+                        | "fairness_scheduler_unbounded_coverage"
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let pack_equivalence_rows = policy_rows
+            .iter()
+            .filter(|row| {
+                matches!(
+                    string_at(row, "policy_area"),
+                    "bounded_baseline_vs_stage2_replay"
+                        | "partition_order_permutation_replay"
+                        | "observable_result_invariance"
+                        | "snapshot_fence_counterpart"
+                        | "capability_view_fence_counterpart"
+                        | "w073_typed_formatting_watch"
+                        | "declared_profile_pack_replay_equivalence"
+                        | "no_proxy_promotion_guard"
+                        | "operated_cross_engine_stage2_differential_service"
+                        | "pack_grade_replay_governance"
+                )
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let mut validation_failures = Vec::new();
+        if !w041_obligation_valid {
+            validation_failures.push("w041_obligation_map_not_valid".to_string());
+        }
+        for obligation_id in [
+            "W041-OBL-003",
+            "W041-OBL-004",
+            "W041-OBL-006",
+            "W041-OBL-011",
+            "W041-OBL-012",
+            "W041-OBL-013",
+            "W041-OBL-018",
+            "W041-OBL-021",
+            "W041-OBL-025",
+        ] {
+            if !obligation_exists(&w041_obligation_map, obligation_id) {
+                validation_failures.push(format!("{obligation_id}_missing"));
+            }
+        }
+        if !w040_stage2_valid {
+            validation_failures.push("w040_stage2_policy_equivalence_not_valid".to_string());
+        }
+        if number_at(&w040_stage2_policy_gate, "policy_row_count") != 12 {
+            validation_failures.push("w040_stage2_policy_gate_row_count_changed".to_string());
+        }
+        if !w041_optimized_valid || !w041_treecalc_valid {
+            validation_failures.push("w041_optimized_stage2_inputs_not_valid".to_string());
+        }
+        if !automatic_dynamic_transition_valid {
+            validation_failures.push("w041_automatic_dynamic_transition_not_valid".to_string());
+        }
+        if !w041_rust_valid {
+            validation_failures.push("w041_rust_stage2_inputs_not_valid".to_string());
+        }
+        if !w041_lean_tla_valid {
+            validation_failures.push("w041_lean_tla_stage2_inputs_not_valid".to_string());
+        }
+        if !snapshot_counterpart_valid {
+            validation_failures.push("w041_snapshot_counterpart_not_valid".to_string());
+        }
+        if !capability_counterpart_valid {
+            validation_failures.push("w041_capability_counterpart_not_valid".to_string());
+        }
+        if !bounded_analyzer_valid {
+            validation_failures.push("w041_bounded_partition_analyzer_not_valid".to_string());
+        }
+        if !declared_pack_equivalence_valid {
+            validation_failures.push("w041_declared_pack_equivalence_not_valid".to_string());
+        }
+        if !no_proxy_guard_valid {
+            validation_failures.push("w041_no_proxy_guard_not_valid".to_string());
+        }
+        if !w073_guard_valid {
+            validation_failures.push("w041_w073_formatting_guard_not_valid".to_string());
+        }
+        if !lean_file_present {
+            validation_failures.push("w041_stage2_lean_file_missing".to_string());
+        }
+        if policy_failed_row_count != 0 {
+            validation_failures.push("w041_stage2_policy_row_failures_present".to_string());
+        }
+        if satisfied_policy_row_count != 10 {
+            validation_failures.push("w041_stage2_expected_ten_satisfied_policy_rows".to_string());
+        }
+        if exact_remaining_blocker_count != 4 {
+            validation_failures.push("w041_stage2_expected_four_exact_blockers".to_string());
+        }
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let policy_gate_register_path =
+            format!("{relative_artifact_root}/w041_stage2_policy_gate_register.json");
+        let production_analyzer_register_path =
+            format!("{relative_artifact_root}/w041_production_analyzer_soundness_register.json");
+        let pack_equivalence_register_path =
+            format!("{relative_artifact_root}/w041_pack_equivalence_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w041_stage2_exact_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": W041_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_artifacts": {
+                    "w041_obligation_summary": W041_OBLIGATION_SUMMARY,
+                    "w041_obligation_map": W041_OBLIGATION_MAP,
+                    "w041_formatting_intake": W041_FORMATTING_INTAKE,
+                    "w041_optimized_core_summary": W041_OPTIMIZED_CORE_SUMMARY,
+                    "w041_optimized_core_dispositions": W041_OPTIMIZED_CORE_DISPOSITIONS,
+                    "w041_optimized_core_blockers": W041_OPTIMIZED_CORE_BLOCKERS,
+                    "w041_dynamic_auto_transition": W041_DYNAMIC_AUTO_TRANSITION,
+                    "w041_treecalc_summary": W041_TREECALC_SUMMARY,
+                    "w041_rust_summary": W041_RUST_SUMMARY,
+                    "w041_rust_validation": W041_RUST_VALIDATION,
+                    "w041_lean_tla_summary": W041_LEAN_TLA_SUMMARY,
+                    "w041_lean_tla_validation": W041_LEAN_TLA_VALIDATION,
+                    "w041_tla_model_register": W041_TLA_MODEL_REGISTER,
+                    "w040_stage2_run_summary": W040_STAGE2_RUN_SUMMARY,
+                    "w040_stage2_validation": W040_STAGE2_VALIDATION,
+                    "w040_stage2_policy_gate": W040_STAGE2_POLICY_GATE,
+                    "w040_stage2_partition_analyzer": W040_STAGE2_PARTITION_ANALYZER,
+                    "w040_stage2_observable_equivalence": W040_STAGE2_OBSERVABLE_EQUIVALENCE,
+                    "w040_stage2_blockers": W040_STAGE2_BLOCKERS,
+                    "w040_stage2_promotion_decision": W040_STAGE2_PROMOTION_DECISION,
+                    "w041_stage2_lean_file": W041_STAGE2_LEAN_FILE
+                },
+                "source_counts": {
+                    "w041_obligation_count": number_at(&w041_obligation_summary, "obligation_count"),
+                    "w041_optimized_exact_remaining_blocker_count": number_at(&w041_optimized_summary, "exact_remaining_blocker_count"),
+                    "w041_automatic_dynamic_transition_row_count": number_at(&w041_rust_summary, "automatic_dynamic_transition_row_count"),
+                    "w041_lean_tla_bounded_model_row_count": number_at(&w041_lean_tla_summary, "bounded_model_row_count"),
+                    "w040_stage2_policy_row_count": number_at(&w040_stage2_summary, "policy_row_count"),
+                    "w040_stage2_exact_remaining_blocker_count": number_at(&w040_stage2_summary, "exact_remaining_blocker_count")
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w041_stage2_policy_gate_register.json"),
+            &json!({
+                "schema_version": W041_POLICY_GATE_SCHEMA_V1,
+                "run_id": run_id,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "stage2_policy_promoted": false,
+                "rows": policy_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w041_production_analyzer_soundness_register.json"),
+            &json!({
+                "schema_version": W041_PRODUCTION_ANALYZER_SCHEMA_V1,
+                "run_id": run_id,
+                "row_count": production_analyzer_rows.len(),
+                "satisfied_policy_row_count": production_analyzer_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+                    .count(),
+                "exact_remaining_blocker_count": production_analyzer_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "exact_remaining_blocker"))
+                    .count(),
+                "semantic_statement": "W041 binds automatic dynamic transition evidence, declared-profile fence counterparts, and bounded analyzer evidence as production-analyzer inputs. Full production partition-analyzer soundness remains blocked.",
+                "rows": production_analyzer_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w041_pack_equivalence_register.json"),
+            &json!({
+                "schema_version": W041_PACK_EQUIVALENCE_SCHEMA_V1,
+                "run_id": run_id,
+                "row_count": pack_equivalence_rows.len(),
+                "satisfied_policy_row_count": pack_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "satisfied_for_declared_profile"))
+                    .count(),
+                "exact_remaining_blocker_count": pack_equivalence_rows
+                    .iter()
+                    .filter(|row| bool_at(row, "exact_remaining_blocker"))
+                    .count(),
+                "semantic_equivalence_statement": "Declared-profile values, rejects, fence no-publish behavior, typed-formatting observable guards, replay validation, and no-proxy promotion guards are bound as pack-equivalence inputs. This is not pack-grade replay governance.",
+                "rows": pack_equivalence_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w041_stage2_exact_blocker_register.json"),
+            &json!({
+                "schema_version": W041_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "rows": policy_blocker_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &json!({
+                "schema_version": W041_PROMOTION_DECISION_SCHEMA_V1,
+                "run_id": run_id,
+                "decision_state": "w041_stage2_analyzer_pack_equivalence_validated_policy_unpromoted",
+                "stage2_policy_promoted": false,
+                "stage2_promotion_candidate": false,
+                "bounded_partition_replay_present": bounded_replay_valid,
+                "partition_order_permutation_replay_present": permutation_replay_valid,
+                "observable_result_invariance_evidenced_for_declared_profiles": observable_invariance_valid,
+                "automatic_dynamic_transition_evidenced_for_declared_profiles": automatic_dynamic_transition_valid,
+                "snapshot_fence_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_view_fence_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_soundness_evidenced": bounded_analyzer_valid,
+                "w073_typed_formatting_guard_carried": w073_guard_valid,
+                "declared_profile_pack_replay_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "production_partition_analyzer_soundness_promoted": false,
+                "fairness_scheduler_unbounded_coverage_promoted": false,
+                "operated_cross_engine_stage2_service_promoted": false,
+                "pack_grade_replay_governance_promoted": false,
+                "satisfied_inputs": [
+                    "bounded_partition_replay_present",
+                    "partition_order_permutation_replay_present",
+                    "observable_result_invariance_for_declared_profiles",
+                    "automatic_dynamic_transition_evidenced_for_declared_profiles",
+                    "snapshot_fence_counterpart_evidenced_for_declared_profiles",
+                    "capability_view_fence_counterpart_evidenced_for_declared_profiles",
+                    "bounded_partition_analyzer_soundness_evidenced",
+                    "w073_typed_formatting_guard_carried",
+                    "declared_profile_pack_replay_equivalence_evidenced",
+                    "no_proxy_promotion_guard_evidenced"
+                ],
+                "blockers": [
+                    "stage2.full_production_partition_analyzer_soundness_absent",
+                    "stage2.fairness_scheduler_unbounded_coverage_absent",
+                    "stage2.operated_cross_engine_differential_service_absent",
+                    "stage2.pack_grade_replay_governance_absent"
+                ],
+                "semantic_equivalence_statement": "Observable-result and replay equivalence are evidenced for declared W041 Stage 2 profiles, including automatic dynamic transition input, snapshot/capability fence no-publish counterparts, and W073 typed-formatting guards. Production Stage 2 policy and pack-grade replay remain unpromoted until production analyzer soundness, fairness and unbounded scheduler coverage, operated cross-engine service evidence, and pack governance are present."
+            }),
+        )?;
+
+        let validation_status = if validation_failures.is_empty() {
+            "w041_stage2_analyzer_pack_equivalence_valid"
+        } else {
+            "w041_stage2_analyzer_pack_equivalence_invalid"
+        };
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": W041_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "partition_replay_row_count": partition_replay_row_count,
+                "permutation_replay_row_count": permutation_replay_row_count,
+                "nontrivial_permutation_row_count": nontrivial_permutation_row_count,
+                "observable_invariance_row_count": observable_invariance_row_count,
+                "formatting_watch_row_count": formatting_watch_row_count,
+                "automatic_dynamic_transition_evidenced": automatic_dynamic_transition_valid,
+                "snapshot_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_evidenced": bounded_analyzer_valid,
+                "declared_pack_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "failed_row_count": policy_failed_row_count,
+                "stage2_policy_promoted": false,
+                "validation_failures": validation_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": W041_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "w041_stage2_policy_gate_register_path": policy_gate_register_path,
+                "w041_production_analyzer_soundness_register_path": production_analyzer_register_path,
+                "w041_pack_equivalence_register_path": pack_equivalence_register_path,
+                "w041_stage2_exact_blocker_register_path": blocker_register_path,
+                "promotion_decision_path": promotion_decision_path,
+                "validation_path": validation_path,
+                "policy_row_count": policy_row_count,
+                "satisfied_policy_row_count": satisfied_policy_row_count,
+                "partition_replay_row_count": partition_replay_row_count,
+                "permutation_replay_row_count": permutation_replay_row_count,
+                "nontrivial_permutation_row_count": nontrivial_permutation_row_count,
+                "observable_invariance_row_count": observable_invariance_row_count,
+                "formatting_watch_row_count": formatting_watch_row_count,
+                "automatic_dynamic_transition_evidenced": automatic_dynamic_transition_valid,
+                "snapshot_counterpart_evidenced": snapshot_counterpart_valid,
+                "capability_counterpart_evidenced": capability_counterpart_valid,
+                "bounded_partition_analyzer_evidenced": bounded_analyzer_valid,
+                "declared_pack_equivalence_evidenced": declared_pack_equivalence_valid,
+                "no_proxy_promotion_guard_evidenced": no_proxy_guard_valid,
+                "exact_remaining_blocker_count": exact_remaining_blocker_count,
+                "failed_row_count": policy_failed_row_count,
+                "stage2_policy_promoted": false,
+                "stage2_promotion_candidate": false
+            }),
+        )?;
+
+        Ok(Stage2ReplayRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W041_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            partition_replay_row_count,
+            permutation_replay_row_count,
+            nontrivial_permutation_row_count,
+            observable_invariance_row_count,
+            formatting_watch_row_count,
+            exact_remaining_blocker_count,
+            failed_row_count: policy_failed_row_count,
             stage2_policy_promoted: false,
             artifact_root: relative_artifact_root,
         })
@@ -1985,6 +2730,15 @@ fn string_at<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
 }
 
+fn array_field_contains_string(value: &Value, key: &str, expected: &str) -> bool {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .any(|item| item.as_str() == Some(expected))
+}
+
 fn row_with_field_exists(value: &Value, field: &str, expected: &str) -> bool {
     value
         .get("rows")
@@ -2280,6 +3034,77 @@ mod tests {
             &repo_root,
             &format!(
                 "docs/test-runs/core-engine/stage2-replay/{run_id}/w040_stage2_exact_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_remaining_blocker_count"], 4);
+
+        cleanup();
+    }
+
+    #[test]
+    fn stage2_replay_runner_writes_w041_analyzer_pack_equivalence_without_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w041-stage2-replay-{}", std::process::id());
+        let artifact_root =
+            repo_root.join(format!("docs/test-runs/core-engine/stage2-replay/{run_id}"));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = Stage2ReplayRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.partition_replay_row_count, 5);
+        assert_eq!(summary.permutation_replay_row_count, 6);
+        assert_eq!(summary.nontrivial_permutation_row_count, 1);
+        assert_eq!(summary.observable_invariance_row_count, 5);
+        assert_eq!(summary.formatting_watch_row_count, 1);
+        assert_eq!(summary.exact_remaining_blocker_count, 4);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.stage2_policy_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/stage2-replay/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w041_stage2_analyzer_pack_equivalence_valid"
+        );
+        assert_eq!(validation["satisfied_policy_row_count"], 10);
+        assert_eq!(validation["automatic_dynamic_transition_evidenced"], true);
+        assert_eq!(validation["snapshot_counterpart_evidenced"], true);
+        assert_eq!(validation["capability_counterpart_evidenced"], true);
+        assert_eq!(validation["declared_pack_equivalence_evidenced"], true);
+
+        let promotion = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/stage2-replay/{run_id}/promotion_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(promotion["stage2_policy_promoted"], false);
+        assert_eq!(
+            promotion["production_partition_analyzer_soundness_promoted"],
+            false
+        );
+        assert_eq!(
+            promotion["declared_profile_pack_replay_equivalence_evidenced"],
+            true
+        );
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/stage2-replay/{run_id}/w041_stage2_exact_blocker_register.json"
             ),
         )
         .unwrap();

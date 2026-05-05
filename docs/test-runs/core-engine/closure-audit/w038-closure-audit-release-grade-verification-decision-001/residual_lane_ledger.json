@@ -1,0 +1,76 @@
+{
+  "run_id": "w038-closure-audit-release-grade-verification-decision-001",
+  "successor_scope": "post_w038_release_grade_successor_scope_recommended",
+  "residual_lanes": [
+    {
+      "id": "POST-W038-LANE-001",
+      "area": "optimized/core-engine release-grade verification",
+      "w038_evidence": "5 disposition rows, 3 direct-evidence rows, 1 accepted boundary row, 4 exact remaining blockers, 0 failed rows",
+      "current_consequence": "full_optimized_core_verification_not_promoted",
+      "successor_owner": "future_release_grade_conformance_lane"
+    },
+    {
+      "id": "POST-W038-LANE-002",
+      "area": "Lean/TLA proof and Rust-engine totality",
+      "w038_evidence": "8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 3 totality boundaries, 6 exact blockers, 0 failed rows",
+      "current_consequence": "full_lean_tla_verification_not_promoted",
+      "successor_owner": "future_formal_totality_lane"
+    },
+    {
+      "id": "POST-W038-LANE-003",
+      "area": "Stage 2 production partition policy",
+      "w038_evidence": "5 bounded replay rows, 6 permutation rows, 5 observable-invariance rows, 3 exact Stage 2 blockers, 0 failed rows",
+      "current_consequence": "stage2_policy_not_promoted",
+      "successor_owner": "future_stage2_policy_lane"
+    },
+    {
+      "id": "POST-W038-LANE-004",
+      "area": "operated continuous assurance service",
+      "w038_evidence": "15 multi-run history rows, 8 alert/quarantine rules, local evaluation only",
+      "current_consequence": "operated_assurance_service_not_promoted",
+      "successor_owner": "future_operated_assurance_lane"
+    },
+    {
+      "id": "POST-W038-LANE-005",
+      "area": "operated cross-engine differential service",
+      "w038_evidence": "file-backed cross-engine service disposition and exact service blocker",
+      "current_consequence": "operated_cross_engine_service_not_promoted",
+      "successor_owner": "future_cross_engine_service_lane"
+    },
+    {
+      "id": "POST-W038-LANE-006",
+      "area": "alert/quarantine dispatcher and retained history service",
+      "w038_evidence": "local alert/quarantine evidence and checked-in history, no operated dispatcher or retained service store",
+      "current_consequence": "alert_dispatcher_and_retained_history_service_not_promoted",
+      "successor_owner": "future_operated_service_infrastructure_lane"
+    },
+    {
+      "id": "POST-W038-LANE-007",
+      "area": "fully independent evaluator diversity",
+      "w038_evidence": "5 diversity rows, direct OxFml slice, file-backed differential rows, exact independent-evaluator blocker",
+      "current_consequence": "fully_independent_evaluator_not_promoted",
+      "successor_owner": "future_independent_evaluator_lane"
+    },
+    {
+      "id": "POST-W038-LANE-008",
+      "area": "OxFml seam breadth and callable metadata projection",
+      "w038_evidence": "8 OxFml seam-watch rows, W073 typed formatting alignment, callable metadata projection exact blocker",
+      "current_consequence": "broad_oxfml_and_callable_metadata_claims_not_promoted",
+      "successor_owner": "future_oxfml_seam_and_callable_metadata_lane"
+    },
+    {
+      "id": "POST-W038-LANE-009",
+      "area": "pack-grade replay governance and C5",
+      "w038_evidence": "13 satisfied inputs, 25 blockers, 0 missing artifacts, highest honest capability cap.C4.distill_valid",
+      "current_consequence": "pack_grade_replay_and_c5_not_promoted",
+      "successor_owner": "future_pack_c5_governance_lane"
+    },
+    {
+      "id": "POST-W038-LANE-010",
+      "area": "general OxFunc semantic kernels",
+      "w038_evidence": "narrow LET/LAMBDA carrier included; general OxFunc kernel remains external owner scope",
+      "current_consequence": "general_oxfunc_kernels_not_promoted_in_oxcalc",
+      "successor_owner": "external_oxfunc_owner_boundary"
+    }
+  ]
+}

@@ -91,18 +91,20 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-zsr.8_pack_c5_release_decision_validated`
+- execution_state: `calc-zsr.9_closure_audit_release_grade_verification_decision`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
-  - TraceCalc authority is discharged for the current OxCalc-owned observable profile, but release-grade verification remains unpromoted
-  - optimized/core-engine conformance blockers have W038 dispositions, but exact remaining blockers remain routed to later lanes
-  - proof/model assumptions, bounded models, external seams, totality boundaries, and exact proof/model blockers have W038 classifications, but full Lean/TLA verification remains unpromoted
-  - Stage 2 bounded replay and permutation evidence exists for declared profiles, but production Stage 2 policy remains unpromoted
-  - local alert/quarantine evidence and multi-run history are bound, but operated service claims remain unpromoted
-  - independent evaluator diversity and OxFml seam watch rows are bound, but fully independent evaluator, broad OxFml display/publication, callable metadata projection, and general OxFunc kernel claims remain unpromoted
-  - pack-grade replay governance and C5 release decision are bound as no-promotion evidence, but W038 closure audit remains open
+  - post-W038 release-grade successor scope is recommended before any renewed release-grade promotion attempt
+  - full optimized/core-engine verification remains unpromoted
+  - full Lean/TLA verification and Rust-engine totality proof remain unpromoted
+  - production Stage 2 policy and pack-grade replay equivalence remain unpromoted
+  - operated continuous-assurance service, alert/quarantine dispatcher, operated cross-engine differential service, and retained history service remain unpromoted
+  - fully independent evaluator diversity remains unpromoted
+  - broad OxFml display/publication closure and callable metadata projection remain unpromoted
+  - pack-grade replay and C5 remain unpromoted
+  - general OxFunc semantic kernels remain outside OxCalc scope except the narrow `LET`/`LAMBDA` carrier seam
 
 Latest W038 evidence:
 
@@ -114,3 +116,4 @@ Latest W038 evidence:
 6. `docs/spec/core-engine/w038-formalization/W038_OPERATED_ASSURANCE_ALERT_QUARANTINE_AND_CROSS_ENGINE_SERVICE.md` records the `calc-zsr.6` operated-assurance disposition slice. The packet `w038-operated-assurance-alert-quarantine-001` records 8 source rows, 15 multi-run history rows, 8 evaluated alert/quarantine rules, 4 exact service blockers, 0 failed rows, and no operated continuous-assurance service, external alert dispatcher, operated cross-engine differential service, pack/C5, or Stage 2 promotion.
 7. `docs/spec/core-engine/w038-formalization/W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md` records the `calc-zsr.7` diversity/seam-watch disposition slice. The packet `w038-diversity-seam-watch-001` records 7 source rows, 5 diversity rows, 8 OxFml seam-watch rows, 4 exact blockers, 0 failed rows, current W073 typed-formatting alignment, and no fully independent evaluator, general OxFunc kernel, callable metadata projection, pack/C5, or Stage 2 promotion.
 8. `docs/spec/core-engine/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md` records the `calc-zsr.8` pack/C5 release-decision slice. The packet `w038-pack-c5-release-decision-001` records 13 satisfied inputs, 25 blockers, 0 missing artifacts, `cap.C4.distill_valid` as highest honest capability, and no `cap.C5.pack_valid`, pack-grade replay, Stage 2 policy, operated service, independent evaluator, broad OxFml, general OxFunc, or release-grade verification promotion.
+9. `docs/spec/core-engine/w038-formalization/W038_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` records the `calc-zsr.9` closure-audit slice. The packet `w038-closure-audit-release-grade-verification-decision-001` records 8 W038 evidence packets, no release-grade/full-formalization/C5/pack/Stage 2/operated-service/independent-evaluator/OxFml-breadth/general-OxFunc promotion, `cap.C4.distill_valid` as highest honest capability, and post-W038 release-grade successor scope recommended.

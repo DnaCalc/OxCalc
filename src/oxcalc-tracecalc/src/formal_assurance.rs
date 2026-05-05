@@ -27,6 +27,14 @@ const FORMAL_ASSURANCE_W039_MODEL_BOUND_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w039_model_bound_register.v1";
 const FORMAL_ASSURANCE_W039_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w039_exact_proof_model_blocker_register.v1";
+const FORMAL_ASSURANCE_W040_RUST_LEDGER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w040_rust_totality_refinement_ledger.v1";
+const FORMAL_ASSURANCE_W040_TOTALITY_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w040_rust_totality_boundary_register.v1";
+const FORMAL_ASSURANCE_W040_REFINEMENT_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w040_rust_refinement_register.v1";
+const FORMAL_ASSURANCE_W040_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w040_rust_exact_blocker_register.v1";
 const FORMAL_ASSURANCE_VALIDATION_SCHEMA_V1: &str = "oxcalc.formal_assurance.validation.v1";
 
 const W037_FORMAL_INVENTORY_RUN_ID: &str = "w037-proof-model-closure-001";
@@ -41,6 +49,26 @@ const W039_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w039-optimized-core-exact-blocker-disposition-001";
 const W039_LEAN_TOTALITY_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean";
+const W040_DIRECT_OBLIGATION_RUN_ID: &str = "w040-direct-verification-obligation-map-001";
+const W040_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
+    "w040-optimized-core-exact-blocker-fixes-differentials-001";
+const W040_TREECALC_RUN_ID: &str = "w040-optimized-core-dynamic-release-reclassification-001";
+const W040_LEAN_RUST_TOTALITY_FILE: &str =
+    "formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean";
+const W040_RUST_PANIC_AUDIT_FILES: &[&str] = &[
+    "src/oxcalc-core/src/coordinator.rs",
+    "src/oxcalc-core/src/dependency.rs",
+    "src/oxcalc-core/src/formula.rs",
+    "src/oxcalc-core/src/recalc.rs",
+    "src/oxcalc-core/src/structural.rs",
+    "src/oxcalc-core/src/treecalc.rs",
+    "src/oxcalc-core/src/treecalc_fixture.rs",
+    "src/oxcalc-core/src/treecalc_runner.rs",
+    "src/oxcalc-core/src/treecalc_scale.rs",
+    "src/oxcalc-core/src/upstream_host.rs",
+    "src/oxcalc-core/src/upstream_host_fixture.rs",
+    "src/oxcalc-core/src/upstream_host_runner.rs",
+];
 
 #[derive(Debug, Error)]
 pub enum FormalAssuranceError {
@@ -133,6 +161,9 @@ impl FormalAssuranceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
+        if run_id.contains("w040-rust") {
+            return self.execute_w040_rust_totality_refinement(repo_root, run_id);
+        }
         if run_id.contains("w039") {
             return self.execute_w039(repo_root, run_id);
         }
@@ -441,6 +472,649 @@ impl FormalAssuranceRunner {
             accepted_boundary_count,
             totality_boundary_count,
             exact_remaining_blocker_count,
+            failed_row_count,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w040_rust_totality_refinement(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
+        let relative_artifact_root = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            run_id,
+        ]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                FormalAssuranceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            FormalAssuranceError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w040_obligation_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W040_DIRECT_OBLIGATION_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w040_obligation_map_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W040_DIRECT_OBLIGATION_RUN_ID,
+            "direct_verification_obligation_map.json",
+        ]);
+        let w039_formal_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            "w039-proof-model-totality-closure-001",
+            "run_summary.json",
+        ]);
+        let w039_formal_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            "w039-proof-model-totality-closure-001",
+            "validation.json",
+        ]);
+        let w040_conformance_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W040_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w040_conformance_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W040_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "validation.json",
+        ]);
+        let w040_conformance_blockers_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W040_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w040_exact_remaining_blocker_register.json",
+        ]);
+        let w040_dynamic_evidence_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W040_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "dynamic_release_reclassification_evidence.json",
+        ]);
+        let w040_treecalc_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            W040_TREECALC_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w040_treecalc_post_edit_result_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            W040_TREECALC_RUN_ID,
+            "cases",
+            "tc_local_dynamic_release_reclassification_post_edit_001",
+            "post_edit",
+            "result.json",
+        ]);
+        let w040_treecalc_post_edit_closure_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "treecalc-local",
+            W040_TREECALC_RUN_ID,
+            "cases",
+            "tc_local_dynamic_release_reclassification_post_edit_001",
+            "post_edit",
+            "invalidation_closure.json",
+        ]);
+
+        let w040_obligation_summary = read_json(repo_root, &w040_obligation_summary_path)?;
+        let w040_obligation_map = read_json(repo_root, &w040_obligation_map_path)?;
+        let w039_formal_summary = read_json(repo_root, &w039_formal_summary_path)?;
+        let w039_formal_validation = read_json(repo_root, &w039_formal_validation_path)?;
+        let w040_conformance_summary = read_json(repo_root, &w040_conformance_summary_path)?;
+        let w040_conformance_validation = read_json(repo_root, &w040_conformance_validation_path)?;
+        let w040_conformance_blockers = read_json(repo_root, &w040_conformance_blockers_path)?;
+        let w040_dynamic_evidence = read_json(repo_root, &w040_dynamic_evidence_path)?;
+        let w040_treecalc_summary = read_json(repo_root, &w040_treecalc_summary_path)?;
+        let w040_treecalc_post_edit_result =
+            read_json(repo_root, &w040_treecalc_post_edit_result_path)?;
+        let w040_treecalc_post_edit_closure =
+            read_json(repo_root, &w040_treecalc_post_edit_closure_path)?;
+
+        let lean_file_present = repo_root.join(W040_LEAN_RUST_TOTALITY_FILE).exists();
+        let panic_marker_count = panic_marker_count(repo_root, W040_RUST_PANIC_AUDIT_FILES)?;
+        let dynamic_closure_requires_rebind = w040_treecalc_post_edit_closure
+            .as_array()
+            .is_some_and(|rows| {
+                rows.iter().any(|row| {
+                    row.get("node_id").and_then(Value::as_u64) == Some(3)
+                        && bool_at(row, "requires_rebind")
+                })
+            });
+        let post_edit_rejected_for_rebind =
+            string_value(&w040_treecalc_post_edit_result, "result_state") == "rejected"
+                && w040_treecalc_post_edit_result
+                    .get("reject_detail")
+                    .and_then(|detail| detail.get("kind"))
+                    .and_then(Value::as_str)
+                    == Some("HostInjectedFailure");
+
+        let proof_rows = vec![
+            json!({
+                "row_id": "w040_result_error_carrier_totality_evidence",
+                "w040_obligation_id": "W040-OBL-006",
+                "source_inputs": ["Rust typed error carriers", W040_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "direct_totality_evidence",
+                "disposition": "bind promoted core public paths to typed Result/error carriers rather than panic-as-contract",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-tv5.3",
+                "promotion_consequence": "Rust totality remains unpromoted because this is a carrier row, not whole-engine proof",
+                "reason": "Core execution, fixture, runner, structural, and coordinator surfaces expose Result/typed error APIs for promoted evidence paths.",
+                "evidence_paths": [
+                    "src/oxcalc-core/src/coordinator.rs",
+                    "src/oxcalc-core/src/recalc.rs",
+                    "src/oxcalc-core/src/structural.rs",
+                    "src/oxcalc-core/src/treecalc.rs",
+                    "src/oxcalc-core/src/treecalc_fixture.rs",
+                    "src/oxcalc-core/src/treecalc_runner.rs",
+                    W040_LEAN_RUST_TOTALITY_FILE
+                ],
+                "failures": if lean_file_present { Vec::<String>::new() } else { vec!["w040_lean_rust_totality_file_missing".to_string()] },
+                "validation_state": if lean_file_present { "w040_rust_totality_row_validated" } else { "w040_rust_totality_row_failed" }
+            }),
+            json!({
+                "row_id": "w040_fixture_invalidation_seed_error_totality_evidence",
+                "w040_obligation_id": "W040-OBL-006",
+                "source_inputs": ["W040 TreeCalc fixture parsing", "W040 optimized/core evidence"],
+                "disposition_kind": "direct_totality_evidence",
+                "disposition": "unsupported explicit invalidation seed reasons now flow through typed fixture errors",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-tv5.3",
+                "promotion_consequence": "the fixture parse path is evidenced, while whole-engine panic freedom remains blocked",
+                "reason": "The calc-tv5.2 implementation added explicit dependency-change seed parsing and unsupported-reason error reporting for the local runner.",
+                "evidence_paths": [
+                    "src/oxcalc-core/src/treecalc_fixture.rs",
+                    &w040_conformance_summary_path,
+                    &w040_conformance_validation_path
+                ],
+                "failures": if string_value(&w040_conformance_validation, "status") == "optimized_core_exact_blockers_narrowed_no_promotion_valid" { Vec::<String>::new() } else { vec!["w040_conformance_validation_not_valid".to_string()] },
+                "validation_state": if string_value(&w040_conformance_validation, "status") == "optimized_core_exact_blockers_narrowed_no_promotion_valid" { "w040_rust_totality_row_validated" } else { "w040_rust_totality_row_failed" }
+            }),
+            json!({
+                "row_id": "w040_dependency_seed_rebind_refinement_evidence",
+                "w040_obligation_id": "W040-OBL-007",
+                "source_inputs": ["W040 dynamic release/reclassification TreeCalc run"],
+                "disposition_kind": "direct_refinement_evidence",
+                "disposition": "explicit DependencyRemoved and DependencyReclassified seeds force rebind/no-publication behavior",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-tv5.2; calc-tv5.3",
+                "promotion_consequence": "refinement is evidenced only for the explicit-seed slice; automatic dependency-set transition remains blocked",
+                "reason": "The post-edit closure marks node 3 as requiring rebind and the post-edit result rejects with HostInjectedFailure without a new publication.",
+                "evidence_paths": [
+                    &w040_dynamic_evidence_path,
+                    &w040_treecalc_summary_path,
+                    &w040_treecalc_post_edit_result_path,
+                    &w040_treecalc_post_edit_closure_path
+                ],
+                "observed": {
+                    "treecalc_case_count": counter_value(&w040_treecalc_summary, "case_count"),
+                    "treecalc_expectation_mismatch_count": counter_value(&w040_treecalc_summary, "expectation_mismatch_count"),
+                    "dynamic_closure_requires_rebind": dynamic_closure_requires_rebind,
+                    "post_edit_rejected_for_rebind": post_edit_rejected_for_rebind
+                },
+                "failures": if counter_value(&w040_treecalc_summary, "expectation_mismatch_count") == 0 && dynamic_closure_requires_rebind && post_edit_rejected_for_rebind { Vec::<String>::new() } else { vec!["w040_dependency_seed_rebind_evidence_missing".to_string()] },
+                "validation_state": if counter_value(&w040_treecalc_summary, "expectation_mismatch_count") == 0 && dynamic_closure_requires_rebind && post_edit_rejected_for_rebind { "w040_rust_refinement_row_validated" } else { "w040_rust_refinement_row_failed" }
+            }),
+            json!({
+                "row_id": "w040_dynamic_transition_refinement_exact_blocker",
+                "w040_obligation_id": "W040-OBL-007",
+                "source_inputs": ["W040 optimized/core exact blocker register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "automatic dynamic dependency-set release/reclassification transition differential remains absent",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-tv5.3; calc-tv5.5; calc-tv5.10",
+                "promotion_consequence": "Rust refinement and full optimized/core verification remain unpromoted",
+                "reason": "The W040 direct evidence is explicit-seed based and does not yet compare predecessor/successor dynamic descriptors without manual seed injection.",
+                "evidence_paths": [&w040_conformance_blockers_path, &w040_dynamic_evidence_path],
+                "failures": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_dynamic_release_reclassification_transition_exact_blocker") { Vec::<String>::new() } else { vec!["w040_dynamic_transition_blocker_missing".to_string()] },
+                "validation_state": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_dynamic_release_reclassification_transition_exact_blocker") { "w040_rust_exact_blocker_validated" } else { "w040_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w040_runtime_panic_surface_totality_boundary",
+                "w040_obligation_id": "W040-OBL-006",
+                "source_inputs": ["Rust panic marker audit", W040_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "exact_totality_boundary",
+                "disposition": "retain a whole-engine panic-free proof blocker while panic/unwrap/expect markers remain in core Rust surfaces",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-tv5.3; calc-tv5.10",
+                "promotion_consequence": "Rust-engine totality and panic-free core domain remain unpromoted",
+                "reason": "The marker census is a guard, not a semantic proof; observed panic-family markers require review or proof before a panic-free claim.",
+                "evidence_paths": W040_RUST_PANIC_AUDIT_FILES,
+                "observed": {
+                    "panic_marker_count": panic_marker_count,
+                    "audited_file_count": W040_RUST_PANIC_AUDIT_FILES.len()
+                },
+                "failures": Vec::<String>::new(),
+                "validation_state": "w040_rust_exact_blocker_validated"
+            }),
+            json!({
+                "row_id": "w040_snapshot_fence_refinement_boundary",
+                "w040_obligation_id": "W040-OBL-003",
+                "source_inputs": ["W040 optimized/core exact blocker register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain the snapshot-fence counterpart blocker as a refinement boundary",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-tv5.5",
+                "promotion_consequence": "coordinator/Stage 2 refinement remains unpromoted",
+                "reason": "The stale accepted-candidate snapshot-fence counterpart remains owned by Stage 2/coordinator evidence and is not discharged by Rust carrier proof.",
+                "evidence_paths": [&w040_conformance_blockers_path],
+                "failures": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_snapshot_fence_counterpart_exact_blocker") { Vec::<String>::new() } else { vec!["w040_snapshot_fence_blocker_missing".to_string()] },
+                "validation_state": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_snapshot_fence_counterpart_exact_blocker") { "w040_rust_exact_blocker_validated" } else { "w040_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w040_capability_view_fence_refinement_boundary",
+                "w040_obligation_id": "W040-OBL-003",
+                "source_inputs": ["W040 optimized/core exact blocker register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain the capability-view counterpart blocker as a refinement boundary",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-tv5.5",
+                "promotion_consequence": "coordinator/Stage 2 refinement remains unpromoted",
+                "reason": "The compatibility-fenced capability-view mismatch counterpart remains owned by Stage 2/coordinator evidence and is not discharged by Rust carrier proof.",
+                "evidence_paths": [&w040_conformance_blockers_path],
+                "failures": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_capability_view_fence_counterpart_exact_blocker") { Vec::<String>::new() } else { vec!["w040_capability_view_fence_blocker_missing".to_string()] },
+                "validation_state": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_capability_view_fence_counterpart_exact_blocker") { "w040_rust_exact_blocker_validated" } else { "w040_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w040_callable_metadata_projection_totality_boundary",
+                "w040_obligation_id": "W040-OBL-004",
+                "source_inputs": ["W040 optimized/core exact blocker register", "LET/LAMBDA carrier boundary"],
+                "disposition_kind": "exact_totality_boundary",
+                "disposition": "carry callable metadata projection as an exact totality/refinement blocker",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-tv5.8; external:OxFunc",
+                "promotion_consequence": "callable metadata projection and broad callable conformance remain unpromoted",
+                "reason": "The narrow LET/LAMBDA carrier seam is in scope, but general OxFunc kernels and metadata projection sufficiency are not discharged.",
+                "evidence_paths": [&w040_conformance_blockers_path, W040_LEAN_RUST_TOTALITY_FILE],
+                "failures": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_callable_metadata_projection_exact_blocker") && lean_file_present { Vec::<String>::new() } else { vec!["w040_callable_metadata_or_lean_blocker_missing".to_string()] },
+                "validation_state": if row_with_field_exists(&w040_conformance_blockers, "row_id", "w040_callable_metadata_projection_exact_blocker") && lean_file_present { "w040_rust_exact_blocker_validated" } else { "w040_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w040_let_lambda_carrier_external_boundary",
+                "w040_obligation_id": "W040-OBL-020",
+                "source_inputs": ["W040 direct obligation map", W040_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "accepted_external_seam_boundary",
+                "disposition": "keep LET/LAMBDA carrier interaction inside OxCalc/OxFml formalization while excluding general OxFunc kernels",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": true,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-tv5.4; calc-tv5.8; external:OxFunc",
+                "promotion_consequence": "general OxFunc kernels remain unpromoted inside OxCalc",
+                "reason": "W040 scope includes the carrier seam but not broad OxFunc semantic kernels.",
+                "evidence_paths": [&w040_obligation_map_path, W040_LEAN_RUST_TOTALITY_FILE],
+                "failures": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-020") && lean_file_present { Vec::<String>::new() } else { vec!["w040_let_lambda_boundary_missing".to_string()] },
+                "validation_state": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-020") && lean_file_present { "w040_rust_boundary_validated" } else { "w040_rust_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w040_spec_evolution_refinement_guard",
+                "w040_obligation_id": "W040-OBL-007",
+                "source_inputs": ["W040 workset and obligation map"],
+                "disposition_kind": "accepted_spec_evolution_guard",
+                "disposition": "preserve formalization as spec evolution and implementation improvement, not a fixed-spec test only",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-tv5.3; calc-tv5.10",
+                "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
+                "reason": "The W040 charter records spec-evolution hooks for Rust totality and refinement obligations.",
+                "evidence_paths": [&w040_obligation_map_path, "docs/worksets/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"],
+                "failures": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-007") { Vec::<String>::new() } else { vec!["w040_refinement_obligation_missing".to_string()] },
+                "validation_state": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-007") { "w040_rust_boundary_validated" } else { "w040_rust_boundary_failed" }
+            }),
+        ];
+
+        let local_proof_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "local_checked_proof"))
+            .count();
+        let bounded_model_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "bounded_model"))
+            .count();
+        let accepted_external_seam_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_external_seam"))
+            .count();
+        let accepted_boundary_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_boundary"))
+            .count();
+        let totality_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "totality_boundary"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let refinement_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "refinement_row"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let blocker_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let failed_row_count = proof_rows
+            .iter()
+            .filter(|row| {
+                !row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            })
+            .count();
+
+        let mut validation_failures = Vec::new();
+        if counter_value(&w040_obligation_summary, "obligation_count") != 23 {
+            validation_failures.push("w040_obligation_count_changed".to_string());
+        }
+        if !array_contains_string(
+            w040_obligation_summary
+                .get("no_promotion_claims")
+                .unwrap_or(&Value::Null),
+            "rust_totality_and_refinement",
+        ) {
+            validation_failures.push("w040_rust_no_promotion_guard_missing".to_string());
+        }
+        if !w040_obligation_exists(&w040_obligation_map, "W040-OBL-006")
+            || !w040_obligation_exists(&w040_obligation_map, "W040-OBL-007")
+        {
+            validation_failures.push("w040_rust_obligation_rows_missing".to_string());
+        }
+        if string_value(&w039_formal_validation, "status")
+            != "formal_assurance_w039_totality_closure_valid"
+        {
+            validation_failures.push("w039_formal_validation_not_valid".to_string());
+        }
+        if bool_at(
+            w039_formal_summary
+                .get("promotion_claims")
+                .unwrap_or(&Value::Null),
+            "rust_engine_totality_promoted",
+        ) {
+            validation_failures.push("w039_rust_totality_was_promoted".to_string());
+        }
+        if counter_value(&w040_conformance_summary, "exact_remaining_blocker_count") != 4 {
+            validation_failures.push("w040_conformance_exact_blocker_count_changed".to_string());
+        }
+        if string_value(&w040_conformance_validation, "status")
+            != "optimized_core_exact_blockers_narrowed_no_promotion_valid"
+        {
+            validation_failures.push("w040_conformance_validation_not_valid".to_string());
+        }
+        if counter_value(&w040_conformance_blockers, "exact_remaining_blocker_count") != 4 {
+            validation_failures.push("w040_conformance_blocker_register_count_changed".to_string());
+        }
+        if counter_value(&w040_treecalc_summary, "expectation_mismatch_count") != 0 {
+            validation_failures.push("w040_treecalc_expectation_mismatch_present".to_string());
+        }
+        if string_value(&w040_dynamic_evidence, "treecalc_run_id") != W040_TREECALC_RUN_ID {
+            validation_failures.push("w040_dynamic_evidence_run_id_changed".to_string());
+        }
+        if !lean_file_present {
+            validation_failures.push("w040_lean_rust_totality_file_missing".to_string());
+        }
+        if panic_marker_count == 0 {
+            validation_failures.push("w040_panic_marker_audit_unexpected_zero".to_string());
+        }
+        if failed_row_count != 0 {
+            validation_failures.push("w040_rust_totality_row_failures_present".to_string());
+        }
+        if blocker_rows.len() != 5 {
+            validation_failures.push("w040_expected_five_rust_exact_blockers".to_string());
+        }
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let rust_ledger_path =
+            format!("{relative_artifact_root}/w040_rust_totality_refinement_ledger.json");
+        let totality_register_path =
+            format!("{relative_artifact_root}/w040_rust_totality_boundary_register.json");
+        let refinement_register_path =
+            format!("{relative_artifact_root}/w040_rust_refinement_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w040_rust_exact_blocker_register.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "source_artifacts": {
+                    "w040_direct_obligation_summary": w040_obligation_summary_path,
+                    "w040_direct_obligation_map": w040_obligation_map_path,
+                    "w039_formal_assurance_summary": w039_formal_summary_path,
+                    "w039_formal_assurance_validation": w039_formal_validation_path,
+                    "w040_implementation_conformance_summary": w040_conformance_summary_path,
+                    "w040_implementation_conformance_validation": w040_conformance_validation_path,
+                    "w040_implementation_conformance_exact_blockers": w040_conformance_blockers_path,
+                    "w040_dynamic_release_reclassification_evidence": w040_dynamic_evidence_path,
+                    "w040_treecalc_summary": w040_treecalc_summary_path,
+                    "w040_treecalc_post_edit_result": w040_treecalc_post_edit_result_path,
+                    "w040_treecalc_post_edit_closure": w040_treecalc_post_edit_closure_path,
+                    "w040_lean_rust_totality_file": W040_LEAN_RUST_TOTALITY_FILE
+                },
+                "source_counts": {
+                    "w040_obligation_count": counter_value(&w040_obligation_summary, "obligation_count"),
+                    "w039_formal_exact_blocker_count": counter_value(&w039_formal_summary, "exact_remaining_blocker_count"),
+                    "w040_conformance_exact_blocker_count": counter_value(&w040_conformance_summary, "exact_remaining_blocker_count"),
+                    "w040_treecalc_case_count": counter_value(&w040_treecalc_summary, "case_count"),
+                    "panic_marker_count": panic_marker_count
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w040_rust_totality_refinement_ledger.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W040_RUST_LEDGER_SCHEMA_V1,
+                "run_id": run_id,
+                "rust_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": proof_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w040_rust_totality_boundary_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W040_TOTALITY_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "totality_boundary_count": totality_rows.len(),
+                "rows": totality_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w040_rust_refinement_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W040_REFINEMENT_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "refinement_row_count": refinement_rows.len(),
+                "rows": refinement_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w040_rust_exact_blocker_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W040_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": blocker_rows
+            }),
+        )?;
+
+        let validation_status = if validation_failures.is_empty() {
+            "formal_assurance_w040_rust_totality_refinement_valid"
+        } else {
+            "formal_assurance_w040_rust_totality_refinement_invalid"
+        };
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "rust_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "validation_failures": validation_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "assumption_discharge_ledger_path": rust_ledger_path,
+                "totality_boundary_register_path": totality_register_path,
+                "refinement_register_path": refinement_register_path,
+                "exact_proof_model_blocker_register_path": blocker_register_path,
+                "validation_path": validation_path,
+                "assumption_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "promotion_claims": {
+                    "rust_engine_totality_promoted": false,
+                    "rust_refinement_promoted": false,
+                    "full_optimized_core_verification_promoted": false,
+                    "full_lean_verification_promoted": false,
+                    "full_tla_verification_promoted": false,
+                    "stage2_policy_promoted": false,
+                    "callable_metadata_projection_promoted": false,
+                    "pack_grade_replay_promoted": false,
+                    "c5_promoted": false,
+                    "general_oxfunc_kernel_promoted": false
+                }
+            }),
+        )?;
+
+        Ok(FormalAssuranceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            assumption_row_count: proof_rows.len(),
+            local_proof_row_count,
+            bounded_model_row_count,
+            accepted_external_seam_count,
+            accepted_boundary_count,
+            totality_boundary_count: totality_rows.len(),
+            exact_remaining_blocker_count: blocker_rows.len(),
             failed_row_count,
             artifact_root: relative_artifact_root,
         })
@@ -1218,6 +1892,16 @@ fn row_with_field_exists(value: &Value, field: &str, expected: &str) -> bool {
     find_row_by_field(value, field, expected).is_some()
 }
 
+fn w040_obligation_exists(value: &Value, obligation_id: &str) -> bool {
+    value
+        .get("obligations")
+        .and_then(Value::as_array)
+        .is_some_and(|rows| {
+            rows.iter()
+                .any(|row| row.get("obligation_id").and_then(Value::as_str) == Some(obligation_id))
+        })
+}
+
 fn array_contains_string(value: &Value, expected: &str) -> bool {
     value
         .as_array()
@@ -1247,6 +1931,32 @@ fn read_json(repo_root: &Path, relative_path: &str) -> Result<Value, FormalAssur
         path: path.display().to_string(),
         source,
     })
+}
+
+fn panic_marker_count(
+    repo_root: &Path,
+    relative_files: &[&str],
+) -> Result<usize, FormalAssuranceError> {
+    let mut count = 0;
+    for relative_file in relative_files {
+        let path = repo_root.join(relative_file);
+        let contents =
+            fs::read_to_string(&path).map_err(|source| FormalAssuranceError::ReadArtifact {
+                path: path.display().to_string(),
+                source,
+            })?;
+        count += contents
+            .lines()
+            .filter(|line| {
+                line.contains(".unwrap(")
+                    || line.contains(".expect(")
+                    || line.contains("panic!(")
+                    || line.contains("todo!(")
+                    || line.contains("unimplemented!(")
+            })
+            .count();
+    }
+    Ok(count)
 }
 
 fn write_json(path: &Path, value: &Value) -> Result<(), FormalAssuranceError> {
@@ -1560,6 +2270,58 @@ mod tests {
         )
         .unwrap();
         assert_eq!(blocker_register["exact_remaining_blocker_count"], 6);
+
+        cleanup();
+    }
+
+    #[test]
+    fn formal_assurance_runner_classifies_w040_rust_totality_and_refinement() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w040-rust-formal-assurance-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/formal-assurance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = FormalAssuranceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.assumption_row_count, 10);
+        assert_eq!(summary.local_proof_row_count, 7);
+        assert_eq!(summary.bounded_model_row_count, 0);
+        assert_eq!(summary.accepted_external_seam_count, 1);
+        assert_eq!(summary.accepted_boundary_count, 2);
+        assert_eq!(summary.totality_boundary_count, 5);
+        assert_eq!(summary.exact_remaining_blocker_count, 5);
+        assert_eq!(summary.failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/formal-assurance/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "formal_assurance_w040_rust_totality_refinement_valid"
+        );
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/formal-assurance/{run_id}/w040_rust_exact_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_remaining_blocker_count"], 5);
 
         cleanup();
     }

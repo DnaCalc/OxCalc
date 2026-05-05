@@ -1,0 +1,25 @@
+{
+  "run_id": "w040-rust-totality-refinement-proof-tranche-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w039_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+    "w039_formal_assurance_validation": "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/validation.json",
+    "w040_direct_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+    "w040_direct_obligation_summary": "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/run_summary.json",
+    "w040_dynamic_release_reclassification_evidence": "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json",
+    "w040_implementation_conformance_exact_blockers": "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
+    "w040_implementation_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json",
+    "w040_implementation_conformance_validation": "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/validation.json",
+    "w040_lean_rust_totality_file": "formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean",
+    "w040_treecalc_post_edit_closure": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_closure.json",
+    "w040_treecalc_post_edit_result": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/result.json",
+    "w040_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json"
+  },
+  "source_counts": {
+    "panic_marker_count": 144,
+    "w039_formal_exact_blocker_count": 6,
+    "w040_conformance_exact_blocker_count": 4,
+    "w040_obligation_count": 23,
+    "w040_treecalc_case_count": 25
+  }
+}

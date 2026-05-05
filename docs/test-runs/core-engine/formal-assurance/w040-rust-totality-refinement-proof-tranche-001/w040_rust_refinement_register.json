@@ -1,0 +1,139 @@
+{
+  "refinement_row_count": 5,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.2; calc-tv5.3",
+      "bounded_model": false,
+      "disposition": "explicit DependencyRemoved and DependencyReclassified seeds force rebind/no-publication behavior",
+      "disposition_kind": "direct_refinement_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json",
+        "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json",
+        "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/result.json",
+        "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/invalidation_closure.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "dynamic_closure_requires_rebind": true,
+        "post_edit_rejected_for_rebind": true,
+        "treecalc_case_count": 25,
+        "treecalc_expectation_mismatch_count": 0
+      },
+      "promotion_consequence": "refinement is evidenced only for the explicit-seed slice; automatic dependency-set transition remains blocked",
+      "reason": "The post-edit closure marks node 3 as requiring rebind and the post-edit result rejects with HostInjectedFailure without a new publication.",
+      "refinement_row": true,
+      "row_id": "w040_dependency_seed_rebind_refinement_evidence",
+      "source_inputs": [
+        "W040 dynamic release/reclassification TreeCalc run"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_rust_refinement_row_validated",
+      "w040_obligation_id": "W040-OBL-007"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.3; calc-tv5.5; calc-tv5.10",
+      "bounded_model": false,
+      "disposition": "automatic dynamic dependency-set release/reclassification transition differential remains absent",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Rust refinement and full optimized/core verification remain unpromoted",
+      "reason": "The W040 direct evidence is explicit-seed based and does not yet compare predecessor/successor dynamic descriptors without manual seed injection.",
+      "refinement_row": true,
+      "row_id": "w040_dynamic_transition_refinement_exact_blocker",
+      "source_inputs": [
+        "W040 optimized/core exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_rust_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-007"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.5",
+      "bounded_model": false,
+      "disposition": "retain the snapshot-fence counterpart blocker as a refinement boundary",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "coordinator/Stage 2 refinement remains unpromoted",
+      "reason": "The stale accepted-candidate snapshot-fence counterpart remains owned by Stage 2/coordinator evidence and is not discharged by Rust carrier proof.",
+      "refinement_row": true,
+      "row_id": "w040_snapshot_fence_refinement_boundary",
+      "source_inputs": [
+        "W040 optimized/core exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_rust_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-003"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.5",
+      "bounded_model": false,
+      "disposition": "retain the capability-view counterpart blocker as a refinement boundary",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "coordinator/Stage 2 refinement remains unpromoted",
+      "reason": "The compatibility-fenced capability-view mismatch counterpart remains owned by Stage 2/coordinator evidence and is not discharged by Rust carrier proof.",
+      "refinement_row": true,
+      "row_id": "w040_capability_view_fence_refinement_boundary",
+      "source_inputs": [
+        "W040 optimized/core exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_rust_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-003"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.8; external:OxFunc",
+      "bounded_model": false,
+      "disposition": "carry callable metadata projection as an exact totality/refinement blocker",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
+        "formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable metadata projection and broad callable conformance remain unpromoted",
+      "reason": "The narrow LET/LAMBDA carrier seam is in scope, but general OxFunc kernels and metadata projection sufficiency are not discharged.",
+      "refinement_row": true,
+      "row_id": "w040_callable_metadata_projection_totality_boundary",
+      "source_inputs": [
+        "W040 optimized/core exact blocker register",
+        "LET/LAMBDA carrier boundary"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_rust_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-004"
+    }
+  ],
+  "run_id": "w040-rust-totality-refinement-proof-tranche-001",
+  "schema_version": "oxcalc.formal_assurance.w040_rust_refinement_register.v1"
+}

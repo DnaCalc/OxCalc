@@ -6,9 +6,9 @@ W038 starts from `docs/spec/core-engine/w037-formalization/W037_CLOSURE_AUDIT_AN
 
 The governing workset is `docs/worksets/W038_CORE_FORMALIZATION_RELEASE_GRADE_CLOSURE_HARDENING.md`.
 
-Expected first packets:
+Packets:
 
-1. W038 residual release-grade obligation ledger and objective map.
+1. `W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md`
 2. W038 TraceCalc oracle authority and authority-exclusion discharge.
 3. W038 optimized core-engine conformance blocker closure and fixes.
 4. W038 proof-model assumption discharge and totality boundary hardening.

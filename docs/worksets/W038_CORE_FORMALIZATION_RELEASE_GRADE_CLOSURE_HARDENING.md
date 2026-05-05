@@ -91,10 +91,19 @@ Child path:
 
 ## Current Status
 
-- execution_state: `calc-zsr.1_ready`
+- execution_state: `calc-zsr.1_residual_release_grade_ledger_validated`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-zsr.1` is the next ready W038 bead
-  - all W038 evidence lanes are pending
+  - `calc-zsr.2` TraceCalc oracle authority and authority-exclusion discharge is the next W038 bead
+  - optimized/core-engine conformance blocker closure remains open
+  - proof/model assumption discharge remains open
+  - Stage 2 partition replay and semantic-equivalence execution remain open
+  - operated assurance, alert/quarantine, and cross-engine service remain open
+  - independent evaluator diversity and OxFml seam watch closure remain open
+  - pack-grade replay governance, C5, and W038 release decision remain open
+
+Latest W038 evidence:
+
+1. `docs/spec/core-engine/w038-formalization/W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md` records the `calc-zsr.1` residual release-grade obligation ledger and objective map. The ledger packet `w038-residual-release-grade-obligation-ledger-001` maps 20 W038 obligations to owner beads, evidence roots, promotion consequences, and spec-evolution hooks without promoting release-grade verification, C5, pack-grade replay, Stage 2 policy, operated services, or fully independent evaluator diversity.

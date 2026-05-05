@@ -1,0 +1,72 @@
+{
+  "run_id": "w038-residual-release-grade-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w038.objective_map.v1",
+  "active_objective": "Run post-W033 successor beads sequentially until the formalization project reaches full core-engine formalization, TraceCalc and optimized implementation verification, full formal proofs/checks, and full TLA/Lean verification.",
+  "objective_rows": [
+    {
+      "requirement": "run post-W033 successor beads sequentially",
+      "evidence_state": "w034_w035_w036_w037_closed_w038_active",
+      "mapped_obligations": ["W038-OBL-001", "W038-OBL-020"],
+      "next_owner": "calc-zsr.2"
+    },
+    {
+      "requirement": "progress through all slices of the formalization project",
+      "evidence_state": "w038_obligation_map_created",
+      "mapped_obligations": ["W038-OBL-001", "W038-OBL-020"],
+      "next_owner": "calc-zsr.2"
+    },
+    {
+      "requirement": "full formalization of core engine",
+      "evidence_state": "not_promoted",
+      "mapped_obligations": ["W038-OBL-001", "W038-OBL-020"],
+      "next_owner": "calc-zsr.2"
+    },
+    {
+      "requirement": "TraceCalc implementation verified",
+      "evidence_state": "partial_reference_oracle",
+      "mapped_obligations": ["W038-OBL-001", "W038-OBL-002"],
+      "next_owner": "calc-zsr.2"
+    },
+    {
+      "requirement": "optimized implementation verified",
+      "evidence_state": "partial_with_five_w037_residual_blockers",
+      "mapped_obligations": ["W038-OBL-003", "W038-OBL-007"],
+      "next_owner": "calc-zsr.3"
+    },
+    {
+      "requirement": "formal proofs and checks in place",
+      "evidence_state": "inventory_checked_not_total_proof",
+      "mapped_obligations": ["W038-OBL-008", "W038-OBL-010"],
+      "next_owner": "calc-zsr.4"
+    },
+    {
+      "requirement": "full TLA verification",
+      "evidence_state": "bounded_configs_checked_not_full_verification",
+      "mapped_obligations": ["W038-OBL-009", "W038-OBL-013"],
+      "next_owner": "calc-zsr.4"
+    },
+    {
+      "requirement": "full Lean verification",
+      "evidence_state": "zero_axiom_zero_sorry_inventory_not_total_rust_engine_proof",
+      "mapped_obligations": ["W038-OBL-008", "W038-OBL-010"],
+      "next_owner": "calc-zsr.4"
+    },
+    {
+      "requirement": "OxCalc plus OxFml scope with narrow LET/LAMBDA carrier",
+      "evidence_state": "direct_slice_exercised_general_oxfunc_external",
+      "mapped_obligations": ["W038-OBL-004", "W038-OBL-007", "W038-OBL-010", "W038-OBL-018"],
+      "next_owner": "calc-zsr.7"
+    },
+    {
+      "requirement": "release-grade pack/C5 decision",
+      "evidence_state": "not_promoted_highest_capability_cap_C4_distill_valid",
+      "mapped_obligations": ["W038-OBL-019", "W038-OBL-020"],
+      "next_owner": "calc-zsr.8"
+    }
+  ],
+  "three_axis_report": {
+    "scope_completeness": "scope_partial",
+    "target_completeness": "target_complete",
+    "integration_completeness": "integrated"
+  }
+}

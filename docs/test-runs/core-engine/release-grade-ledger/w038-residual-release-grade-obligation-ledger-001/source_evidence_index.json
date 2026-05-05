@@ -1,0 +1,54 @@
+{
+  "run_id": "w038-residual-release-grade-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w038.source_index.v1",
+  "reviewed_sources": [
+    {
+      "path": "docs/spec/core-engine/w037-formalization/W037_CLOSURE_AUDIT_AND_FULL_VERIFICATION_RELEASE_DECISION.md",
+      "role": "predecessor release decision"
+    },
+    {
+      "path": "docs/test-runs/core-engine/closure-audit/w037-closure-audit-full-verification-release-decision-001/residual_lane_ledger.json",
+      "role": "source residual lanes"
+    },
+    {
+      "path": "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/w037_residual_blocker_register.json",
+      "role": "optimized/core-engine residual blockers"
+    },
+    {
+      "path": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+      "role": "proof/model promotion blockers"
+    },
+    {
+      "path": "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json",
+      "role": "Stage 2 no-promotion decision"
+    },
+    {
+      "path": "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/service/service_readiness.json",
+      "role": "service-readiness blockers"
+    },
+    {
+      "path": "docs/test-runs/core-engine/pack-capability/w037-pack-c5-candidate-decision-001/decision/pack_capability_decision.json",
+      "role": "pack/C5 no-promotion decision"
+    },
+    {
+      "path": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "role": "inbound OxFml observation ledger"
+    }
+  ],
+  "reviewed_inbound_observations": {
+    "oxfml_status": "dirty_upstream_repo_not_modified_by_oxcalc",
+    "relevant_note_sections": [
+      "W073 typed conditional-formatting guard",
+      "format_delta/display_delta distinction",
+      "host/runtime first-slice convergence",
+      "structured-reference table packet convergence",
+      "immutable-edit packet proposal",
+      "fixture host and coordinator stand-in packet convergence",
+      "registered-external direct packet convergence",
+      "W026 caller-anchor/address-mode, execution-restriction, and publication/topology residual note-level lanes",
+      "public consumer surface update"
+    ],
+    "handoff_required": false,
+    "handoff_reason": "No exercised W038 artifact in this ledger exposes an OxFml-owned contract defect."
+  }
+}

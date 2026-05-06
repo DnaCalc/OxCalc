@@ -23,7 +23,7 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 1. `W045_RESIDUAL_RELEASE_GRADE_SUCCESSOR_OBLIGATION_AND_CURRENT_OXFML_INTAKE_MAP.md` - `calc-zkio.1` residual map, validated.
 2. `W045_OPTIMIZED_CORE_COUNTERPART_COVERAGE_AND_CALLABLE_METADATA_PROJECTION_CLOSURE.md` - `calc-zkio.2` optimized/core and callable metadata tranche, validated.
 3. `W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md` - `calc-zkio.3` Rust totality/refinement tranche, validated.
-4. `W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md` - `calc-zkio.4` Lean/TLA proof/model tranche.
+4. `W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md` - `calc-zkio.4` Lean/TLA proof/model tranche, validated.
 5. `W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md` - `calc-zkio.5` Stage 2 tranche.
 6. `W045_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_SLO_SERVICE_IMPLEMENTATION.md` - `calc-zkio.6` operated assurance/service tranche.
 7. `W045_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-zkio.7` diversity/service tranche.
@@ -34,7 +34,7 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 
 ## Current Status
 
-- execution_state: `calc-zkio.4_ready_lean_tla_verification_fairness_and_totality_discharge`
+- execution_state: `calc-zkio.5_ready_stage2_production_partition_and_pack_grade_equivalence_service_evidence`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
@@ -42,5 +42,6 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
   - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
   - `calc-zkio.2` optimized/core and callable metadata tranche is validated
   - `calc-zkio.3` Rust totality/refinement and panic-surface tranche is validated
-  - `calc-zkio.4` Lean/TLA verification, fairness, and totality discharge is ready next
+  - `calc-zkio.4` Lean/TLA verification, fairness, and totality discharge is validated
+  - `calc-zkio.5` Stage 2 production partition and pack-grade equivalence service evidence is ready next
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, callable metadata, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

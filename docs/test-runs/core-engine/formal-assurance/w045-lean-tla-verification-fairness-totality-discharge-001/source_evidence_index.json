@@ -1,0 +1,41 @@
+{
+  "run_id": "w045-lean-tla-verification-fairness-totality-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w037_formal_inventory_summary": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+    "w037_formal_inventory_validation": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+    "w037_tla_inventory": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+    "w044_lean_tla_discharge_file": "formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean",
+    "w044_lean_tla_exact_blockers": "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json",
+    "w044_lean_tla_ledger": "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_discharge_ledger.json",
+    "w044_lean_tla_summary": "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+    "w044_lean_tla_validation": "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json",
+    "w044_stage2_exact_blockers": "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+    "w044_stage2_policy_file": "formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean",
+    "w044_stage2_policy_gate": "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_policy_gate_register.json",
+    "w044_stage2_summary": "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+    "w044_stage2_validation": "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
+    "w045_lean_tla_discharge_file": "formal/lean/OxCalc/CoreEngine/W045LeanTlaVerificationFairnessAndTotality.lean",
+    "w045_oxfml_observation_intake": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+    "w045_residual_summary": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+    "w045_rust_exact_blockers": "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json",
+    "w045_rust_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+    "w045_rust_formal_assurance_validation": "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
+    "w045_rust_lean_file": "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean",
+    "w045_rust_refinement_register": "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json",
+    "w045_rust_totality_refinement_ledger": "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
+    "w045_successor_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+  },
+  "source_counts": {
+    "lean_placeholder_count": 0,
+    "w037_tla_failed_config_count": 0,
+    "w037_tla_routine_config_count": 11,
+    "w044_lean_tla_exact_blocker_count": 5,
+    "w044_stage2_exact_blocker_count": 8,
+    "w044_stage2_policy_row_count": 25,
+    "w044_stage2_satisfied_policy_row_count": 17,
+    "w045_rust_exact_blocker_count": 7,
+    "w045_successor_obligation_count": 36,
+    "w073_typed_only_guard_present": true
+  }
+}

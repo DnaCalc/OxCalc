@@ -117,6 +117,14 @@ const FORMAL_ASSURANCE_W044_TLA_MODEL_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w044_tla_model_bound_register.v1";
 const FORMAL_ASSURANCE_W044_LEAN_TLA_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w044_lean_tla_exact_blocker_register.v1";
+const FORMAL_ASSURANCE_W045_LEAN_TLA_LEDGER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_lean_tla_discharge_ledger.v1";
+const FORMAL_ASSURANCE_W045_LEAN_PROOF_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_lean_proof_register.v1";
+const FORMAL_ASSURANCE_W045_TLA_MODEL_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_tla_model_bound_register.v1";
+const FORMAL_ASSURANCE_W045_LEAN_TLA_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_lean_tla_exact_blocker_register.v1";
 const FORMAL_ASSURANCE_VALIDATION_SCHEMA_V1: &str = "oxcalc.formal_assurance.validation.v1";
 
 const W037_FORMAL_INVENTORY_RUN_ID: &str = "w037-proof-model-closure-001";
@@ -199,6 +207,9 @@ const W044_LEAN_TLA_DISCHARGE_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean";
 const W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w044-lean-tla-unbounded-fairness-full-verification-expansion-001";
+const W044_STAGE2_POLICY_FILE: &str = "formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
+const W044_STAGE2_REPLAY_RUN_ID: &str =
+    "w044-stage2-production-partition-analyzer-scheduler-equivalence-001";
 const W045_RESIDUAL_LEDGER_RUN_ID: &str =
     "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001";
 const W045_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
@@ -207,6 +218,10 @@ const W045_LEAN_RUST_TOTALITY_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean";
 const W045_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
     "w045-rust-totality-refinement-panic-surface-hardening-001";
+const W045_LEAN_TLA_DISCHARGE_FILE: &str =
+    "formal/lean/OxCalc/CoreEngine/W045LeanTlaVerificationFairnessAndTotality.lean";
+const W045_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
+    "w045-lean-tla-verification-fairness-totality-discharge-001";
 const W043_STAGE2_POLICY_FILE: &str = "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
 const W043_STAGE2_REPLAY_RUN_ID: &str =
     "w043-stage2-production-partition-analyzer-scheduler-equivalence-001";
@@ -323,6 +338,9 @@ impl FormalAssuranceRunner {
     ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
         if run_id == W045_RUST_FORMAL_ASSURANCE_RUN_ID || run_id.contains("w045-rust") {
             return self.execute_w045_rust_totality_refinement(repo_root, run_id);
+        }
+        if run_id == W045_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID || run_id.contains("w045-lean-tla") {
+            return self.execute_w045_lean_tla_discharge(repo_root, run_id);
         }
         if run_id == W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID || run_id.contains("w044-lean-tla") {
             return self.execute_w044_lean_tla_discharge(repo_root, run_id);
@@ -4361,6 +4379,1003 @@ impl FormalAssuranceRunner {
                     "pack_grade_replay_promoted": false,
                     "c5_promoted": false,
                     "callable_carrier_sufficiency_promoted": false,
+                    "general_oxfunc_kernel_promoted": false
+                }
+            }),
+        )?;
+
+        Ok(FormalAssuranceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            assumption_row_count: proof_rows.len(),
+            local_proof_row_count,
+            bounded_model_row_count,
+            accepted_external_seam_count,
+            accepted_boundary_count,
+            totality_boundary_count: totality_rows.len(),
+            exact_remaining_blocker_count: blocker_rows.len(),
+            failed_row_count,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w045_lean_tla_discharge(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
+        let relative_artifact_root = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            run_id,
+        ]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                FormalAssuranceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            FormalAssuranceError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w045_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w045_successor_map_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "successor_obligation_map.json",
+        ]);
+        let w045_oxfml_intake_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "oxfml_inbound_observation_intake.json",
+        ]);
+        let w044_lean_tla_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w044_lean_tla_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID,
+            "validation.json",
+        ]);
+        let w044_lean_tla_ledger_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID,
+            "w044_lean_tla_discharge_ledger.json",
+        ]);
+        let w044_lean_tla_blocker_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID,
+            "w044_lean_tla_exact_blocker_register.json",
+        ]);
+        let w045_rust_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W045_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w045_rust_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W045_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "validation.json",
+        ]);
+        let w045_rust_ledger_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W045_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w045_rust_totality_refinement_ledger.json",
+        ]);
+        let w045_rust_refinement_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W045_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w045_rust_refinement_register.json",
+        ]);
+        let w045_rust_blocker_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W045_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w045_rust_exact_blocker_register.json",
+        ]);
+        let w044_stage2_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-replay",
+            W044_STAGE2_REPLAY_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w044_stage2_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-replay",
+            W044_STAGE2_REPLAY_RUN_ID,
+            "validation.json",
+        ]);
+        let w044_stage2_blocker_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-replay",
+            W044_STAGE2_REPLAY_RUN_ID,
+            "w044_stage2_exact_blocker_register.json",
+        ]);
+        let w044_stage2_policy_gate_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "stage2-replay",
+            W044_STAGE2_REPLAY_RUN_ID,
+            "w044_stage2_policy_gate_register.json",
+        ]);
+        let w037_formal_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-inventory",
+            W037_FORMAL_INVENTORY_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w037_formal_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-inventory",
+            W037_FORMAL_INVENTORY_RUN_ID,
+            "validation.json",
+        ]);
+        let w037_tla_inventory_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-inventory",
+            W037_FORMAL_INVENTORY_RUN_ID,
+            "tla_inventory.json",
+        ]);
+
+        let w045_summary = read_json(repo_root, &w045_summary_path)?;
+        let w045_successor_map = read_json(repo_root, &w045_successor_map_path)?;
+        let w045_oxfml_intake = read_json(repo_root, &w045_oxfml_intake_path)?;
+        let w044_lean_tla_summary = read_json(repo_root, &w044_lean_tla_summary_path)?;
+        let w044_lean_tla_validation = read_json(repo_root, &w044_lean_tla_validation_path)?;
+        let w044_lean_tla_ledger = read_json(repo_root, &w044_lean_tla_ledger_path)?;
+        let w044_lean_tla_blockers = read_json(repo_root, &w044_lean_tla_blocker_path)?;
+        let w045_rust_summary = read_json(repo_root, &w045_rust_summary_path)?;
+        let w045_rust_validation = read_json(repo_root, &w045_rust_validation_path)?;
+        let w045_rust_ledger = read_json(repo_root, &w045_rust_ledger_path)?;
+        let w045_rust_refinement = read_json(repo_root, &w045_rust_refinement_path)?;
+        let w045_rust_blockers = read_json(repo_root, &w045_rust_blocker_path)?;
+        let w044_stage2_summary = read_json(repo_root, &w044_stage2_summary_path)?;
+        let w044_stage2_validation = read_json(repo_root, &w044_stage2_validation_path)?;
+        let w044_stage2_blockers = read_json(repo_root, &w044_stage2_blocker_path)?;
+        let w044_stage2_policy_gate = read_json(repo_root, &w044_stage2_policy_gate_path)?;
+        let w037_formal_summary = read_json(repo_root, &w037_formal_summary_path)?;
+        let w037_formal_validation = read_json(repo_root, &w037_formal_validation_path)?;
+        let w037_tla_inventory = read_json(repo_root, &w037_tla_inventory_path)?;
+
+        let lean_discharge_file_present = repo_root.join(W045_LEAN_TLA_DISCHARGE_FILE).exists();
+        let w044_lean_file_present = repo_root.join(W044_LEAN_TLA_DISCHARGE_FILE).exists();
+        let w045_rust_lean_file_present = repo_root.join(W045_LEAN_RUST_TOTALITY_FILE).exists();
+        let w044_stage2_file_present = repo_root.join(W044_STAGE2_POLICY_FILE).exists();
+        let lean_placeholder_count = lean_placeholder_count(repo_root)?;
+        let routine_tla_config_count = counter_value(&w037_tla_inventory, "config_count");
+        let routine_tla_failed_count = counter_value(&w037_tla_inventory, "failed_config_count");
+        let tla_inventory_passed_count = counter_value(&w037_tla_inventory, "passed_config_count");
+        let w037_formal_inventory_valid =
+            bool_at(&w037_formal_summary, "all_checked_artifacts_passed")
+                && string_value(&w037_formal_validation, "validation_state")
+                    == "w037_proof_model_closure_inventory_validated";
+        let w073_typed_only_guard_present =
+            bool_at(&w045_summary, "oxfml_formatting_update_incorporated")
+                && !bool_at(
+                    &w045_summary,
+                    "w073_downstream_request_construction_uptake_verified_by_oxcalc",
+                )
+                && w045_oxfml_intake
+                    .get("w073_formatting")
+                    .and_then(|formatting| {
+                        formatting.get("threshold_fallback_allowed_for_typed_families")
+                    })
+                    .and_then(Value::as_bool)
+                    == Some(false);
+        let w045_rust_dynamic_bridge_present = row_with_field_exists(
+            &w045_rust_refinement,
+            "row_id",
+            "w045_dynamic_mixed_transition_refinement_bridge",
+        );
+        let w045_rust_publication_bridge_present = row_with_field_exists(
+            &w045_rust_ledger,
+            "row_id",
+            "w045_publication_fence_no_publish_refinement_bridge",
+        );
+        let w045_rust_callable_value_present = row_with_field_exists(
+            &w045_rust_ledger,
+            "row_id",
+            "w045_callable_value_carrier_totality_evidence",
+        );
+        let w045_rust_dependency_blockers_present =
+            counter_value(&w045_rust_blockers, "exact_remaining_blocker_count") == 7
+                && row_with_field_exists(
+                    &w045_rust_blockers,
+                    "row_id",
+                    "w045_runtime_panic_surface_totality_boundary",
+                );
+        let w044_stage2_policy_blockers_present =
+            counter_value(&w044_stage2_blockers, "exact_remaining_blocker_count") == 8
+                && row_with_field_exists(
+                    &w044_stage2_blockers,
+                    "row_id",
+                    "w044_stage2_scheduler_fairness_unbounded_coverage_blocker",
+                );
+        let w044_lean_tla_predecessor_rows_present = row_with_field_exists(
+            &w044_lean_tla_ledger,
+            "row_id",
+            "w044_lean_rust_mixed_dynamic_refinement_bridge",
+        ) && row_with_field_exists(
+            &w044_lean_tla_ledger,
+            "row_id",
+            "w044_full_tla_verification_exact_blocker",
+        );
+        let w044_stage2_declared_evidence_present =
+            bool_at(
+                &w044_stage2_summary,
+                "declared_scheduler_equivalence_evidenced",
+            ) && bool_at(&w044_stage2_summary, "declared_pack_equivalence_evidenced")
+                && bool_at(
+                    &w044_stage2_summary,
+                    "production_relevant_analyzer_inputs_evidenced",
+                );
+
+        let proof_rows = vec![
+            json!({
+                "row_id": "w045_lean_inventory_checked_no_placeholder_evidence",
+                "w045_obligation_ids": ["W045-OBL-016"],
+                "source_inputs": ["W037 formal inventory", W045_LEAN_TLA_DISCHARGE_FILE],
+                "disposition_kind": "checked_lean_inventory_evidence",
+                "disposition": "bind the current Lean inventory and zero-placeholder audit as checked W045 evidence without promoting full Lean verification",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4",
+                "promotion_consequence": "full Lean verification remains unpromoted until all semantic proof boundaries are discharged",
+                "reason": "The Lean files parse and the placeholder census is zero, but this remains row-model evidence rather than whole-engine semantic proof.",
+                "evidence_paths": [&w037_formal_summary_path, &w037_formal_validation_path, W045_LEAN_TLA_DISCHARGE_FILE],
+                "observed": {
+                    "lean_placeholder_count": lean_placeholder_count
+                },
+                "failures": if w037_formal_inventory_valid && lean_placeholder_count == 0 && lean_discharge_file_present { Vec::<String>::new() } else { vec!["w045_lean_inventory_not_valid".to_string()] },
+                "validation_state": if w037_formal_inventory_valid && lean_placeholder_count == 0 && lean_discharge_file_present { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_w044_lean_tla_predecessor_bridge",
+                "w045_obligation_ids": ["W045-OBL-016", "W045-OBL-017", "W045-OBL-018"],
+                "source_inputs": ["W044 Lean/TLA proof-model packet", W044_LEAN_TLA_DISCHARGE_FILE],
+                "disposition_kind": "checked_lean_bridge_evidence",
+                "disposition": "bind the W044 Lean/TLA packet as a checked non-promoting predecessor input",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4",
+                "promotion_consequence": "full Lean/TLA verification remains unpromoted",
+                "reason": "The W044 Lean/TLA packet remains valid and records five exact blockers; W045.4 builds on it without treating it as full verification.",
+                "evidence_paths": [&w044_lean_tla_summary_path, &w044_lean_tla_validation_path, &w044_lean_tla_ledger_path, W044_LEAN_TLA_DISCHARGE_FILE],
+                "failures": if string_value(&w044_lean_tla_validation, "status") == "formal_assurance_w044_lean_tla_fairness_valid" && counter_value(&w044_lean_tla_summary, "failed_row_count") == 0 && counter_value(&w044_lean_tla_blockers, "exact_remaining_blocker_count") == 5 && w044_lean_tla_predecessor_rows_present && w044_lean_file_present { Vec::<String>::new() } else { vec!["w044_lean_tla_predecessor_not_valid".to_string()] },
+                "validation_state": if string_value(&w044_lean_tla_validation, "status") == "formal_assurance_w044_lean_tla_fairness_valid" && counter_value(&w044_lean_tla_summary, "failed_row_count") == 0 && counter_value(&w044_lean_tla_blockers, "exact_remaining_blocker_count") == 5 && w044_lean_tla_predecessor_rows_present && w044_lean_file_present { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_lean_rust_dynamic_refinement_bridge",
+                "w045_obligation_ids": ["W045-OBL-014", "W045-OBL-018"],
+                "source_inputs": ["W045 Rust refinement packet", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "checked_lean_refinement_bridge",
+                "disposition": "bind the W045 mixed dynamic add/remove/reclassify refinement row as a checked Lean/TLA proof input",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.4",
+                "promotion_consequence": "Rust refinement and full optimized/core verification remain unpromoted because retained blockers remain",
+                "reason": "W045.3 carries the mixed dynamic refinement bridge while keeping broader dynamic and soft-reference/INDIRECT blockers.",
+                "evidence_paths": [&w045_rust_summary_path, &w045_rust_validation_path, &w045_rust_refinement_path, W045_LEAN_RUST_TOTALITY_FILE],
+                "observed": {
+                    "automatic_dynamic_transition_row_count": counter_value(&w045_rust_summary, "automatic_dynamic_transition_row_count"),
+                    "w045_rust_exact_blocker_count": counter_value(&w045_rust_blockers, "exact_remaining_blocker_count")
+                },
+                "failures": if string_value(&w045_rust_validation, "status") == "formal_assurance_w045_rust_totality_refinement_valid" && counter_value(&w045_rust_summary, "automatic_dynamic_transition_row_count") == 1 && w045_rust_dynamic_bridge_present && w045_rust_lean_file_present { Vec::<String>::new() } else { vec!["w045_rust_dynamic_refinement_bridge_missing".to_string()] },
+                "validation_state": if string_value(&w045_rust_validation, "status") == "formal_assurance_w045_rust_totality_refinement_valid" && counter_value(&w045_rust_summary, "automatic_dynamic_transition_row_count") == 1 && w045_rust_dynamic_bridge_present && w045_rust_lean_file_present { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_lean_rust_publication_fence_no_publish_bridge",
+                "w045_obligation_ids": ["W045-OBL-013", "W045-OBL-018"],
+                "source_inputs": ["W045 Rust publication-fence no-publish row", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "checked_lean_publication_fence_bridge",
+                "disposition": "bind the W045 reject/no-publication fence row as a checked Lean/TLA proof input",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.4",
+                "promotion_consequence": "publication-fence behavior is evidenced for the exercised reject path, while production publication breadth remains blocked",
+                "reason": "W045.3 carries the W044 no-publication fence as a validated Rust row.",
+                "evidence_paths": [&w045_rust_ledger_path, &w045_rust_validation_path, W045_LEAN_RUST_TOTALITY_FILE],
+                "failures": if w045_rust_publication_bridge_present && w045_rust_lean_file_present { Vec::<String>::new() } else { vec!["w045_rust_publication_fence_bridge_missing".to_string()] },
+                "validation_state": if w045_rust_publication_bridge_present && w045_rust_lean_file_present { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_lean_callable_carrier_boundary_bridge",
+                "w045_obligation_ids": ["W045-OBL-015", "W045-OBL-033"],
+                "source_inputs": ["W045 Rust callable value-carrier row", "W045 successor obligation map"],
+                "disposition_kind": "checked_lean_callable_carrier_bridge",
+                "disposition": "bind the ordinary LET/LAMBDA value-carrier row as checked input while keeping callable carrier sufficiency and general OxFunc kernels unpromoted",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.4; calc-zkio.8",
+                "promotion_consequence": "callable carrier sufficiency and general OxFunc kernel claims remain unpromoted",
+                "reason": "W045.3 carries ordinary value-carrier evidence, not metadata projection or broad OxFunc semantics.",
+                "evidence_paths": [&w045_rust_ledger_path, &w045_successor_map_path],
+                "failures": if w045_rust_callable_value_present && obligation_exists(&w045_successor_map, "W045-OBL-033") { Vec::<String>::new() } else { vec!["w045_callable_carrier_bridge_missing".to_string()] },
+                "validation_state": if w045_rust_callable_value_present && obligation_exists(&w045_successor_map, "W045-OBL-033") { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_lean_stage2_scheduler_pack_predicate_carried",
+                "w045_obligation_ids": ["W045-OBL-017", "W045-OBL-018"],
+                "source_inputs": ["W044 Stage 2 scheduler/pack packet", W044_STAGE2_POLICY_FILE],
+                "disposition_kind": "checked_lean_policy_predicate",
+                "disposition": "carry W044 declared-profile scheduler-equivalence and pack-governance predicate evidence as checked non-promoting input",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.5",
+                "promotion_consequence": "Stage 2 production policy and pack-grade replay remain unpromoted until W045 production evidence exists",
+                "reason": "W044 Stage 2 evidence is declared-profile evidence with retained exact blockers; W045.5 owns the production-partition successor lane.",
+                "evidence_paths": [&w044_stage2_summary_path, &w044_stage2_validation_path, W044_STAGE2_POLICY_FILE],
+                "observed": {
+                    "policy_row_count": counter_value(&w044_stage2_summary, "policy_row_count"),
+                    "satisfied_policy_row_count": counter_value(&w044_stage2_summary, "satisfied_policy_row_count")
+                },
+                "failures": if string_value(&w044_stage2_validation, "status") == "w044_stage2_scheduler_equivalence_valid" && w044_stage2_declared_evidence_present && w044_stage2_file_present { Vec::<String>::new() } else { vec!["w044_stage2_scheduler_pack_predicate_missing".to_string()] },
+                "validation_state": if string_value(&w044_stage2_validation, "status") == "w044_stage2_scheduler_equivalence_valid" && w044_stage2_declared_evidence_present && w044_stage2_file_present { "w045_lean_proof_row_validated" } else { "w045_lean_proof_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_tla_routine_config_bounded_model_boundary",
+                "w045_obligation_ids": ["W045-OBL-017"],
+                "source_inputs": ["W037 routine TLC inventory"],
+                "disposition_kind": "bounded_model_boundary",
+                "disposition": "carry routine TLC config coverage as bounded model evidence and exact totality boundary",
+                "local_checked_proof": false,
+                "bounded_model": true,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.4",
+                "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+                "reason": "The routine TLC inventory remains bounded model evidence with 11 passed configs and 0 failed configs, not unbounded verification.",
+                "evidence_paths": [&w037_formal_summary_path, &w037_tla_inventory_path],
+                "observed": {
+                    "routine_tla_config_count": routine_tla_config_count,
+                    "routine_tla_failed_count": routine_tla_failed_count,
+                    "tla_inventory_passed_count": tla_inventory_passed_count
+                },
+                "failures": if routine_tla_config_count == 11 && routine_tla_failed_count == 0 && tla_inventory_passed_count == 11 { Vec::<String>::new() } else { vec!["w045_tla_routine_inventory_changed".to_string()] },
+                "validation_state": if routine_tla_config_count == 11 && routine_tla_failed_count == 0 && tla_inventory_passed_count == 11 { "w045_tla_model_bound_row_validated" } else { "w045_tla_model_bound_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_tla_stage2_partition_bounded_model_evidence",
+                "w045_obligation_ids": ["W045-OBL-017", "W045-OBL-018"],
+                "source_inputs": ["W044 Stage 2 partition replay"],
+                "disposition_kind": "bounded_stage2_model_evidence",
+                "disposition": "carry W044 bounded Stage 2 partition replay and production-analyzer evidence as bounded model evidence",
+                "local_checked_proof": false,
+                "bounded_model": true,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.5",
+                "promotion_consequence": "Stage 2 production partition-analyzer soundness remains unpromoted",
+                "reason": "The W044 Stage 2 packet has bounded partition replay and analyzer input evidence, not full production analyzer soundness.",
+                "evidence_paths": [&w044_stage2_summary_path, &w044_stage2_validation_path],
+                "observed": {
+                    "partition_replay_row_count": counter_value(&w044_stage2_summary, "partition_replay_row_count"),
+                    "production_relevant_analyzer_inputs_evidenced": bool_at(&w044_stage2_summary, "production_relevant_analyzer_inputs_evidenced")
+                },
+                "failures": if counter_value(&w044_stage2_summary, "partition_replay_row_count") == 5 && bool_at(&w044_stage2_summary, "production_relevant_analyzer_inputs_evidenced") { Vec::<String>::new() } else { vec!["w045_stage2_partition_model_evidence_missing".to_string()] },
+                "validation_state": if counter_value(&w044_stage2_summary, "partition_replay_row_count") == 5 && bool_at(&w044_stage2_summary, "production_relevant_analyzer_inputs_evidenced") { "w045_tla_model_bound_row_validated" } else { "w045_tla_model_bound_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_stage2_equivalence_bounded_model_input",
+                "w045_obligation_ids": ["W045-OBL-017", "W045-OBL-018"],
+                "source_inputs": ["W044 Stage 2 scheduler equivalence and pack input"],
+                "disposition_kind": "bounded_stage2_equivalence_evidence",
+                "disposition": "carry declared-profile scheduler-equivalence and observable-invariance rows as bounded model input",
+                "local_checked_proof": false,
+                "bounded_model": true,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.5",
+                "promotion_consequence": "Stage 2 production policy and pack-grade replay remain unpromoted",
+                "reason": "W044 scheduler and pack equivalence are evidenced for declared profiles with retained exact blockers.",
+                "evidence_paths": [&w044_stage2_summary_path, &w044_stage2_policy_gate_path],
+                "observed": {
+                    "observable_invariance_row_count": counter_value(&w044_stage2_summary, "observable_invariance_row_count"),
+                    "declared_scheduler_equivalence_evidenced": bool_at(&w044_stage2_summary, "declared_scheduler_equivalence_evidenced"),
+                    "declared_pack_equivalence_evidenced": bool_at(&w044_stage2_summary, "declared_pack_equivalence_evidenced")
+                },
+                "failures": if counter_value(&w044_stage2_summary, "observable_invariance_row_count") == 5 && bool_at(&w044_stage2_summary, "declared_scheduler_equivalence_evidenced") && bool_at(&w044_stage2_summary, "declared_pack_equivalence_evidenced") { Vec::<String>::new() } else { vec!["w045_stage2_equivalence_model_evidence_missing".to_string()] },
+                "validation_state": if counter_value(&w044_stage2_summary, "observable_invariance_row_count") == 5 && bool_at(&w044_stage2_summary, "declared_scheduler_equivalence_evidenced") && bool_at(&w044_stage2_summary, "declared_pack_equivalence_evidenced") { "w045_tla_model_bound_row_validated" } else { "w045_tla_model_bound_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_tla_fairness_scheduler_unbounded_boundary",
+                "w045_obligation_ids": ["W045-OBL-017"],
+                "source_inputs": ["W044 Stage 2 fairness exact blocker", "W045 residual no-promotion guard"],
+                "disposition_kind": "exact_model_assumption_boundary",
+                "disposition": "retain scheduler fairness and unbounded model coverage as exact model-assumption blockers",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.4; calc-zkio.5",
+                "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+                "reason": "The W044 Stage 2 packet retains fairness and unbounded scheduler coverage as an exact blocker, and W045 keeps the unbounded fairness no-promotion guard.",
+                "evidence_paths": [&w044_stage2_blocker_path, &w045_summary_path],
+                "failures": if row_with_field_exists(&w044_stage2_blockers, "row_id", "w044_stage2_scheduler_fairness_unbounded_coverage_blocker") && array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "unbounded_scheduler_fairness") { Vec::<String>::new() } else { vec!["w045_tla_fairness_boundary_missing".to_string()] },
+                "validation_state": if row_with_field_exists(&w044_stage2_blockers, "row_id", "w044_stage2_scheduler_fairness_unbounded_coverage_blocker") && array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "unbounded_scheduler_fairness") { "w045_lean_tla_exact_blocker_validated" } else { "w045_lean_tla_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_full_lean_verification_exact_blocker",
+                "w045_obligation_ids": ["W045-OBL-016"],
+                "source_inputs": ["W045 residual no-promotion guard", W045_LEAN_TLA_DISCHARGE_FILE],
+                "disposition_kind": "exact_lean_verification_blocker",
+                "disposition": "retain full Lean verification as an exact proof blocker despite checked row-model and placeholder evidence",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.4; calc-zkio.11",
+                "promotion_consequence": "full Lean verification remains unpromoted",
+                "reason": "Checked classification files and zero placeholders do not cover all semantic proof obligations.",
+                "evidence_paths": [&w045_summary_path, W045_LEAN_TLA_DISCHARGE_FILE],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && lean_discharge_file_present { Vec::<String>::new() } else { vec!["w045_full_lean_blocker_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && lean_discharge_file_present { "w045_lean_tla_exact_blocker_validated" } else { "w045_lean_tla_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_full_tla_verification_exact_blocker",
+                "w045_obligation_ids": ["W045-OBL-017"],
+                "source_inputs": ["W045 residual no-promotion guard", "bounded TLA inventory"],
+                "disposition_kind": "exact_tla_verification_blocker",
+                "disposition": "retain full TLA verification as an exact model blocker beyond bounded TLC configs",
+                "local_checked_proof": false,
+                "bounded_model": true,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.4; calc-zkio.11",
+                "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+                "reason": "TLA evidence is bounded model evidence and does not discharge unbounded fairness or production scheduler coverage.",
+                "evidence_paths": [&w045_summary_path, &w037_tla_inventory_path],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && routine_tla_failed_count == 0 { Vec::<String>::new() } else { vec!["w045_full_tla_blocker_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && routine_tla_failed_count == 0 { "w045_lean_tla_exact_blocker_validated" } else { "w045_lean_tla_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_rust_totality_dependency_exact_blocker",
+                "w045_obligation_ids": ["W045-OBL-014", "W045-OBL-018"],
+                "source_inputs": ["W045 Rust totality/refinement packet", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "exact_rust_dependency_blocker",
+                "disposition": "retain Rust totality/refinement dependency as exact proof/model blocker while W045 Rust packet still carries exact blockers",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.3; calc-zkio.4; calc-zkio.10",
+                "promotion_consequence": "Rust totality/refinement and full optimized/core verification remain unpromoted",
+                "reason": "W045.3 adds a fresh Rust row model but retains runtime panic, broader dynamic, soft-reference/INDIRECT, snapshot/capability breadth, callable metadata, and full optimized/core blockers.",
+                "evidence_paths": [&w045_rust_summary_path, &w045_rust_blocker_path, W045_LEAN_RUST_TOTALITY_FILE],
+                "failures": if w045_rust_dependency_blockers_present && w045_rust_lean_file_present { Vec::<String>::new() } else { vec!["w045_rust_dependency_blocker_missing".to_string()] },
+                "validation_state": if w045_rust_dependency_blockers_present && w045_rust_lean_file_present { "w045_lean_tla_exact_blocker_validated" } else { "w045_lean_tla_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_stage2_production_policy_dependency_exact_blocker",
+                "w045_obligation_ids": ["W045-OBL-017", "W045-OBL-018", "W045-OBL-020"],
+                "source_inputs": ["W044 Stage 2 exact blocker register", W044_STAGE2_POLICY_FILE],
+                "disposition_kind": "exact_stage2_dependency_blocker",
+                "disposition": "retain Stage 2 production policy and scheduler fairness dependency as exact proof/model blocker",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.4; calc-zkio.5",
+                "promotion_consequence": "Stage 2 production policy, scheduler fairness, and pack-grade replay remain unpromoted",
+                "reason": "W044 Stage 2 evidence is declared-profile evidence with eight exact blockers; W045.5 owns production policy evidence.",
+                "evidence_paths": [&w044_stage2_blocker_path, &w044_stage2_policy_gate_path, W044_STAGE2_POLICY_FILE],
+                "failures": if w044_stage2_policy_blockers_present && !bool_at(&w044_stage2_policy_gate, "stage2_policy_promoted") && w044_stage2_file_present { Vec::<String>::new() } else { vec!["w045_stage2_dependency_blocker_missing".to_string()] },
+                "validation_state": if w044_stage2_policy_blockers_present && !bool_at(&w044_stage2_policy_gate, "stage2_policy_promoted") && w044_stage2_file_present { "w045_lean_tla_exact_blocker_validated" } else { "w045_lean_tla_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_let_lambda_external_oxfunc_boundary",
+                "w045_obligation_ids": ["W045-OBL-015", "W045-OBL-033"],
+                "source_inputs": ["W045 successor obligation map", "LET/LAMBDA carrier seam"],
+                "disposition_kind": "accepted_external_seam_boundary",
+                "disposition": "keep LET/LAMBDA carrier interaction inside OxCalc/OxFml formalization while excluding general OxFunc kernels",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": true,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.8; external:OxFunc",
+                "promotion_consequence": "general OxFunc kernels remain unpromoted inside OxCalc",
+                "reason": "W045 scope includes the carrier seam but not broad OxFunc semantic kernels.",
+                "evidence_paths": [&w045_successor_map_path, W045_LEAN_TLA_DISCHARGE_FILE],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "general_oxfunc_kernels") && obligation_exists(&w045_successor_map, "W045-OBL-033") { Vec::<String>::new() } else { vec!["w045_let_lambda_external_boundary_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "general_oxfunc_kernels") && obligation_exists(&w045_successor_map, "W045-OBL-033") { "w045_lean_tla_boundary_validated" } else { "w045_lean_tla_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_formal_model_spec_evolution_guard",
+                "w045_obligation_ids": ["W045-OBL-002"],
+                "source_inputs": ["W045 successor obligation map"],
+                "disposition_kind": "accepted_spec_evolution_guard",
+                "disposition": "preserve formalization as spec evolution and implementation improvement, not a fixed-spec verification only",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.11",
+                "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
+                "reason": "W045 remains a formalization, spec-evolution, and engine-improvement workset.",
+                "evidence_paths": [&w045_successor_map_path, "docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
+                "failures": if obligation_exists(&w045_successor_map, "W045-OBL-002") { Vec::<String>::new() } else { vec!["w045_spec_evolution_obligation_missing".to_string()] },
+                "validation_state": if obligation_exists(&w045_successor_map, "W045-OBL-002") { "w045_lean_tla_boundary_validated" } else { "w045_lean_tla_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_w073_typed_formatting_lean_tla_boundary_guard",
+                "w045_obligation_ids": ["W045-OBL-003", "W045-OBL-031"],
+                "source_inputs": ["W045 W073 typed-only formatting intake"],
+                "disposition_kind": "accepted_formatting_boundary",
+                "disposition": "carry W073 typed-rule-only formatting intake as an accepted non-Lean/TLA promotion boundary",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.8",
+                "promotion_consequence": "W073 formatting intake does not promote full Lean/TLA verification, broad OxFml, or downstream request-construction uptake",
+                "reason": "W045.1 records typed-rule-only formatting intake and downstream request construction remains unverified.",
+                "evidence_paths": [&w045_summary_path, &w045_oxfml_intake_path],
+                "failures": if w073_typed_only_guard_present { Vec::<String>::new() } else { vec!["w045_w073_typed_guard_missing".to_string()] },
+                "validation_state": if w073_typed_only_guard_present { "w045_lean_tla_boundary_validated" } else { "w045_lean_tla_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_no_proxy_proof_model_promotion_guard",
+                "w045_obligation_ids": ["W045-OBL-001", "W045-OBL-002", "W045-OBL-016", "W045-OBL-017", "W045-OBL-018"],
+                "source_inputs": ["W045 no-promotion claims", "W045 successor obligation map"],
+                "disposition_kind": "accepted_no_proxy_promotion_guard",
+                "disposition": "retain proof/model no-proxy promotion guard across Lean, TLA, Rust, Stage 2, pack, and release-grade rows",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.4; calc-zkio.11",
+                "promotion_consequence": "full Lean/TLA, scheduler fairness, Rust totality/refinement, Stage 2, pack/C5, and release-grade claims remain blocked if any proxy row is counted as a proof discharge",
+                "reason": "W045.1 records no-promotion claims for proof/model and release-grade lanes and W045.4 carries them explicitly.",
+                "evidence_paths": [&w045_summary_path, &w045_successor_map_path],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "unbounded_scheduler_fairness") && obligation_exists(&w045_successor_map, "W045-OBL-016") && obligation_exists(&w045_successor_map, "W045-OBL-017") { Vec::<String>::new() } else { vec!["w045_proof_model_no_proxy_guard_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_lean_tla_verification") && array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "unbounded_scheduler_fairness") && obligation_exists(&w045_successor_map, "W045-OBL-016") && obligation_exists(&w045_successor_map, "W045-OBL-017") { "w045_lean_tla_boundary_validated" } else { "w045_lean_tla_boundary_failed" }
+            }),
+        ];
+
+        let local_proof_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "local_checked_proof"))
+            .count();
+        let bounded_model_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "bounded_model"))
+            .count();
+        let accepted_external_seam_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_external_seam"))
+            .count();
+        let accepted_boundary_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_boundary"))
+            .count();
+        let totality_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "totality_boundary"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let lean_proof_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "local_checked_proof"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let model_bound_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "bounded_model"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let blocker_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let failed_row_count = proof_rows
+            .iter()
+            .filter(|row| {
+                !row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            })
+            .count();
+        let dynamic_refinement_bridge_row_count = proof_rows
+            .iter()
+            .filter(|row| {
+                row.get("row_id").and_then(Value::as_str)
+                    == Some("w045_lean_rust_dynamic_refinement_bridge")
+            })
+            .count();
+        let publication_fence_bridge_row_count = proof_rows
+            .iter()
+            .filter(|row| {
+                row.get("row_id").and_then(Value::as_str)
+                    == Some("w045_lean_rust_publication_fence_no_publish_bridge")
+            })
+            .count();
+        let rust_dependency_blocker_count = proof_rows
+            .iter()
+            .filter(|row| {
+                row.get("row_id").and_then(Value::as_str)
+                    == Some("w045_rust_totality_dependency_exact_blocker")
+            })
+            .count();
+        let stage2_dependency_blocker_count = proof_rows
+            .iter()
+            .filter(|row| {
+                row.get("row_id").and_then(Value::as_str)
+                    == Some("w045_stage2_production_policy_dependency_exact_blocker")
+            })
+            .count();
+
+        let mut validation_failures = Vec::new();
+        if string_value(&w045_summary, "status")
+            != "residual_successor_obligation_current_oxfml_intake_map_validated"
+        {
+            validation_failures.push("w045_residual_summary_not_valid".to_string());
+        }
+        if !array_contains_string(
+            w045_summary
+                .get("no_promotion_claims")
+                .unwrap_or(&Value::Null),
+            "full_lean_tla_verification",
+        ) || !array_contains_string(
+            w045_summary
+                .get("no_promotion_claims")
+                .unwrap_or(&Value::Null),
+            "unbounded_scheduler_fairness",
+        ) {
+            validation_failures.push("w045_lean_tla_no_promotion_guard_missing".to_string());
+        }
+        for obligation_id in ["W045-OBL-016", "W045-OBL-017", "W045-OBL-018"] {
+            if !obligation_exists(&w045_successor_map, obligation_id) {
+                validation_failures.push(format!("{obligation_id}_missing"));
+            }
+        }
+        if string_value(&w044_lean_tla_validation, "status")
+            != "formal_assurance_w044_lean_tla_fairness_valid"
+        {
+            validation_failures.push("w044_lean_tla_predecessor_not_valid".to_string());
+        }
+        if counter_value(&w044_lean_tla_blockers, "exact_remaining_blocker_count") != 5 {
+            validation_failures.push("w044_lean_tla_blocker_count_changed".to_string());
+        }
+        if string_value(&w045_rust_validation, "status")
+            != "formal_assurance_w045_rust_totality_refinement_valid"
+        {
+            validation_failures.push("w045_rust_formal_assurance_not_valid".to_string());
+        }
+        if counter_value(&w045_rust_blockers, "exact_remaining_blocker_count") != 7 {
+            validation_failures.push("w045_rust_exact_blocker_count_changed".to_string());
+        }
+        if string_value(&w044_stage2_validation, "status")
+            != "w044_stage2_scheduler_equivalence_valid"
+        {
+            validation_failures.push("w044_stage2_packet_not_valid".to_string());
+        }
+        if counter_value(&w044_stage2_blockers, "exact_remaining_blocker_count") != 8 {
+            validation_failures.push("w044_stage2_blocker_count_changed".to_string());
+        }
+        if bool_at(&w044_stage2_summary, "stage2_policy_promoted")
+            || bool_at(&w044_stage2_summary, "pack_grade_replay_promoted")
+            || bool_at(&w044_stage2_policy_gate, "stage2_policy_promoted")
+        {
+            validation_failures.push("w044_stage2_promoted_unexpectedly".to_string());
+        }
+        if !w037_formal_inventory_valid {
+            validation_failures.push("w037_formal_inventory_not_valid".to_string());
+        }
+        if routine_tla_config_count != 11 || routine_tla_failed_count != 0 {
+            validation_failures.push("w037_tla_inventory_changed".to_string());
+        }
+        if lean_placeholder_count != 0 {
+            validation_failures.push("w045_lean_placeholder_count_nonzero".to_string());
+        }
+        if !lean_discharge_file_present
+            || !w044_lean_file_present
+            || !w045_rust_lean_file_present
+            || !w044_stage2_file_present
+        {
+            validation_failures.push("w045_required_lean_file_missing".to_string());
+        }
+        if !w073_typed_only_guard_present {
+            validation_failures.push("w045_w073_typed_only_guard_missing".to_string());
+        }
+        if failed_row_count != 0 {
+            validation_failures.push("w045_lean_tla_row_failures_present".to_string());
+        }
+        if proof_rows.len() != 18 {
+            validation_failures.push("w045_expected_eighteen_proof_model_rows".to_string());
+        }
+        if blocker_rows.len() != 6 {
+            validation_failures.push("w045_expected_six_lean_tla_exact_blockers".to_string());
+        }
+        if totality_rows.len() != 6 {
+            validation_failures.push("w045_expected_six_totality_boundaries".to_string());
+        }
+        if bounded_model_row_count != 4 {
+            validation_failures.push("w045_expected_four_bounded_model_rows".to_string());
+        }
+        if dynamic_refinement_bridge_row_count != 1 || publication_fence_bridge_row_count != 1 {
+            validation_failures.push("w045_expected_rust_bridge_rows".to_string());
+        }
+        if rust_dependency_blocker_count != 1 || stage2_dependency_blocker_count != 1 {
+            validation_failures.push("w045_expected_dependency_blocker_rows".to_string());
+        }
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let ledger_path = format!("{relative_artifact_root}/w045_lean_tla_discharge_ledger.json");
+        let lean_register_path = format!("{relative_artifact_root}/w045_lean_proof_register.json");
+        let model_register_path =
+            format!("{relative_artifact_root}/w045_tla_model_bound_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w045_lean_tla_exact_blocker_register.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "source_artifacts": {
+                    "w045_residual_summary": w045_summary_path,
+                    "w045_successor_obligation_map": w045_successor_map_path,
+                    "w045_oxfml_observation_intake": w045_oxfml_intake_path,
+                    "w044_lean_tla_summary": w044_lean_tla_summary_path,
+                    "w044_lean_tla_validation": w044_lean_tla_validation_path,
+                    "w044_lean_tla_ledger": w044_lean_tla_ledger_path,
+                    "w044_lean_tla_exact_blockers": w044_lean_tla_blocker_path,
+                    "w045_rust_formal_assurance_summary": w045_rust_summary_path,
+                    "w045_rust_formal_assurance_validation": w045_rust_validation_path,
+                    "w045_rust_totality_refinement_ledger": w045_rust_ledger_path,
+                    "w045_rust_refinement_register": w045_rust_refinement_path,
+                    "w045_rust_exact_blockers": w045_rust_blocker_path,
+                    "w044_stage2_summary": w044_stage2_summary_path,
+                    "w044_stage2_validation": w044_stage2_validation_path,
+                    "w044_stage2_exact_blockers": w044_stage2_blocker_path,
+                    "w044_stage2_policy_gate": w044_stage2_policy_gate_path,
+                    "w037_formal_inventory_summary": w037_formal_summary_path,
+                    "w037_formal_inventory_validation": w037_formal_validation_path,
+                    "w037_tla_inventory": w037_tla_inventory_path,
+                    "w045_lean_tla_discharge_file": W045_LEAN_TLA_DISCHARGE_FILE,
+                    "w044_lean_tla_discharge_file": W044_LEAN_TLA_DISCHARGE_FILE,
+                    "w045_rust_lean_file": W045_LEAN_RUST_TOTALITY_FILE,
+                    "w044_stage2_policy_file": W044_STAGE2_POLICY_FILE
+                },
+                "source_counts": {
+                    "w045_successor_obligation_count": counter_value(&w045_summary, "successor_obligation_count"),
+                    "w044_lean_tla_exact_blocker_count": counter_value(&w044_lean_tla_blockers, "exact_remaining_blocker_count"),
+                    "w045_rust_exact_blocker_count": counter_value(&w045_rust_blockers, "exact_remaining_blocker_count"),
+                    "w044_stage2_exact_blocker_count": counter_value(&w044_stage2_blockers, "exact_remaining_blocker_count"),
+                    "w044_stage2_policy_row_count": counter_value(&w044_stage2_summary, "policy_row_count"),
+                    "w044_stage2_satisfied_policy_row_count": counter_value(&w044_stage2_summary, "satisfied_policy_row_count"),
+                    "w037_tla_routine_config_count": routine_tla_config_count,
+                    "w037_tla_failed_config_count": routine_tla_failed_count,
+                    "lean_placeholder_count": lean_placeholder_count,
+                    "w073_typed_only_guard_present": w073_typed_only_guard_present
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_lean_tla_discharge_ledger.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_LEAN_TLA_LEDGER_SCHEMA_V1,
+                "run_id": run_id,
+                "proof_model_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "dynamic_refinement_bridge_row_count": dynamic_refinement_bridge_row_count,
+                "publication_fence_bridge_row_count": publication_fence_bridge_row_count,
+                "rust_dependency_blocker_count": rust_dependency_blocker_count,
+                "stage2_dependency_blocker_count": stage2_dependency_blocker_count,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": proof_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_lean_proof_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_LEAN_PROOF_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "local_proof_row_count": lean_proof_rows.len(),
+                "rows": lean_proof_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_tla_model_bound_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_TLA_MODEL_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "bounded_model_row_count": model_bound_rows.len(),
+                "rows": model_bound_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_lean_tla_exact_blocker_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_LEAN_TLA_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": blocker_rows
+            }),
+        )?;
+
+        let validation_status = if validation_failures.is_empty() {
+            "formal_assurance_w045_lean_tla_fairness_totality_valid"
+        } else {
+            "formal_assurance_w045_lean_tla_fairness_totality_invalid"
+        };
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "proof_model_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "dynamic_refinement_bridge_row_count": dynamic_refinement_bridge_row_count,
+                "publication_fence_bridge_row_count": publication_fence_bridge_row_count,
+                "rust_dependency_blocker_count": rust_dependency_blocker_count,
+                "stage2_dependency_blocker_count": stage2_dependency_blocker_count,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "w073_typed_only_guard_present": w073_typed_only_guard_present,
+                "validation_failures": validation_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "assumption_discharge_ledger_path": ledger_path,
+                "lean_proof_register_path": lean_register_path,
+                "model_bound_register_path": model_register_path,
+                "exact_proof_model_blocker_register_path": blocker_register_path,
+                "validation_path": validation_path,
+                "assumption_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "totality_boundary_count": totality_rows.len(),
+                "dynamic_refinement_bridge_row_count": dynamic_refinement_bridge_row_count,
+                "publication_fence_bridge_row_count": publication_fence_bridge_row_count,
+                "rust_dependency_blocker_count": rust_dependency_blocker_count,
+                "stage2_dependency_blocker_count": stage2_dependency_blocker_count,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "promotion_claims": {
+                    "full_lean_verification_promoted": false,
+                    "full_tla_verification_promoted": false,
+                    "scheduler_fairness_promoted": false,
+                    "unbounded_model_coverage_promoted": false,
+                    "rust_engine_totality_promoted": false,
+                    "rust_refinement_promoted": false,
+                    "full_optimized_core_verification_promoted": false,
+                    "stage2_policy_promoted": false,
+                    "pack_grade_replay_promoted": false,
+                    "c5_promoted": false,
+                    "callable_carrier_sufficiency_promoted": false,
+                    "callable_metadata_projection_promoted": false,
                     "general_oxfunc_kernel_promoted": false
                 }
             }),
@@ -11174,6 +12189,72 @@ mod tests {
         .unwrap();
         assert_eq!(panic_register["panic_surface_row_count"], 1);
         assert!(panic_register["panic_marker_count"].as_u64().unwrap() > 0);
+
+        cleanup();
+    }
+
+    #[test]
+    fn formal_assurance_runner_classifies_w045_lean_tla_fairness_totality() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w045-lean-tla-formal-assurance-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/formal-assurance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = FormalAssuranceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.assumption_row_count, 18);
+        assert_eq!(summary.local_proof_row_count, 11);
+        assert_eq!(summary.bounded_model_row_count, 4);
+        assert_eq!(summary.accepted_external_seam_count, 1);
+        assert_eq!(summary.accepted_boundary_count, 4);
+        assert_eq!(summary.totality_boundary_count, 6);
+        assert_eq!(summary.exact_remaining_blocker_count, 6);
+        assert_eq!(summary.failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/formal-assurance/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "formal_assurance_w045_lean_tla_fairness_totality_valid"
+        );
+        assert_eq!(validation["dynamic_refinement_bridge_row_count"], 1);
+        assert_eq!(validation["publication_fence_bridge_row_count"], 1);
+        assert_eq!(validation["rust_dependency_blocker_count"], 1);
+        assert_eq!(validation["stage2_dependency_blocker_count"], 1);
+        assert_eq!(validation["w073_typed_only_guard_present"], true);
+
+        let model_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/formal-assurance/{run_id}/w045_tla_model_bound_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(model_register["bounded_model_row_count"], 4);
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/formal-assurance/{run_id}/w045_lean_tla_exact_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_remaining_blocker_count"], 6);
 
         cleanup();
     }

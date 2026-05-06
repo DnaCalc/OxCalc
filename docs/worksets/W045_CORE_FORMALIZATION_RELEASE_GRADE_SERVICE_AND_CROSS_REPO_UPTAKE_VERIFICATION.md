@@ -74,14 +74,15 @@ Validation requirements scale by bead:
 
 ## 6. Current Status
 
-- execution_state: `calc-zkio.3_ready_rust_totality_refinement_and_panic_surface_hardening`
+- execution_state: `calc-zkio.4_ready_lean_tla_verification_fairness_and_totality_discharge`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
   - `calc-zkio.2` optimized core counterpart coverage and callable metadata projection closure is validated
-  - `calc-zkio.3` Rust totality refinement and panic-surface hardening is ready next
+  - `calc-zkio.3` Rust totality refinement and panic-surface hardening is validated
+  - `calc-zkio.4` Lean TLA verification fairness and totality discharge is ready next
   - release-grade verification remains unpromoted
   - pack-grade replay and C5 remain unpromoted
   - operated services, Stage 2 production policy, independent evaluator breadth, broad OxFml/public migration, callable metadata, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain open or external as classified

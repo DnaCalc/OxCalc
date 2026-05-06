@@ -99,6 +99,16 @@ const FORMAL_ASSURANCE_W044_REFINEMENT_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w044_rust_refinement_register.v1";
 const FORMAL_ASSURANCE_W044_BLOCKER_REGISTER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w044_rust_exact_blocker_register.v1";
+const FORMAL_ASSURANCE_W045_RUST_LEDGER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_rust_totality_refinement_ledger.v1";
+const FORMAL_ASSURANCE_W045_TOTALITY_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_rust_totality_boundary_register.v1";
+const FORMAL_ASSURANCE_W045_REFINEMENT_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_rust_refinement_register.v1";
+const FORMAL_ASSURANCE_W045_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_rust_exact_blocker_register.v1";
+const FORMAL_ASSURANCE_W045_PANIC_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.formal_assurance.w045_panic_surface_register.v1";
 const FORMAL_ASSURANCE_W044_LEAN_TLA_LEDGER_SCHEMA_V1: &str =
     "oxcalc.formal_assurance.w044_lean_tla_discharge_ledger.v1";
 const FORMAL_ASSURANCE_W044_LEAN_PROOF_REGISTER_SCHEMA_V1: &str =
@@ -189,6 +199,14 @@ const W044_LEAN_TLA_DISCHARGE_FILE: &str =
     "formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean";
 const W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w044-lean-tla-unbounded-fairness-full-verification-expansion-001";
+const W045_RESIDUAL_LEDGER_RUN_ID: &str =
+    "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001";
+const W045_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
+    "w045-optimized-core-counterpart-callable-metadata-001";
+const W045_LEAN_RUST_TOTALITY_FILE: &str =
+    "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean";
+const W045_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
+    "w045-rust-totality-refinement-panic-surface-hardening-001";
 const W043_STAGE2_POLICY_FILE: &str = "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
 const W043_STAGE2_REPLAY_RUN_ID: &str =
     "w043-stage2-production-partition-analyzer-scheduler-equivalence-001";
@@ -303,6 +321,9 @@ impl FormalAssuranceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
+        if run_id == W045_RUST_FORMAL_ASSURANCE_RUN_ID || run_id.contains("w045-rust") {
+            return self.execute_w045_rust_totality_refinement(repo_root, run_id);
+        }
         if run_id == W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID || run_id.contains("w044-lean-tla") {
             return self.execute_w044_lean_tla_discharge(repo_root, run_id);
         }
@@ -4340,6 +4361,992 @@ impl FormalAssuranceRunner {
                     "pack_grade_replay_promoted": false,
                     "c5_promoted": false,
                     "callable_carrier_sufficiency_promoted": false,
+                    "general_oxfunc_kernel_promoted": false
+                }
+            }),
+        )?;
+
+        Ok(FormalAssuranceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            assumption_row_count: proof_rows.len(),
+            local_proof_row_count,
+            bounded_model_row_count,
+            accepted_external_seam_count,
+            accepted_boundary_count,
+            totality_boundary_count: totality_rows.len(),
+            exact_remaining_blocker_count: blocker_rows.len(),
+            failed_row_count,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w045_rust_totality_refinement(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<FormalAssuranceRunSummary, FormalAssuranceError> {
+        let relative_artifact_root = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            run_id,
+        ]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                FormalAssuranceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            FormalAssuranceError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w045_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w045_successor_map_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "successor_obligation_map.json",
+        ]);
+        let w045_promotion_contract_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "promotion_contract_map.json",
+        ]);
+        let w045_oxfml_intake_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "release-grade-ledger",
+            W045_RESIDUAL_LEDGER_RUN_ID,
+            "oxfml_inbound_observation_intake.json",
+        ]);
+        let w045_conformance_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w045_conformance_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "validation.json",
+        ]);
+        let w045_disposition_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_optimized_core_disposition_register.json",
+        ]);
+        let w045_dynamic_transition_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_dynamic_transition_coverage_register.json",
+        ]);
+        let w045_counterpart_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_counterpart_coverage_register.json",
+        ]);
+        let w045_callable_projection_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_callable_metadata_projection_register.json",
+        ]);
+        let w045_blocker_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_exact_remaining_blocker_register.json",
+        ]);
+        let w045_match_guard_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "implementation-conformance",
+            W045_IMPLEMENTATION_CONFORMANCE_RUN_ID,
+            "w045_match_promotion_guard.json",
+        ]);
+        let w044_rust_summary_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "run_summary.json",
+        ]);
+        let w044_rust_validation_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "validation.json",
+        ]);
+        let w044_rust_ledger_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w044_rust_totality_refinement_ledger.json",
+        ]);
+        let w044_rust_refinement_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w044_rust_refinement_register.json",
+        ]);
+        let w044_rust_blocker_path = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "formal-assurance",
+            W044_RUST_FORMAL_ASSURANCE_RUN_ID,
+            "w044_rust_exact_blocker_register.json",
+        ]);
+
+        let w045_summary = read_json(repo_root, &w045_summary_path)?;
+        let w045_successor_map = read_json(repo_root, &w045_successor_map_path)?;
+        let w045_promotion_contract = read_json(repo_root, &w045_promotion_contract_path)?;
+        let w045_oxfml_intake = read_json(repo_root, &w045_oxfml_intake_path)?;
+        let w045_conformance_summary = read_json(repo_root, &w045_conformance_summary_path)?;
+        let w045_conformance_validation = read_json(repo_root, &w045_conformance_validation_path)?;
+        let w045_disposition = read_json(repo_root, &w045_disposition_path)?;
+        let w045_dynamic_transition = read_json(repo_root, &w045_dynamic_transition_path)?;
+        let w045_counterpart = read_json(repo_root, &w045_counterpart_path)?;
+        let w045_callable_projection = read_json(repo_root, &w045_callable_projection_path)?;
+        let w045_blockers = read_json(repo_root, &w045_blocker_path)?;
+        let w045_match_guard = read_json(repo_root, &w045_match_guard_path)?;
+        let w044_rust_summary = read_json(repo_root, &w044_rust_summary_path)?;
+        let w044_rust_validation = read_json(repo_root, &w044_rust_validation_path)?;
+        let w044_rust_ledger = read_json(repo_root, &w044_rust_ledger_path)?;
+        let w044_rust_refinement = read_json(repo_root, &w044_rust_refinement_path)?;
+        let w044_rust_blockers = read_json(repo_root, &w044_rust_blocker_path)?;
+
+        let lean_file_present = repo_root.join(W045_LEAN_RUST_TOTALITY_FILE).exists();
+        let w044_lean_file_present = repo_root.join(W044_LEAN_RUST_TOTALITY_FILE).exists();
+        let panic_marker_count = panic_marker_count(repo_root, W040_RUST_PANIC_AUDIT_FILES)?;
+        let w073_threshold_fallback_disabled = w045_oxfml_intake
+            .get("w073_formatting")
+            .and_then(|formatting| formatting.get("threshold_fallback_allowed_for_typed_families"))
+            .and_then(Value::as_bool)
+            == Some(false);
+        let w073_typed_only_guard_present =
+            bool_at(&w045_summary, "oxfml_formatting_update_incorporated")
+                && !bool_at(
+                    &w045_summary,
+                    "w073_downstream_request_construction_uptake_verified_by_oxcalc",
+                )
+                && w073_threshold_fallback_disabled;
+        let w045_dynamic_carried_evidence =
+            row_with_field_exists(
+                &w045_dynamic_transition,
+                "row_id",
+                "w045_dynamic_mixed_transition_carried_direct_evidence",
+            ) && counter_value(&w045_dynamic_transition, "direct_evidence_bound_count") == 2;
+        let w045_broader_dynamic_blocker_present = row_with_field_exists(
+            &w045_blockers,
+            "row_id",
+            "w045_broader_dynamic_transition_remaining_exact_blocker",
+        );
+        let w045_soft_indirect_blocker_present = row_with_field_exists(
+            &w045_blockers,
+            "row_id",
+            "w045_soft_reference_indirect_resolution_exact_blocker",
+        );
+        let w045_snapshot_blocker_present = row_with_field_exists(
+            &w045_counterpart,
+            "row_id",
+            "w045_snapshot_fence_counterpart_breadth_exact_blocker",
+        );
+        let w045_capability_blocker_present = row_with_field_exists(
+            &w045_counterpart,
+            "row_id",
+            "w045_capability_view_counterpart_breadth_exact_blocker",
+        );
+        let w045_callable_metadata_blocker_present = !bool_at(
+            &w045_callable_projection,
+            "callable_metadata_projection_promoted",
+        ) && row_with_field_exists(
+            &w045_callable_projection,
+            "row_id",
+            "w045_callable_metadata_projection_exact_blocker",
+        );
+        let w045_match_guard_holds = string_value(&w045_match_guard, "guard_status")
+            == "w045_declared_gap_promotion_guard_holds"
+            && counter_value(&w045_match_guard, "promoted_match_count") == 0;
+        let w044_publication_fence_row_present = row_with_field_exists(
+            &w044_rust_ledger,
+            "row_id",
+            "w044_publication_fence_no_publish_refinement_evidence",
+        );
+        let w044_callable_value_row_present = row_with_field_exists(
+            &w044_rust_ledger,
+            "row_id",
+            "w044_callable_value_carrier_totality_evidence",
+        );
+        let w044_dynamic_refinement_row_present = row_with_field_exists(
+            &w044_rust_refinement,
+            "row_id",
+            "w044_mixed_dynamic_add_release_refinement_evidence",
+        );
+
+        let proof_rows = vec![
+            json!({
+                "row_id": "w045_result_error_carrier_totality_evidence",
+                "w045_obligation_ids": ["W045-OBL-013"],
+                "source_inputs": ["Rust typed error carriers", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "direct_totality_evidence",
+                "disposition": "bind current core public Rust paths to typed Result/error carriers rather than panic-as-contract",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3",
+                "promotion_consequence": "Rust totality remains unpromoted because this is carrier evidence, not whole-engine proof",
+                "reason": "W045 carries the Result/error carrier classification into a fresh row model while preserving the panic-surface boundary.",
+                "evidence_paths": [
+                    "src/oxcalc-core/src/coordinator.rs",
+                    "src/oxcalc-core/src/recalc.rs",
+                    "src/oxcalc-core/src/structural.rs",
+                    "src/oxcalc-core/src/treecalc.rs",
+                    "src/oxcalc-core/src/treecalc_fixture.rs",
+                    "src/oxcalc-core/src/treecalc_runner.rs",
+                    W045_LEAN_RUST_TOTALITY_FILE
+                ],
+                "failures": if lean_file_present { Vec::<String>::new() } else { vec!["w045_lean_rust_totality_file_missing".to_string()] },
+                "validation_state": if lean_file_present { "w045_rust_totality_row_validated" } else { "w045_rust_totality_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_w044_rust_totality_refinement_regression_evidence",
+                "w045_obligation_ids": ["W045-OBL-012", "W045-OBL-013", "W045-OBL-014", "W045-OBL-015"],
+                "source_inputs": ["W044 Rust totality/refinement packet"],
+                "disposition_kind": "carried_rust_regression_evidence",
+                "disposition": "carry W044 Rust row classifications as regression evidence for the W045 hardening tranche",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3",
+                "promotion_consequence": "predecessor Rust evidence remains regression evidence, not whole-engine totality or refinement promotion",
+                "reason": "The W044 Rust packet is valid, contains zero failed rows, and retains explicit exact blockers.",
+                "evidence_paths": [&w044_rust_summary_path, &w044_rust_validation_path, &w044_rust_ledger_path],
+                "failures": if string_value(&w044_rust_validation, "status") == "formal_assurance_w044_rust_totality_refinement_valid" && counter_value(&w044_rust_summary, "failed_row_count") == 0 && counter_value(&w044_rust_blockers, "exact_remaining_blocker_count") == 6 { Vec::<String>::new() } else { vec!["w044_rust_regression_evidence_not_valid".to_string()] },
+                "validation_state": if string_value(&w044_rust_validation, "status") == "formal_assurance_w044_rust_totality_refinement_valid" && counter_value(&w044_rust_summary, "failed_row_count") == 0 && counter_value(&w044_rust_blockers, "exact_remaining_blocker_count") == 6 { "w045_rust_refinement_row_validated" } else { "w045_rust_refinement_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_optimized_core_packet_totality_bridge",
+                "w045_obligation_ids": ["W045-OBL-013", "W045-OBL-014"],
+                "source_inputs": ["W045 optimized/core conformance packet"],
+                "disposition_kind": "direct_totality_evidence",
+                "disposition": "bind W045 optimized/core packet validity as typed artifact evidence for current exercised paths",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.2; calc-zkio.3",
+                "promotion_consequence": "exercised W045 paths are evidenced while full optimized/core and Rust totality remain blocked",
+                "reason": "The W045 implementation-conformance packet validates seven rows with zero failed rows, two carried direct-evidence rows, and five retained exact blockers.",
+                "evidence_paths": [&w045_conformance_summary_path, &w045_conformance_validation_path, &w045_disposition_path],
+                "failures": if string_value(&w045_conformance_validation, "status") == "implementation_conformance_w045_optimized_core_counterpart_callable_metadata_valid" && counter_value(&w045_conformance_summary, "failed_row_count") == 0 && counter_value(&w045_conformance_summary, "w045_direct_evidence_bound_count") == 2 { Vec::<String>::new() } else { vec!["w045_conformance_packet_not_valid".to_string()] },
+                "validation_state": if string_value(&w045_conformance_validation, "status") == "implementation_conformance_w045_optimized_core_counterpart_callable_metadata_valid" && counter_value(&w045_conformance_summary, "failed_row_count") == 0 && counter_value(&w045_conformance_summary, "w045_direct_evidence_bound_count") == 2 { "w045_rust_totality_row_validated" } else { "w045_rust_totality_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_dynamic_mixed_transition_refinement_bridge",
+                "w045_obligation_ids": ["W045-OBL-005", "W045-OBL-006", "W045-OBL-014"],
+                "source_inputs": ["W045 dynamic transition coverage register", "W044 Rust mixed dynamic refinement row"],
+                "disposition_kind": "carried_direct_refinement_evidence",
+                "disposition": "carry mixed automatic add/remove/reclassify dynamic-transition evidence into the Rust refinement ledger",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": true,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.2; calc-zkio.3",
+                "promotion_consequence": "mixed transition refinement evidence is retained while broad dynamic and soft-reference coverage remain blocked",
+                "reason": "W045.2 carries the W044 mixed dynamic direct-evidence row and W044 Rust has the matching refinement row.",
+                "evidence_paths": [&w045_dynamic_transition_path, &w044_rust_refinement_path],
+                "failures": if w045_dynamic_carried_evidence && w044_dynamic_refinement_row_present { Vec::<String>::new() } else { vec!["w045_dynamic_refinement_bridge_missing".to_string()] },
+                "validation_state": if w045_dynamic_carried_evidence && w044_dynamic_refinement_row_present { "w045_rust_refinement_row_validated" } else { "w045_rust_refinement_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_publication_fence_no_publish_refinement_bridge",
+                "w045_obligation_ids": ["W045-OBL-013", "W045-OBL-014"],
+                "source_inputs": ["W044 publication-fence no-publication Rust row"],
+                "disposition_kind": "carried_refinement_evidence",
+                "disposition": "carry rebind-required reject/no-publication behavior as a publication-fence refinement row",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3",
+                "promotion_consequence": "publication-fence behavior is evidenced for the exercised reject path, not for production breadth",
+                "reason": "W044 Rust retained a validated no-publication fence row that W045 carries forward unchanged.",
+                "evidence_paths": [&w044_rust_ledger_path],
+                "failures": if w044_publication_fence_row_present { Vec::<String>::new() } else { vec!["w044_publication_fence_row_missing".to_string()] },
+                "validation_state": if w044_publication_fence_row_present { "w045_rust_refinement_row_validated" } else { "w045_rust_refinement_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_callable_value_carrier_totality_evidence",
+                "w045_obligation_ids": ["W045-OBL-010", "W045-OBL-015"],
+                "source_inputs": ["W044 callable value-carrier row", "W045 callable metadata projection register"],
+                "disposition_kind": "carried_callable_value_carrier_totality_evidence",
+                "disposition": "bind LET/LAMBDA value-carrier evidence as narrow callable totality evidence while separating metadata projection",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.8",
+                "promotion_consequence": "callable value carriers are evidenced; callable metadata projection and carrier sufficiency remain unpromoted",
+                "reason": "W045.2 explicitly classifies value-carrier rows separately from metadata projection.",
+                "evidence_paths": [&w044_rust_ledger_path, &w045_callable_projection_path],
+                "failures": if w044_callable_value_row_present && row_with_field_exists(&w045_callable_projection, "row_id", "w045_treecalc_callable_value_carrier_carried") { Vec::<String>::new() } else { vec!["w045_callable_value_carrier_evidence_missing".to_string()] },
+                "validation_state": if w044_callable_value_row_present && row_with_field_exists(&w045_callable_projection, "row_id", "w045_treecalc_callable_value_carrier_carried") { "w045_rust_totality_row_validated" } else { "w045_rust_totality_row_failed" }
+            }),
+            json!({
+                "row_id": "w045_runtime_panic_surface_totality_boundary",
+                "w045_obligation_ids": ["W045-OBL-012"],
+                "source_inputs": ["Rust panic-marker audit", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "exact_totality_boundary",
+                "disposition": "retain a whole-engine panic-free proof blocker while panic/unwrap/expect markers remain in audited Rust surfaces",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": true,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.3",
+                "promotion_consequence": "Rust-engine totality and panic-free core domain remain unpromoted",
+                "reason": "The marker census is a guard, not a semantic proof; observed panic-family markers require review or proof before a panic-free claim.",
+                "evidence_paths": W040_RUST_PANIC_AUDIT_FILES,
+                "observed": {
+                    "panic_marker_count": panic_marker_count
+                },
+                "failures": if panic_marker_count > 0 && lean_file_present { Vec::<String>::new() } else { vec!["w045_panic_surface_audit_unexpected".to_string()] },
+                "validation_state": if panic_marker_count > 0 && lean_file_present { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_broader_dynamic_transition_refinement_boundary",
+                "w045_obligation_ids": ["W045-OBL-005", "W045-OBL-006", "W045-OBL-011", "W045-OBL-014"],
+                "source_inputs": ["W045 dynamic transition coverage register", "W045 exact blocker register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain broader dynamic transition coverage as an exact Rust refinement blocker after carrying mixed direct evidence",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.2; calc-zkio.3",
+                "promotion_consequence": "full optimized/core and Rust refinement remain blocked until broader dynamic coverage or a sufficiency proof exists",
+                "reason": "W045.2 retains broader dynamic transition coverage as an exact blocker even after carrying W044 mixed evidence.",
+                "evidence_paths": [&w045_dynamic_transition_path, &w045_blocker_path],
+                "failures": if w045_broader_dynamic_blocker_present { Vec::<String>::new() } else { vec!["w045_broader_dynamic_blocker_missing".to_string()] },
+                "validation_state": if w045_broader_dynamic_blocker_present { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_soft_reference_indirect_resolution_refinement_boundary",
+                "w045_obligation_ids": ["W045-OBL-006", "W045-OBL-014"],
+                "source_inputs": ["W045 soft-reference and INDIRECT exact blocker"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain soft-reference, INDIRECT, and late reference-resolution update breadth as an exact Rust refinement blocker",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.2; calc-zkio.3",
+                "promotion_consequence": "soft-reference and INDIRECT coverage remains unpromoted until direct broader fixture evidence or a sufficiency proof exists",
+                "reason": "W045.2 makes late reference-resolution breadth explicit as a separate exact blocker rather than folding it into mixed dynamic evidence.",
+                "evidence_paths": [&w045_blocker_path, &w045_successor_map_path],
+                "failures": if w045_soft_indirect_blocker_present && obligation_exists(&w045_successor_map, "W045-OBL-006") { Vec::<String>::new() } else { vec!["w045_soft_indirect_blocker_missing".to_string()] },
+                "validation_state": if w045_soft_indirect_blocker_present && obligation_exists(&w045_successor_map, "W045-OBL-006") { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_snapshot_fence_counterpart_refinement_boundary",
+                "w045_obligation_ids": ["W045-OBL-007", "W045-OBL-014", "W045-OBL-020"],
+                "source_inputs": ["W045 counterpart coverage register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain snapshot-fence counterpart breadth as an exact Rust refinement blocker beyond declared-profile evidence",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.2; calc-zkio.3; calc-zkio.5",
+                "promotion_consequence": "snapshot-fence breadth and Stage 2 production policy remain unpromoted",
+                "reason": "W045.2 retains snapshot-fence counterpart breadth as declared-profile-only evidence.",
+                "evidence_paths": [&w045_counterpart_path],
+                "failures": if w045_snapshot_blocker_present { Vec::<String>::new() } else { vec!["w045_snapshot_counterpart_blocker_missing".to_string()] },
+                "validation_state": if w045_snapshot_blocker_present { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_capability_view_counterpart_refinement_boundary",
+                "w045_obligation_ids": ["W045-OBL-008", "W045-OBL-014", "W045-OBL-020"],
+                "source_inputs": ["W045 counterpart coverage register"],
+                "disposition_kind": "exact_refinement_blocker",
+                "disposition": "retain capability-view counterpart breadth as an exact Rust refinement blocker beyond declared-profile evidence",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": false,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.2; calc-zkio.3; calc-zkio.5",
+                "promotion_consequence": "capability-view breadth and Stage 2 production policy remain unpromoted",
+                "reason": "W045.2 retains capability-view counterpart breadth as declared-profile-only evidence.",
+                "evidence_paths": [&w045_counterpart_path],
+                "failures": if w045_capability_blocker_present { Vec::<String>::new() } else { vec!["w045_capability_counterpart_blocker_missing".to_string()] },
+                "validation_state": if w045_capability_blocker_present { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_callable_metadata_projection_totality_boundary",
+                "w045_obligation_ids": ["W045-OBL-009", "W045-OBL-010", "W045-OBL-015", "W045-OBL-034"],
+                "source_inputs": ["W045 callable metadata projection register", "W045 exact blocker register"],
+                "disposition_kind": "exact_totality_boundary",
+                "disposition": "retain callable metadata projection as an exact Rust totality/refinement blocker",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.2; calc-zkio.3; calc-zkio.8",
+                "promotion_consequence": "callable metadata projection, registered external callable projection, and provider callable publication remain unpromoted",
+                "reason": "W045.2 separates value-carrier evidence from metadata projection and keeps projection as an exact blocker.",
+                "evidence_paths": [&w045_callable_projection_path, &w045_blocker_path],
+                "failures": if w045_callable_metadata_blocker_present { Vec::<String>::new() } else { vec!["w045_callable_metadata_projection_blocker_missing".to_string()] },
+                "validation_state": if w045_callable_metadata_blocker_present { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_full_optimized_core_release_grade_conformance_boundary",
+                "w045_obligation_ids": ["W045-OBL-011", "W045-OBL-014", "W045-OBL-036"],
+                "source_inputs": ["W045 residual successor map", "W045 implementation conformance packet"],
+                "disposition_kind": "exact_release_grade_boundary",
+                "disposition": "retain full optimized/core release-grade conformance as a Rust refinement boundary until all W045 promotion contracts are discharged",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": false,
+                "totality_boundary": true,
+                "refinement_row": true,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": true,
+                "authority_owner": "calc-zkio.3; calc-zkio.11",
+                "promotion_consequence": "full optimized/core verification, C5, pack-grade replay, and release-grade verification remain unpromoted",
+                "reason": "W045.1 and W045.2 both retain no-promotion claims for full optimized/core and release-grade verification.",
+                "evidence_paths": [&w045_summary_path, &w045_conformance_summary_path, &w045_promotion_contract_path],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_optimized_core_verification") && counter_value(&w045_conformance_summary, "w045_match_promoted_count") == 0 && counter_value(&w045_promotion_contract, "promotion_contract_count") == 18 { Vec::<String>::new() } else { vec!["w045_release_grade_boundary_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "full_optimized_core_verification") && counter_value(&w045_conformance_summary, "w045_match_promoted_count") == 0 && counter_value(&w045_promotion_contract, "promotion_contract_count") == 18 { "w045_rust_exact_blocker_validated" } else { "w045_rust_exact_blocker_failed" }
+            }),
+            json!({
+                "row_id": "w045_let_lambda_carrier_external_boundary",
+                "w045_obligation_ids": ["W045-OBL-015", "W045-OBL-033"],
+                "source_inputs": ["W045 residual successor map", W045_LEAN_RUST_TOTALITY_FILE],
+                "disposition_kind": "accepted_external_seam_boundary",
+                "disposition": "keep LET/LAMBDA carrier interaction inside OxCalc/OxFml formalization while excluding general OxFunc kernels",
+                "local_checked_proof": false,
+                "bounded_model": false,
+                "accepted_external_seam": true,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.8; external:OxFunc",
+                "promotion_consequence": "general OxFunc kernels remain unpromoted inside OxCalc",
+                "reason": "W045 scope includes the LET/LAMBDA carrier seam but not broad OxFunc semantic kernels.",
+                "evidence_paths": [&w045_successor_map_path, W045_LEAN_RUST_TOTALITY_FILE],
+                "failures": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "general_oxfunc_kernels") && obligation_exists(&w045_successor_map, "W045-OBL-033") && lean_file_present { Vec::<String>::new() } else { vec!["w045_let_lambda_boundary_missing".to_string()] },
+                "validation_state": if array_contains_string(w045_summary.get("no_promotion_claims").unwrap_or(&Value::Null), "general_oxfunc_kernels") && obligation_exists(&w045_successor_map, "W045-OBL-033") && lean_file_present { "w045_rust_boundary_validated" } else { "w045_rust_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_spec_evolution_refinement_guard",
+                "w045_obligation_ids": ["W045-OBL-002"],
+                "source_inputs": ["W045 successor obligation map", "W045 workset"],
+                "disposition_kind": "accepted_spec_evolution_guard",
+                "disposition": "preserve formalization as spec evolution and implementation improvement, not a fixed-spec test only",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.11",
+                "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
+                "reason": "W045.1 records spec-evolution hooks and routes release-grade decisions to direct evidence rather than proxy promotion.",
+                "evidence_paths": [&w045_successor_map_path, "docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
+                "failures": if obligation_exists(&w045_successor_map, "W045-OBL-002") { Vec::<String>::new() } else { vec!["w045_spec_evolution_obligation_missing".to_string()] },
+                "validation_state": if obligation_exists(&w045_successor_map, "W045-OBL-002") { "w045_rust_boundary_validated" } else { "w045_rust_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_w073_typed_formatting_rust_boundary_guard",
+                "w045_obligation_ids": ["W045-OBL-003", "W045-OBL-031"],
+                "source_inputs": ["W045 W073 typed-only formatting intake"],
+                "disposition_kind": "accepted_formatting_boundary",
+                "disposition": "carry W073 typed-rule-only formatting intake as an accepted non-Rust promotion boundary",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.3; calc-zkio.8",
+                "promotion_consequence": "W073 formatting intake does not promote Rust totality, callable metadata, broad OxFml, or optimized/core verification",
+                "reason": "W045.1 records typed-rule-only formatting intake and downstream request construction remains unverified.",
+                "evidence_paths": [&w045_summary_path, &w045_oxfml_intake_path],
+                "failures": if w073_typed_only_guard_present { Vec::<String>::new() } else { vec!["w045_w073_typed_guard_missing".to_string()] },
+                "validation_state": if w073_typed_only_guard_present { "w045_rust_boundary_validated" } else { "w045_rust_boundary_failed" }
+            }),
+            json!({
+                "row_id": "w045_no_proxy_match_promotion_guard",
+                "w045_obligation_ids": ["W045-OBL-001", "W045-OBL-002", "W045-OBL-011"],
+                "source_inputs": ["W045 match promotion guard"],
+                "disposition_kind": "accepted_no_proxy_promotion_guard",
+                "disposition": "retain zero match promotion for declared-profile, W073, callable, registered-external, and residual rows",
+                "local_checked_proof": true,
+                "bounded_model": false,
+                "accepted_external_seam": false,
+                "accepted_boundary": true,
+                "totality_boundary": false,
+                "refinement_row": false,
+                "automatic_dynamic_transition_row": false,
+                "panic_surface_row": false,
+                "exact_remaining_blocker": false,
+                "authority_owner": "calc-zkio.2; calc-zkio.3; calc-zkio.11",
+                "promotion_consequence": "full optimized/core, release-grade, C5, pack-grade, Stage 2, callable metadata, registered-external, and general OxFunc claims remain blocked if any proxy row is counted as a match",
+                "reason": "W045.2 emits an explicit match-promotion guard with zero promoted matches.",
+                "evidence_paths": [&w045_match_guard_path],
+                "failures": if w045_match_guard_holds { Vec::<String>::new() } else { vec!["w045_match_promotion_guard_failed".to_string()] },
+                "validation_state": if w045_match_guard_holds { "w045_rust_boundary_validated" } else { "w045_rust_boundary_failed" }
+            }),
+        ];
+
+        let local_proof_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "local_checked_proof"))
+            .count();
+        let bounded_model_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "bounded_model"))
+            .count();
+        let accepted_external_seam_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_external_seam"))
+            .count();
+        let accepted_boundary_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "accepted_boundary"))
+            .count();
+        let automatic_dynamic_transition_row_count = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "automatic_dynamic_transition_row"))
+            .count();
+        let panic_surface_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "panic_surface_row"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let totality_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "totality_boundary"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let refinement_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "refinement_row"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let blocker_rows = proof_rows
+            .iter()
+            .filter(|row| bool_at(row, "exact_remaining_blocker"))
+            .cloned()
+            .collect::<Vec<_>>();
+        let failed_row_count = proof_rows
+            .iter()
+            .filter(|row| {
+                !row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            })
+            .count();
+
+        let mut validation_failures = Vec::new();
+        if string_value(&w045_summary, "status")
+            != "residual_successor_obligation_current_oxfml_intake_map_validated"
+        {
+            validation_failures.push("w045_residual_summary_not_valid".to_string());
+        }
+        if counter_value(&w045_summary, "successor_obligation_count") != 36 {
+            validation_failures.push("w045_successor_obligation_count_changed".to_string());
+        }
+        if counter_value(&w045_promotion_contract, "promotion_contract_count") != 18 {
+            validation_failures.push("w045_promotion_contract_count_changed".to_string());
+        }
+        for obligation_id in [
+            "W045-OBL-012",
+            "W045-OBL-013",
+            "W045-OBL-014",
+            "W045-OBL-015",
+        ] {
+            if !obligation_exists(&w045_successor_map, obligation_id) {
+                validation_failures.push(format!("{obligation_id}_missing"));
+            }
+        }
+        if !array_contains_string(
+            w045_summary
+                .get("no_promotion_claims")
+                .unwrap_or(&Value::Null),
+            "rust_totality_and_refinement",
+        ) || !array_contains_string(
+            w045_summary
+                .get("no_promotion_claims")
+                .unwrap_or(&Value::Null),
+            "panic_free_core_domain",
+        ) {
+            validation_failures.push("w045_rust_no_promotion_guard_missing".to_string());
+        }
+        if string_value(&w045_conformance_validation, "status")
+            != "implementation_conformance_w045_optimized_core_counterpart_callable_metadata_valid"
+        {
+            validation_failures.push("w045_conformance_validation_not_passed".to_string());
+        }
+        if counter_value(
+            &w045_conformance_summary,
+            "w045_exact_remaining_blocker_count",
+        ) != 5
+        {
+            validation_failures.push("w045_conformance_exact_blocker_count_changed".to_string());
+        }
+        if counter_value(
+            &w045_conformance_summary,
+            "w045_direct_evidence_bound_count",
+        ) != 2
+        {
+            validation_failures.push("w045_conformance_direct_evidence_count_changed".to_string());
+        }
+        if counter_value(&w045_conformance_summary, "w045_match_promoted_count") != 0 {
+            validation_failures.push("w045_conformance_match_promotion_present".to_string());
+        }
+        if !row_with_field_exists(
+            &w045_disposition,
+            "row_id",
+            "w045_dynamic_mixed_transition_carried_direct_evidence",
+        ) {
+            validation_failures.push("w045_mixed_dynamic_disposition_missing".to_string());
+        }
+        if string_value(&w044_rust_validation, "status")
+            != "formal_assurance_w044_rust_totality_refinement_valid"
+        {
+            validation_failures.push("w044_rust_formal_assurance_not_valid".to_string());
+        }
+        if counter_value(&w044_rust_summary, "failed_row_count") != 0 {
+            validation_failures.push("w044_rust_failed_row_count_changed".to_string());
+        }
+        if counter_value(&w044_rust_blockers, "exact_remaining_blocker_count") != 6 {
+            validation_failures.push("w044_rust_exact_blocker_count_changed".to_string());
+        }
+        if !lean_file_present || !w044_lean_file_present {
+            validation_failures.push("w045_or_w044_lean_rust_totality_file_missing".to_string());
+        }
+        if panic_marker_count == 0 {
+            validation_failures.push("w045_panic_marker_audit_unexpected_zero".to_string());
+        }
+        if !w073_typed_only_guard_present {
+            validation_failures.push("w045_w073_typed_only_guard_missing".to_string());
+        }
+        if !w045_match_guard_holds {
+            validation_failures.push("w045_match_promotion_guard_not_holding".to_string());
+        }
+        if failed_row_count != 0 {
+            validation_failures.push("w045_rust_totality_row_failures_present".to_string());
+        }
+        if blocker_rows.len() != 7 {
+            validation_failures.push("w045_expected_seven_rust_exact_blockers".to_string());
+        }
+        if totality_rows.len() != 5 {
+            validation_failures.push("w045_expected_five_totality_boundaries".to_string());
+        }
+        if panic_surface_rows.len() != 1 {
+            validation_failures.push("w045_expected_one_panic_surface_row".to_string());
+        }
+        if automatic_dynamic_transition_row_count != 1 {
+            validation_failures.push("w045_expected_one_dynamic_transition_row".to_string());
+        }
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let rust_ledger_path =
+            format!("{relative_artifact_root}/w045_rust_totality_refinement_ledger.json");
+        let totality_register_path =
+            format!("{relative_artifact_root}/w045_rust_totality_boundary_register.json");
+        let refinement_register_path =
+            format!("{relative_artifact_root}/w045_rust_refinement_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w045_rust_exact_blocker_register.json");
+        let panic_register_path =
+            format!("{relative_artifact_root}/w045_panic_surface_register.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "source_artifacts": {
+                    "w045_residual_summary": w045_summary_path,
+                    "w045_successor_obligation_map": w045_successor_map_path,
+                    "w045_promotion_contract_map": w045_promotion_contract_path,
+                    "w045_oxfml_observation_intake": w045_oxfml_intake_path,
+                    "w045_implementation_conformance_summary": w045_conformance_summary_path,
+                    "w045_implementation_conformance_validation": w045_conformance_validation_path,
+                    "w045_implementation_conformance_disposition": w045_disposition_path,
+                    "w045_dynamic_transition_coverage": w045_dynamic_transition_path,
+                    "w045_counterpart_coverage": w045_counterpart_path,
+                    "w045_callable_metadata_projection": w045_callable_projection_path,
+                    "w045_implementation_conformance_exact_blockers": w045_blocker_path,
+                    "w045_match_promotion_guard": w045_match_guard_path,
+                    "w044_rust_formal_assurance_summary": w044_rust_summary_path,
+                    "w044_rust_formal_assurance_validation": w044_rust_validation_path,
+                    "w044_rust_totality_refinement_ledger": w044_rust_ledger_path,
+                    "w044_rust_refinement_register": w044_rust_refinement_path,
+                    "w044_rust_exact_blockers": w044_rust_blocker_path,
+                    "w045_lean_rust_totality_file": W045_LEAN_RUST_TOTALITY_FILE
+                },
+                "source_counts": {
+                    "w045_successor_obligation_count": counter_value(&w045_summary, "successor_obligation_count"),
+                    "w045_promotion_contract_count": counter_value(&w045_promotion_contract, "promotion_contract_count"),
+                    "w045_conformance_direct_evidence_count": counter_value(&w045_conformance_summary, "w045_direct_evidence_bound_count"),
+                    "w045_conformance_exact_blocker_count": counter_value(&w045_conformance_summary, "w045_exact_remaining_blocker_count"),
+                    "w044_rust_exact_blocker_count": counter_value(&w044_rust_blockers, "exact_remaining_blocker_count"),
+                    "panic_marker_count": panic_marker_count,
+                    "w073_typed_only_guard_present": w073_typed_only_guard_present,
+                    "w045_match_guard_holds": w045_match_guard_holds
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_rust_totality_refinement_ledger.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_RUST_LEDGER_SCHEMA_V1,
+                "run_id": run_id,
+                "rust_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "automatic_dynamic_transition_row_count": automatic_dynamic_transition_row_count,
+                "panic_surface_row_count": panic_surface_rows.len(),
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": proof_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_rust_totality_boundary_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_TOTALITY_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "totality_boundary_count": totality_rows.len(),
+                "rows": totality_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_rust_refinement_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_REFINEMENT_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "refinement_row_count": refinement_rows.len(),
+                "automatic_dynamic_transition_row_count": automatic_dynamic_transition_row_count,
+                "rows": refinement_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_rust_exact_blocker_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "rows": blocker_rows
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_panic_surface_register.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_W045_PANIC_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "panic_surface_row_count": panic_surface_rows.len(),
+                "panic_marker_count": panic_marker_count,
+                "audited_files": W040_RUST_PANIC_AUDIT_FILES,
+                "panic_free_core_domain_promoted": false,
+                "rows": panic_surface_rows
+            }),
+        )?;
+
+        let validation_status = if validation_failures.is_empty() {
+            "formal_assurance_w045_rust_totality_refinement_valid"
+        } else {
+            "formal_assurance_w045_rust_totality_refinement_invalid"
+        };
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": validation_status,
+                "rust_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "automatic_dynamic_transition_row_count": automatic_dynamic_transition_row_count,
+                "panic_surface_row_count": panic_surface_rows.len(),
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "panic_marker_count": panic_marker_count,
+                "w073_typed_only_guard_present": w073_typed_only_guard_present,
+                "w045_match_guard_holds": w045_match_guard_holds,
+                "validation_failures": validation_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": FORMAL_ASSURANCE_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "assumption_discharge_ledger_path": rust_ledger_path,
+                "totality_boundary_register_path": totality_register_path,
+                "refinement_register_path": refinement_register_path,
+                "exact_proof_model_blocker_register_path": blocker_register_path,
+                "panic_surface_register_path": panic_register_path,
+                "validation_path": validation_path,
+                "assumption_row_count": proof_rows.len(),
+                "local_proof_row_count": local_proof_row_count,
+                "bounded_model_row_count": bounded_model_row_count,
+                "accepted_external_seam_count": accepted_external_seam_count,
+                "accepted_boundary_count": accepted_boundary_count,
+                "automatic_dynamic_transition_row_count": automatic_dynamic_transition_row_count,
+                "panic_surface_row_count": panic_surface_rows.len(),
+                "totality_boundary_count": totality_rows.len(),
+                "refinement_row_count": refinement_rows.len(),
+                "exact_remaining_blocker_count": blocker_rows.len(),
+                "failed_row_count": failed_row_count,
+                "panic_marker_count": panic_marker_count,
+                "promotion_claims": {
+                    "rust_engine_totality_promoted": false,
+                    "rust_refinement_promoted": false,
+                    "panic_free_core_domain_promoted": false,
+                    "full_optimized_core_verification_promoted": false,
+                    "full_lean_verification_promoted": false,
+                    "full_tla_verification_promoted": false,
+                    "stage2_policy_promoted": false,
+                    "callable_metadata_projection_promoted": false,
+                    "callable_carrier_sufficiency_promoted": false,
+                    "pack_grade_replay_promoted": false,
+                    "c5_promoted": false,
                     "general_oxfunc_kernel_promoted": false
                 }
             }),
@@ -9347,6 +10354,10 @@ fn row_with_field_exists(value: &Value, field: &str, expected: &str) -> bool {
 }
 
 fn w040_obligation_exists(value: &Value, obligation_id: &str) -> bool {
+    obligation_exists(value, obligation_id)
+}
+
+fn obligation_exists(value: &Value, obligation_id: &str) -> bool {
     value
         .get("obligations")
         .and_then(Value::as_array)
@@ -10097,6 +11108,72 @@ mod tests {
         )
         .unwrap();
         assert_eq!(blocker_register["exact_remaining_blocker_count"], 6);
+
+        cleanup();
+    }
+
+    #[test]
+    fn formal_assurance_runner_classifies_w045_rust_totality_and_refinement() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w045-rust-formal-assurance-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/formal-assurance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = FormalAssuranceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.assumption_row_count, 17);
+        assert_eq!(summary.local_proof_row_count, 11);
+        assert_eq!(summary.bounded_model_row_count, 0);
+        assert_eq!(summary.accepted_external_seam_count, 1);
+        assert_eq!(summary.accepted_boundary_count, 4);
+        assert_eq!(summary.totality_boundary_count, 5);
+        assert_eq!(summary.exact_remaining_blocker_count, 7);
+        assert_eq!(summary.failed_row_count, 0);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/formal-assurance/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "formal_assurance_w045_rust_totality_refinement_valid"
+        );
+        assert_eq!(validation["automatic_dynamic_transition_row_count"], 1);
+        assert_eq!(validation["panic_surface_row_count"], 1);
+        assert_eq!(validation["w073_typed_only_guard_present"], true);
+        assert_eq!(validation["w045_match_guard_holds"], true);
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/formal-assurance/{run_id}/w045_rust_exact_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_remaining_blocker_count"], 7);
+
+        let panic_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/formal-assurance/{run_id}/w045_panic_surface_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(panic_register["panic_surface_row_count"], 1);
+        assert!(panic_register["panic_marker_count"].as_u64().unwrap() > 0);
 
         cleanup();
     }

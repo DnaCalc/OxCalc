@@ -1,0 +1,179 @@
+{
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain a whole-engine panic-free proof blocker while panic/unwrap/expect markers remain in audited Rust surfaces",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "src/oxcalc-core/src/coordinator.rs",
+        "src/oxcalc-core/src/dependency.rs",
+        "src/oxcalc-core/src/formula.rs",
+        "src/oxcalc-core/src/recalc.rs",
+        "src/oxcalc-core/src/structural.rs",
+        "src/oxcalc-core/src/treecalc.rs",
+        "src/oxcalc-core/src/treecalc_fixture.rs",
+        "src/oxcalc-core/src/treecalc_runner.rs",
+        "src/oxcalc-core/src/treecalc_scale.rs",
+        "src/oxcalc-core/src/upstream_host.rs",
+        "src/oxcalc-core/src/upstream_host_fixture.rs",
+        "src/oxcalc-core/src/upstream_host_runner.rs"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "panic_marker_count": 158
+      },
+      "panic_surface_row": true,
+      "promotion_consequence": "Rust-engine totality and panic-free core domain remain unpromoted",
+      "reason": "The marker census is a guard, not a semantic proof; observed panic-family markers require review or proof before a panic-free claim.",
+      "refinement_row": false,
+      "row_id": "w045_runtime_panic_surface_totality_boundary",
+      "source_inputs": [
+        "Rust panic-marker audit",
+        "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_rust_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-012"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.2; calc-zkio.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain broader dynamic transition coverage as an exact Rust refinement blocker after carrying mixed direct evidence",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "panic_surface_row": false,
+      "promotion_consequence": "full optimized/core and Rust refinement remain blocked until broader dynamic coverage or a sufficiency proof exists",
+      "reason": "W045.2 retains broader dynamic transition coverage as an exact blocker even after carrying W044 mixed evidence.",
+      "refinement_row": true,
+      "row_id": "w045_broader_dynamic_transition_refinement_boundary",
+      "source_inputs": [
+        "W045 dynamic transition coverage register",
+        "W045 exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_rust_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-005",
+        "W045-OBL-006",
+        "W045-OBL-011",
+        "W045-OBL-014"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.2; calc-zkio.3",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain soft-reference, INDIRECT, and late reference-resolution update breadth as an exact Rust refinement blocker",
+      "disposition_kind": "exact_refinement_blocker",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "panic_surface_row": false,
+      "promotion_consequence": "soft-reference and INDIRECT coverage remains unpromoted until direct broader fixture evidence or a sufficiency proof exists",
+      "reason": "W045.2 makes late reference-resolution breadth explicit as a separate exact blocker rather than folding it into mixed dynamic evidence.",
+      "refinement_row": true,
+      "row_id": "w045_soft_reference_indirect_resolution_refinement_boundary",
+      "source_inputs": [
+        "W045 soft-reference and INDIRECT exact blocker"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_rust_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-006",
+        "W045-OBL-014"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.2; calc-zkio.3; calc-zkio.8",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain callable metadata projection as an exact Rust totality/refinement blocker",
+      "disposition_kind": "exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "panic_surface_row": false,
+      "promotion_consequence": "callable metadata projection, registered external callable projection, and provider callable publication remain unpromoted",
+      "reason": "W045.2 separates value-carrier evidence from metadata projection and keeps projection as an exact blocker.",
+      "refinement_row": true,
+      "row_id": "w045_callable_metadata_projection_totality_boundary",
+      "source_inputs": [
+        "W045 callable metadata projection register",
+        "W045 exact blocker register"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_rust_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-009",
+        "W045-OBL-010",
+        "W045-OBL-015",
+        "W045-OBL-034"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3; calc-zkio.11",
+      "automatic_dynamic_transition_row": false,
+      "bounded_model": false,
+      "disposition": "retain full optimized/core release-grade conformance as a Rust refinement boundary until all W045 promotion contracts are discharged",
+      "disposition_kind": "exact_release_grade_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+        "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "panic_surface_row": false,
+      "promotion_consequence": "full optimized/core verification, C5, pack-grade replay, and release-grade verification remain unpromoted",
+      "reason": "W045.1 and W045.2 both retain no-promotion claims for full optimized/core and release-grade verification.",
+      "refinement_row": true,
+      "row_id": "w045_full_optimized_core_release_grade_conformance_boundary",
+      "source_inputs": [
+        "W045 residual successor map",
+        "W045 implementation conformance packet"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_rust_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-011",
+        "W045-OBL-014",
+        "W045-OBL-036"
+      ]
+    }
+  ],
+  "run_id": "w045-rust-totality-refinement-panic-surface-hardening-001",
+  "schema_version": "oxcalc.formal_assurance.w045_rust_totality_boundary_register.v1",
+  "totality_boundary_count": 5
+}

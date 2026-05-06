@@ -1,0 +1,34 @@
+{
+  "run_id": "w045-rust-totality-refinement-panic-surface-hardening-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w044_rust_exact_blockers": "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_exact_blocker_register.json",
+    "w044_rust_formal_assurance_summary": "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+    "w044_rust_formal_assurance_validation": "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json",
+    "w044_rust_refinement_register": "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json",
+    "w044_rust_totality_refinement_ledger": "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_totality_refinement_ledger.json",
+    "w045_callable_metadata_projection": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+    "w045_counterpart_coverage": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json",
+    "w045_dynamic_transition_coverage": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json",
+    "w045_implementation_conformance_disposition": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_optimized_core_disposition_register.json",
+    "w045_implementation_conformance_exact_blockers": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+    "w045_implementation_conformance_summary": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+    "w045_implementation_conformance_validation": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/validation.json",
+    "w045_lean_rust_totality_file": "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean",
+    "w045_match_promotion_guard": "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json",
+    "w045_oxfml_observation_intake": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+    "w045_promotion_contract_map": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
+    "w045_residual_summary": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+    "w045_successor_obligation_map": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+  },
+  "source_counts": {
+    "panic_marker_count": 158,
+    "w044_rust_exact_blocker_count": 6,
+    "w045_conformance_direct_evidence_count": 2,
+    "w045_conformance_exact_blocker_count": 5,
+    "w045_match_guard_holds": true,
+    "w045_promotion_contract_count": 18,
+    "w045_successor_obligation_count": 36,
+    "w073_typed_only_guard_present": true
+  }
+}

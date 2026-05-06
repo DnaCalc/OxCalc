@@ -74,7 +74,7 @@ Validation requirements scale by bead:
 
 ## 6. Current Status
 
-- execution_state: `calc-zkio.10_ready_pack_grade_replay_governance_service_and_c5_reassessment`
+- execution_state: `calc-zkio.11_ready_closure_audit_and_release_grade_verification_decision`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
@@ -88,7 +88,8 @@ Validation requirements scale by bead:
   - `calc-zkio.7` independent evaluator breadth mismatch quarantine and operated differential service is validated
   - `calc-zkio.8` OxFml public surface W073 downstream typed formatting callable and registered-external uptake is validated
   - `calc-zkio.9` continuous release-scale assurance and semantic regression service is validated
-  - `calc-zkio.10` pack-grade replay governance service and C5 reassessment is ready next
+  - `calc-zkio.10` pack-grade replay governance service and C5 reassessment is validated
+  - `calc-zkio.11` closure audit and release-grade verification decision is ready next
   - release-grade verification remains unpromoted
   - pack-grade replay and C5 remain unpromoted
   - operated services, Stage 2 production policy, independent evaluator breadth, broad OxFml/public migration, callable metadata, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain open or external as classified

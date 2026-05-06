@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Post-W033 through W044 pack capability decision packet emission.
+//! Post-W033 through W045 pack capability decision packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -1932,6 +1932,288 @@ const W044_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
         ],
     },
 ];
+const W045_TREECALC_CONFORMANCE_RUN_ID: &str =
+    "w044-optimized-core-dynamic-transition-treecalc-001";
+const W045_FORMAL_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w045-formalization/W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md",
+    "docs/spec/core-engine/w045-formalization/W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md",
+    "docs/spec/core-engine/w045-formalization/W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md",
+    "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean",
+    "formal/lean/OxCalc/CoreEngine/W045LeanTlaVerificationFairnessAndTotality.lean",
+    "formal/lean/OxCalc/CoreEngine/W045Stage2ProductionPartitionAndPackGradeEquivalenceServiceEvidence.lean",
+];
+const W045_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
+    "docs/spec/core-engine/w045-formalization/W045_OXFML_PUBLIC_SURFACE_W073_DOWNSTREAM_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md",
+    "docs/spec/core-engine/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
+];
+const W045_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/validation.json",
+];
+const W045_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/evidence_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_optimized_core_disposition_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json",
+    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/validation.json",
+];
+const W045_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_boundary_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_panic_surface_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
+];
+const W045_LEAN_TLA_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_discharge_ledger.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_proof_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json",
+    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json",
+];
+const W045_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_policy_gate_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_production_partition_analyzer_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_scheduler_equivalence_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_pack_grade_equivalence_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_service_gate_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_exact_blocker_register.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json",
+    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/validation.json",
+];
+const W045_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_envelope.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_harness_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_history_service_query.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_witness_lifecycle_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_alert_dispatch_service_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_cross_engine_service_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_service_readiness_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_exact_service_blocker_register.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/promotion_decision.json",
+    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/validation.json",
+];
+const W045_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_reference_model_implementation.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_evaluator_breadth_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_cross_engine_differential_service_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_mismatch_quarantine_authority_router.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_retained_witness_attachment_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_operated_differential_service_harness_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json",
+    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/validation.json",
+];
+const W045_OXFML_SEAM_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/source_evidence_index.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_oxfml_consumed_surface_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_publication_display_boundary_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_callable_carrier_and_metadata_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_registered_external_provider_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_exact_oxfml_seam_blocker_register.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/promotion_decision.json",
+    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/validation.json",
+];
+const W045_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+    "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+];
+const W045_SCALE_SEMANTIC_ARTIFACTS: &[&str] = &[
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/run_summary.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/evidence/scale_semantic_evidence_index.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/differentials/scale_signature_differential.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay_conformance_bindings.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/scale_no_promotion_decision.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
+];
+const W045_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
+    SupplementalEvidenceSpec {
+        input_id: "w045_residual_release_grade_successor_obligation_map",
+        artifact_paths: W045_RELEASE_LEDGER_ARTIFACTS,
+        satisfied_input_id: "w045_residual_release_grade_successor_obligation_map_valid",
+        evidence_state_present: "w045_successor_obligation_map_present_with_pack_c5_blocked",
+        observations: &[
+            "W045 residual map records 22 residual lanes, 36 successor obligations, 18 promotion contracts, and current OxFml W073 typed-rule-only formatting intake.",
+            "Release-grade verification, pack-grade replay, C5, Stage 2 policy, operated services, broad OxFml, callable, scaling-correctness, and general OxFunc claims remain unpromoted unless direct gates are satisfied.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_release_grade_verification_not_promoted",
+            "pack.grade.w045_pack_c5_blocked_by_release_grade_map",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_optimized_core_counterpart_callable_metadata",
+        artifact_paths: W045_IMPLEMENTATION_CONFORMANCE_ARTIFACTS,
+        satisfied_input_id: "w045_optimized_core_counterpart_callable_metadata_valid",
+        evidence_state_present: "w045_optimized_core_packet_present_with_exact_blockers",
+        observations: &[
+            "W045 optimized/core conformance records 7 disposition rows, 2 direct-evidence rows, 5 exact blockers, 0 match promotions, and 0 failed rows.",
+            "Broader dynamic transition coverage, snapshot/capability counterpart breadth, full optimized/core verification, and callable metadata projection remain blocked.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_optimized_core_engine_conformance_not_full",
+            "pack.grade.w045_broader_dynamic_transition_coverage_absent",
+            "pack.grade.w045_snapshot_capability_counterpart_breadth_absent",
+            "pack.grade.w045_callable_metadata_projection_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_rust_totality_refinement_panic_surface",
+        artifact_paths: W045_RUST_TOTALITY_ARTIFACTS,
+        satisfied_input_id: "w045_rust_totality_refinement_valid",
+        evidence_state_present: "w045_rust_packet_present_with_totality_boundaries",
+        observations: &[
+            "W045 Rust packet records 17 rows, 11 local checked-proof rows, 9 refinement rows, 5 totality boundaries, 1 panic-surface row, 7 exact blockers, and 0 failed rows.",
+            "Whole-engine Rust totality, broad refinement, panic-free core-domain proof, broader dynamic coverage, and callable boundaries remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_rust_totality_not_full",
+            "pack.grade.w045_refinement_not_full",
+            "pack.grade.w045_runtime_panic_surface_proof_absent",
+            "pack.grade.w045_soft_reference_indirect_totality_boundary_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_lean_tla_verification_fairness_totality",
+        artifact_paths: W045_LEAN_TLA_ARTIFACTS,
+        satisfied_input_id: "w045_lean_tla_verification_fairness_valid",
+        evidence_state_present: "w045_lean_tla_packet_present_with_exact_blockers",
+        observations: &[
+            "W045 Lean/TLA records 18 proof/model rows, 11 local checked-proof rows, 4 bounded-model rows, 6 totality-boundary rows, 6 exact blockers, and 0 failed rows.",
+            "Full Lean verification, full TLA verification, scheduler fairness, unbounded model coverage, Rust dependencies, Stage 2 dependencies, and general OxFunc kernels remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_full_lean_tla_verification_not_promoted",
+            "pack.grade.w045_fairness_unbounded_scheduler_coverage_absent",
+            "pack.grade.w045_rust_dependency_blocks_full_proof",
+            "pack.grade.w045_stage2_dependency_blocks_full_proof",
+            "pack.grade.w045_general_oxfunc_kernel_not_promoted",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_stage2_partition_pack_grade_equivalence_service",
+        artifact_paths: W045_STAGE2_REPLAY_ARTIFACTS,
+        satisfied_input_id: "w045_stage2_pack_equivalence_service_valid",
+        evidence_state_present: "w045_stage2_packet_present_no_policy_or_pack_promotion",
+        observations: &[
+            "W045 Stage 2 records 29 policy rows, 19 satisfied rows, 5 partition replay rows, 6 permutation rows, 5 observable-invariance rows, 10 scheduler-equivalence rows, 8 pack-equivalence rows, 10 service-gate rows, 10 exact blockers, and 0 failed rows.",
+            "Declared scheduler and pack equivalence are evidenced, but production Stage 2 policy and pack-grade replay remain blocked by service gates, exact blockers, and pack governance.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_stage2_policy_unpromoted",
+            "pack.grade.w045_stage2_replay_equivalence_not_pack_grade",
+            "pack.grade.w045_production_partition_soundness_absent",
+            "pack.grade.w045_stage2_service_gate_unpromoted",
+            "pack.grade.w045_pack_grade_replay_governance_service_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_operated_assurance_retained_history_witness_slo_service",
+        artifact_paths: W045_OPERATED_ASSURANCE_ARTIFACTS,
+        satisfied_input_id: "w045_operated_assurance_retained_history_witness_slo_valid",
+        evidence_state_present: "w045_service_harness_present_no_operated_service_promotion",
+        observations: &[
+            "W045 operated assurance records 20 source rows, 13 service-envelope rows, 8 local harness operations, 47 retained-history rows, 15 retained-witness lifecycle rows, 42 alert rules, 31 readiness criteria, 6 exact service blockers, and 0 failed rows.",
+            "Operated continuous assurance, retained-history service, retained-witness lifecycle service, retention SLO enforcement, external alert dispatcher, and operated cross-engine differential service remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_operated_continuous_assurance_service_absent",
+            "pack.grade.w045_retained_history_service_absent",
+            "pack.grade.w045_retained_witness_lifecycle_service_absent",
+            "pack.grade.w045_retention_slo_not_enforced",
+            "pack.grade.w045_external_alert_dispatcher_absent",
+            "pack.grade.w045_operated_cross_engine_diff_service_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_independent_evaluator_mismatch_quarantine_operated_differential",
+        artifact_paths: W045_DIVERSITY_SEAM_ARTIFACTS,
+        satisfied_input_id: "w045_independent_evaluator_mismatch_quarantine_valid",
+        evidence_state_present: "w045_diversity_packet_present_no_service_or_full_independence_promotion",
+        observations: &[
+            "W045 diversity records 10 independent reference-model cases, 10 matches, 18 independent-evaluator rows, 20 cross-engine rows, 19 mismatch-authority rows, 8 retained-witness attachment rows, 8 local harness rows, 10 exact blockers, and 0 failed rows.",
+            "Full independent evaluator breadth, operated cross-engine differential service, mismatch quarantine service, retained-witness attachment service, and release-grade authority remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_fully_independent_evaluator_absent",
+            "pack.grade.w045_independent_evaluator_breadth_absent",
+            "pack.grade.w045_operated_cross_engine_diff_service_absent",
+            "pack.grade.w045_mismatch_quarantine_service_absent",
+            "pack.grade.w045_retained_witness_attachment_service_absent",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_oxfml_public_surface_typed_formatting_callable_registered_external",
+        artifact_paths: W045_OXFML_SEAM_ARTIFACTS,
+        satisfied_input_id: "w045_oxfml_public_surface_typed_formatting_callable_registered_external_valid",
+        evidence_state_present: "w045_oxfml_seam_packet_present_with_callable_provider_blockers",
+        observations: &[
+            "W045 OxFml seam records 18 source rows, 9 consumed-surface rows, 13 publication/display rows, 8 callable rows, 6 registered-external/provider rows, 13 exact blockers, and 0 failed rows.",
+            "OxCalc fixture-side W073 typed_rule request construction is verified for exercised guard families, while downstream DNA OneCalc uptake, broad OxFml, callable metadata, carrier sufficiency, registered-external projection, provider publication, and general OxFunc kernels remain unpromoted.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_broad_oxfml_display_publication_unpromoted",
+            "pack.grade.w045_public_consumer_migration_not_verified",
+            "pack.grade.w045_w073_downstream_request_construction_uptake_not_verified",
+            "pack.grade.w045_callable_metadata_projection_absent",
+            "pack.grade.w045_callable_carrier_sufficiency_proof_absent",
+            "pack.grade.w045_registered_external_projection_absent",
+            "pack.grade.w045_provider_failure_callable_publication_watch_lane",
+            "pack.grade.w045_general_oxfunc_kernel_not_promoted",
+        ],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_fresh_direct_oxfml_upstream_host",
+        artifact_paths: W045_UPSTREAM_HOST_ARTIFACTS,
+        satisfied_input_id: "w045_fresh_direct_oxfml_upstream_host_valid",
+        evidence_state_present: "current_w045_direct_oxfml_run_present_no_pack_promotion",
+        observations: &[
+            "W045 upstream-host records 16 cases, 7 direct OxFml cases, 2 LET/LAMBDA cases, 5 W073 typed-rule formatting guards, and 0 expectation mismatches.",
+            "The direct OxFml slice preserves current W073 and LET/LAMBDA evidence but does not promote pack-grade replay, C5, broad OxFml, callable metadata, registered-external projection, provider publication, downstream typed-rule request construction, or general OxFunc kernels.",
+        ],
+        reason_ids: &[],
+    },
+    SupplementalEvidenceSpec {
+        input_id: "w045_continuous_release_scale_assurance_semantic_regression",
+        artifact_paths: W045_SCALE_SEMANTIC_ARTIFACTS,
+        satisfied_input_id: "w045_scale_semantic_regression_profile_valid",
+        evidence_state_present: "w045_scale_packet_present_with_local_regression_profile_no_performance_promotion",
+        observations: &[
+            "W045 scale semantic binding records 7 scale rows, 7 validated rows, 6 signature rows, 11 replay/conformance/W045 guard rows, 7 service-register rows, 6 exact scale blockers, 30 required artifacts, 0 missing artifacts, and 0 unexpected mismatches.",
+            "Phase timing split and release-scale measurements are bound to W045 guard rows and a local semantic-regression profile, but do not promote performance-derived correctness, operated continuous scale assurance, pack-grade replay, C5, Stage 2, or release-grade verification.",
+        ],
+        reason_ids: &[
+            "pack.grade.w045_scale_measurement_not_correctness_proof",
+            "pack.grade.w045_continuous_scale_assurance_service_absent",
+            "pack.grade.w045_performance_evidence_not_pack_grade_replay",
+            "pack.grade.w045_operated_scale_scheduler_absent",
+        ],
+    },
+];
 
 #[derive(Debug, Error)]
 pub enum PackCapabilityError {
@@ -2335,6 +2617,7 @@ fn evaluate_bridge(
             && !profile.profile_id.starts_with("w042_")
             && !profile.profile_id.starts_with("w043_")
             && !profile.profile_id.starts_with("w044_")
+            && !profile.profile_id.starts_with("w045_")
         {
             reason_ids.push("pack.grade.direct_oxfml_evaluator_reexecution_absent".to_string());
         }
@@ -2611,8 +2894,8 @@ fn evaluate_formatting_watch_artifacts(
             "missing_artifact".to_string()
         },
         observations: vec![
-            "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only."
-                .to_string(),
+            "OxFml W073 aggregate and visualization conditional-formatting metadata is typed_rule-only for colorScale, dataBar, iconSet, top, bottom, aboveAverage, and belowAverage.".to_string(),
+            "The latest OxFml formatting diff treats old W072 bounded thresholds strings as intentionally ignored for those families and records 21 focused conditional-formatting tests.".to_string(),
             "OxCalc artifacts in this gate do not construct those payloads; no local code patch or handoff is required here."
                 .to_string(),
         ],
@@ -2691,7 +2974,57 @@ fn add_static_program_blockers(
 }
 
 fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
-    if run_id.starts_with("w044-") {
+    if run_id.starts_with("w045-") {
+        PackCapabilityProfile {
+            profile_id: "w045_pack_grade_replay_governance_service_c5_reassessment",
+            oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
+            let_lambda_tracecalc_run_id: W037_TRACECALC_OBSERVABLE_RUN_ID,
+            let_lambda_treecalc_run_id: W045_TREECALC_CONFORMANCE_RUN_ID,
+            independent_treecalc_run_id: W045_TREECALC_CONFORMANCE_RUN_ID,
+            independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
+            program_governance_artifact: "docs/spec/core-engine/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            formal_artifacts: W045_FORMAL_ARTIFACTS,
+            formal_input_id: "w045_proof_model_stage2_formal_packets",
+            formal_satisfied_input_id: "w045_proof_model_stage2_packets_present",
+            formal_evidence_state_present: "w045_formal_packets_present_with_totality_fairness_stage2_boundaries",
+            formal_observations: &[
+                "W045 proof/model and Stage 2 artifacts bind Rust totality/refinement boundaries, Lean/TLA bounded fairness evidence, scheduler-equivalence predicates, observable invariance, declared pack-equivalence inputs, and replay-governance blockers.",
+                "The artifacts are direct W045 evidence but do not promote full Lean/TLA verification, Rust totality/refinement, Stage 2 policy, pack-grade replay, or C5.",
+            ],
+            formal_reason_ids: &[
+                "pack.grade.w045_formal_slices_bounded_not_full_verification",
+                "pack.grade.w045_stage2_policy_unpromoted",
+                "pack.grade.w045_pack_grade_replay_governance_service_absent",
+            ],
+            formatting_watch_artifacts: W045_FORMATTING_WATCH_ARTIFACTS,
+            additional_static_blockers: &[
+                "pack.grade.w045_program_grade_replay_governance_not_reached",
+                "pack.grade.w045_pack_grade_replay_governance_service_absent",
+                "pack.grade.w045_pack_c5_no_promotion_after_reassessment",
+                "pack.grade.w045_release_grade_decision_deferred_to_calc_zkio_11",
+            ],
+            supplemental_evidence: W045_SUPPLEMENTAL_EVIDENCE,
+            successor_lanes: &[
+                "calc-zkio.11",
+                "future_pack_grade_replay_governance_service",
+                "future_retained_witness_lifecycle_service",
+                "future_retained_history_service_endpoint",
+                "future_retention_slo_enforcement_service",
+                "future_operated_continuous_assurance_service",
+                "future_operated_cross_engine_diff_service",
+                "future_stage2_partition_equivalence_packet",
+                "future_independent_evaluator_implementation",
+                "future_mismatch_quarantine_service",
+                "future_retained_witness_attachment_service",
+                "future_callable_metadata_projection_fixture",
+                "future_callable_carrier_sufficiency_proof",
+                "future_registered_external_projection_fixture",
+                "future_w073_downstream_typed_rule_request_construction_uptake",
+                "future_release_scale_continuous_assurance_service",
+                "future_release_grade_verification_decision",
+            ],
+        }
+    } else if run_id.starts_with("w044-") {
         PackCapabilityProfile {
             profile_id: "w044_pack_grade_replay_governance_service_c5_reassessment",
             oxfml_bridge_run_id: POST_W033_OXFML_BRIDGE_RUN_ID,
@@ -4322,6 +4655,115 @@ mod tests {
         fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
     }
 
+    #[test]
+    fn pack_capability_runner_binds_w045_pack_c5_reassessment_inputs() {
+        let repo_root = unique_temp_repo();
+        create_w045_source_artifacts(&repo_root);
+
+        let summary = PackCapabilityRunner::new()
+            .execute(&repo_root, "w045-pack-capability-test")
+            .unwrap();
+
+        assert_eq!(summary.decision_status, "capability_not_promoted");
+        assert_eq!(summary.highest_honest_capability, "cap.C4.distill_valid");
+        assert_eq!(summary.missing_artifact_count, 0);
+        assert!(summary.satisfied_input_count >= 17);
+        assert!(summary.blocker_count > 50);
+
+        let decision = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w045-pack-capability-test/decision/pack_capability_decision.json",
+        );
+        assert_eq!(
+            decision["evidence_profile"],
+            "w045_pack_grade_replay_governance_service_c5_reassessment"
+        );
+        assert_eq!(decision["capability_promoted"], false);
+        assert_eq!(
+            decision["stage2_readiness"]["stage2_scheduler_promoted"],
+            false
+        );
+        assert!(
+            decision["satisfied_inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|input| input.as_str()
+                    == Some("w045_residual_release_grade_successor_obligation_map_valid"))
+        );
+        assert!(
+            decision["satisfied_inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|input| input.as_str() == Some("w045_stage2_pack_equivalence_service_valid"))
+        );
+        assert!(decision["satisfied_inputs"].as_array().unwrap().iter().any(
+            |input| input.as_str()
+                == Some(
+                    "w045_oxfml_public_surface_typed_formatting_callable_registered_external_valid"
+                )
+        ));
+        assert!(
+            decision["satisfied_inputs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|input| input.as_str()
+                    == Some("w045_scale_semantic_regression_profile_valid"))
+        );
+        assert!(
+            !decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.direct_oxfml_evaluator_reexecution_absent"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w045_pack_c5_no_promotion_after_reassessment"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w045_pack_grade_replay_governance_service_absent"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some("pack.grade.w045_scale_measurement_not_correctness_proof"))
+        );
+        assert!(
+            decision["no_promotion_reason_ids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason.as_str()
+                    == Some(
+                        "pack.grade.w045_w073_downstream_request_construction_uptake_not_verified"
+                    ))
+        );
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/pack-capability/w045-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
     fn unique_temp_repo() -> PathBuf {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -5076,6 +5518,42 @@ mod tests {
             repo_root,
             "docs/spec/core-engine/w044-formalization/W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
             "W044 pack-grade replay governance service and C5 reassessment\n",
+        );
+    }
+
+    fn create_w045_source_artifacts(repo_root: &Path) {
+        create_w044_source_artifacts(repo_root);
+        for artifact in W045_RELEASE_LEDGER_ARTIFACTS
+            .iter()
+            .chain(W045_IMPLEMENTATION_CONFORMANCE_ARTIFACTS.iter())
+            .chain(W045_RUST_TOTALITY_ARTIFACTS.iter())
+            .chain(W045_LEAN_TLA_ARTIFACTS.iter())
+            .chain(W045_STAGE2_REPLAY_ARTIFACTS.iter())
+            .chain(W045_OPERATED_ASSURANCE_ARTIFACTS.iter())
+            .chain(W045_DIVERSITY_SEAM_ARTIFACTS.iter())
+            .chain(W045_OXFML_SEAM_ARTIFACTS.iter())
+            .chain(W045_UPSTREAM_HOST_ARTIFACTS.iter())
+            .chain(W045_SCALE_SEMANTIC_ARTIFACTS.iter())
+        {
+            write_json_test(
+                repo_root,
+                artifact,
+                json!({
+                    "run_id": "w045-pack-test-source",
+                    "status": "valid"
+                }),
+            );
+        }
+        for artifact in W045_FORMAL_ARTIFACTS
+            .iter()
+            .chain(W045_FORMATTING_WATCH_ARTIFACTS.iter())
+        {
+            write_text_test(repo_root, artifact, "W045 gate artifact\n");
+        }
+        write_text_test(
+            repo_root,
+            "docs/spec/core-engine/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            "W045 pack-grade replay governance service and C5 reassessment\n",
         );
     }
 

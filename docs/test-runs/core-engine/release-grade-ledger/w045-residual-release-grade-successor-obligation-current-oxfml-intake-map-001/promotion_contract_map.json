@@ -1,0 +1,97 @@
+{
+  "run_id": "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w045.promotion_contract_map.v1",
+  "promotion_contract_count": 18,
+  "contracts": [
+    {
+      "target": "release_grade_full_verification",
+      "contract_state": "blocked",
+      "required_evidence": "all_w045_obligation_families_closure_audit_direct_evidence_coverage_and_no_proxy_release_decision"
+    },
+    {
+      "target": "full_formalization_and_spec_evolution",
+      "contract_state": "blocked",
+      "required_evidence": "specs_tracecalc_authority_optimized_core_rust_lean_tla_stage2_services_diversity_oxfml_scaling_pack_c5_and_evolved_scope_consistency"
+    },
+    {
+      "target": "full_optimized_core_verification",
+      "contract_state": "blocked",
+      "required_evidence": "dynamic_transition_soft_reference_snapshot_capability_callable_metadata_and_conformance_rows"
+    },
+    {
+      "target": "callable_metadata_projection",
+      "contract_state": "blocked",
+      "required_evidence": "callable_metadata_projection_implementation_fixture_publication_evidence_and_oxfml_callable_seam_rows"
+    },
+    {
+      "target": "callable_carrier_sufficiency",
+      "contract_state": "blocked",
+      "required_evidence": "narrow_let_lambda_carrier_proof_and_no_general_oxfunc_overclaim"
+    },
+    {
+      "target": "rust_totality_refinement_and_panic_free_core",
+      "contract_state": "blocked",
+      "required_evidence": "totality_refinement_proof_panic_surface_audit_and_callable_carrier_relation"
+    },
+    {
+      "target": "full_lean_tla_verification_and_unbounded_fairness",
+      "contract_state": "blocked",
+      "required_evidence": "full_proof_model_discharge_zero_placeholder_audit_model_bound_discharge_totality_discharge_and_fairness_coverage"
+    },
+    {
+      "target": "stage2_production_policy",
+      "contract_state": "blocked",
+      "required_evidence": "production_partition_analyzer_soundness_scheduler_equivalence_observable_invariance_and_operated_differential_service"
+    },
+    {
+      "target": "pack_grade_replay_equivalence",
+      "contract_state": "blocked",
+      "required_evidence": "baseline_versus_partition_equivalence_for_values_rejects_dependencies_topology_overlays_witnesses_validation_and_retained_evidence"
+    },
+    {
+      "target": "operated_assurance_and_retained_services",
+      "contract_state": "blocked",
+      "required_evidence": "operated_service_artifacts_lifecycle_service_retention_slo_replay_query_and_external_dispatcher"
+    },
+    {
+      "target": "operated_cross_engine_differential_service",
+      "contract_state": "blocked",
+      "required_evidence": "scheduled_operated_cross_engine_service_differential_authority_and_retained_witness_attachment"
+    },
+    {
+      "target": "fully_independent_evaluator_breadth",
+      "contract_state": "blocked",
+      "required_evidence": "independent_implementation_authority_and_breadth_beyond_current_reference_model_slice"
+    },
+    {
+      "target": "mismatch_quarantine_and_witness_attachment_service",
+      "contract_state": "blocked",
+      "required_evidence": "service_behavior_mismatch_authority_routing_retained_witness_attachment_and_alert_quarantine_semantics"
+    },
+    {
+      "target": "current_oxfml_public_surface_and_w073_downstream_uptake",
+      "contract_state": "blocked",
+      "required_evidence": "current_consumer_runtime_editor_replay_surface_public_migration_w073_downstream_typed_rule_uptake_and_format_display_boundary"
+    },
+    {
+      "target": "registered_external_and_provider_callable_publication",
+      "contract_state": "blocked",
+      "required_evidence": "coordinator_visible_registered_external_projection_and_provider_failure_callable_publication_semantics"
+    },
+    {
+      "target": "continuous_release_scale_assurance",
+      "contract_state": "blocked",
+      "required_evidence": "continuous_semantic_regression_service_model_shape_validation_phase_timing_split_scaling_counters_and_no_correctness_from_timing_guard"
+    },
+    {
+      "target": "pack_grade_replay_and_cap_c5_pack_valid",
+      "contract_state": "blocked",
+      "required_evidence": "w045_pack_decision_after_direct_services_proof_model_conformance_diversity_seam_scaling_guard_and_governance_service_evidence"
+    },
+    {
+      "target": "general_oxfunc_kernels_inside_oxcalc",
+      "contract_state": "out_of_scope",
+      "required_evidence": "external_owner_boundary_with_only_narrow_let_lambda_carrier_in_scope"
+    }
+  ]
+}

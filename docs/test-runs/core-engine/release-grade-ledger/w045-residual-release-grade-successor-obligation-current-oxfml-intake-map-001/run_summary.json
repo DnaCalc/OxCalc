@@ -1,0 +1,94 @@
+{
+  "run_id": "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w045.summary.v1",
+  "workset": "W045",
+  "parent_epic": "calc-zkio",
+  "bead": "calc-zkio.1",
+  "status": "residual_successor_obligation_current_oxfml_intake_map_validated",
+  "source_residual_lane_count": 22,
+  "successor_obligation_count": 36,
+  "promotion_contract_count": 18,
+  "inbound_observation_sources_reviewed": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "oxfml_current_state_reviewed": {
+    "branch_state": "main_ahead_3_with_dirty_formatting_worktree_reviewed_read_only",
+    "recent_commits": [
+      "b9e4fd3 Add typed conditional formatting payload slice",
+      "7f5cd5f Process conditional formatting handoff worksets",
+      "17afca8 Expand format engine time and fraction coverage"
+    ],
+    "working_copy_formatting_sources_reviewed": [
+      "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md",
+      "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+    ]
+  },
+  "w073_formatting_intake": "typed_rule_only_direct_replacement_guard_retained",
+  "w073_typed_rule_only_families": [
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage"
+  ],
+  "w073_threshold_fallback_allowed_for_typed_families": false,
+  "w073_old_bounded_string_non_interpretation_evidence_reviewed": true,
+  "w073_focused_conditional_formatting_test_count_reported_by_oxfml": 21,
+  "w073_downstream_request_construction_uptake_verified_by_oxcalc": false,
+  "public_surface_intake": {
+    "ordinary_downstream_surfaces": [
+      "oxfml_core::consumer::runtime",
+      "oxfml_core::consumer::editor",
+      "oxfml_core::consumer::replay"
+    ],
+    "substrate_public_access_ordinary_contract": false,
+    "test_support_only_reach_retained": true
+  },
+  "oxfml_formatting_update_incorporated": true,
+  "oxfml_handoff_required": false,
+  "highest_honest_capability": "cap.C4.distill_valid",
+  "next_bead": "calc-zkio.2",
+  "no_promotion_claims": [
+    "release_grade_full_verification",
+    "full_formalization",
+    "full_optimized_core_verification",
+    "snapshot_capability_counterpart_breadth",
+    "callable_metadata_projection",
+    "callable_carrier_sufficiency",
+    "rust_totality_and_refinement",
+    "panic_free_core_domain",
+    "full_lean_tla_verification",
+    "unbounded_scheduler_fairness",
+    "stage2_production_policy",
+    "pack_grade_replay_equivalence",
+    "operated_assurance_service",
+    "retained_history_service",
+    "retained_witness_lifecycle_service",
+    "retention_slo_enforcement",
+    "external_alert_quarantine_dispatcher",
+    "operated_cross_engine_differential_service",
+    "mismatch_quarantine_service",
+    "retained_witness_attachment_service",
+    "fully_independent_evaluator_breadth",
+    "broad_oxfml_display_publication",
+    "public_consumer_migration",
+    "w073_downstream_typed_rule_request_construction",
+    "registered_external_callable_projection",
+    "provider_failure_callable_publication_semantics",
+    "release_scale_correctness_from_performance",
+    "continuous_scale_assurance_service",
+    "pack_grade_replay",
+    "cap.C5.pack_valid",
+    "general_oxfunc_kernels"
+  ],
+  "scope_completeness": "scope_partial",
+  "target_completeness": "target_complete",
+  "integration_completeness": "integrated"
+}

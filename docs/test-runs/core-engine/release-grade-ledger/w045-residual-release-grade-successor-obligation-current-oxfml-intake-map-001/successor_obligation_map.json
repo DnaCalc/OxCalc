@@ -1,0 +1,207 @@
+{
+  "run_id": "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w045.successor_obligation_map.v1",
+  "source_residual_lane_count": 22,
+  "successor_obligation_count": 36,
+  "rows": [
+    {
+      "source_lane": "w044_residual.release_grade_full_verification",
+      "owner_beads": ["calc-zkio.1", "calc-zkio.11"],
+      "obligation_ids": ["W045-OBL-001", "W045-OBL-002", "W045-OBL-003", "W045-OBL-036"],
+      "required_disposition": "direct_evidence_only_release_grade_decision_with_spec_evolution_and_current_oxfml_intake",
+      "promotion_consequence": "release_grade_verification_remains_unpromoted_until_w045_closure_decision"
+    },
+    {
+      "source_lane": "w044_residual.optimized_core_dynamic_dependency_transitions",
+      "owner_beads": ["calc-zkio.2"],
+      "obligation_ids": ["W045-OBL-005", "W045-OBL-006", "W045-OBL-011"],
+      "required_disposition": "broaden_dynamic_add_remove_reclassify_soft_reference_and_indirect_coverage_or_retain_exact_blocker",
+      "promotion_consequence": "full_optimized_core_verification_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.snapshot_capability_counterparts",
+      "owner_beads": ["calc-zkio.2", "calc-zkio.5"],
+      "obligation_ids": ["W045-OBL-007", "W045-OBL-008", "W045-OBL-020"],
+      "required_disposition": "prove_snapshot_fence_and_capability_view_counterparts_for_promoted_profiles_or_retain_exact_blocker",
+      "promotion_consequence": "snapshot_and_capability_counterpart_breadth_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.callable_metadata_projection",
+      "owner_beads": ["calc-zkio.2", "calc-zkio.8"],
+      "obligation_ids": ["W045-OBL-009", "W045-OBL-010", "W045-OBL-030", "W045-OBL-034"],
+      "required_disposition": "implement_and_exercise_callable_metadata_projection_or_retain_exact_projection_blocker",
+      "promotion_consequence": "callable_metadata_projection_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.callable_carrier_sufficiency",
+      "owner_beads": ["calc-zkio.8"],
+      "obligation_ids": ["W045-OBL-010", "W045-OBL-033"],
+      "required_disposition": "prove_narrow_let_lambda_carrier_sufficiency_without_general_oxfunc_overclaim",
+      "promotion_consequence": "callable_carrier_sufficiency_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.rust_totality_refinement_panic_surface",
+      "owner_beads": ["calc-zkio.3"],
+      "obligation_ids": ["W045-OBL-012", "W045-OBL-013", "W045-OBL-014", "W045-OBL-015"],
+      "required_disposition": "discharge_or_retain_totality_refinement_and_panic_surface_blockers_with_direct_rust_proof_or_audit_evidence",
+      "promotion_consequence": "rust_totality_refinement_and_panic_free_core_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.lean_tla_full_verification",
+      "owner_beads": ["calc-zkio.4"],
+      "obligation_ids": ["W045-OBL-016", "W045-OBL-017", "W045-OBL-018"],
+      "required_disposition": "discharge_full_proof_model_fairness_and_totality_boundaries_or_retain_exact_blockers",
+      "promotion_consequence": "full_lean_tla_verification_and_unbounded_fairness_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.stage2_production_policy_and_pack_equivalence",
+      "owner_beads": ["calc-zkio.5", "calc-zkio.10"],
+      "obligation_ids": ["W045-OBL-019", "W045-OBL-020", "W045-OBL-021", "W045-OBL-022", "W045-OBL-036"],
+      "required_disposition": "prove_production_partition_analyzer_scheduler_observable_invariance_and_pack_equivalence_or_retain_exact_blockers",
+      "promotion_consequence": "stage2_production_policy_and_pack_grade_replay_equivalence_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.operated_assurance_service",
+      "owner_beads": ["calc-zkio.6"],
+      "obligation_ids": ["W045-OBL-023", "W045-OBL-026", "W045-OBL-027"],
+      "required_disposition": "replace_file_backed_or_envelope_rows_with_operated_service_artifacts_or_retain_exact_service_blocker",
+      "promotion_consequence": "operated_continuous_assurance_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.retained_history_and_witness_lifecycle",
+      "owner_beads": ["calc-zkio.6", "calc-zkio.10"],
+      "obligation_ids": ["W045-OBL-024", "W045-OBL-025", "W045-OBL-036"],
+      "required_disposition": "bind_retained_history_query_witness_lifecycle_and_retention_slo_to_operated_evidence_or_exact_blocker",
+      "promotion_consequence": "retained_history_retained_witness_lifecycle_and_retention_slo_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.external_alert_dispatcher",
+      "owner_beads": ["calc-zkio.6"],
+      "obligation_ids": ["W045-OBL-026"],
+      "required_disposition": "replace_local_alert_rules_with_enforcing_external_dispatcher_evidence_or_exact_blocker",
+      "promotion_consequence": "external_alert_quarantine_dispatcher_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.operated_cross_engine_differential",
+      "owner_beads": ["calc-zkio.7"],
+      "obligation_ids": ["W045-OBL-022", "W045-OBL-027"],
+      "required_disposition": "provide_operated_cross_engine_differential_service_evidence_or_retain_exact_blocker",
+      "promotion_consequence": "operated_cross_engine_differential_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.fully_independent_evaluator",
+      "owner_beads": ["calc-zkio.7"],
+      "obligation_ids": ["W045-OBL-029"],
+      "required_disposition": "broaden_independent_evaluator_implementation_authority_and_breadth_or_retain_exact_blocker",
+      "promotion_consequence": "fully_independent_evaluator_breadth_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.mismatch_quarantine_service",
+      "owner_beads": ["calc-zkio.7"],
+      "obligation_ids": ["W045-OBL-028"],
+      "required_disposition": "bind_mismatch_authority_quarantine_service_retained_witness_attachment_and_alert_semantics_or_exact_blocker",
+      "promotion_consequence": "mismatch_quarantine_and_retained_witness_attachment_services_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.retained_witness_attachment_service",
+      "owner_beads": ["calc-zkio.7"],
+      "obligation_ids": ["W045-OBL-028"],
+      "required_disposition": "attach_retained_witness_artifacts_to_mismatch_and_differential_flows_or_retain_exact_blocker",
+      "promotion_consequence": "retained_witness_attachment_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.oxfml_broad_display_publication_public_migration",
+      "owner_beads": ["calc-zkio.8"],
+      "obligation_ids": ["W045-OBL-003", "W045-OBL-030", "W045-OBL-032", "W045-OBL-034"],
+      "required_disposition": "verify_current_consumer_surfaces_public_migration_format_display_boundary_and_broad_display_publication_or_retain_exact_blockers",
+      "promotion_consequence": "broad_oxfml_display_publication_and_public_migration_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.w073_downstream_typed_rule_request_construction",
+      "owner_beads": ["calc-zkio.8"],
+      "obligation_ids": ["W045-OBL-003", "W045-OBL-031"],
+      "required_disposition": "verify_downstream_typed_rule_request_construction_where_consumed_or_keep_external_public_migration_blocker",
+      "promotion_consequence": "w073_downstream_typed_rule_request_construction_remains_unverified"
+    },
+    {
+      "source_lane": "w044_residual.registered_external_provider_publication",
+      "owner_beads": ["calc-zkio.8"],
+      "obligation_ids": ["W045-OBL-034"],
+      "required_disposition": "bind_registered_external_projection_provider_failure_and_callable_publication_semantics_or_retain_watch_lane",
+      "promotion_consequence": "registered_external_projection_and_provider_callable_publication_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.release_scale_replay_performance_scaling",
+      "owner_beads": ["calc-zkio.9"],
+      "obligation_ids": ["W045-OBL-035"],
+      "required_disposition": "turn_scale_models_into_continuous_semantic_assurance_without_promoting_timing_as_correctness",
+      "promotion_consequence": "performance_and_scaling_data_must_not_substitute_for_correctness_proof"
+    },
+    {
+      "source_lane": "w044_residual.continuous_scale_assurance_service",
+      "owner_beads": ["calc-zkio.9"],
+      "obligation_ids": ["W045-OBL-035"],
+      "required_disposition": "create_or_block_continuous_scale_assurance_semantic_regression_service",
+      "promotion_consequence": "continuous_scale_assurance_service_remains_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.pack_grade_replay_and_c5",
+      "owner_beads": ["calc-zkio.10", "calc-zkio.11"],
+      "obligation_ids": ["W045-OBL-021", "W045-OBL-036"],
+      "required_disposition": "reassess_pack_grade_replay_governance_and_c5_only_after_direct_w045_evidence",
+      "promotion_consequence": "pack_grade_replay_and_cap_c5_pack_valid_remain_unpromoted"
+    },
+    {
+      "source_lane": "w044_residual.release_grade_successor_planning",
+      "owner_beads": ["calc-zkio.1", "calc-zkio.11"],
+      "obligation_ids": ["W045-OBL-001", "W045-OBL-002", "W045-OBL-036"],
+      "required_disposition": "keep_w045_as_improvement_and_spec_evolution_scope_with_closure_audit_decision",
+      "promotion_consequence": "w045_owns_next_release_grade_decision_without_fixed_initial_spec_assumption"
+    },
+    {
+      "source_lane": "w044_residual.general_oxfunc_kernels",
+      "owner_beads": ["calc-zkio.8", "calc-zkio.11"],
+      "obligation_ids": ["W045-OBL-033"],
+      "required_disposition": "keep_general_oxfunc_kernels_external_except_narrow_let_lambda_carrier_seam",
+      "promotion_consequence": "general_oxfunc_kernels_remain_outside_oxcalc_scope"
+    }
+  ],
+  "obligations": [
+    {"id": "W045-OBL-001", "area": "release_grade_objective_no_proxy_guard", "owner_beads": ["calc-zkio.1", "calc-zkio.11"]},
+    {"id": "W045-OBL-002", "area": "full_formalization_spec_evolution_and_implementation_improvement", "owner_beads": ["calc-zkio.1", "calc-zkio.11"]},
+    {"id": "W045-OBL-003", "area": "current_oxfml_intake_and_handoff_watch", "owner_beads": ["calc-zkio.1", "calc-zkio.8"]},
+    {"id": "W045-OBL-004", "area": "tracecalc_oracle_boundary_for_current_observable_profile", "owner_beads": ["calc-zkio.1", "calc-zkio.11"]},
+    {"id": "W045-OBL-005", "area": "optimized_core_dynamic_add_remove_reclassify_breadth", "owner_beads": ["calc-zkio.2"]},
+    {"id": "W045-OBL-006", "area": "soft_reference_indirect_and_late_resolution_update_semantics", "owner_beads": ["calc-zkio.2"]},
+    {"id": "W045-OBL-007", "area": "snapshot_fence_optimized_core_counterpart", "owner_beads": ["calc-zkio.2", "calc-zkio.5"]},
+    {"id": "W045-OBL-008", "area": "capability_view_optimized_core_counterpart", "owner_beads": ["calc-zkio.2", "calc-zkio.5"]},
+    {"id": "W045-OBL-009", "area": "callable_metadata_projection_implementation", "owner_beads": ["calc-zkio.2", "calc-zkio.8"]},
+    {"id": "W045-OBL-010", "area": "callable_value_carrier_versus_metadata_separation", "owner_beads": ["calc-zkio.2", "calc-zkio.8"]},
+    {"id": "W045-OBL-011", "area": "optimized_core_release_grade_conformance", "owner_beads": ["calc-zkio.2", "calc-zkio.10"]},
+    {"id": "W045-OBL-012", "area": "rust_panic_free_core_domain", "owner_beads": ["calc-zkio.3"]},
+    {"id": "W045-OBL-013", "area": "rust_totality_dependency_and_publication_transitions", "owner_beads": ["calc-zkio.3"]},
+    {"id": "W045-OBL-014", "area": "rust_refinement_tracecalc_and_optimized_core_relation", "owner_beads": ["calc-zkio.3", "calc-zkio.4"]},
+    {"id": "W045-OBL-015", "area": "callable_carrier_totality_and_refinement", "owner_beads": ["calc-zkio.3", "calc-zkio.8"]},
+    {"id": "W045-OBL-016", "area": "lean_proof_discharge", "owner_beads": ["calc-zkio.4"]},
+    {"id": "W045-OBL-017", "area": "tla_unbounded_scheduler_and_fairness_coverage", "owner_beads": ["calc-zkio.4", "calc-zkio.5"]},
+    {"id": "W045-OBL-018", "area": "proof_model_runtime_refinement_bridge", "owner_beads": ["calc-zkio.4", "calc-zkio.5"]},
+    {"id": "W045-OBL-019", "area": "stage2_production_partition_analyzer_soundness", "owner_beads": ["calc-zkio.5"]},
+    {"id": "W045-OBL-020", "area": "stage2_scheduler_equivalence_observable_invariance", "owner_beads": ["calc-zkio.5"]},
+    {"id": "W045-OBL-021", "area": "pack_grade_replay_equivalence", "owner_beads": ["calc-zkio.5", "calc-zkio.10"]},
+    {"id": "W045-OBL-022", "area": "operated_stage2_differential_service", "owner_beads": ["calc-zkio.5", "calc-zkio.7"]},
+    {"id": "W045-OBL-023", "area": "operated_continuous_assurance_service", "owner_beads": ["calc-zkio.6"]},
+    {"id": "W045-OBL-024", "area": "retained_history_lifecycle_and_query_service", "owner_beads": ["calc-zkio.6"]},
+    {"id": "W045-OBL-025", "area": "retained_witness_lifecycle_and_retention_slo", "owner_beads": ["calc-zkio.6", "calc-zkio.10"]},
+    {"id": "W045-OBL-026", "area": "external_alert_quarantine_dispatcher", "owner_beads": ["calc-zkio.6"]},
+    {"id": "W045-OBL-027", "area": "operated_cross_engine_differential_service", "owner_beads": ["calc-zkio.6", "calc-zkio.7"]},
+    {"id": "W045-OBL-028", "area": "mismatch_quarantine_service_and_retained_witness_attachment", "owner_beads": ["calc-zkio.7"]},
+    {"id": "W045-OBL-029", "area": "independent_evaluator_breadth_and_authority", "owner_beads": ["calc-zkio.7"]},
+    {"id": "W045-OBL-030", "area": "oxfml_public_consumer_surface_and_public_migration", "owner_beads": ["calc-zkio.8"]},
+    {"id": "W045-OBL-031", "area": "w073_typed_rule_request_construction", "owner_beads": ["calc-zkio.8"]},
+    {"id": "W045-OBL-032", "area": "format_delta_display_delta_boundary", "owner_beads": ["calc-zkio.8"]},
+    {"id": "W045-OBL-033", "area": "let_lambda_callable_carrier_and_general_oxfunc_boundary", "owner_beads": ["calc-zkio.8"]},
+    {"id": "W045-OBL-034", "area": "registered_external_projection_and_provider_callable_publication", "owner_beads": ["calc-zkio.8"]},
+    {"id": "W045-OBL-035", "area": "continuous_release_scale_assurance_and_performance_guard", "owner_beads": ["calc-zkio.9"]},
+    {"id": "W045-OBL-036", "area": "pack_governance_c5_reassessment_and_release_decision", "owner_beads": ["calc-zkio.10", "calc-zkio.11"]}
+  ]
+}

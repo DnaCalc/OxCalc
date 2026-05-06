@@ -74,12 +74,13 @@ Validation requirements scale by bead:
 
 ## 6. Current Status
 
-- execution_state: `planned_successor_scope`
+- execution_state: `calc-zkio.2_ready_optimized_core_counterpart_coverage_and_callable_metadata_projection_closure`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - all W045 evidence beads remain open
+  - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
+  - `calc-zkio.2` optimized core counterpart coverage and callable metadata projection closure is ready next
   - release-grade verification remains unpromoted
   - pack-grade replay and C5 remain unpromoted
   - operated services, Stage 2 production policy, independent evaluator breadth, broad OxFml/public migration, callable metadata, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain open or external as classified

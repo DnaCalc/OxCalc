@@ -1,0 +1,80 @@
+{
+  "run_id": "w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001",
+  "schema_version": "oxcalc.release_grade_ledger.w045.oxfml_observation_intake.v1",
+  "reviewed_sources": [
+    "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "reviewed_working_copy_formatting_sources": [
+    "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+    "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+    "../OxFml/docs/IN_PROGRESS_FEATURE_WORKLIST.md",
+    "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+  ],
+  "w073_formatting": {
+    "typed_rule_only_families": [
+      "colorScale",
+      "dataBar",
+      "iconSet",
+      "top",
+      "bottom",
+      "aboveAverage",
+      "belowAverage"
+    ],
+    "threshold_fallback_allowed_for_typed_families": false,
+    "thresholds_remain_scalar_operator_expression_input": true,
+    "old_bounded_string_non_interpretation_evidence_reviewed": true,
+    "focused_conditional_formatting_test_count_reported_by_oxfml": 21,
+    "downstream_typed_rule_request_construction_required": true,
+    "downstream_uptake_verified_by_oxcalc": false,
+    "routed_to_successor_bead": "calc-zkio.8"
+  },
+  "public_surface": {
+    "ordinary_downstream_entry_surfaces": [
+      "oxfml_core::consumer::runtime",
+      "oxfml_core::consumer::editor",
+      "oxfml_core::consumer::replay"
+    ],
+    "public_substrate_access_is_ordinary_integration_contract": false,
+    "remaining_host_session_adapter_reach_is_test_support": true,
+    "routed_to_successor_bead": "calc-zkio.8"
+  },
+  "watch_lanes": [
+    {
+      "lane": "runtime_facade",
+      "state": "current_consumer_surface_is_target_for_downstream_planning_not_full_surface_freeze"
+    },
+    {
+      "lane": "host_runtime_external_requirements",
+      "state": "canonical_bounded_packet_not_full_language_closure"
+    },
+    {
+      "lane": "structured_reference_table_context",
+      "state": "table_catalog_enclosing_table_ref_and_caller_table_region_remain_first_packet_direction"
+    },
+    {
+      "lane": "stand_in_fixture_host",
+      "state": "deterministic_fixture_reuse_not_production_api_freeze"
+    },
+    {
+      "lane": "registered_external_provider",
+      "state": "registration_channel_identity_and_stable_registration_identity_must_be_preserved"
+    },
+    {
+      "lane": "provider_failure_callable_publication",
+      "state": "watch_lane_until_coordinator_visible_evidence_creates_handoff_pressure"
+    },
+    {
+      "lane": "format_delta_display_delta",
+      "state": "distinct_semantic_format_and_display_categories_retained"
+    },
+    {
+      "lane": "let_lambda_callable_carrier",
+      "state": "narrow_oxcalc_oxfml_oxfunc_thread_in_scope_general_oxfunc_kernels_external"
+    }
+  ],
+  "handoff_required": false,
+  "handoff_reason": "W045.1 records successor obligations and current intake only; it introduces no exercised OxCalc/OxFml mismatch and does not edit OxFml."
+}

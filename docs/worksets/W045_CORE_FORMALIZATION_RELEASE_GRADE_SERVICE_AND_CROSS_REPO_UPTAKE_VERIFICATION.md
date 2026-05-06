@@ -1,6 +1,6 @@
 # W045 Core Formalization Release-Grade Service And Cross-Repo Uptake Verification
 
-Status: `planned_successor_scope`
+Status: `closed_non_promoting_w046_successor_packetized`
 
 Parent predecessor: `W044`
 Parent epic: `calc-zkio`
@@ -74,10 +74,10 @@ Validation requirements scale by bead:
 
 ## 6. Current Status
 
-- execution_state: `calc-zkio.11_ready_closure_audit_and_release_grade_verification_decision`
+- execution_state: `calc-zkio.11_closure_audit_release_grade_verification_decision_w046_successor_packetized`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
   - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
   - `calc-zkio.2` optimized core counterpart coverage and callable metadata projection closure is validated
@@ -89,7 +89,8 @@ Validation requirements scale by bead:
   - `calc-zkio.8` OxFml public surface W073 downstream typed formatting callable and registered-external uptake is validated
   - `calc-zkio.9` continuous release-scale assurance and semantic regression service is validated
   - `calc-zkio.10` pack-grade replay governance service and C5 reassessment is validated
-  - `calc-zkio.11` closure audit and release-grade verification decision is ready next
+  - `calc-zkio.11` closure audit and release-grade verification decision is validated
+  - W046 successor scope is packetized under `calc-gucd`
   - release-grade verification remains unpromoted
   - pack-grade replay and C5 remain unpromoted
   - operated services, Stage 2 production policy, independent evaluator breadth, broad OxFml/public migration, callable metadata, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain open or external as classified

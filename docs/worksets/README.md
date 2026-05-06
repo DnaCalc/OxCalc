@@ -57,8 +57,9 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 17. `W041` core formalization release-grade successor verification,
 18. `W042` core formalization release-grade evidence closure expansion,
 19. `W043` core formalization release-grade proof and operated-service integration,
-20. `W044` core formalization release-grade blocker burn-down and service proof closure.
-21. `W045` core formalization release-grade service and cross-repo uptake verification.
+20. `W044` core formalization release-grade blocker burn-down and service proof closure,
+21. `W045` core formalization release-grade service and cross-repo uptake verification,
+22. `W046` core formalization proof-service consolidation and release-grade promotion readiness.
 
 ## Historical Note
 

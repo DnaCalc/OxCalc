@@ -30,14 +30,14 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 8. `W045_OXFML_PUBLIC_SURFACE_W073_DOWNSTREAM_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md` - `calc-zkio.8` OxFml seam tranche, validated.
 9. `W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md` - `calc-zkio.9` scale assurance tranche, validated.
 10. `W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md` - `calc-zkio.10` pack/C5 tranche, validated.
-11. `W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-zkio.11` closure audit and release-grade decision.
+11. `W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-zkio.11` closure audit and release-grade decision, validated.
 
 ## Current Status
 
-- execution_state: `calc-zkio.11_ready_closure_audit_and_release_grade_verification_decision`
+- execution_state: `calc-zkio.11_closure_audit_release_grade_verification_decision_w046_successor_packetized`
 - scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
 - open_lanes:
   - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
   - `calc-zkio.2` optimized/core and callable metadata tranche is validated
@@ -49,5 +49,6 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
   - `calc-zkio.8` OxFml public surface W073 downstream typed formatting callable and registered-external uptake is validated
   - `calc-zkio.9` continuous release-scale assurance and semantic regression service is validated
   - `calc-zkio.10` pack-grade replay governance service and C5 reassessment is validated
-  - `calc-zkio.11` closure audit and release-grade verification decision is ready next
+  - `calc-zkio.11` closure audit and release-grade verification decision is validated
+  - W046 successor scope is packetized under `calc-gucd`
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, callable metadata, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

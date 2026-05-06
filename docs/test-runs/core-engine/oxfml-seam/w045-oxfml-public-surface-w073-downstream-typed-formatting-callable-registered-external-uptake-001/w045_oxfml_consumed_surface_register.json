@@ -1,0 +1,90 @@
+{
+  "broad_oxfml_seam_promoted": false,
+  "public_consumer_surface_migration_verified": false,
+  "row_count": 9,
+  "rows": [
+    {
+      "direct_oxfml_case_count": 7,
+      "disposition_kind": "exercised_current_surface",
+      "expectation_mismatch_count": 0,
+      "promotion_consequence": "current direct OxFml runtime surface is bound for this fixture slice without broad seam closure",
+      "row_id": "surface.w045_direct_oxfml_runtime_facade",
+      "source": "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+      "surface_state": "direct_runtime_facade_exercised_under_w045"
+    },
+    {
+      "disposition_kind": "exercised_current_surface",
+      "promotion_consequence": "OxCalc fixture request construction is verified for the exercised W073 typed-rule families without claiming downstream DNA OneCalc uptake",
+      "row_id": "surface.w045_w073_typed_rule_request_construction",
+      "source": "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+      "surface_state": "oxcalc_fixture_typed_rule_request_construction_verified",
+      "w044_case_count": 4,
+      "w073_case_count": 5
+    },
+    {
+      "consumer_editor_present": true,
+      "consumer_replay_present": true,
+      "consumer_runtime_present": true,
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "OxCalc records the current public consumer surface without claiming complete call-site migration or API freeze",
+      "public_substrate_removed": true,
+      "row_id": "surface.w045_public_consumer_entry_points",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "current_public_consumer_surface_named"
+    },
+    {
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "runtime facade contract is consumed as current direction, not shared seam freeze or broad host closure",
+      "row_id": "surface.w045_runtime_facade_contract",
+      "runtime_formula_result_present": true,
+      "runtime_session_facade_present": true,
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "runtime_facade_contract_named_without_shared_freeze"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "DNA OneCalc W073 typed-rule request construction remains downstream and unpromoted in OxCalc",
+      "row_id": "surface.w045_w073_downstream_dnaonecalc_uptake",
+      "source": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "surface_state": "downstream_request_construction_not_verified_by_oxcalc",
+      "w073_downstream_dnaonecalc_request_construction_verified": false
+    },
+    {
+      "descriptor_present": true,
+      "disposition_kind": "note_level_watch",
+      "mutation_request_present": true,
+      "promotion_consequence": "registered external packet naming remains note-level; callable metadata projection is not promoted",
+      "row_id": "surface.w045_registered_external_packet",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "registered_external_packet_converged_at_note_level"
+    },
+    {
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "fixture-host convergence supports deterministic artifacts but does not freeze the production OxCalc coordinator API",
+      "row_id": "surface.w045_fixture_host_standin_packet",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "standin_packet_present": true,
+      "structure_context_identity_present": true,
+      "surface_state": "fixture_host_standin_packet_converged_for_deterministic_artifacts"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "public consumer-surface migration verification remains unpromoted",
+      "reason": "current public consumer surface is named and exercised through fixtures, but all OxCalc integration call sites are not migrated and verified in this bead",
+      "row_id": "surface.w045_public_consumer_migration_verification",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "public_consumer_surface_migration_not_verified"
+    },
+    {
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "runtime facade, structured-reference, registered-external, provider-failure, callable-publication, and public-migration notes remain watch inputs until direct evidence requires a handoff",
+      "row_id": "surface.w045_observation_ledger_watch_lanes",
+      "source": "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+      "surface_state": "observation_ledger_watch_lanes_bound_without_shared_freeze"
+    }
+  ],
+  "run_id": "w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "schema_version": "oxcalc.oxfml_seam.w045.consumed_surface_register.v1",
+  "w073_downstream_dnaonecalc_request_construction_verified": false,
+  "w073_oxcalc_fixture_request_construction_verified": true
+}

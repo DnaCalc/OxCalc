@@ -1,0 +1,20 @@
+{
+  "broad_oxfml_seam_promoted": false,
+  "callable_metadata_projection_promoted": false,
+  "callable_metadata_row_count": 8,
+  "exact_blocker_count": 13,
+  "failed_row_count": 0,
+  "oxfml_handoff_triggered": false,
+  "publication_display_row_count": 13,
+  "registered_external_row_count": 6,
+  "run_id": "w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "schema_version": "oxcalc.oxfml_seam.w045.validation.v1",
+  "source_evidence_row_count": 18,
+  "status": "w045_oxfml_public_surface_w073_callable_registered_external_packet_valid",
+  "surface_row_count": 9,
+  "validation_failures": [],
+  "w073_current_oxfml_direct_replacement_update_reviewed": true,
+  "w073_downstream_dnaonecalc_request_construction_verified": false,
+  "w073_oxcalc_fixture_request_construction_verified": true,
+  "w073_typed_only_formatting_guard_retained": true
+}

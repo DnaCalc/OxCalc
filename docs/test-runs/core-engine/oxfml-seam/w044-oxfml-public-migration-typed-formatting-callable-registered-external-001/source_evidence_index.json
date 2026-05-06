@@ -1,0 +1,166 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001",
+  "rows": [
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_upstream_host_direct_oxfml",
+      "semantic_state": "fresh_w044_direct_oxfml_runtime_slice_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_upstream_host_case_index",
+      "semantic_state": "case_index_covers_w044_direct_oxfml_let_lambda_and_w073_visual_surfaces",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_w073_typed_rule_request_construction",
+      "semantic_state": "oxcalc_fixture_request_construction_exercises_rank_average_color_scale_data_bar_and_icon_set_typed_rule_families",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_w073_formatting_intake",
+      "semantic_state": "w073_typed_only_formatting_intake_bound_for_w044",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_direct_replacement_workset_current",
+      "semantic_state": "current_oxfml_w073_direct_replacement_contract_reviewed",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_downstream_handoff_current",
+      "semantic_state": "w073_dnaonecalc_request_construction_remains_downstream_handoff",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_blocker_map_oxfml_lanes",
+      "semantic_state": "w044_oxfml_w073_and_registered_external_lanes_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_promotion_contract_oxfml_blocked",
+      "semantic_state": "w044_oxfml_promotion_contracts_remain_blocked",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_callable_metadata_projection_blocker",
+      "semantic_state": "w044_callable_metadata_exact_blocker_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_optimized_core_no_callable_or_registered_promotion",
+      "semantic_state": "w044_optimized_core_callable_projection_no_promotion_guard_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_implementation_callable_blocker",
+      "semantic_state": "w044_implementation_callable_metadata_blocker_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_oxfml_predecessor_no_promotion",
+      "semantic_state": "predecessor_w043_oxfml_packet_preserves_no_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_diversity_oxfml_dependency",
+      "semantic_state": "w044_diversity_retains_oxfml_callable_public_migration_dependency_blocker",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_current_public_consumer_surface",
+      "semantic_state": "current_oxfml_public_consumer_surface_bound_as_watch_lane",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_registered_external_and_publication_notes",
+      "semantic_state": "registered_external_format_display_publication_watch_lanes_bound",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w044-oxfml-public-migration-typed-formatting-callable-registered-external-001",
+  "schema_version": "oxcalc.oxfml_seam.w044.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "oxfml_w073_handoff": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "oxfml_w073_workset": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "w043_oxfml_seam_decision": "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json",
+    "w044_blocker_reclassification_map": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+    "w044_callable_metadata_register": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+    "w044_diversity_blockers": "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json",
+    "w044_diversity_decision": "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json",
+    "w044_implementation_blockers": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+    "w044_implementation_summary": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+    "w044_let_lexical_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+    "w044_oxfml_inbound_intake": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
+    "w044_promotion_contract_map": "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json",
+    "w044_returned_lambda_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+    "w044_upstream_host_case_index": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json",
+    "w044_upstream_host_summary": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
+    "w044_w073_average_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_average_guard_001/result.json",
+    "w044_w073_color_scale_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_color_scale_guard_001/result.json",
+    "w044_w073_data_bar_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_data_bar_guard_001/result.json",
+    "w044_w073_icon_set_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_icon_set_guard_001/result.json",
+    "w044_w073_top_result": "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json"
+  },
+  "source_evidence_row_count": 15
+}

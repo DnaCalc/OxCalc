@@ -183,7 +183,7 @@ fn public_fixture_loader_executes_checked_in_upstream_host_corpus() {
         repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
     let manifest = upstream_host_fixture::load_manifest(&manifest_path).unwrap();
 
-    assert_eq!(manifest.cases.len(), 12);
+    assert_eq!(manifest.cases.len(), 16);
 
     for entry in &manifest.cases {
         let case_path = repo_root

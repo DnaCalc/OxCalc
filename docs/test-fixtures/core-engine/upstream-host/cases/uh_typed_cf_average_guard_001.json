@@ -1,0 +1,52 @@
+{
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "case_id": "uh_typed_cf_average_guard_001",
+  "description": "Direct OxFml runtime-facade evaluation with a W073 typed average-rule payload proves average request construction is typed_rule-driven and legacy threshold strings are ignored.",
+  "formula_slot": {
+    "fixture_input_id": "fixture:upstream_host:w044:formatting:average:001",
+    "formula_slot_id": "node:slot:upstream_host:w044:formatting:average:001",
+    "formula_stable_id": "formula:upstream_host:w044:formatting:average:001",
+    "formula_text": "=SEQUENCE(3)",
+    "formula_text_version": 1,
+    "formula_channel_kind": "worksheet_a1",
+    "caller_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "active_selection_anchor": {
+      "row": 1,
+      "col": 1
+    },
+    "structure_context_version": "treecalc.struct:upstream-host:w044:v1"
+  },
+  "publication_context": {
+    "format_profile": "w044-w073-typed-average-guard",
+    "conditional_formatting_rules": [
+      {
+        "target_ranges": ["A1:A3"],
+        "rule_kind": "aboveAverage",
+        "thresholds": ["equal", "stddev:99"],
+        "typed_rule": {
+          "average": {
+            "include_equal": false,
+            "stddev_multiplier": null
+          }
+        },
+        "fill_color": "#ABCDEF"
+      }
+    ]
+  },
+  "expected": {
+    "returned_surface_kind": "ordinary_value",
+    "payload_summary": "Array(3x1)",
+    "trace_function_ids": ["FUNC.SEQUENCE"],
+    "conditional_formatting_typed_rule_families": ["average"],
+    "conditional_formatting_effective_fill_colors": [
+      [null],
+      [null],
+      ["#ABCDEF"]
+    ],
+    "format_delta_present": false,
+    "display_delta_present": false
+  }
+}

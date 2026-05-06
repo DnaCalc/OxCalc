@@ -21,8 +21,10 @@ use oxfml_core::interface::{
     TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef,
 };
 use oxfml_core::publication::{
-    AverageRuleOptions, ConditionalFormattingRank, ConditionalFormattingTypedRule, RankRuleOptions,
-    VerificationConditionalFormattingRule, VerificationPublicationContext,
+    AverageRuleOptions, ColorScaleRuleOptions, ColorScaleRuleStop, ConditionalFormattingRank,
+    ConditionalFormattingThreshold, ConditionalFormattingTypedRule, DataBarDirection,
+    DataBarRuleOptions, IconSetRuleOptions, RankRuleOptions, VerificationConditionalFormattingRule,
+    VerificationPublicationContext,
 };
 use oxfml_core::seam::ValuePayload;
 use oxfml_core::semantics::{
@@ -236,8 +238,51 @@ pub struct UpstreamHostFixtureConditionalFormattingRule {
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct UpstreamHostFixtureConditionalFormattingTypedRule {
+    pub color_scale: Option<UpstreamHostFixtureColorScaleRuleOptions>,
+    pub data_bar: Option<UpstreamHostFixtureDataBarRuleOptions>,
+    pub icon_set: Option<UpstreamHostFixtureIconSetRuleOptions>,
     pub rank: Option<UpstreamHostFixtureRankRuleOptions>,
     pub average: Option<UpstreamHostFixtureAverageRuleOptions>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureColorScaleRuleOptions {
+    #[serde(default)]
+    pub stops: Vec<UpstreamHostFixtureColorScaleRuleStop>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureColorScaleRuleStop {
+    pub position: UpstreamHostFixtureConditionalFormattingThreshold,
+    pub color: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureDataBarRuleOptions {
+    pub minimum: Option<UpstreamHostFixtureConditionalFormattingThreshold>,
+    pub maximum: Option<UpstreamHostFixtureConditionalFormattingThreshold>,
+    pub bar_color: Option<String>,
+    pub direction: Option<String>,
+    #[serde(default)]
+    pub show_bar_only: bool,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct UpstreamHostFixtureIconSetRuleOptions {
+    pub set_kind: String,
+    #[serde(default)]
+    pub thresholds: Vec<UpstreamHostFixtureConditionalFormattingThreshold>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UpstreamHostFixtureConditionalFormattingThreshold {
+    Min,
+    Mid,
+    Max,
+    Percent { value: f64 },
+    Percentile { value: f64 },
+    Number { value: f64 },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -279,9 +324,28 @@ pub struct UpstreamHostFixtureExpected {
     #[serde(default)]
     pub conditional_formatting_effective_fill_colors: Option<Vec<Vec<Option<String>>>>,
     #[serde(default)]
+    pub conditional_formatting_data_bars:
+        Option<Vec<Vec<Option<UpstreamHostFixtureDataBarExpectation>>>>,
+    #[serde(default)]
+    pub conditional_formatting_icons: Option<Vec<Vec<Option<UpstreamHostFixtureIconExpectation>>>>,
+    #[serde(default)]
     pub format_delta_present: Option<bool>,
     #[serde(default)]
     pub display_delta_present: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UpstreamHostFixtureDataBarExpectation {
+    pub fill_ratio: f64,
+    pub bar_color: String,
+    pub direction: String,
+    pub show_bar_only: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpstreamHostFixtureIconExpectation {
+    pub set_kind: String,
+    pub icon_index: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -608,6 +672,26 @@ pub fn fixture_expectation_mismatches(
         }
     }
 
+    if let Some(expected_bars) = &expected.conditional_formatting_data_bars {
+        let observed = array_cell_data_bars(output);
+        if !data_bar_grid_matches(expected_bars, observed.as_ref()) {
+            mismatches.push(format!(
+                "conditional_formatting_data_bars expected {:?}, observed {:?}",
+                expected_bars, observed
+            ));
+        }
+    }
+
+    if let Some(expected_icons) = &expected.conditional_formatting_icons {
+        let observed = array_cell_icons(output);
+        if observed.as_ref() != Some(expected_icons) {
+            mismatches.push(format!(
+                "conditional_formatting_icons expected {:?}, observed {:?}",
+                expected_icons, observed
+            ));
+        }
+    }
+
     if let Some(expected_present) = expected.format_delta_present {
         let observed = output
             .verification_publication_surface
@@ -706,6 +790,100 @@ pub fn array_cell_effective_fill_colors(
                 })
                 .collect()
         })
+}
+
+pub fn array_cell_data_bars(
+    output: &oxfml_core::consumer::runtime::RuntimeFormulaResult,
+) -> Option<Vec<Vec<Option<UpstreamHostFixtureDataBarExpectation>>>> {
+    output
+        .verification_publication_surface
+        .array_cell_format
+        .as_ref()
+        .map(|grid| {
+            grid.rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|cell| {
+                            cell.data_bar.as_ref().map(|bar| {
+                                UpstreamHostFixtureDataBarExpectation {
+                                    fill_ratio: bar.fill_ratio,
+                                    bar_color: bar.bar_color.clone(),
+                                    direction: match bar.direction {
+                                        DataBarDirection::Left => "left".to_string(),
+                                        DataBarDirection::Right => "right".to_string(),
+                                    },
+                                    show_bar_only: bar.show_bar_only,
+                                }
+                            })
+                        })
+                        .collect()
+                })
+                .collect()
+        })
+}
+
+pub fn array_cell_icons(
+    output: &oxfml_core::consumer::runtime::RuntimeFormulaResult,
+) -> Option<Vec<Vec<Option<UpstreamHostFixtureIconExpectation>>>> {
+    output
+        .verification_publication_surface
+        .array_cell_format
+        .as_ref()
+        .map(|grid| {
+            grid.rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|cell| {
+                            cell.icon
+                                .as_ref()
+                                .map(|icon| UpstreamHostFixtureIconExpectation {
+                                    set_kind: icon.set_kind.clone(),
+                                    icon_index: icon.icon_index,
+                                })
+                        })
+                        .collect()
+                })
+                .collect()
+        })
+}
+
+fn data_bar_grid_matches(
+    expected: &[Vec<Option<UpstreamHostFixtureDataBarExpectation>>],
+    observed: Option<&Vec<Vec<Option<UpstreamHostFixtureDataBarExpectation>>>>,
+) -> bool {
+    let Some(observed) = observed else {
+        return false;
+    };
+    expected.len() == observed.len()
+        && expected
+            .iter()
+            .zip(observed)
+            .all(|(expected_row, observed_row)| {
+                expected_row.len() == observed_row.len()
+                    && expected_row.iter().zip(observed_row).all(
+                        |(expected_cell, observed_cell)| {
+                            data_bar_cell_matches(expected_cell.as_ref(), observed_cell.as_ref())
+                        },
+                    )
+            })
+}
+
+fn data_bar_cell_matches(
+    expected: Option<&UpstreamHostFixtureDataBarExpectation>,
+    observed: Option<&UpstreamHostFixtureDataBarExpectation>,
+) -> bool {
+    match (expected, observed) {
+        (None, None) => true,
+        (Some(expected), Some(observed)) => {
+            (expected.fill_ratio - observed.fill_ratio).abs() <= 0.000_000_001
+                && expected.bar_color == observed.bar_color
+                && expected.direction == observed.direction
+                && expected.show_bar_only == observed.show_bar_only
+        }
+        _ => false,
+    }
 }
 
 fn build_packet(
@@ -1032,9 +1210,89 @@ fn to_typed_rule(
     typed_rule: &UpstreamHostFixtureConditionalFormattingTypedRule,
 ) -> ConditionalFormattingTypedRule {
     ConditionalFormattingTypedRule {
+        color_scale: typed_rule
+            .color_scale
+            .as_ref()
+            .map(to_color_scale_rule_options),
+        data_bar: typed_rule.data_bar.as_ref().map(to_data_bar_rule_options),
+        icon_set: typed_rule.icon_set.as_ref().map(to_icon_set_rule_options),
         rank: typed_rule.rank.as_ref().map(to_rank_rule_options),
         average: typed_rule.average.as_ref().map(to_average_rule_options),
-        ..ConditionalFormattingTypedRule::default()
+    }
+}
+
+fn to_color_scale_rule_options(
+    options: &UpstreamHostFixtureColorScaleRuleOptions,
+) -> ColorScaleRuleOptions {
+    ColorScaleRuleOptions {
+        stops: options
+            .stops
+            .iter()
+            .map(|stop| ColorScaleRuleStop {
+                position: to_conditional_formatting_threshold(&stop.position),
+                color: stop.color.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn to_data_bar_rule_options(options: &UpstreamHostFixtureDataBarRuleOptions) -> DataBarRuleOptions {
+    DataBarRuleOptions {
+        minimum: options
+            .minimum
+            .as_ref()
+            .map(to_conditional_formatting_threshold),
+        maximum: options
+            .maximum
+            .as_ref()
+            .map(to_conditional_formatting_threshold),
+        bar_color: options.bar_color.clone(),
+        direction: options.direction.as_deref().map(to_data_bar_direction),
+        show_bar_only: options.show_bar_only,
+    }
+}
+
+fn to_icon_set_rule_options(options: &UpstreamHostFixtureIconSetRuleOptions) -> IconSetRuleOptions {
+    IconSetRuleOptions {
+        set_kind: options.set_kind.clone(),
+        thresholds: options
+            .thresholds
+            .iter()
+            .map(to_conditional_formatting_threshold)
+            .collect(),
+    }
+}
+
+fn to_conditional_formatting_threshold(
+    threshold: &UpstreamHostFixtureConditionalFormattingThreshold,
+) -> ConditionalFormattingThreshold {
+    match threshold {
+        UpstreamHostFixtureConditionalFormattingThreshold::Min => {
+            ConditionalFormattingThreshold::Min
+        }
+        UpstreamHostFixtureConditionalFormattingThreshold::Mid => {
+            ConditionalFormattingThreshold::Mid
+        }
+        UpstreamHostFixtureConditionalFormattingThreshold::Max => {
+            ConditionalFormattingThreshold::Max
+        }
+        UpstreamHostFixtureConditionalFormattingThreshold::Percent { value } => {
+            ConditionalFormattingThreshold::Percent(*value)
+        }
+        UpstreamHostFixtureConditionalFormattingThreshold::Percentile { value } => {
+            ConditionalFormattingThreshold::Percentile(*value)
+        }
+        UpstreamHostFixtureConditionalFormattingThreshold::Number { value } => {
+            ConditionalFormattingThreshold::Number(*value)
+        }
+    }
+}
+
+fn to_data_bar_direction(direction: &str) -> DataBarDirection {
+    if direction.eq_ignore_ascii_case("right") {
+        DataBarDirection::Right
+    } else {
+        DataBarDirection::Left
     }
 }
 
@@ -1120,7 +1378,7 @@ mod tests {
             repo_root.join("docs/test-fixtures/core-engine/upstream-host/MANIFEST.json");
         let manifest = load_manifest(&manifest_path).unwrap();
 
-        assert_eq!(manifest.cases.len(), 12);
+        assert_eq!(manifest.cases.len(), 16);
 
         for entry in &manifest.cases {
             let case_path = repo_root

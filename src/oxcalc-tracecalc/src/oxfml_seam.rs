@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W039/W040/W041/W042/W043 OxFml seam breadth, publication/display, and callable metadata packet emission.
+//! W039/W040/W041/W042/W043/W044 OxFml seam breadth, publication/display, and callable metadata packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -64,6 +64,18 @@ const W043_REGISTERED_EXTERNAL_SCHEMA_V1: &str =
 const W043_BLOCKER_REGISTER_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w043.exact_blocker_register.v1";
 const W043_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w043.promotion_decision.v1";
 const W043_VALIDATION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w043.validation.v1";
+const W044_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.run_summary.v1";
+const W044_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.source_evidence_index.v1";
+const W044_CONSUMED_SURFACE_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.consumed_surface_register.v1";
+const W044_PUBLICATION_DISPLAY_SCHEMA_V1: &str =
+    "oxcalc.oxfml_seam.w044.publication_display_boundary_register.v1";
+const W044_CALLABLE_METADATA_SCHEMA_V1: &str =
+    "oxcalc.oxfml_seam.w044.callable_carrier_and_metadata_register.v1";
+const W044_REGISTERED_EXTERNAL_SCHEMA_V1: &str =
+    "oxcalc.oxfml_seam.w044.registered_external_provider_register.v1";
+const W044_BLOCKER_REGISTER_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.exact_blocker_register.v1";
+const W044_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.promotion_decision.v1";
+const W044_VALIDATION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w044.validation.v1";
 
 const W039_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json";
 const W039_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json";
@@ -116,6 +128,24 @@ const W043_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementa
 const W043_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json";
 const W043_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
 const W043_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json";
+const W043_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json";
+const W044_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json";
+const W044_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json";
+const W044_W073_TOP_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W044_W073_COLOR_SCALE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_color_scale_guard_001/result.json";
+const W044_W073_DATA_BAR_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_data_bar_guard_001/result.json";
+const W044_W073_ICON_SET_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_icon_set_guard_001/result.json";
+const W044_W073_AVERAGE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_average_guard_001/result.json";
+const W044_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W044_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W044_BLOCKER_RECLASSIFICATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json";
+const W044_PROMOTION_CONTRACT_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json";
+const W044_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json";
+const W044_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
+const W044_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json";
+const W044_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json";
+const W044_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
+const W044_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json";
 const OXFML_W073_WORKSET: &str =
     "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md";
 const OXFML_W073_HANDOFF: &str =
@@ -181,6 +211,9 @@ impl OxFmlSeamRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<OxFmlSeamRunSummary, OxFmlSeamError> {
+        if run_id.starts_with("w044-") || run_id.starts_with("test-w044-") {
+            return self.execute_w044(repo_root, run_id);
+        }
         if run_id.starts_with("w043-") || run_id.starts_with("test-w043-") {
             return self.execute_w043(repo_root, run_id);
         }
@@ -406,6 +439,334 @@ impl OxFmlSeamRunner {
         Ok(OxFmlSeamRunSummary {
             run_id: run_id.to_string(),
             schema_version: RUN_SUMMARY_SCHEMA_V1.to_string(),
+            source_evidence_row_count: source_rows.len(),
+            surface_row_count: surface_rows.len(),
+            publication_display_row_count: publication_display_rows.len(),
+            callable_metadata_row_count: callable_rows.len(),
+            exact_blocker_count: blockers.len(),
+            failed_row_count,
+            oxfml_handoff_triggered,
+            callable_metadata_projection_promoted: false,
+            broad_oxfml_seam_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w044(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<OxFmlSeamRunSummary, OxFmlSeamError> {
+        let relative_artifact_root =
+            relative_artifact_path(&["docs", "test-runs", "core-engine", "oxfml-seam", run_id]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                OxFmlSeamError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| OxFmlSeamError::CreateDirectory {
+            path: artifact_root.display().to_string(),
+            source,
+        })?;
+
+        let upstream_summary = read_json(repo_root, W044_UPSTREAM_HOST_SUMMARY)?;
+        let upstream_case_index = read_json(repo_root, W044_UPSTREAM_HOST_CASE_INDEX)?;
+        let top_result = read_json(repo_root, W044_W073_TOP_RESULT)?;
+        let color_scale_result = read_json(repo_root, W044_W073_COLOR_SCALE_RESULT)?;
+        let data_bar_result = read_json(repo_root, W044_W073_DATA_BAR_RESULT)?;
+        let icon_set_result = read_json(repo_root, W044_W073_ICON_SET_RESULT)?;
+        let average_result = read_json(repo_root, W044_W073_AVERAGE_RESULT)?;
+        let let_lexical_result = read_json(repo_root, W044_LET_LEXICAL_RESULT)?;
+        let returned_lambda_result = read_json(repo_root, W044_RETURNED_LAMBDA_RESULT)?;
+        let blocker_map = read_json(repo_root, W044_BLOCKER_RECLASSIFICATION_MAP)?;
+        let promotion_contract_map = read_json(repo_root, W044_PROMOTION_CONTRACT_MAP)?;
+        let oxfml_intake = read_json(repo_root, W044_OXFML_INBOUND_INTAKE)?;
+        let implementation_summary = read_json(repo_root, W044_IMPLEMENTATION_SUMMARY)?;
+        let callable_metadata_register = read_json(repo_root, W044_CALLABLE_METADATA_REGISTER)?;
+        let implementation_blockers = read_json(repo_root, W044_IMPLEMENTATION_BLOCKERS)?;
+        let predecessor_oxfml_decision = read_json(repo_root, W043_OXFML_SEAM_DECISION)?;
+        let diversity_decision = read_json(repo_root, W044_DIVERSITY_DECISION)?;
+        let diversity_blockers = read_json(repo_root, W044_DIVERSITY_BLOCKERS)?;
+        let oxfml_notes = read_text(repo_root, OXFML_INBOUND_NOTES)?;
+        let w073_workset = read_text(repo_root, OXFML_W073_WORKSET)?;
+        let w073_handoff = read_text(repo_root, OXFML_W073_HANDOFF)?;
+
+        let source_rows = source_rows_w044(
+            &upstream_summary,
+            &upstream_case_index,
+            &top_result,
+            &color_scale_result,
+            &data_bar_result,
+            &icon_set_result,
+            &average_result,
+            &blocker_map,
+            &promotion_contract_map,
+            &oxfml_intake,
+            &implementation_summary,
+            &callable_metadata_register,
+            &implementation_blockers,
+            &predecessor_oxfml_decision,
+            &diversity_decision,
+            &diversity_blockers,
+            &oxfml_notes,
+            &w073_workset,
+            &w073_handoff,
+        );
+        let surface_rows =
+            consumed_surface_rows_w044(&upstream_summary, &upstream_case_index, &oxfml_notes);
+        let publication_display_rows = publication_display_rows_w044(
+            &top_result,
+            &color_scale_result,
+            &data_bar_result,
+            &icon_set_result,
+            &average_result,
+            &oxfml_intake,
+            &oxfml_notes,
+            &w073_workset,
+            &w073_handoff,
+        );
+        let callable_rows = callable_metadata_rows_w044(
+            &let_lexical_result,
+            &returned_lambda_result,
+            &blocker_map,
+            &callable_metadata_register,
+            &implementation_blockers,
+            &oxfml_notes,
+        );
+        let registered_external_rows =
+            registered_external_rows_w044(&upstream_case_index, &blocker_map, &oxfml_notes);
+        let blockers = exact_blockers_w044(
+            &blocker_map,
+            &promotion_contract_map,
+            &callable_metadata_register,
+            &implementation_blockers,
+            &diversity_blockers,
+            &oxfml_notes,
+            &w073_handoff,
+        );
+
+        let mut validation_failures = source_validation_failures(&source_rows);
+        validation_failures.extend(oxfml_seam_validation_failures_w044(
+            &surface_rows,
+            &publication_display_rows,
+            &callable_rows,
+            &registered_external_rows,
+            &blockers,
+        ));
+        let failed_row_count = validation_failures.len();
+        let oxfml_handoff_triggered = validation_failures
+            .iter()
+            .any(|failure| failure.contains("mismatch") || failure.contains("handoff"));
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let surface_register_path =
+            format!("{relative_artifact_root}/w044_oxfml_consumed_surface_register.json");
+        let publication_display_path =
+            format!("{relative_artifact_root}/w044_publication_display_boundary_register.json");
+        let callable_metadata_path =
+            format!("{relative_artifact_root}/w044_callable_carrier_and_metadata_register.json");
+        let registered_external_path =
+            format!("{relative_artifact_root}/w044_registered_external_provider_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w044_exact_oxfml_seam_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        let source_evidence_index = json!({
+            "schema_version": W044_SOURCE_INDEX_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_row_count": source_rows.len(),
+            "rows": source_rows,
+            "source_artifacts": {
+                "w044_upstream_host_summary": W044_UPSTREAM_HOST_SUMMARY,
+                "w044_upstream_host_case_index": W044_UPSTREAM_HOST_CASE_INDEX,
+                "w044_w073_top_result": W044_W073_TOP_RESULT,
+                "w044_w073_color_scale_result": W044_W073_COLOR_SCALE_RESULT,
+                "w044_w073_data_bar_result": W044_W073_DATA_BAR_RESULT,
+                "w044_w073_icon_set_result": W044_W073_ICON_SET_RESULT,
+                "w044_w073_average_result": W044_W073_AVERAGE_RESULT,
+                "w044_let_lexical_result": W044_LET_LEXICAL_RESULT,
+                "w044_returned_lambda_result": W044_RETURNED_LAMBDA_RESULT,
+                "w044_blocker_reclassification_map": W044_BLOCKER_RECLASSIFICATION_MAP,
+                "w044_promotion_contract_map": W044_PROMOTION_CONTRACT_MAP,
+                "w044_oxfml_inbound_intake": W044_OXFML_INBOUND_INTAKE,
+                "w044_implementation_summary": W044_IMPLEMENTATION_SUMMARY,
+                "w044_callable_metadata_register": W044_CALLABLE_METADATA_REGISTER,
+                "w044_implementation_blockers": W044_IMPLEMENTATION_BLOCKERS,
+                "w043_oxfml_seam_decision": W043_OXFML_SEAM_DECISION,
+                "w044_diversity_decision": W044_DIVERSITY_DECISION,
+                "w044_diversity_blockers": W044_DIVERSITY_BLOCKERS,
+                "oxfml_inbound_notes": OXFML_INBOUND_NOTES,
+                "oxfml_w073_workset": OXFML_W073_WORKSET,
+                "oxfml_w073_handoff": OXFML_W073_HANDOFF
+            }
+        });
+        let surface_register = json!({
+            "schema_version": W044_CONSUMED_SURFACE_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": surface_rows.len(),
+            "broad_oxfml_seam_promoted": false,
+            "public_consumer_surface_migration_verified": false,
+            "w073_oxcalc_fixture_request_construction_verified": true,
+            "rows": surface_rows
+        });
+        let publication_display_register = json!({
+            "schema_version": W044_PUBLICATION_DISPLAY_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": publication_display_rows.len(),
+            "format_delta_display_delta_distinct": true,
+            "w073_typed_only_formatting_guard_retained": true,
+            "w073_oxcalc_fixture_request_construction_verified": true,
+            "w073_downstream_dnaonecalc_request_construction_verified": false,
+            "broad_display_publication_promoted": false,
+            "provider_failure_callable_publication_promoted": false,
+            "rows": publication_display_rows
+        });
+        let callable_metadata_register_json = json!({
+            "schema_version": W044_CALLABLE_METADATA_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": callable_rows.len(),
+            "callable_metadata_projection_promoted": false,
+            "callable_carrier_sufficiency_proven": false,
+            "general_oxfunc_kernel_promoted": false,
+            "rows": callable_rows
+        });
+        let registered_external_register = json!({
+            "schema_version": W044_REGISTERED_EXTERNAL_SCHEMA_V1,
+            "run_id": run_id,
+            "row_count": registered_external_rows.len(),
+            "registered_external_callable_projection_promoted": false,
+            "provider_failure_callable_publication_promoted": false,
+            "rows": registered_external_rows
+        });
+        let blocker_register = json!({
+            "schema_version": W044_BLOCKER_REGISTER_SCHEMA_V1,
+            "run_id": run_id,
+            "exact_blocker_count": blockers.len(),
+            "rows": blockers
+        });
+        let promotion_decision = json!({
+            "schema_version": W044_PROMOTION_DECISION_SCHEMA_V1,
+            "run_id": run_id,
+            "decision_state": "w044_oxfml_public_migration_typed_formatting_callable_registered_external_bound_without_broad_promotion",
+            "broad_oxfml_seam_promoted": false,
+            "broad_display_publication_promoted": false,
+            "public_consumer_surface_migration_verified": false,
+            "callable_metadata_projection_promoted": false,
+            "callable_carrier_sufficiency_proven": false,
+            "registered_external_callable_projection_promoted": false,
+            "provider_failure_callable_publication_promoted": false,
+            "general_oxfunc_kernel_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true,
+            "w073_oxcalc_fixture_request_construction_verified": true,
+            "w073_downstream_dnaonecalc_request_construction_verified": false,
+            "w073_formatting_handoff_triggered": false,
+            "oxfml_handoff_triggered": oxfml_handoff_triggered,
+            "pack_grade_replay_promoted": false,
+            "c5_promoted": false,
+            "stage2_policy_promoted": false,
+            "release_grade_verification_promoted": false,
+            "source_evidence_row_count": source_rows.len(),
+            "surface_row_count": surface_rows.len(),
+            "publication_display_row_count": publication_display_rows.len(),
+            "callable_metadata_row_count": callable_rows.len(),
+            "registered_external_row_count": registered_external_rows.len(),
+            "exact_blocker_count": blockers.len(),
+            "blockers": blockers
+                .iter()
+                .map(|row| row["blocker_id"].clone())
+                .collect::<Vec<_>>(),
+            "semantic_equivalence_statement": "This W044 OxFml seam runner binds OxCalc upstream-host typed_rule request construction for W073 rank, average, color-scale, data-bar, and icon-set fixture families, current OxFml W073 typed-only direct-replacement guards, publication/display boundary rows, callable carrier rows, registered-external/provider watch rows, and exact blockers only. It does not change evaluator kernels, coordinator scheduling, recalc, publication, replay, pack, service, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics."
+        });
+        let validation = json!({
+            "schema_version": W044_VALIDATION_SCHEMA_V1,
+            "run_id": run_id,
+            "status": if validation_failures.is_empty() {
+                "w044_oxfml_typed_formatting_callable_registered_external_packet_valid"
+            } else {
+                "w044_oxfml_typed_formatting_callable_registered_external_packet_invalid"
+            },
+            "source_evidence_row_count": source_rows.len(),
+            "surface_row_count": surface_rows.len(),
+            "publication_display_row_count": publication_display_rows.len(),
+            "callable_metadata_row_count": callable_rows.len(),
+            "registered_external_row_count": registered_external_rows.len(),
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "oxfml_handoff_triggered": oxfml_handoff_triggered,
+            "callable_metadata_projection_promoted": false,
+            "broad_oxfml_seam_promoted": false,
+            "w073_oxcalc_fixture_request_construction_verified": true,
+            "w073_downstream_dnaonecalc_request_construction_verified": false,
+            "validation_failures": validation_failures
+        });
+        let run_summary = json!({
+            "schema_version": W044_RUN_SUMMARY_SCHEMA_V1,
+            "run_id": run_id,
+            "artifact_root": relative_artifact_root,
+            "source_evidence_index_path": source_evidence_index_path,
+            "w044_oxfml_consumed_surface_register_path": surface_register_path,
+            "w044_publication_display_boundary_register_path": publication_display_path,
+            "w044_callable_carrier_and_metadata_register_path": callable_metadata_path,
+            "w044_registered_external_provider_register_path": registered_external_path,
+            "w044_exact_oxfml_seam_blocker_register_path": blocker_register_path,
+            "promotion_decision_path": promotion_decision_path,
+            "validation_path": validation_path,
+            "source_evidence_row_count": source_rows.len(),
+            "surface_row_count": surface_rows.len(),
+            "publication_display_row_count": publication_display_rows.len(),
+            "callable_metadata_row_count": callable_rows.len(),
+            "registered_external_row_count": registered_external_rows.len(),
+            "exact_blocker_count": blockers.len(),
+            "failed_row_count": failed_row_count,
+            "oxfml_handoff_triggered": oxfml_handoff_triggered,
+            "callable_metadata_projection_promoted": false,
+            "broad_oxfml_seam_promoted": false,
+            "w073_typed_only_formatting_guard_retained": true,
+            "w073_oxcalc_fixture_request_construction_verified": true,
+            "w073_downstream_dnaonecalc_request_construction_verified": false
+        });
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &source_evidence_index,
+        )?;
+        write_json(
+            &artifact_root.join("w044_oxfml_consumed_surface_register.json"),
+            &surface_register,
+        )?;
+        write_json(
+            &artifact_root.join("w044_publication_display_boundary_register.json"),
+            &publication_display_register,
+        )?;
+        write_json(
+            &artifact_root.join("w044_callable_carrier_and_metadata_register.json"),
+            &callable_metadata_register_json,
+        )?;
+        write_json(
+            &artifact_root.join("w044_registered_external_provider_register.json"),
+            &registered_external_register,
+        )?;
+        write_json(
+            &artifact_root.join("w044_exact_oxfml_seam_blocker_register.json"),
+            &blocker_register,
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &promotion_decision,
+        )?;
+        write_json(&artifact_root.join("validation.json"), &validation)?;
+        write_json(&artifact_root.join("run_summary.json"), &run_summary)?;
+
+        Ok(OxFmlSeamRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W044_RUN_SUMMARY_SCHEMA_V1.to_string(),
             source_evidence_row_count: source_rows.len(),
             surface_row_count: surface_rows.len(),
             publication_display_row_count: publication_display_rows.len(),
@@ -1516,6 +1877,776 @@ impl OxFmlSeamRunner {
             artifact_root: relative_artifact_root,
         })
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn source_rows_w044(
+    upstream_summary: &Value,
+    upstream_case_index: &Value,
+    top_result: &Value,
+    color_scale_result: &Value,
+    data_bar_result: &Value,
+    icon_set_result: &Value,
+    average_result: &Value,
+    blocker_map: &Value,
+    promotion_contract_map: &Value,
+    oxfml_intake: &Value,
+    implementation_summary: &Value,
+    callable_metadata_register: &Value,
+    implementation_blockers: &Value,
+    predecessor_oxfml_decision: &Value,
+    diversity_decision: &Value,
+    diversity_blockers: &Value,
+    oxfml_notes: &str,
+    w073_workset: &str,
+    w073_handoff: &str,
+) -> Vec<Value> {
+    let w073 = oxfml_intake.get("w073_formatting").unwrap_or(&Value::Null);
+    vec![
+        json!({
+            "row_id": "source.w044_upstream_host_direct_oxfml",
+            "artifact": W044_UPSTREAM_HOST_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": number_at(upstream_summary, "expectation_mismatch_count"),
+            "failed_row_count": 0,
+            "promotion_guard": bool_at(upstream_summary, "all_expectations_matched")
+                && number_at(upstream_summary, "fixture_case_count") == 16
+                && number_at(upstream_summary, "direct_oxfml_case_count") >= 7
+                && number_at(upstream_summary, "w073_typed_rule_case_count") >= 5
+                && !bool_at(&upstream_summary["promotion_limits"], "general_oxfunc_kernel_claimed")
+                && !bool_at(&upstream_summary["promotion_limits"], "pack_grade_replay_promoted")
+                && !bool_at(&upstream_summary["promotion_limits"], "c5_promoted"),
+            "semantic_state": "fresh_w044_direct_oxfml_runtime_slice_bound"
+        }),
+        json!({
+            "row_id": "source.w044_upstream_host_case_index",
+            "artifact": W044_UPSTREAM_HOST_CASE_INDEX,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": tag_count(upstream_case_index, "direct-oxfml") >= 7
+                && tag_count(upstream_case_index, "let-lambda") >= 2
+                && tag_count(upstream_case_index, "w073") >= 5
+                && tag_count(upstream_case_index, "w044") >= 4,
+            "semantic_state": "case_index_covers_w044_direct_oxfml_let_lambda_and_w073_visual_surfaces"
+        }),
+        json!({
+            "row_id": "source.w044_w073_typed_rule_request_construction",
+            "artifact": W044_UPSTREAM_HOST_CASE_INDEX,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": result_has_typed_family(top_result, "rank")
+                && result_has_typed_family(color_scale_result, "color_scale")
+                && result_has_typed_family(data_bar_result, "data_bar")
+                && result_has_typed_family(icon_set_result, "icon_set")
+                && result_has_typed_family(average_result, "average"),
+            "semantic_state": "oxcalc_fixture_request_construction_exercises_rank_average_color_scale_data_bar_and_icon_set_typed_rule_families"
+        }),
+        json!({
+            "row_id": "source.w044_w073_formatting_intake",
+            "artifact": W044_OXFML_INBOUND_INTAKE,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": array_len_at(w073, "typed_rule_only_families") == 7
+                && !bool_at(w073, "threshold_fallback_allowed_for_typed_families")
+                && bool_at(w073, "downstream_typed_rule_request_construction_required")
+                && !bool_at(w073, "downstream_uptake_verified_by_oxcalc"),
+            "semantic_state": "w073_typed_only_formatting_intake_bound_for_w044"
+        }),
+        json!({
+            "row_id": "source.oxfml_w073_direct_replacement_workset_current",
+            "artifact": OXFML_W073_WORKSET,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": w073_workset.contains("only accepted metadata source")
+                && w073_workset.contains("intentionally ignored")
+                && w073_workset.contains("bounded_visualization_threshold_strings_are_not_interpreted")
+                && w073_workset.contains("bounded_aggregate_option_strings_are_not_interpreted"),
+            "semantic_state": "current_oxfml_w073_direct_replacement_contract_reviewed"
+        }),
+        json!({
+            "row_id": "source.oxfml_w073_downstream_handoff_current",
+            "artifact": OXFML_W073_HANDOFF,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": w073_handoff.contains("DNA OneCalc should update request construction")
+                && w073_handoff.contains("will no longer produce aggregate or visualization effects")
+                && w073_handoff.contains("typed_rule"),
+            "semantic_state": "w073_dnaonecalc_request_construction_remains_downstream_handoff"
+        }),
+        json!({
+            "row_id": "source.w044_blocker_map_oxfml_lanes",
+            "artifact": W044_BLOCKER_RECLASSIFICATION_MAP,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(blocker_map, "obligation_count") == 45
+                && item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.oxfml_broad_display_publication_public_migration")
+                && item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.w073_downstream_typed_rule_request_construction")
+                && item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.registered_external_provider_publication"),
+            "semantic_state": "w044_oxfml_w073_and_registered_external_lanes_bound"
+        }),
+        json!({
+            "row_id": "source.w044_promotion_contract_oxfml_blocked",
+            "artifact": W044_PROMOTION_CONTRACT_MAP,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(promotion_contract_map, "promotion_contract_count") == 17
+                && item_with_field_exists(promotion_contract_map, "contracts", "target", "broad_oxfml_display_publication_and_public_migration")
+                && item_with_field_exists(promotion_contract_map, "contracts", "target", "registered_external_and_provider_callable_publication"),
+            "semantic_state": "w044_oxfml_promotion_contracts_remain_blocked"
+        }),
+        json!({
+            "row_id": "source.w044_callable_metadata_projection_blocker",
+            "artifact": W044_CALLABLE_METADATA_REGISTER,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(callable_metadata_register, "callable_metadata_projection_promoted")
+                && row_with_field_exists(callable_metadata_register, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "semantic_state": "w044_callable_metadata_exact_blocker_retained"
+        }),
+        json!({
+            "row_id": "source.w044_optimized_core_no_callable_or_registered_promotion",
+            "artifact": W044_IMPLEMENTATION_SUMMARY,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(implementation_summary, "failed_row_count"),
+            "promotion_guard": !bool_at(implementation_summary, "callable_metadata_projection_promoted")
+                && number_at(implementation_summary, "w044_exact_remaining_blocker_count") == 4
+                && number_at(implementation_summary, "w044_match_promoted_count") == 0,
+            "semantic_state": "w044_optimized_core_callable_projection_no_promotion_guard_bound"
+        }),
+        json!({
+            "row_id": "source.w044_implementation_callable_blocker",
+            "artifact": W044_IMPLEMENTATION_BLOCKERS,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": number_at(implementation_blockers, "exact_remaining_blocker_count") == 4
+                && row_with_field_exists(implementation_blockers, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "semantic_state": "w044_implementation_callable_metadata_blocker_bound"
+        }),
+        json!({
+            "row_id": "source.w043_oxfml_predecessor_no_promotion",
+            "artifact": W043_OXFML_SEAM_DECISION,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(predecessor_oxfml_decision, "broad_oxfml_seam_promoted")
+                && !bool_at(predecessor_oxfml_decision, "callable_metadata_projection_promoted")
+                && !bool_at(predecessor_oxfml_decision, "public_consumer_surface_migration_verified")
+                && !bool_at(predecessor_oxfml_decision, "registered_external_callable_projection_promoted")
+                && !bool_at(predecessor_oxfml_decision, "provider_failure_callable_publication_promoted"),
+            "semantic_state": "predecessor_w043_oxfml_packet_preserves_no_promotion"
+        }),
+        json!({
+            "row_id": "source.w044_diversity_oxfml_dependency",
+            "artifact": W044_DIVERSITY_BLOCKERS,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": !bool_at(diversity_decision, "broad_oxfml_seam_promoted")
+                && !bool_at(diversity_decision, "public_consumer_migration_promoted")
+                && row_with_field_exists(diversity_blockers, "blocker_id", "w044_diversity.oxfml_callable_public_migration_dependency_absent"),
+            "semantic_state": "w044_diversity_retains_oxfml_callable_public_migration_dependency_blocker"
+        }),
+        json!({
+            "row_id": "source.oxfml_current_public_consumer_surface",
+            "artifact": OXFML_INBOUND_NOTES,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": oxfml_notes.contains("consumer::runtime")
+                && oxfml_notes.contains("consumer::editor")
+                && oxfml_notes.contains("consumer::replay")
+                && oxfml_notes.contains("public `substrate::...` access is gone")
+                && oxfml_notes.contains("test_support"),
+            "semantic_state": "current_oxfml_public_consumer_surface_bound_as_watch_lane"
+        }),
+        json!({
+            "row_id": "source.oxfml_registered_external_and_publication_notes",
+            "artifact": OXFML_INBOUND_NOTES,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promotion_guard": oxfml_notes.contains("RegisteredExternalDescriptor")
+                && oxfml_notes.contains("RegisteredExternalCatalogMutationRequest")
+                && oxfml_notes.contains("publication and topology consequence breadth")
+                && oxfml_notes.contains("canonical but narrower")
+                && oxfml_notes.contains("format_delta")
+                && oxfml_notes.contains("display_delta"),
+            "semantic_state": "registered_external_format_display_publication_watch_lanes_bound"
+        }),
+    ]
+}
+
+fn consumed_surface_rows_w044(
+    upstream_summary: &Value,
+    upstream_case_index: &Value,
+    oxfml_notes: &str,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "surface.w044_direct_oxfml_runtime_facade",
+            "disposition_kind": "exercised_current_surface",
+            "source": W044_UPSTREAM_HOST_SUMMARY,
+            "surface_state": "direct_runtime_facade_exercised_under_w044",
+            "direct_oxfml_case_count": number_at(upstream_summary, "direct_oxfml_case_count"),
+            "expectation_mismatch_count": number_at(upstream_summary, "expectation_mismatch_count"),
+            "promotion_consequence": "current direct OxFml runtime surface is bound for this fixture slice without broad seam closure"
+        }),
+        json!({
+            "row_id": "surface.w044_w073_typed_rule_request_construction",
+            "disposition_kind": "exercised_current_surface",
+            "source": W044_UPSTREAM_HOST_CASE_INDEX,
+            "surface_state": "oxcalc_fixture_typed_rule_request_construction_verified",
+            "w073_case_count": tag_count(upstream_case_index, "w073"),
+            "w044_case_count": tag_count(upstream_case_index, "w044"),
+            "promotion_consequence": "OxCalc fixture request construction is verified for the exercised W073 typed-rule families without claiming downstream DNA OneCalc uptake"
+        }),
+        json!({
+            "row_id": "surface.w044_public_consumer_entry_points",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "surface_state": "current_public_consumer_surface_named",
+            "consumer_runtime_present": oxfml_notes.contains("consumer::runtime"),
+            "consumer_editor_present": oxfml_notes.contains("consumer::editor"),
+            "consumer_replay_present": oxfml_notes.contains("consumer::replay"),
+            "public_substrate_removed": oxfml_notes.contains("public `substrate::...` access is gone"),
+            "promotion_consequence": "OxCalc records the current public consumer surface without claiming complete call-site migration or API freeze"
+        }),
+        json!({
+            "row_id": "surface.w044_runtime_facade_contract",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "surface_state": "runtime_facade_contract_named_without_shared_freeze",
+            "runtime_formula_result_present": oxfml_notes.contains("RuntimeFormulaResult"),
+            "runtime_session_facade_present": oxfml_notes.contains("RuntimeSessionFacade"),
+            "promotion_consequence": "runtime facade contract is consumed as current direction, not shared seam freeze or broad host closure"
+        }),
+        json!({
+            "row_id": "surface.w044_registered_external_packet",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "surface_state": "registered_external_packet_converged_at_note_level",
+            "descriptor_present": oxfml_notes.contains("RegisteredExternalDescriptor"),
+            "mutation_request_present": oxfml_notes.contains("RegisteredExternalCatalogMutationRequest"),
+            "promotion_consequence": "registered external packet naming remains note-level; callable metadata projection is not promoted"
+        }),
+        json!({
+            "row_id": "surface.w044_fixture_host_standin_packet",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "surface_state": "fixture_host_standin_packet_converged_for_deterministic_artifacts",
+            "standin_packet_present": oxfml_notes.contains("stand-in packet"),
+            "structure_context_identity_present": oxfml_notes.contains("structure-context identity"),
+            "promotion_consequence": "fixture-host convergence supports deterministic artifacts but does not freeze the production OxCalc coordinator API"
+        }),
+        json!({
+            "row_id": "surface.w044_public_consumer_migration_verification",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": OXFML_INBOUND_NOTES,
+            "surface_state": "public_consumer_surface_migration_not_verified",
+            "reason": "current public consumer surface is named and exercised through fixtures, but all OxCalc integration call sites are not migrated and verified in this bead",
+            "promotion_consequence": "public consumer-surface migration verification remains unpromoted"
+        }),
+        json!({
+            "row_id": "surface.w044_observation_ledger_watch_lanes",
+            "disposition_kind": "note_level_watch",
+            "source": W044_OXFML_INBOUND_INTAKE,
+            "surface_state": "observation_ledger_watch_lanes_bound_without_shared_freeze",
+            "promotion_consequence": "runtime facade, structured-reference, registered-external, provider-failure, callable-publication, and public-migration notes remain watch inputs until direct evidence requires a handoff"
+        }),
+    ]
+}
+
+fn publication_display_rows_w044(
+    top_result: &Value,
+    color_scale_result: &Value,
+    data_bar_result: &Value,
+    icon_set_result: &Value,
+    average_result: &Value,
+    oxfml_intake: &Value,
+    oxfml_notes: &str,
+    w073_workset: &str,
+    w073_handoff: &str,
+) -> Vec<Value> {
+    let w073 = oxfml_intake.get("w073_formatting").unwrap_or(&Value::Null);
+    let top_surface = &top_result["verification_publication_surface"];
+    vec![
+        w044_typed_rule_publication_row(
+            "publication.w044_w073_rank_typed_rule_request",
+            W044_W073_TOP_RESULT,
+            top_result,
+            "rank",
+        ),
+        w044_typed_rule_publication_row(
+            "publication.w044_w073_color_scale_typed_rule_request",
+            W044_W073_COLOR_SCALE_RESULT,
+            color_scale_result,
+            "color_scale",
+        ),
+        w044_typed_rule_publication_row(
+            "publication.w044_w073_data_bar_typed_rule_request",
+            W044_W073_DATA_BAR_RESULT,
+            data_bar_result,
+            "data_bar",
+        ),
+        w044_typed_rule_publication_row(
+            "publication.w044_w073_icon_set_typed_rule_request",
+            W044_W073_ICON_SET_RESULT,
+            icon_set_result,
+            "icon_set",
+        ),
+        w044_typed_rule_publication_row(
+            "publication.w044_w073_average_typed_rule_request",
+            W044_W073_AVERAGE_RESULT,
+            average_result,
+            "average",
+        ),
+        json!({
+            "row_id": "publication.w044_w073_no_threshold_fallback_for_aggregate_visualization",
+            "disposition_kind": "exercised_current_surface",
+            "source": W044_OXFML_INBOUND_INTAKE,
+            "boundary_state": "direct_replacement_contract_retained",
+            "threshold_fallback_allowed_for_typed_families": bool_at(w073, "threshold_fallback_allowed_for_typed_families"),
+            "old_bounded_string_non_interpretation_evidence_reviewed": bool_at(w073, "old_bounded_string_non_interpretation_evidence_reviewed"),
+            "promotion_consequence": "OxCalc W044 evidence must not infer fallback from W072 threshold strings for W073 aggregate/visualization families"
+        }),
+        json!({
+            "row_id": "publication.w044_w073_old_string_non_interpretation_evidence",
+            "disposition_kind": "exercised_current_surface",
+            "source": OXFML_W073_WORKSET,
+            "boundary_state": "old_bounded_strings_are_not_interpreted_for_w073_families",
+            "visualization_old_string_test_present": w073_workset.contains("bounded_visualization_threshold_strings_are_not_interpreted"),
+            "aggregate_old_string_test_present": w073_workset.contains("bounded_aggregate_option_strings_are_not_interpreted"),
+            "handoff_requires_typed_rule": w073_handoff.contains("emit `typed_rule`"),
+            "promotion_consequence": "typed-only contract is watched without making OxCalc own DNA OneCalc request construction"
+        }),
+        json!({
+            "row_id": "publication.w044_w073_downstream_dnaonecalc_request_construction",
+            "disposition_kind": "exact_remaining_watch_blocker",
+            "source": OXFML_W073_HANDOFF,
+            "boundary_state": "downstream_dnaonecalc_request_construction_update_required",
+            "handoff_requires_typed_rule": w073_handoff.contains("DNA OneCalc should update request construction"),
+            "legacy_threshold_only_no_effect": w073_handoff.contains("will no longer produce aggregate or visualization effects"),
+            "promotion_consequence": "DNA OneCalc typed-rule request-construction uptake remains unverified by OxCalc"
+        }),
+        json!({
+            "row_id": "publication.w044_format_delta_display_delta_distinct",
+            "disposition_kind": "accepted_boundary",
+            "source": OXFML_INBOUND_NOTES,
+            "boundary_state": "distinct_categories_retained",
+            "format_delta_note_present": oxfml_notes.contains("format_delta"),
+            "display_delta_note_present": oxfml_notes.contains("display_delta"),
+            "w073_guard_format_delta_present": bool_at(top_surface, "format_delta_present"),
+            "w073_guard_display_delta_present": bool_at(top_surface, "display_delta_present"),
+            "promotion_consequence": "format_delta and display_delta remain distinct categories; this packet does not claim broad display-facing closure"
+        }),
+        json!({
+            "row_id": "publication.w044_provider_failure_callable_publication_watch",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "boundary_state": "provider_failure_callable_publication_watch_lane",
+            "provider_failure_note_present": oxfml_notes.contains("provider-failure"),
+            "callable_publication_note_present": oxfml_notes.contains("callable-publication"),
+            "promotion_consequence": "provider-failure and callable-publication remain watch lanes only until they become coordinator-visible in exercised evidence"
+        }),
+        json!({
+            "row_id": "publication.w044_broad_display_publication_breadth",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": OXFML_INBOUND_NOTES,
+            "boundary_state": "broad_display_publication_unpromoted",
+            "reason": "current direct fixture coverage exercises W073 typed request construction, but not broad display-facing categories, broad topology/publication consequences, or all future format/display families",
+            "promotion_consequence": "broad OxFml display/publication closure remains unpromoted"
+        }),
+    ]
+}
+
+fn callable_metadata_rows_w044(
+    let_lexical_result: &Value,
+    returned_lambda_result: &Value,
+    blocker_map: &Value,
+    callable_metadata_register: &Value,
+    implementation_blockers: &Value,
+    oxfml_notes: &str,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "callable.w044_let_lambda_lexical_capture",
+            "disposition_kind": "exercised_current_surface",
+            "source": W044_LET_LEXICAL_RESULT,
+            "callable_state": "narrow_let_lambda_carrier_exercised",
+            "function_id_count": array_len_at(&let_lexical_result["evaluation_trace"], "function_ids"),
+            "prepared_call_count": number_at(&let_lexical_result["evaluation_trace"], "prepared_call_count"),
+            "promotion_consequence": "lexical LET/LAMBDA carrier is exercised without general OxFunc kernel promotion"
+        }),
+        json!({
+            "row_id": "callable.w044_returned_lambda_invocation",
+            "disposition_kind": "exercised_current_surface",
+            "source": W044_RETURNED_LAMBDA_RESULT,
+            "callable_state": "returned_lambda_value_carrier_exercised",
+            "function_id_count": array_len_at(&returned_lambda_result["evaluation_trace"], "function_ids"),
+            "prepared_call_count": number_at(&returned_lambda_result["evaluation_trace"], "prepared_call_count"),
+            "promotion_consequence": "returned-lambda invocation is value-carrier evidence, not metadata projection evidence"
+        }),
+        json!({
+            "row_id": "callable.w044_callable_metadata_projection",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": W044_CALLABLE_METADATA_REGISTER,
+            "callable_state": "metadata_projection_absent",
+            "blocker_present": row_with_field_exists(callable_metadata_register, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "promotion_consequence": "callable metadata projection remains blocked until a projection fixture or carrier sufficiency proof exists"
+        }),
+        json!({
+            "row_id": "callable.w044_carrier_sufficiency_proof",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": W044_BLOCKER_RECLASSIFICATION_MAP,
+            "callable_state": "carrier_sufficiency_proof_absent",
+            "lane_present": item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.callable_carrier_sufficiency"),
+            "promotion_consequence": "callable carrier sufficiency remains unproven for broad metadata projection"
+        }),
+        json!({
+            "row_id": "callable.w044_optimized_core_callable_blocker",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": W044_IMPLEMENTATION_BLOCKERS,
+            "callable_state": "optimized_core_callable_projection_not_promoted",
+            "blocker_present": row_with_field_exists(implementation_blockers, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "promotion_consequence": "callable metadata projection, registered external callable projection, and provider-failure callable publication semantics remain unpromoted"
+        }),
+        json!({
+            "row_id": "callable.w044_registered_external_callable_metadata",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "callable_state": "registered_external_metadata_not_current_projection",
+            "registered_external_descriptor_present": oxfml_notes.contains("RegisteredExternalDescriptor"),
+            "mutation_request_present": oxfml_notes.contains("RegisteredExternalCatalogMutationRequest"),
+            "promotion_consequence": "registered-external packet alignment does not close callable metadata projection in OxCalc"
+        }),
+        json!({
+            "row_id": "callable.w044_provider_failure_callable_publication_watch",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "callable_state": "provider_failure_and_callable_publication_watch_only",
+            "provider_failure_present": oxfml_notes.contains("provider-failure"),
+            "callable_publication_present": oxfml_notes.contains("callable-publication"),
+            "promotion_consequence": "provider-failure and callable-publication remain watch lanes until concrete coordinator-visible evidence exists"
+        }),
+        json!({
+            "row_id": "callable.w044_general_oxfunc_kernel_boundary",
+            "disposition_kind": "accepted_external_boundary",
+            "source": OXFML_INBOUND_NOTES,
+            "callable_state": "general_oxfunc_kernel_external",
+            "notes_name_oxfunc": oxfml_notes.contains("OxFunc"),
+            "promotion_consequence": "OxCalc keeps only the narrow LET/LAMBDA carrier seam in this formalization scope"
+        }),
+    ]
+}
+
+fn registered_external_rows_w044(
+    upstream_case_index: &Value,
+    blocker_map: &Value,
+    oxfml_notes: &str,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "registered_external.w044_host_provider_fixture_slice",
+            "disposition_kind": "exercised_bounded_surface",
+            "source": W044_UPSTREAM_HOST_CASE_INDEX,
+            "provider_state": "host_info_rtd_provider_slice_exercised",
+            "host_info_case_count": tag_count(upstream_case_index, "host-info"),
+            "rtd_case_count": tag_count(upstream_case_index, "rtd"),
+            "promotion_consequence": "host-provider fixture rows are present, but deferred provider families remain out of scope"
+        }),
+        json!({
+            "row_id": "registered_external.w044_direct_packet_field_names",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "provider_state": "direct_packet_field_names_converged_at_note_level",
+            "register_id_request_present": oxfml_notes.contains("RegisterIdRequest"),
+            "registered_external_call_request_present": oxfml_notes.contains("RegisteredExternalCallRequest"),
+            "promotion_consequence": "direct packet naming is note-level aligned and not a shared seam-freeze promotion"
+        }),
+        json!({
+            "row_id": "registered_external.w044_seven_field_descriptor",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "provider_state": "minimum_descriptor_shape_converged_at_note_level",
+            "seven_field_descriptor_present": oxfml_notes.contains("seven-field descriptor"),
+            "stable_registration_id_present": oxfml_notes.contains("stable_registration_id"),
+            "promotion_consequence": "registered-external descriptor shape remains note-level convergence until exercised projection evidence exists"
+        }),
+        json!({
+            "row_id": "registered_external.w044_catalog_mutation_funnel",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "provider_state": "catalog_mutation_funnel_remains_oxfml_owned",
+            "catalog_mutation_request_present": oxfml_notes.contains("RegisteredExternalCatalogMutationRequest"),
+            "catalog_controller_present": oxfml_notes.contains("RegisteredExternalCatalogController"),
+            "promotion_consequence": "host/coordinator registration remains typed mutation requests funneled into OxFunc-owned catalog truth"
+        }),
+        json!({
+            "row_id": "registered_external.w044_snapshot_invalidation_consequences",
+            "disposition_kind": "note_level_watch",
+            "source": OXFML_INBOUND_NOTES,
+            "provider_state": "snapshot_and_invalidation_consequences_note_level",
+            "snapshot_generation_present": oxfml_notes.contains("new `LibraryContextSnapshot` generation"),
+            "bind_invalidation_present": oxfml_notes.contains("bind invalidation"),
+            "targeted_reevaluation_present": oxfml_notes.contains("targeted reevaluation by default"),
+            "promotion_consequence": "snapshot-generation and invalidation consequences are not yet optimized/core implementation evidence"
+        }),
+        json!({
+            "row_id": "registered_external.w044_registered_external_projection_blocked",
+            "disposition_kind": "exact_remaining_blocker",
+            "source": W044_BLOCKER_RECLASSIFICATION_MAP,
+            "provider_state": "registered_external_callable_projection_not_promoted",
+            "lane_present": item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.registered_external_provider_publication"),
+            "promotion_consequence": "registered-external callable projection remains blocked until concrete OxCalc projection evidence exists"
+        }),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn exact_blockers_w044(
+    blocker_map: &Value,
+    promotion_contract_map: &Value,
+    callable_metadata_register: &Value,
+    implementation_blockers: &Value,
+    diversity_blockers: &Value,
+    oxfml_notes: &str,
+    w073_handoff: &str,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "blocker_id": "w044_oxfml.callable_metadata_projection_absent",
+            "owner": "calc-b1t.2; calc-b1t.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W044_CALLABLE_METADATA_REGISTER,
+            "blocker_present": row_with_field_exists(callable_metadata_register, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "reason": "direct LET/LAMBDA value-carrier evidence exists, but callable metadata projection fixture or implementation evidence remains absent.",
+            "promotion_consequence": "callable metadata projection remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.callable_carrier_sufficiency_proof_absent",
+            "owner": "calc-b1t.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W044_BLOCKER_RECLASSIFICATION_MAP,
+            "lane_present": item_with_field_exists(blocker_map, "rows", "source_lane", "w043_residual.callable_carrier_sufficiency"),
+            "reason": "the consumed LET/LAMBDA carrier rows are exercised, but no proof shows that carrier sufficiency replaces callable metadata projection for the broader consumed surface.",
+            "promotion_consequence": "broad callable conformance remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.broad_display_publication_breadth_unexercised",
+            "owner": "calc-b1t.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": OXFML_INBOUND_NOTES,
+            "format_display_notes_present": oxfml_notes.contains("format_delta") && oxfml_notes.contains("display_delta"),
+            "reason": "the current direct slice carries typed formatting and distinct format/display categories, but not broad display-facing or publication/topology closure.",
+            "promotion_consequence": "broad OxFml display/publication closure remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.public_consumer_surface_migration_not_verified",
+            "owner": "calc-b1t.8",
+            "status_after_run": "exact_remaining_watch_blocker",
+            "evidence": OXFML_INBOUND_NOTES,
+            "consumer_surface_present": oxfml_notes.contains("consumer::runtime")
+                && oxfml_notes.contains("consumer::editor")
+                && oxfml_notes.contains("consumer::replay"),
+            "reason": "OxFml names the public consumer surface, but this bead does not migrate or verify all OxCalc integration call sites against that surface.",
+            "promotion_consequence": "public surface alignment remains watch-bound rather than promoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.dnaonecalc_w073_request_construction_not_verified",
+            "owner": "calc-b1t.8; downstream:DNA OneCalc",
+            "status_after_run": "exact_remaining_watch_blocker",
+            "evidence": OXFML_W073_HANDOFF,
+            "handoff_requires_typed_rule": w073_handoff.contains("DNA OneCalc should update request construction"),
+            "reason": "OxCalc upstream-host fixture request construction now emits typed_rule for W073 fixture families, but DNA OneCalc downstream uptake remains unverified in this repo.",
+            "promotion_consequence": "DNA OneCalc W073 request-construction uptake remains unpromoted in OxCalc"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.registered_external_callable_projection_deferred",
+            "owner": "calc-b1t.8; external:OxFml/OxFunc",
+            "status_after_run": "exact_remaining_watch_blocker",
+            "evidence": OXFML_INBOUND_NOTES,
+            "registered_external_descriptor_present": oxfml_notes.contains("RegisteredExternalDescriptor"),
+            "reason": "registered-external packet naming is note-level converged, but no OxCalc callable metadata projection fixture is exercised.",
+            "promotion_consequence": "registered external callable metadata projection remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.provider_failure_callable_publication_watch_lane",
+            "owner": "calc-b1t.8; OxFml watch lane",
+            "status_after_run": "exact_remaining_watch_blocker",
+            "evidence": OXFML_INBOUND_NOTES,
+            "provider_failure_note_present": oxfml_notes.contains("provider-failure"),
+            "callable_publication_note_present": oxfml_notes.contains("callable-publication"),
+            "reason": "provider-failure and callable-publication are explicitly watch lanes until coordinator-visible evidence exercises them.",
+            "promotion_consequence": "provider failure and callable publication seam closure remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.publication_topology_consequence_breadth_narrower",
+            "owner": "calc-b1t.8; W026 residual lane",
+            "status_after_run": "exact_remaining_watch_blocker",
+            "evidence": OXFML_INBOUND_NOTES,
+            "publication_topology_note_present": oxfml_notes.contains("publication and topology consequence breadth"),
+            "reason": "publication and topology consequence breadth is canonical but narrower and has not been frozen as broad coordinator seam closure.",
+            "promotion_consequence": "broad publication/topology closure remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.optimized_core_callable_metadata_dependency_absent",
+            "owner": "calc-b1t.2; calc-b1t.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W044_IMPLEMENTATION_BLOCKERS,
+            "blocker_present": row_with_field_exists(implementation_blockers, "row_id", "w044_callable_metadata_projection_exact_blocker"),
+            "reason": "optimized/core conformance retains callable metadata projection as an exact blocker.",
+            "promotion_consequence": "callable metadata projection and registered external/provider publication semantics remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.diversity_dependency_oxfml_callable_public_migration_absent",
+            "owner": "calc-b1t.7; calc-b1t.8",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W044_DIVERSITY_BLOCKERS,
+            "blocker_present": row_with_field_exists(diversity_blockers, "blocker_id", "w044_diversity.oxfml_callable_public_migration_dependency_absent"),
+            "reason": "W044 diversity evidence explicitly depends on OxFml/callable/public-migration breadth that this bead narrows but does not fully promote.",
+            "promotion_consequence": "diversity and release-grade promotion remain blocked"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.release_grade_promotion_contract_blocked",
+            "owner": "calc-b1t.8; calc-b1t.11",
+            "status_after_run": "exact_remaining_blocker",
+            "evidence": W044_PROMOTION_CONTRACT_MAP,
+            "contract_present": item_with_field_exists(promotion_contract_map, "contracts", "target", "broad_oxfml_display_publication_and_public_migration"),
+            "reason": "W044 promotion contracts require broad consumed-surface, public-migration, W073 downstream uptake, and format/display evidence beyond this fixture slice.",
+            "promotion_consequence": "release-grade verification remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "w044_oxfml.general_oxfunc_kernel_external",
+            "owner": "external:OxFunc",
+            "status_after_run": "accepted_external_boundary",
+            "evidence": OXFML_INBOUND_NOTES,
+            "notes_name_oxfunc": oxfml_notes.contains("OxFunc"),
+            "reason": "W044 includes the narrow LET/LAMBDA carrier seam, not general OxFunc kernel formalization inside OxCalc.",
+            "promotion_consequence": "general OxFunc kernel promotion remains outside OxCalc"
+        }),
+    ]
+}
+
+fn oxfml_seam_validation_failures_w044(
+    surface_rows: &[Value],
+    publication_display_rows: &[Value],
+    callable_rows: &[Value],
+    registered_external_rows: &[Value],
+    blockers: &[Value],
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    if !surface_rows.iter().any(|row| {
+        row.get("row_id").and_then(Value::as_str)
+            == Some("surface.w044_w073_typed_rule_request_construction")
+            && row.get("disposition_kind").and_then(Value::as_str)
+                == Some("exercised_current_surface")
+    }) {
+        failures.push("w044_oxfml.w073_request_construction_surface_row_missing".to_string());
+    }
+    for (row_id, family) in [
+        ("publication.w044_w073_rank_typed_rule_request", "rank"),
+        (
+            "publication.w044_w073_color_scale_typed_rule_request",
+            "color_scale",
+        ),
+        (
+            "publication.w044_w073_data_bar_typed_rule_request",
+            "data_bar",
+        ),
+        (
+            "publication.w044_w073_icon_set_typed_rule_request",
+            "icon_set",
+        ),
+        (
+            "publication.w044_w073_average_typed_rule_request",
+            "average",
+        ),
+    ] {
+        if !publication_display_rows.iter().any(|row| {
+            row.get("row_id").and_then(Value::as_str) == Some(row_id)
+                && row.get("typed_rule_family").and_then(Value::as_str) == Some(family)
+                && row.get("result_status").and_then(Value::as_str) == Some("matched")
+        }) {
+            failures.push(format!("w044_oxfml.{family}_typed_rule_row_missing"));
+        }
+    }
+    if !publication_display_rows.iter().any(|row| {
+        row.get("row_id").and_then(Value::as_str)
+            == Some("publication.w044_w073_no_threshold_fallback_for_aggregate_visualization")
+            && row
+                .get("threshold_fallback_allowed_for_typed_families")
+                .and_then(Value::as_bool)
+                == Some(false)
+    }) {
+        failures.push("w044_oxfml.w073_no_threshold_fallback_row_missing".to_string());
+    }
+    if !callable_rows.iter().any(|row| {
+        row.get("row_id").and_then(Value::as_str)
+            == Some("callable.w044_callable_metadata_projection")
+            && row.get("disposition_kind").and_then(Value::as_str)
+                == Some("exact_remaining_blocker")
+    }) {
+        failures.push("w044_oxfml.callable_metadata_blocker_row_missing".to_string());
+    }
+    if !registered_external_rows.iter().any(|row| {
+        row.get("row_id").and_then(Value::as_str)
+            == Some("registered_external.w044_direct_packet_field_names")
+            && row
+                .get("register_id_request_present")
+                .and_then(Value::as_bool)
+                == Some(true)
+            && row
+                .get("registered_external_call_request_present")
+                .and_then(Value::as_bool)
+                == Some(true)
+    }) {
+        failures.push("w044_oxfml.registered_external_direct_packet_row_missing".to_string());
+    }
+    if blockers.len() < 12 {
+        failures.push("w044_oxfml.exact_blocker_count_below_gate".to_string());
+    }
+    if surface_rows
+        .iter()
+        .chain(publication_display_rows.iter())
+        .chain(callable_rows.iter())
+        .chain(registered_external_rows.iter())
+        .any(|row| row.get("disposition_kind").and_then(Value::as_str) == Some("promoted"))
+    {
+        failures.push("w044_oxfml.unexpected_promotion_row".to_string());
+    }
+    failures
+}
+
+fn w044_typed_rule_publication_row(
+    row_id: &str,
+    source: &str,
+    result: &Value,
+    family: &str,
+) -> Value {
+    let surface = &result["verification_publication_surface"];
+    json!({
+        "row_id": row_id,
+        "disposition_kind": "exercised_current_surface",
+        "source": source,
+        "boundary_state": "typed_rule_request_construction_exercised",
+        "typed_rule_family": family,
+        "result_status": text_at(result, "status"),
+        "family_present": result_has_typed_family(result, family),
+        "legacy_thresholds_present": array_len_at(surface, "conditional_formatting_thresholds") > 0,
+        "format_delta_present": bool_at(surface, "format_delta_present"),
+        "display_delta_present": bool_at(surface, "display_delta_present"),
+        "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate"
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -4955,6 +6086,24 @@ fn tag_count(case_index: &Value, expected_tag: &str) -> usize {
         .count()
 }
 
+fn result_has_typed_family(result: &Value, expected_family: &str) -> bool {
+    text_at(result, "status") == "matched"
+        && array_contains_text(
+            &result["verification_publication_surface"],
+            "conditional_formatting_typed_rule_families",
+            expected_family,
+        )
+}
+
+fn array_contains_text(value: &Value, key: &str, expected: &str) -> bool {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .any(|item| item.as_str() == Some(expected))
+}
+
 fn row_with_field_exists(value: &Value, field: &str, expected: &str) -> bool {
     value
         .get("rows")
@@ -5337,6 +6486,90 @@ mod tests {
         assert_eq!(decision["broad_oxfml_seam_promoted"], false);
         assert_eq!(decision["general_oxfunc_kernel_promoted"], false);
         assert_eq!(decision["exact_blocker_count"], 11);
+
+        cleanup();
+    }
+
+    #[test]
+    fn oxfml_seam_runner_binds_w044_typed_formatting_callable_registered_external_without_promotion()
+     {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w044-oxfml-seam-{}", std::process::id());
+        let artifact_root =
+            repo_root.join(format!("docs/test-runs/core-engine/oxfml-seam/{run_id}"));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = OxFmlSeamRunner::new().execute(&repo_root, &run_id).unwrap();
+
+        assert_eq!(summary.schema_version, W044_RUN_SUMMARY_SCHEMA_V1);
+        assert_eq!(summary.source_evidence_row_count, 15);
+        assert_eq!(summary.surface_row_count, 8);
+        assert_eq!(summary.publication_display_row_count, 11);
+        assert_eq!(summary.callable_metadata_row_count, 8);
+        assert_eq!(summary.exact_blocker_count, 12);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.oxfml_handoff_triggered);
+        assert!(!summary.callable_metadata_projection_promoted);
+        assert!(!summary.broad_oxfml_seam_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/oxfml-seam/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w044_oxfml_typed_formatting_callable_registered_external_packet_valid"
+        );
+        assert_eq!(validation["registered_external_row_count"], 6);
+        assert_eq!(
+            validation["w073_oxcalc_fixture_request_construction_verified"],
+            true
+        );
+        assert_eq!(
+            validation["w073_downstream_dnaonecalc_request_construction_verified"],
+            false
+        );
+
+        let decision = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/oxfml-seam/{run_id}/promotion_decision.json"),
+        )
+        .unwrap();
+        assert_eq!(decision["w073_typed_only_formatting_guard_retained"], true);
+        assert_eq!(
+            decision["w073_oxcalc_fixture_request_construction_verified"],
+            true
+        );
+        assert_eq!(
+            decision["w073_downstream_dnaonecalc_request_construction_verified"],
+            false
+        );
+        assert_eq!(
+            decision["public_consumer_surface_migration_verified"],
+            false
+        );
+        assert_eq!(decision["callable_metadata_projection_promoted"], false);
+        assert_eq!(decision["callable_carrier_sufficiency_proven"], false);
+        assert_eq!(
+            decision["registered_external_callable_projection_promoted"],
+            false
+        );
+        assert_eq!(
+            decision["provider_failure_callable_publication_promoted"],
+            false
+        );
+        assert_eq!(decision["broad_oxfml_seam_promoted"], false);
+        assert_eq!(decision["general_oxfunc_kernel_promoted"], false);
+        assert_eq!(decision["exact_blocker_count"], 12);
 
         cleanup();
     }

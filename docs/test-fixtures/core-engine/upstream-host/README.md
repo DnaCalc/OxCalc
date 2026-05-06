@@ -15,11 +15,15 @@ Current corpus:
 5. `uh_let_lambda_lexical_capture_eval_001`
 6. `uh_returned_lambda_invocation_eval_001`
 7. `uh_typed_cf_top_rank_guard_001`
-8. `uh_table_context_bind_001`
-9. `uh_structured_reference_eval_001`
-10. `uh_structured_column_sum_eval_001`
-11. `uh_structured_headers_section_eval_001`
-12. `uh_structured_data_multicol_sum_eval_001`
+8. `uh_typed_cf_color_scale_guard_001`
+9. `uh_typed_cf_data_bar_guard_001`
+10. `uh_typed_cf_icon_set_guard_001`
+11. `uh_typed_cf_average_guard_001`
+12. `uh_table_context_bind_001`
+13. `uh_structured_reference_eval_001`
+14. `uh_structured_column_sum_eval_001`
+15. `uh_structured_headers_section_eval_001`
+16. `uh_structured_data_multicol_sum_eval_001`
 
 Current executable coverage:
 1. loader and execution support in `src/oxcalc-core/src/upstream_host_fixture.rs`
@@ -34,5 +38,5 @@ Status:
 - open_lanes:
   - broader W026 bind/reference intake remains outside this first corpus
   - first table-context carriage and four bounded evaluator-facing structured-reference families are now fixture-covered, but richer structured-reference evaluator families are not yet covered here
-  - W037 direct OxFml runtime-facade evidence now covers two narrow `LET`/`LAMBDA` carrier rows and one W073 typed conditional-formatting guard row
+  - W044 direct OxFml runtime-facade evidence now covers two narrow `LET`/`LAMBDA` carrier rows and five W073 typed conditional-formatting guard rows across rank, average, color-scale, data-bar, and icon-set typed request construction
   - broader execution-restriction and publication/topology breadth remain later seam lanes

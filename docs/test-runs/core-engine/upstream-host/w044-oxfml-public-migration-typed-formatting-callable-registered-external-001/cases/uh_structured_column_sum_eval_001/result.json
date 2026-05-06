@@ -1,0 +1,86 @@
+{
+  "candidate_result": {
+    "candidate_result_id": "candidate:1",
+    "display_delta_present": false,
+    "format_delta_present": false,
+    "published_value_class": "Scalar",
+    "result_extent": {
+      "cols": 1,
+      "rows": 1
+    },
+    "shape_delta_present": true,
+    "topology_dependency_fact_count": 0,
+    "topology_spill_fact_count": 0,
+    "value_payload": "Number(12)"
+  },
+  "case_id": "uh_structured_column_sum_eval_001",
+  "commit_decision": {
+    "candidate_result_id": "candidate:1",
+    "commit_attempt_id": "commit:0001",
+    "formula_stable_id": "formula:upstream_host:007",
+    "kind": "accepted"
+  },
+  "description": "An explicit structured column reference can be evaluated through the first table packet by providing an array-valued data column fixture.",
+  "direct_oxfml_runtime_surface": {
+    "backend": "oxfunc_backed",
+    "crate": "oxfml_core",
+    "entry": "oxfml_core::consumer::runtime::RuntimeEnvironment::execute",
+    "request": "oxfml_core::consumer::runtime::RuntimeFormulaRequest"
+  },
+  "evaluation_trace": {
+    "function_ids": [
+      "FUNC.SUM"
+    ],
+    "prepared_call_count": 1
+  },
+  "expectation_mismatches": [],
+  "formula": {
+    "entered_formula_text": "=SUM(Table1[Amount])",
+    "formula_channel_kind": "WorksheetA1",
+    "formula_stable_id": "formula:upstream_host:007",
+    "formula_text_version": 1
+  },
+  "returned_value_surface": {
+    "host_provider_outcome_kind": null,
+    "kind": "OrdinaryValue",
+    "payload_summary": "Number",
+    "rich_value_type_name": null
+  },
+  "schema_version": "oxcalc.upstream_host.direct_case_result.v1",
+  "status": "matched",
+  "tags": [
+    "scaffolding",
+    "table-context",
+    "structured-reference",
+    "evaluation",
+    "aggregate"
+  ],
+  "typed_query_bundle": {
+    "families": [
+      "ReferenceResolver",
+      "NowSerial",
+      "RandomValue"
+    ]
+  },
+  "verification_publication_surface": {
+    "array_cell_data_bars": null,
+    "array_cell_effective_fill_colors": null,
+    "array_cell_icons": null,
+    "conditional_formatting_rule_kind": [],
+    "conditional_formatting_thresholds": [],
+    "conditional_formatting_typed_rule_families": [],
+    "display_delta_present": false,
+    "effective_display_text": "12",
+    "format_delta_present": false,
+    "format_profile": null,
+    "has_publication_context": false,
+    "visible_value_text": "12"
+  },
+  "w037_interpretation": {
+    "direct_oxfml_evaluator_reexecution": false,
+    "general_oxfunc_kernel_claimed": false,
+    "narrow_let_lambda_carrier": false,
+    "pack_grade_replay_promoted": false,
+    "w073_typed_formatting_guard": false
+  }
+}

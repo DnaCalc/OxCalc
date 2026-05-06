@@ -9,10 +9,10 @@ use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::upstream_host_fixture::{
-    UpstreamHostFixtureCase, UpstreamHostFixtureError, array_cell_effective_fill_colors,
-    conditional_formatting_typed_rule_families, execute_fixture_case,
-    fixture_expectation_mismatches, load_case, load_manifest, trace_function_ids,
-    value_payload_summary,
+    UpstreamHostFixtureCase, UpstreamHostFixtureError, array_cell_data_bars,
+    array_cell_effective_fill_colors, array_cell_icons, conditional_formatting_typed_rule_families,
+    execute_fixture_case, fixture_expectation_mismatches, load_case, load_manifest,
+    trace_function_ids, value_payload_summary,
 };
 
 const UPSTREAM_HOST_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.upstream_host.direct_run_summary.v1";
@@ -213,6 +213,8 @@ fn case_result_json(
             "conditional_formatting_thresholds": output.verification_publication_surface.conditional_formatting_thresholds,
             "conditional_formatting_typed_rule_families": conditional_formatting_typed_rule_families(output),
             "array_cell_effective_fill_colors": array_cell_effective_fill_colors(output),
+            "array_cell_data_bars": array_cell_data_bars(output),
+            "array_cell_icons": array_cell_icons(output),
             "format_delta_present": output.verification_publication_surface.format_delta.is_some(),
             "display_delta_present": output.verification_publication_surface.display_delta.is_some()
         },
@@ -311,11 +313,11 @@ mod tests {
             .execute(&repo_root, run_id)
             .unwrap();
 
-        assert_eq!(summary.fixture_case_count, 12);
+        assert_eq!(summary.fixture_case_count, 16);
         assert_eq!(summary.expectation_mismatch_count, 0);
-        assert_eq!(summary.direct_oxfml_case_count, 3);
+        assert_eq!(summary.direct_oxfml_case_count, 7);
         assert_eq!(summary.let_lambda_case_count, 2);
-        assert_eq!(summary.w073_typed_rule_case_count, 1);
+        assert_eq!(summary.w073_typed_rule_case_count, 5);
         assert!(artifact_root.join("run_summary.json").exists());
 
         let _ = fs::remove_dir_all(&artifact_root);

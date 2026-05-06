@@ -1,0 +1,78 @@
+{
+  "binding_world": {
+    "caller_table_region": null,
+    "cell_fixture_arrays": [],
+    "cell_fixture_numbers": {},
+    "defined_name_values": {},
+    "enclosing_table_ref": null,
+    "table_catalog": []
+  },
+  "case_id": "uh_returned_lambda_invocation_eval_001",
+  "description": "Direct OxFml runtime-facade evaluation of a LET-bound returned LAMBDA proves the narrow higher-order callable carrier without making OxCalc own general OxFunc callable kernels.",
+  "evaluation_backend": "oxfunc_backed",
+  "expected": {
+    "bind_artifact_id": null,
+    "bind_name_kinds": {},
+    "caller_table_region": null,
+    "candidate_value_payload": "Number(15)",
+    "capture_snapshot_ref": null,
+    "conditional_formatting_data_bars": null,
+    "conditional_formatting_effective_fill_colors": null,
+    "conditional_formatting_icons": null,
+    "conditional_formatting_typed_rule_families": [],
+    "display_delta_present": null,
+    "enclosing_table_ref": null,
+    "format_delta_present": null,
+    "formula_token": null,
+    "host_provider_outcome_kind": null,
+    "payload_summary": "Number",
+    "returned_surface_kind": "ordinary_value",
+    "table_catalog_len": null,
+    "trace_function_ids": [
+      "SPECIAL.LAMBDA",
+      "SPECIAL.LAMBDA_INVOKE",
+      "SPECIAL.LAMBDA",
+      "SPECIAL.LAMBDA_INVOKE",
+      "FUNC.OP_ADD",
+      "SPECIAL.LET"
+    ],
+    "worksheet_error": null
+  },
+  "formula_slot": {
+    "active_selection_anchor": {
+      "col": 1,
+      "row": 1
+    },
+    "address_mode": null,
+    "bind_artifact_id": null,
+    "caller_anchor": {
+      "col": 1,
+      "row": 1
+    },
+    "fixture_input_id": "fixture:upstream_host:w037:let_lambda:002",
+    "formula_channel_kind": "worksheet_a1",
+    "formula_slot_id": "node:slot:upstream_host:w037:let_lambda:002",
+    "formula_stable_id": "formula:upstream_host:w037:let_lambda:002",
+    "formula_text": "=LET(adder,LAMBDA(n,LAMBDA(x,x+n)),add5,adder(5),add5(10))",
+    "formula_text_version": 1,
+    "formula_token": null,
+    "structure_context_version": "treecalc.struct:upstream-host:w037:v1"
+  },
+  "publication_context": null,
+  "runtime_catalog": {
+    "surface_names": []
+  },
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "typed_query_facts": {
+    "host_info_mode": {
+      "kind": "disabled"
+    },
+    "locale_context_kind": "",
+    "now_serial": null,
+    "random_value": null,
+    "registered_external_present": false,
+    "rtd_mode": {
+      "kind": "disabled"
+    }
+  }
+}

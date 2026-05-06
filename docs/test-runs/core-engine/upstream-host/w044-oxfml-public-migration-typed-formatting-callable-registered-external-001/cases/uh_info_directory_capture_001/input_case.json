@@ -1,0 +1,78 @@
+{
+  "binding_world": {
+    "caller_table_region": null,
+    "cell_fixture_arrays": [],
+    "cell_fixture_numbers": {},
+    "defined_name_values": {},
+    "enclosing_table_ref": null,
+    "table_catalog": []
+  },
+  "case_id": "uh_info_directory_capture_001",
+  "description": "INFO(directory) uses a directory-value host packet and emits a first capture packet from the runtime catalog snapshot.",
+  "evaluation_backend": "oxfunc_backed",
+  "expected": {
+    "bind_artifact_id": null,
+    "bind_name_kinds": {},
+    "caller_table_region": null,
+    "candidate_value_payload": null,
+    "capture_snapshot_ref": {
+      "snapshot_id": "snapshot:fixture",
+      "snapshot_version": "v1"
+    },
+    "conditional_formatting_data_bars": null,
+    "conditional_formatting_effective_fill_colors": null,
+    "conditional_formatting_icons": null,
+    "conditional_formatting_typed_rule_families": [],
+    "display_delta_present": null,
+    "enclosing_table_ref": null,
+    "format_delta_present": null,
+    "formula_token": null,
+    "host_provider_outcome_kind": null,
+    "payload_summary": null,
+    "returned_surface_kind": "ordinary_value",
+    "table_catalog_len": null,
+    "trace_function_ids": [],
+    "worksheet_error": null
+  },
+  "formula_slot": {
+    "active_selection_anchor": {
+      "col": 2,
+      "row": 2
+    },
+    "address_mode": null,
+    "bind_artifact_id": null,
+    "caller_anchor": {
+      "col": 2,
+      "row": 2
+    },
+    "fixture_input_id": "fixture:upstream_host:001",
+    "formula_channel_kind": "worksheet_a1",
+    "formula_slot_id": "node:slot:upstream_host:001",
+    "formula_stable_id": "formula:upstream_host:001",
+    "formula_text": "=INFO(\"directory\")",
+    "formula_text_version": 1,
+    "formula_token": null,
+    "structure_context_version": "treecalc.struct:upstream-host:v1"
+  },
+  "publication_context": null,
+  "runtime_catalog": {
+    "surface_names": [
+      "INFO"
+    ]
+  },
+  "schema_version": "oxcalc.upstream_host.fixture_case.v1",
+  "typed_query_facts": {
+    "host_info_mode": {
+      "detail": "filename_unavailable",
+      "kind": "directory_value_and_filename_provider_failure",
+      "value": "C:\\Scaffold"
+    },
+    "locale_context_kind": "en_us",
+    "now_serial": null,
+    "random_value": null,
+    "registered_external_present": false,
+    "rtd_mode": {
+      "kind": "disabled"
+    }
+  }
+}

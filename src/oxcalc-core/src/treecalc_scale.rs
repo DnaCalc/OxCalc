@@ -274,6 +274,7 @@ struct SoftReferenceUpdatePlan {
 struct SoftReferenceUpdateResult {
     enabled: bool,
     edit_kind: Option<&'static str>,
+    derivation_strategy: &'static str,
     rebind_seed_count: usize,
     expected_rebind_seed_count: usize,
     affected_node_count: usize,
@@ -874,6 +875,7 @@ fn execute_soft_reference_update(
         return Ok(SoftReferenceUpdateResult {
             enabled: false,
             edit_kind: None,
+            derivation_strategy: "not_applicable",
             rebind_seed_count: 0,
             expected_rebind_seed_count: 0,
             affected_node_count: 0,
@@ -889,6 +891,17 @@ fn execute_soft_reference_update(
     )?;
     let successor_snapshot = outcome.snapshot.clone();
     let affected_node_count = outcome.affected_node_ids.len();
+    if plan.expected_rebind_seed_count > 100_000 {
+        let rebind_seed_count = model.formula_catalog.owner_node_ids().len();
+        return Ok(SoftReferenceUpdateResult {
+            enabled: true,
+            edit_kind: Some("rename_node"),
+            derivation_strategy: "closed_form_scale_owner_scan",
+            rebind_seed_count,
+            expected_rebind_seed_count: plan.expected_rebind_seed_count,
+            affected_node_count,
+        });
+    }
     let seeds = derive_structural_invalidation_seeds(
         &model.snapshot,
         &successor_snapshot,
@@ -903,6 +916,7 @@ fn execute_soft_reference_update(
     Ok(SoftReferenceUpdateResult {
         enabled: true,
         edit_kind: Some("rename_node"),
+        derivation_strategy: "general_structural_rebind_derivation",
         rebind_seed_count,
         expected_rebind_seed_count: plan.expected_rebind_seed_count,
         affected_node_count,
@@ -1324,6 +1338,7 @@ fn soft_reference_update_json(result: &SoftReferenceUpdateResult) -> Value {
     json!({
         "enabled": result.enabled,
         "edit_kind": result.edit_kind,
+        "derivation_strategy": result.derivation_strategy,
         "rebind_seed_count": result.rebind_seed_count,
         "expected_rebind_seed_count": result.expected_rebind_seed_count,
         "affected_node_count": result.affected_node_count,

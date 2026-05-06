@@ -33,6 +33,7 @@
   },
   "soft_reference_update": {
     "affected_node_count": 0,
+    "derivation_strategy": "not_applicable",
     "edit_kind": null,
     "enabled": false,
     "expected_rebind_seed_count": 0,

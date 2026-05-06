@@ -40,6 +40,7 @@
     },
     "soft_reference_update": {
       "affected_node_count": 0,
+      "derivation_strategy": "not_applicable",
       "edit_kind": null,
       "enabled": false,
       "expected_rebind_seed_count": 0,
@@ -48,18 +49,18 @@
     }
   },
   "phase_timings_ms": {
-    "dependency_descriptor_lowering": 13106.289200000001,
-    "dependency_graph_build_and_cycle_scan": 24465.2486,
-    "invalidation_closure_derivation": 304.5462,
-    "model_build_structural_snapshot_and_formula_catalog": 2060.3898,
-    "soft_reference_update_rebind_seed_derivation": 0.2517,
-    "synthetic_closed_form_recalc": 5.2087,
-    "validation_checks": 241.56259999999997
+    "dependency_descriptor_lowering": 47398.731,
+    "dependency_graph_build_and_cycle_scan": 116257.9326,
+    "invalidation_closure_derivation": 3844.629,
+    "model_build_structural_snapshot_and_formula_catalog": 9944.0966,
+    "soft_reference_update_rebind_seed_derivation": 0.3608,
+    "synthetic_closed_form_recalc": 167.2873,
+    "validation_checks": 847.3577
   },
   "profile": "fanout-bands",
   "run_id": "million_fanout_f16_r1",
   "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
-  "total_elapsed_ms": 40183.53539999999,
+  "total_elapsed_ms": 178460.4837,
   "validation": {
     "checks": [
       {
@@ -127,6 +128,7 @@
     "profile": "fanout-bands",
     "soft_reference_update": {
       "affected_node_count": 0,
+      "derivation_strategy": "not_applicable",
       "edit_kind": null,
       "enabled": false,
       "expected_rebind_seed_count": 0,

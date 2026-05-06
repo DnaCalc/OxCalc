@@ -65,6 +65,7 @@
   "profile": "relative-rebind-churn",
   "soft_reference_update": {
     "affected_node_count": 1,
+    "derivation_strategy": "closed_form_scale_owner_scan",
     "edit_kind": "rename_node",
     "enabled": true,
     "expected_rebind_seed_count": 999991,

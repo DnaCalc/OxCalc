@@ -1,0 +1,437 @@
+{
+  "evidence_profile": "w044_release_scale_replay_performance_scaling",
+  "row_count": 6,
+  "rows": [
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "allowed_internal_difference": "phase timings may differ; semantic counts and closed-form outputs must match",
+        "checked_pointers": [
+          {
+            "left": "grid-cross-sum",
+            "matched": true,
+            "pointer": "/profile",
+            "right": "grid-cross-sum"
+          },
+          {
+            "left": 1002001,
+            "matched": true,
+            "pointer": "/model/node_count",
+            "right": 1002001
+          },
+          {
+            "left": 1000000,
+            "matched": true,
+            "pointer": "/model/formula_count",
+            "right": 1000000
+          },
+          {
+            "left": 2000000,
+            "matched": true,
+            "pointer": "/model/dependency_descriptor_count",
+            "right": 2000000
+          },
+          {
+            "left": 2000000,
+            "matched": true,
+            "pointer": "/model/dependency_edge_count",
+            "right": 2000000
+          },
+          {
+            "left": 0,
+            "matched": true,
+            "pointer": "/model/dependency_diagnostic_count",
+            "right": 0
+          },
+          {
+            "left": "92299000",
+            "matched": true,
+            "pointer": "/validation/synthetic_recalc/observed_after_sum",
+            "right": "92299000"
+          },
+          {
+            "left": "18000",
+            "matched": true,
+            "pointer": "/validation/synthetic_recalc/observed_delta_sum",
+            "right": "18000"
+          }
+        ]
+      },
+      "failures": [],
+      "family_id": "W033-META-013",
+      "missing_artifacts": [],
+      "row_id": "meta_scale_grid_repeat_invariance",
+      "transformation": "repeat grid-cross-sum with same semantic parameters"
+    },
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "allowed_internal_difference": "synthetic recalc work is intentionally amplified while model/dependency surfaces stay unchanged",
+        "amplified_recalc_rounds": 1024,
+        "amplified_reference_visits": 8191926272,
+        "baseline_reference_visits": 7999928,
+        "expected_amplified_reference_visits": 8191926272
+      },
+      "failures": [],
+      "family_id": "W033-META-013",
+      "missing_artifacts": [],
+      "row_id": "meta_scale_calc_amplification_binding",
+      "transformation": "repeat synthetic recalc over identical fanout model"
+    },
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "dynamic_descriptors": 1000000,
+        "dynamic_diagnostics": 1000000,
+        "dynamic_slots": 1000000,
+        "expected_relation": "dynamic potential references add diagnostics/carriers while preserving static closed-form base sum",
+        "grid_after_sum": "92299000",
+        "static_base_after_sum": "92299000"
+      },
+      "failures": [],
+      "family_id": "W033-META-006",
+      "missing_artifacts": [],
+      "row_id": "meta_dynamic_indirect_semantic_binding",
+      "transformation": "add INDIRECT-shaped dynamic potential carrier to grid base"
+    },
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "expected_rebind_seed_count": 999991,
+        "expected_relation": "rename of the relative anchor produces one rebind seed per formula owner",
+        "formula_count": 999991,
+        "rebind_seed_count": 999991
+      },
+      "failures": [],
+      "family_id": "W033-META-001/W033-META-007/W033-META-013",
+      "missing_artifacts": [],
+      "row_id": "meta_relative_rebind_churn_binding",
+      "transformation": "structural rename through relative references"
+    },
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "expected_relation": "edge volume widens with fanout while closed-form validation remains true",
+        "fanout_16_edges": 15999728,
+        "fanout_8_edges": 7999928
+      },
+      "failures": [],
+      "family_id": "W033-META-013",
+      "missing_artifacts": [],
+      "row_id": "meta_fanout_edge_widening_binding",
+      "transformation": "increase fanout from 8 to 16"
+    },
+    {
+      "comparison_state": "semantic_binding_matched",
+      "details": {
+        "capability_consequence": "phase timings are measurement surfaces only and cannot promote performance-derived correctness",
+        "required_phase_timings": [
+          "model_build_structural_snapshot_and_formula_catalog",
+          "dependency_descriptor_lowering",
+          "dependency_graph_build_and_cycle_scan",
+          "soft_reference_update_rebind_seed_derivation",
+          "invalidation_closure_derivation",
+          "synthetic_closed_form_recalc",
+          "validation_checks"
+        ],
+        "run_checks": [
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 7386.8424,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 2933.8674,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 19362.4268,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.0323,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 3.9599,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 20.7618,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 157.5516,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_grid_r1",
+            "total_elapsed_ms": 29865.5324
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 7193.009800000001,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 2948.0364,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 23307.7078,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.015,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 4.3513,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 23.1493,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 158.4186,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_grid_r2",
+            "total_elapsed_ms": 33634.765
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 8301.8695,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 4414.3607999999995,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 21556.1033,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.015,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 3.8609,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 20.5269,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 207.2479,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_indirect_r1",
+            "total_elapsed_ms": 34504.061200000004
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 7773.6513,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 4855.5145,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 51561.1387,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.0157,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 3532.6274,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 83.8809,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 538.4864,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_fanout_f8_r1",
+            "total_elapsed_ms": 68345.4
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 7995.7848,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 4772.636399999999,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 48666.0393,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.0133,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 2814.9410000000003,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 64549.1971,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 358.4095,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_fanout_f8_calc1024_r1",
+            "total_elapsed_ms": 129157.0989
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 9239.4871,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 35472.8819,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 58715.2191,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 8900.2724,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 3011.7093,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 68.919,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 399.9153,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_relative_rebind_f8_r1",
+            "total_elapsed_ms": 115808.5364
+          },
+          {
+            "phase_checks": [
+              {
+                "elapsed_ms": 9944.0966,
+                "phase": "model_build_structural_snapshot_and_formula_catalog",
+                "present": true
+              },
+              {
+                "elapsed_ms": 47398.731,
+                "phase": "dependency_descriptor_lowering",
+                "present": true
+              },
+              {
+                "elapsed_ms": 116257.9326,
+                "phase": "dependency_graph_build_and_cycle_scan",
+                "present": true
+              },
+              {
+                "elapsed_ms": 0.3608,
+                "phase": "soft_reference_update_rebind_seed_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 3844.629,
+                "phase": "invalidation_closure_derivation",
+                "present": true
+              },
+              {
+                "elapsed_ms": 167.2873,
+                "phase": "synthetic_closed_form_recalc",
+                "present": true
+              },
+              {
+                "elapsed_ms": 847.3577,
+                "phase": "validation_checks",
+                "present": true
+              }
+            ],
+            "run_id": "million_fanout_f16_r1",
+            "total_elapsed_ms": 178460.4837
+          }
+        ]
+      },
+      "failures": [],
+      "family_id": "W044-SCALE-001",
+      "missing_artifacts": [],
+      "row_id": "w044_phase_timing_split_guard",
+      "transformation": "separate dependency lowering, dependency graph build, soft-reference update, invalidation closure, pure recalc, and validation timing surfaces"
+    }
+  ],
+  "run_id": "w044-release-scale-replay-performance-scaling-001",
+  "schema_version": "oxcalc.scale_semantic_binding.scale_signature_diff.v1",
+  "unexpected_mismatch_count": 0
+}

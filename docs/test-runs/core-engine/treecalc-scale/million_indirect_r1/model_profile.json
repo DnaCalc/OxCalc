@@ -18,6 +18,7 @@
     "formula_count": 1000000,
     "invalidation_impacted_count": 2001,
     "node_count": 1002001,
+    "soft_update_rebind_seed_count": 0,
     "static_direct_descriptor_count": 2000000
   },
   "formula_count": 1000000,
@@ -29,7 +30,16 @@
     "dynamic_reference_policy": "DynamicPotential residual carriers are expected to surface as dependency diagnostics/runtime effects; static base references remain checkable.",
     "formula_shape": "(left_row + top_col) + INDIRECT(dynamic_potential_selector)",
     "kind": "dynamic_indirect_stripes",
+    "recalc_rounds": 1,
     "rows": 1000,
     "selector_period": 64
+  },
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
   }
 }

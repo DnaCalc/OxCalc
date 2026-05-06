@@ -43,6 +43,12 @@
       "passed": true
     },
     {
+      "expected": "0",
+      "name": "soft_reference_update_rebind_seed_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
       "expected": "42999613",
       "name": "synthetic_after_sum",
       "observed": "42999613",
@@ -57,6 +63,14 @@
   ],
   "passed": true,
   "profile": "fanout-bands",
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
+  },
   "synthetic_recalc": {
     "baseline_sum": "35999676",
     "dynamic_slots": 0,
@@ -66,6 +80,7 @@
     "lane": "fanout_sum_bands",
     "observed_after_sum": "42999613",
     "observed_delta_sum": "6999937",
+    "recalc_rounds": 1,
     "reference_visits": 7999928
   }
 }

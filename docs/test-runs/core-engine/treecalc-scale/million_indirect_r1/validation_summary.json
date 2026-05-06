@@ -43,6 +43,12 @@
       "passed": true
     },
     {
+      "expected": "0",
+      "name": "soft_reference_update_rebind_seed_count",
+      "observed": "0",
+      "passed": true
+    },
+    {
       "expected": "92299000",
       "name": "synthetic_after_sum",
       "observed": "92299000",
@@ -63,6 +69,14 @@
   ],
   "passed": true,
   "profile": "dynamic-indirect-stripes",
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
+  },
   "synthetic_recalc": {
     "baseline_sum": "92281000",
     "dynamic_slots": 1000000,
@@ -72,6 +86,7 @@
     "lane": "static_base_with_dynamic_indirect_residuals",
     "observed_after_sum": "92299000",
     "observed_delta_sum": "18000",
+    "recalc_rounds": 1,
     "reference_visits": 3000000
   }
 }

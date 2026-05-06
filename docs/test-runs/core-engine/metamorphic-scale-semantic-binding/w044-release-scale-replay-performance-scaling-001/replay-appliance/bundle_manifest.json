@@ -1,0 +1,42 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001",
+  "claimed_capability": "scale_semantic_binding_packet",
+  "evidence_profile": "w044_release_scale_replay_performance_scaling",
+  "excluded_capabilities": [
+    "performance_correctness_proof",
+    "continuous_scale_assurance",
+    "pack_grade_replay",
+    "stage2_contention_readiness"
+  ],
+  "required_artifacts": [
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/run_summary.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/evidence/scale_semantic_evidence_index.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/differentials/scale_signature_differential.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay_conformance_bindings.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/scale_no_promotion_decision.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/continuous_scale_assurance_criteria.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/bundle_manifest.json",
+    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_grid_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_grid_r2/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_fanout_f16_r1/run_summary.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_scale_chain_seed_001/result.json",
+    "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json",
+    "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+    "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/run_summary.json",
+    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json",
+    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json"
+  ],
+  "run_id": "w044-release-scale-replay-performance-scaling-001",
+  "schema_version": "oxcalc.scale_semantic_binding.bundle_manifest.v1"
+}

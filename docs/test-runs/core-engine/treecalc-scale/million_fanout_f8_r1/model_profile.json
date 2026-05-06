@@ -15,6 +15,7 @@
     "formula_count": 999991,
     "invalidation_impacted_count": 999992,
     "node_count": 1000000,
+    "soft_update_rebind_seed_count": 0,
     "static_direct_descriptor_count": 7999928
   },
   "formula_count": 999991,
@@ -27,6 +28,15 @@
     "formula_count": 999991,
     "formula_shape": "SUM(anchor_0, ..., anchor_n)",
     "kind": "fanout_bands",
-    "node_count": 1000000
+    "node_count": 1000000,
+    "recalc_rounds": 1
+  },
+  "soft_reference_update": {
+    "affected_node_count": 0,
+    "edit_kind": null,
+    "enabled": false,
+    "expected_rebind_seed_count": 0,
+    "passed": true,
+    "rebind_seed_count": 0
   }
 }

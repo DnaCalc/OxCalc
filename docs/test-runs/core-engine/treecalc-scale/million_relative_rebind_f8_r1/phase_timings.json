@@ -1,9 +1,9 @@
 {
-  "dependency_descriptor_lowering": 6063.8733,
-  "dependency_graph_build_and_cycle_scan": 12700.0806,
-  "invalidation_closure_derivation": 292.8551,
-  "model_build_structural_snapshot_and_formula_catalog": 2830.7926,
-  "soft_reference_update_rebind_seed_derivation": 337648.38450000004,
-  "synthetic_closed_form_recalc": 3.0387,
-  "validation_checks": 120.6456
+  "dependency_descriptor_lowering": 35472.8819,
+  "dependency_graph_build_and_cycle_scan": 58715.2191,
+  "invalidation_closure_derivation": 3011.7093,
+  "model_build_structural_snapshot_and_formula_catalog": 9239.4871,
+  "soft_reference_update_rebind_seed_derivation": 8900.2724,
+  "synthetic_closed_form_recalc": 68.919,
+  "validation_checks": 399.9153
 }

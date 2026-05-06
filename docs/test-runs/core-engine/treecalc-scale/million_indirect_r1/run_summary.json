@@ -25,6 +25,7 @@
       "formula_count": 1000000,
       "invalidation_impacted_count": 2001,
       "node_count": 1002001,
+      "soft_update_rebind_seed_count": 0,
       "static_direct_descriptor_count": 2000000
     },
     "formula_count": 1000000,
@@ -36,22 +37,32 @@
       "dynamic_reference_policy": "DynamicPotential residual carriers are expected to surface as dependency diagnostics/runtime effects; static base references remain checkable.",
       "formula_shape": "(left_row + top_col) + INDIRECT(dynamic_potential_selector)",
       "kind": "dynamic_indirect_stripes",
+      "recalc_rounds": 1,
       "rows": 1000,
       "selector_period": 64
+    },
+    "soft_reference_update": {
+      "affected_node_count": 0,
+      "edit_kind": null,
+      "enabled": false,
+      "expected_rebind_seed_count": 0,
+      "passed": true,
+      "rebind_seed_count": 0
     }
   },
   "phase_timings_ms": {
-    "dependency_descriptor_lowering": 4479.3697,
-    "dependency_graph_build_and_cycle_scan": 4624.5664,
-    "invalidation_closure_derivation": 0.5561,
-    "model_build_structural_snapshot_and_formula_catalog": 3440.2977,
-    "synthetic_closed_form_recalc": 1.2065000000000001,
-    "validation_checks": 62.2746
+    "dependency_descriptor_lowering": 4414.3607999999995,
+    "dependency_graph_build_and_cycle_scan": 21556.1033,
+    "invalidation_closure_derivation": 3.8609,
+    "model_build_structural_snapshot_and_formula_catalog": 8301.8695,
+    "soft_reference_update_rebind_seed_derivation": 0.015000000000000001,
+    "synthetic_closed_form_recalc": 20.5269,
+    "validation_checks": 207.24790000000002
   },
   "profile": "dynamic-indirect-stripes",
   "run_id": "million_indirect_r1",
   "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
-  "total_elapsed_ms": 12608.3419,
+  "total_elapsed_ms": 34504.061200000004,
   "validation": {
     "checks": [
       {
@@ -97,6 +108,12 @@
         "passed": true
       },
       {
+        "expected": "0",
+        "name": "soft_reference_update_rebind_seed_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
         "expected": "92299000",
         "name": "synthetic_after_sum",
         "observed": "92299000",
@@ -117,6 +134,14 @@
     ],
     "passed": true,
     "profile": "dynamic-indirect-stripes",
+    "soft_reference_update": {
+      "affected_node_count": 0,
+      "edit_kind": null,
+      "enabled": false,
+      "expected_rebind_seed_count": 0,
+      "passed": true,
+      "rebind_seed_count": 0
+    },
     "synthetic_recalc": {
       "baseline_sum": "92281000",
       "dynamic_slots": 1000000,
@@ -126,6 +151,7 @@
       "lane": "static_base_with_dynamic_indirect_residuals",
       "observed_after_sum": "92299000",
       "observed_delta_sum": "18000",
+      "recalc_rounds": 1,
       "reference_visits": 3000000
     }
   }

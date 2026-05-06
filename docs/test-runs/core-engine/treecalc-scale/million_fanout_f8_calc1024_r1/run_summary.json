@@ -22,6 +22,7 @@
       "formula_count": 999991,
       "invalidation_impacted_count": 999992,
       "node_count": 1000000,
+      "soft_update_rebind_seed_count": 0,
       "static_direct_descriptor_count": 7999928
     },
     "formula_count": 999991,
@@ -36,20 +37,29 @@
       "kind": "fanout_bands",
       "node_count": 1000000,
       "recalc_rounds": 1024
+    },
+    "soft_reference_update": {
+      "affected_node_count": 0,
+      "edit_kind": null,
+      "enabled": false,
+      "expected_rebind_seed_count": 0,
+      "passed": true,
+      "rebind_seed_count": 0
     }
   },
   "phase_timings_ms": {
-    "dependency_descriptor_lowering": 3746.8186,
-    "dependency_graph_build_and_cycle_scan": 14410.3949,
-    "invalidation_closure_derivation": 370.64009999999996,
-    "model_build_structural_snapshot_and_formula_catalog": 1966.0076,
-    "synthetic_closed_form_recalc": 3704.6215,
-    "validation_checks": 152.0739
+    "dependency_descriptor_lowering": 4772.636399999999,
+    "dependency_graph_build_and_cycle_scan": 48666.039300000004,
+    "invalidation_closure_derivation": 2814.9410000000003,
+    "model_build_structural_snapshot_and_formula_catalog": 7995.7848,
+    "soft_reference_update_rebind_seed_derivation": 0.0133,
+    "synthetic_closed_form_recalc": 64549.1971,
+    "validation_checks": 358.4095
   },
   "profile": "fanout-bands",
   "run_id": "million_fanout_f8_calc1024_r1",
   "schema_version": "oxcalc.treecalc.scale_run_summary.v1",
-  "total_elapsed_ms": 24350.5949,
+  "total_elapsed_ms": 129157.0989,
   "validation": {
     "checks": [
       {
@@ -95,6 +105,12 @@
         "passed": true
       },
       {
+        "expected": "0",
+        "name": "soft_reference_update_rebind_seed_count",
+        "observed": "0",
+        "passed": true
+      },
+      {
         "expected": "44031603712",
         "name": "synthetic_after_sum",
         "observed": "44031603712",
@@ -109,6 +125,14 @@
     ],
     "passed": true,
     "profile": "fanout-bands",
+    "soft_reference_update": {
+      "affected_node_count": 0,
+      "edit_kind": null,
+      "enabled": false,
+      "expected_rebind_seed_count": 0,
+      "passed": true,
+      "rebind_seed_count": 0
+    },
     "synthetic_recalc": {
       "baseline_sum": "36863668224",
       "dynamic_slots": 0,

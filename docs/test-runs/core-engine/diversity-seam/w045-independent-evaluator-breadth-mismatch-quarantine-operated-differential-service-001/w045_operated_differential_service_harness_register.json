@@ -1,0 +1,98 @@
+{
+  "local_harness_runnable": true,
+  "operated_cross_engine_differential_service_promoted": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.source_evidence_index_load",
+      "operation_kind": "artifact_ingest",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "source_rows_available_for_packet",
+      "row_id": "harness.harness.source_evidence_index_load",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.service_envelope_write",
+      "operation_kind": "artifact_emit",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "service_envelope_written",
+      "row_id": "harness.harness.service_envelope_write",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.retained_history_query_emit",
+      "operation_kind": "history_projection",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "retained_history_query_rows_written",
+      "row_id": "harness.harness.retained_history_query_emit",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.replay_correlation_query_emit",
+      "operation_kind": "history_projection",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "replay_correlation_rows_written",
+      "row_id": "harness.harness.replay_correlation_query_emit",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.retained_witness_lifecycle_emit",
+      "operation_kind": "witness_lifecycle_projection",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "retained_witness_lifecycle_rows_written",
+      "row_id": "harness.harness.retained_witness_lifecycle_emit",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.alert_dispatch_rule_eval",
+      "operation_kind": "local_alert_rule_evaluation",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "alert_rules_evaluated_without_external_dispatch",
+      "row_id": "harness.harness.alert_dispatch_rule_eval",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.cross_engine_service_classification",
+      "operation_kind": "service_gate_classification",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "cross_engine_service_dependency_classified",
+      "row_id": "harness.harness.cross_engine_service_classification",
+      "service_endpoint_present": false
+    },
+    {
+      "disposition_kind": "local_harness_boundary",
+      "local_runnable": true,
+      "operated_service_promoted": false,
+      "operation_id": "harness.no_proxy_promotion_guard",
+      "operation_kind": "promotion_guard",
+      "promotion_consequence": "local harness operation is deterministic artifact orchestration only",
+      "result_state": "local_harness_not_counted_as_operated_endpoint",
+      "row_id": "harness.harness.no_proxy_promotion_guard",
+      "service_endpoint_present": false
+    }
+  ],
+  "run_id": "w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w045.operated_differential_service_harness_register.v1",
+  "service_endpoint_present": false
+}

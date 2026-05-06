@@ -1,7 +1,7 @@
 # OxCalc Workset Register
 
 Status: `active_register`
-Date: 2026-05-05
+Date: 2026-05-06
 
 ## 1. Purpose
 This is the live ordered workset register for current OxCalc execution.
@@ -410,5 +410,21 @@ It does mean:
    W043 residual blockers are mapped to W044 obligations; optimized/core dynamic transition breadth, callable metadata projection, Rust totality/refinement, panic-free core boundaries, Lean/TLA verification, unbounded fairness, Stage 2 production partition-analyzer soundness, scheduler equivalence, pack-grade replay equivalence, operated services, retained-history and retained-witness lifecycle, retention SLO, independent evaluator breadth, mismatch quarantine, OxFml W073 typed-rule request construction, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, release-scale replay/performance evidence, pack/C5, and release-grade decisions are evidenced, handed off, watched, blocked, or promoted only by direct evidence.
 6. initial_epic_lanes:
    residual release-grade blocker reclassification and promotion-contract map, optimized core dynamic transition and callable metadata implementation tranche, Rust totality refinement and panic-surface proof expansion, Lean/TLA unbounded fairness and full-verification proof expansion, Stage 2 production partition analyzer and scheduler equivalence implementation, operated continuous assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service implementation, OxFml public migration typed formatting callable and registered-external uptake, release-scale replay performance and scaling evidence under semantic guards, pack-grade replay governance service and C5 reassessment, closure audit and release-grade verification decision
+7. rollout_mode:
+   `execution_target`
+
+### W045 Core Formalization Release-Grade Service And Cross-Repo Uptake Verification
+1. purpose:
+   continue after W044 by converting the remaining release-grade no-promotion blockers into direct implementation, proof/model, operated-service, independent-evaluator, OxFml public-surface, W073 downstream-uptake, continuous-scale, pack-governance, and release-grade evidence where possible, while preserving exact blockers where direct evidence is still insufficient.
+2. depends_on:
+   `W044`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md`, `docs/spec/core-engine/w044-formalization/W044_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md`, `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+4. upstream_dependencies:
+   `OxFml`
+5. closure_condition:
+   W044 residual lanes are mapped to W045 obligations; current OxFml public-surface and W073 typed-only formatting updates are reviewed; optimized/core counterpart coverage and callable metadata projection are fixed, directly evidenced, spec-evolved, or retained without declared-gap match promotion; Rust totality/refinement and Lean/TLA verification claims are checked or blocked; Stage 2 and pack-equivalence claims have production-relevant partition soundness, scheduler equivalence, and observable-result invariance evidence; operated service claims use operated artifacts and retained lifecycle evidence; independent evaluator and mismatch quarantine claims use independent implementation authority and service behavior; W073 downstream typed-rule request construction, broad OxFml display/publication, public migration, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication semantics, continuous scale assurance, pack/C5, and release-grade decisions state exact evidence consequence before any promotion claim.
+6. initial_epic_lanes:
+   residual release-grade successor obligation and current OxFml intake map, optimized core counterpart coverage and callable metadata projection closure, Rust totality refinement and panic-surface hardening, Lean/TLA verification fairness and totality discharge, Stage 2 production partition and pack-grade equivalence service evidence, operated assurance retained-history retained-witness SLO service implementation, independent evaluator breadth mismatch quarantine and operated differential service, OxFml public surface W073 downstream typed formatting callable and registered-external uptake, continuous release-scale assurance and semantic regression service, pack-grade replay governance service and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
    `execution_target`

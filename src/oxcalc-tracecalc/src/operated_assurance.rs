@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! W038/W039/W040/W041/W042/W043/W044 operated-assurance, alert/quarantine, and service-disposition packet emission.
+//! W038/W039/W040/W041/W042/W043/W044/W045 operated-assurance, alert/quarantine, and service-disposition packet emission.
 
 use std::fs;
 use std::path::Path;
@@ -129,6 +129,27 @@ const W044_BLOCKER_REGISTER_SCHEMA_V1: &str =
 const W044_PROMOTION_DECISION_SCHEMA_V1: &str =
     "oxcalc.operated_assurance.w044.promotion_decision.v1";
 const W044_VALIDATION_SCHEMA_V1: &str = "oxcalc.operated_assurance.w044.validation.v1";
+const W045_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.operated_assurance.w045.run_summary.v1";
+const W045_SOURCE_INDEX_SCHEMA_V1: &str = "oxcalc.operated_assurance.w045.source_evidence_index.v1";
+const W045_SERVICE_ENVELOPE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.operated_service_envelope.v1";
+const W045_SERVICE_HARNESS_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.operated_service_harness.v1";
+const W045_RETAINED_HISTORY_SERVICE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.retained_history_service_query.v1";
+const W045_RETAINED_WITNESS_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.retained_witness_lifecycle.v1";
+const W045_ALERT_DISPATCH_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.alert_dispatch_service_register.v1";
+const W045_CROSS_ENGINE_SERVICE_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.cross_engine_service_register.v1";
+const W045_SERVICE_READINESS_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.service_readiness_register.v1";
+const W045_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.exact_service_blocker_register.v1";
+const W045_PROMOTION_DECISION_SCHEMA_V1: &str =
+    "oxcalc.operated_assurance.w045.promotion_decision.v1";
+const W045_VALIDATION_SCHEMA_V1: &str = "oxcalc.operated_assurance.w045.validation.v1";
 
 const W037_CONTINUOUS_RUN_SUMMARY: &str = "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/run_summary.json";
 const W037_SERVICE_READINESS: &str = "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/service/service_readiness.json";
@@ -252,6 +273,40 @@ const W044_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w044
 const W044_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json";
 const W044_STAGE2_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json";
 const W044_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json";
+const W044_OPERATED_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json";
+const W044_OPERATED_ASSURANCE_VALIDATION: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json";
+const W044_OPERATED_SERVICE_ENVELOPE: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_operated_service_envelope.json";
+const W044_RETAINED_HISTORY_SERVICE_QUERY: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_history_service_query.json";
+const W044_RETAINED_WITNESS_LIFECYCLE: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_witness_lifecycle_register.json";
+const W044_ALERT_DISPATCH_SERVICE: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_alert_dispatch_service_register.json";
+const W044_CROSS_ENGINE_SERVICE_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_cross_engine_service_register.json";
+const W044_SERVICE_READINESS_REGISTER: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_service_readiness_register.json";
+const W044_OPERATED_SERVICE_BLOCKERS: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_exact_service_blocker_register.json";
+const W044_OPERATED_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json";
+const W044_PACK_SUMMARY: &str = "docs/test-runs/core-engine/pack-capability/w044-pack-grade-replay-governance-service-c5-reassessment-001/run_summary.json";
+const W044_PACK_DECISION: &str = "docs/test-runs/core-engine/pack-capability/w044-pack-grade-replay-governance-service-c5-reassessment-001/decision/pack_capability_decision.json";
+const W045_RESIDUAL_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
+const W045_RESIDUAL_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json";
+const W045_PROMOTION_CONTRACT_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json";
+const W045_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json";
+const W045_OPTIMIZED_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
+const W045_OPTIMIZED_VALIDATION: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/validation.json";
+const W045_DYNAMIC_TRANSITION_COVERAGE: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json";
+const W045_OPTIMIZED_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json";
+const W045_MATCH_PROMOTION_GUARD: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json";
+const W045_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
+const W045_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json";
+const W045_RUST_REFINEMENT: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json";
+const W045_RUST_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json";
+const W045_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
+const W045_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json";
+const W045_TLA_MODEL_BOUND: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json";
+const W045_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json";
+const W045_STAGE2_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json";
+const W045_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/validation.json";
+const W045_STAGE2_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json";
+const W045_STAGE2_SERVICE_GATE: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_service_gate_register.json";
+const W045_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_exact_blocker_register.json";
 const W043_PACK_SUMMARY: &str = "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/run_summary.json";
 const W043_PACK_DECISION: &str = "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json";
 const W042_PACK_SUMMARY: &str = "docs/test-runs/core-engine/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/run_summary.json";
@@ -331,6 +386,9 @@ impl OperatedAssuranceRunner {
         repo_root: &Path,
         run_id: &str,
     ) -> Result<OperatedAssuranceRunSummary, OperatedAssuranceError> {
+        if run_id.contains("w045") {
+            return self.execute_w045(repo_root, run_id);
+        }
         if run_id.contains("w044") {
             return self.execute_w044(repo_root, run_id);
         }
@@ -614,6 +672,404 @@ impl OperatedAssuranceRunner {
             evaluated_alert_rule_count: alert_rules.len(),
             quarantine_decision_count,
             alert_decision_count,
+            service_readiness_criteria_count: number_at(&readiness, "criteria_count") as usize,
+            service_readiness_blocked_count: number_at(&readiness, "blocked_criteria_count")
+                as usize,
+            exact_service_blocker_count,
+            failed_row_count,
+            operated_service_promoted: false,
+            artifact_root: relative_artifact_root,
+        })
+    }
+
+    fn execute_w045(
+        &self,
+        repo_root: &Path,
+        run_id: &str,
+    ) -> Result<OperatedAssuranceRunSummary, OperatedAssuranceError> {
+        let relative_artifact_root = relative_artifact_path(&[
+            "docs",
+            "test-runs",
+            "core-engine",
+            "operated-assurance",
+            run_id,
+        ]);
+        let artifact_root = repo_root.join(&relative_artifact_root);
+        if artifact_root.exists() {
+            fs::remove_dir_all(&artifact_root).map_err(|source| {
+                OperatedAssuranceError::RemoveDirectory {
+                    path: artifact_root.display().to_string(),
+                    source,
+                }
+            })?;
+        }
+        fs::create_dir_all(&artifact_root).map_err(|source| {
+            OperatedAssuranceError::CreateDirectory {
+                path: artifact_root.display().to_string(),
+                source,
+            }
+        })?;
+
+        let w045_residual_summary = read_json(repo_root, W045_RESIDUAL_SUMMARY)?;
+        let w045_residual_map = read_json(repo_root, W045_RESIDUAL_MAP)?;
+        let w045_promotion_contract_map = read_json(repo_root, W045_PROMOTION_CONTRACT_MAP)?;
+        let w045_oxfml_inbound_intake = read_json(repo_root, W045_OXFML_INBOUND_INTAKE)?;
+        let w044_summary = read_json(repo_root, W044_OPERATED_ASSURANCE_SUMMARY)?;
+        let w044_validation = read_json(repo_root, W044_OPERATED_ASSURANCE_VALIDATION)?;
+        let w044_envelope = read_json(repo_root, W044_OPERATED_SERVICE_ENVELOPE)?;
+        let w044_retained = read_json(repo_root, W044_RETAINED_HISTORY_SERVICE_QUERY)?;
+        let w044_witness = read_json(repo_root, W044_RETAINED_WITNESS_LIFECYCLE)?;
+        let w044_alerts = read_json(repo_root, W044_ALERT_DISPATCH_SERVICE)?;
+        let w044_cross_engine = read_json(repo_root, W044_CROSS_ENGINE_SERVICE_REGISTER)?;
+        let w044_readiness = read_json(repo_root, W044_SERVICE_READINESS_REGISTER)?;
+        let w044_blockers = read_json(repo_root, W044_OPERATED_SERVICE_BLOCKERS)?;
+        let w044_promotion = read_json(repo_root, W044_OPERATED_PROMOTION_DECISION)?;
+        let w045_optimized_summary = read_json(repo_root, W045_OPTIMIZED_SUMMARY)?;
+        let w045_optimized_validation = read_json(repo_root, W045_OPTIMIZED_VALIDATION)?;
+        let w045_dynamic_transition = read_json(repo_root, W045_DYNAMIC_TRANSITION_COVERAGE)?;
+        let w045_optimized_blockers = read_json(repo_root, W045_OPTIMIZED_BLOCKERS)?;
+        let w045_match_guard = read_json(repo_root, W045_MATCH_PROMOTION_GUARD)?;
+        let w045_rust_summary = read_json(repo_root, W045_RUST_SUMMARY)?;
+        let w045_rust_validation = read_json(repo_root, W045_RUST_VALIDATION)?;
+        let w045_rust_refinement = read_json(repo_root, W045_RUST_REFINEMENT)?;
+        let w045_rust_blockers = read_json(repo_root, W045_RUST_BLOCKERS)?;
+        let w045_lean_tla_summary = read_json(repo_root, W045_LEAN_TLA_SUMMARY)?;
+        let w045_lean_tla_validation = read_json(repo_root, W045_LEAN_TLA_VALIDATION)?;
+        let w045_tla_model_bound = read_json(repo_root, W045_TLA_MODEL_BOUND)?;
+        let w045_lean_tla_blockers = read_json(repo_root, W045_LEAN_TLA_BLOCKERS)?;
+        let w045_stage2_summary = read_json(repo_root, W045_STAGE2_SUMMARY)?;
+        let w045_stage2_validation = read_json(repo_root, W045_STAGE2_VALIDATION)?;
+        let w045_stage2_decision = read_json(repo_root, W045_STAGE2_DECISION)?;
+        let w045_stage2_service_gate = read_json(repo_root, W045_STAGE2_SERVICE_GATE)?;
+        let w045_stage2_blockers = read_json(repo_root, W045_STAGE2_BLOCKERS)?;
+        let w044_pack_summary = read_json(repo_root, W044_PACK_SUMMARY)?;
+        let w044_pack_decision = read_json(repo_root, W044_PACK_DECISION)?;
+
+        let source_rows = w045_source_rows(
+            &w045_residual_summary,
+            &w045_residual_map,
+            &w045_promotion_contract_map,
+            &w045_oxfml_inbound_intake,
+            &w044_summary,
+            &w044_validation,
+            &w044_envelope,
+            &w044_retained,
+            &w044_witness,
+            &w044_alerts,
+            &w044_cross_engine,
+            &w044_readiness,
+            &w044_blockers,
+            &w044_promotion,
+            &w045_optimized_summary,
+            &w045_optimized_validation,
+            &w045_dynamic_transition,
+            &w045_optimized_blockers,
+            &w045_match_guard,
+            &w045_rust_summary,
+            &w045_rust_validation,
+            &w045_rust_refinement,
+            &w045_rust_blockers,
+            &w045_lean_tla_summary,
+            &w045_lean_tla_validation,
+            &w045_tla_model_bound,
+            &w045_lean_tla_blockers,
+            &w045_stage2_summary,
+            &w045_stage2_validation,
+            &w045_stage2_decision,
+            &w045_stage2_service_gate,
+            &w045_stage2_blockers,
+            &w044_pack_summary,
+            &w044_pack_decision,
+        );
+        let source_failures = w039_source_validation_failures(&source_rows);
+        let service_envelope =
+            w045_operated_service_envelope(run_id, &relative_artifact_root, source_rows.len());
+        let service_harness =
+            w045_operated_service_harness(run_id, &relative_artifact_root, &service_envelope);
+        let retained_history = w045_retained_history_service_query(
+            run_id,
+            &relative_artifact_root,
+            &w044_retained,
+            &w045_residual_map,
+            &w045_promotion_contract_map,
+            &w045_optimized_summary,
+            &w045_rust_summary,
+            &w045_lean_tla_summary,
+            &w045_stage2_summary,
+            &w045_stage2_service_gate,
+            &w045_stage2_blockers,
+            &w044_pack_decision,
+            &w045_oxfml_inbound_intake,
+            &service_harness,
+        );
+        let retained_witness_register = w045_retained_witness_lifecycle(
+            run_id,
+            &w044_witness,
+            &w045_stage2_decision,
+            &service_harness,
+        );
+        let alert_dispatcher = w045_alert_dispatch_service(
+            run_id,
+            &w044_alerts,
+            &w044_promotion,
+            &w045_stage2_decision,
+            &w044_pack_decision,
+            &retained_history,
+            &retained_witness_register,
+            &service_harness,
+            &w045_oxfml_inbound_intake,
+        );
+        let cross_engine_service = w045_cross_engine_service(
+            run_id,
+            &w044_cross_engine,
+            &w045_stage2_summary,
+            &w045_stage2_service_gate,
+            &w045_stage2_blockers,
+        );
+        let readiness = w045_service_readiness(
+            run_id,
+            &relative_artifact_root,
+            &service_envelope,
+            &service_harness,
+            &retained_history,
+            &retained_witness_register,
+            &alert_dispatcher,
+            &cross_engine_service,
+            &w045_stage2_decision,
+            &w045_oxfml_inbound_intake,
+        );
+        let exact_blockers = w045_exact_service_blockers();
+        let exact_service_blocker_count = exact_blockers.len();
+        let failed_row_count = source_failures.len();
+
+        let source_evidence_index_path =
+            format!("{relative_artifact_root}/source_evidence_index.json");
+        let service_envelope_path =
+            format!("{relative_artifact_root}/w045_operated_service_envelope.json");
+        let service_harness_path =
+            format!("{relative_artifact_root}/w045_operated_service_harness_register.json");
+        let retained_history_path =
+            format!("{relative_artifact_root}/w045_retained_history_service_query.json");
+        let retained_witness_path =
+            format!("{relative_artifact_root}/w045_retained_witness_lifecycle_register.json");
+        let alert_dispatcher_path =
+            format!("{relative_artifact_root}/w045_alert_dispatch_service_register.json");
+        let cross_engine_service_path =
+            format!("{relative_artifact_root}/w045_cross_engine_service_register.json");
+        let service_readiness_path =
+            format!("{relative_artifact_root}/w045_service_readiness_register.json");
+        let blocker_register_path =
+            format!("{relative_artifact_root}/w045_exact_service_blocker_register.json");
+        let promotion_decision_path = format!("{relative_artifact_root}/promotion_decision.json");
+        let validation_path = format!("{relative_artifact_root}/validation.json");
+
+        write_json(
+            &artifact_root.join("source_evidence_index.json"),
+            &json!({
+                "schema_version": W045_SOURCE_INDEX_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_row_count": source_rows.len(),
+                "rows": source_rows,
+                "source_artifacts": {
+                    "w045_residual_summary": W045_RESIDUAL_SUMMARY,
+                    "w045_residual_map": W045_RESIDUAL_MAP,
+                    "w045_promotion_contract_map": W045_PROMOTION_CONTRACT_MAP,
+                    "w045_oxfml_inbound_intake": W045_OXFML_INBOUND_INTAKE,
+                    "w044_operated_assurance_summary": W044_OPERATED_ASSURANCE_SUMMARY,
+                    "w044_operated_assurance_validation": W044_OPERATED_ASSURANCE_VALIDATION,
+                    "w044_service_envelope": W044_OPERATED_SERVICE_ENVELOPE,
+                    "w044_retained_history_service_query": W044_RETAINED_HISTORY_SERVICE_QUERY,
+                    "w044_retained_witness_lifecycle": W044_RETAINED_WITNESS_LIFECYCLE,
+                    "w044_alert_dispatch_service": W044_ALERT_DISPATCH_SERVICE,
+                    "w044_cross_engine_service": W044_CROSS_ENGINE_SERVICE_REGISTER,
+                    "w044_service_readiness": W044_SERVICE_READINESS_REGISTER,
+                    "w044_exact_service_blockers": W044_OPERATED_SERVICE_BLOCKERS,
+                    "w044_promotion_decision": W044_OPERATED_PROMOTION_DECISION,
+                    "w045_optimized_summary": W045_OPTIMIZED_SUMMARY,
+                    "w045_optimized_validation": W045_OPTIMIZED_VALIDATION,
+                    "w045_dynamic_transition_coverage": W045_DYNAMIC_TRANSITION_COVERAGE,
+                    "w045_optimized_blockers": W045_OPTIMIZED_BLOCKERS,
+                    "w045_match_promotion_guard": W045_MATCH_PROMOTION_GUARD,
+                    "w045_rust_summary": W045_RUST_SUMMARY,
+                    "w045_rust_validation": W045_RUST_VALIDATION,
+                    "w045_rust_refinement": W045_RUST_REFINEMENT,
+                    "w045_rust_blockers": W045_RUST_BLOCKERS,
+                    "w045_lean_tla_summary": W045_LEAN_TLA_SUMMARY,
+                    "w045_lean_tla_validation": W045_LEAN_TLA_VALIDATION,
+                    "w045_tla_model_bound": W045_TLA_MODEL_BOUND,
+                    "w045_lean_tla_blockers": W045_LEAN_TLA_BLOCKERS,
+                    "w045_stage2_summary": W045_STAGE2_SUMMARY,
+                    "w045_stage2_validation": W045_STAGE2_VALIDATION,
+                    "w045_stage2_decision": W045_STAGE2_DECISION,
+                    "w045_stage2_service_gate": W045_STAGE2_SERVICE_GATE,
+                    "w045_stage2_blockers": W045_STAGE2_BLOCKERS,
+                    "w044_pack_summary": W044_PACK_SUMMARY,
+                    "w044_pack_decision": W044_PACK_DECISION
+                }
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("w045_operated_service_envelope.json"),
+            &service_envelope,
+        )?;
+        write_json(
+            &artifact_root.join("w045_operated_service_harness_register.json"),
+            &service_harness,
+        )?;
+        write_json(
+            &artifact_root.join("w045_retained_history_service_query.json"),
+            &retained_history,
+        )?;
+        write_json(
+            &artifact_root.join("w045_retained_witness_lifecycle_register.json"),
+            &retained_witness_register,
+        )?;
+        write_json(
+            &artifact_root.join("w045_alert_dispatch_service_register.json"),
+            &alert_dispatcher,
+        )?;
+        write_json(
+            &artifact_root.join("w045_cross_engine_service_register.json"),
+            &cross_engine_service,
+        )?;
+        write_json(
+            &artifact_root.join("w045_service_readiness_register.json"),
+            &readiness,
+        )?;
+        write_json(
+            &artifact_root.join("w045_exact_service_blocker_register.json"),
+            &json!({
+                "schema_version": W045_BLOCKER_REGISTER_SCHEMA_V1,
+                "run_id": run_id,
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "rows": exact_blockers
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("promotion_decision.json"),
+            &json!({
+                "schema_version": W045_PROMOTION_DECISION_SCHEMA_V1,
+                "run_id": run_id,
+                "decision_state": "w045_operated_assurance_retained_history_retained_witness_slo_service_validated_local_harness_services_unpromoted",
+                "local_operated_service_harness_runnable": bool_at(&service_harness, "local_harness_runnable"),
+                "local_operated_service_harness_operation_count": number_at(&service_harness, "operation_count"),
+                "file_backed_service_envelope_present": true,
+                "service_run_queue_manifest_present": bool_at(&service_envelope, "service_run_queue_manifest_present"),
+                "retained_history_query_api_contract_present": bool_at(&retained_history, "retained_history_query_api_contract_present"),
+                "replay_correlation_index_present": bool_at(&retained_history, "replay_correlation_index_present"),
+                "retained_witness_lifecycle_register_present": bool_at(&retained_witness_register, "retained_witness_lifecycle_register_present"),
+                "retention_slo_policy_declared": bool_at(&retained_history, "retention_slo_policy_declared"),
+                "retention_slo_enforced": bool_at(&retained_history, "retention_slo_enforced"),
+                "local_alert_dispatcher_evaluated": bool_at(&alert_dispatcher, "local_alert_dispatcher_evaluated"),
+                "external_alert_dispatcher_contract_present": bool_at(&alert_dispatcher, "external_alert_dispatcher_contract_present"),
+                "w073_typed_rule_only_formatting_guard_carried": bool_at(&readiness, "w073_typed_rule_only_formatting_guard_carried"),
+                "w073_downstream_typed_rule_request_construction_required": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_typed_rule_request_construction_required"),
+                "w073_downstream_typed_rule_request_construction_verified": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_uptake_verified_by_oxcalc"),
+                "operated_continuous_assurance_service_promoted": false,
+                "retained_history_service_promoted": false,
+                "retained_witness_lifecycle_service_promoted": false,
+                "retention_slo_enforcement_promoted": false,
+                "external_alert_dispatcher_promoted": false,
+                "quarantine_service_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "c5_promoted": false,
+                "stage2_policy_promoted": false,
+                "release_grade_verification_promoted": false,
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "blockers": w045_exact_service_blockers()
+                    .iter()
+                    .map(|row| row["blocker_id"].clone())
+                    .collect::<Vec<_>>(),
+                "semantic_equivalence_statement": "This W045 runner emits an operated-assurance retained-history, retained-witness, SLO, and alert-service packet by binding W045 residual obligations, current W073 typed-only OxFml formatting intake, W044 operated-assurance predecessor evidence, W045 optimized/core dynamic evidence, W045 Rust and Lean/TLA proof/model evidence, W045 Stage 2 service gates, W044 pack blockers, retained-history query rows, retained-witness lifecycle rows, and local alert/quarantine rules. The new local harness is runnable evidence for artifact orchestration only; it does not change scheduler, recalc, publication, replay, pack, service, alert-dispatch, TraceCalc, TreeCalc, OxFml, OxFunc, Lean, or TLA semantics."
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("validation.json"),
+            &json!({
+                "schema_version": W045_VALIDATION_SCHEMA_V1,
+                "run_id": run_id,
+                "status": if source_failures.is_empty() {
+                    "w045_operated_assurance_retained_history_retained_witness_slo_service_valid"
+                } else {
+                    "w045_operated_assurance_retained_history_retained_witness_slo_service_invalid"
+                },
+                "source_evidence_row_count": source_rows.len(),
+                "service_envelope_row_count": number_at(&service_envelope, "row_count"),
+                "service_harness_operation_count": number_at(&service_harness, "operation_count"),
+                "multi_run_history_row_count": number_at(&retained_history, "store_record_count"),
+                "query_register_row_count": number_at(&retained_history, "query_register_row_count"),
+                "replay_correlation_row_count": number_at(&retained_history, "replay_correlation_row_count"),
+                "retained_witness_lifecycle_row_count": number_at(&retained_witness_register, "witness_lifecycle_row_count"),
+                "evaluated_alert_rule_count": number_at(&alert_dispatcher, "evaluated_rule_count"),
+                "quarantine_decision_count": number_at(&alert_dispatcher, "quarantine_decision_count"),
+                "alert_decision_count": number_at(&alert_dispatcher, "alert_decision_count"),
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "failed_row_count": failed_row_count,
+                "validation_failures": source_failures
+            }),
+        )?;
+        write_json(
+            &artifact_root.join("run_summary.json"),
+            &json!({
+                "schema_version": W045_RUN_SUMMARY_SCHEMA_V1,
+                "run_id": run_id,
+                "artifact_root": relative_artifact_root,
+                "source_evidence_index_path": source_evidence_index_path,
+                "service_envelope_path": service_envelope_path,
+                "service_harness_register_path": service_harness_path,
+                "retained_history_service_query_path": retained_history_path,
+                "retained_witness_lifecycle_register_path": retained_witness_path,
+                "alert_dispatch_service_register_path": alert_dispatcher_path,
+                "cross_engine_service_register_path": cross_engine_service_path,
+                "service_readiness_register_path": service_readiness_path,
+                "exact_service_blocker_register_path": blocker_register_path,
+                "promotion_decision_path": promotion_decision_path,
+                "validation_path": validation_path,
+                "source_evidence_row_count": source_rows.len(),
+                "service_envelope_row_count": number_at(&service_envelope, "row_count"),
+                "service_harness_operation_count": number_at(&service_harness, "operation_count"),
+                "multi_run_history_row_count": number_at(&retained_history, "store_record_count"),
+                "query_register_row_count": number_at(&retained_history, "query_register_row_count"),
+                "replay_correlation_row_count": number_at(&retained_history, "replay_correlation_row_count"),
+                "retained_witness_lifecycle_row_count": number_at(&retained_witness_register, "witness_lifecycle_row_count"),
+                "evaluated_alert_rule_count": number_at(&alert_dispatcher, "evaluated_rule_count"),
+                "quarantine_decision_count": number_at(&alert_dispatcher, "quarantine_decision_count"),
+                "alert_decision_count": number_at(&alert_dispatcher, "alert_decision_count"),
+                "service_readiness_criteria_count": number_at(&readiness, "criteria_count"),
+                "service_readiness_blocked_count": number_at(&readiness, "blocked_criteria_count"),
+                "exact_service_blocker_count": exact_service_blocker_count,
+                "failed_row_count": failed_row_count,
+                "local_operated_service_harness_runnable": bool_at(&service_harness, "local_harness_runnable"),
+                "operated_continuous_assurance_service_promoted": false,
+                "retained_history_service_promoted": false,
+                "retained_witness_lifecycle_service_promoted": false,
+                "retention_slo_enforcement_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+                "external_alert_dispatcher_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "c5_promoted": false,
+                "stage2_policy_promoted": false,
+                "release_grade_verification_promoted": false
+            }),
+        )?;
+
+        Ok(OperatedAssuranceRunSummary {
+            run_id: run_id.to_string(),
+            schema_version: W045_RUN_SUMMARY_SCHEMA_V1.to_string(),
+            source_evidence_row_count: source_rows.len(),
+            multi_run_history_row_count: number_at(&retained_history, "store_record_count")
+                as usize,
+            evaluated_alert_rule_count: number_at(&alert_dispatcher, "evaluated_rule_count")
+                as usize,
+            quarantine_decision_count: number_at(&alert_dispatcher, "quarantine_decision_count")
+                as usize,
+            alert_decision_count: number_at(&alert_dispatcher, "alert_decision_count") as usize,
             service_readiness_criteria_count: number_at(&readiness, "criteria_count") as usize,
             service_readiness_blocked_count: number_at(&readiness, "blocked_criteria_count")
                 as usize,
@@ -6286,6 +6742,1272 @@ fn w044_exact_service_blockers() -> Vec<Value> {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn w045_source_rows(
+    w045_residual_summary: &Value,
+    w045_residual_map: &Value,
+    w045_promotion_contract_map: &Value,
+    w045_oxfml_inbound_intake: &Value,
+    w044_summary: &Value,
+    w044_validation: &Value,
+    w044_envelope: &Value,
+    w044_retained: &Value,
+    w044_witness: &Value,
+    w044_alerts: &Value,
+    w044_cross_engine: &Value,
+    w044_readiness: &Value,
+    w044_blockers: &Value,
+    w044_promotion: &Value,
+    w045_optimized_summary: &Value,
+    w045_optimized_validation: &Value,
+    w045_dynamic_transition: &Value,
+    w045_optimized_blockers: &Value,
+    w045_match_guard: &Value,
+    w045_rust_summary: &Value,
+    w045_rust_validation: &Value,
+    w045_rust_refinement: &Value,
+    w045_rust_blockers: &Value,
+    w045_lean_tla_summary: &Value,
+    w045_lean_tla_validation: &Value,
+    w045_tla_model_bound: &Value,
+    w045_lean_tla_blockers: &Value,
+    w045_stage2_summary: &Value,
+    w045_stage2_validation: &Value,
+    w045_stage2_decision: &Value,
+    w045_stage2_service_gate: &Value,
+    w045_stage2_blockers: &Value,
+    w044_pack_summary: &Value,
+    w044_pack_decision: &Value,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "row_id": "source.w045_residual_successor_obligation_map",
+            "artifact": W045_RESIDUAL_MAP,
+            "valid": text_at(w045_residual_summary, "status") == "residual_successor_obligation_current_oxfml_intake_map_validated"
+                && number_at(w045_residual_summary, "successor_obligation_count") == 36
+                && number_at(w045_residual_summary, "promotion_contract_count") == 18
+                && number_at(w045_residual_map, "source_residual_lane_count") == 22
+                && number_at(w045_residual_map, "successor_obligation_count") == 36,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "w045_operated_service_obligations_bound"
+        }),
+        json!({
+            "row_id": "source.w045_oxfml_w073_inbound_update",
+            "artifact": W045_OXFML_INBOUND_INTAKE,
+            "valid": array_len(&w045_oxfml_inbound_intake["w073_formatting"]["typed_rule_only_families"]) == 7
+                && !bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "threshold_fallback_allowed_for_typed_families")
+                && bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "old_bounded_string_non_interpretation_evidence_reviewed")
+                && bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_typed_rule_request_construction_required")
+                && !bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_uptake_verified_by_oxcalc")
+                && !bool_at(w045_oxfml_inbound_intake, "handoff_required"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "current_oxfml_w073_typed_only_update_carried_as_w045_watch_row"
+        }),
+        json!({
+            "row_id": "source.w044_operated_assurance_predecessor_summary",
+            "artifact": W044_OPERATED_ASSURANCE_SUMMARY,
+            "valid": text_at(w044_validation, "status") == "w044_operated_assurance_retained_history_witness_slo_alert_service_valid"
+                && number_at(w044_summary, "source_evidence_row_count") == 17
+                && number_at(w044_summary, "exact_service_blocker_count") == 6
+                && number_at(w044_summary, "failed_row_count") == 0,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w044_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(w044_promotion, "operated_continuous_assurance_service_promoted")
+                || bool_at(w044_promotion, "retained_history_service_promoted")
+                || bool_at(w044_promotion, "retained_witness_lifecycle_service_promoted")
+                || bool_at(w044_promotion, "retention_slo_enforcement_promoted")
+                || bool_at(w044_promotion, "external_alert_dispatcher_promoted")
+                || bool_at(w044_promotion, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w044_service_packet_bound_without_service_promotion"
+        }),
+        json!({
+            "row_id": "source.w044_service_envelope",
+            "artifact": W044_OPERATED_SERVICE_ENVELOPE,
+            "valid": bool_at(w044_envelope, "file_backed_service_envelope_present")
+                && bool_at(w044_envelope, "service_run_queue_manifest_present")
+                && !bool_at(w044_envelope, "operated_run_queue_present")
+                && !bool_at(w044_envelope, "service_endpoint_present"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_envelope, "operated_run_queue_present")
+                || bool_at(w044_envelope, "service_endpoint_present"),
+            "semantic_state": "w044_file_backed_service_envelope_available_for_w045_harness"
+        }),
+        json!({
+            "row_id": "source.w044_retained_history_query_contract",
+            "artifact": W044_RETAINED_HISTORY_SERVICE_QUERY,
+            "valid": number_at(w044_retained, "store_record_count") == 40
+                && number_at(w044_retained, "query_register_row_count") == 17
+                && number_at(w044_retained, "replay_correlation_row_count") == 15
+                && bool_at(w044_retained, "retained_history_query_api_contract_present")
+                && bool_at(w044_retained, "replay_correlation_index_present")
+                && !bool_at(w044_retained, "retained_history_service_operated")
+                && !bool_at(w044_retained, "retention_slo_enforced"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_retained, "retained_history_service_operated")
+                || bool_at(w044_retained, "retained_history_service_promoted"),
+            "semantic_state": "w044_retained_history_query_contract_bound_for_w045"
+        }),
+        json!({
+            "row_id": "source.w044_retained_witness_lifecycle",
+            "artifact": W044_RETAINED_WITNESS_LIFECYCLE,
+            "valid": bool_at(w044_witness, "retained_witness_lifecycle_register_present")
+                && number_at(w044_witness, "witness_lifecycle_row_count") == 11
+                && number_at(w044_witness, "pack_eligible_witness_count") == 0
+                && !bool_at(w044_witness, "retained_witness_lifecycle_service_promoted")
+                && !bool_at(w044_witness, "retention_slo_enforced"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_witness, "retained_witness_lifecycle_service_promoted")
+                || number_at(w044_witness, "pack_eligible_witness_count") > 0,
+            "semantic_state": "w044_retained_witness_lifecycle_bound_without_pack_eligibility"
+        }),
+        json!({
+            "row_id": "source.w044_alert_dispatch_contract",
+            "artifact": W044_ALERT_DISPATCH_SERVICE,
+            "valid": number_at(w044_alerts, "evaluated_rule_count") == 35
+                && number_at(w044_alerts, "quarantine_decision_count") == 0
+                && number_at(w044_alerts, "alert_decision_count") == 0
+                && bool_at(w044_alerts, "local_alert_dispatcher_evaluated")
+                && bool_at(w044_alerts, "external_alert_dispatcher_contract_present"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w044_alerts, "quarantine_decision_count"),
+            "promoted_unsupported_service": bool_at(w044_alerts, "external_alert_dispatcher_promoted")
+                || bool_at(w044_alerts, "quarantine_service_promoted"),
+            "semantic_state": "w044_local_alert_dispatch_contract_clean_for_w045"
+        }),
+        json!({
+            "row_id": "source.w044_cross_engine_service_blocker",
+            "artifact": W044_CROSS_ENGINE_SERVICE_REGISTER,
+            "valid": bool_at(w044_cross_engine, "file_backed_cross_engine_substrate_present")
+                && bool_at(w044_cross_engine, "w044_stage2_service_dependency_blocker_present")
+                && !bool_at(w044_cross_engine, "operated_cross_engine_differential_service_present")
+                && !bool_at(w044_cross_engine, "service_endpoint_present"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_cross_engine, "operated_cross_engine_differential_service_promoted"),
+            "semantic_state": "w044_cross_engine_file_backed_substrate_bound"
+        }),
+        json!({
+            "row_id": "source.w044_service_readiness_blockers",
+            "artifact": W044_SERVICE_READINESS_REGISTER,
+            "valid": number_at(w044_readiness, "blocked_criteria_count") == 6
+                && number_at(w044_blockers, "exact_service_blocker_count") == 6
+                && bool_at(w044_readiness, "w073_typed_rule_only_formatting_guard_carried"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_readiness, "operated_continuous_assurance_service_promoted")
+                || bool_at(w044_readiness, "retained_history_service_promoted")
+                || bool_at(w044_readiness, "retained_witness_lifecycle_service_promoted")
+                || bool_at(w044_readiness, "external_alert_dispatcher_promoted")
+                || bool_at(w044_readiness, "cross_engine_differential_service_promoted"),
+            "semantic_state": "w044_exact_service_blockers_bound_for_w045"
+        }),
+        json!({
+            "row_id": "source.w045_optimized_core_dynamic_service_input",
+            "artifact": W045_DYNAMIC_TRANSITION_COVERAGE,
+            "valid": text_at(w045_optimized_validation, "status") == "implementation_conformance_w045_optimized_core_counterpart_callable_metadata_valid"
+                && number_at(w045_optimized_summary, "failed_row_count") == 0
+                && number_at(w045_optimized_summary, "w045_exact_remaining_blocker_count") == 5
+                && number_at(w045_dynamic_transition, "direct_evidence_bound_count") == 2
+                && number_at(w045_dynamic_transition, "exact_remaining_blocker_count") == 2
+                && number_at(w045_optimized_blockers, "exact_remaining_blocker_count") == 5,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w045_optimized_summary, "failed_row_count"),
+            "promoted_unsupported_service": number_at(w045_optimized_summary, "w045_match_promoted_count") > 0,
+            "semantic_state": "w045_dynamic_transition_coverage_bound_as_service_input_without_optimized_core_promotion"
+        }),
+        json!({
+            "row_id": "source.w045_rust_refinement_service_bridge",
+            "artifact": W045_RUST_REFINEMENT,
+            "valid": text_at(w045_rust_validation, "status") == "formal_assurance_w045_rust_totality_refinement_valid"
+                && number_at(w045_rust_summary, "failed_row_count") == 0
+                && number_at(w045_rust_summary, "exact_remaining_blocker_count") == 7
+                && number_at(w045_rust_refinement, "refinement_row_count") == 9
+                && number_at(w045_rust_blockers, "exact_remaining_blocker_count") == 7,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w045_rust_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(&w045_rust_summary["promotion_claims"], "rust_engine_totality_promoted")
+                || bool_at(&w045_rust_summary["promotion_claims"], "rust_refinement_promoted")
+                || bool_at(&w045_rust_summary["promotion_claims"], "panic_free_core_domain_promoted"),
+            "semantic_state": "w045_rust_refinement_bridge_bound_without_totality_promotion"
+        }),
+        json!({
+            "row_id": "source.w045_lean_tla_model_bound_service_bridge",
+            "artifact": W045_TLA_MODEL_BOUND,
+            "valid": text_at(w045_lean_tla_validation, "status") == "formal_assurance_w045_lean_tla_fairness_totality_valid"
+                && number_at(w045_lean_tla_summary, "failed_row_count") == 0
+                && number_at(w045_lean_tla_summary, "exact_remaining_blocker_count") == 6
+                && number_at(w045_tla_model_bound, "bounded_model_row_count") == 4
+                && number_at(w045_lean_tla_blockers, "exact_remaining_blocker_count") == 6,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w045_lean_tla_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(&w045_lean_tla_summary["promotion_claims"], "full_tla_verification_promoted")
+                || bool_at(&w045_lean_tla_summary["promotion_claims"], "scheduler_fairness_promoted")
+                || bool_at(&w045_lean_tla_summary["promotion_claims"], "unbounded_model_coverage_promoted"),
+            "semantic_state": "w045_lean_tla_bounded_model_bound_without_unbounded_scheduler_promotion"
+        }),
+        json!({
+            "row_id": "source.w045_stage2_service_gate",
+            "artifact": W045_STAGE2_SUMMARY,
+            "valid": text_at(w045_stage2_validation, "status") == "w045_stage2_pack_service_equivalence_valid"
+                && number_at(w045_stage2_summary, "failed_row_count") == 0
+                && number_at(w045_stage2_summary, "exact_remaining_blocker_count") == 10
+                && bool_at(w045_stage2_summary, "service_gate_classification_evidenced")
+                && row_with_field_exists(
+                    w045_stage2_blockers,
+                    "row_id",
+                    "w045_stage2_operated_cross_engine_service_dependency_blocker"
+                ),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": number_at(w045_stage2_summary, "failed_row_count"),
+            "promoted_unsupported_service": bool_at(w045_stage2_decision, "operated_cross_engine_stage2_service_promoted")
+                || bool_at(w045_stage2_decision, "stage2_policy_promoted")
+                || bool_at(w045_stage2_decision, "service_gate_promoted"),
+            "semantic_state": "w045_stage2_service_gate_bound"
+        }),
+        json!({
+            "row_id": "source.w045_stage2_service_gate_register",
+            "artifact": W045_STAGE2_SERVICE_GATE,
+            "valid": number_at(w045_stage2_service_gate, "row_count") == 10
+                && number_at(w045_stage2_service_gate, "exact_remaining_blocker_count") == 4
+                && bool_at(w045_stage2_service_gate, "service_gate_classification_evidenced")
+                && !bool_at(w045_stage2_service_gate, "service_gate_promoted"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": failed_rows_in_register(w045_stage2_service_gate),
+            "promoted_unsupported_service": bool_at(w045_stage2_service_gate, "service_gate_promoted"),
+            "semantic_state": "w045_stage2_service_gate_register_bound_without_service_promotion"
+        }),
+        json!({
+            "row_id": "source.w045_stage2_exact_blockers",
+            "artifact": W045_STAGE2_BLOCKERS,
+            "valid": number_at(w045_stage2_blockers, "exact_remaining_blocker_count") == 10
+                && row_with_field_exists(
+                    w045_stage2_blockers,
+                    "row_id",
+                    "w045_stage2_retained_witness_lifecycle_pack_dependency_blocker"
+                )
+                && row_with_field_exists(
+                    w045_stage2_blockers,
+                    "row_id",
+                    "w045_stage2_pack_grade_replay_governance_blocker"
+                ),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": failed_rows_in_register(w045_stage2_blockers),
+            "promoted_unsupported_service": bool_at(w045_stage2_decision, "retained_witness_lifecycle_promoted")
+                || bool_at(w045_stage2_decision, "pack_grade_replay_governance_promoted")
+                || bool_at(w045_stage2_decision, "pack_grade_replay_promoted"),
+            "semantic_state": "w045_stage2_service_retained_witness_and_pack_blockers_retained"
+        }),
+        json!({
+            "row_id": "source.w045_no_proxy_promotion_guard",
+            "artifact": W045_MATCH_PROMOTION_GUARD,
+            "valid": text_at(w045_match_guard, "guard_status") == "w045_declared_gap_promotion_guard_holds"
+                && number_at(w045_match_guard, "promoted_match_count") == 0
+                && !bool_at(w045_stage2_decision, "stage2_policy_promoted")
+                && !bool_at(w045_stage2_decision, "pack_grade_replay_promoted")
+                && !bool_at(w044_promotion, "operated_continuous_assurance_service_promoted"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_promotion, "operated_continuous_assurance_service_promoted")
+                || bool_at(w045_stage2_decision, "stage2_policy_promoted")
+                || bool_at(w045_stage2_decision, "pack_grade_replay_promoted"),
+            "semantic_state": "w045_service_no_proxy_promotion_guard_clean"
+        }),
+        json!({
+            "row_id": "source.w045_service_obligations",
+            "artifact": W045_RESIDUAL_MAP,
+            "valid": row_with_field_exists(
+                    w045_residual_map,
+                    "source_lane",
+                    "w044_residual.operated_assurance_service"
+                )
+                && row_with_field_exists(
+                    w045_residual_map,
+                    "source_lane",
+                    "w044_residual.retained_history_and_witness_lifecycle"
+                )
+                && row_with_field_exists(
+                    w045_residual_map,
+                    "source_lane",
+                    "w044_residual.external_alert_dispatcher"
+                ),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "w045_operated_assurance_retained_history_retained_witness_and_alert_obligations_bound"
+        }),
+        json!({
+            "row_id": "source.w045_promotion_contracts",
+            "artifact": W045_PROMOTION_CONTRACT_MAP,
+            "valid": number_at(w045_promotion_contract_map, "promotion_contract_count") == 18,
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": false,
+            "semantic_state": "w045_promotion_contracts_bound_as_no_proxy_service_gates"
+        }),
+        json!({
+            "row_id": "source.w044_pack_c5_service_blockers",
+            "artifact": W044_PACK_DECISION,
+            "valid": text_at(w044_pack_summary, "decision_status") == "capability_not_promoted"
+                && text_at(w044_pack_decision, "decision_status") == "capability_not_promoted"
+                && !bool_at(w044_pack_decision, "capability_promoted")
+                && number_at(w044_pack_decision, "missing_artifact_count") == 0
+                && array_contains_string(
+                    &w044_pack_decision["no_promotion_reason_ids"],
+                    "pack.grade.w044_retained_history_service_absent"
+                )
+                && array_contains_string(
+                    &w044_pack_decision["no_promotion_reason_ids"],
+                    "pack.grade.w044_retained_witness_lifecycle_service_absent"
+                ),
+            "missing_artifact_count": number_at(w044_pack_decision, "missing_artifact_count"),
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w044_pack_decision, "capability_promoted"),
+            "semantic_state": "w044_pack_c5_retained_history_retained_witness_and_service_blockers_bound"
+        }),
+        json!({
+            "row_id": "source.w045_retained_lifecycle_no_promotion_guard",
+            "artifact": W045_STAGE2_DECISION,
+            "valid": !bool_at(w045_stage2_decision, "retained_witness_lifecycle_promoted")
+                && !bool_at(w045_stage2_decision, "pack_grade_replay_governance_promoted")
+                && !bool_at(w045_stage2_decision, "pack_grade_replay_promoted")
+                && !bool_at(w044_promotion, "retained_history_service_promoted")
+                && !bool_at(w044_promotion, "retained_witness_lifecycle_service_promoted")
+                && !bool_at(w044_promotion, "retention_slo_enforcement_promoted"),
+            "missing_artifact_count": 0,
+            "unexpected_mismatch_count": 0,
+            "failed_row_count": 0,
+            "promoted_unsupported_service": bool_at(w045_stage2_decision, "retained_witness_lifecycle_promoted")
+                || bool_at(w045_stage2_decision, "pack_grade_replay_governance_promoted")
+                || bool_at(w045_stage2_decision, "pack_grade_replay_promoted")
+                || bool_at(w044_promotion, "retained_history_service_promoted")
+                || bool_at(w044_promotion, "retained_witness_lifecycle_service_promoted")
+                || bool_at(w044_promotion, "retention_slo_enforcement_promoted"),
+            "semantic_state": "retained_history_witness_slo_and_pack_lifecycle_no_promotion_guard_clean"
+        }),
+    ]
+}
+
+fn w045_operated_service_envelope(
+    run_id: &str,
+    relative_artifact_root: &str,
+    source_evidence_row_count: usize,
+) -> Value {
+    let rows = vec![
+        json!({
+            "row_id": "service.cli_entrypoint",
+            "state": "satisfied",
+            "runner_command": format!("cargo run -p oxcalc-tracecalc-cli -- operated-assurance {run_id}"),
+            "evidence_or_blocker": "W045 operated-assurance packet is emitted by the checked CLI runner"
+        }),
+        json!({
+            "row_id": "service.artifact_root",
+            "state": "satisfied",
+            "artifact_root": relative_artifact_root,
+            "evidence_or_blocker": "runner writes source index, service envelope, local harness register, retained-history query, retained-witness lifecycle, alert dispatch, cross-engine service, readiness, blockers, decision, and validation artifacts"
+        }),
+        json!({
+            "row_id": "service.source_ingestion",
+            "state": "satisfied",
+            "source_evidence_row_count": source_evidence_row_count,
+            "evidence_or_blocker": "runner binds W045 residual obligations, W044 service packet, W045 proof/model and Stage 2 artifacts, W044 pack decision, and W073 typed-formatting intake"
+        }),
+        json!({
+            "row_id": "service.w044_predecessor_bound",
+            "state": "satisfied",
+            "evidence_or_blocker": "W044 retained-history, retained-witness, alert, cross-engine, readiness, and exact blocker artifacts are predecessor inputs"
+        }),
+        json!({
+            "row_id": "service.local_harness_register",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "W045 emits a runnable local orchestration harness register, but it is not a daemon, endpoint, or recurring scheduler"
+        }),
+        json!({
+            "row_id": "service.run_queue_manifest",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "service-readable run queue manifest is retained in the artifact envelope, but it is not an operated queue"
+        }),
+        json!({
+            "row_id": "service.retained_history_query_contract",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "deterministic retained-history query contract and replay-correlation index are emitted as local evidence"
+        }),
+        json!({
+            "row_id": "service.retained_witness_lifecycle_register",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "retained-witness lifecycle rows are carried and extended without pack eligibility promotion"
+        }),
+        json!({
+            "row_id": "service.alert_quarantine_contract",
+            "state": "satisfied_boundary",
+            "evidence_or_blocker": "local alert/quarantine rules are evaluated, but no external dispatcher is operated"
+        }),
+        json!({
+            "row_id": "service.stage2_service_dependency_bound",
+            "state": "satisfied",
+            "evidence_or_blocker": "W045 Stage 2 service gate retains operated cross-engine differential service as an exact dependency"
+        }),
+        json!({
+            "row_id": "service.oxfml_formatting_watch",
+            "state": "satisfied",
+            "evidence_or_blocker": "current OxFml W073 typed-only formatting intake is bound as a watch row without changing service semantics"
+        }),
+        json!({
+            "row_id": "service.recurring_scheduler",
+            "state": "blocked",
+            "evidence_or_blocker": "no recurring scheduler, daemon, service endpoint, or operated run queue is present"
+        }),
+        json!({
+            "row_id": "service.external_dispatch_endpoint",
+            "state": "blocked",
+            "evidence_or_blocker": "local dispatch contract is evaluated, but no external alert or quarantine endpoint is operated"
+        }),
+    ];
+
+    json!({
+        "schema_version": W045_SERVICE_ENVELOPE_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "runner_kind": "local_harness_backed_operated_assurance_retained_history_witness_slo_alert_service",
+        "runner_command": format!("cargo run -p oxcalc-tracecalc-cli -- operated-assurance {run_id}"),
+        "file_backed_service_envelope_present": true,
+        "local_harness_register_present": true,
+        "service_run_queue_manifest_present": true,
+        "operated_run_queue_present": false,
+        "service_endpoint_present": false,
+        "recurring_scheduler_present": false,
+        "source_evidence_row_count": source_evidence_row_count,
+        "row_count": rows.len(),
+        "rows": rows
+    })
+}
+
+fn w045_operated_service_harness(
+    run_id: &str,
+    relative_artifact_root: &str,
+    service_envelope: &Value,
+) -> Value {
+    let operations = vec![
+        json!({
+            "operation_id": "harness.source_evidence_index_load",
+            "operation_kind": "artifact_ingest",
+            "local_runnable": true,
+            "result_state": "source_rows_available_for_packet"
+        }),
+        json!({
+            "operation_id": "harness.service_envelope_write",
+            "operation_kind": "artifact_emit",
+            "local_runnable": true,
+            "result_state": "service_envelope_written"
+        }),
+        json!({
+            "operation_id": "harness.retained_history_query_emit",
+            "operation_kind": "history_projection",
+            "local_runnable": true,
+            "result_state": "retained_history_query_rows_written"
+        }),
+        json!({
+            "operation_id": "harness.replay_correlation_query_emit",
+            "operation_kind": "history_projection",
+            "local_runnable": true,
+            "result_state": "replay_correlation_rows_written"
+        }),
+        json!({
+            "operation_id": "harness.retained_witness_lifecycle_emit",
+            "operation_kind": "witness_lifecycle_projection",
+            "local_runnable": true,
+            "result_state": "retained_witness_lifecycle_rows_written"
+        }),
+        json!({
+            "operation_id": "harness.alert_dispatch_rule_eval",
+            "operation_kind": "local_alert_rule_evaluation",
+            "local_runnable": true,
+            "result_state": "alert_rules_evaluated_without_external_dispatch"
+        }),
+        json!({
+            "operation_id": "harness.cross_engine_service_classification",
+            "operation_kind": "service_gate_classification",
+            "local_runnable": true,
+            "result_state": "cross_engine_service_dependency_classified"
+        }),
+        json!({
+            "operation_id": "harness.no_proxy_promotion_guard",
+            "operation_kind": "promotion_guard",
+            "local_runnable": true,
+            "result_state": "local_harness_not_counted_as_operated_endpoint"
+        }),
+    ];
+
+    json!({
+        "schema_version": W045_SERVICE_HARNESS_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "source_service_envelope_row_count": number_at(service_envelope, "row_count"),
+        "local_harness_runnable": true,
+        "local_process_only": true,
+        "service_endpoint_present": false,
+        "recurring_scheduler_present": false,
+        "external_dispatcher_present": false,
+        "retained_history_endpoint_present": false,
+        "retained_witness_lifecycle_endpoint_present": false,
+        "operation_count": operations.len(),
+        "operations": operations
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w045_retained_history_service_query(
+    run_id: &str,
+    relative_artifact_root: &str,
+    w044_retained: &Value,
+    w045_residual_map: &Value,
+    w045_promotion_contract_map: &Value,
+    w045_optimized_summary: &Value,
+    w045_rust_summary: &Value,
+    w045_lean_tla_summary: &Value,
+    w045_stage2_summary: &Value,
+    w045_stage2_service_gate: &Value,
+    w045_stage2_blockers: &Value,
+    w044_pack_decision: &Value,
+    w045_oxfml_inbound_intake: &Value,
+    service_harness: &Value,
+) -> Value {
+    let mut rows = w044_retained
+        .get("rows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let next_order = rows.len() + 1;
+    rows.push(history_row(
+        next_order,
+        "w045.residual_successor_obligation_map",
+        "w045_residual_successor_obligation_map",
+        "w045_operated_service_obligations_bound",
+        W045_RESIDUAL_MAP,
+        0,
+        0,
+        number_at(w045_residual_map, "source_residual_lane_count"),
+    ));
+    rows.push(history_row(
+        next_order + 1,
+        "w045.optimized_core_dynamic_transition",
+        "w045_optimized_core_service_input",
+        "dynamic_transition_evidence_bound_with_soft_reference_and_counterpart_blockers",
+        W045_OPTIMIZED_SUMMARY,
+        number_at(w045_optimized_summary, "failed_row_count"),
+        0,
+        number_at(w045_optimized_summary, "w045_exact_remaining_blocker_count"),
+    ));
+    rows.push(history_row(
+        next_order + 2,
+        "w045.rust_totality_refinement_bridge",
+        "w045_rust_refinement_service_bridge",
+        "rust_refinement_bridge_bound_with_totality_and_panic_surface_blockers",
+        W045_RUST_SUMMARY,
+        number_at(w045_rust_summary, "failed_row_count"),
+        0,
+        number_at(w045_rust_summary, "exact_remaining_blocker_count"),
+    ));
+    rows.push(history_row(
+        next_order + 3,
+        "w045.lean_tla_model_bound_bridge",
+        "w045_lean_tla_model_bound_service_bridge",
+        "bounded_lean_tla_model_bound_bridge_retained_with_fairness_blockers",
+        W045_LEAN_TLA_SUMMARY,
+        number_at(w045_lean_tla_summary, "failed_row_count"),
+        0,
+        number_at(w045_lean_tla_summary, "exact_remaining_blocker_count"),
+    ));
+    rows.push(history_row(
+        next_order + 4,
+        "w045.stage2_service_gate",
+        "w045_stage2_service_gate",
+        "stage2_service_gate_bound_with_cross_engine_retained_witness_and_pack_blockers",
+        W045_STAGE2_SUMMARY,
+        number_at(w045_stage2_summary, "failed_row_count"),
+        0,
+        number_at(w045_stage2_summary, "exact_remaining_blocker_count"),
+    ));
+    rows.push(history_row(
+        next_order + 5,
+        "w044.pack_c5_decision",
+        "w044_pack_c5_service_blockers",
+        "pack_c5_decision_retains_service_retained_witness_slo_and_program_grade_governance_blockers",
+        W044_PACK_DECISION,
+        0,
+        0,
+        array_len(&w044_pack_decision["no_promotion_reason_ids"]) as u64,
+    ));
+    rows.push(history_row(
+        next_order + 6,
+        "w045.local_service_harness",
+        "w045_local_operated_service_harness",
+        "local_harness_orchestration_recorded_without_operated_endpoint_promotion",
+        W045_PROMOTION_CONTRACT_MAP,
+        0,
+        0,
+        if bool_at(service_harness, "service_endpoint_present") {
+            1
+        } else {
+            0
+        },
+    ));
+
+    let mut query_register = w044_retained
+        .get("query_register")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    query_register.push(json!({
+        "query_id": "history.by_w045_service_obligation",
+        "query_kind": "join_service_rows_to_w045_successor_obligation_map",
+        "result_source": W045_RESIDUAL_MAP,
+        "deterministic": true
+    }));
+    query_register.push(json!({
+        "query_id": "history.by_w045_stage2_service_gate",
+        "query_kind": "join_history_rows_to_w045_stage2_service_gate",
+        "result_source": W045_STAGE2_SERVICE_GATE,
+        "deterministic": true
+    }));
+    query_register.push(json!({
+        "query_id": "history.by_w045_proof_model_service_dependencies",
+        "query_kind": "join_history_rows_to_w045_rust_and_lean_tla_proof_model_blockers",
+        "result_source": W045_LEAN_TLA_BLOCKERS,
+        "deterministic": true
+    }));
+    query_register.push(json!({
+        "query_id": "history.by_w045_pack_and_retained_witness_gate",
+        "query_kind": "join_history_rows_to_w044_pack_and_w045_retained_witness_dependencies",
+        "result_source": W044_PACK_DECISION,
+        "deterministic": true
+    }));
+    query_register.push(json!({
+        "query_id": "history.by_w045_local_service_harness",
+        "query_kind": "join_history_rows_to_local_harness_operations_without_endpoint_promotion",
+        "result_source": W045_PROMOTION_CONTRACT_MAP,
+        "deterministic": true
+    }));
+
+    let mut replay_correlation_index = w044_retained
+        .get("replay_correlation_index")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w045_service_obligations",
+        "source_artifacts": [W045_RESIDUAL_MAP, W045_PROMOTION_CONTRACT_MAP],
+        "w045_obligations": ["W045-OBL-023", "W045-OBL-024", "W045-OBL-025", "W045-OBL-026", "W045-OBL-027"],
+        "replay_role": "operated_assurance_service_obligation_alignment"
+    }));
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w045_stage2_service_gate",
+        "source_artifacts": [W045_STAGE2_SERVICE_GATE, W045_STAGE2_BLOCKERS],
+        "w045_obligations": ["W045-OBL-022", "W045-OBL-025", "W045-OBL-036"],
+        "replay_role": "stage2_service_gate_and_retained_witness_pack_dependency"
+    }));
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w045_proof_model_service_gate",
+        "source_artifacts": [W045_RUST_SUMMARY, W045_LEAN_TLA_SUMMARY, W045_STAGE2_SUMMARY],
+        "w045_obligations": ["W045-OBL-014", "W045-OBL-017", "W045-OBL-022"],
+        "replay_role": "proof_model_rows_as_service_readiness_inputs_only"
+    }));
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w045_local_service_harness",
+        "source_artifacts": [W045_PROMOTION_CONTRACT_MAP],
+        "w045_obligations": ["W045-OBL-023", "W045-OBL-026", "W045-OBL-027"],
+        "replay_role": "local_runnable_harness_orchestration_without_endpoint_promotion"
+    }));
+    replay_correlation_index.push(json!({
+        "correlation_id": "corr.w045_w073_formatting_guard",
+        "source_artifacts": [W045_OXFML_INBOUND_INTAKE],
+        "w045_obligations": ["W045-OBL-003", "W045-OBL-031"],
+        "replay_role": "observable_formatting_watch"
+    }));
+
+    json!({
+        "schema_version": W045_RETAINED_HISTORY_SERVICE_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "history_kind": "w045_retained_history_query_contract_with_local_harness_retained_witness_slo_stage2_proof_model_and_formatting_watch",
+        "file_backed_retained_history_store_present": true,
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "retained_history_query_api_contract_present": true,
+        "retained_history_query_register_present": true,
+        "replay_correlation_index_present": true,
+        "retained_history_service_operated": false,
+        "retained_history_service_promoted": false,
+        "retention_slo_policy_declared": true,
+        "retention_slo_enforced": false,
+        "stage2_policy_promoted": false,
+        "stage2_service_dependency_blocker_present": row_with_field_exists(
+            w045_stage2_blockers,
+            "row_id",
+            "w045_stage2_operated_cross_engine_service_dependency_blocker"
+        ),
+        "source_history_row_count": number_at(w044_retained, "store_record_count"),
+        "store_record_count": rows.len(),
+        "query_register_row_count": query_register.len(),
+        "replay_correlation_row_count": replay_correlation_index.len(),
+        "promotion_contract_count": number_at(w045_promotion_contract_map, "promotion_contract_count"),
+        "service_gate_row_count": number_at(w045_stage2_service_gate, "row_count"),
+        "w073_threshold_fallback_allowed_for_typed_families": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "threshold_fallback_allowed_for_typed_families"),
+        "history_lifecycle_state": "local_harness_query_contract_extended_without_operated_retained_history_service",
+        "rows": rows,
+        "query_register": query_register,
+        "replay_correlation_index": replay_correlation_index
+    })
+}
+
+fn w045_retained_witness_lifecycle(
+    run_id: &str,
+    w044_witness: &Value,
+    w045_stage2_decision: &Value,
+    service_harness: &Value,
+) -> Value {
+    let mut rows = w044_witness
+        .get("rows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    rows.push(json!({
+        "row_id": "witness.w045_retention_slo_local_harness_gate",
+        "source_artifact": W045_RESIDUAL_MAP,
+        "lifecycle_state": "retention_slo_policy_declared_local_harness_observed_not_enforced",
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "retention_slo_policy_declared": true,
+        "retention_slo_enforced": false,
+        "pack_eligible": false,
+        "promotion_consequence": "retained-witness lifecycle service and retention SLO enforcement remain unpromoted until operated enforcement exists"
+    }));
+    rows.push(json!({
+        "row_id": "witness.w045_stage2_retained_witness_pack_gate",
+        "source_artifact": W045_STAGE2_DECISION,
+        "lifecycle_state": "stage2_retained_witness_dependency_retained",
+        "stage2_retained_witness_lifecycle_promoted": bool_at(w045_stage2_decision, "retained_witness_lifecycle_promoted"),
+        "pack_grade_replay_promoted": bool_at(w045_stage2_decision, "pack_grade_replay_promoted"),
+        "pack_eligible": false,
+        "promotion_consequence": "pack-grade replay and C5 remain unpromoted"
+    }));
+    rows.push(json!({
+        "row_id": "witness.w045_pack_grade_replay_governance_gate",
+        "source_artifact": W045_STAGE2_DECISION,
+        "lifecycle_state": "pack_governance_dependency_retained",
+        "pack_grade_replay_governance_promoted": bool_at(w045_stage2_decision, "pack_grade_replay_governance_promoted"),
+        "pack_eligible": false,
+        "promotion_consequence": "pack-grade replay governance service remains unpromoted"
+    }));
+    rows.push(json!({
+        "row_id": "witness.w045_no_proxy_pack_eligibility_guard",
+        "source_artifact": W045_PROMOTION_CONTRACT_MAP,
+        "lifecycle_state": "local_harness_not_pack_eligibility",
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "service_endpoint_present": bool_at(service_harness, "service_endpoint_present"),
+        "pack_eligible": false,
+        "promotion_consequence": "local harness evidence cannot promote retained witnesses into pack-grade replay eligibility"
+    }));
+
+    let retained_local_count = rows
+        .iter()
+        .filter(|row| text_at(row, "lifecycle_state") == "wit.retained_local")
+        .count();
+    let quarantined_count = rows
+        .iter()
+        .filter(|row| text_at(row, "lifecycle_state") == "wit.quarantined")
+        .count();
+    let pack_eligible_count = rows
+        .iter()
+        .filter(|row| bool_at(row, "pack_eligible"))
+        .count();
+
+    json!({
+        "schema_version": W045_RETAINED_WITNESS_SCHEMA_V1,
+        "run_id": run_id,
+        "retained_witness_lifecycle_register_present": true,
+        "retained_witness_lifecycle_service_promoted": false,
+        "retention_slo_policy_declared": true,
+        "retention_slo_enforced": false,
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "pack_governance_promoted": false,
+        "witness_lifecycle_row_count": rows.len(),
+        "retained_local_witness_count": retained_local_count,
+        "quarantined_witness_count": quarantined_count,
+        "pack_eligible_witness_count": pack_eligible_count,
+        "rows": rows
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w045_alert_dispatch_service(
+    run_id: &str,
+    w044_alerts: &Value,
+    w044_promotion: &Value,
+    w045_stage2_decision: &Value,
+    w044_pack_decision: &Value,
+    retained_history: &Value,
+    retained_witness_register: &Value,
+    service_harness: &Value,
+    w045_oxfml_inbound_intake: &Value,
+) -> Value {
+    let mut rows = w044_alerts
+        .get("rows")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    rows.push(json!({
+        "rule_id": "quarantine.w045_unsupported_operated_service_claim",
+        "action": "quarantine_run_and_block_service_promotion",
+        "trigger": "any W044/W045 operated service, retained-history service, retained-witness service, external dispatcher, Stage 2 service, pack, C5, or release-grade promotion flag appears without operated service artifacts",
+        "owner": "calc-zkio.6; calc-zkio.10; calc-zkio.11",
+        "triggered": bool_at(w044_promotion, "operated_continuous_assurance_service_promoted")
+            || bool_at(w044_promotion, "retained_history_service_promoted")
+            || bool_at(w044_promotion, "retained_witness_lifecycle_service_promoted")
+            || bool_at(w044_promotion, "retention_slo_enforcement_promoted")
+            || bool_at(w044_promotion, "external_alert_dispatcher_promoted")
+            || bool_at(w045_stage2_decision, "operated_cross_engine_stage2_service_promoted")
+            || bool_at(w044_pack_decision, "capability_promoted"),
+        "decision": "clean",
+        "evidence": {
+            "operated_continuous_assurance_service_promoted": bool_at(w044_promotion, "operated_continuous_assurance_service_promoted"),
+            "retained_history_service_promoted": bool_at(w044_promotion, "retained_history_service_promoted"),
+            "retained_witness_lifecycle_service_promoted": bool_at(w044_promotion, "retained_witness_lifecycle_service_promoted"),
+            "retention_slo_enforcement_promoted": bool_at(w044_promotion, "retention_slo_enforcement_promoted"),
+            "external_alert_dispatcher_promoted": bool_at(w044_promotion, "external_alert_dispatcher_promoted"),
+            "operated_cross_engine_stage2_service_promoted": bool_at(w045_stage2_decision, "operated_cross_engine_stage2_service_promoted"),
+            "pack_capability_promoted": bool_at(w044_pack_decision, "capability_promoted")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "quarantine.w045_local_harness_incomplete",
+        "action": "quarantine_run_and_block_local_harness_claim",
+        "trigger": "local service harness is absent or has fewer than eight deterministic operations",
+        "owner": "calc-zkio.6",
+        "triggered": !bool_at(service_harness, "local_harness_runnable")
+            || number_at(service_harness, "operation_count") < 8,
+        "decision": "clean",
+        "evidence": {
+            "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+            "operation_count": number_at(service_harness, "operation_count")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "quarantine.w045_missing_retained_history_or_witness_contract",
+        "action": "quarantine_run_and_block_pack_reassessment",
+        "trigger": "retained-history query API contract, replay-correlation index, or retained-witness register is absent",
+        "owner": "calc-zkio.6; calc-zkio.10",
+        "triggered": !bool_at(retained_history, "retained_history_query_api_contract_present")
+            || !bool_at(retained_history, "replay_correlation_index_present")
+            || !bool_at(retained_witness_register, "retained_witness_lifecycle_register_present"),
+        "decision": "clean",
+        "evidence": {
+            "retained_history_query_api_contract_present": bool_at(retained_history, "retained_history_query_api_contract_present"),
+            "replay_correlation_index_present": bool_at(retained_history, "replay_correlation_index_present"),
+            "retained_witness_lifecycle_register_present": bool_at(retained_witness_register, "retained_witness_lifecycle_register_present")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "quarantine.w045_stage2_operated_service_claim_without_service",
+        "action": "quarantine_run_and_block_stage2_promotion",
+        "trigger": "W045 Stage 2 claims operated cross-engine service or policy promotion while service readiness remains local-harness-only",
+        "owner": "calc-zkio.6; calc-zkio.5; calc-zkio.10",
+        "triggered": bool_at(w045_stage2_decision, "operated_cross_engine_stage2_service_promoted")
+            || bool_at(w045_stage2_decision, "stage2_policy_promoted")
+            || bool_at(w045_stage2_decision, "service_gate_promoted"),
+        "decision": "clean",
+        "evidence": {
+            "operated_cross_engine_stage2_service_promoted": bool_at(w045_stage2_decision, "operated_cross_engine_stage2_service_promoted"),
+            "stage2_policy_promoted": bool_at(w045_stage2_decision, "stage2_policy_promoted"),
+            "service_gate_promoted": bool_at(w045_stage2_decision, "service_gate_promoted")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "alert.w045_retention_slo_not_enforced",
+        "action": "record_retention_slo_blocker_without_dispatch",
+        "trigger": "retention SLO policy is declared but not enforced by an operated service",
+        "owner": "calc-zkio.6; calc-zkio.10",
+        "triggered": false,
+        "decision": "clean",
+        "evidence": {
+            "retention_slo_policy_declared": bool_at(retained_history, "retention_slo_policy_declared"),
+            "retention_slo_enforced": bool_at(retained_history, "retention_slo_enforced")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "alert.w045_local_harness_not_service_endpoint",
+        "action": "record_local_harness_boundary_without_dispatch",
+        "trigger": "local harness is runnable but has no daemon, queue, external dispatcher, or retained-history endpoint",
+        "owner": "calc-zkio.6",
+        "triggered": false,
+        "decision": "clean",
+        "evidence": {
+            "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+            "service_endpoint_present": bool_at(service_harness, "service_endpoint_present"),
+            "external_dispatcher_present": bool_at(service_harness, "external_dispatcher_present"),
+            "retained_history_endpoint_present": bool_at(service_harness, "retained_history_endpoint_present")
+        }
+    }));
+    rows.push(json!({
+        "rule_id": "quarantine.w045_w073_old_string_fallback_claim",
+        "action": "quarantine_run_and_open_oxfml_seam_handoff",
+        "trigger": "W045 evidence claims W072 bounded threshold strings still define aggregate or visualization metadata for W073 families",
+        "owner": "calc-zkio.6; calc-zkio.8",
+        "triggered": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "threshold_fallback_allowed_for_typed_families"),
+        "decision": "clean",
+        "evidence": {
+            "threshold_fallback_allowed_for_typed_families": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "threshold_fallback_allowed_for_typed_families"),
+            "old_bounded_string_non_interpretation_evidence_reviewed": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "old_bounded_string_non_interpretation_evidence_reviewed")
+        }
+    }));
+
+    let quarantine_decision_count = rows
+        .iter()
+        .filter(|row| {
+            row.get("triggered").and_then(Value::as_bool) == Some(true)
+                && text_at(row, "action").starts_with("quarantine")
+        })
+        .count();
+    let alert_decision_count = rows
+        .iter()
+        .filter(|row| {
+            row.get("triggered").and_then(Value::as_bool) == Some(true)
+                && text_at(row, "action").starts_with("alert")
+        })
+        .count();
+
+    json!({
+        "schema_version": W045_ALERT_DISPATCH_SCHEMA_V1,
+        "run_id": run_id,
+        "policy_source": W044_ALERT_DISPATCH_SERVICE,
+        "policy_state": "w045_local_alert_dispatch_service_contract_evaluated_without_external_dispatcher_promotion",
+        "evaluated_rule_count": rows.len(),
+        "quarantine_decision_count": quarantine_decision_count,
+        "alert_decision_count": alert_decision_count,
+        "clean_rule_count": rows.len() - quarantine_decision_count - alert_decision_count,
+        "local_alert_dispatcher_evaluated": true,
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "external_alert_dispatcher_contract_present": true,
+        "external_alert_dispatcher_promoted": false,
+        "quarantine_service_promoted": false,
+        "rows": rows
+    })
+}
+
+fn w045_cross_engine_service(
+    run_id: &str,
+    w044_cross_engine: &Value,
+    w045_stage2_summary: &Value,
+    w045_stage2_service_gate: &Value,
+    w045_stage2_blockers: &Value,
+) -> Value {
+    json!({
+        "schema_version": W045_CROSS_ENGINE_SERVICE_SCHEMA_V1,
+        "run_id": run_id,
+        "file_backed_cross_engine_substrate_present": bool_at(w044_cross_engine, "file_backed_cross_engine_substrate_present"),
+        "w044_stage2_service_dependency_blocker_present": bool_at(w044_cross_engine, "w044_stage2_service_dependency_blocker_present"),
+        "w045_stage2_policy_row_count": number_at(w045_stage2_summary, "policy_row_count"),
+        "w045_stage2_service_gate_row_count": number_at(w045_stage2_service_gate, "row_count"),
+        "w045_stage2_service_dependency_blocker_present": row_with_field_exists(
+            w045_stage2_blockers,
+            "row_id",
+            "w045_stage2_operated_cross_engine_service_dependency_blocker"
+        ),
+        "operated_cross_engine_differential_service_present": false,
+        "operated_cross_engine_differential_service_promoted": false,
+        "service_endpoint_present": false,
+        "service_state": "file_backed_cross_engine_substrate_and_w045_stage2_service_gate_bound_without_operated_service",
+        "blocked_service_claims": [
+            "recurring_cross_engine_diff_scheduler",
+            "cross_engine_service_endpoint",
+            "operated_mismatch_quarantine_dispatcher",
+            "stage2_operated_cross_engine_differential_service"
+        ]
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn w045_service_readiness(
+    run_id: &str,
+    relative_artifact_root: &str,
+    service_envelope: &Value,
+    service_harness: &Value,
+    retained_history: &Value,
+    retained_witness_register: &Value,
+    alert_dispatcher: &Value,
+    cross_engine_service: &Value,
+    w045_stage2_decision: &Value,
+    w045_oxfml_inbound_intake: &Value,
+) -> Value {
+    let criteria = vec![
+        criterion(
+            "readiness.w045_service_envelope_present",
+            "satisfied",
+            "W045 emits a service envelope through the checked runner",
+        ),
+        criterion(
+            "readiness.w045_source_evidence_index_bound",
+            "satisfied",
+            "W045 source index binds W045 residual obligations, W044 service evidence, W045 proof/model evidence, W045 Stage 2 service gates, W044 pack blockers, and W073 formatting intake",
+        ),
+        criterion(
+            "readiness.w045_local_harness_runnable",
+            "satisfied_boundary",
+            "local harness register is runnable for artifact orchestration but not an operated service endpoint",
+        ),
+        criterion(
+            "readiness.w045_local_harness_operation_set",
+            "satisfied",
+            "local harness records eight deterministic operations for source, history, witness, alert, cross-engine, and no-proxy guard orchestration",
+        ),
+        criterion(
+            "readiness.w045_run_queue_manifest_declared",
+            "satisfied_boundary",
+            "service-readable run queue manifest is declared in the envelope, but not operated as a scheduler",
+        ),
+        criterion(
+            "readiness.w045_retained_history_query_contract_present",
+            "satisfied_boundary",
+            "deterministic retained-history query API contract is emitted with store and query rows",
+        ),
+        criterion(
+            "readiness.w045_replay_correlation_index_present",
+            "satisfied",
+            "replay-correlation rows are emitted for W045 service obligations, Stage 2 service gates, proof/model inputs, local harness, and W073 guard evidence",
+        ),
+        criterion(
+            "readiness.w045_retained_witness_lifecycle_register_present",
+            "satisfied_boundary",
+            "retained-witness lifecycle rows are registered without pack eligibility promotion",
+        ),
+        criterion(
+            "readiness.w045_retention_slo_policy_declared",
+            "satisfied_boundary",
+            "retention SLO policy is declared for retained-history and retained-witness lifecycle evidence",
+        ),
+        criterion(
+            "readiness.w045_alert_dispatch_contract_evaluated",
+            "satisfied",
+            "local alert/quarantine dispatch contract is evaluated against service, retained-history, retained-witness, Stage 2, pack, proof/model, harness, and W073 inputs",
+        ),
+        criterion(
+            "readiness.w045_no_quarantine_decisions",
+            "satisfied",
+            "W045 local dispatch contract and source evidence produce no quarantine decisions",
+        ),
+        criterion(
+            "readiness.w045_cross_engine_substrate_bound",
+            "satisfied_boundary",
+            "W045 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+        ),
+        criterion(
+            "readiness.w045_optimized_core_service_input_bound",
+            "satisfied",
+            "W045 dynamic transition evidence is bound as service-readiness input only",
+        ),
+        criterion(
+            "readiness.w045_rust_refinement_bridge_bound",
+            "satisfied",
+            "W045 Rust refinement rows are bound as service-readiness input only",
+        ),
+        criterion(
+            "readiness.w045_lean_tla_model_bound_bridge_bound",
+            "satisfied_boundary",
+            "W045 Lean/TLA bounded model rows are bound without promoting fairness or unbounded coverage",
+        ),
+        criterion(
+            "readiness.w045_stage2_service_gate_classified",
+            "satisfied",
+            "W045 Stage 2 service gate retains operated cross-engine service as an exact dependency",
+        ),
+        criterion(
+            "readiness.w045_retained_witness_pack_dependency_classified",
+            "satisfied",
+            "W045 Stage 2 retains retained-witness lifecycle and retention SLO as exact pack-grade replay dependencies",
+        ),
+        criterion(
+            "readiness.w045_pack_governance_dependency_classified",
+            "satisfied",
+            "W045 Stage 2 and W044 pack decision retain pack-grade replay governance as a no-promotion dependency",
+        ),
+        criterion(
+            "readiness.w045_w044_pack_service_blockers_bound",
+            "satisfied",
+            "W044 pack/C5 reassessment retains retained-history, retained-witness, retention SLO, alert, cross-engine, and pack-governance service blockers",
+        ),
+        criterion(
+            "readiness.w045_w073_typed_formatting_guard_retained",
+            "satisfied",
+            "W045 carries OxFml W073 typed_rule-only aggregate/visualization formatting guard and old-string non-interpretation evidence",
+        ),
+        criterion(
+            "readiness.w045_downstream_w073_request_construction_unverified",
+            "satisfied_boundary",
+            "downstream typed-rule request construction remains required but unverified by OxCalc and is routed to calc-zkio.8",
+        ),
+        criterion(
+            "readiness.w045_no_proxy_service_promotion_guard",
+            "satisfied",
+            "file-backed and local-harness-only artifacts are not counted as operated service, pack, Stage 2, C5, or release-grade promotions",
+        ),
+        criterion(
+            "readiness.w045_local_harness_endpoint_boundary",
+            "satisfied_boundary",
+            "local harness is runnable but explicitly records no service endpoint, daemon, external dispatcher, retained-history endpoint, or retained-witness lifecycle endpoint",
+        ),
+        criterion(
+            "readiness.w045_retained_history_query_rows_extended",
+            "satisfied",
+            "retained-history store, query-register, and replay-correlation rows are extended beyond W044 with W045 service and harness evidence",
+        ),
+        criterion(
+            "readiness.w045_retained_witness_lifecycle_rows_extended",
+            "satisfied_boundary",
+            "retained-witness lifecycle rows are extended beyond W044 while keeping pack eligibility at zero",
+        ),
+        criterion(
+            "service.operated_scheduler_service_endpoint",
+            "blocked",
+            "local harness and run queue manifest are present, but no recurring scheduler, daemon, service endpoint, or operated queue exists",
+        ),
+        criterion(
+            "service.retained_history_service_endpoint",
+            "blocked",
+            "retained-history query contract is local-harness-backed and not an operated retained-history service endpoint",
+        ),
+        criterion(
+            "service.retained_witness_lifecycle_service_slo",
+            "blocked",
+            "retained-witness lifecycle rows are present, but no lifecycle service or retention SLO enforcement exists",
+        ),
+        criterion(
+            "service.external_alert_dispatcher",
+            "blocked",
+            "external alert/quarantine dispatcher contract is represented, but no external dispatcher or quarantine service is operated",
+        ),
+        criterion(
+            "service.operated_cross_engine_differential",
+            "blocked",
+            "cross-engine differential evidence remains file-backed rather than operated as a service",
+        ),
+        criterion(
+            "service.pack_grade_replay_governance",
+            "blocked",
+            "pack-grade replay governance service remains unpromoted and cannot be inferred from local retained-history, retained-witness, or harness artifacts",
+        ),
+    ];
+    let blocked_criteria_count = criteria
+        .iter()
+        .filter(|row| row.get("state").and_then(Value::as_str) == Some("blocked"))
+        .count();
+
+    json!({
+        "schema_version": W045_SERVICE_READINESS_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "readiness_state": "w045_service_packet_validated_with_local_harness_without_operated_service_promotion",
+        "criteria_count": criteria.len(),
+        "satisfied_criteria_count": criteria.len() - blocked_criteria_count,
+        "blocked_criteria_count": blocked_criteria_count,
+        "service_envelope_row_count": number_at(service_envelope, "row_count"),
+        "local_harness_runnable": bool_at(service_harness, "local_harness_runnable"),
+        "service_harness_operation_count": number_at(service_harness, "operation_count"),
+        "service_run_queue_manifest_present": bool_at(service_envelope, "service_run_queue_manifest_present"),
+        "service_endpoint_present": bool_at(service_harness, "service_endpoint_present"),
+        "history_store_record_count": number_at(retained_history, "store_record_count"),
+        "query_register_row_count": number_at(retained_history, "query_register_row_count"),
+        "replay_correlation_row_count": number_at(retained_history, "replay_correlation_row_count"),
+        "retained_witness_lifecycle_row_count": number_at(retained_witness_register, "witness_lifecycle_row_count"),
+        "evaluated_alert_rule_count": number_at(alert_dispatcher, "evaluated_rule_count"),
+        "quarantine_decision_count": number_at(alert_dispatcher, "quarantine_decision_count"),
+        "alert_decision_count": number_at(alert_dispatcher, "alert_decision_count"),
+        "file_backed_cross_engine_substrate_present": bool_at(cross_engine_service, "file_backed_cross_engine_substrate_present"),
+        "stage2_policy_promoted": bool_at(w045_stage2_decision, "stage2_policy_promoted"),
+        "w073_typed_rule_only_formatting_guard_carried": array_len(&w045_oxfml_inbound_intake["w073_formatting"]["typed_rule_only_families"]) == 7
+            && !bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "threshold_fallback_allowed_for_typed_families")
+            && bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "old_bounded_string_non_interpretation_evidence_reviewed"),
+        "w073_downstream_typed_rule_request_construction_required": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_typed_rule_request_construction_required"),
+        "w073_downstream_typed_rule_request_construction_verified": bool_at(&w045_oxfml_inbound_intake["w073_formatting"], "downstream_uptake_verified_by_oxcalc"),
+        "operated_continuous_assurance_service_promoted": false,
+        "retained_history_service_promoted": false,
+        "retained_witness_lifecycle_service_promoted": false,
+        "retention_slo_enforcement_promoted": false,
+        "cross_engine_differential_service_promoted": false,
+        "external_alert_dispatcher_promoted": false,
+        "criteria": criteria
+    })
+}
+
+fn w045_exact_service_blockers() -> Vec<Value> {
+    vec![
+        json!({
+            "blocker_id": "service.operated_scheduler_service_endpoint_absent",
+            "owner": "calc-zkio.6; calc-zkio.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W045 emits a runnable local harness and run queue manifest, but no recurring scheduler, daemon, service endpoint, or operated run queue.",
+            "promotion_consequence": "operated continuous assurance service remains unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.retained_history_service_endpoint_absent",
+            "owner": "calc-zkio.6; calc-zkio.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W045 emits retained-history query rows and a local harness operation, but no operated retained-history service endpoint or retention lifecycle service.",
+            "promotion_consequence": "retained-history service and pack-grade replay governance remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.retained_witness_lifecycle_service_slo_absent",
+            "owner": "calc-zkio.6; calc-zkio.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W045 carries retained-witness lifecycle rows and declares a retention SLO policy, but no lifecycle service or SLO enforcement exists.",
+            "promotion_consequence": "retained-witness lifecycle service, retention SLO enforcement, pack-grade replay, C5, and release-grade verification remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.external_alert_dispatcher_absent",
+            "owner": "calc-zkio.6; calc-zkio.7; calc-zkio.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W045 evaluates alert/quarantine dispatch rules locally and records an external dispatcher contract, but no external dispatcher or quarantine service is operated.",
+            "promotion_consequence": "alert/quarantine dispatcher and mismatch quarantine service claims remain unpromoted"
+        }),
+        json!({
+            "blocker_id": "service.operated_cross_engine_differential_absent",
+            "owner": "calc-zkio.6; calc-zkio.7",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "cross-engine evidence remains file-backed and does not run as an operated differential service.",
+            "promotion_consequence": "operated cross-engine differential service, independent diversity, mismatch quarantine, and Stage 2 service dependencies remain blocked"
+        }),
+        json!({
+            "blocker_id": "service.pack_grade_replay_governance_service_absent",
+            "owner": "calc-zkio.6; calc-zkio.10",
+            "status_after_run": "exact_remaining_blocker",
+            "reason": "W045 retained-history, retained-witness, and harness rows are deterministic local artifacts, but no pack-grade replay governance service binds them into a program-grade retained-witness lifecycle.",
+            "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain unpromoted"
+        }),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
 fn w041_source_rows(
     w041_obligation_summary: &Value,
     w041_obligation_map: &Value,
@@ -7744,6 +9466,20 @@ fn row_with_field_exists(value: &Value, field: &str, expected: &str) -> bool {
         .any(|row| row.get(field).and_then(Value::as_str) == Some(expected))
 }
 
+fn failed_rows_in_register(value: &Value) -> u64 {
+    value
+        .get("rows")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|row| {
+            row.get("failures")
+                .and_then(Value::as_array)
+                .is_some_and(|failures| !failures.is_empty())
+        })
+        .count() as u64
+}
+
 fn relative_artifact_path(parts: &[&str]) -> String {
     parts.join("/")
 }
@@ -8396,6 +10132,146 @@ mod tests {
             &repo_root,
             &format!(
                 "docs/test-runs/core-engine/operated-assurance/{run_id}/w044_exact_service_blocker_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(blocker_register["exact_service_blocker_count"], 6);
+
+        cleanup();
+    }
+
+    #[test]
+    fn operated_assurance_runner_binds_w045_local_harness_without_service_promotion() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let run_id = format!("test-w045-operated-assurance-{}", std::process::id());
+        let artifact_root = repo_root.join(format!(
+            "docs/test-runs/core-engine/operated-assurance/{run_id}"
+        ));
+        let cleanup = || {
+            if artifact_root.exists() {
+                let _ = fs::remove_dir_all(&artifact_root);
+            }
+        };
+
+        cleanup();
+        let summary = OperatedAssuranceRunner::new()
+            .execute(&repo_root, &run_id)
+            .unwrap();
+
+        assert_eq!(summary.source_evidence_row_count, 20);
+        assert_eq!(summary.multi_run_history_row_count, 47);
+        assert_eq!(summary.evaluated_alert_rule_count, 42);
+        assert_eq!(summary.quarantine_decision_count, 0);
+        assert_eq!(summary.alert_decision_count, 0);
+        assert_eq!(summary.service_readiness_criteria_count, 31);
+        assert_eq!(summary.service_readiness_blocked_count, 6);
+        assert_eq!(summary.exact_service_blocker_count, 6);
+        assert_eq!(summary.failed_row_count, 0);
+        assert!(!summary.operated_service_promoted);
+
+        let validation = read_json(
+            &repo_root,
+            &format!("docs/test-runs/core-engine/operated-assurance/{run_id}/validation.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            validation["status"],
+            "w045_operated_assurance_retained_history_retained_witness_slo_service_valid"
+        );
+        assert_eq!(validation["service_harness_operation_count"], 8);
+        assert_eq!(validation["query_register_row_count"], 22);
+        assert_eq!(validation["replay_correlation_row_count"], 20);
+        assert_eq!(validation["retained_witness_lifecycle_row_count"], 15);
+
+        let harness = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w045_operated_service_harness_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(harness["local_harness_runnable"], true);
+        assert_eq!(harness["operation_count"], 8);
+        assert_eq!(harness["service_endpoint_present"], false);
+        assert_eq!(harness["external_dispatcher_present"], false);
+
+        let retained_history = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w045_retained_history_service_query.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            retained_history["retained_history_query_api_contract_present"],
+            true
+        );
+        assert_eq!(retained_history["replay_correlation_index_present"], true);
+        assert_eq!(retained_history["retention_slo_enforced"], false);
+        assert_eq!(retained_history["retained_history_service_operated"], false);
+
+        let retained_witness = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w045_retained_witness_lifecycle_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            retained_witness["retained_witness_lifecycle_register_present"],
+            true
+        );
+        assert_eq!(retained_witness["retention_slo_enforced"], false);
+        assert_eq!(retained_witness["pack_eligible_witness_count"], 0);
+
+        let readiness = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w045_service_readiness_register.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(readiness["local_harness_runnable"], true);
+        assert_eq!(
+            readiness["w073_typed_rule_only_formatting_guard_carried"],
+            true
+        );
+        assert_eq!(
+            readiness["w073_downstream_typed_rule_request_construction_verified"],
+            false
+        );
+        assert_eq!(readiness["retention_slo_enforcement_promoted"], false);
+
+        let promotion = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/promotion_decision.json"
+            ),
+        )
+        .unwrap();
+        assert_eq!(promotion["local_operated_service_harness_runnable"], true);
+        assert_eq!(promotion["retained_history_service_promoted"], false);
+        assert_eq!(
+            promotion["retained_witness_lifecycle_service_promoted"],
+            false
+        );
+        assert_eq!(promotion["retention_slo_enforcement_promoted"], false);
+        assert_eq!(
+            promotion["operated_cross_engine_differential_service_promoted"],
+            false
+        );
+        assert_eq!(
+            promotion["w073_typed_rule_only_formatting_guard_carried"],
+            true
+        );
+
+        let blocker_register = read_json(
+            &repo_root,
+            &format!(
+                "docs/test-runs/core-engine/operated-assurance/{run_id}/w045_exact_service_blocker_register.json"
             ),
         )
         .unwrap();

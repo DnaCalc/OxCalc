@@ -25,7 +25,7 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 3. `W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md` - `calc-zkio.3` Rust totality/refinement tranche, validated.
 4. `W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md` - `calc-zkio.4` Lean/TLA proof/model tranche, validated.
 5. `W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md` - `calc-zkio.5` Stage 2 tranche, validated.
-6. `W045_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_SLO_SERVICE_IMPLEMENTATION.md` - `calc-zkio.6` operated assurance/service tranche.
+6. `W045_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_SLO_SERVICE_IMPLEMENTATION.md` - `calc-zkio.6` operated assurance/service tranche, validated.
 7. `W045_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_OPERATED_DIFFERENTIAL_SERVICE.md` - `calc-zkio.7` diversity/service tranche.
 8. `W045_OXFML_PUBLIC_SURFACE_W073_DOWNSTREAM_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md` - `calc-zkio.8` OxFml seam tranche.
 9. `W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md` - `calc-zkio.9` scale assurance tranche.
@@ -34,7 +34,7 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 
 ## Current Status
 
-- execution_state: `calc-zkio.6_ready_operated_assurance_retained_history_retained_witness_slo_service_implementation`
+- execution_state: `calc-zkio.7_ready_independent_evaluator_breadth_mismatch_quarantine_and_operated_differential_service`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
@@ -44,5 +44,6 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
   - `calc-zkio.3` Rust totality/refinement and panic-surface tranche is validated
   - `calc-zkio.4` Lean/TLA verification, fairness, and totality discharge is validated
   - `calc-zkio.5` Stage 2 production partition and pack-grade equivalence service evidence is validated
-  - `calc-zkio.6` operated assurance retained-history retained-witness SLO service implementation is ready next
+  - `calc-zkio.6` operated assurance retained-history retained-witness SLO service implementation is validated
+  - `calc-zkio.7` independent evaluator breadth mismatch quarantine and operated differential service is ready next
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, callable metadata, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

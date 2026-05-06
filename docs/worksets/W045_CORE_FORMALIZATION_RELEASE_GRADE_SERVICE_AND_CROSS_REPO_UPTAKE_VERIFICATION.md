@@ -74,7 +74,7 @@ Validation requirements scale by bead:
 
 ## 6. Current Status
 
-- execution_state: `calc-zkio.6_ready_operated_assurance_retained_history_retained_witness_slo_service_implementation`
+- execution_state: `calc-zkio.7_ready_independent_evaluator_breadth_mismatch_quarantine_and_operated_differential_service`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
@@ -84,7 +84,8 @@ Validation requirements scale by bead:
   - `calc-zkio.3` Rust totality refinement and panic-surface hardening is validated
   - `calc-zkio.4` Lean TLA verification fairness and totality discharge is validated
   - `calc-zkio.5` Stage 2 production partition and pack-grade equivalence service evidence is validated
-  - `calc-zkio.6` operated assurance retained-history retained-witness SLO service implementation is ready next
+  - `calc-zkio.6` operated assurance retained-history retained-witness SLO service implementation is validated
+  - `calc-zkio.7` independent evaluator breadth mismatch quarantine and operated differential service is ready next
   - release-grade verification remains unpromoted
   - pack-grade replay and C5 remain unpromoted
   - operated services, Stage 2 production policy, independent evaluator breadth, broad OxFml/public migration, callable metadata, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain open or external as classified

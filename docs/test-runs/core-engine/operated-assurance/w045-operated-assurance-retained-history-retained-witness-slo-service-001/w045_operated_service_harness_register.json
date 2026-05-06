@@ -1,0 +1,64 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001",
+  "external_dispatcher_present": false,
+  "local_harness_runnable": true,
+  "local_process_only": true,
+  "operation_count": 8,
+  "operations": [
+    {
+      "local_runnable": true,
+      "operation_id": "harness.source_evidence_index_load",
+      "operation_kind": "artifact_ingest",
+      "result_state": "source_rows_available_for_packet"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.service_envelope_write",
+      "operation_kind": "artifact_emit",
+      "result_state": "service_envelope_written"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.retained_history_query_emit",
+      "operation_kind": "history_projection",
+      "result_state": "retained_history_query_rows_written"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.replay_correlation_query_emit",
+      "operation_kind": "history_projection",
+      "result_state": "replay_correlation_rows_written"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.retained_witness_lifecycle_emit",
+      "operation_kind": "witness_lifecycle_projection",
+      "result_state": "retained_witness_lifecycle_rows_written"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.alert_dispatch_rule_eval",
+      "operation_kind": "local_alert_rule_evaluation",
+      "result_state": "alert_rules_evaluated_without_external_dispatch"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.cross_engine_service_classification",
+      "operation_kind": "service_gate_classification",
+      "result_state": "cross_engine_service_dependency_classified"
+    },
+    {
+      "local_runnable": true,
+      "operation_id": "harness.no_proxy_promotion_guard",
+      "operation_kind": "promotion_guard",
+      "result_state": "local_harness_not_counted_as_operated_endpoint"
+    }
+  ],
+  "recurring_scheduler_present": false,
+  "retained_history_endpoint_present": false,
+  "retained_witness_lifecycle_endpoint_present": false,
+  "run_id": "w045-operated-assurance-retained-history-retained-witness-slo-service-001",
+  "schema_version": "oxcalc.operated_assurance.w045.operated_service_harness.v1",
+  "service_endpoint_present": false,
+  "source_service_envelope_row_count": 13
+}

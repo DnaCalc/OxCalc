@@ -21,7 +21,7 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 ## Planned Packets
 
 1. `W045_RESIDUAL_RELEASE_GRADE_SUCCESSOR_OBLIGATION_AND_CURRENT_OXFML_INTAKE_MAP.md` - `calc-zkio.1` residual map, validated.
-2. `W045_OPTIMIZED_CORE_COUNTERPART_COVERAGE_AND_CALLABLE_METADATA_PROJECTION_CLOSURE.md` - `calc-zkio.2` optimized/core and callable metadata tranche.
+2. `W045_OPTIMIZED_CORE_COUNTERPART_COVERAGE_AND_CALLABLE_METADATA_PROJECTION_CLOSURE.md` - `calc-zkio.2` optimized/core and callable metadata tranche, validated.
 3. `W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md` - `calc-zkio.3` Rust totality/refinement tranche.
 4. `W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md` - `calc-zkio.4` Lean/TLA proof/model tranche.
 5. `W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md` - `calc-zkio.5` Stage 2 tranche.
@@ -34,11 +34,12 @@ The governing workset is `docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SE
 
 ## Current Status
 
-- execution_state: `calc-zkio.2_ready_optimized_core_counterpart_coverage_and_callable_metadata_projection_closure`
+- execution_state: `calc-zkio.3_ready_rust_totality_refinement_and_panic_surface_hardening`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - `calc-zkio.1` residual successor obligation and current OxFml intake map is validated
-  - `calc-zkio.2` optimized/core and callable metadata tranche is ready next
+  - `calc-zkio.2` optimized/core and callable metadata tranche is validated
+  - `calc-zkio.3` Rust totality/refinement and panic-surface tranche is ready next
   - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, callable metadata, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

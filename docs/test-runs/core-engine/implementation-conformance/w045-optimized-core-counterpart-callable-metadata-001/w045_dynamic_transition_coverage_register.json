@@ -1,0 +1,44 @@
+{
+  "direct_evidence_bound_count": 2,
+  "dynamic_transition_row_count": 3,
+  "exact_remaining_blocker_count": 2,
+  "rows": [
+    {
+      "direct_evidence_bound": true,
+      "evidence_state": "carried_direct_evidence",
+      "promotion_consequence": "mixed add/remove/reclassify evidence is retained as direct evidence but not broad optimized/core promotion",
+      "row_id": "w045_dynamic_mixed_transition_carried_direct_evidence",
+      "source_w044_dynamic_evidence": "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+      "source_w044_row_id": "w044_dynamic_mixed_add_release_direct_evidence"
+    },
+    {
+      "direct_evidence_bound": true,
+      "exact_remaining_blocker": true,
+      "promotion_consequence": "full optimized/core dynamic transition coverage remains unpromoted",
+      "required_expansion": [
+        "additional descriptor transitions",
+        "structural-plus-formula edits",
+        "host-resolution surfaces",
+        "sufficiency proof"
+      ],
+      "row_id": "w045_broader_dynamic_transition_exact_blocker",
+      "source_w044_row_id": "w044_broader_dynamic_transition_remaining_exact_blocker"
+    },
+    {
+      "direct_evidence_bound": false,
+      "exact_remaining_blocker": true,
+      "promotion_consequence": "soft-reference and INDIRECT coverage remains an exact optimized/core blocker",
+      "required_expansion": [
+        "INDIRECT selector churn",
+        "late reference resolution",
+        "soft-reference update breadth beyond the W044 mixed case"
+      ],
+      "row_id": "w045_soft_reference_indirect_resolution_exact_blocker",
+      "source_w045_obligation_id": "W045-OBL-006"
+    }
+  ],
+  "run_id": "w045-optimized-core-counterpart-callable-metadata-001",
+  "schema_version": "oxcalc.implementation_conformance.w045_dynamic_transition_coverage_register.v1",
+  "source_w044_implementation_conformance_run_id": "w044-optimized-core-dynamic-transition-callable-metadata-001",
+  "source_w044_treecalc_run_id": "w044-optimized-core-dynamic-transition-treecalc-001"
+}

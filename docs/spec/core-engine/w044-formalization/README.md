@@ -18,13 +18,12 @@ The governing workset is `docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BL
 
 ## Planned Packets
 
-1. `W044_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE_IMPLEMENTATION.md` - `calc-b1t.5` Stage 2 tranche.
-2. `W044_OPERATED_CONTINUOUS_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-b1t.6` operated service tranche.
-3. `W044_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE_IMPLEMENTATION.md` - `calc-b1t.7` diversity/service tranche.
-4. `W044_OXFML_PUBLIC_MIGRATION_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md` - `calc-b1t.8` OxFml seam tranche.
-5. `W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md` - `calc-b1t.9` release-scale replay/performance tranche.
-6. `W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md` - `calc-b1t.10` pack/C5 tranche.
-7. `W044_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-b1t.11` closure audit and release-grade decision.
+1. `W044_OPERATED_CONTINUOUS_ASSURANCE_RETAINED_HISTORY_WITNESS_SLO_AND_ALERT_SERVICE.md` - `calc-b1t.6` operated service tranche.
+2. `W044_INDEPENDENT_EVALUATOR_BREADTH_MISMATCH_QUARANTINE_AND_DIFFERENTIAL_SERVICE_IMPLEMENTATION.md` - `calc-b1t.7` diversity/service tranche.
+3. `W044_OXFML_PUBLIC_MIGRATION_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md` - `calc-b1t.8` OxFml seam tranche.
+4. `W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md` - `calc-b1t.9` release-scale replay/performance tranche.
+5. `W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md` - `calc-b1t.10` pack/C5 tranche.
+6. `W044_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-b1t.11` closure audit and release-grade decision.
 
 ## Current Packets
 
@@ -32,16 +31,17 @@ The governing workset is `docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BL
 2. `W044_OPTIMIZED_CORE_DYNAMIC_TRANSITION_AND_CALLABLE_METADATA_IMPLEMENTATION.md` - `calc-b1t.2` optimized/core dynamic transition and callable metadata tranche.
 3. `W044_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_PROOF_EXPANSION.md` - `calc-b1t.3` Rust totality/refinement and panic-surface proof tranche.
 4. `W044_LEAN_TLA_UNBOUNDED_FAIRNESS_AND_FULL_VERIFICATION_PROOF_EXPANSION.md` - `calc-b1t.4` Lean/TLA proof/model tranche.
+5. `W044_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE_IMPLEMENTATION.md` - `calc-b1t.5` Stage 2 production partition-analyzer and scheduler-equivalence tranche.
 
 ## Current Status
 
-- execution_state: `calc-b1t.5_ready_stage2_production_partition_analyzer_and_scheduler_equivalence_implementation`
+- execution_state: `calc-b1t.6_ready_operated_continuous_assurance_retained_history_witness_slo_alert_service`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_complete`
 - integration_completeness: `integrated`
 - open_lanes:
-  - `calc-b1t.5` Stage 2 production partition analyzer and scheduler equivalence implementation is next
-  - full Lean/TLA verification, scheduler fairness, unbounded model coverage, Rust-engine totality, Rust refinement, panic-free core-domain proof, broader dynamic transition coverage, snapshot/capability counterpart breadth, and callable metadata projection remain unpromoted after `calc-b1t.4`
+  - `calc-b1t.6` operated continuous assurance, retained-history, witness, SLO, and alert service is next
+  - full Lean/TLA verification, scheduler fairness, unbounded model coverage, Rust-engine totality, Rust refinement, panic-free core-domain proof, broader dynamic transition coverage, snapshot/capability counterpart breadth, callable metadata projection, Stage 2 production policy, production partition-analyzer soundness, operated Stage 2 differential service, retained-witness lifecycle, and pack-grade replay governance remain unpromoted after `calc-b1t.5`
   - all release-grade promotion lanes remain unpromoted until direct W044 evidence says otherwise
 
 ## Latest Evidence
@@ -50,3 +50,4 @@ The governing workset is `docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BL
 2. `W044_OPTIMIZED_CORE_DYNAMIC_TRANSITION_AND_CALLABLE_METADATA_IMPLEMENTATION.md` records the `calc-b1t.2` optimized/core tranche. The TreeCalc run `w044-optimized-core-dynamic-transition-treecalc-001` emits 28 cases with 0 expectation mismatches and adds the mixed dynamic soft-reference fixture `tc_local_dynamic_mixed_add_release_auto_post_edit_001`, proving automatic `DependencyAdded`, `DependencyRemoved`, and `DependencyReclassified` seeds, rebind-required closure, and no-publication rejection. The implementation-conformance packet `w044-optimized-core-dynamic-transition-callable-metadata-001` records 6 W044 dispositions, 2 direct-evidence rows, 4 exact remaining blockers, 0 match-promoted rows, and 0 failed rows. It narrows dynamic-transition evidence while retaining broader dynamic coverage, snapshot-fence breadth, capability-view breadth, and callable metadata projection as exact blockers, carries the current W073 typed-rule-only guard, records downstream W073 request construction as still unverified, and keeps optimized/core, release-grade, C5, pack-grade replay, Stage 2, callable metadata, callable carrier sufficiency, broad OxFml, and general OxFunc promotion unclaimed.
 3. `W044_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_PROOF_EXPANSION.md` records the `calc-b1t.3` Rust tranche. The Lean row model `formal/lean/OxCalc/CoreEngine/W044RustTotalityAndRefinement.lean` checks the non-promoting classification, and the formal-assurance run `w044-rust-totality-refinement-panic-surface-expansion-001` records 16 rows, 11 local checked-proof classification rows, 0 bounded-model rows, 1 accepted external seam, 3 accepted boundaries, 4 totality-boundary rows, 9 refinement rows, 1 automatic mixed dynamic-transition row, 6 exact remaining blockers, and 0 failed rows. It binds W044 mixed dynamic add/release evidence, no-publication fence evidence, W043 Rust predecessor evidence, W044 optimized/core conformance evidence, W073 typed-only formatting intake, and `LET`/`LAMBDA` value-carrier evidence while keeping Rust-engine totality, Rust refinement, panic-free core-domain proof, full optimized/core verification, release-grade verification, C5, pack-grade replay, Stage 2, callable metadata, callable carrier sufficiency, broad OxFml, and general OxFunc promotion unclaimed.
 4. `W044_LEAN_TLA_UNBOUNDED_FAIRNESS_AND_FULL_VERIFICATION_PROOF_EXPANSION.md` records the `calc-b1t.4` Lean/TLA tranche. The Lean row model `formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean` checks the non-promoting classification, and the formal-assurance run `w044-lean-tla-unbounded-fairness-full-verification-expansion-001` records 16 proof/model rows, 10 local checked-proof rows, 4 bounded-model rows, 1 accepted external seam, 3 accepted boundaries, 5 totality-boundary rows, 5 exact blockers, 1 mixed dynamic-refinement bridge row, 1 publication-fence bridge row, and 0 failed rows. It binds W043 Lean/TLA predecessor evidence, W044 Rust mixed dynamic and no-publication evidence, W043 Stage 2 scheduler-equivalence evidence, W037 bounded TLA inventory, current W073 typed-only formatting intake, and LET/LAMBDA carrier boundaries while keeping full Lean/TLA verification, scheduler fairness, unbounded model coverage, Rust totality/refinement, Stage 2 production policy, pack-grade replay, C5, callable carrier sufficiency, broad OxFml, and general OxFunc promotion unclaimed.
+5. `W044_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE_IMPLEMENTATION.md` records the `calc-b1t.5` Stage 2 tranche. The Lean predicate `formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean` checks the non-promoting Stage 2 and pack classification, and the Stage 2 replay run `w044-stage2-production-partition-analyzer-scheduler-equivalence-001` records 25 policy rows, 17 satisfied rows, 5 partition replay rows, 6 permutation replay rows, 5 observable-invariance rows, 1 W073 typed-formatting watch row, 12 production-relevant analyzer input rows, 7 scheduler-equivalence satisfied rows, 7 pack-equivalence satisfied rows, 8 exact blockers, and 0 failed rows. It binds W043 Stage 2 predecessor evidence, W044 mixed dynamic add/remove/reclassify evidence, no-publication fence evidence, W044 Rust refinement rows, W044 Lean/TLA bounded model rows, current W073 typed-only formatting intake, declared-profile scheduler equivalence, declared-profile pack equivalence, and no-proxy guards while keeping Stage 2 production policy, full production partition-analyzer soundness, scheduler fairness, unbounded model coverage, operated cross-engine Stage 2 service, retained-witness lifecycle, pack-grade replay governance, pack-grade replay, C5, release-grade verification, broad OxFml, and general OxFunc promotion unclaimed.

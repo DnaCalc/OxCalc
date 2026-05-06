@@ -1,0 +1,33 @@
+{
+  "blockers": [
+    "stage2.broader_dynamic_transition_coverage",
+    "stage2.snapshot_fence_breadth",
+    "stage2.capability_view_breadth",
+    "stage2.full_production_partition_analyzer_soundness",
+    "stage2.fairness_scheduler_unbounded_coverage",
+    "stage2.operated_cross_engine_differential_service",
+    "stage2.retained_witness_lifecycle_pack_dependency",
+    "stage2.pack_grade_replay_governance"
+  ],
+  "decision_state": "w044_stage2_production_partition_analyzer_scheduler_equivalence_validated_policy_unpromoted",
+  "declared_profile_pack_replay_equivalence_evidenced": true,
+  "declared_profile_scheduler_equivalence_evidenced": true,
+  "fairness_scheduler_unbounded_coverage_promoted": false,
+  "lean_tla_model_bound_evidenced": true,
+  "mixed_dynamic_transition_evidenced": true,
+  "no_proxy_promotion_guard_evidenced": true,
+  "no_publication_fence_evidenced": true,
+  "operated_cross_engine_stage2_service_promoted": false,
+  "pack_grade_replay_candidate": false,
+  "pack_grade_replay_governance_promoted": false,
+  "pack_grade_replay_promoted": false,
+  "production_partition_analyzer_soundness_promoted": false,
+  "production_relevant_analyzer_inputs_evidenced": true,
+  "retained_witness_lifecycle_promoted": false,
+  "run_id": "w044-stage2-production-partition-analyzer-scheduler-equivalence-001",
+  "rust_refinement_bridge_evidenced": true,
+  "schema_version": "oxcalc.stage2_replay.w044.promotion_decision.v1",
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "w073_typed_formatting_guard_carried": true
+}

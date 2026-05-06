@@ -20,6 +20,10 @@ const SCALE_BUNDLE_VALIDATION_SCHEMA_V1: &str =
     "oxcalc.scale_semantic_binding.bundle_validation.v1";
 const SCALE_CONTINUOUS_CRITERIA_SCHEMA_V1: &str =
     "oxcalc.scale_semantic_binding.continuous_criteria.v1";
+const SCALE_SEMANTIC_REGRESSION_SERVICE_SCHEMA_V1: &str =
+    "oxcalc.scale_semantic_binding.w045.semantic_regression_service_register.v1";
+const SCALE_W045_BLOCKER_REGISTER_SCHEMA_V1: &str =
+    "oxcalc.scale_semantic_binding.w045.exact_scale_blocker_register.v1";
 
 const SCALE_RUN_IDS: &[&str] = &[
     "million_grid_r1",
@@ -40,6 +44,8 @@ const W034_PACK_CAPABILITY_RUN_ID: &str = "w034-pack-capability-gate-binding-001
 const W037_TRACECALC_RUN_ID: &str = "w037-tracecalc-observable-closure-001";
 const W043_PACK_CAPABILITY_RUN_ID: &str =
     "w043-pack-grade-replay-governance-c5-release-reassessment-001";
+const W044_PACK_CAPABILITY_RUN_ID: &str =
+    "w044-pack-grade-replay-governance-service-c5-reassessment-001";
 const W044_PROFILE_ID: &str = "w044_release_scale_replay_performance_scaling";
 const W044_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
 const W044_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json";
@@ -65,6 +71,34 @@ const W044_REQUIRED_PHASE_TIMINGS: &[&str] = &[
     "invalidation_closure_derivation",
     "synthetic_closed_form_recalc",
     "validation_checks",
+];
+const W045_PROFILE_ID: &str = "w045_continuous_release_scale_assurance_semantic_regression";
+const W045_RELEASE_GRADE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
+const W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
+const W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
+const W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
+const W045_STAGE2_REPLAY_SUMMARY_PATH: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json";
+const W045_OPERATED_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json";
+const W045_DIVERSITY_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json";
+const W045_OXFML_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json";
+const W045_GUARD_ARTIFACT_PATHS: &[&str] = &[
+    W045_RELEASE_GRADE_SUMMARY_PATH,
+    W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH,
+    W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH,
+    W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH,
+    W045_STAGE2_REPLAY_SUMMARY_PATH,
+    W045_OPERATED_ASSURANCE_SUMMARY_PATH,
+    W045_DIVERSITY_SEAM_SUMMARY_PATH,
+    W045_OXFML_SEAM_SUMMARY_PATH,
+];
+const W045_EXPECTED_TYPED_RULE_ONLY_FAMILIES: &[&str] = &[
+    "colorScale",
+    "dataBar",
+    "iconSet",
+    "top",
+    "bottom",
+    "aboveAverage",
+    "belowAverage",
 ];
 const W034_FORMAL_GATE_ARTIFACTS: &[&str] = &[
     "docs/spec/core-engine/w034-formalization/W034_LEAN_PROOF_FAMILY_DEEPENING.md",
@@ -271,6 +305,21 @@ impl ScaleSemanticBindingRunner {
             &artifact_root.join("decision/continuous_scale_assurance_criteria.json"),
             &continuous_scale_criteria(run_id, &relative_artifact_root, &profile, &evaluation),
         )?;
+        if is_w045_profile(&profile) {
+            write_json(
+                &artifact_root.join("decision/semantic_regression_service_register.json"),
+                &w045_semantic_regression_service_register(
+                    run_id,
+                    &relative_artifact_root,
+                    &profile,
+                    &evaluation,
+                ),
+            )?;
+            write_json(
+                &artifact_root.join("decision/w045_exact_scale_blocker_register.json"),
+                &w045_exact_scale_blocker_register(run_id, &relative_artifact_root),
+            )?;
+        }
 
         let required_artifacts = required_artifacts(run_id, &profile);
         write_json(
@@ -303,9 +352,7 @@ impl ScaleSemanticBindingRunner {
             no_promotion_reason_count: evaluation.no_promotion_reasons.len(),
             artifact_root: relative_artifact_root.clone(),
         };
-        write_json(
-            &artifact_root.join("run_summary.json"),
-            &json!({
+        let mut run_summary = json!({
                 "schema_version": summary.schema_version,
                 "run_id": summary.run_id,
                 "evidence_profile": profile.profile_id,
@@ -323,8 +370,24 @@ impl ScaleSemanticBindingRunner {
                 "decision_path": format!("{relative_artifact_root}/decision/scale_no_promotion_decision.json"),
                 "continuous_scale_criteria_path": format!("{relative_artifact_root}/decision/continuous_scale_assurance_criteria.json"),
                 "bundle_validation_path": format!("{relative_artifact_root}/replay-appliance/validation/bundle_validation.json"),
-            }),
-        )?;
+        });
+        if is_w045_profile(&profile) {
+            run_summary["semantic_regression_service_register_path"] = json!(format!(
+                "{relative_artifact_root}/decision/semantic_regression_service_register.json"
+            ));
+            run_summary["w045_exact_scale_blocker_register_path"] = json!(format!(
+                "{relative_artifact_root}/decision/w045_exact_scale_blocker_register.json"
+            ));
+            run_summary["w045_semantic_guard_row_count"] =
+                json!(w045_guard_row_count(&evaluation.replay_rows));
+            run_summary["w045_local_semantic_regression_profile_ready"] = json!(
+                evaluation.validated_scale_runs == SCALE_RUN_IDS.len()
+                    && count_failure_rows(&evaluation.signature_rows) == 0
+                    && w045_guard_rows_valid(&evaluation.replay_rows)
+            );
+            run_summary["w045_exact_scale_blocker_count"] = json!(w045_exact_scale_blocker_count());
+        }
+        write_json(&artifact_root.join("run_summary.json"), &run_summary)?;
 
         let validation_path =
             artifact_root.join("replay-appliance/validation/bundle_validation.json");
@@ -397,6 +460,11 @@ fn evaluate(
         evaluation
             .signature_rows
             .push(w044_phase_timing_split_row(&observations));
+    }
+    if is_w045_profile(profile) {
+        evaluation
+            .signature_rows
+            .push(w045_phase_timing_split_row(&observations));
     }
     for row in &evaluation.signature_rows {
         collect_row_failures(row, &mut evaluation.unexpected_mismatches);
@@ -545,6 +613,32 @@ fn scale_signature_rows(observations: &[ScaleRunObservation]) -> Vec<Value> {
 }
 
 fn w044_phase_timing_split_row(observations: &[ScaleRunObservation]) -> Value {
+    phase_timing_split_row(
+        "w044_phase_timing_split_guard",
+        "W044-SCALE-001",
+        "separate dependency lowering, dependency graph build, soft-reference update, invalidation closure, pure recalc, and validation timing surfaces",
+        "phase timings are measurement surfaces only and cannot promote performance-derived correctness",
+        observations,
+    )
+}
+
+fn w045_phase_timing_split_row(observations: &[ScaleRunObservation]) -> Value {
+    phase_timing_split_row(
+        "w045_phase_timing_split_guard",
+        "W045-SCALE-001",
+        "carry release-scale phase split into the W045 local semantic-regression profile",
+        "phase timings are regression diagnostics only; correctness remains bound to closed-form, metamorphic, replay, and W045 semantic guard evidence",
+        observations,
+    )
+}
+
+fn phase_timing_split_row(
+    row_id: &str,
+    family_id: &str,
+    transformation: &str,
+    capability_consequence: &str,
+    observations: &[ScaleRunObservation],
+) -> Value {
     let mut failures = Vec::new();
     let mut missing_artifacts = Vec::new();
     let mut run_checks = Vec::new();
@@ -580,15 +674,15 @@ fn w044_phase_timing_split_row(observations: &[ScaleRunObservation]) -> Value {
         }));
     }
     signature_row(
-        "w044_phase_timing_split_guard",
-        "W044-SCALE-001",
-        "separate dependency lowering, dependency graph build, soft-reference update, invalidation closure, pure recalc, and validation timing surfaces",
+        row_id,
+        family_id,
+        transformation,
         missing_artifacts,
         failures,
         json!({
             "required_phase_timings": W044_REQUIRED_PHASE_TIMINGS,
             "run_checks": run_checks,
-            "capability_consequence": "phase timings are measurement surfaces only and cannot promote performance-derived correctness",
+            "capability_consequence": capability_consequence,
         }),
     )
 }
@@ -906,6 +1000,9 @@ fn replay_binding_rows(
     if is_w044_profile(profile) {
         rows.extend(w044_semantic_guard_binding_rows(repo_root)?);
     }
+    if is_w045_profile(profile) {
+        rows.extend(w045_semantic_guard_binding_rows(repo_root)?);
+    }
     Ok(rows)
 }
 
@@ -1153,6 +1250,274 @@ fn w044_semantic_guard_binding_rows(
     ])
 }
 
+fn w045_semantic_guard_binding_rows(
+    repo_root: &Path,
+) -> Result<Vec<Value>, ScaleSemanticBindingError> {
+    Ok(vec![
+        w045_release_grade_oxfml_intake_guard_row(repo_root)?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_optimized_core_callable_metadata_guard",
+            "W045 optimized/core and callable-metadata evidence is present before carrying scale evidence into pack reassessment.",
+            W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH,
+            &[("/failed_row_count", 0), ("/w045_match_promoted_count", 0)],
+            &[
+                ("/w045_disposition_row_count", 7),
+                ("/w045_direct_evidence_bound_count", 2),
+                ("/w045_exact_remaining_blocker_count", 5),
+            ],
+            &[],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_rust_totality_refinement_guard",
+            "W045 Rust totality/refinement and panic-surface evidence is present while proof claims remain bounded.",
+            W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH,
+            &[("/failed_row_count", 0)],
+            &[
+                ("/local_proof_row_count", 11),
+                ("/refinement_row_count", 9),
+                ("/totality_boundary_count", 5),
+                ("/exact_remaining_blocker_count", 7),
+            ],
+            &[
+                ("/promotion_claims/rust_engine_totality_promoted", false),
+                ("/promotion_claims/rust_refinement_promoted", false),
+                ("/promotion_claims/pack_grade_replay_promoted", false),
+                ("/promotion_claims/general_oxfunc_kernel_promoted", false),
+            ],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_lean_tla_fairness_totality_guard",
+            "W045 Lean/TLA verification, fairness, and totality evidence is present without full proof promotion.",
+            W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH,
+            &[("/failed_row_count", 0)],
+            &[
+                ("/local_proof_row_count", 11),
+                ("/bounded_model_row_count", 4),
+                ("/totality_boundary_count", 6),
+                ("/exact_remaining_blocker_count", 6),
+            ],
+            &[
+                ("/promotion_claims/full_lean_verification_promoted", false),
+                ("/promotion_claims/full_tla_verification_promoted", false),
+                ("/promotion_claims/scheduler_fairness_promoted", false),
+                ("/promotion_claims/unbounded_model_coverage_promoted", false),
+            ],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_stage2_pack_equivalence_guard",
+            "W045 Stage 2 partition and pack-equivalence evidence is present while service gates remain unpromoted.",
+            W045_STAGE2_REPLAY_SUMMARY_PATH,
+            &[("/failed_row_count", 0)],
+            &[
+                ("/policy_row_count", 29),
+                ("/observable_invariance_row_count", 5),
+                ("/pack_grade_equivalence_row_count", 8),
+                ("/service_gate_row_count", 10),
+                ("/exact_remaining_blocker_count", 10),
+            ],
+            &[
+                ("/declared_scheduler_equivalence_evidenced", true),
+                ("/declared_pack_equivalence_evidenced", true),
+                ("/service_gate_classification_evidenced", true),
+                ("/stage2_policy_promoted", false),
+                ("/pack_grade_replay_promoted", false),
+                (
+                    "/w073_typed_rule_only_direct_replacement_guard_carried",
+                    true,
+                ),
+            ],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_operated_assurance_service_guard",
+            "W045 operated-assurance harness evidence is present while operated services and SLO claims remain blocked.",
+            W045_OPERATED_ASSURANCE_SUMMARY_PATH,
+            &[
+                ("/failed_row_count", 0),
+                ("/alert_decision_count", 0),
+                ("/quarantine_decision_count", 0),
+            ],
+            &[
+                ("/service_harness_operation_count", 8),
+                ("/service_readiness_criteria_count", 31),
+                ("/multi_run_history_row_count", 47),
+                ("/exact_service_blocker_count", 6),
+            ],
+            &[
+                ("/local_operated_service_harness_runnable", true),
+                ("/operated_continuous_assurance_service_promoted", false),
+                (
+                    "/operated_cross_engine_differential_service_promoted",
+                    false,
+                ),
+                ("/retained_history_service_promoted", false),
+                ("/retention_slo_enforcement_promoted", false),
+                ("/release_grade_verification_promoted", false),
+            ],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_diversity_differential_service_guard",
+            "W045 independent evaluator and cross-engine differential evidence is present while operated service claims remain blocked.",
+            W045_DIVERSITY_SEAM_SUMMARY_PATH,
+            &[("/failed_row_count", 0)],
+            &[
+                ("/w045_independent_reference_model_case_count", 10),
+                ("/w045_independent_reference_model_match_count", 10),
+                ("/accepted_boundary_count", 46),
+                ("/cross_engine_differential_row_count", 20),
+                ("/exact_blocker_count", 10),
+            ],
+            &[
+                ("/w073_typed_only_formatting_guard_retained", true),
+                (
+                    "/w073_downstream_typed_rule_request_construction_verified",
+                    false,
+                ),
+                ("/fully_independent_evaluator_promoted", false),
+                ("/mismatch_quarantine_service_promoted", false),
+                (
+                    "/operated_cross_engine_differential_service_promoted",
+                    false,
+                ),
+            ],
+        )?,
+        w045_guard_binding_row(
+            repo_root,
+            "w045_oxfml_public_surface_callable_guard",
+            "W045 OxFml public-surface, W073 typed formatting, callable, and registered-external evidence is present without broad seam promotion.",
+            W045_OXFML_SEAM_SUMMARY_PATH,
+            &[("/failed_row_count", 0)],
+            &[
+                ("/source_evidence_row_count", 18),
+                ("/surface_row_count", 9),
+                ("/publication_display_row_count", 13),
+                ("/callable_metadata_row_count", 8),
+                ("/registered_external_row_count", 6),
+                ("/exact_blocker_count", 13),
+            ],
+            &[
+                (
+                    "/w073_current_oxfml_direct_replacement_update_reviewed",
+                    true,
+                ),
+                ("/w073_oxcalc_fixture_request_construction_verified", true),
+                ("/w073_typed_only_formatting_guard_retained", true),
+                (
+                    "/w073_downstream_dnaonecalc_request_construction_verified",
+                    false,
+                ),
+                ("/broad_oxfml_seam_promoted", false),
+                ("/callable_metadata_projection_promoted", false),
+            ],
+        )?,
+    ])
+}
+
+fn w045_release_grade_oxfml_intake_guard_row(
+    repo_root: &Path,
+) -> Result<Value, ScaleSemanticBindingError> {
+    let artifact = read_artifact(repo_root, W045_RELEASE_GRADE_SUMMARY_PATH.to_string())?;
+    let mut failures = Vec::new();
+    let mut missing = Vec::new();
+    let mut checks = Vec::new();
+    if artifact.value.is_none() {
+        missing.push(artifact.relative_path.clone());
+    }
+    if let Some(value) = &artifact.value {
+        for (pointer, expected) in [
+            ("/successor_obligation_count", 36),
+            ("/promotion_contract_count", 18),
+        ] {
+            let observed = number_pointer(value, pointer);
+            let matched = observed == expected;
+            if !matched {
+                failures.push(format!("number_mismatch:{pointer}"));
+            }
+            checks.push(json!({
+                "pointer": pointer,
+                "relation": "equals",
+                "expected": expected,
+                "observed": observed,
+                "matched": matched,
+            }));
+        }
+        let source_residual_lane_count = number_pointer(value, "/source_residual_lane_count");
+        let source_residual_lane_count_matched = source_residual_lane_count >= 22;
+        if !source_residual_lane_count_matched {
+            failures.push("number_below_minimum:/source_residual_lane_count".to_string());
+        }
+        checks.push(json!({
+            "pointer": "/source_residual_lane_count",
+            "relation": "at_least",
+            "minimum": 22,
+            "observed": source_residual_lane_count,
+            "matched": source_residual_lane_count_matched,
+        }));
+        for (pointer, expected) in [
+            ("/oxfml_formatting_update_incorporated", true),
+            (
+                "/w073_downstream_request_construction_uptake_verified_by_oxcalc",
+                false,
+            ),
+        ] {
+            let observed = bool_pointer(value, pointer);
+            let matched = observed == expected;
+            if !matched {
+                failures.push(format!("bool_mismatch:{pointer}"));
+            }
+            checks.push(json!({
+                "pointer": pointer,
+                "relation": "equals",
+                "expected": expected,
+                "observed": observed,
+                "matched": matched,
+            }));
+        }
+
+        let typed_families = value
+            .pointer("/w073_typed_rule_only_families")
+            .and_then(Value::as_array)
+            .map(|families| {
+                families
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let typed_family_match = typed_families.len()
+            == W045_EXPECTED_TYPED_RULE_ONLY_FAMILIES.len()
+            && W045_EXPECTED_TYPED_RULE_ONLY_FAMILIES
+                .iter()
+                .all(|family| typed_families.contains(family));
+        if !typed_family_match {
+            failures.push("w073_typed_rule_only_family_set_mismatch".to_string());
+        }
+        checks.push(json!({
+            "pointer": "/w073_typed_rule_only_families",
+            "relation": "set_equals",
+            "expected": W045_EXPECTED_TYPED_RULE_ONLY_FAMILIES,
+            "observed": typed_families,
+            "matched": typed_family_match,
+        }));
+    }
+    Ok(replay_row(
+        "w045_release_grade_oxfml_formatting_intake_guard",
+        "W045 release-grade successor map incorporates the current OxFml typed-rule-only formatting update before scale evidence is reused.",
+        missing,
+        failures,
+        json!({
+            "artifact": artifact.relative_path,
+            "checks": checks,
+            "capability_consequence": "current OxFml formatting intake is bound as W045 scale guard evidence; downstream W073 uptake and release-grade promotion remain unclaimed.",
+        }),
+    ))
+}
+
 fn w044_guard_binding_row(
     repo_root: &Path,
     row_id: &str,
@@ -1161,6 +1526,49 @@ fn w044_guard_binding_row(
     exact_numbers: &[(&str, u64)],
     minimum_numbers: &[(&str, u64)],
     expected_bools: &[(&str, bool)],
+) -> Result<Value, ScaleSemanticBindingError> {
+    semantic_guard_binding_row(
+        repo_root,
+        row_id,
+        purpose,
+        relative_path,
+        exact_numbers,
+        minimum_numbers,
+        expected_bools,
+        "W044 semantic guard evidence is a precondition for interpreting scale timings, not performance-derived correctness proof.",
+    )
+}
+
+fn w045_guard_binding_row(
+    repo_root: &Path,
+    row_id: &str,
+    purpose: &str,
+    relative_path: &str,
+    exact_numbers: &[(&str, u64)],
+    minimum_numbers: &[(&str, u64)],
+    expected_bools: &[(&str, bool)],
+) -> Result<Value, ScaleSemanticBindingError> {
+    semantic_guard_binding_row(
+        repo_root,
+        row_id,
+        purpose,
+        relative_path,
+        exact_numbers,
+        minimum_numbers,
+        expected_bools,
+        "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+    )
+}
+
+fn semantic_guard_binding_row(
+    repo_root: &Path,
+    row_id: &str,
+    purpose: &str,
+    relative_path: &str,
+    exact_numbers: &[(&str, u64)],
+    minimum_numbers: &[(&str, u64)],
+    expected_bools: &[(&str, bool)],
+    capability_consequence: &str,
 ) -> Result<Value, ScaleSemanticBindingError> {
     let artifact = read_artifact(repo_root, relative_path.to_string())?;
     let mut failures = Vec::new();
@@ -1221,7 +1629,7 @@ fn w044_guard_binding_row(
         json!({
             "artifact": artifact.relative_path,
             "checks": checks,
-            "capability_consequence": "W044 semantic guard evidence is a precondition for interpreting scale timings, not performance-derived correctness proof.",
+            "capability_consequence": capability_consequence,
         }),
     ))
 }
@@ -1247,6 +1655,195 @@ fn replay_row(
         "failures": failures,
         "details": details,
     })
+}
+
+fn w045_semantic_regression_service_register(
+    run_id: &str,
+    artifact_root: &str,
+    profile: &ScaleSemanticProfile,
+    evaluation: &Evaluation,
+) -> Value {
+    let closed_form_ready = evaluation.validated_scale_runs == SCALE_RUN_IDS.len();
+    let signatures_ready = count_failure_rows(&evaluation.signature_rows) == 0;
+    let phase_split_ready =
+        row_id_has_no_failures(&evaluation.signature_rows, "w045_phase_timing_split_guard");
+    let guard_stack_ready = w045_guard_rows_valid(&evaluation.replay_rows);
+    let replay_ready = count_failure_rows(&evaluation.replay_rows) == 0;
+    let local_profile_ready = closed_form_ready
+        && signatures_ready
+        && phase_split_ready
+        && guard_stack_ready
+        && replay_ready;
+    let rows = vec![
+        service_register_row(
+            "w045_scale.closed_form_scale_suite",
+            if closed_form_ready {
+                "satisfied"
+            } else {
+                "partial"
+            },
+            json!({
+                "validated_scale_run_count": evaluation.validated_scale_runs,
+                "required_scale_run_count": SCALE_RUN_IDS.len(),
+                "scale_run_ids": SCALE_RUN_IDS,
+                "capability_consequence": "closed-form scale rows are eligible semantic regression inputs"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.metamorphic_signature_suite",
+            if signatures_ready {
+                "satisfied"
+            } else {
+                "unexpected_mismatch"
+            },
+            json!({
+                "signature_row_count": evaluation.signature_rows.len(),
+                "unexpected_signature_row_count": count_failure_rows(&evaluation.signature_rows),
+                "capability_consequence": "metamorphic signature rows guard model-shape and oracle drift"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.phase_timing_split_suite",
+            if phase_split_ready {
+                "satisfied"
+            } else {
+                "unexpected_mismatch"
+            },
+            json!({
+                "required_phase_timings": W044_REQUIRED_PHASE_TIMINGS,
+                "capability_consequence": "phase timing split supports regression diagnosis but not correctness proof"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.semantic_guard_stack",
+            if guard_stack_ready {
+                "satisfied"
+            } else {
+                "partial"
+            },
+            json!({
+                "w045_guard_row_count": w045_guard_row_count(&evaluation.replay_rows),
+                "required_guard_row_count": W045_GUARD_ARTIFACT_PATHS.len(),
+                "guard_artifacts": W045_GUARD_ARTIFACT_PATHS,
+                "capability_consequence": "W045 predecessor and current OxFml formatting evidence must remain valid before scale evidence is consumed"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.replay_conformance_pack_binding",
+            if replay_ready { "satisfied" } else { "partial" },
+            json!({
+                "replay_binding_row_count": evaluation.replay_rows.len(),
+                "tracecalc_reference_run_id": profile.tracecalc_run_id,
+                "independent_conformance_run_id": profile.independent_conformance_run_id,
+                "pack_capability_run_id": profile.pack_capability_run_id,
+                "capability_consequence": "scale evidence remains subordinate to replay, conformance, and pack no-promotion guards"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.local_semantic_regression_profile",
+            if local_profile_ready {
+                "satisfied"
+            } else {
+                "partial"
+            },
+            json!({
+                "profile_ready_for_local_replay": local_profile_ready,
+                "service_boundary": "deterministic local profile only",
+                "capability_consequence": "ready for manual or scheduled local replay wiring; operated continuous assurance is not promoted"
+            }),
+        ),
+        service_register_row(
+            "w045_scale.operated_continuous_service",
+            "blocked",
+            json!({
+                "exact_blocker_count": w045_exact_scale_blocker_count(),
+                "blocker_register_path": format!("{artifact_root}/decision/w045_exact_scale_blocker_register.json"),
+                "capability_consequence": "continuous scale assurance service remains unpromoted until operated scheduling, retention, cross-engine comparison, and pack/release decisions exist"
+            }),
+        ),
+    ];
+    let blocked_row_count = rows
+        .iter()
+        .filter(|row| row.get("row_state").and_then(Value::as_str) == Some("blocked"))
+        .count();
+    json!({
+        "schema_version": SCALE_SEMANTIC_REGRESSION_SERVICE_SCHEMA_V1,
+        "run_id": run_id,
+        "evidence_profile": profile.profile_id,
+        "artifact_root": artifact_root,
+        "service_promoted": false,
+        "local_semantic_regression_profile_ready": local_profile_ready,
+        "row_count": rows.len(),
+        "blocked_row_count": blocked_row_count,
+        "rows": rows,
+        "semantic_equivalence_statement": "The W045 service register classifies existing scale and guard evidence for replay. It does not change runtime scheduling, dependency graph semantics, soft-reference semantics, invalidation, recalc, publication, reject, evaluator behavior, pack decisions, or release-grade capability.",
+    })
+}
+
+fn service_register_row(row_id: &str, row_state: &str, details: Value) -> Value {
+    json!({
+        "row_id": row_id,
+        "row_state": row_state,
+        "details": details,
+    })
+}
+
+fn w045_exact_scale_blocker_register(run_id: &str, artifact_root: &str) -> Value {
+    let rows = vec![
+        exact_scale_blocker_row(
+            "w045_scale.operated_recurring_scheduler_absent",
+            "No operated recurring scale-regression scheduler is evidenced in this repo.",
+            "calc-zkio.10/calc-zkio.11 or successor service work",
+        ),
+        exact_scale_blocker_row(
+            "w045_scale.operated_cross_engine_diff_service_absent",
+            "W045 diversity evidence contains local differential harness evidence, but no promoted operated cross-engine differential service.",
+            "calc-zkio.10/calc-zkio.11 or successor service work",
+        ),
+        exact_scale_blocker_row(
+            "w045_scale.performance_correctness_proof_absent",
+            "Timing and phase split data are diagnostic measurement surfaces only.",
+            "full formalization/release-grade decision lane",
+        ),
+        exact_scale_blocker_row(
+            "w045_scale.pack_c5_decision_pending",
+            "Pack-grade replay governance and cap.C5 reassessment consume this packet in the next bead.",
+            "calc-zkio.10",
+        ),
+        exact_scale_blocker_row(
+            "w045_scale.release_grade_decision_pending",
+            "Release-grade verification requires W045 pack/C5 reassessment and closure audit.",
+            "calc-zkio.11",
+        ),
+        exact_scale_blocker_row(
+            "w045_scale.oxfunc_and_callable_external_boundaries_retained",
+            "LET/LAMBDA carrier evidence is in scope, but general OxFunc kernels, callable carrier sufficiency, and provider publication remain unpromoted.",
+            "cross-repo seam or successor scope",
+        ),
+    ];
+    json!({
+        "schema_version": SCALE_W045_BLOCKER_REGISTER_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": artifact_root,
+        "exact_blocker_count": rows.len(),
+        "continuous_scale_assurance_promoted": false,
+        "performance_claim_promoted": false,
+        "rows": rows,
+    })
+}
+
+fn exact_scale_blocker_row(row_id: &str, reason: &str, owner: &str) -> Value {
+    json!({
+        "row_id": row_id,
+        "blocker_state": "exact_blocker_retained",
+        "reason": reason,
+        "owner": owner,
+        "capability_consequence": "continuous_scale_assurance_not_promoted",
+    })
+}
+
+fn w045_exact_scale_blocker_count() -> usize {
+    6
 }
 
 fn continuous_scale_criteria(
@@ -1296,12 +1893,16 @@ fn continuous_scale_criteria(
         }),
         json!({
             "criterion_id": "scale.continuous.scheduled_regression_floor",
-            "state": "missing",
-            "capability_consequence": "continuous_scale_assurance_not_promoted"
+            "state": if is_w045_profile(profile) { "local_regression_profile_defined" } else { "missing" },
+            "capability_consequence": if is_w045_profile(profile) {
+                "local replay profile is defined, but operated continuous scale assurance is not promoted"
+            } else {
+                "continuous_scale_assurance_not_promoted"
+            }
         }),
         json!({
             "criterion_id": "scale.continuous.cross_engine_diff_service",
-            "state": "missing",
+            "state": if is_w045_profile(profile) { "blocked_by_operated_service_absence" } else { "missing" },
             "capability_consequence": "continuous_scale_assurance_not_promoted"
         }),
     ];
@@ -1319,6 +1920,37 @@ fn continuous_scale_criteria(
             "capability_consequence": "release-scale evidence is subordinate to W044 semantic guard packets"
         }));
     }
+    if is_w045_profile(profile) {
+        let local_profile_ready = evaluation.validated_scale_runs == SCALE_RUN_IDS.len()
+            && count_failure_rows(&evaluation.signature_rows) == 0
+            && count_failure_rows(&evaluation.replay_rows) == 0
+            && w045_guard_rows_valid(&evaluation.replay_rows);
+        criteria.push(json!({
+            "criterion_id": "scale.w045.phase_timing_split",
+            "state": if row_id_has_no_failures(&evaluation.signature_rows, "w045_phase_timing_split_guard") { "satisfied" } else { "unexpected_mismatch" },
+            "required_phase_timings": W044_REQUIRED_PHASE_TIMINGS,
+            "capability_consequence": "phase timings distinguish dependency build, soft-reference update, invalidation closure, and pure recalc as regression diagnostics only"
+        }));
+        criteria.push(json!({
+            "criterion_id": "scale.w045.semantic_guard_binding",
+            "state": if w045_guard_rows_valid(&evaluation.replay_rows) { "satisfied" } else { "partial" },
+            "required_guard_row_count": W045_GUARD_ARTIFACT_PATHS.len(),
+            "capability_consequence": "release-scale evidence is subordinate to W045 predecessor packets and current OxFml formatting intake"
+        }));
+        criteria.push(json!({
+            "criterion_id": "scale.w045.semantic_regression_service_profile",
+            "state": if local_profile_ready { "satisfied" } else { "partial" },
+            "service_register_path": format!("{artifact_root}/decision/semantic_regression_service_register.json"),
+            "capability_consequence": "deterministic local semantic-regression profile is defined without promoted operated-service status"
+        }));
+        criteria.push(json!({
+            "criterion_id": "scale.w045.operated_continuous_scale_service",
+            "state": "blocked",
+            "blocker_register_path": format!("{artifact_root}/decision/w045_exact_scale_blocker_register.json"),
+            "exact_blocker_count": w045_exact_scale_blocker_count(),
+            "capability_consequence": "continuous scale assurance service remains unpromoted"
+        }));
+    }
 
     json!({
         "schema_version": SCALE_CONTINUOUS_CRITERIA_SCHEMA_V1,
@@ -1334,7 +1966,25 @@ fn continuous_scale_criteria(
 }
 
 fn scale_semantic_profile(run_id: &str) -> ScaleSemanticProfile {
-    if run_id.starts_with("w044-") {
+    if run_id.starts_with("w045-") {
+        ScaleSemanticProfile {
+            profile_id: W045_PROFILE_ID,
+            family_packet: "docs/spec/core-engine/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
+            tracecalc_run_id: W037_TRACECALC_RUN_ID,
+            tracecalc_scale_scenario_id: TRACECALC_SCALE_SCENARIO_ID,
+            independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
+            pack_capability_run_id: W044_PACK_CAPABILITY_RUN_ID,
+            formal_gate_artifacts: &[],
+            additional_no_promotion_reasons: &[
+                "scale.w045.phase_timing_split_is_regression_diagnostic_only",
+                "scale.w045.semantic_guard_binding_required_before_pack_reassessment",
+                "scale.w045.local_regression_profile_is_not_operated_service",
+                "scale.w045.operated_cross_engine_diff_service_absent",
+                "scale.w045.no_release_grade_correctness_from_performance",
+                "scale.w045.w073_downstream_and_callable_lanes_unpromoted",
+            ],
+        }
+    } else if run_id.starts_with("w044-") {
         ScaleSemanticProfile {
             profile_id: W044_PROFILE_ID,
             family_packet: "docs/spec/core-engine/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
@@ -1381,6 +2031,10 @@ fn scale_semantic_profile(run_id: &str) -> ScaleSemanticProfile {
 
 fn is_w044_profile(profile: &ScaleSemanticProfile) -> bool {
     profile.profile_id == W044_PROFILE_ID
+}
+
+fn is_w045_profile(profile: &ScaleSemanticProfile) -> bool {
+    profile.profile_id == W045_PROFILE_ID
 }
 
 fn observation_value<'a>(
@@ -1449,6 +2103,36 @@ fn w044_guard_rows_valid(rows: &[Value]) -> bool {
                 row.get("row_id")
                     .and_then(Value::as_str)
                     .is_some_and(|row_id| row_id.starts_with("w044_"))
+            })
+            .all(|row| {
+                row.get("failures")
+                    .and_then(Value::as_array)
+                    .is_none_or(Vec::is_empty)
+                    && row
+                        .get("missing_artifacts")
+                        .and_then(Value::as_array)
+                        .is_none_or(Vec::is_empty)
+            })
+}
+
+fn w045_guard_row_count(rows: &[Value]) -> usize {
+    rows.iter()
+        .filter(|row| {
+            row.get("row_id")
+                .and_then(Value::as_str)
+                .is_some_and(|row_id| row_id.starts_with("w045_"))
+        })
+        .count()
+}
+
+fn w045_guard_rows_valid(rows: &[Value]) -> bool {
+    w045_guard_row_count(rows) == W045_GUARD_ARTIFACT_PATHS.len()
+        && rows
+            .iter()
+            .filter(|row| {
+                row.get("row_id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|row_id| row_id.starts_with("w045_"))
             })
             .all(|row| {
                 row.get("failures")
@@ -1595,7 +2279,7 @@ fn trace_scenario_artifact_path(
 }
 
 fn required_artifacts(run_id: &str, profile: &ScaleSemanticProfile) -> Vec<String> {
-    [
+    let mut runner_artifacts = [
         "run_summary.json",
         "evidence/scale_semantic_evidence_index.json",
         "differentials/scale_signature_differential.json",
@@ -1616,70 +2300,95 @@ fn required_artifacts(run_id: &str, profile: &ScaleSemanticProfile) -> Vec<Strin
             artifact,
         ])
     })
-    .chain(
-        SCALE_RUN_IDS
+    .collect::<Vec<_>>();
+    if is_w045_profile(profile) {
+        runner_artifacts.extend(
+            [
+                "decision/semantic_regression_service_register.json",
+                "decision/w045_exact_scale_blocker_register.json",
+            ]
             .iter()
-            .map(|run_id| scale_run_summary_path(run_id)),
-    )
-    .chain([
-        trace_scenario_artifact_path(
-            profile.tracecalc_run_id,
-            profile.tracecalc_scale_scenario_id,
-            "result.json",
-        ),
-        relative_artifact_path([
-            "docs",
-            "test-runs",
-            "core-engine",
-            "tracecalc-reference-machine",
-            profile.tracecalc_run_id,
-            "replay-appliance",
-            "validation",
-            "bundle_validation.json",
-        ]),
-        relative_artifact_path([
-            "docs",
-            "test-runs",
-            "core-engine",
-            "independent-conformance",
-            profile.independent_conformance_run_id,
-            "run_summary.json",
-        ]),
-        relative_artifact_path([
-            "docs",
-            "test-runs",
-            "core-engine",
-            "independent-conformance",
-            profile.independent_conformance_run_id,
-            "replay-appliance",
-            "validation",
-            "bundle_validation.json",
-        ]),
-        relative_artifact_path([
-            "docs",
-            "test-runs",
-            "core-engine",
-            "pack-capability",
-            profile.pack_capability_run_id,
-            "run_summary.json",
-        ]),
-    ])
-    .chain(
-        profile
-            .formal_gate_artifacts
+            .map(|artifact| {
+                relative_artifact_path([
+                    "docs",
+                    "test-runs",
+                    "core-engine",
+                    "metamorphic-scale-semantic-binding",
+                    run_id,
+                    artifact,
+                ])
+            }),
+        );
+    }
+
+    runner_artifacts
+        .into_iter()
+        .chain(
+            SCALE_RUN_IDS
+                .iter()
+                .map(|run_id| scale_run_summary_path(run_id)),
+        )
+        .chain([
+            trace_scenario_artifact_path(
+                profile.tracecalc_run_id,
+                profile.tracecalc_scale_scenario_id,
+                "result.json",
+            ),
+            relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "tracecalc-reference-machine",
+                profile.tracecalc_run_id,
+                "replay-appliance",
+                "validation",
+                "bundle_validation.json",
+            ]),
+            relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "independent-conformance",
+                profile.independent_conformance_run_id,
+                "run_summary.json",
+            ]),
+            relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "independent-conformance",
+                profile.independent_conformance_run_id,
+                "replay-appliance",
+                "validation",
+                "bundle_validation.json",
+            ]),
+            relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "pack-capability",
+                profile.pack_capability_run_id,
+                "run_summary.json",
+            ]),
+        ])
+        .chain(
+            profile
+                .formal_gate_artifacts
+                .iter()
+                .map(|artifact| (*artifact).to_string()),
+        )
+        .chain(
+            (if is_w045_profile(profile) {
+                W045_GUARD_ARTIFACT_PATHS
+            } else if is_w044_profile(profile) {
+                W044_GUARD_ARTIFACT_PATHS
+            } else {
+                &[]
+            })
             .iter()
             .map(|artifact| (*artifact).to_string()),
-    )
-    .chain(
-        (if is_w044_profile(profile) {
-            W044_GUARD_ARTIFACT_PATHS
-        } else {
-            &[]
-        })
-        .iter()
-        .map(|artifact| (*artifact).to_string()),
-    )
-    .collect()
+        )
+        .collect()
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
@@ -1805,6 +2514,91 @@ mod tests {
         let validation = read_required_json(
             &repo_root,
             "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-binding-test/replay-appliance/validation/bundle_validation.json",
+        );
+        assert_eq!(validation["status"], "bundle_valid");
+
+        fs::remove_dir_all(repo_root.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn scale_semantic_binding_runner_writes_w045_semantic_regression_service_packet() {
+        let repo_root = unique_temp_repo();
+        create_w045_source_artifacts(&repo_root);
+
+        let summary = ScaleSemanticBindingRunner::new()
+            .execute(
+                &repo_root,
+                "w045-continuous-release-scale-assurance-semantic-regression-001",
+            )
+            .expect("W045 scale binding packet should write");
+
+        assert_eq!(summary.scale_run_row_count, 7);
+        assert_eq!(summary.validated_scale_run_count, 7);
+        assert_eq!(summary.scale_signature_row_count, 6);
+        assert_eq!(summary.replay_binding_row_count, 11);
+        assert_eq!(summary.missing_artifact_count, 0);
+        assert_eq!(summary.unexpected_mismatch_count, 0);
+
+        let criteria = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
+        );
+        assert_eq!(criteria["evidence_profile"], W045_PROFILE_ID);
+        assert!(
+            criteria["criteria"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|criterion| {
+                    criterion["criterion_id"] == "scale.w045.semantic_guard_binding"
+                        && criterion["state"] == "satisfied"
+                })
+        );
+        assert!(
+            criteria["criteria"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|criterion| {
+                    criterion["criterion_id"] == "scale.w045.semantic_regression_service_profile"
+                        && criterion["state"] == "satisfied"
+                })
+        );
+        assert!(
+            criteria["criteria"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|criterion| {
+                    criterion["criterion_id"] == "scale.continuous.scheduled_regression_floor"
+                        && criterion["state"] == "local_regression_profile_defined"
+                })
+        );
+
+        let service_register = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
+        );
+        assert_eq!(service_register["row_count"], 7);
+        assert_eq!(
+            service_register["local_semantic_regression_profile_ready"],
+            true
+        );
+        assert_eq!(service_register["service_promoted"], false);
+
+        let blocker_register = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
+        );
+        assert_eq!(blocker_register["exact_blocker_count"], 6);
+        assert_eq!(
+            blocker_register["continuous_scale_assurance_promoted"],
+            false
+        );
+
+        let validation = read_required_json(
+            &repo_root,
+            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -2168,6 +2962,155 @@ mod tests {
                 "failed_row_count": 0,
                 "source_evidence_row_count": 15,
                 "publication_display_row_count": 11,
+                "w073_oxcalc_fixture_request_construction_verified": true,
+                "w073_typed_only_formatting_guard_retained": true,
+                "w073_downstream_dnaonecalc_request_construction_verified": false,
+                "broad_oxfml_seam_promoted": false,
+                "callable_metadata_projection_promoted": false,
+            }),
+        );
+    }
+
+    fn create_w045_source_artifacts(repo_root: &Path) {
+        create_w044_source_artifacts(repo_root);
+        write_json_test(
+            repo_root,
+            &relative_artifact_path([
+                "docs",
+                "test-runs",
+                "core-engine",
+                "pack-capability",
+                W044_PACK_CAPABILITY_RUN_ID,
+                "run_summary.json",
+            ]),
+            json!({
+                "decision_status": "capability_not_promoted",
+                "highest_honest_capability": "cap.C4.distill_valid",
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_RELEASE_GRADE_SUMMARY_PATH,
+            json!({
+                "source_residual_lane_count": 22,
+                "successor_obligation_count": 36,
+                "promotion_contract_count": 18,
+                "w073_typed_rule_only_families": W045_EXPECTED_TYPED_RULE_ONLY_FAMILIES,
+                "oxfml_formatting_update_incorporated": true,
+                "w073_downstream_request_construction_uptake_verified_by_oxcalc": false,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "w045_disposition_row_count": 7,
+                "w045_direct_evidence_bound_count": 2,
+                "w045_exact_remaining_blocker_count": 5,
+                "w045_match_promoted_count": 0,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "local_proof_row_count": 11,
+                "refinement_row_count": 9,
+                "totality_boundary_count": 5,
+                "exact_remaining_blocker_count": 7,
+                "promotion_claims": {
+                    "rust_engine_totality_promoted": false,
+                    "rust_refinement_promoted": false,
+                    "pack_grade_replay_promoted": false,
+                    "general_oxfunc_kernel_promoted": false,
+                },
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "local_proof_row_count": 11,
+                "bounded_model_row_count": 4,
+                "totality_boundary_count": 6,
+                "exact_remaining_blocker_count": 6,
+                "promotion_claims": {
+                    "full_lean_verification_promoted": false,
+                    "full_tla_verification_promoted": false,
+                    "scheduler_fairness_promoted": false,
+                    "unbounded_model_coverage_promoted": false,
+                },
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_STAGE2_REPLAY_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "policy_row_count": 29,
+                "observable_invariance_row_count": 5,
+                "pack_grade_equivalence_row_count": 8,
+                "service_gate_row_count": 10,
+                "exact_remaining_blocker_count": 10,
+                "declared_scheduler_equivalence_evidenced": true,
+                "declared_pack_equivalence_evidenced": true,
+                "service_gate_classification_evidenced": true,
+                "stage2_policy_promoted": false,
+                "pack_grade_replay_promoted": false,
+                "w073_typed_rule_only_direct_replacement_guard_carried": true,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_OPERATED_ASSURANCE_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "alert_decision_count": 0,
+                "quarantine_decision_count": 0,
+                "service_harness_operation_count": 8,
+                "service_readiness_criteria_count": 31,
+                "multi_run_history_row_count": 47,
+                "exact_service_blocker_count": 6,
+                "local_operated_service_harness_runnable": true,
+                "operated_continuous_assurance_service_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+                "retained_history_service_promoted": false,
+                "retention_slo_enforcement_promoted": false,
+                "release_grade_verification_promoted": false,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_DIVERSITY_SEAM_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "w045_independent_reference_model_case_count": 10,
+                "w045_independent_reference_model_match_count": 10,
+                "accepted_boundary_count": 46,
+                "cross_engine_differential_row_count": 20,
+                "exact_blocker_count": 10,
+                "w073_typed_only_formatting_guard_retained": true,
+                "w073_downstream_typed_rule_request_construction_verified": false,
+                "fully_independent_evaluator_promoted": false,
+                "mismatch_quarantine_service_promoted": false,
+                "operated_cross_engine_differential_service_promoted": false,
+            }),
+        );
+        write_json_test(
+            repo_root,
+            W045_OXFML_SEAM_SUMMARY_PATH,
+            json!({
+                "failed_row_count": 0,
+                "source_evidence_row_count": 18,
+                "surface_row_count": 9,
+                "publication_display_row_count": 13,
+                "callable_metadata_row_count": 8,
+                "registered_external_row_count": 6,
+                "exact_blocker_count": 13,
+                "w073_current_oxfml_direct_replacement_update_reviewed": true,
                 "w073_oxcalc_fixture_request_construction_verified": true,
                 "w073_typed_only_formatting_guard_retained": true,
                 "w073_downstream_dnaonecalc_request_construction_verified": false,

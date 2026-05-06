@@ -1,0 +1,52 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001",
+  "continuous_scale_assurance_promoted": false,
+  "exact_blocker_count": 6,
+  "performance_claim_promoted": false,
+  "rows": [
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "calc-zkio.10/calc-zkio.11 or successor service work",
+      "reason": "No operated recurring scale-regression scheduler is evidenced in this repo.",
+      "row_id": "w045_scale.operated_recurring_scheduler_absent"
+    },
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "calc-zkio.10/calc-zkio.11 or successor service work",
+      "reason": "W045 diversity evidence contains local differential harness evidence, but no promoted operated cross-engine differential service.",
+      "row_id": "w045_scale.operated_cross_engine_diff_service_absent"
+    },
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "full formalization/release-grade decision lane",
+      "reason": "Timing and phase split data are diagnostic measurement surfaces only.",
+      "row_id": "w045_scale.performance_correctness_proof_absent"
+    },
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "calc-zkio.10",
+      "reason": "Pack-grade replay governance and cap.C5 reassessment consume this packet in the next bead.",
+      "row_id": "w045_scale.pack_c5_decision_pending"
+    },
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "calc-zkio.11",
+      "reason": "Release-grade verification requires W045 pack/C5 reassessment and closure audit.",
+      "row_id": "w045_scale.release_grade_decision_pending"
+    },
+    {
+      "blocker_state": "exact_blocker_retained",
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "owner": "cross-repo seam or successor scope",
+      "reason": "LET/LAMBDA carrier evidence is in scope, but general OxFunc kernels, callable carrier sufficiency, and provider publication remain unpromoted.",
+      "row_id": "w045_scale.oxfunc_and_callable_external_boundaries_retained"
+    }
+  ],
+  "run_id": "w045-continuous-release-scale-assurance-semantic-regression-001",
+  "schema_version": "oxcalc.scale_semantic_binding.w045.exact_scale_blocker_register.v1"
+}

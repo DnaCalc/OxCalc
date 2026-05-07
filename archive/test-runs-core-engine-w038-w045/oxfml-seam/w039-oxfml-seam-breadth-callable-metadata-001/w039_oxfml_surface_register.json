@@ -1,0 +1,55 @@
+{
+  "broad_oxfml_seam_promoted": false,
+  "row_count": 5,
+  "rows": [
+    {
+      "direct_oxfml_case_count": 3,
+      "disposition_kind": "exercised_current_surface",
+      "expectation_mismatch_count": 0,
+      "promotion_consequence": "current direct OxFml runtime surface is bound for this fixture slice without broad seam closure",
+      "row_id": "surface.direct_oxfml_runtime_facade",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+      "surface_state": "direct_runtime_facade_exercised"
+    },
+    {
+      "consumer_editor_present": true,
+      "consumer_replay_present": true,
+      "consumer_runtime_present": true,
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "OxCalc records the intended public consumer surface without claiming migration or API freeze",
+      "row_id": "surface.public_consumer_entry_points",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "current_public_consumer_surface_named"
+    },
+    {
+      "bind_context_case_count": 2,
+      "disposition_kind": "exercised_bounded_surface",
+      "host_info_case_count": 2,
+      "promotion_consequence": "bounded host-query fixture coverage is present, not full provider-family closure",
+      "row_id": "surface.host_query_and_provider_families",
+      "rtd_case_count": 1,
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json",
+      "surface_state": "host_info_rtd_reference_families_exercised"
+    },
+    {
+      "disposition_kind": "exercised_bounded_surface",
+      "promotion_consequence": "table packet direction is exercised for the bounded fixture slice, not broad workbook table closure",
+      "row_id": "surface.structured_reference_table_context",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json",
+      "structured_reference_case_count": 4,
+      "surface_state": "table_context_and_structured_reference_cases_exercised",
+      "table_context_case_count": 5
+    },
+    {
+      "descriptor_present": true,
+      "disposition_kind": "note_level_watch",
+      "mutation_request_present": true,
+      "promotion_consequence": "registered external packet naming remains note-level; callable metadata projection is not promoted",
+      "row_id": "surface.registered_external_packet",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "surface_state": "registered_external_packet_converged_at_note_level"
+    }
+  ],
+  "run_id": "w039-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.oxfml_seam.w039.surface_register.v1"
+}

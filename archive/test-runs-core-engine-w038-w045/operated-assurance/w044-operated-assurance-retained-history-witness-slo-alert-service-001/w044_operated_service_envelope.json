@@ -1,0 +1,74 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "file_backed_service_envelope_present": true,
+  "operated_run_queue_present": false,
+  "recurring_scheduler_present": false,
+  "row_count": 11,
+  "rows": [
+    {
+      "evidence_or_blocker": "W044 operated-assurance packet is emitted by the checked CLI runner",
+      "row_id": "service.cli_entrypoint",
+      "runner_command": "cargo run -p oxcalc-tracecalc-cli -- operated-assurance w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+      "state": "satisfied"
+    },
+    {
+      "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+      "evidence_or_blocker": "runner writes source index, service envelope, retained-history query, retained-witness lifecycle, alert dispatch, cross-engine service, readiness, blockers, decision, and validation artifacts",
+      "row_id": "service.artifact_root",
+      "state": "satisfied"
+    },
+    {
+      "evidence_or_blocker": "runner binds W044 residual obligations, W043 service packet, W044 proof/model and Stage 2 artifacts, W043 pack decision, and W073 typed-formatting intake",
+      "row_id": "service.source_ingestion",
+      "source_evidence_row_count": 17,
+      "state": "satisfied"
+    },
+    {
+      "evidence_or_blocker": "service-readable run queue manifest is retained in the artifact envelope, but it is not an operated queue",
+      "row_id": "service.run_queue_manifest",
+      "state": "satisfied_boundary"
+    },
+    {
+      "evidence_or_blocker": "deterministic retained-history query contract and replay-correlation index are emitted as file-backed evidence",
+      "row_id": "service.retained_history_query_contract",
+      "state": "satisfied_boundary"
+    },
+    {
+      "evidence_or_blocker": "retained-witness lifecycle rows are carried and extended without pack eligibility promotion",
+      "row_id": "service.retained_witness_lifecycle_register",
+      "state": "satisfied_boundary"
+    },
+    {
+      "evidence_or_blocker": "local alert/quarantine rules are evaluated, but no external dispatcher is operated",
+      "row_id": "service.alert_quarantine_contract",
+      "state": "satisfied_boundary"
+    },
+    {
+      "evidence_or_blocker": "W044 Stage 2 retains operated cross-engine differential service as an exact dependency",
+      "row_id": "service.stage2_service_dependency_bound",
+      "state": "satisfied"
+    },
+    {
+      "evidence_or_blocker": "current OxFml W073 typed-only formatting intake is bound as a watch row without changing service semantics",
+      "row_id": "service.oxfml_formatting_watch",
+      "state": "satisfied"
+    },
+    {
+      "evidence_or_blocker": "no recurring scheduler, daemon, service endpoint, or operated run queue is present",
+      "row_id": "service.recurring_scheduler",
+      "state": "blocked"
+    },
+    {
+      "evidence_or_blocker": "local dispatch contract is evaluated, but no external alert or quarantine endpoint is operated",
+      "row_id": "service.external_dispatch_endpoint",
+      "state": "blocked"
+    }
+  ],
+  "run_id": "w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "runner_command": "cargo run -p oxcalc-tracecalc-cli -- operated-assurance w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "runner_kind": "file_backed_operated_assurance_retained_history_witness_slo_alert_service",
+  "schema_version": "oxcalc.operated_assurance.w044.operated_service_envelope.v1",
+  "service_endpoint_present": false,
+  "service_run_queue_manifest_present": true,
+  "source_evidence_row_count": 17
+}

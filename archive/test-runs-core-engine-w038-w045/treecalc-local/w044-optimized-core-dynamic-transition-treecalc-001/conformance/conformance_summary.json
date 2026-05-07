@@ -1,0 +1,8 @@
+{
+  "case_count": 28,
+  "conformance_pass_count": 28,
+  "engine_diff_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/conformance/engine_diff.json",
+  "expectation_mismatch_count": 0,
+  "mismatch_case_count": 0,
+  "oracle_baseline_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/conformance/oracle_baseline.json"
+}

@@ -1,0 +1,67 @@
+{
+  "accepted_boundary_count": 11,
+  "bounded_independent_implementation_case_count": 5,
+  "fully_independent_evaluator_promoted": false,
+  "operated_service_authority_promoted": false,
+  "row_count": 7,
+  "rows": [
+    {
+      "authority_limit": "bounded integer scalar arithmetic only",
+      "authority_state": "bounded_independent_runtime",
+      "case_count": 5,
+      "disposition_kind": "bounded_independent_implementation",
+      "evidence": "w040_independent_scalar_evaluator_implementation.json",
+      "match_count": 5,
+      "row_id": "authority.w040_bounded_independent_scalar_evaluator"
+    },
+    {
+      "authority_limit": "W039 boundaries remain in force beyond the bounded scalar slice",
+      "authority_state": "predecessor_authority_boundaries_retained",
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_differential_service_authority_register.json",
+      "row_count": 7,
+      "row_id": "authority.w039_predecessor_authority_boundaries"
+    },
+    {
+      "authority_limit": "optimized/core conformance does not supply separate implementation authority",
+      "authority_state": "not_independent",
+      "disposition_kind": "same_authority_family",
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json",
+      "exact_remaining_blocker_count": 4,
+      "row_id": "authority.optimized_core_same_implementation_family"
+    },
+    {
+      "authority_limit": "file-backed row agreement and retained artifacts cannot substitute for an operated differential service",
+      "authority_state": "file_backed_artifact_authority",
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+      "retained_history_query_register_present": true,
+      "row_id": "authority.file_backed_service_artifacts"
+    },
+    {
+      "authority_limit": "no recurring service endpoint, retained service history, or service-level mismatch action path exists",
+      "authority_state": "blocked_no_operated_service",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+      "operated_cross_engine_differential_service_present": false,
+      "row_id": "authority.operated_cross_engine_service"
+    },
+    {
+      "authority_limit": "bounded scalar evaluator does not cover TreeCalc scheduling, references, publication, effects, OxFml seam breadth, or callable metadata",
+      "authority_state": "blocked_beyond_bounded_scalar_slice",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "w040_independent_scalar_evaluator_implementation.json",
+      "row_id": "authority.full_independent_evaluator_implementation"
+    },
+    {
+      "authority_limit": "release-grade diversity authority remains unavailable while full independent implementation and operated service blockers remain",
+      "authority_state": "blocked_no_release_grade_authority",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+      "exact_service_blocker_count": 4,
+      "row_id": "authority.release_grade_diversity_promotion"
+    }
+  ],
+  "run_id": "w040-independent-evaluator-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w040.differential_authority_register.v1"
+}

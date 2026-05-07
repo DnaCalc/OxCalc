@@ -1,0 +1,104 @@
+{
+  "accepted_boundary_count": 21,
+  "fully_independent_evaluator_promoted": false,
+  "mismatch_quarantine_service_promoted": false,
+  "operated_service_authority_promoted": false,
+  "row_count": 12,
+  "rows": [
+    {
+      "authority_limit": "named-reference model slice only; no scheduling, publication, effects, callable-carrier, broad OxFml seam, or full OxFunc kernel authority",
+      "authority_state": "independent_reference_model_runtime",
+      "case_count": 6,
+      "disposition_kind": "broadened_independent_implementation",
+      "evidence": "w043_independent_reference_model_implementation.json",
+      "match_count": 6,
+      "row_id": "authority.w043_independent_reference_model_evaluator"
+    },
+    {
+      "authority_limit": "predecessor authority remains a narrower reference-model slice",
+      "authority_state": "predecessor_reference_model_runtime",
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json",
+      "row_id": "authority.w042_reference_model_predecessor",
+      "w042_authority_row_count": 10
+    },
+    {
+      "authority_limit": "oracle authority for covered observable behavior only",
+      "authority_state": "reference_oracle",
+      "disposition_kind": "accepted_boundary",
+      "evidence": "TraceCalc",
+      "row_id": "authority.tracecalc_correctness_oracle"
+    },
+    {
+      "authority_limit": "optimized/core conformance does not supply separate implementation authority",
+      "authority_state": "not_independent",
+      "disposition_kind": "same_authority_family",
+      "evidence": "W043 optimized/core counterpart packet",
+      "row_id": "authority.optimized_core_same_implementation_family"
+    },
+    {
+      "authority_limit": "external evaluator authority is limited to the consumed OxFml seam and does not implement OxCalc scheduling/publication",
+      "authority_state": "external_formula_evaluator_only",
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "row_id": "authority.direct_oxfml_external_formula_evaluator"
+    },
+    {
+      "authority_limit": "file-backed row agreement and retained artifacts cannot substitute for an operated differential service",
+      "authority_state": "file_backed_artifact_authority",
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+      "row_id": "authority.service_envelope_file_backed_authority",
+      "service_envelope_row_count": 10
+    },
+    {
+      "authority_limit": "local alert dispatch classification is a contract row set, not an external quarantine service",
+      "authority_state": "local_router_contract_not_service",
+      "disposition_kind": "service_contract_boundary",
+      "evaluated_rule_count": 29,
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+      "row_id": "authority.mismatch_router_contract"
+    },
+    {
+      "authority_limit": "agreement, mismatch, implementation-fault, and spec-correction routes remain declared classification until operated service evidence exists",
+      "authority_state": "spec_evolution_route_not_service",
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "row_id": "authority.spec_evolution_route"
+    },
+    {
+      "authority_limit": "no recurring service endpoint, retained service history, or service-level mismatch action path exists",
+      "authority_state": "blocked_no_operated_service",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+      "operated_cross_engine_differential_service_present": false,
+      "row_id": "authority.operated_cross_engine_service"
+    },
+    {
+      "authority_limit": "local clean dispatch rows cannot stand in for an enforcing mismatch quarantine service",
+      "authority_state": "blocked_no_quarantine_service",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+      "quarantine_service_promoted": false,
+      "row_id": "authority.mismatch_quarantine_service"
+    },
+    {
+      "authority_limit": "reference model slice does not cover TreeCalc scheduling, references outside declared order, publication, effects, broad OxFml seam breadth, or callable metadata",
+      "authority_state": "blocked_beyond_reference_model_slice",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "w043_independent_reference_model_implementation.json",
+      "row_id": "authority.full_independent_evaluator_breadth"
+    },
+    {
+      "authority_limit": "release-grade diversity authority remains unavailable while full independent implementation and operated service blockers remain",
+      "authority_state": "blocked_no_release_grade_authority",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "exact_service_blocker_count": 6,
+      "row_id": "authority.release_grade_diversity_promotion"
+    }
+  ],
+  "run_id": "w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w043.mismatch_quarantine_authority_router.v1",
+  "w043_independent_reference_model_case_count": 6
+}

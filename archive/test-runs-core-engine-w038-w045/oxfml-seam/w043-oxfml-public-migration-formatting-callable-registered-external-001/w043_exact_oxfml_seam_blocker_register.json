@@ -1,0 +1,107 @@
+{
+  "exact_blocker_count": 11,
+  "rows": [
+    {
+      "blocker_id": "w043_oxfml.callable_metadata_projection_absent",
+      "blocker_present": true,
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+      "owner": "calc-2p3.8",
+      "promotion_consequence": "callable metadata projection remains unpromoted",
+      "reason": "direct LET/LAMBDA value-carrier evidence exists, but callable metadata projection fixture or implementation evidence remains absent.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.callable_carrier_sufficiency_proof_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "obligation_present": true,
+      "owner": "calc-2p3.4; calc-2p3.8",
+      "promotion_consequence": "broad callable conformance remains unpromoted",
+      "reason": "the consumed LET/LAMBDA carrier rows are exercised, but no proof shows that carrier sufficiency replaces callable metadata projection for the broader consumed surface.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.broad_display_publication_breadth_unexercised",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "format_display_notes_present": true,
+      "owner": "calc-2p3.8",
+      "promotion_consequence": "broad OxFml display/publication closure remains unpromoted",
+      "reason": "the current direct slice carries typed formatting and distinct format/display categories, but not broad display-facing or publication/topology closure.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.public_consumer_surface_migration_not_verified",
+      "consumer_surface_present": true,
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-2p3.8; future implementation lane",
+      "promotion_consequence": "public surface alignment remains watch-bound rather than promoted",
+      "reason": "OxFml names the public consumer surface, but this bead does not migrate or verify all OxCalc integration call sites against that surface.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.w073_public_request_construction_uptake_not_verified",
+      "evidence": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "handoff_requires_typed_rule": true,
+      "owner": "calc-2p3.8; downstream:DNA OneCalc",
+      "promotion_consequence": "W073 public request-construction uptake remains unpromoted in OxCalc",
+      "reason": "OxFml W073 is typed-rule-only for aggregate and visualization metadata, but this OxCalc bead does not verify downstream typed request construction.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.registered_external_callable_projection_deferred",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-2p3.8; external:OxFml/OxFunc",
+      "promotion_consequence": "registered external callable metadata projection remains unpromoted",
+      "reason": "registered-external packet naming is note-level converged, but no OxCalc callable metadata projection fixture is exercised.",
+      "registered_external_descriptor_present": true,
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.provider_failure_callable_publication_watch_lane",
+      "callable_publication_note_present": true,
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-2p3.8; OxFml watch lane",
+      "promotion_consequence": "provider failure and callable publication seam closure remains unpromoted",
+      "provider_failure_note_present": true,
+      "reason": "provider-failure and callable-publication are explicitly watch lanes until coordinator-visible evidence exercises them.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.publication_topology_consequence_breadth_narrower",
+      "evidence": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "owner": "calc-2p3.8; W026 residual lane",
+      "promotion_consequence": "broad publication/topology closure remains unpromoted",
+      "publication_topology_note_present": true,
+      "reason": "publication and topology consequence breadth is canonical but narrower and has not been frozen as broad coordinator seam closure.",
+      "status_after_run": "exact_remaining_watch_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.format_display_public_migration_breadth_not_verified",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "obligation_present": true,
+      "owner": "calc-2p3.8",
+      "promotion_consequence": "public migration and broad display/publication closure remain unpromoted",
+      "reason": "format_delta/display_delta distinction is carried, but broad display-facing publication and public migration remain unverified.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.diversity_dependency_oxfml_callable_breadth_absent",
+      "blocker_present": true,
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json",
+      "owner": "calc-2p3.7; calc-2p3.8",
+      "promotion_consequence": "diversity and release-grade promotion remain blocked",
+      "reason": "W043 diversity evidence explicitly depends on OxFml/callable breadth that this bead classifies but does not fully promote.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w043_oxfml.general_oxfunc_kernel_external",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "obligation_present": true,
+      "owner": "external:OxFunc",
+      "promotion_consequence": "general OxFunc kernel promotion remains outside OxCalc",
+      "reason": "W043 includes the narrow LET/LAMBDA carrier seam, not general OxFunc kernel formalization inside OxCalc.",
+      "status_after_run": "accepted_external_boundary"
+    }
+  ],
+  "run_id": "w043-oxfml-public-migration-formatting-callable-registered-external-001",
+  "schema_version": "oxcalc.oxfml_seam.w043.exact_blocker_register.v1"
+}

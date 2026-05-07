@@ -31,6 +31,18 @@ Transition rule:
 3. `CURRENT_BLOCKERS.md` no longer owns ordinary blocker truth,
 4. `docs/worksets/README.md` and `docs/IN_PROGRESS_FEATURE_WORKLIST.md` are no longer live execution-status surfaces.
 
+## 2B. High-Signal Execution Doctrine
+OxCalc execution should keep the active repo small enough to understand and strong enough to trust.
+
+1. Product behavior is the center of gravity: engine state, dependency graph construction, invalidation, evaluation, replay, and host-facing semantics.
+2. Formalization should create executable leverage: state machines, transition relations, invariants, pre/post conditions, refinement links, and falsifiable checks.
+3. A new artifact must have a named consumer: code, tests, proof/model checks, replay validation, a durable spec, or a specific human decision.
+4. A successor workset should first distill predecessor output. If the durable result fits in an active spec paragraph or table, update that surface and archive the rest.
+5. Generated evidence stays active only while it is a normative baseline or an input to current validation. Historical snapshots belong under the top-level `archive/` with a short manifest.
+6. Prefer direct engineering moves over taxonomy expansion: fix behavior, write the model, run the replay, tighten the invariant, or remove stale material.
+7. Keep code free of workset-specific accretion unless the runner or fixture is still an active validation tool. Legacy runners should be isolated, retired, or archived through explicit cleanup beads.
+8. Reports should identify the decision enabled by the work and the next concrete engineering move.
+
 ## 3. Staged Realization
 1. Stage 1:
    - sequential deterministic topo/SCC baseline,

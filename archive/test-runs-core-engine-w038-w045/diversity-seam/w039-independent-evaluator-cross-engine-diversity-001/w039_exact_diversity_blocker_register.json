@@ -1,0 +1,59 @@
+{
+  "exact_blocker_count": 6,
+  "rows": [
+    {
+      "blocker_id": "w039_diversity.fully_independent_evaluator_implementation_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/exact_diversity_seam_blocker_register.json",
+      "owner": "calc-f7o.6",
+      "predecessor_blocker_present": true,
+      "promotion_consequence": "fully independent evaluator diversity remains unpromoted",
+      "reason": "TraceCalc, TreeCalc/CoreEngine projection, direct OxFml, formal model, and file-backed differential rows do not constitute an independently implemented OxCalc evaluator row set.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_diversity.independent_evaluator_authority_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+      "owner": "calc-f7o.6",
+      "promotion_consequence": "independent evaluator row-set promotion remains unavailable",
+      "reason": "No row set is backed by a separate implementation authority with its own execution kernel and replay evidence.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_diversity.operated_cross_engine_service_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
+      "owner": "calc-f7o.6; calc-f7o.5",
+      "predecessor_blocker_present": true,
+      "promotion_consequence": "operated cross-engine diversity service remains unpromoted",
+      "reason": "W039 has a file-backed cross-engine substrate, not an operated recurring differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_diversity.stage2_differential_service_dependency_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+      "owner": "calc-f7o.4; calc-f7o.6",
+      "promotion_consequence": "Stage 2 diversity remains a blocked dependency for release-grade promotion",
+      "reason": "Stage 2 diversity needs production policy, partition soundness, and operated differential service evidence before strategy-level diversity promotion.",
+      "stage2_blocker_rows": 5,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_diversity.mismatch_triage_and_quarantine_service_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json",
+      "owner": "calc-f7o.5; calc-f7o.6",
+      "promotion_consequence": "service-level diversity assurance remains unpromoted",
+      "reason": "The retained history and alert rules are bound, but no external alert dispatcher or mismatch quarantine service is operated.",
+      "service_blocker_rows": 5,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w039_diversity.release_grade_promotion_authority_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+      "owner": "calc-f7o.9",
+      "promotion_consequence": "release-grade verification, pack/C5, and diversity promotion remain unavailable to this bead",
+      "reason": "Release-grade diversity cannot be claimed from proxy evidence, file-backed rows, shared projections, or retained blockers.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w039-independent-evaluator-cross-engine-diversity-001",
+  "schema_version": "oxcalc.diversity_seam.w039.exact_diversity_blocker_register.v1"
+}

@@ -1,0 +1,169 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_closure_obligation_map",
+      "semantic_state": "w042_service_obligations_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_w073_typed_formatting_guard",
+      "semantic_state": "w073_typed_only_formatting_guard_retained_for_w042_operated_assurance",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_operated_assurance_summary",
+      "semantic_state": "w041_operated_assurance_packet_bound_without_service_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_operated_service_envelope.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_service_envelope",
+      "semantic_state": "w041_file_backed_service_envelope_available_for_w042",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_history_service_query.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_retained_history_query_contract",
+      "semantic_state": "w041_retained_history_query_contract_bound_for_w042",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_witness_lifecycle_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_retained_witness_lifecycle",
+      "semantic_state": "w041_retained_witness_lifecycle_bound_without_pack_eligibility",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_alert_dispatch_contract",
+      "semantic_state": "w041_local_alert_dispatch_contract_clean_for_w042",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_cross_engine_service_blocker",
+      "semantic_state": "w041_cross_engine_file_backed_substrate_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_service_readiness_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_service_readiness_blockers",
+      "semantic_state": "w041_exact_service_blockers_bound_for_w042",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_stage2_service_dependency",
+      "semantic_state": "w042_stage2_service_dependency_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_stage2_retained_witness_dependency",
+      "semantic_state": "w042_stage2_retained_witness_dependency_retained",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_stage2_pack_governance_dependency",
+      "semantic_state": "w042_pack_governance_dependency_retained",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w041-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_pack_c5_service_blockers",
+      "semantic_state": "w041_pack_c5_service_no_promotion_blockers_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w042_no_proxy_promotion_guard",
+      "semantic_state": "w042_service_stage2_pack_no_proxy_promotion_guard_clean",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    }
+  ],
+  "run_id": "w042-operated-assurance-retained-history-retained-witness-alert-service-001",
+  "schema_version": "oxcalc.operated_assurance.w042.source_evidence_index.v1",
+  "source_artifacts": {
+    "w041_alert_dispatch_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
+    "w041_cross_engine_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
+    "w041_exact_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_exact_service_blocker_register.json",
+    "w041_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+    "w041_operated_assurance_validation": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/validation.json",
+    "w041_pack_decision": "archive/test-runs-core-engine-w038-w045/pack-capability/w041-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+    "w041_pack_summary": "archive/test-runs-core-engine-w038-w045/pack-capability/w041-pack-grade-replay-governance-c5-reassessment-001/run_summary.json",
+    "w041_promotion_decision": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/promotion_decision.json",
+    "w041_retained_history_service_query": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_history_service_query.json",
+    "w041_retained_witness_lifecycle": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_witness_lifecycle_register.json",
+    "w041_service_envelope": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_operated_service_envelope.json",
+    "w041_service_readiness": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_service_readiness_register.json",
+    "w042_formatting_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+    "w042_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+    "w042_obligation_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json",
+    "w042_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
+    "w042_stage2_decision": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
+    "w042_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+    "w042_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json"
+  },
+  "source_evidence_row_count": 14
+}

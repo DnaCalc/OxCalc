@@ -1,0 +1,151 @@
+{
+  "broad_display_publication_promoted": false,
+  "format_delta_display_delta_distinct": true,
+  "provider_failure_callable_publication_promoted": false,
+  "row_count": 13,
+  "rows": [
+    {
+      "boundary_state": "typed_rule_request_construction_exercised",
+      "display_delta_present": false,
+      "disposition_kind": "exercised_current_surface",
+      "family_present": true,
+      "format_delta_present": false,
+      "legacy_thresholds_present": true,
+      "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate",
+      "result_status": "matched",
+      "row_id": "publication.w045_w073_rank_typed_rule_request",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_top_rank_guard_001/result.json",
+      "typed_rule_family": "rank"
+    },
+    {
+      "boundary_state": "typed_rule_request_construction_exercised",
+      "display_delta_present": false,
+      "disposition_kind": "exercised_current_surface",
+      "family_present": true,
+      "format_delta_present": false,
+      "legacy_thresholds_present": true,
+      "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate",
+      "result_status": "matched",
+      "row_id": "publication.w045_w073_color_scale_typed_rule_request",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_color_scale_guard_001/result.json",
+      "typed_rule_family": "color_scale"
+    },
+    {
+      "boundary_state": "typed_rule_request_construction_exercised",
+      "display_delta_present": false,
+      "disposition_kind": "exercised_current_surface",
+      "family_present": true,
+      "format_delta_present": false,
+      "legacy_thresholds_present": true,
+      "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate",
+      "result_status": "matched",
+      "row_id": "publication.w045_w073_data_bar_typed_rule_request",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_data_bar_guard_001/result.json",
+      "typed_rule_family": "data_bar"
+    },
+    {
+      "boundary_state": "typed_rule_request_construction_exercised",
+      "display_delta_present": false,
+      "disposition_kind": "exercised_current_surface",
+      "family_present": true,
+      "format_delta_present": false,
+      "legacy_thresholds_present": true,
+      "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate",
+      "result_status": "matched",
+      "row_id": "publication.w045_w073_icon_set_typed_rule_request",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_icon_set_guard_001/result.json",
+      "typed_rule_family": "icon_set"
+    },
+    {
+      "boundary_state": "typed_rule_request_construction_exercised",
+      "display_delta_present": false,
+      "disposition_kind": "exercised_current_surface",
+      "family_present": true,
+      "format_delta_present": false,
+      "legacy_thresholds_present": true,
+      "promotion_consequence": "OxCalc fixture request construction emits typed_rule for this W073 family; downstream DNA OneCalc uptake and broad display/publication closure remain separate",
+      "result_status": "matched",
+      "row_id": "publication.w045_w073_average_typed_rule_request",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_average_guard_001/result.json",
+      "typed_rule_family": "average"
+    },
+    {
+      "boundary_state": "direct_replacement_contract_retained",
+      "disposition_kind": "exercised_current_surface",
+      "old_bounded_string_non_interpretation_evidence_reviewed": true,
+      "promotion_consequence": "OxCalc W045 evidence must not infer fallback from W072 threshold strings for W073 aggregate/visualization families",
+      "row_id": "publication.w045_w073_no_threshold_fallback_for_aggregate_visualization",
+      "source": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+      "threshold_fallback_allowed_for_typed_families": false
+    },
+    {
+      "boundary_state": "current_oxfml_formatting_code_requires_typed_metadata",
+      "disposition_kind": "exercised_current_surface",
+      "legacy_parser_functions_removed": true,
+      "promotion_consequence": "current OxFml formatting update is incorporated as read-only seam evidence, not edited by OxCalc",
+      "row_id": "publication.w045_current_oxfml_code_direct_replacement_update",
+      "source": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "typed_options_required_count": 3
+    },
+    {
+      "aggregate_old_string_test_present": true,
+      "boundary_state": "old_bounded_strings_are_not_interpreted_for_w073_families",
+      "disposition_kind": "exercised_current_surface",
+      "handoff_requires_typed_rule": true,
+      "promotion_consequence": "old-string rejection is current OxFml evidence; downstream typed request construction remains separately unverified",
+      "row_id": "publication.w045_w073_old_string_non_interpretation_evidence",
+      "source": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "visualization_old_string_test_present": true,
+      "workset_records_direct_replacement": true
+    },
+    {
+      "boundary_state": "downstream_dnaonecalc_request_construction_not_verified",
+      "disposition_kind": "exact_remaining_blocker",
+      "dnaonecalc_should_emit_typed_rule": true,
+      "promotion_consequence": "W073 downstream uptake remains unpromoted in OxCalc until direct downstream evidence exists",
+      "row_id": "publication.w045_w073_downstream_request_construction_watch",
+      "source": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "w073_downstream_dnaonecalc_request_construction_verified": false
+    },
+    {
+      "boundary_state": "format_delta_and_display_delta_remain_distinct",
+      "display_delta_note_present": true,
+      "disposition_kind": "note_level_watch",
+      "format_delta_note_present": true,
+      "promotion_consequence": "format/display distinction is retained without broad display publication promotion",
+      "row_id": "publication.w045_format_delta_display_delta_distinct",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    },
+    {
+      "boundary_state": "thresholds_retained_for_scalar_operator_expression_families",
+      "disposition_kind": "accepted_boundary",
+      "promotion_consequence": "typed-only W073 direct replacement is limited to aggregate and visualization metadata families",
+      "row_id": "publication.w045_scalar_thresholds_remain_expression_inputs",
+      "scalar_threshold_text_retained": true,
+      "source": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md"
+    },
+    {
+      "boundary_state": "broad_display_publication_breadth_unexercised",
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "broad display/publication and topology consequence closure remains unpromoted",
+      "publication_topology_note_present": true,
+      "row_id": "publication.w045_broad_display_publication_breadth",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    },
+    {
+      "boundary_state": "provider_failure_callable_publication_watch_only",
+      "callable_publication_note_present": true,
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "provider-failure and callable-publication remain watch lanes until coordinator-visible evidence exists",
+      "provider_failure_note_present": true,
+      "row_id": "publication.w045_provider_failure_callable_publication_watch",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    }
+  ],
+  "run_id": "w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "schema_version": "oxcalc.oxfml_seam.w045.publication_display_boundary_register.v1",
+  "w073_current_oxfml_direct_replacement_update_reviewed": true,
+  "w073_downstream_dnaonecalc_request_construction_verified": false,
+  "w073_oxcalc_fixture_request_construction_verified": true,
+  "w073_typed_only_formatting_guard_retained": true
+}

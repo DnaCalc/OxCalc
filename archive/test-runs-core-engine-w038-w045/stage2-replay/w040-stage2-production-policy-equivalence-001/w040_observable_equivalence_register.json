@@ -1,0 +1,127 @@
+{
+  "exact_remaining_blocker_count": 2,
+  "row_count": 8,
+  "rows": [
+    {
+      "disposition": "carry W039 bounded baseline-versus-Stage-2 replay rows into W040 policy evidence",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_baseline_vs_stage2_replay",
+      "promotion_consequence": "bounded replay remains direct evidence but not production Stage 2 policy promotion",
+      "row_id": "w040_stage2_bounded_replay_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json"
+      ],
+      "w040_obligation_id": "W040-OBL-011"
+    },
+    {
+      "disposition": "carry one nontrivial partition-order permutation row and six total permutation rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "partition_order_permutation_replay",
+      "promotion_consequence": "bounded permutation evidence remains direct evidence but does not prove production scheduler fairness",
+      "row_id": "w040_stage2_partition_order_permutation_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json"
+      ],
+      "w040_obligation_id": "W040-OBL-011"
+    },
+    {
+      "disposition": "carry bounded observable-result invariance rows for declared profiles",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "observable_result_invariance",
+      "promotion_consequence": "observable invariance remains evidenced for declared bounded profiles only",
+      "row_id": "w040_stage2_observable_invariance_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json"
+      ],
+      "w040_obligation_id": "W040-OBL-011"
+    },
+    {
+      "disposition": "bind TraceCalc stale snapshot reject/no-publish evidence with the bounded TLA fence-reject counterpart",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "snapshot_fence_counterpart",
+      "promotion_consequence": "the Stage 2/coordinator snapshot-fence counterpart is evidenced for the declared profile, but Stage 2 policy remains blocked by broader analyzer/service/pack gates",
+      "row_id": "w040_stage2_snapshot_fence_counterpart_direct_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_snapshot_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_snapshot_fence_reject_001/rejects.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_snapshot_fence_reject_001/published_view.json",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json"
+      ],
+      "w040_obligation_id": "W040-OBL-003"
+    },
+    {
+      "disposition": "bind TraceCalc capability-view mismatch reject/no-publish evidence with the bounded TLA fence-reject counterpart",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "capability_view_fence_counterpart",
+      "promotion_consequence": "the Stage 2/coordinator capability-view fence counterpart is evidenced for the declared profile, distinct from broader capability-sensitive local rejection, but Stage 2 policy remains blocked",
+      "row_id": "w040_stage2_capability_view_fence_counterpart_direct_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_capability_fence_reject_001/result.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_capability_fence_reject_001/rejects.json",
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_w034_capability_fence_reject_001/published_view.json",
+        "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json"
+      ],
+      "w040_obligation_id": "W040-OBL-003"
+    },
+    {
+      "disposition": "carry W073 typed-only conditional-formatting metadata as observable-surface guard",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "w073_typed_formatting_watch",
+      "promotion_consequence": "typed-only formatting remains a Stage 2 observable-surface guard; broad OxFml seam breadth remains under calc-tv5.8",
+      "row_id": "w040_stage2_w073_typed_formatting_guard_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json"
+      ],
+      "w040_obligation_id": "W040-OBL-018"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w040_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json"
+      ],
+      "w040_obligation_id": "W040-OBL-015"
+    },
+    {
+      "disposition": "retain pack-grade replay governance and retained-witness lifecycle as release-decision blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "row_id": "w040_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json"
+      ],
+      "w040_obligation_id": "W040-OBL-021"
+    }
+  ],
+  "run_id": "w040-stage2-production-policy-equivalence-001",
+  "satisfied_policy_row_count": 6,
+  "schema_version": "oxcalc.stage2_replay.w040.observable_equivalence_register.v1",
+  "semantic_equivalence_statement": "For the declared W040 Stage 2 profiles, baseline replay, partition replay, partition-order permutations, dynamic/soft-reference reclassification evidence, snapshot-fence reject/no-publish evidence, capability-view fence reject/no-publish evidence, and W073 typed-formatting observable guards preserve the observable result surface. This is direct declared-profile evidence, not full production scheduler or pack-grade replay promotion."
+}

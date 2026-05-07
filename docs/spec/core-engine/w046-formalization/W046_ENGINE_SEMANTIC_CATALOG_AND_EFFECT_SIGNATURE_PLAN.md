@@ -23,7 +23,7 @@ The immediate target is not release-grade promotion. The target is to make the n
 | `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md` | existing assurance/formalization doctrine |
 | `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md` | TraceCalc oracle/reference-machine scope |
 | `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` | OxCalc/OxFml seam scope |
-| `docs/spec/core-engine/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` | predecessor audit and residual lanes |
+| `archive/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` | predecessor audit and residual lanes |
 
 ## 3. Catalog Promotion Target
 

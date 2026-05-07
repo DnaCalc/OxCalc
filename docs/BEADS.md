@@ -105,6 +105,30 @@ Bad beads:
 4. local-document-only output unless the bead is making a narrow doctrine correction, truth correction, or required handoff,
 5. claims of closure without evidence where doctrine requires evidence.
 
+## 6A. High-Signal Beads And Cleanup Bias
+Beads should make the repo easier to change correctly.
+
+A good bead produces one of:
+1. engine behavior,
+2. test or replay coverage,
+3. a proof/model/check that can fail usefully,
+4. a durable spec correction,
+5. a boundary handoff with exact semantics,
+6. an archive or cleanup move that reduces active-surface noise.
+
+Low-value bead shapes:
+1. broad classifications with no code, proof, replay, or spec consumer,
+2. status tables that restate known limits without changing the next engineering move,
+3. generated evidence kept active after its baseline role has expired,
+4. duplicate documents that describe the same lane at different levels without adding precision,
+5. workset-specific runner branches that remain in active source after their evidence role has expired.
+
+Cleanup beads are first-class work when they:
+1. move stale material out of active paths,
+2. leave a shallow archive manifest,
+3. update live references,
+4. create explicit follow-up beads for any source or validation cleanup that would be unsafe to do in the same pass.
+
 ## 7. OxCalc Epic Shapes
 Typical OxCalc epics:
 1. engine/runtime implementation lane,

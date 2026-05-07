@@ -1,0 +1,584 @@
+{
+  "cases": [
+    {
+      "case_id": "tc_local_publish_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_publish_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_verified_clean_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "verified_clean",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_verified_clean_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_relative_sum_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_relative_sum_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_sibling_offset_publish_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_sibling_offset_publish_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_host_sensitive_reject_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_dynamic_reject_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_reject_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_dynamic_resolved_publish_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_resolved_publish_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_rebind_after_rename_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_rebind_after_rename_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_after_constant_edit_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_remove_direct_target_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_remove_direct_target_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_recalc_chain_after_constant_edit_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_host_sensitive_overlay_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_capability_sensitive_reject_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_capability_sensitive_reject_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_shape_topology_reject_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_shape_topology_reject_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_post_edit_shape_topology_overlay_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_let_lambda_capture_publish_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_let_lambda_capture_publish_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "rejected",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_lambda_host_sensitive_reject_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_accept_publish_equiv_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/trace.json"
+      }
+    },
+    {
+      "case_id": "tc_local_w034_independent_order_equiv_001",
+      "conformance_state": "matches_expected",
+      "required_equality_surfaces": [
+        "published_values",
+        "result_state",
+        "reject_detail",
+        "counter_set",
+        "trace_labels",
+        "runtime_effect_overlays"
+      ],
+      "result_state": "published",
+      "source_artifact_paths": {
+        "counters": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/counters.json",
+        "explain": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/explain.json",
+        "published_values": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/published_values.json",
+        "reject_detail": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+        "result": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+        "runtime_effect_overlays": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/runtime_effect_overlays.json",
+        "trace": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_w034_independent_order_equiv_001/trace.json"
+      }
+    }
+  ],
+  "run_id": "w041-optimized-core-automatic-dynamic-transition-001",
+  "run_kind": "treecalc_local_run",
+  "schema_version": "oxcalc.treecalc.replay_appliance_run.v1",
+  "source_artifact_root": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001",
+  "source_measurement_counter_summary_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/measurement_counter_summary.json",
+  "source_replay_artifact_manifest_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/replay_artifact_manifest.json",
+  "source_retention_guardrail_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/retention_guardrail.json",
+  "source_run_summary_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json"
+}

@@ -1,0 +1,137 @@
+{
+  "exact_remaining_blocker_count": 5,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4",
+      "bounded_model": true,
+      "disposition": "carry routine TLC config coverage as bounded model evidence and exact totality boundary",
+      "disposition_kind": "bounded_model_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "routine_tla_config_count": 11,
+        "routine_tla_failed_count": 0,
+        "tla_inventory_passed_count": 11
+      },
+      "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+      "reason": "The routine TLC inventory remains bounded model evidence with 11 passed configs and 0 failed configs, not unbounded verification.",
+      "row_id": "w044_tla_routine_config_bounded_model_boundary",
+      "source_inputs": [
+        "W037 routine TLC inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_tla_model_bound_row_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4; calc-b1t.5",
+      "bounded_model": false,
+      "disposition": "retain scheduler fairness and unbounded model coverage as exact model-assumption blockers",
+      "disposition_kind": "exact_model_assumption_boundary",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+      "reason": "The W043 Stage 2 packet retains fairness and unbounded scheduler coverage as an exact blocker, and W044 keeps the unbounded fairness no-promotion guard.",
+      "row_id": "w044_tla_fairness_scheduler_unbounded_boundary",
+      "source_inputs": [
+        "W043 Stage 2 fairness exact blocker",
+        "W044 residual no-promotion guard"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_lean_tla_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4; calc-b1t.11",
+      "bounded_model": false,
+      "disposition": "retain full Lean verification as an exact proof blocker despite checked row-model and placeholder evidence",
+      "disposition_kind": "exact_lean_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+        "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted",
+      "reason": "Checked classification files and zero placeholders do not cover all semantic proof obligations.",
+      "row_id": "w044_full_lean_verification_exact_blocker",
+      "source_inputs": [
+        "W044 residual no-promotion guard",
+        "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_lean_tla_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-016"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.4; calc-b1t.11",
+      "bounded_model": true,
+      "disposition": "retain full TLA verification as an exact model blocker beyond bounded TLC configs",
+      "disposition_kind": "exact_tla_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification and unbounded model coverage remain unpromoted",
+      "reason": "TLA evidence is bounded model evidence and does not discharge unbounded fairness or production scheduler coverage.",
+      "row_id": "w044_full_tla_verification_exact_blocker",
+      "source_inputs": [
+        "W044 residual no-promotion guard",
+        "bounded TLA inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_lean_tla_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-017"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-b1t.3; calc-b1t.4; calc-b1t.10",
+      "bounded_model": false,
+      "disposition": "retain Rust totality/refinement dependency as exact proof/model blocker while W044 Rust packet still carries exact blockers",
+      "disposition_kind": "exact_rust_dependency_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_exact_blocker_register.json",
+        "archive/lean-w038-w045/W044RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Rust totality/refinement and full optimized/core verification remain unpromoted",
+      "reason": "W044.3 adds mixed dynamic and no-publication refinement rows but retains runtime panic, broader dynamic, snapshot/capability breadth, callable metadata, and full optimized/core blockers.",
+      "row_id": "w044_rust_totality_dependency_exact_blocker",
+      "source_inputs": [
+        "W044 Rust totality/refinement packet",
+        "archive/lean-w038-w045/W044RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w044_lean_tla_exact_blocker_validated",
+      "w044_obligation_id": "W044-OBL-018"
+    }
+  ],
+  "run_id": "w044-lean-tla-unbounded-fairness-full-verification-expansion-001",
+  "schema_version": "oxcalc.formal_assurance.w044_lean_tla_exact_blocker_register.v1"
+}

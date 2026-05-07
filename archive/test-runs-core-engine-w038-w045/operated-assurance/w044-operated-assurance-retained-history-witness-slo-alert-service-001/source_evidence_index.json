@@ -1,0 +1,211 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_residual_release_grade_blocker_map",
+      "semantic_state": "w044_operated_service_obligations_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_oxfml_w073_inbound_update",
+      "semantic_state": "latest_oxfml_w073_typed_only_update_carried_as_w044_watch_row",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_operated_assurance_predecessor_summary",
+      "semantic_state": "w043_service_packet_bound_without_service_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_operated_service_envelope.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_service_envelope",
+      "semantic_state": "w043_file_backed_service_envelope_available_for_w044",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_retained_history_query_contract",
+      "semantic_state": "w043_retained_history_query_contract_bound_for_w044",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_retained_witness_lifecycle",
+      "semantic_state": "w043_retained_witness_lifecycle_bound_without_pack_eligibility",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_alert_dispatch_contract",
+      "semantic_state": "w043_local_alert_dispatch_contract_clean_for_w044",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_cross_engine_service_blocker",
+      "semantic_state": "w043_cross_engine_file_backed_substrate_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_service_readiness_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_service_readiness_blockers",
+      "semantic_state": "w043_exact_service_blockers_bound_for_w044",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_optimized_core_mixed_dynamic_service_input",
+      "semantic_state": "w044_mixed_dynamic_transition_bound_as_service_input_without_optimized_core_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_rust_refinement_service_bridge",
+      "semantic_state": "w044_rust_refinement_no_publication_bridge_bound_without_totality_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_lean_tla_model_bound_service_bridge",
+      "semantic_state": "w044_lean_tla_bounded_model_bound_without_unbounded_scheduler_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_stage2_service_dependency",
+      "semantic_state": "w044_stage2_service_dependency_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_stage2_retained_witness_dependency",
+      "semantic_state": "w044_stage2_retained_witness_dependency_retained",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_stage2_pack_governance_dependency",
+      "semantic_state": "w044_pack_governance_dependency_retained",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w043_pack_c5_service_blockers",
+      "semantic_state": "w043_pack_c5_service_no_promotion_blockers_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w044_no_proxy_promotion_guard",
+      "semantic_state": "w044_service_stage2_pack_formatting_no_proxy_promotion_guard_clean",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    }
+  ],
+  "run_id": "w044-operated-assurance-retained-history-witness-slo-alert-service-001",
+  "schema_version": "oxcalc.operated_assurance.w044.source_evidence_index.v1",
+  "source_artifacts": {
+    "w043_alert_dispatch_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+    "w043_cross_engine_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+    "w043_exact_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json",
+    "w043_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+    "w043_operated_assurance_validation": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json",
+    "w043_pack_decision": "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+    "w043_pack_summary": "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/run_summary.json",
+    "w043_promotion_decision": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
+    "w043_retained_history_service_query": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+    "w043_retained_witness_lifecycle": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
+    "w043_service_envelope": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_operated_service_envelope.json",
+    "w043_service_readiness": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_service_readiness_register.json",
+    "w044_dynamic_transition_evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+    "w044_lean_tla_blockers": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json",
+    "w044_lean_tla_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+    "w044_lean_tla_validation": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json",
+    "w044_optimized_blockers": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+    "w044_optimized_summary": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+    "w044_optimized_validation": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/validation.json",
+    "w044_oxfml_inbound_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
+    "w044_residual_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+    "w044_residual_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+    "w044_rust_blockers": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_exact_blocker_register.json",
+    "w044_rust_refinement": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json",
+    "w044_rust_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+    "w044_rust_validation": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json",
+    "w044_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+    "w044_stage2_decision": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+    "w044_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+    "w044_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
+    "w044_tla_model_bound": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json"
+  },
+  "source_evidence_row_count": 17
+}

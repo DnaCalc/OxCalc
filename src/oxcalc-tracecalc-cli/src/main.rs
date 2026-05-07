@@ -701,7 +701,7 @@ fn ensure_formal_assurance_root(repo_root: &Path) -> Result<(), String> {
         "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
     );
     let conformance_blockers = repo_root.join(
-        "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
     );
     if formal_summary.exists() && conformance_blockers.exists() {
         Ok(())
@@ -737,7 +737,7 @@ fn ensure_operated_assurance_root(repo_root: &Path) -> Result<(), String> {
         "docs/test-runs/core-engine/continuous-assurance/w037-operated-assurance-service-pilot-001/service/service_readiness.json",
     );
     let w038_stage2 = repo_root.join(
-        "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
     );
     if w037_service_readiness.exists() && w038_stage2.exists() {
         Ok(())
@@ -758,7 +758,7 @@ fn ensure_diversity_seam_root(repo_root: &Path) -> Result<(), String> {
         "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
     );
     let w038_operated = repo_root.join(
-        "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
     );
     if w036_independent.exists() && w037_direct_oxfml.exists() && w038_operated.exists() {
         Ok(())
@@ -774,10 +774,10 @@ fn ensure_diversity_seam_root(repo_root: &Path) -> Result<(), String> {
 
 fn ensure_oxfml_seam_root(repo_root: &Path) -> Result<(), String> {
     let w039_upstream_host = repo_root.join(
-        "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
     );
     let w039_callable_blockers = repo_root.join(
-        "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
     );
     let oxfml_notes = repo_root.join("../OxFml/docs/upstream/NOTES_FOR_OXCALC.md");
     if w039_upstream_host.exists() && w039_callable_blockers.exists() && oxfml_notes.exists() {

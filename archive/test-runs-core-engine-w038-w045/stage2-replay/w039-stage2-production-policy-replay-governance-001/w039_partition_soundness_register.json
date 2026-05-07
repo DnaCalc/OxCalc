@@ -1,0 +1,63 @@
+{
+  "exact_remaining_blocker_count": 3,
+  "row_count": 4,
+  "rows": [
+    {
+      "disposition": "carry W038 dynamic reference partition row and W039 dynamic exact-blocker context",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "dynamic_and_soft_reference_replay",
+      "promotion_consequence": "bounded dynamic/soft-reference replay is present, while dynamic release/reclassification remains an optimized/core blocker outside this Stage 2 policy target",
+      "row_id": "w039_stage2_dynamic_soft_reference_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "retain stale accepted-candidate counterpart as exact Stage 2/coordinator replay blocker",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "snapshot_fence_counterpart",
+      "promotion_consequence": "snapshot-fence conformance and Stage 2 production policy remain blocked",
+      "row_id": "w039_stage2_snapshot_fence_counterpart_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "disposition": "retain compatibility-fenced capability-view mismatch counterpart as exact Stage 2/coordinator replay blocker",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "capability_view_fence_counterpart",
+      "promotion_consequence": "capability-view fence conformance and Stage 2 production policy remain blocked",
+      "row_id": "w039_stage2_capability_view_fence_counterpart_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "disposition": "retain production partition analyzer soundness as exact blocker and bind W039 Lean policy predicate",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "production_partition_analyzer_soundness",
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "row_id": "w039_stage2_production_partition_analyzer_soundness_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+        "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean"
+      ],
+      "w039_obligation_id": "W039-OBL-009"
+    }
+  ],
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "schema_version": "oxcalc.stage2_replay.w039.partition_soundness_register.v1"
+}

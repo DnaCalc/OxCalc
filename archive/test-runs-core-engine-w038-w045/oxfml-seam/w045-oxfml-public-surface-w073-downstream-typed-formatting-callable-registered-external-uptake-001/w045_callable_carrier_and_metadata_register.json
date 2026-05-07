@@ -1,0 +1,78 @@
+{
+  "callable_carrier_sufficiency_proven": false,
+  "callable_metadata_projection_promoted": false,
+  "general_oxfunc_kernel_promoted": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "callable_state": "let_lambda_value_carrier_exercised",
+      "disposition_kind": "exercised_current_surface",
+      "prepared_call_count": 5,
+      "promotion_consequence": "LET/LAMBDA lexical capture is carrier evidence, not broad callable metadata projection",
+      "result_status": "matched",
+      "row_id": "callable.w045_let_lambda_lexical_capture_carrier",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json"
+    },
+    {
+      "callable_state": "returned_lambda_value_carrier_exercised",
+      "disposition_kind": "exercised_current_surface",
+      "prepared_call_count": 6,
+      "promotion_consequence": "returned-lambda invocation is value-carrier evidence, not metadata projection evidence",
+      "result_status": "matched",
+      "row_id": "callable.w045_returned_lambda_invocation_carrier",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_returned_lambda_invocation_eval_001/result.json"
+    },
+    {
+      "blocker_present": true,
+      "callable_state": "metadata_projection_absent",
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "callable metadata projection remains blocked until a projection fixture or carrier sufficiency proof exists",
+      "row_id": "callable.w045_callable_metadata_projection",
+      "source": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json"
+    },
+    {
+      "callable_state": "carrier_sufficiency_proof_absent",
+      "disposition_kind": "exact_remaining_blocker",
+      "lane_present": true,
+      "promotion_consequence": "callable carrier sufficiency remains unproven for broad metadata projection",
+      "row_id": "callable.w045_carrier_sufficiency_proof",
+      "source": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+    },
+    {
+      "blocker_present": true,
+      "callable_state": "optimized_core_callable_projection_not_promoted",
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "callable metadata projection, registered external callable projection, and provider-failure callable publication semantics remain unpromoted",
+      "row_id": "callable.w045_optimized_core_callable_blocker",
+      "source": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json"
+    },
+    {
+      "callable_state": "registered_external_metadata_not_current_projection",
+      "disposition_kind": "note_level_watch",
+      "mutation_request_present": true,
+      "promotion_consequence": "registered-external packet alignment does not close callable metadata projection in OxCalc",
+      "registered_external_descriptor_present": true,
+      "row_id": "callable.w045_registered_external_callable_metadata",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    },
+    {
+      "callable_publication_present": true,
+      "callable_state": "provider_failure_and_callable_publication_watch_only",
+      "disposition_kind": "note_level_watch",
+      "promotion_consequence": "provider-failure and callable-publication remain watch lanes until concrete coordinator-visible evidence exists",
+      "provider_failure_present": true,
+      "row_id": "callable.w045_provider_failure_callable_publication_watch",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    },
+    {
+      "callable_state": "general_oxfunc_kernel_external",
+      "disposition_kind": "accepted_external_boundary",
+      "notes_name_oxfunc": true,
+      "promotion_consequence": "OxCalc keeps only the narrow LET/LAMBDA carrier seam in this formalization scope",
+      "row_id": "callable.w045_general_oxfunc_kernel_boundary",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    }
+  ],
+  "run_id": "w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "schema_version": "oxcalc.oxfml_seam.w045.callable_carrier_and_metadata_register.v1"
+}

@@ -1,0 +1,77 @@
+{
+  "retained_witness_attachment_service_promoted": false,
+  "retained_witness_lifecycle_service_promoted": false,
+  "retention_slo_enforcement_promoted": false,
+  "row_count": 8,
+  "rows": [
+    {
+      "attachment_state": "local_reference_model_control",
+      "disposition_kind": "broadened_independent_implementation",
+      "evidence": "reference_model.w045_retained_history_replay_correlation_control",
+      "promotion_consequence": "reference-model attachment control is local evidence only",
+      "row_id": "attachment.local_reference_model_control"
+    },
+    {
+      "attachment_state": "local_attachment_contract",
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_witness_lifecycle_register.json",
+      "pack_eligible_witness_count": 0,
+      "promotion_consequence": "retained-witness lifecycle is registered without pack eligibility",
+      "row_id": "attachment.retained_witness_lifecycle_register",
+      "witness_lifecycle_row_count": 15
+    },
+    {
+      "attachment_state": "local_history_correlation_contract",
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_history_service_query.json",
+      "promotion_consequence": "retained-history correlation is query-contract evidence",
+      "query_register_row_count": 22,
+      "row_id": "attachment.retained_history_query_correlation"
+    },
+    {
+      "attachment_state": "local_harness_attachment_projection",
+      "disposition_kind": "local_harness_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_harness_register.json",
+      "local_harness_runnable": true,
+      "promotion_consequence": "local harness can emit witness lifecycle rows but is not an attachment service",
+      "row_id": "attachment.local_harness_emit_operation"
+    },
+    {
+      "attachment_state": "local_alert_contract",
+      "disposition_kind": "service_contract_boundary",
+      "evaluated_rule_count": 42,
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_alert_dispatch_service_register.json",
+      "promotion_consequence": "local alert dispatch is a clean contract without external quarantine",
+      "row_id": "attachment.alert_dispatch_contract"
+    },
+    {
+      "attachment_state": "blocked_no_retained_witness_attachment_service",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_cross_engine_service_register.json",
+      "operated_cross_engine_differential_service_present": false,
+      "promotion_consequence": "no operated service attaches retained witnesses to mismatch quarantine",
+      "row_id": "attachment.operated_attachment_service",
+      "service_state": "blocked"
+    },
+    {
+      "attachment_state": "blocked_stage2_pack_dependency",
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
+      "promotion_consequence": "Stage 2 and pack remain blocked by retained-witness lifecycle dependency",
+      "retained_witness_lifecycle_promoted": false,
+      "row_id": "attachment.stage2_retained_witness_pack_dependency",
+      "service_state": "blocked"
+    },
+    {
+      "attachment_state": "blocked_pack_governance_dependency",
+      "capability_promoted": false,
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/pack-capability/w044-pack-grade-replay-governance-service-c5-reassessment-001/decision/pack_capability_decision.json",
+      "promotion_consequence": "pack-grade replay governance cannot be inferred from local witness rows",
+      "row_id": "attachment.pack_governance_dependency",
+      "service_state": "blocked"
+    }
+  ],
+  "run_id": "w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w045.retained_witness_attachment_register.v1"
+}

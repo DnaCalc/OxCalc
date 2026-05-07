@@ -1,0 +1,715 @@
+{
+  "evidence_profile": "w045_continuous_release_scale_assurance_semantic_regression",
+  "independent_conformance_run_id": "w034-independent-conformance-001",
+  "pack_capability_run_id": "w044-pack-grade-replay-governance-service-c5-reassessment-001",
+  "row_count": 11,
+  "rows": [
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "bundle_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/replay-appliance/validation/bundle_validation.json",
+        "required_scale_classes": [
+          "oxcalc.local.scale_seed"
+        ],
+        "result_artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_scale_chain_seed_001/result.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "TraceCalc scale seed replay binds generated scale lanes to an oracle scenario.",
+      "row_id": "tracecalc_scale_seed_replay_binding"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "bundle_artifact": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/replay-appliance/validation/bundle_validation.json",
+        "summary_artifact": "docs/test-runs/core-engine/independent-conformance/w034-independent-conformance-001/run_summary.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "Scale evidence is tied to the post-W033 TreeCalc/TraceCalc projection comparison rather than timing alone.",
+      "row_id": "independent_conformance_projection_binding"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "expected_decision_status": "capability_not_promoted",
+        "summary_artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w044-pack-grade-replay-governance-service-c5-reassessment-001/run_summary.json"
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "Scale semantic binding does not override pack-capability no-promotion.",
+      "row_id": "pack_capability_no_promotion_binding"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "capability_consequence": "current OxFml formatting intake is bound as W045 scale guard evidence; downstream W073 uptake and release-grade promotion remain unclaimed.",
+        "checks": [
+          {
+            "expected": 36,
+            "matched": true,
+            "observed": 36,
+            "pointer": "/successor_obligation_count",
+            "relation": "equals"
+          },
+          {
+            "expected": 18,
+            "matched": true,
+            "observed": 18,
+            "pointer": "/promotion_contract_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 22,
+            "observed": 22,
+            "pointer": "/source_residual_lane_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/oxfml_formatting_update_incorporated",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/w073_downstream_request_construction_uptake_verified_by_oxcalc",
+            "relation": "equals"
+          },
+          {
+            "expected": [
+              "colorScale",
+              "dataBar",
+              "iconSet",
+              "top",
+              "bottom",
+              "aboveAverage",
+              "belowAverage"
+            ],
+            "matched": true,
+            "observed": [
+              "colorScale",
+              "dataBar",
+              "iconSet",
+              "top",
+              "bottom",
+              "aboveAverage",
+              "belowAverage"
+            ],
+            "pointer": "/w073_typed_rule_only_families",
+            "relation": "set_equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 release-grade successor map incorporates the current OxFml typed-rule-only formatting update before scale evidence is reused.",
+      "row_id": "w045_release_grade_oxfml_formatting_intake_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/w045_match_promoted_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 7,
+            "observed": 7,
+            "pointer": "/w045_disposition_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 2,
+            "observed": 2,
+            "pointer": "/w045_direct_evidence_bound_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 5,
+            "observed": 5,
+            "pointer": "/w045_exact_remaining_blocker_count",
+            "relation": "at_least"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 optimized/core and callable-metadata evidence is present before carrying scale evidence into pack reassessment.",
+      "row_id": "w045_optimized_core_callable_metadata_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 11,
+            "observed": 11,
+            "pointer": "/local_proof_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 9,
+            "observed": 9,
+            "pointer": "/refinement_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 5,
+            "observed": 5,
+            "pointer": "/totality_boundary_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 7,
+            "observed": 7,
+            "pointer": "/exact_remaining_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/rust_engine_totality_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/rust_refinement_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/pack_grade_replay_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/general_oxfunc_kernel_promoted",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 Rust totality/refinement and panic-surface evidence is present while proof claims remain bounded.",
+      "row_id": "w045_rust_totality_refinement_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 11,
+            "observed": 11,
+            "pointer": "/local_proof_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 4,
+            "observed": 4,
+            "pointer": "/bounded_model_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 6,
+            "observed": 6,
+            "pointer": "/totality_boundary_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 6,
+            "observed": 6,
+            "pointer": "/exact_remaining_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/full_lean_verification_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/full_tla_verification_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/scheduler_fairness_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/promotion_claims/unbounded_model_coverage_promoted",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 Lean/TLA verification, fairness, and totality evidence is present without full proof promotion.",
+      "row_id": "w045_lean_tla_fairness_totality_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 29,
+            "observed": 29,
+            "pointer": "/policy_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 5,
+            "observed": 5,
+            "pointer": "/observable_invariance_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 8,
+            "observed": 8,
+            "pointer": "/pack_grade_equivalence_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 10,
+            "observed": 10,
+            "pointer": "/service_gate_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 10,
+            "observed": 10,
+            "pointer": "/exact_remaining_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/declared_scheduler_equivalence_evidenced",
+            "relation": "equals"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/declared_pack_equivalence_evidenced",
+            "relation": "equals"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/service_gate_classification_evidenced",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/stage2_policy_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/pack_grade_replay_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/w073_typed_rule_only_direct_replacement_guard_carried",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 Stage 2 partition and pack-equivalence evidence is present while service gates remain unpromoted.",
+      "row_id": "w045_stage2_pack_equivalence_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/alert_decision_count",
+            "relation": "equals"
+          },
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/quarantine_decision_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 8,
+            "observed": 8,
+            "pointer": "/service_harness_operation_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 31,
+            "observed": 31,
+            "pointer": "/service_readiness_criteria_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 47,
+            "observed": 47,
+            "pointer": "/multi_run_history_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 6,
+            "observed": 6,
+            "pointer": "/exact_service_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/local_operated_service_harness_runnable",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/operated_continuous_assurance_service_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/operated_cross_engine_differential_service_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/retained_history_service_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/retention_slo_enforcement_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/release_grade_verification_promoted",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 operated-assurance harness evidence is present while operated services and SLO claims remain blocked.",
+      "row_id": "w045_operated_assurance_service_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 10,
+            "observed": 10,
+            "pointer": "/w045_independent_reference_model_case_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 10,
+            "observed": 10,
+            "pointer": "/w045_independent_reference_model_match_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 46,
+            "observed": 46,
+            "pointer": "/accepted_boundary_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 20,
+            "observed": 20,
+            "pointer": "/cross_engine_differential_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 10,
+            "observed": 10,
+            "pointer": "/exact_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/w073_typed_only_formatting_guard_retained",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/w073_downstream_typed_rule_request_construction_verified",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/fully_independent_evaluator_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/mismatch_quarantine_service_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/operated_cross_engine_differential_service_promoted",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 independent evaluator and cross-engine differential evidence is present while operated service claims remain blocked.",
+      "row_id": "w045_diversity_differential_service_guard"
+    },
+    {
+      "binding_state": "binding_valid",
+      "details": {
+        "artifact": "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+        "capability_consequence": "W045 semantic guard evidence is a precondition for carrying release-scale evidence into the local regression service profile, not performance-derived correctness proof.",
+        "checks": [
+          {
+            "expected": 0,
+            "matched": true,
+            "observed": 0,
+            "pointer": "/failed_row_count",
+            "relation": "equals"
+          },
+          {
+            "matched": true,
+            "minimum": 18,
+            "observed": 18,
+            "pointer": "/source_evidence_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 9,
+            "observed": 9,
+            "pointer": "/surface_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 13,
+            "observed": 13,
+            "pointer": "/publication_display_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 8,
+            "observed": 8,
+            "pointer": "/callable_metadata_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 6,
+            "observed": 6,
+            "pointer": "/registered_external_row_count",
+            "relation": "at_least"
+          },
+          {
+            "matched": true,
+            "minimum": 13,
+            "observed": 13,
+            "pointer": "/exact_blocker_count",
+            "relation": "at_least"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/w073_current_oxfml_direct_replacement_update_reviewed",
+            "relation": "equals"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/w073_oxcalc_fixture_request_construction_verified",
+            "relation": "equals"
+          },
+          {
+            "expected": true,
+            "matched": true,
+            "observed": true,
+            "pointer": "/w073_typed_only_formatting_guard_retained",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/w073_downstream_dnaonecalc_request_construction_verified",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/broad_oxfml_seam_promoted",
+            "relation": "equals"
+          },
+          {
+            "expected": false,
+            "matched": true,
+            "observed": false,
+            "pointer": "/callable_metadata_projection_promoted",
+            "relation": "equals"
+          }
+        ]
+      },
+      "failures": [],
+      "missing_artifacts": [],
+      "purpose": "W045 OxFml public-surface, W073 typed formatting, callable, and registered-external evidence is present without broad seam promotion.",
+      "row_id": "w045_oxfml_public_surface_callable_guard"
+    }
+  ],
+  "run_id": "w045-continuous-release-scale-assurance-semantic-regression-001",
+  "schema_version": "oxcalc.scale_semantic_binding.replay_conformance_bindings.v1",
+  "tracecalc_reference_run_id": "w037-tracecalc-observable-closure-001",
+  "tracecalc_scale_scenario_id": "tc_scale_chain_seed_001",
+  "unexpected_mismatch_count": 0
+}

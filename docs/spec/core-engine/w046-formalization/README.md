@@ -2,7 +2,7 @@
 
 This directory is reserved for W046 engine semantic proof-spine packets.
 
-W046 starts from `docs/spec/core-engine/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` and the showcase review in `docs/showcase/`. It redirects the next formalization tranche toward first-class semantic models of the calculation engine before returning to release-readiness classification.
+W046 starts from `archive/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` and the showcase review in `docs/showcase/`. It redirects the next formalization tranche toward first-class semantic models of the calculation engine before returning to downstream evidence classification.
 
 The governing workset is `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`.
 

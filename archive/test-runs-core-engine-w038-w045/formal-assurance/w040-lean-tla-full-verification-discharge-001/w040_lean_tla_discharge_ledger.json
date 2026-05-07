@@ -1,0 +1,296 @@
+{
+  "accepted_boundary_count": 2,
+  "accepted_external_seam_count": 1,
+  "bounded_model_row_count": 3,
+  "exact_remaining_blocker_count": 5,
+  "local_proof_row_count": 6,
+  "proof_model_row_count": 11,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4",
+      "bounded_model": false,
+      "disposition": "bind the current Lean file inventory and zero-placeholder audit as checked evidence, without promoting full Lean verification",
+      "disposition_kind": "checked_lean_inventory_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+        "archive/lean-w038-w045/W040LeanTlaFullVerificationDischarge.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "lean_file_count": 12,
+        "lean_placeholder_count": 0
+      },
+      "promotion_consequence": "full Lean verification remains unpromoted until all semantic proof boundaries are discharged",
+      "reason": "The Lean inventory is typechecked and the local placeholder census is zero, but the inventory is not a whole-engine semantic proof.",
+      "row_id": "w040_lean_inventory_checked_no_placeholder_evidence",
+      "source_inputs": [
+        "W037 formal inventory",
+        "archive/lean-w038-w045/W040LeanTlaFullVerificationDischarge.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_lean_proof_row_validated",
+      "w040_obligation_id": "W040-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4",
+      "bounded_model": false,
+      "disposition": "bind the W040 Rust totality/refinement classification as a checked Lean input to the Lean/TLA tranche",
+      "disposition_kind": "checked_lean_bridge_evidence",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/validation.json",
+        "archive/lean-w038-w045/W040RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Rust totality and full Lean verification remain unpromoted",
+      "reason": "The preceding W040 Rust packet is valid and non-promoting; this row binds it as a proof input rather than a discharge.",
+      "row_id": "w040_lean_rust_totality_classification_bridge",
+      "source_inputs": [
+        "W040 Rust totality/refinement packet",
+        "archive/lean-w038-w045/W040RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_lean_proof_row_validated",
+      "w040_obligation_id": "W040-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.5",
+      "bounded_model": false,
+      "disposition": "carry the checked Stage 2 promotion predicate as a Lean proof input while retaining production-policy blockers",
+      "disposition_kind": "checked_lean_policy_predicate",
+      "evidence_paths": [
+        "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "The predicate proves no-promotion under current evidence; it is not production partition analyzer soundness.",
+      "row_id": "w040_lean_stage2_policy_predicate_carried",
+      "source_inputs": [
+        "W039 Stage 2 Lean predicate"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_lean_proof_row_validated",
+      "w040_obligation_id": "W040-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": true,
+      "disposition": "bind the routine TLC config set as bounded model evidence while retaining unbounded model coverage as exact blocker",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "routine_tla_config_count": 11,
+        "routine_tla_failed_count": 0,
+        "tla_inventory_passed_count": 11
+      },
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "The routine TLC floor has 11 bounded configs with zero recorded failures, but does not cover the unbounded scheduler and partition universe.",
+      "row_id": "w040_tla_routine_config_bounded_model_boundary",
+      "source_inputs": [
+        "W037 TLA inventory",
+        "routine TLC config set"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_tla_model_row_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.5",
+      "bounded_model": true,
+      "disposition": "bind the W036 Stage 2 partition configs as bounded coverage for scheduler readiness, partition cross-dependency, fence reject, and multi-reader profiles",
+      "disposition_kind": "bounded_stage2_partition_model_evidence",
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "The bounded configs provide concrete model coverage but do not prove production analyzer soundness or unbounded fairness.",
+      "row_id": "w040_tla_stage2_partition_bounded_model_evidence",
+      "source_inputs": [
+        "CoreEngineW036Stage2Partition bounded configs"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_tla_model_row_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.5; calc-tv5.10",
+      "bounded_model": false,
+      "disposition": "retain scheduler fairness and unbounded interleaving assumptions as explicit model boundaries",
+      "disposition_kind": "exact_model_assumption_boundary",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification and Stage 2 policy remain unpromoted",
+      "reason": "Current TLC configs are bounded and do not discharge fairness or unbounded scheduler coverage for promoted profiles.",
+      "row_id": "w040_tla_fairness_scheduler_assumption_boundary",
+      "source_inputs": [
+        "TLA model bounds and scheduler assumptions"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_lean_tla_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": false,
+      "disposition": "retain full Lean verification as exact blocker despite checked local proof rows",
+      "disposition_kind": "exact_lean_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "archive/lean-w038-w045/W040LeanTlaFullVerificationDischarge.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted",
+      "reason": "Checked classification files do not prove every Rust, OxFml, and coordinator semantic path for the claimed scope.",
+      "row_id": "w040_full_lean_verification_exact_blocker",
+      "source_inputs": [
+        "W040 direct obligation map",
+        "Lean proof inventory"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_lean_tla_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": true,
+      "disposition": "retain full TLA verification as exact blocker because current coverage is bounded",
+      "disposition_kind": "exact_tla_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "Bounded TLC runs do not discharge unbounded model completeness, fairness, or production partition analyzer soundness.",
+      "row_id": "w040_full_tla_verification_exact_blocker",
+      "source_inputs": [
+        "W040 direct obligation map",
+        "bounded TLC evidence"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_lean_tla_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": false,
+      "disposition": "retain Rust totality/refinement dependency as a Lean/TLA proof blocker",
+      "disposition_kind": "exact_rust_dependency_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_exact_blocker_register.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean/TLA verification remains unpromoted",
+      "reason": "The preceding W040 Rust packet intentionally retains five exact blockers, so Lean/TLA full verification cannot be promoted over them.",
+      "row_id": "w040_rust_totality_dependency_exact_blocker",
+      "source_inputs": [
+        "W040 Rust totality/refinement blockers"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_lean_tla_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-007"
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": true,
+      "authority_owner": "calc-tv5.4; calc-tv5.8; external:OxFunc",
+      "bounded_model": false,
+      "disposition": "keep LET/LAMBDA carrier interaction inside OxCalc/OxFml formalization while excluding general OxFunc kernels",
+      "disposition_kind": "accepted_external_seam_boundary",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "general OxFunc kernels remain unpromoted inside OxCalc",
+      "reason": "W040 scope includes the carrier seam but not broad OxFunc semantic kernels.",
+      "row_id": "w040_let_lambda_external_oxfunc_boundary",
+      "source_inputs": [
+        "W040 direct obligation map"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_lean_tla_boundary_validated",
+      "w040_obligation_id": "W040-OBL-020"
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": false,
+      "disposition": "preserve Lean/TLA formalization as spec-evolution and implementation-improvement work",
+      "disposition_kind": "accepted_spec_evolution_guard",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "archive/worksets-w038-w045/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
+      "reason": "W040 explicitly allows proof/model evidence to evolve the specs rather than testing against a fixed initial document set.",
+      "row_id": "w040_formal_model_spec_evolution_guard",
+      "source_inputs": [
+        "W040 direct obligation map",
+        "W040 workset"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_lean_tla_boundary_validated",
+      "w040_obligation_id": "W040-OBL-008"
+    }
+  ],
+  "run_id": "w040-lean-tla-full-verification-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w040_lean_tla_discharge_ledger.v1",
+  "totality_boundary_count": 5
+}

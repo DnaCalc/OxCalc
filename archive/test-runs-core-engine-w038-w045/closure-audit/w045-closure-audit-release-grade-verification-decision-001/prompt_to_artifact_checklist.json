@@ -1,0 +1,113 @@
+{
+  "run_id": "w045-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w045.prompt_to_artifact_checklist.v1",
+  "row_count": 13,
+  "rows": [
+    {
+      "requirement": "include_oxcalc_plus_oxfml_with_narrow_let_lambda_oxfunc_carrier",
+      "coverage_result": "covered_as_boundary_classification_general_oxfunc_external",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "incorporate_current_oxfml_formatting_updates_if_needed",
+      "coverage_result": "covered_w073_typed_rule_only_direct_replacement_no_new_handoff",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_publication_display_boundary_register.json",
+        "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+        "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+      ]
+    },
+    {
+      "requirement": "review_inbound_oxfml_observation_ledger",
+      "coverage_result": "covered_current_public_surface_update_w073_watch_rows_and_downstream_uptake_blocker_packetized_to_w046",
+      "evidence": [
+        "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+        "archive/test-runs-core-engine-w038-w045/closure-audit/w045-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ]
+    },
+    {
+      "requirement": "formalization_improves_specs_and_implementation_not_fixed_initial_spec",
+      "coverage_result": "covered_for_w045_target_exact_blockers_and_spec_evolution_hooks_remain_visible",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/closure-audit/w045-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json"
+      ]
+    },
+    {
+      "requirement": "tracecalc_stands_as_correctness_oracle_for_spec_purposes",
+      "coverage_result": "covered_for_current_oxcalc_owned_observable_profile_not_release_grade_promotion",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w045-pack-grade-replay-governance-service-c5-reassessment-001/evidence/evidence_index.json"
+      ]
+    },
+    {
+      "requirement": "verify_tracecalc_and_optimized_implementations",
+      "coverage_result": "partial_optimized_core_broader_dynamic_snapshot_capability_and_callable_metadata_blockers_remain",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "deepen_lean_tla_and_formal_modelling_leverage",
+      "coverage_result": "partial_full_lean_tla_verification_rust_totality_unbounded_fairness_and_panic_free_core_unpromoted",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "stage2_partition_and_semantic_equivalence_distinguish_declared_replay_from_production_policy",
+      "coverage_result": "covered_as_declared_profile_evidence_with_no_production_policy_or_pack_grade_replay_promotion",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json"
+      ]
+    },
+    {
+      "requirement": "operated_assurance_and_performance_scaling_lanes_rest_on_semantic_evidence",
+      "coverage_result": "partial_local_harness_and_semantic_regression_exist_operated_services_and_scale_correctness_absent",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "independent_evaluator_diversity_requires_independent_implementation_authority",
+      "coverage_result": "covered_as_bounded_reference_model_and_harness_evidence_plus_exact_blockers",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json"
+      ]
+    },
+    {
+      "requirement": "oxfml_formatting_update_remains_typed_only_for_aggregate_visualization_families",
+      "coverage_result": "covered_w072_threshold_strings_not_fallback_downstream_dnaonecalc_uptake_unverified",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_publication_display_boundary_register.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json"
+      ]
+    },
+    {
+      "requirement": "make_pack_c5_and_release_grade_decisions_from_direct_evidence_only",
+      "coverage_result": "covered_as_no_promotion_decisions_cap_c4_retained",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w045-pack-grade-replay-governance-service-c5-reassessment-001/decision/pack_capability_decision.json",
+        "archive/test-runs-core-engine-w038-w045/closure-audit/w045-closure-audit-release-grade-verification-decision-001/release_decision.json"
+      ]
+    },
+    {
+      "requirement": "keep_spec_documents_accurate_during_improvement_pass",
+      "coverage_result": "covered_for_w045_target_w046_successor_scope_packetized",
+      "evidence": [
+        "archive/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+        "docs/worksets/W046_CORE_FORMALIZATION_PROOF_SERVICE_CONSOLIDATION_AND_RELEASE_GRADE_PROMOTION_READINESS.md",
+        "docs/spec/core-engine/w046-formalization/README.md"
+      ]
+    }
+  ]
+}

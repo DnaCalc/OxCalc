@@ -150,11 +150,11 @@ W033 must treat the initial core-engine spec documents as an active review surfa
 ### 3.1A Historical And Original-Idea Inputs
 
 These inputs are historical no-loss review material, not canonical authority when they conflict with current doctrine or current specs:
-1. `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md`
-2. `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md`
-3. `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md`
-4. `docs/spec/core-engine/archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md`
-5. `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md`
+1. `archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md`
+2. `archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md`
+3. `archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md`
+4. `archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md`
+5. `archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md`
 
 The no-loss review should explicitly check whether original ideas were:
 1. promoted into current canonical specs,

@@ -1,0 +1,112 @@
+{
+  "alert_decision_count": 0,
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001",
+  "blocked_criteria_count": 5,
+  "criteria": [
+    {
+      "criterion_id": "readiness.w041_service_envelope_present",
+      "evidence_or_blocker": "W041 emits a file-backed service envelope through the checked operated-assurance runner",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_source_evidence_index_bound",
+      "evidence_or_blocker": "W041 source index binds obligations, W073 formatting intake, W040 service artifacts, W041 Stage 2 blockers, W040 pack decision, and retained-witness lifecycle rows",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_run_queue_manifest_declared",
+      "evidence_or_blocker": "service-readable run queue manifest is declared in the envelope, but not operated as a scheduler",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w041_retained_history_query_contract_present",
+      "evidence_or_blocker": "deterministic retained-history query API contract is emitted with store and query rows",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w041_replay_correlation_index_present",
+      "evidence_or_blocker": "replay-correlation rows are emitted for Stage 2 service dependencies and retained-witness pack governance",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_retained_witness_lifecycle_register_present",
+      "evidence_or_blocker": "retained-local and quarantined witness lifecycles are registered without pack eligibility promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w041_retention_slo_policy_declared",
+      "evidence_or_blocker": "retention SLO policy is declared for retained-history and retained-witness lifecycle evidence",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w041_alert_dispatch_contract_evaluated",
+      "evidence_or_blocker": "local alert/quarantine dispatch contract is evaluated against service, retained-history, Stage 2, pack, and W073 inputs",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_no_quarantine_decisions",
+      "evidence_or_blocker": "W041 local dispatch contract and source evidence produce no quarantine decisions",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_cross_engine_substrate_bound",
+      "evidence_or_blocker": "W041 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w041_stage2_service_dependency_classified",
+      "evidence_or_blocker": "W041 Stage 2 analyzer retains operated cross-engine service as an exact dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w041_w073_typed_formatting_guard_retained",
+      "evidence_or_blocker": "W041 carries OxFml W073 typed-only aggregate/visualization formatting guard and old-string non-interpretation evidence",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "service.operated_scheduler_service_endpoint",
+      "evidence_or_blocker": "file-backed runner and run queue manifest are present, but no recurring scheduler, daemon, service endpoint, or operated queue exists",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retained_history_service_endpoint",
+      "evidence_or_blocker": "retained-history query contract is file-backed and not an operated retained-history service endpoint",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.external_alert_dispatcher",
+      "evidence_or_blocker": "external alert/quarantine dispatcher contract is represented, but no external dispatcher or quarantine service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.operated_cross_engine_differential",
+      "evidence_or_blocker": "cross-engine differential evidence remains file-backed rather than operated as a service",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retention_slo_retained_witness_pack_governance",
+      "evidence_or_blocker": "retention SLO is declared but not enforced, retained-witness lifecycle is not service-operated, and pack-grade replay governance remains unpromoted",
+      "state": "blocked"
+    }
+  ],
+  "criteria_count": 17,
+  "cross_engine_differential_service_promoted": false,
+  "evaluated_alert_rule_count": 18,
+  "external_alert_dispatcher_promoted": false,
+  "file_backed_cross_engine_substrate_present": true,
+  "history_store_record_count": 25,
+  "operated_continuous_assurance_service_promoted": false,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 7,
+  "readiness_state": "w041_service_envelope_and_query_contract_validated_without_operated_service_promotion",
+  "replay_correlation_row_count": 5,
+  "retained_history_service_promoted": false,
+  "retained_witness_lifecycle_row_count": 4,
+  "retained_witness_lifecycle_service_promoted": false,
+  "run_id": "w041-operated-assurance-retained-history-alert-dispatch-001",
+  "satisfied_criteria_count": 12,
+  "schema_version": "oxcalc.operated_assurance.w041.service_readiness_register.v1",
+  "service_envelope_row_count": 8,
+  "service_run_queue_manifest_present": true,
+  "stage2_policy_promoted": false
+}

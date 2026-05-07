@@ -1,0 +1,45 @@
+{
+  "run_id": "w038-optimized-core-conformance-disposition-001",
+  "schema_version": "oxcalc.implementation_conformance.evidence_summary.v1",
+  "source_paths": {
+    "w037_formal_promotion_blockers": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+    "w037_match_promotion_guard": "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/w037_match_promotion_guard.json",
+    "w037_residual_blocker_register": "docs/test-runs/core-engine/implementation-conformance/w037-implementation-conformance-closure-001/w037_residual_blocker_register.json",
+    "w037_stage2_promotion_decision": "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json",
+    "w037_treecalc_summary": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/run_summary.json",
+    "w037_upstream_host_summary": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+    "w038_tracecalc_authority_summary": "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+  },
+  "w037_direct_oxfml": {
+    "expectation_mismatch_count": 0,
+    "fixture_case_count": 12,
+    "let_lambda_case_count": 2,
+    "w073_typed_rule_case_count": 1
+  },
+  "w037_residuals": {
+    "residual_blocker_count": 5
+  },
+  "w037_treecalc_local": {
+    "case_count": 24,
+    "expectation_mismatch_count": 0,
+    "result_counts": {
+      "published": 15,
+      "rejected": 8,
+      "verified_clean": 1
+    }
+  },
+  "w038_dispositions": {
+    "accepted_boundary_count": 1,
+    "direct_evidence_bound_count": 3,
+    "disposition_row_count": 5,
+    "exact_remaining_blocker_count": 4,
+    "failed_row_count": 0,
+    "match_promoted_count": 0,
+    "validated_row_count": 5
+  },
+  "w038_tracecalc_authority": {
+    "accepted_external_exclusion_count": 1,
+    "general_oxfunc_kernel_promoted": false,
+    "remaining_tracecalc_authority_blocker_count": 0
+  }
+}

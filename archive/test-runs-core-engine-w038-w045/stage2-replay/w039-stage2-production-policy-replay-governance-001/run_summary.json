@@ -1,0 +1,23 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001",
+  "exact_remaining_blocker_count": 5,
+  "failed_row_count": 0,
+  "formatting_watch_row_count": 1,
+  "nontrivial_permutation_row_count": 1,
+  "observable_invariance_row_count": 5,
+  "partition_replay_row_count": 5,
+  "permutation_replay_row_count": 6,
+  "policy_row_count": 10,
+  "promotion_decision_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json",
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "satisfied_policy_row_count": 5,
+  "schema_version": "oxcalc.stage2_replay.w039.run_summary.v1",
+  "source_evidence_index_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/source_evidence_index.json",
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "validation_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json",
+  "w039_partition_soundness_register_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_partition_soundness_register.json",
+  "w039_replay_governance_register_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_replay_governance_register.json",
+  "w039_stage2_exact_blocker_register_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+  "w039_stage2_policy_gate_register_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json"
+}

@@ -1,0 +1,214 @@
+{
+  "run_id": "w043-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w043.residual_lane_ledger.v1",
+  "residual_lane_count": 20,
+  "successor_workset": "W044",
+  "successor_epic": "calc-b1t",
+  "rows": [
+    {
+      "lane_id": "w043_residual.release_grade_full_verification",
+      "status_after_w043": "successor_scope_required",
+      "successor_bead": "calc-b1t.1",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json",
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json"
+      ],
+      "promotion_consequence": "release-grade verification remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.optimized_core_dynamic_dependency_transitions",
+      "status_after_w043": "addition_and_release_reclassification_evidenced_broader_coverage_blocked",
+      "successor_bead": "calc-b1t.2",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
+        "archive/test-runs-core-engine-w038-w045/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json"
+      ],
+      "promotion_consequence": "full optimized/core verification remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.callable_metadata_projection",
+      "status_after_w043": "exact_blocker_retained",
+      "successor_bead": "calc-b1t.2",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_callable_carrier_and_metadata_register.json"
+      ],
+      "promotion_consequence": "callable metadata projection remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.callable_carrier_sufficiency",
+      "status_after_w043": "let_lambda_carrier_rows_bound_sufficiency_proof_absent",
+      "successor_bead": "calc-b1t.8",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_callable_carrier_and_metadata_register.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json"
+      ],
+      "promotion_consequence": "callable carrier sufficiency remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.rust_totality_refinement_panic_surface",
+      "status_after_w043": "checked_classification_exact_blockers_retained",
+      "successor_bead": "calc-b1t.3",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_totality_boundary_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_exact_blocker_register.json"
+      ],
+      "promotion_consequence": "Rust totality/refinement and panic-free core proof remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.lean_tla_full_verification",
+      "status_after_w043": "bounded_and_checked_rows_exact_blockers_retained",
+      "successor_bead": "calc-b1t.4",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_proof_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json"
+      ],
+      "promotion_consequence": "full Lean/TLA verification and unbounded fairness remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.stage2_production_policy_and_pack_equivalence",
+      "status_after_w043": "declared_profile_scheduler_equivalence_exact_blockers_retained",
+      "successor_bead": "calc-b1t.5",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_production_partition_analyzer_register.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_scheduler_equivalence_register.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json"
+      ],
+      "promotion_consequence": "Stage 2 production policy and pack-grade replay equivalence remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.operated_assurance_service",
+      "status_after_w043": "service_envelope_without_operated_service",
+      "successor_bead": "calc-b1t.6",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_operated_service_envelope.json",
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_service_readiness_register.json",
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json"
+      ],
+      "promotion_consequence": "operated continuous-assurance service remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.retained_history_and_witness_lifecycle",
+      "status_after_w043": "query_and_lifecycle_registers_without_service",
+      "successor_bead": "calc-b1t.6",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json"
+      ],
+      "promotion_consequence": "retained-history service, retained-witness lifecycle service, and retention SLO remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.external_alert_dispatcher",
+      "status_after_w043": "local_dispatch_contract_without_external_dispatcher",
+      "successor_bead": "calc-b1t.6",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json"
+      ],
+      "promotion_consequence": "external alert/quarantine dispatcher remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.operated_cross_engine_differential",
+      "status_after_w043": "service_contract_rows_without_operated_service",
+      "successor_bead": "calc-b1t.7",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_cross_engine_differential_service_register.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json"
+      ],
+      "promotion_consequence": "operated cross-engine differential service remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.fully_independent_evaluator",
+      "status_after_w043": "independent_reference_model_only",
+      "successor_bead": "calc-b1t.7",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_reference_model_implementation.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json"
+      ],
+      "promotion_consequence": "fully independent evaluator breadth remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.mismatch_quarantine_service",
+      "status_after_w043": "authority_router_without_operated_service",
+      "successor_bead": "calc-b1t.7",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_mismatch_quarantine_authority_router.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json"
+      ],
+      "promotion_consequence": "mismatch quarantine service remains unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.oxfml_broad_display_publication_public_migration",
+      "status_after_w043": "current_surface_bound_broad_surface_blocked",
+      "successor_bead": "calc-b1t.8",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_exact_oxfml_seam_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json"
+      ],
+      "promotion_consequence": "broad OxFml display/publication and public migration verification remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.w073_downstream_typed_rule_request_construction",
+      "status_after_w043": "required_downstream_uptake_not_verified_by_oxcalc",
+      "successor_bead": "calc-b1t.8",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
+        "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md"
+      ],
+      "promotion_consequence": "W073 downstream typed-rule request-construction uptake remains unverified"
+    },
+    {
+      "lane_id": "w043_residual.registered_external_provider_publication",
+      "status_after_w043": "note_level_and_watch_rows_without_projection_promotion",
+      "successor_bead": "calc-b1t.8",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_registered_external_provider_register.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_exact_oxfml_seam_blocker_register.json"
+      ],
+      "promotion_consequence": "registered-external callable projection and provider-failure/callable-publication semantics remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.release_scale_replay_performance_scaling",
+      "status_after_w043": "semantic_guarded_successor_lane_required",
+      "successor_bead": "calc-b1t.9",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/evidence/evidence_index.json"
+      ],
+      "promotion_consequence": "performance and scaling evidence must not substitute for semantic correctness proof"
+    },
+    {
+      "lane_id": "w043_residual.pack_grade_replay_and_c5",
+      "status_after_w043": "no_promotion_decision_emitted",
+      "successor_bead": "calc-b1t.10",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/replay-appliance/validation/bundle_validation.json"
+      ],
+      "promotion_consequence": "pack-grade replay and cap.C5.pack_valid remain unpromoted"
+    },
+    {
+      "lane_id": "w043_residual.release_grade_successor_planning",
+      "status_after_w043": "successor_scope_packetized",
+      "successor_bead": "calc-b1t.11",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/closure-audit/w043-closure-audit-release-grade-verification-decision-001/release_decision.json",
+        "archive/worksets-w038-w045/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md"
+      ],
+      "promotion_consequence": "W044 owns the next formalization and release-grade verification tranche"
+    },
+    {
+      "lane_id": "w043_residual.general_oxfunc_kernels",
+      "status_after_w043": "accepted_external_owner_boundary",
+      "successor_bead": "calc-b1t.8",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_exact_oxfml_seam_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json"
+      ],
+      "promotion_consequence": "general OxFunc kernels remain outside OxCalc scope except the narrow LET/LAMBDA carrier seam"
+    }
+  ]
+}
+

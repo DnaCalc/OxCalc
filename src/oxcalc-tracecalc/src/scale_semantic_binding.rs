@@ -47,13 +47,13 @@ const W043_PACK_CAPABILITY_RUN_ID: &str =
 const W044_PACK_CAPABILITY_RUN_ID: &str =
     "w044-pack-grade-replay-governance-service-c5-reassessment-001";
 const W044_PROFILE_ID: &str = "w044_release_scale_replay_performance_scaling";
-const W044_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
-const W044_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json";
-const W044_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json";
-const W044_STAGE2_REPLAY_SUMMARY_PATH: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
-const W044_OPERATED_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json";
-const W044_DIVERSITY_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json";
-const W044_OXFML_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json";
+const W044_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
+const W044_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json";
+const W044_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json";
+const W044_STAGE2_REPLAY_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
+const W044_OPERATED_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json";
+const W044_DIVERSITY_SEAM_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json";
+const W044_OXFML_SEAM_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json";
 const W044_GUARD_ARTIFACT_PATHS: &[&str] = &[
     W044_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH,
     W044_RUST_FORMAL_ASSURANCE_SUMMARY_PATH,
@@ -73,14 +73,14 @@ const W044_REQUIRED_PHASE_TIMINGS: &[&str] = &[
     "validation_checks",
 ];
 const W045_PROFILE_ID: &str = "w045_continuous_release_scale_assurance_semantic_regression";
-const W045_RELEASE_GRADE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
-const W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
-const W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
-const W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
-const W045_STAGE2_REPLAY_SUMMARY_PATH: &str = "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json";
-const W045_OPERATED_ASSURANCE_SUMMARY_PATH: &str = "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json";
-const W045_DIVERSITY_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json";
-const W045_OXFML_SEAM_SUMMARY_PATH: &str = "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json";
+const W045_RELEASE_GRADE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
+const W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
+const W045_RUST_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
+const W045_LEAN_TLA_FORMAL_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
+const W045_STAGE2_REPLAY_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json";
+const W045_OPERATED_ASSURANCE_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json";
+const W045_DIVERSITY_SEAM_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json";
+const W045_OXFML_SEAM_SUMMARY_PATH: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json";
 const W045_GUARD_ARTIFACT_PATHS: &[&str] = &[
     W045_RELEASE_GRADE_SUMMARY_PATH,
     W045_IMPLEMENTATION_CONFORMANCE_SUMMARY_PATH,
@@ -1969,7 +1969,7 @@ fn scale_semantic_profile(run_id: &str) -> ScaleSemanticProfile {
     if run_id.starts_with("w045-") {
         ScaleSemanticProfile {
             profile_id: W045_PROFILE_ID,
-            family_packet: "docs/spec/core-engine/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
+            family_packet: "archive/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
             tracecalc_run_id: W037_TRACECALC_RUN_ID,
             tracecalc_scale_scenario_id: TRACECALC_SCALE_SCENARIO_ID,
             independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
@@ -1987,7 +1987,7 @@ fn scale_semantic_profile(run_id: &str) -> ScaleSemanticProfile {
     } else if run_id.starts_with("w044-") {
         ScaleSemanticProfile {
             profile_id: W044_PROFILE_ID,
-            family_packet: "docs/spec/core-engine/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
+            family_packet: "archive/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
             tracecalc_run_id: W037_TRACECALC_RUN_ID,
             tracecalc_scale_scenario_id: TRACECALC_SCALE_SCENARIO_ID,
             independent_conformance_run_id: W034_INDEPENDENT_CONFORMANCE_RUN_ID,
@@ -2392,7 +2392,26 @@ fn required_artifacts(run_id: &str, profile: &ScaleSemanticProfile) -> Vec<Strin
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
-    segments.into_iter().collect::<Vec<_>>().join("/")
+    let parts = segments.into_iter().collect::<Vec<_>>();
+    historical_w038_w045_artifact_path(&parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -2487,7 +2506,7 @@ mod tests {
 
         let criteria = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-binding-test/decision/continuous_scale_assurance_criteria.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-binding-test/decision/continuous_scale_assurance_criteria.json",
         );
         assert_eq!(criteria["evidence_profile"], W044_PROFILE_ID);
         assert!(
@@ -2513,7 +2532,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-binding-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-binding-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -2541,7 +2560,7 @@ mod tests {
 
         let criteria = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
         );
         assert_eq!(criteria["evidence_profile"], W045_PROFILE_ID);
         assert!(
@@ -2577,7 +2596,7 @@ mod tests {
 
         let service_register = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
         );
         assert_eq!(service_register["row_count"], 7);
         assert_eq!(
@@ -2588,7 +2607,7 @@ mod tests {
 
         let blocker_register = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
         );
         assert_eq!(blocker_register["exact_blocker_count"], 6);
         assert_eq!(
@@ -2598,7 +2617,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -2873,7 +2892,7 @@ mod tests {
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/run_summary.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/run_summary.json",
             json!({
                 "decision_status": "capability_not_promoted",
                 "highest_honest_capability": "cap.C4.distill_valid",

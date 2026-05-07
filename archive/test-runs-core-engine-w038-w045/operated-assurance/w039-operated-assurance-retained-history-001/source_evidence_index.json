@@ -1,0 +1,104 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w039_successor_obligation_ledger",
+      "semantic_state": "w039_service_obligations_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_operated_assurance_summary",
+      "semantic_state": "w038_operated_assurance_packet_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/multi_run_history.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_retained_history_ledger",
+      "semantic_state": "w038_checked_in_history_bound_without_service_store",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/alert_quarantine_enforcement.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_alert_quarantine_local_evaluation",
+      "semantic_state": "w038_local_alert_rules_evaluated",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/cross_engine_service_disposition.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_cross_engine_file_backed_service",
+      "semantic_state": "file_backed_cross_engine_pilot_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/service_readiness_disposition.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_service_readiness_blockers",
+      "semantic_state": "w038_service_blockers_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w039_stage2_service_dependency",
+      "semantic_state": "w039_stage2_service_dependency_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-c5-release-decision-001/decision/pack_capability_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w038_pack_retained_history_blockers",
+      "semantic_state": "pack_retained_history_blocker_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    }
+  ],
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.source_evidence_index.v1",
+  "source_artifacts": {
+    "w038_alert_quarantine": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/alert_quarantine_enforcement.json",
+    "w038_cross_engine_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/cross_engine_service_disposition.json",
+    "w038_multi_run_history": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/multi_run_history.json",
+    "w038_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+    "w038_operated_assurance_validation": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/validation.json",
+    "w038_pack_decision": "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-c5-release-decision-001/decision/pack_capability_decision.json",
+    "w038_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/exact_service_blocker_register.json",
+    "w038_service_promotion_decision": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/promotion_decision.json",
+    "w038_service_readiness": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/service_readiness_disposition.json",
+    "w039_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+    "w039_stage2_decision": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json",
+    "w039_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+    "w039_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json",
+    "w039_successor_obligation_ledger": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+  },
+  "source_evidence_row_count": 8
+}

@@ -1,0 +1,109 @@
+{
+  "fully_independent_evaluator_promoted": false,
+  "row_count": 13,
+  "rows": [
+    {
+      "case_count": 6,
+      "disposition_kind": "broadened_independent_implementation",
+      "evidence": "w043_independent_reference_model_implementation.json",
+      "independence_state": "independent_reference_model_slice_present",
+      "match_count": 6,
+      "promotion_consequence": "W043 broadens the independent slice with fan-in checksum and mismatch-routing control rows, but still does not cover full TreeCalc/OxCalc evaluator breadth.",
+      "row_id": "independent.w043_reference_model_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
+      "independence_state": "predecessor_reference_model_slice_subsumed_by_w043_slice",
+      "promotion_consequence": "W042 reference-model evidence remains evidence lineage only.",
+      "row_id": "independent.w042_reference_model_predecessor",
+      "w042_case_count": 4,
+      "w042_fully_independent_evaluator_promoted": false,
+      "w042_row_count": 11
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "w043_independent_reference_model_implementation.json",
+      "independence_state": "bounded_fan_in_and_mismatch_routing_controls_present",
+      "promotion_consequence": "The added W043 cases are deterministic control rows for later service comparisons, not broad evaluator authority.",
+      "row_id": "independent.w043_fan_in_and_mismatch_control_rows"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "TraceCalc",
+      "independence_state": "tracecalc_is_correctness_oracle_not_independent_implementation",
+      "promotion_consequence": "TraceCalc remains the correctness oracle for covered behavior, not a diversity implementation.",
+      "row_id": "independent.tracecalc_reference_oracle_boundary"
+    },
+    {
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "W043 optimized/core counterpart packet",
+      "independence_state": "optimized_core_same_implementation_family",
+      "promotion_consequence": "Optimized/core evidence strengthens conformance but is not independent implementation authority.",
+      "row_id": "independent.optimized_core_same_family"
+    },
+    {
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "W043 TreeCalc counterpart evidence",
+      "independence_state": "treecalc_same_oxcalc_family",
+      "promotion_consequence": "TreeCalc evidence is core conformance evidence, not independent evaluator diversity.",
+      "row_id": "independent.treecalc_same_family"
+    },
+    {
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "independence_state": "external_formula_evaluator_not_oxcalc_coordinator",
+      "promotion_consequence": "OxFml formula evidence remains an external formula-evaluator slice, including narrow LET/LAMBDA seam evidence, not OxCalc coordinator breadth.",
+      "row_id": "independent.direct_oxfml_external_formula_slice"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "W043 Lean/TLA proof/model packet",
+      "independence_state": "proof_model_not_executable_runtime_evaluator",
+      "promotion_consequence": "Proof/model evidence supports specification and refinement, but does not supply runtime diversity.",
+      "row_id": "independent.proof_model_not_runtime_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+      "independence_state": "stage2_policy_profiles_not_second_evaluator",
+      "policy_row_count": 20,
+      "promotion_consequence": "Stage 2 profile evidence remains policy/replay evidence, not separate evaluator implementation authority.",
+      "row_id": "independent.stage2_declared_profile_not_independent_runtime",
+      "stage2_policy_promoted": false
+    },
+    {
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+      "independence_state": "service_packet_file_backed_not_independent_evaluator",
+      "promotion_consequence": "Service evidence improves retention and authority routing but is not independent evaluator breadth.",
+      "row_id": "independent.w043_service_packet_not_independent_runtime",
+      "service_readiness_blocked_count": 6
+    },
+    {
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+      "independence_state": "mismatch_contract_not_second_evaluator",
+      "promotion_consequence": "Mismatch/quarantine contract rows classify later service behavior but do not add evaluator implementation breadth.",
+      "row_id": "independent.mismatch_quarantine_contract_not_independent_runtime"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "independence_state": "full_independent_implementation_breadth_absent",
+      "promotion_consequence": "Full independent-evaluator diversity remains blocked beyond the bounded named-reference model slice.",
+      "row_id": "independent.full_independent_evaluator_breadth_blocked"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "independence_state": "callable_and_publication_breadth_dependency_retained",
+      "promotion_consequence": "LET/LAMBDA and callable-carrier interaction remains in scope for later breadth, with OxFunc peeking only where the seam threads through OxCalc/OxFml.",
+      "row_id": "independent.oxfml_callable_breadth_dependency"
+    }
+  ],
+  "run_id": "w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w043.independent_evaluator_breadth_register.v1",
+  "w043_independent_reference_model_case_count": 6,
+  "w043_independent_reference_model_match_count": 6
+}

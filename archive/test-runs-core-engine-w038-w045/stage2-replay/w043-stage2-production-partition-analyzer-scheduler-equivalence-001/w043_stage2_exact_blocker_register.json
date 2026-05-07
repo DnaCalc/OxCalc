@@ -1,0 +1,103 @@
+{
+  "exact_remaining_blocker_count": 6,
+  "rows": [
+    {
+      "disposition": "retain broader dynamic dependency-transition coverage as a Stage 2 analyzer dependency beyond the exercised addition and release patterns",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "broader_dynamic_transition_coverage",
+      "promotion_consequence": "production partition-analyzer soundness remains blocked",
+      "related_w043_obligation_ids": [
+        "W043-OBL-003"
+      ],
+      "row_id": "w043_stage2_broader_dynamic_transition_coverage_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-016"
+    },
+    {
+      "disposition": "retain full production partition-analyzer soundness as exact blocker beyond bounded declared-profile evidence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "full_production_partition_analyzer_soundness",
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "row_id": "w043_stage2_full_production_partition_analyzer_soundness_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
+        "archive/lean-w038-w045/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean"
+      ],
+      "w043_obligation_id": "W043-OBL-016"
+    },
+    {
+      "disposition": "retain fairness, unbounded scheduler coverage, and model-completeness limits as exact Stage 2 blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "fairness_scheduler_unbounded_coverage",
+      "promotion_consequence": "full TLA verification and Stage 2 production policy remain unpromoted",
+      "related_w043_obligation_ids": [
+        "W043-OBL-013",
+        "W043-OBL-014"
+      ],
+      "row_id": "w043_stage2_scheduler_fairness_unbounded_equivalence_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-017"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w043_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-023"
+    },
+    {
+      "disposition": "retain retained-witness lifecycle and retention SLO as a pack-grade replay dependency rather than treating deterministic replay files as operated witness evidence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "retained_witness_lifecycle_pack_dependency",
+      "promotion_consequence": "pack-grade replay equivalence remains blocked until retained-witness lifecycle and retention SLO evidence exists",
+      "row_id": "w043_stage2_retained_witness_lifecycle_pack_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-021"
+    },
+    {
+      "disposition": "retain pack-grade replay governance as release-decision blocker beyond declared-profile equivalence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "related_w043_obligation_ids": [
+        "W043-OBL-018"
+      ],
+      "row_id": "w043_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-034"
+    }
+  ],
+  "run_id": "w043-stage2-production-partition-analyzer-scheduler-equivalence-001",
+  "schema_version": "oxcalc.stage2_replay.w043.stage2_exact_blocker_register.v1"
+}

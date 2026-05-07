@@ -1,0 +1,63 @@
+{
+  "callable_carrier_sufficiency_proven": false,
+  "callable_metadata_projection_promoted": false,
+  "general_oxfunc_kernel_promoted": false,
+  "row_count": 6,
+  "rows": [
+    {
+      "callable_state": "narrow_let_lambda_carrier_exercised",
+      "disposition_kind": "exercised_current_surface",
+      "function_id_count": 5,
+      "narrow_let_lambda_carrier": true,
+      "prepared_call_count": 5,
+      "promotion_consequence": "lexical LET/LAMBDA carrier is exercised without general OxFunc kernel promotion",
+      "row_id": "callable.w040_let_lambda_lexical_capture",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json"
+    },
+    {
+      "callable_state": "returned_lambda_value_carrier_exercised",
+      "disposition_kind": "exercised_current_surface",
+      "function_id_count": 6,
+      "payload_summary": "Number",
+      "prepared_call_count": 6,
+      "promotion_consequence": "returned-lambda invocation is value-carrier evidence, not metadata projection evidence",
+      "row_id": "callable.w040_returned_lambda_invocation",
+      "source": "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_returned_lambda_invocation_eval_001/result.json"
+    },
+    {
+      "blocker_present": true,
+      "callable_state": "metadata_projection_absent",
+      "disposition_kind": "exact_remaining_blocker",
+      "promotion_consequence": "callable metadata projection remains blocked until a projection fixture or carrier sufficiency proof exists",
+      "row_id": "callable.w040_callable_metadata_projection",
+      "source": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json"
+    },
+    {
+      "callable_state": "carrier_sufficiency_proof_absent",
+      "disposition_kind": "exact_remaining_blocker",
+      "obligation_present": true,
+      "promotion_consequence": "callable carrier sufficiency remains unproven for broad metadata projection",
+      "row_id": "callable.w040_carrier_sufficiency_proof",
+      "source": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json"
+    },
+    {
+      "callable_state": "registered_external_metadata_not_current_projection",
+      "disposition_kind": "note_level_watch",
+      "mutation_request_present": true,
+      "promotion_consequence": "registered-external packet alignment does not close callable metadata projection in OxCalc",
+      "registered_external_descriptor_present": true,
+      "row_id": "callable.w040_registered_external_callable_metadata",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    },
+    {
+      "callable_state": "general_oxfunc_kernel_external",
+      "disposition_kind": "accepted_external_boundary",
+      "notes_name_oxfunc": true,
+      "promotion_consequence": "OxCalc keeps only the narrow LET/LAMBDA carrier seam in this formalization scope",
+      "row_id": "callable.w040_general_oxfunc_kernel_boundary",
+      "source": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md"
+    }
+  ],
+  "run_id": "w040-oxfml-seam-breadth-callable-metadata-001",
+  "schema_version": "oxcalc.oxfml_seam.w040.callable_metadata_implementation_register.v1"
+}

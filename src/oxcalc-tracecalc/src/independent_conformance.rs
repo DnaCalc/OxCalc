@@ -1993,7 +1993,26 @@ fn required_artifacts(run_id: &str) -> Vec<String> {
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
-    segments.into_iter().collect::<Vec<_>>().join("/")
+    let parts = segments.into_iter().collect::<Vec<_>>();
+    historical_w038_w045_artifact_path(&parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

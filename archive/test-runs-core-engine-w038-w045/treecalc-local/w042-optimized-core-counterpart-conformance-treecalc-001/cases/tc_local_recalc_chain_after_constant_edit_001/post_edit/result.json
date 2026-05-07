@@ -1,0 +1,49 @@
+{
+  "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 2
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    }
+  ],
+  "evaluation_order": [
+    3,
+    4
+  ],
+  "invalidation_closure_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/invalidation_closure.json",
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    },
+    {
+      "node_id": 4,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase_timings_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/phase_timings.json",
+  "published_values": {
+    "3": "10",
+    "4": "12"
+  },
+  "reject_detail": null,
+  "result_state": "published",
+  "runtime_effect_overlays": [],
+  "runtime_effects": []
+}

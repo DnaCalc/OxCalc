@@ -1,0 +1,58 @@
+{
+  "case_id": "tc_local_rebind_after_rename_001",
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.host_injected_failure",
+      "value": 1
+    }
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_closure_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_rebind_after_rename_001/post_edit/invalidation_closure.json",
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRebindRequired"
+    }
+  ],
+  "phase_timings_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_rebind_after_rename_001/post_edit/phase_timings.json",
+  "published_values": {
+    "3": "5"
+  },
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
+    "detail": "formula node node:3 requires rebind before reevaluation",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [],
+  "runtime_effects": []
+}

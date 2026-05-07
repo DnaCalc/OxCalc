@@ -1,0 +1,147 @@
+{
+  "exact_remaining_blocker_count": 5,
+  "policy_row_count": 10,
+  "rows": [
+    {
+      "disposition": "retain W038 bounded partition replay evidence for five declared profiles",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_baseline_vs_stage2_replay",
+      "promotion_consequence": "bounded replay is carried forward but is not production policy promotion",
+      "row_id": "w039_stage2_bounded_replay_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "retain one nontrivial independent partition-order permutation and six total permutation rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "partition_order_permutation_replay",
+      "promotion_consequence": "bounded permutation evidence is carried forward but does not prove production scheduler soundness",
+      "row_id": "w039_stage2_partition_order_permutation_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "carry W038 baseline/stage2/permutation observable equality rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "observable_result_invariance",
+      "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+      "row_id": "w039_stage2_observable_invariance_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "carry W038 dynamic reference partition row and W039 dynamic exact-blocker context",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "dynamic_and_soft_reference_replay",
+      "promotion_consequence": "bounded dynamic/soft-reference replay is present, while dynamic release/reclassification remains an optimized/core blocker outside this Stage 2 policy target",
+      "row_id": "w039_stage2_dynamic_soft_reference_carry_forward",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-010"
+    },
+    {
+      "disposition": "carry W073 typed-only conditional-formatting guard as a replay observable surface",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "w073_typed_formatting_watch",
+      "promotion_consequence": "typed-only formatting watch is carried for Stage 2 observable invariance but broad OxFml seam closure remains under calc-f7o.7",
+      "row_id": "w039_stage2_w073_typed_formatting_guard",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json"
+      ],
+      "w039_obligation_id": "W039-OBL-017"
+    },
+    {
+      "disposition": "retain stale accepted-candidate counterpart as exact Stage 2/coordinator replay blocker",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "snapshot_fence_counterpart",
+      "promotion_consequence": "snapshot-fence conformance and Stage 2 production policy remain blocked",
+      "row_id": "w039_stage2_snapshot_fence_counterpart_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "disposition": "retain compatibility-fenced capability-view mismatch counterpart as exact Stage 2/coordinator replay blocker",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "capability_view_fence_counterpart",
+      "promotion_consequence": "capability-view fence conformance and Stage 2 production policy remain blocked",
+      "row_id": "w039_stage2_capability_view_fence_counterpart_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-003"
+    },
+    {
+      "disposition": "retain production partition analyzer soundness as exact blocker and bind W039 Lean policy predicate",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "production_partition_analyzer_soundness",
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "row_id": "w039_stage2_production_partition_analyzer_soundness_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+        "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean"
+      ],
+      "w039_obligation_id": "W039-OBL-009"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w039_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json"
+      ],
+      "w039_obligation_id": "W039-OBL-014"
+    },
+    {
+      "disposition": "retain pack-grade replay governance and retained-witness lifecycle as release-decision blockers",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "row_id": "w039_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+      ],
+      "w039_obligation_id": "W039-OBL-020"
+    }
+  ],
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "satisfied_policy_row_count": 5,
+  "schema_version": "oxcalc.stage2_replay.w039.stage2_policy_gate_register.v1",
+  "stage2_policy_promoted": false
+}

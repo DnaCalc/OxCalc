@@ -1,0 +1,86 @@
+{
+  "exact_blocker_count": 9,
+  "rows": [
+    {
+      "blocker_id": "w044_diversity.full_independent_evaluator_breadth_absent",
+      "evidence": "w044_independent_reference_model_implementation.json",
+      "owner": "calc-b1t.7",
+      "predecessor_blocker_present": true,
+      "promotion_consequence": "fully independent evaluator diversity remains unpromoted",
+      "reason": "W044 extends the independent named-reference model evaluator with soft-reference and retained-witness controls, but full TreeCalc/OxCalc evaluator breadth remains absent.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.operated_cross_engine_differential_service_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_cross_engine_service_register.json",
+      "file_backed_cross_engine_substrate_present": true,
+      "operated_cross_engine_differential_service_present": false,
+      "owner": "calc-b1t.6; calc-b1t.7",
+      "promotion_consequence": "operated cross-engine diversity service remains unpromoted",
+      "reason": "W044 service artifacts are file-backed and do not operate a recurring cross-engine differential service.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.mismatch_quarantine_service_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_exact_service_blocker_register.json",
+      "owner": "calc-b1t.6; calc-b1t.7",
+      "promotion_consequence": "service-level diversity assurance and mismatch quarantine remain unpromoted",
+      "reason": "Local alert/quarantine rows are evaluated, but no external mismatch triage/quarantine service is operated.",
+      "service_blocker_rows": 6,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.stage2_operated_differential_dependency_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+      "owner": "calc-b1t.5; calc-b1t.7",
+      "promotion_consequence": "Stage 2 diversity remains a blocked dependency for release-grade promotion",
+      "reason": "Stage 2 diversity still needs operated differential service, retained-witness lifecycle, retention SLO, pack governance, and release-grade decision evidence before strategy-level diversity promotion.",
+      "stage2_blocker_rows": 8,
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.retained_witness_attachment_service_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_exact_service_blocker_register.json",
+      "owner": "calc-b1t.6; calc-b1t.7; calc-b1t.10",
+      "promotion_consequence": "mismatch quarantine, pack-grade replay, C5, and release-grade diversity remain blocked",
+      "reason": "Retained-witness lifecycle rows and W044 control rows exist, but no service attaches mismatch witnesses to quarantine, pack replay, or retained-history lifecycle operation.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.oxfml_callable_public_migration_dependency_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+      "owner": "calc-b1t.7; calc-b1t.8",
+      "promotion_consequence": "broad OxFml callable/display publication and public migration remain successor dependencies",
+      "reason": "The independent reference-model slice does not settle broad OxFml display publication, public migration, callable-carrier sufficiency, registered-external callable projection, or LET/LAMBDA threading through OxFunc-adjacent behavior.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.optimized_core_callable_metadata_dependency_absent",
+      "conformance_blocker_rows": 4,
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+      "owner": "calc-b1t.2; calc-b1t.7; calc-b1t.8",
+      "promotion_consequence": "callable metadata projection remains unpromoted",
+      "reason": "Callable metadata projection and registered external/provider publication semantics remain outside the W044 independent reference-model slice.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.formal_model_bound_dependency_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json",
+      "model_bound_rows": 4,
+      "owner": "calc-b1t.4; calc-b1t.7",
+      "promotion_consequence": "full Lean/TLA and scheduler fairness remain unpromoted",
+      "reason": "Lean/TLA model bounds and unbounded fairness blockers remain proof/model dependencies for release-grade diversity.",
+      "status_after_run": "exact_remaining_blocker"
+    },
+    {
+      "blocker_id": "w044_diversity.pack_grade_replay_governance_dependency_absent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-grade-replay-governance-c5-release-reassessment-001/decision/pack_capability_decision.json",
+      "owner": "calc-b1t.7; calc-b1t.10",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain unpromoted",
+      "reason": "Pack-grade replay governance cannot be inferred from local retained-history, retained-witness, file-backed differential, or bounded mismatch-control rows.",
+      "status_after_run": "exact_remaining_blocker"
+    }
+  ],
+  "run_id": "w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w044.exact_diversity_blocker_register.v1"
+}

@@ -1,0 +1,19 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001",
+  "bundle_validation_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/validation/bundle_validation.json",
+  "continuous_scale_criteria_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/continuous_scale_assurance_criteria.json",
+  "decision_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/scale_no_promotion_decision.json",
+  "evidence_profile": "w044_release_scale_replay_performance_scaling",
+  "missing_artifact_count": 0,
+  "no_promotion_reason_count": 9,
+  "replay_binding_row_count": 10,
+  "replay_conformance_bindings_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay_conformance_bindings.json",
+  "run_id": "w044-release-scale-replay-performance-scaling-001",
+  "scale_run_row_count": 7,
+  "scale_semantic_evidence_index_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/evidence/scale_semantic_evidence_index.json",
+  "scale_signature_differential_path": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/differentials/scale_signature_differential.json",
+  "scale_signature_row_count": 6,
+  "schema_version": "oxcalc.scale_semantic_binding.run_summary.v1",
+  "unexpected_mismatch_count": 0,
+  "validated_scale_run_count": 7
+}

@@ -1,0 +1,76 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001",
+  "continuous_scale_assurance_promoted": false,
+  "criteria": [
+    {
+      "capability_consequence": "semantic_input_only",
+      "criterion_id": "scale.semantic.closed_form_validation",
+      "required_scale_run_count": 7,
+      "state": "satisfied",
+      "validated_scale_run_count": 7
+    },
+    {
+      "capability_consequence": "semantic_input_only",
+      "criterion_id": "scale.semantic.metamorphic_signature_binding",
+      "signature_row_count": 6,
+      "state": "satisfied"
+    },
+    {
+      "capability_consequence": "prevents_timing_only_correctness_claim",
+      "criterion_id": "scale.semantic.replay_conformance_pack_binding",
+      "replay_binding_row_count": 10,
+      "state": "satisfied"
+    },
+    {
+      "capability_consequence": "Lean/TLA smoke and proof slices support review but do not promote full verification or continuous scale assurance",
+      "criterion_id": "scale.formal.w034_gate_binding",
+      "state": "not_applicable_to_profile"
+    },
+    {
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "criterion_id": "scale.continuous.scheduled_regression_floor",
+      "state": "missing"
+    },
+    {
+      "capability_consequence": "continuous_scale_assurance_not_promoted",
+      "criterion_id": "scale.continuous.cross_engine_diff_service",
+      "state": "missing"
+    },
+    {
+      "capability_consequence": "phase timings distinguish dependency build, soft-reference update, invalidation closure, and pure recalc without promoting timing as correctness proof",
+      "criterion_id": "scale.w044.phase_timing_split",
+      "required_phase_timings": [
+        "model_build_structural_snapshot_and_formula_catalog",
+        "dependency_descriptor_lowering",
+        "dependency_graph_build_and_cycle_scan",
+        "soft_reference_update_rebind_seed_derivation",
+        "invalidation_closure_derivation",
+        "synthetic_closed_form_recalc",
+        "validation_checks"
+      ],
+      "state": "satisfied"
+    },
+    {
+      "capability_consequence": "release-scale evidence is subordinate to W044 semantic guard packets",
+      "criterion_id": "scale.w044.semantic_guard_binding",
+      "required_guard_row_count": 7,
+      "state": "satisfied"
+    }
+  ],
+  "evidence_profile": "w044_release_scale_replay_performance_scaling",
+  "no_promotion_reason_ids": [
+    "scale.performance.measurement_not_a_correctness_proof",
+    "scale.performance.single_day_baseline_not_continuous_assurance",
+    "scale.performance.semantic_binding_not_scheduler_policy_promotion",
+    "scale.performance.not_pack_grade_replay",
+    "scale.performance.stage2_contention_not_promoted",
+    "scale.w044.phase_timing_split_is_measurement_only",
+    "scale.w044.semantic_guard_binding_required_before_pack_reassessment",
+    "scale.w044.no_operated_continuous_scale_service",
+    "scale.w044.no_release_grade_correctness_from_performance"
+  ],
+  "performance_claim_promoted": false,
+  "run_id": "w044-release-scale-replay-performance-scaling-001",
+  "schema_version": "oxcalc.scale_semantic_binding.continuous_criteria.v1",
+  "semantic_equivalence_statement": "The criteria packet classifies already-emitted evidence and does not change runtime scheduling, invalidation, recalc, publication, reject, or evaluator behavior."
+}

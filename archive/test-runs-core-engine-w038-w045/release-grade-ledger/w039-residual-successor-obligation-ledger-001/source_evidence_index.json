@@ -1,0 +1,68 @@
+{
+  "run_id": "w039-residual-successor-obligation-ledger-001",
+  "schema_version": "oxcalc.release_grade_ledger.w039.source_index.v1",
+  "source_count": 15,
+  "sources": [
+    {
+      "path": "archive/worksets-w038-w045/W039_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_CLOSURE.md",
+      "role": "W039 scope, gate model, bead rollout, and W073 typed-only intake"
+    },
+    {
+      "path": "archive/w038-formalization/W038_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+      "role": "predecessor release decision and recommended successor scope"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/closure-audit/w038-closure-audit-release-grade-verification-decision-001/residual_lane_ledger.json",
+      "role": "10 post-W038 residual lanes routed to W039"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w038-residual-release-grade-obligation-ledger-001/residual_obligation_ledger.json",
+      "role": "20 W038 obligation rows and promotion consequences"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+      "role": "TraceCalc authority floor for current OxCalc-owned observable profile"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+      "role": "optimized/core direct evidence rows, accepted boundary row, and exact remaining blockers"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
+      "role": "proof/model assumption, local-proof, bounded-model, totality-boundary, and blocker counts"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+      "role": "bounded Stage 2 replay, observable-invariance rows, and production policy blockers"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+      "role": "local alert/quarantine and history evidence, with operated-service blockers"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
+      "role": "diversity rows, OxFml seam-watch rows, and exact diversity/seam blockers"
+    },
+    {
+      "path": "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-c5-release-decision-001/run_summary.json",
+      "role": "pack/C5 no-promotion decision and highest honest capability"
+    },
+    {
+      "path": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "role": "OxFml-owned inbound observation ledger for OxCalc"
+    },
+    {
+      "path": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "role": "current W073 typed-only conditional-formatting metadata direction, reviewed from local OxFml working tree"
+    },
+    {
+      "path": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "role": "current local W073 behavior diff: aggregate/visualization threshold fallback removed for typed-only families"
+    },
+    {
+      "path": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "role": "current local W073 tests: typed payload behavior plus old bounded-string non-interpretation"
+    }
+  ],
+  "external_source_note": "OxFml files were reviewed as inbound observation surfaces only. OxCalc did not edit OxFml and does not treat dirty OxFml working-tree state as a shared seam freeze."
+}

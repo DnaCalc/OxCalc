@@ -1,0 +1,94 @@
+{
+  "alert_decision_count": 0,
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001",
+  "blocked_criteria_count": 4,
+  "criteria": [
+    {
+      "criterion_id": "readiness.w040_runner_entrypoint_runnable",
+      "evidence_or_blocker": "W040 operated-assurance packet is emitted through the checked oxcalc-tracecalc-cli operated-assurance runner",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_source_evidence_index_bound",
+      "evidence_or_blocker": "W040 source index binds direct obligations, W039 service substrate, W040 Stage 2 blockers, and W073 formatting intake",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_file_backed_retained_store_present",
+      "evidence_or_blocker": "W040 emits a deterministic file-backed retained-history artifact store",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_retained_query_register_present",
+      "evidence_or_blocker": "W040 emits deterministic retained-history query families",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_replay_correlation_index_present",
+      "evidence_or_blocker": "W040 emits replay-correlation rows for Stage 2, pack governance, and W073 guard evidence",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_alert_dispatcher_policy_evaluated",
+      "evidence_or_blocker": "W040 evaluates local alert/quarantine rules against service, retained-history, Stage 2, pack, and W073 inputs",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.no_quarantine_decisions",
+      "evidence_or_blocker": "W040 source rows and service artifacts have no quarantine decisions",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w040_cross_engine_substrate_bound",
+      "evidence_or_blocker": "W040 binds file-backed cross-engine substrate and Stage 2 service dependency without service promotion",
+      "state": "satisfied_boundary"
+    },
+    {
+      "criterion_id": "readiness.w040_stage2_service_dependency_classified",
+      "evidence_or_blocker": "W040 Stage 2 policy equivalence retains operated cross-engine service as an exact dependency",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "readiness.w073_typed_formatting_guard_carried",
+      "evidence_or_blocker": "W040 service packet carries W073 typed-only conditional-formatting input guard",
+      "state": "satisfied"
+    },
+    {
+      "criterion_id": "service.recurring_operated_scheduler",
+      "evidence_or_blocker": "file-backed CLI runner is present, but no recurring scheduler, daemon, or service endpoint is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.external_alert_dispatcher",
+      "evidence_or_blocker": "local dispatcher evidence is present, but no external alert dispatcher or quarantine service is operated",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.operated_cross_engine_differential",
+      "evidence_or_blocker": "cross-engine differential evidence remains file-backed rather than an operated service",
+      "state": "blocked"
+    },
+    {
+      "criterion_id": "service.retention_slo_and_pack_governance",
+      "evidence_or_blocker": "file-backed retained history has no operated retention SLO and pack-grade replay governance remains unpromoted",
+      "state": "blocked"
+    }
+  ],
+  "criteria_count": 14,
+  "cross_engine_differential_service_promoted": false,
+  "evaluated_alert_rule_count": 14,
+  "external_alert_dispatcher_promoted": false,
+  "file_backed_cross_engine_substrate_present": true,
+  "history_store_record_count": 21,
+  "operated_continuous_assurance_service_promoted": false,
+  "quarantine_decision_count": 0,
+  "query_register_row_count": 5,
+  "readiness_state": "w040_service_artifacts_validated_without_operated_service_promotion",
+  "replay_correlation_row_count": 3,
+  "retained_history_service_promoted": false,
+  "run_id": "w040-operated-assurance-retained-history-service-001",
+  "runner_row_count": 6,
+  "satisfied_criteria_count": 10,
+  "schema_version": "oxcalc.operated_assurance.w040.service_readiness_register.v1",
+  "w073_threshold_fallback_allowed": false
+}

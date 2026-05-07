@@ -1,0 +1,291 @@
+{
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zsr.4; calc-zsr.9",
+      "bounded_model": false,
+      "disposition": "bind checked Lean inventory and W038 assumption-discharge file while carrying Rust-engine totality as an exact proof boundary",
+      "disposition_kind": "explicit_totality_boundary",
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+          ],
+          "check_id": "w037_formal_inventory_all_checked",
+          "observed": {
+            "all_checked_artifacts_passed": true,
+            "lean_explicit_axiom_count": 0,
+            "lean_file_count": 12,
+            "lean_sorry_placeholder_count": 0,
+            "tla_failed_config_count": 0,
+            "tla_routine_config_count": 11
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json"
+          ],
+          "check_id": "w037_validation_commands_all_passed",
+          "observed": {
+            "command_count": 24
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean"
+          ],
+          "check_id": "w038_lean_assumption_file_present",
+          "observed": {
+            "present": true
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json"
+          ],
+          "check_id": "w037_full_lean_blocker_present",
+          "observed": {
+            "blocker_id": "proof.full_lean_verification_not_promoted",
+            "present": true
+          },
+          "status": "passed"
+        }
+      ],
+      "evidence_paths": [
+        "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean",
+        "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json"
+      ],
+      "exact_remaining_blocker": true,
+      "exact_remaining_blocker_bead": "calc-zsr.9",
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted until Rust-engine totality and all external seams are proven for the claimed scope",
+      "reason": "W037 proves an axiom-free, placeholder-free inventory floor; W038 makes the remaining totality boundary explicit rather than counting inventory as total proof.",
+      "row_id": "w038_proof_full_lean_totality_boundary",
+      "source_id": "proof.full_lean_verification_not_promoted",
+      "source_row": {
+        "blocker_id": "proof.full_lean_verification_not_promoted",
+        "evidence": [
+          "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean",
+          "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/lean_inventory.json"
+        ],
+        "owner": "calc-ubd.5; successor proof-hardening beads if added",
+        "promotion_consequence": "Checked Lean inventory exists with zero explicit axioms and zero sorry placeholders, but it is not a total proof over the Rust engine.",
+        "state": "classified_open"
+      },
+      "totality_boundary": true,
+      "validation_state": "w038_assumption_disposition_validated",
+      "w038_obligation_id": "W038-OBL-008"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zsr.4; calc-zsr.5; calc-zsr.9",
+      "bounded_model": true,
+      "disposition": "bind the routine TLC floor as bounded model evidence while carrying unbounded model coverage as an exact boundary",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+          ],
+          "check_id": "w037_formal_inventory_all_checked",
+          "observed": {
+            "all_checked_artifacts_passed": true,
+            "lean_explicit_axiom_count": 0,
+            "lean_file_count": 12,
+            "lean_sorry_placeholder_count": 0,
+            "tla_failed_config_count": 0,
+            "tla_routine_config_count": 11
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json"
+          ],
+          "check_id": "w037_full_tla_blocker_present",
+          "observed": {
+            "blocker_id": "model.full_tla_verification_not_promoted",
+            "present": true
+          },
+          "status": "passed"
+        }
+      ],
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "exact_remaining_blocker_bead": "calc-zsr.5; calc-zsr.9",
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted until bounded configs are widened or the unbounded/model-completeness claim is otherwise discharged",
+      "reason": "The W037 inventory and W036 Stage 2 model checks are valuable bounded evidence, not an unbounded proof over the scheduler and partition universe.",
+      "row_id": "w038_model_full_tla_bounded_model_boundary",
+      "source_id": "model.full_tla_verification_not_promoted",
+      "source_row": {
+        "blocker_id": "model.full_tla_verification_not_promoted",
+        "evidence": [
+          "formal/tla/CoreEngineW036Stage2Partition.tla",
+          "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+        ],
+        "owner": "calc-ubd.5; calc-ubd.6",
+        "promotion_consequence": "Routine bounded TLC configs pass, but full TLA verification remains open.",
+        "state": "classified_open"
+      },
+      "totality_boundary": true,
+      "validation_state": "w038_assumption_disposition_validated",
+      "w038_obligation_id": "W038-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zsr.4; calc-zsr.7; external:OxFunc",
+      "bounded_model": false,
+      "disposition": "carry callable metadata projection as an exact proof/seam blocker while preserving value-only TreeCalc and direct OxFml callable-carrier evidence",
+      "disposition_kind": "exact_remaining_proof_seam_blocker",
+      "evidence_checks": [
+        {
+          "artifact_paths": [
+            "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+            "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json"
+          ],
+          "check_id": "w038_callable_metadata_blocker_present",
+          "observed": {
+            "callable_metadata_blocker_present": true,
+            "w038_match_promoted_count": 0
+          },
+          "status": "passed"
+        },
+        {
+          "artifact_paths": [
+            "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean"
+          ],
+          "check_id": "w038_lean_assumption_file_present",
+          "observed": {
+            "present": true
+          },
+          "status": "passed"
+        }
+      ],
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+        "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
+        "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "exact_remaining_blocker_bead": "calc-zsr.7",
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable metadata projection remains unpromoted until carrier sufficiency is proven or a metadata projection fixture is added",
+      "reason": "The W038 conformance disposition proves the value-only carrier boundary but not metadata projection totality or sufficiency.",
+      "row_id": "w038_callable_metadata_projection_exact_blocker",
+      "source_id": "w038_disposition_callable_metadata_projection_exact_blocker",
+      "source_row": {
+        "accepted_boundary": false,
+        "authority_owner": "calc-zsr.3; calc-zsr.4; calc-zsr.7; external:OxFunc",
+        "conformance_match_state": "not_promoted",
+        "direct_evidence_bound": true,
+        "evidence_checks": [
+          {
+            "artifact_paths": [
+              "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json"
+            ],
+            "check_id": "w037_callable_treecalc_value_only",
+            "observed": {
+              "dependency_shape_update_count": 0,
+              "published_runtime_effect_count": 0,
+              "published_value_delta": {
+                "3": "17"
+              },
+              "result_state": "published"
+            },
+            "status": "passed"
+          },
+          {
+            "artifact_paths": [
+              "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json"
+            ],
+            "check_id": "w037_direct_oxfml_returned_lambda",
+            "observed": {
+              "general_oxfunc_kernel_claimed": false,
+              "status": "matched",
+              "value_payload": "Number(15)"
+            },
+            "status": "passed"
+          },
+          {
+            "artifact_paths": [
+              "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json"
+            ],
+            "check_id": "w037_proof_callable_boundary",
+            "observed": {
+              "blocker_id": "callable.general_oxfunc_kernel_not_promoted",
+              "evidence": [
+                "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
+                "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean"
+              ],
+              "owner": "OxFunc; calc-ubd.5 boundary classification",
+              "promotion_consequence": "OxCalc closes only the narrow carrier classification consumed by its proof/model inventory; it does not own general OxFunc LAMBDA kernel semantics.",
+              "state": "opaque_external_boundary"
+            },
+            "status": "passed"
+          },
+          {
+            "artifact_paths": [
+              "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+            ],
+            "check_id": "w038_tracecalc_authority_discharge",
+            "observed": {
+              "accepted_external_exclusion_count": 1,
+              "general_oxfunc_kernel_promoted": false,
+              "remaining_tracecalc_authority_blocker_count": 0
+            },
+            "status": "passed"
+          }
+        ],
+        "exact_remaining_blocker_bead": "calc-zsr.4; calc-zsr.7",
+        "failures": [],
+        "implementation_evidence_sources": [
+          "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+          "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+          "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
+          "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+        ],
+        "implementation_evidence_state": "treecalc_value_only_counterpart_plus_direct_oxfml_returned_lambda_without_metadata_projection",
+        "promotion_consequence": "callable metadata projection remains blocked until callable carrier sufficiency is proven or a concrete metadata projection fixture exists.",
+        "reason": "The optimized TreeCalc counterpart publishes the ordinary higher-order value only; direct OxFml exercises the narrow returned-lambda carrier, and W037 proof inventory keeps the general OxFunc callable kernel external.",
+        "row_id": "w038_disposition_callable_metadata_projection_exact_blocker",
+        "source_w037_residual": {
+          "conformance_match_state": "not_promoted",
+          "implementation_evidence_state": "tracecalc_callable_carrier_replay_with_treecalc_value_only_counterpart",
+          "residual_blocker_bead": "calc-ubd.5",
+          "row_id": "w037_decision_callable_metadata_projection_residual_blocker",
+          "source_w036_action_row_id": "w036_action_callable_metadata_projection",
+          "w037_decision": "carry_callable_metadata_projection_to_let_lambda_and_proof_inventory",
+          "w037_decision_kind": "residual_blocker",
+          "w037_obligation_id": "W037-OBL-006"
+        },
+        "source_w037_residual_row_id": "w037_decision_callable_metadata_projection_residual_blocker",
+        "validation_state": "w038_disposition_validated",
+        "w038_disposition": "carry callable metadata projection as an exact proof/seam blocker while preserving value-only TreeCalc and direct OxFml callable-carrier evidence",
+        "w038_disposition_kind": "exact_remaining_blocker",
+        "w038_obligation_id": "W038-OBL-007"
+      },
+      "totality_boundary": true,
+      "validation_state": "w038_assumption_disposition_validated",
+      "w038_obligation_id": "W038-OBL-007"
+    }
+  ],
+  "run_id": "w038-proof-model-assumption-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w038_totality_boundary_register.v1",
+  "totality_boundary_count": 3
+}

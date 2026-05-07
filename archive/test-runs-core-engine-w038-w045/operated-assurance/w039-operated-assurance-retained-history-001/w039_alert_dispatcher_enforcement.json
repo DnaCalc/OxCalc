@@ -1,0 +1,142 @@
+{
+  "alert_decision_count": 0,
+  "clean_rule_count": 11,
+  "evaluated_rule_count": 11,
+  "external_alert_dispatcher_promoted": false,
+  "local_enforcement_evidenced": true,
+  "policy_source": "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/alert_quarantine_enforcement.json",
+  "policy_state": "w039_local_dispatch_policy_evaluated_without_external_dispatcher_promotion",
+  "quarantine_decision_count": 0,
+  "quarantine_service_promoted": false,
+  "rows": [
+    {
+      "action": "quarantine_run",
+      "decision": "clean",
+      "evidence": {
+        "missing_artifact_count": 0
+      },
+      "owner": "calc-zsr.6",
+      "rule_id": "quarantine.source_missing_artifact",
+      "trigger": "any source evidence row has missing_artifact_count > 0",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_open_blocker",
+      "decision": "clean",
+      "evidence": {
+        "unexpected_mismatch_count": 0
+      },
+      "owner": "calc-zsr.6",
+      "rule_id": "quarantine.unexpected_mismatch",
+      "trigger": "any source evidence row reports an unexpected mismatch",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_block_pack_reassessment",
+      "decision": "clean",
+      "evidence": {
+        "failed_row_count": 0
+      },
+      "owner": "calc-zsr.6; calc-zsr.8",
+      "rule_id": "quarantine.failed_semantic_row",
+      "trigger": "any oracle, conformance, replay, or proof/model row reports a failed row",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_block_decision",
+      "decision": "clean",
+      "evidence": {
+        "stage2_policy_promoted": false,
+        "unsupported_source_promotion": false
+      },
+      "owner": "calc-zsr.6; calc-zsr.8; calc-zsr.9",
+      "rule_id": "quarantine.unsupported_promotion_flag",
+      "trigger": "full verification, operated service, pack/C5, or Stage 2 policy is promoted without required evidence",
+      "triggered": false
+    },
+    {
+      "action": "file_or_update_oxfml_handoff",
+      "decision": "clean",
+      "evidence": {
+        "w073_guard_present": true
+      },
+      "owner": "calc-zsr.6; calc-zsr.7; OxFml watch lane",
+      "rule_id": "alert.oxfml_w073_formatting_payload_mismatch",
+      "trigger": "an exercised W073 aggregate or visualization conditional-formatting row lacks typed_rule evidence",
+      "triggered": false
+    },
+    {
+      "action": "record_performance_alert_without_correctness_failure",
+      "decision": "clean",
+      "evidence": {
+        "timing_correctness_role": "measurement_only"
+      },
+      "owner": "calc-zsr.6",
+      "rule_id": "alert.timing_regression_only",
+      "trigger": "timing changes while semantic thresholds pass",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_block_service_promotion",
+      "decision": "clean",
+      "evidence": {
+        "operated_service_claimed": false
+      },
+      "owner": "calc-zsr.6; calc-zsr.9",
+      "rule_id": "quarantine.operated_service_claim_without_artifacts",
+      "trigger": "an operated assurance or cross-engine service claim is made without recurring runner, retention, and enforcing alert artifacts",
+      "triggered": false
+    },
+    {
+      "action": "record_stage2_service_gap_without_quarantine",
+      "decision": "clean",
+      "evidence": {
+        "bounded_replay_present": true,
+        "operated_cross_engine_service_present": false
+      },
+      "owner": "calc-zsr.6",
+      "rule_id": "alert.stage2_bounded_replay_without_operated_service",
+      "trigger": "bounded Stage 2 replay exists but operated cross-engine service remains absent",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_block_service_promotion",
+      "decision": "clean",
+      "evidence": {
+        "external_alert_dispatcher_promoted": false,
+        "operated_continuous_assurance_service_promoted": false,
+        "operated_cross_engine_stage2_service_promoted": false
+      },
+      "owner": "calc-f7o.5; calc-f7o.9",
+      "rule_id": "quarantine.w039_unsupported_operated_service_claim",
+      "trigger": "any operated service or dispatcher promotion flag appears without operated service artifacts",
+      "triggered": false
+    },
+    {
+      "action": "quarantine_run_and_block_pack_reassessment",
+      "decision": "clean",
+      "evidence": {
+        "capability_promoted": false,
+        "retained_history_service_present": false
+      },
+      "owner": "calc-f7o.5; calc-f7o.8; calc-f7o.9",
+      "rule_id": "quarantine.w039_pack_or_c5_claim_without_retained_service",
+      "trigger": "pack-grade replay or C5 is promoted while retained history service remains absent",
+      "triggered": false
+    },
+    {
+      "action": "record_stage2_service_dependency_without_quarantine",
+      "decision": "clean",
+      "evidence": {
+        "operated_cross_engine_stage2_service_promoted": false,
+        "stage2_policy_promoted": false
+      },
+      "owner": "calc-f7o.5; calc-f7o.6",
+      "rule_id": "alert.w039_stage2_service_dependency_retained",
+      "trigger": "Stage 2 policy-governance packet retains operated service as an exact dependency",
+      "triggered": false
+    }
+  ],
+  "run_id": "w039-operated-assurance-retained-history-001",
+  "schema_version": "oxcalc.operated_assurance.w039.alert_dispatcher_enforcement.v1"
+}

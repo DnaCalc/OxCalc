@@ -158,8 +158,8 @@ W033 should deliberately use several complementary formal tools rather than trea
 - Historical orientation roots:
   - `docs/spec/core-engine/CORE_ENGINE_FORMAL_MODEL.md`
   - `docs/spec/core-engine/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md`
-  - `docs/spec/core-engine/archive/bootstrap-2026-03/`
-  - `docs/spec/core-engine/archive/rewrite-control-2026-03/`
+  - `archive/bootstrap-2026-03/`
+  - `archive/rewrite-control-2026-03/`
 
 Any new checked-in evidence root must be declared before it is emitted.
 

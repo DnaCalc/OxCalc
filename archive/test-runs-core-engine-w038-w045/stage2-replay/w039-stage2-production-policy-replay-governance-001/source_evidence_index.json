@@ -1,0 +1,27 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001",
+  "run_id": "w039-stage2-production-policy-replay-governance-001",
+  "schema_version": "oxcalc.stage2_replay.w039.source_evidence_index.v1",
+  "source_artifacts": {
+    "w038_stage2_blocker_register": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+    "w038_stage2_partition_matrix": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
+    "w038_stage2_permutation_replay": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json",
+    "w038_stage2_run_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+    "w038_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/validation.json",
+    "w039_formal_assurance_blockers": "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+    "w039_formal_assurance_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+    "w039_implementation_conformance_blockers": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+    "w039_implementation_conformance_summary": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+    "w039_stage2_lean_policy_file": "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean",
+    "w039_successor_obligation_ledger": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+  },
+  "source_counts": {
+    "w038_observable_invariance_row_count": 5,
+    "w038_partition_replay_row_count": 5,
+    "w038_permutation_replay_row_count": 6,
+    "w038_stage2_exact_blocker_count": 3,
+    "w039_conformance_exact_blocker_count": 4,
+    "w039_formal_exact_blocker_count": 6,
+    "w039_obligation_count": 20
+  }
+}

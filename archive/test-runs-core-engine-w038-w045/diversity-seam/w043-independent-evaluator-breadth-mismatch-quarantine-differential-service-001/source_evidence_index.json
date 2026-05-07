@@ -1,0 +1,184 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_proof_service_obligation_map",
+      "semantic_state": "w043_diversity_obligations_bound_with_no_proxy_guard",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_w073_typed_formatting_guard",
+      "semantic_state": "w073_typed_rule_only_formatting_guard_retained_for_w043_diversity",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_oxfml_watch_lanes",
+      "semantic_state": "w043_oxfml_notes_are_watch_lanes_not_seam_freeze_text",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_diversity_predecessor",
+      "semantic_state": "w042_diversity_predecessor_bound_without_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_reference_model_predecessor",
+      "semantic_state": "w042_reference_model_extended_by_w043_cases",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_evaluator_breadth_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_independent_breadth_register",
+      "semantic_state": "w042_independent_breadth_register_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_cross_engine_differential_predecessor",
+      "semantic_state": "w042_file_backed_cross_engine_rows_bound_without_operated_service",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_mismatch_authority_predecessor",
+      "semantic_state": "w042_mismatch_authority_bound_without_service_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w042_diversity_blockers",
+      "semantic_state": "w042_exact_diversity_blockers_bound_for_w043",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_stage2_service_dependency",
+      "semantic_state": "w043_stage2_service_dependency_bound_without_policy_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_operated_assurance_service_packet",
+      "semantic_state": "w043_file_backed_service_packet_bound_without_operated_service_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_retained_history_witness_support",
+      "semantic_state": "w043_retained_history_and_witness_support_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_cross_engine_service_blocker",
+      "semantic_state": "w043_cross_engine_service_blocker_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_alert_quarantine_contract",
+      "semantic_state": "w043_local_alert_quarantine_contract_clean",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_service_and_pack_blockers",
+      "semantic_state": "w043_service_and_pack_no_promotion_blockers_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_diversity_no_proxy_promotion_guard",
+      "semantic_state": "w043_diversity_stage2_pack_service_promotion_guard_clean",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w043_diversity_obligation_coverage",
+      "semantic_state": "w043_obligations_023_026_diversity_service_spec_evolution_lanes_bound",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w043.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "w042_cross_engine_differential": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json",
+    "w042_diversity_blockers": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
+    "w042_diversity_decision": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json",
+    "w042_diversity_summary": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json",
+    "w042_independent_implementation": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
+    "w042_independent_row_set": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_evaluator_breadth_register.json",
+    "w042_mismatch_authority": "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json",
+    "w042_pack_decision": "archive/test-runs-core-engine-w038-w045/pack-capability/w042-pack-grade-replay-governance-c5-reassessment-001/decision/pack_capability_decision.json",
+    "w043_alert_dispatch_register": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+    "w043_cross_engine_service_register": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+    "w043_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+    "w043_obligation_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json",
+    "w043_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+    "w043_operated_promotion_decision": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
+    "w043_operated_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json",
+    "w043_oxfml_inbound_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
+    "w043_retained_history_query": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+    "w043_retained_witness_lifecycle": "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
+    "w043_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json",
+    "w043_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json"
+  },
+  "source_evidence_row_count": 17
+}

@@ -7,4 +7,4 @@ For canonical OxCalc core-engine guidance, use the rewritten documents in this d
 starting with `CORE_ENGINE_ARCHITECTURE.md`.
 
 The preserved full historical snapshot lives only in:
-- [archive/bootstrap-2026-03/FOUNDATION_ARCHITECTURE_SNAPSHOT.md](/C:/Work/DnaCalc/OxCalc/docs/spec/core-engine/archive/bootstrap-2026-03/FOUNDATION_ARCHITECTURE_SNAPSHOT.md)
+- [archive/bootstrap-2026-03/FOUNDATION_ARCHITECTURE_SNAPSHOT.md](/C:/Work/DnaCalc/OxCalc/archive/bootstrap-2026-03/FOUNDATION_ARCHITECTURE_SNAPSHOT.md)

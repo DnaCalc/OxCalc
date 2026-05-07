@@ -1,0 +1,104 @@
+{
+  "run_id": "w040-closure-audit-release-grade-verification-decision-001",
+  "schema_version": "oxcalc.closure_audit.w040.prompt_to_artifact_checklist.v1",
+  "row_count": 12,
+  "rows": [
+    {
+      "requirement": "include OxCalc plus OxFml, with narrow LET/LAMBDA OxFunc carrier only",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json"
+      ],
+      "coverage_result": "covered_as_boundary_classification_general_oxfunc_external"
+    },
+    {
+      "requirement": "incorporate current OxFml W073 formatting update",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+        "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_publication_display_boundary_register.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json"
+      ],
+      "coverage_result": "typed_rule_only_guard_retained_no_handoff"
+    },
+    {
+      "requirement": "formalization improves specs and implementation rather than testing a fixed initial spec",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_blocker_disposition_register.json"
+      ],
+      "coverage_result": "spec_evolution_hooks_and_exact_blockers_retained"
+    },
+    {
+      "requirement": "TraceCalc stands as correctness oracle for spec purposes",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/evidence/evidence_index.json"
+      ],
+      "coverage_result": "oracle_authority_consumed_without_release_grade_promotion"
+    },
+    {
+      "requirement": "verify TraceCalc and optimized implementations",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json"
+      ],
+      "coverage_result": "partial_optimized_core_exact_blockers_remain"
+    },
+    {
+      "requirement": "deepen Lean/TLA and formal modelling leverage",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json"
+      ],
+      "coverage_result": "bounded_and_totality_classification_without_full_verification_promotion"
+    },
+    {
+      "requirement": "Stage 2 evidence distinguishes bounded replay from production policy",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json"
+      ],
+      "coverage_result": "stage2_policy_unpromoted"
+    },
+    {
+      "requirement": "operated assurance and scaling lanes rest on semantic evidence",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/promotion_decision.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json"
+      ],
+      "coverage_result": "service_artifacts_bound_operated_services_unpromoted"
+    },
+    {
+      "requirement": "independent evaluator diversity requires independent implementation authority",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_exact_diversity_blocker_register.json"
+      ],
+      "coverage_result": "bounded_independent_scalar_slice_exact_breadth_blocker_retained"
+    },
+    {
+      "requirement": "OxFml formatting update remains typed-only for aggregate and visualization families",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+        "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_typed_cf_top_rank_guard_001/result.json"
+      ],
+      "coverage_result": "w073_typed_rule_case_bound_w072_threshold_fallback_not_assumed"
+    },
+    {
+      "requirement": "make pack C5 and release-grade decisions from direct evidence only",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json",
+        "archive/test-runs-core-engine-w038-w045/closure-audit/w040-closure-audit-release-grade-verification-decision-001/release_decision.json"
+      ],
+      "coverage_result": "no_promotion_decisions_cap_c4_highest_honest_capability"
+    },
+    {
+      "requirement": "keep spec documents accurate during the improvement pass",
+      "evidence": [
+        "archive/w040-formalization/W040_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md",
+        "archive/worksets-w038-w045/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md",
+        "docs/IN_PROGRESS_FEATURE_WORKLIST.md"
+      ],
+      "coverage_result": "status_surfaces_updated_for_w040_target"
+    }
+  ]
+}

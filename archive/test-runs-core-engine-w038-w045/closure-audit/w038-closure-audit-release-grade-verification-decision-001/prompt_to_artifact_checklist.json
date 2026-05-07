@@ -1,0 +1,91 @@
+{
+  "run_id": "w038-closure-audit-release-grade-verification-decision-001",
+  "items": [
+    {
+      "requirement": "incorporate OxFml formatting updates if needed",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/oxfml_seam_watch_packet.json"
+      ],
+      "coverage": "covered_for_exercised_watch_rows",
+      "promotion_consequence": "no_oxcalc_patch_or_oxfml_handoff_required"
+    },
+    {
+      "requirement": "formalization includes OxCalc plus OxFml, with only narrow LET/LAMBDA OxFunc carrier scope",
+      "evidence": [
+        "archive/w038-formalization/W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md",
+        "archive/w038-formalization/W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md"
+      ],
+      "coverage": "covered_as_boundary_classification",
+      "promotion_consequence": "general_oxfunc_kernels_not_promoted"
+    },
+    {
+      "requirement": "formalization improves specs and implementation rather than testing a fixed initial spec",
+      "evidence": [
+        "archive/w038-formalization/W038_RESIDUAL_RELEASE_GRADE_OBLIGATION_LEDGER_AND_OBJECTIVE_MAP.md",
+        "archive/w038-formalization/W038_OPTIMIZED_CORE_ENGINE_CONFORMANCE_BLOCKER_CLOSURE_AND_FIXES.md"
+      ],
+      "coverage": "covered_for_w038_target",
+      "promotion_consequence": "spec_evolution_hooks_and_exact_blockers_remain_visible"
+    },
+    {
+      "requirement": "TraceCalc stands as correctness oracle for spec purposes",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json"
+      ],
+      "coverage": "covered_for_current_oxcalc_owned_observable_profile",
+      "promotion_consequence": "release_grade_verification_not_promoted_from_tracecalc_alone"
+    },
+    {
+      "requirement": "verify TraceCalc and optimized implementations",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "optimized_core_engine_exact_blockers_remain"
+    },
+    {
+      "requirement": "deepen Lean/TLA and formal modelling leverage",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
+        "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "full_lean_tla_verification_not_promoted"
+    },
+    {
+      "requirement": "Stage 2 partition and semantic-equivalence evidence distinguish bounded replay from production policy",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/semantic_equivalence_report.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/promotion_decision.json"
+      ],
+      "coverage": "covered_as_bounded_no_promotion_decision",
+      "promotion_consequence": "stage2_policy_not_promoted"
+    },
+    {
+      "requirement": "operated assurance and performance/scaling lanes rest on semantic evidence",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json"
+      ],
+      "coverage": "partial",
+      "promotion_consequence": "operated_services_not_promoted"
+    },
+    {
+      "requirement": "independent evaluator diversity requires independent implementation authority",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json"
+      ],
+      "coverage": "covered_as_exact_blocker",
+      "promotion_consequence": "fully_independent_evaluator_not_promoted"
+    },
+    {
+      "requirement": "make pack and C5 decisions from direct evidence only",
+      "evidence": [
+        "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-c5-release-decision-001/decision/pack_capability_decision.json"
+      ],
+      "coverage": "covered_as_no_promotion_decision",
+      "promotion_consequence": "capability_remains_cap_C4_distill_valid"
+    }
+  ]
+}

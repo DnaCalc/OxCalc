@@ -85,11 +85,11 @@ The ledger is not a claim that the listed specs are already verified. It records
 | 5 | `docs/IN_PROGRESS_FEATURE_WORKLIST.md` | OxCalc feature map | `authority_anchor`; `review_pending` | `deferred_rationale`; status consistency | `calc-uri.16` |
 | 6 | `docs/spec/core-engine/CORE_ENGINE_FORMAL_MODEL.md` | historical redirect/reference | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
 | 6 | `docs/spec/core-engine/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | historical redirect/reference | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
-| 6 | `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
-| 6 | `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
-| 6 | `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
-| 6 | `docs/spec/core-engine/archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
-| 6 | `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
+| 6 | `archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
+| 6 | `archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
+| 6 | `archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
+| 6 | `archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
+| 6 | `archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | historical archive | `historical_input`; `review_pending` | `deferred_rationale` or promotion through current specs | `calc-uri.4` |
 
 ## 6. First Detailed Review Questions
 

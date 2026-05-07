@@ -1,0 +1,90 @@
+{
+  "bounded_model_row_count": 3,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": true,
+      "disposition": "bind the routine TLC config set as bounded model evidence while retaining unbounded model coverage as exact blocker",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "observed": {
+        "routine_tla_config_count": 11,
+        "routine_tla_failed_count": 0,
+        "tla_inventory_passed_count": 11
+      },
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "The routine TLC floor has 11 bounded configs with zero recorded failures, but does not cover the unbounded scheduler and partition universe.",
+      "row_id": "w040_tla_routine_config_bounded_model_boundary",
+      "source_inputs": [
+        "W037 TLA inventory",
+        "routine TLC config set"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_tla_model_row_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.5",
+      "bounded_model": true,
+      "disposition": "bind the W036 Stage 2 partition configs as bounded coverage for scheduler readiness, partition cross-dependency, fence reject, and multi-reader profiles",
+      "disposition_kind": "bounded_stage2_partition_model_evidence",
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "formal/tla/CoreEngineW036Stage2Partition.scheduler_blocked.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.partition_cross_dep.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.bounded_ready.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.fence_reject.cfg",
+        "formal/tla/CoreEngineW036Stage2Partition.multi_reader.cfg"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "The bounded configs provide concrete model coverage but do not prove production analyzer soundness or unbounded fairness.",
+      "row_id": "w040_tla_stage2_partition_bounded_model_evidence",
+      "source_inputs": [
+        "CoreEngineW036Stage2Partition bounded configs"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w040_tla_model_row_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-tv5.4; calc-tv5.10",
+      "bounded_model": true,
+      "disposition": "retain full TLA verification as exact blocker because current coverage is bounded",
+      "disposition_kind": "exact_tla_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "Bounded TLC runs do not discharge unbounded model completeness, fairness, or production partition analyzer soundness.",
+      "row_id": "w040_full_tla_verification_exact_blocker",
+      "source_inputs": [
+        "W040 direct obligation map",
+        "bounded TLC evidence"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w040_lean_tla_exact_blocker_validated",
+      "w040_obligation_id": "W040-OBL-009"
+    }
+  ],
+  "run_id": "w040-lean-tla-full-verification-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w040_tla_model_bound_register.v1"
+}

@@ -77,21 +77,21 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - W037 checked Stage 2 promotion predicate and current no-promotion theorem.
 10. `docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/`
    - W037 Stage 2 criteria packet: 7 criteria rows, 3 satisfied rows, 4 blocked rows, explicit observable-result invariance requirements, and no Stage 2 promotion candidate.
-11. `formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean`
+11. `archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean`
    - W038 proof/model assumption-discharge, totality-boundary, exact-blocker, external-seam, and non-promotion proof slice.
-12. `docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/`
+12. `archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/`
    - W038 formal-assurance packet: 8 assumption rows, 3 local-proof rows, 2 bounded-model rows, 1 external-seam row, 3 totality boundaries, 6 exact blockers, 0 failed rows, and no full Lean/TLA, Stage 2, pack, C5, or general OxFunc promotion.
-13. `formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean`
+13. `archive/lean-w038-w045/W040RustTotalityAndRefinement.lean`
    - W040 Rust totality/refinement classification proof slice for Result/error carrier evidence, dependency rebind refinement, totality/refinement blockers, LET/LAMBDA carrier boundary, and spec-evolution guard.
-14. `docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/`
+14. `archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/`
    - W040 Rust totality/refinement packet: 10 Rust/proof rows, 7 local checked-proof rows, 5 totality boundaries, 5 refinement rows, 5 exact blockers, 0 failed rows, and no Rust totality, optimized/core, Stage 2, pack, C5, broad OxFml, general OxFunc, or release-grade promotion.
-15. `formal/lean/OxCalc/CoreEngine/W040LeanTlaFullVerificationDischarge.lean`
+15. `archive/lean-w038-w045/W040LeanTlaFullVerificationDischarge.lean`
    - W040 Lean/TLA proof-model classification proof slice for Lean inventory, Rust bridge, Stage 2 policy predicate, bounded TLA evidence, exact proof/model blockers, LET/LAMBDA external seam, and spec-evolution guard.
-16. `docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/`
+16. `archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/`
    - W040 Lean/TLA packet: 11 proof/model rows, 6 local checked-proof rows, 3 bounded-model rows, 1 accepted external seam, 2 accepted boundaries, 5 totality boundaries, 5 exact blockers, 0 failed rows, and no full Lean, full TLA, Rust totality, Stage 2, pack, C5, general OxFunc, or release-grade promotion.
-17. `formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean`
+17. `archive/lean-w038-w045/W040Stage2ProductionPolicyAndEquivalence.lean`
    - W040 Stage 2 policy/equivalence predicate for declared-profile replay, fence counterparts, bounded analyzer evidence, full production analyzer soundness, fairness/scheduler coverage, operated service dependency, pack governance, and no-promotion claims.
-18. `docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/`
+18. `archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/`
    - W040 Stage 2 packet: 12 policy rows, 8 satisfied rows, snapshot/capability fence counterparts evidenced, bounded analyzer evidence, 4 exact blockers, 0 failed rows, and no Stage 2 production policy, operated service, pack, C5, or release-grade promotion.
 
 ## Status

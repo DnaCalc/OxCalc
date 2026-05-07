@@ -1,0 +1,365 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001",
+  "evidence_profile": "w044_release_scale_replay_performance_scaling",
+  "family_packet": "archive/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
+  "missing_artifact_count": 0,
+  "rows": [
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_grid_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "StaticDirect": 2000000
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "cols * sum(left_after) + rows * sum(top_after)",
+          "cols": 1000,
+          "formula_shape": "left_row + top_col",
+          "kind": "grid_cross_sum",
+          "recalc_rounds": 1,
+          "rows": 1000
+        }
+      },
+      "profile": "grid-cross-sum",
+      "run_id": "million_grid_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 2000000,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 2000000,
+        "formula_count": 1000000,
+        "invalidation_impacted_count": 2001,
+        "node_count": 1002001,
+        "recalc_rounds": 1,
+        "reference_visits": 2000000,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "92299000",
+        "synthetic_delta_sum": "18000",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 2933.8674,
+          "dependency_graph_build_and_cycle_scan": 19362.4268,
+          "invalidation_closure_derivation": 3.9599,
+          "model_build_structural_snapshot_and_formula_catalog": 7386.8424,
+          "soft_reference_update_rebind_seed_derivation": 0.0323,
+          "synthetic_closed_form_recalc": 20.7618,
+          "validation_checks": 157.5516
+        },
+        "total_elapsed_ms": 29865.5324
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_grid_r2/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "StaticDirect": 2000000
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "cols * sum(left_after) + rows * sum(top_after)",
+          "cols": 1000,
+          "formula_shape": "left_row + top_col",
+          "kind": "grid_cross_sum",
+          "recalc_rounds": 1,
+          "rows": 1000
+        }
+      },
+      "profile": "grid-cross-sum",
+      "run_id": "million_grid_r2",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 2000000,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 2000000,
+        "formula_count": 1000000,
+        "invalidation_impacted_count": 2001,
+        "node_count": 1002001,
+        "recalc_rounds": 1,
+        "reference_visits": 2000000,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "92299000",
+        "synthetic_delta_sum": "18000",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 2948.0364,
+          "dependency_graph_build_and_cycle_scan": 23307.7078,
+          "invalidation_closure_derivation": 4.3513,
+          "model_build_structural_snapshot_and_formula_catalog": 7193.009800000001,
+          "soft_reference_update_rebind_seed_derivation": 0.015,
+          "synthetic_closed_form_recalc": 23.1493,
+          "validation_checks": 158.4186
+        },
+        "total_elapsed_ms": 33634.765
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "DynamicPotential": 1000000,
+          "StaticDirect": 2000000
+        },
+        "diagnostic_kind_counts": {
+          "DynamicPotentialReference": 1000000
+        },
+        "profile_details": {
+          "cols": 1000,
+          "dynamic_reference_policy": "DynamicPotential residual carriers are expected to surface as dependency diagnostics/runtime effects; static base references remain checkable.",
+          "formula_shape": "(left_row + top_col) + INDIRECT(dynamic_potential_selector)",
+          "kind": "dynamic_indirect_stripes",
+          "recalc_rounds": 1,
+          "rows": 1000,
+          "selector_period": 64
+        }
+      },
+      "profile": "dynamic-indirect-stripes",
+      "run_id": "million_indirect_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 3000000,
+        "dependency_diagnostic_count": 1000000,
+        "dependency_edge_count": 2000000,
+        "formula_count": 1000000,
+        "invalidation_impacted_count": 2001,
+        "node_count": 1002001,
+        "recalc_rounds": 1,
+        "reference_visits": 3000000,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "92299000",
+        "synthetic_delta_sum": "18000",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 4414.3607999999995,
+          "dependency_graph_build_and_cycle_scan": 21556.1033,
+          "invalidation_closure_derivation": 3.8609,
+          "model_build_structural_snapshot_and_formula_catalog": 8301.8695,
+          "soft_reference_update_rebind_seed_derivation": 0.015,
+          "synthetic_closed_form_recalc": 20.5269,
+          "validation_checks": 207.2479
+        },
+        "total_elapsed_ms": 34504.061200000004
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "StaticDirect": 7999928
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "formula_count * sum(anchor_after)",
+          "fanout": 8,
+          "formula_count": 999991,
+          "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+          "kind": "fanout_bands",
+          "node_count": 1000000,
+          "recalc_rounds": 1
+        }
+      },
+      "profile": "fanout-bands",
+      "run_id": "million_fanout_f8_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 7999928,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 7999928,
+        "formula_count": 999991,
+        "invalidation_impacted_count": 999992,
+        "node_count": 1000000,
+        "recalc_rounds": 1,
+        "reference_visits": 7999928,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "42999613",
+        "synthetic_delta_sum": "6999937",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 4855.5145,
+          "dependency_graph_build_and_cycle_scan": 51561.1387,
+          "invalidation_closure_derivation": 3532.6274,
+          "model_build_structural_snapshot_and_formula_catalog": 7773.6513,
+          "soft_reference_update_rebind_seed_derivation": 0.0157,
+          "synthetic_closed_form_recalc": 83.8809,
+          "validation_checks": 538.4864
+        },
+        "total_elapsed_ms": 68345.4
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_calc1024_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "StaticDirect": 7999928
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "formula_count * sum(anchor_after)",
+          "fanout": 8,
+          "formula_count": 999991,
+          "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+          "kind": "fanout_bands",
+          "node_count": 1000000,
+          "recalc_rounds": 1024
+        }
+      },
+      "profile": "fanout-bands",
+      "run_id": "million_fanout_f8_calc1024_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 7999928,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 7999928,
+        "formula_count": 999991,
+        "invalidation_impacted_count": 999992,
+        "node_count": 1000000,
+        "recalc_rounds": 1024,
+        "reference_visits": 8191926272,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "44031603712",
+        "synthetic_delta_sum": "7167935488",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 4772.636399999999,
+          "dependency_graph_build_and_cycle_scan": 48666.0393,
+          "invalidation_closure_derivation": 2814.9410000000003,
+          "model_build_structural_snapshot_and_formula_catalog": 7995.7848,
+          "soft_reference_update_rebind_seed_derivation": 0.0133,
+          "synthetic_closed_form_recalc": 64549.1971,
+          "validation_checks": 358.4095
+        },
+        "total_elapsed_ms": 129157.0989
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "RelativeBound": 7999928
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "formula_count * sum(anchor_after)",
+          "fanout": 8,
+          "formula_count": 999991,
+          "formula_shape": "SUM(../A0, ..., ../An) via RelativePath ParentNode bindings",
+          "kind": "relative_rebind_churn",
+          "node_count": 1000000,
+          "recalc_rounds": 1,
+          "soft_update": "rename Root to force caller-context rebind seed derivation for all relative formulas while keeping anchor names resolvable"
+        }
+      },
+      "profile": "relative-rebind-churn",
+      "run_id": "million_relative_rebind_f8_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 7999928,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 7999928,
+        "formula_count": 999991,
+        "invalidation_impacted_count": 999992,
+        "node_count": 1000000,
+        "recalc_rounds": 1,
+        "reference_visits": 7999928,
+        "soft_reference_rebind_seed_count": 999991,
+        "synthetic_after_sum": "42999613",
+        "synthetic_delta_sum": "6999937",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 35472.8819,
+          "dependency_graph_build_and_cycle_scan": 58715.2191,
+          "invalidation_closure_derivation": 3011.7093,
+          "model_build_structural_snapshot_and_formula_catalog": 9239.4871,
+          "soft_reference_update_rebind_seed_derivation": 8900.2724,
+          "synthetic_closed_form_recalc": 68.919,
+          "validation_checks": 399.9153
+        },
+        "total_elapsed_ms": 115808.5364
+      }
+    },
+    {
+      "artifact_path": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f16_r1/run_summary.json",
+      "evidence_state": "validated_closed_form_scale_semantic_evidence",
+      "failures": [],
+      "missing_artifacts": [],
+      "model_shape": {
+        "descriptor_kind_counts": {
+          "StaticDirect": 15999728
+        },
+        "diagnostic_kind_counts": {},
+        "profile_details": {
+          "closed_form_after_edit": "formula_count * sum(anchor_after)",
+          "fanout": 16,
+          "formula_count": 999983,
+          "formula_shape": "SUM(anchor_0, ..., anchor_n)",
+          "kind": "fanout_bands",
+          "node_count": 1000000,
+          "recalc_rounds": 1
+        }
+      },
+      "profile": "fanout-bands",
+      "run_id": "million_fanout_f16_r1",
+      "semantic_note": "Scale timing is used only after closed-form semantic validation passes; timing alone is not promoted as correctness evidence.",
+      "semantic_surfaces": {
+        "dependency_descriptor_count": 15999728,
+        "dependency_diagnostic_count": 0,
+        "dependency_edge_count": 15999728,
+        "formula_count": 999983,
+        "invalidation_impacted_count": 999984,
+        "node_count": 1000000,
+        "recalc_rounds": 1,
+        "reference_visits": 15999728,
+        "soft_reference_rebind_seed_count": 0,
+        "synthetic_after_sum": "142997569",
+        "synthetic_delta_sum": "6999881",
+        "validation_passed": true
+      },
+      "timing_surfaces": {
+        "phase_timings_ms": {
+          "dependency_descriptor_lowering": 47398.731,
+          "dependency_graph_build_and_cycle_scan": 116257.9326,
+          "invalidation_closure_derivation": 3844.629,
+          "model_build_structural_snapshot_and_formula_catalog": 9944.0966,
+          "soft_reference_update_rebind_seed_derivation": 0.3608,
+          "synthetic_closed_form_recalc": 167.2873,
+          "validation_checks": 847.3577
+        },
+        "total_elapsed_ms": 178460.4837
+      }
+    }
+  ],
+  "run_id": "w044-release-scale-replay-performance-scaling-001",
+  "scale_run_row_count": 7,
+  "schema_version": "oxcalc.scale_semantic_binding.evidence_index.v1",
+  "unexpected_mismatch_count": 0,
+  "validated_scale_run_count": 7
+}

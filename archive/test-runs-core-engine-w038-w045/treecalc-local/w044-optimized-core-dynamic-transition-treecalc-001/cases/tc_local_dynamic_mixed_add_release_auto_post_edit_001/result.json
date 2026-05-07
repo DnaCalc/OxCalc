@@ -1,0 +1,45 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+  "counters_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/counters.json",
+  "dependency_graph_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/dependency_graph.json",
+  "diagnostics": [
+    "dependency_diagnostic:residual:carrier:dynamic:mixed-right:unresolved_before_mixed_addition",
+    "oxfml_trace:AcceptedCandidateResultBuilt",
+    "oxfml_trace:CommitAccepted",
+    "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+    "runtime_effect_environment_session_id:none",
+    "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+    "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+    "runtime_effect_environment_project_overlays:true",
+    "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_mixed_addition",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:1"
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/invalidation_closure.json",
+  "node_states_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/node_states.json",
+  "phase_timings_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/phase_timings.json",
+  "publication_bundle": null,
+  "published_values_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate",
+    "detail": "reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_mixed_addition",
+    "kind": "DynamicDependencyFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/runtime_effects.json"
+}

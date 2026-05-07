@@ -1,0 +1,150 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_successor_obligation_map",
+      "semantic_state": "w041_operated_service_obligations_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_w073_typed_formatting_guard",
+      "semantic_state": "w073_typed_only_formatting_guard_retained_for_operated_assurance",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_operated_assurance_summary",
+      "semantic_state": "w040_operated_assurance_packet_bound_without_service_promotion",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_runner_retained_history_query",
+      "semantic_state": "w040_file_backed_store_and_query_register_available_for_w041",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_alert_dispatcher_enforcement.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_alert_dispatcher_policy",
+      "semantic_state": "w040_local_dispatch_policy_clean_for_w041_extension",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_cross_engine_service_blocker",
+      "semantic_state": "w040_cross_engine_file_backed_substrate_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_service_readiness_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_service_readiness_blockers",
+      "semantic_state": "w040_exact_service_blockers_bound_for_w041",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_stage2_analyzer_service_dependency",
+      "semantic_state": "w041_stage2_service_dependency_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w041_stage2_pack_governance_dependency",
+      "semantic_state": "w041_pack_governance_dependency_retained",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.w040_pack_c5_service_blockers",
+      "semantic_state": "w040_pack_c5_no_promotion_blockers_bound",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.retained_witness_publication_fence_lifecycle",
+      "semantic_state": "retained_local_witness_available_without_pack_eligibility",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    },
+    {
+      "artifact": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promoted_unsupported_service": false,
+      "row_id": "source.retained_witness_quarantined_lifecycle",
+      "semantic_state": "quarantined_witness_bound_without_pack_eligibility",
+      "unexpected_mismatch_count": 0,
+      "valid": true
+    }
+  ],
+  "run_id": "w041-operated-assurance-retained-history-alert-dispatch-001",
+  "schema_version": "oxcalc.operated_assurance.w041.source_evidence_index.v1",
+  "source_artifacts": {
+    "retained_witness_publication_fence_lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+    "retained_witness_quarantined_lifecycle": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+    "w040_alert_dispatcher": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_alert_dispatcher_enforcement.json",
+    "w040_cross_engine_service": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+    "w040_exact_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_exact_service_blocker_register.json",
+    "w040_formatting_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+    "w040_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+    "w040_operated_assurance_validation": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/validation.json",
+    "w040_operated_runner": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_operated_runner_register.json",
+    "w040_pack_decision": "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json",
+    "w040_pack_summary": "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/run_summary.json",
+    "w040_promotion_decision": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/promotion_decision.json",
+    "w040_retained_history_store_query": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json",
+    "w040_service_readiness": "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_service_readiness_register.json",
+    "w041_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "w041_obligation_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
+    "w041_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
+    "w041_stage2_decision": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json",
+    "w041_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+    "w041_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json"
+  },
+  "source_evidence_row_count": 12
+}

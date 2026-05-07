@@ -18,11 +18,11 @@ The archived materials are no-loss inputs. They are not current authority by def
 |---|---|
 | `docs/spec/core-engine/CORE_ENGINE_FORMAL_MODEL.md` | Current redirect/reference surface for the archived formal model. |
 | `docs/spec/core-engine/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Current redirect/reference surface for the archived theory and alternatives. |
-| `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | Original consolidated formal-model story. |
-| `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Original theory exposition and alternative paths. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | Rewrite target-map and topic-family source. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | Rewrite promotion/defer/non-promotion source. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | Rewrite intent, quality bar, and sequencing source. |
+| `archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | Original consolidated formal-model story. |
+| `archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Original theory exposition and alternative paths. |
+| `archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | Rewrite target-map and topic-family source. |
+| `archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | Rewrite promotion/defer/non-promotion source. |
+| `archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | Rewrite intent, quality bar, and sequencing source. |
 
 ## 3. Disposition Vocabulary
 

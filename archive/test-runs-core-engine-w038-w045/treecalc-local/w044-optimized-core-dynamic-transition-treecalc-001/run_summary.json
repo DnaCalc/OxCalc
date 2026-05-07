@@ -1,0 +1,13 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001",
+  "case_count": 28,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 17,
+    "rejected": 10,
+    "verified_clean": 1
+  },
+  "run_id": "w044-optimized-core-dynamic-transition-treecalc-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

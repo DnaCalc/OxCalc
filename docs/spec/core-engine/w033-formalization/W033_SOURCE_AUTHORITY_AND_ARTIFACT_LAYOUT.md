@@ -78,11 +78,11 @@ These are historical review inputs, not current authority unless W033 promotes a
 |---|---|
 | `docs/spec/core-engine/CORE_ENGINE_FORMAL_MODEL.md` | Current redirect/reference surface for older formal model ideas. |
 | `docs/spec/core-engine/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Current redirect/reference surface for older theory and alternative-path ideas. |
-| `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | Original formal-model input for no-loss crosswalk. |
-| `docs/spec/core-engine/archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Original theory/alternatives input for no-loss crosswalk. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | Rewrite-control provenance input. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | Promotion/defer/reject provenance input. |
-| `docs/spec/core-engine/archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | Rewrite sequencing provenance input. |
+| `archive/bootstrap-2026-03/CORE_ENGINE_FORMAL_MODEL.md` | Original formal-model input for no-loss crosswalk. |
+| `archive/bootstrap-2026-03/CORE_ENGINE_THEORY_AND_ALTERNATIVE_PATHS.md` | Original theory/alternatives input for no-loss crosswalk. |
+| `archive/rewrite-control-2026-03/SPEC_REWRITE_DOCUMENT_MAP.md` | Rewrite-control provenance input. |
+| `archive/rewrite-control-2026-03/REWRITE_PROMOTION_LEDGER.md` | Promotion/defer/reject provenance input. |
+| `archive/rewrite-control-2026-03/SPEC_REWRITE_PLAN.md` | Rewrite sequencing provenance input. |
 
 ### 3.4 OxCalc Formal, Replay, And Measurement Floors
 

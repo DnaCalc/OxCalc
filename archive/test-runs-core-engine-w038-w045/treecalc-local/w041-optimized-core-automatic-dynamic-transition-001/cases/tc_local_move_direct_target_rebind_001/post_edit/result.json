@@ -1,0 +1,35 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "counters": [
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_closure_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/post_edit/invalidation_closure.json",
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase_timings_path": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/cases/tc_local_move_direct_target_rebind_001/post_edit/phase_timings.json",
+  "published_values": {
+    "3": "5"
+  },
+  "reject_detail": null,
+  "result_state": "verified_clean",
+  "runtime_effect_overlays": [],
+  "runtime_effects": []
+}

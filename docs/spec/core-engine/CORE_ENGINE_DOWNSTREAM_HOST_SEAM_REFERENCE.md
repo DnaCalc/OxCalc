@@ -80,7 +80,7 @@ See `docs/spec/README.md` for the classification vocabulary.
 | `docs/upstream/*` | historical/non-authority | Note-exchange and observation docs; not canonical seam text. |
 | `docs/handoffs/*` | historical/non-authority | State records; not stable seam-reference docs. |
 | `CURRENT_BLOCKERS.md` | historical/non-authority | Retired active blocker surface; kept only as a historical pointer. |
-| `docs/spec/core-engine/archive/*` | historical/non-authority | Historical by design. |
+| `archive/*` | historical/non-authority | Historical by design. |
 | `docs/spec/core-engine/FOUNDATION_*_SNAPSHOT.md` | historical/non-authority | Local Foundation snapshots; not OxCalc-owned. |
 
 ## 5. Supporting Companions For Downstream Hosts
@@ -109,7 +109,7 @@ The following local material must not be treated as the current OxCalc seam-refe
 2. `docs/spec/core-engine/FOUNDATION_ARCHITECTURE_SNAPSHOT.md` and `docs/spec/core-engine/FOUNDATION_OPERATIONS_SNAPSHOT.md` because they are local Foundation snapshots,
 3. `docs/upstream/*` because those are note-exchange and observation docs rather than canonical seam text,
 4. `docs/handoffs/*` because handoffs and receipts are state records, not stable seam-reference docs,
-5. `docs/spec/core-engine/archive/*` because archive content is historical by design.
+5. `archive/*` because archive content is historical by design.
 
 ## 7. Downstream Host Packet Rule
 For downstream hosts, the current OxCalc host-packet reference rule is:

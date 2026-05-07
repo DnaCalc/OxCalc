@@ -76,26 +76,33 @@ When uncertain whether work meets completion criteria, report `in_progress`.
 ### Rule 8: Semantic-Equivalence Under Strategy Change
 A coordinator policy or scheduling change is not complete unless a semantic-equivalence statement is provided, demonstrating that observable results are invariant under the strategy change for all affected profiles.
 
+## 3A. Product-Taste Doctrine
+
+OxCalc is a high-quality, high-velocity engineering repo. The working rules exist to help build reliable, performant, useful software; they are not the work product.
+
+1. Start from the calculation engine's behavior. Prefer code, tests, traces, proof models, and compact specs that explain or improve how calculation actually works.
+2. Artifacts earn their place by being consumed. A document, ledger, model, or generated output should improve a decision, guide code, support a proof, serve as replay evidence, or be archived.
+3. Prefer distillation over accumulation. When a wave emits many local artifacts, first extract the durable insight, update the active spec, and move low-signal surfaces out of the active path.
+4. Do not add doctrine to compensate for weak direction. Prune the active surface, make the next engineering move concrete, and keep the command path short.
+5. Make specifications executable where possible. A good spec names state, transitions, invariants, pre/post conditions, reference semantics, and the checks that can falsify it.
+6. Keep status language subordinate to substance. Reports should say what changed in behavior, proof coverage, model coverage, test coverage, or repo shape.
+7. Cleanup is real engineering work when it reduces ambiguity, lowers maintenance cost, or clears the path for better implementation and formalization.
+8. When in doubt, choose the smaller active truth surface that future agents can read quickly and trust.
+
 ## 4. Continuation Behavior
 
-Mode: **checkpoint-at-gates** with light bead-doctrine execution.
+Mode: **checkpoint-at-natural-boundaries** with light bead-doctrine execution.
 
-1. Agent must pause and report status at each workset gate boundary.
+1. Agent must pause and report status at material boundaries: new workset activation, dependency handoff, irreversible cleanup move, or user-requested checkpoint.
 2. AutoRun is disabled by default.
 3. AutoRun may only be enabled when explicitly requested by the user for a specific declared scope.
 4. When AutoRun is enabled for a declared scope, the governing workset and exit gate must be updated here before execution continues under AutoRun.
-5. Outside an explicitly declared AutoRun scope, the default mode remains checkpoint-at-gates.
+5. Outside an explicitly declared AutoRun scope, the default mode remains checkpoint-at-natural-boundaries.
 
 ### Temporary AutoRun Scope
-1. Current temporary AutoRun scope: `W027_TREECALC_DEPENDENCY_GRAPH_AND_INVALIDATION_CLOSURE.md`
-2. Governing ready-path scope:
-   - execute the current ready bead set under `W027` one bead at a time,
-   - after each bead reaches closure evidence, close it in `.beads/`, commit it, and push it,
-   - then continue to the next `br ready` item if one exists.
-3. Exit gate for this temporary AutoRun scope:
-   - stop when `br ready` reports no ready beads, or when the next ready item falls outside `W027`.
-4. The most recent earlier temporary AutoRun scope before this one was `W021_EXECUTION_SEQUENCE_G_PACK_GRADE_REPLAY_PROMOTION.md`.
-5. After the current scope exits, control returns to the default checkpoint-at-gates mode.
+1. Current temporary AutoRun scope: none.
+2. AutoRun remains unavailable unless the user explicitly declares a scope and exit condition.
+3. When a temporary AutoRun scope ends, reset this section to none.
 
 Transition note:
 1. OxCalc now uses `docs/WORKSET_REGISTER.md` plus `.beads/` as the ordinary execution-state model.

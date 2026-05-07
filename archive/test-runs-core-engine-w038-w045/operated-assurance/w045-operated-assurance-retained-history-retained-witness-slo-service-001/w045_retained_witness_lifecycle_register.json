@@ -1,0 +1,152 @@
+{
+  "local_harness_runnable": true,
+  "pack_eligible_witness_count": 0,
+  "pack_governance_promoted": false,
+  "quarantined_witness_count": 1,
+  "retained_local_witness_count": 1,
+  "retained_witness_lifecycle_register_present": true,
+  "retained_witness_lifecycle_service_promoted": false,
+  "retention_slo_enforced": false,
+  "retention_slo_policy_declared": true,
+  "rows": [
+    {
+      "lifecycle_state": "wit.retained_local",
+      "pack_eligible": false,
+      "promotion_consequence": "retained-local witness is available as local evidence but is not pack-eligible",
+      "replay_validity_assessed": true,
+      "row_id": "witness.retained_local_publication_fence",
+      "scenario_id": "tc_publication_fence_reject_001",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-retained-failures/w021-sequence1-pack-contract/cases/rf_publication_fence_retained_local_001/lifecycle.json",
+      "witness_id": "tc_publication_fence_reject_001--witness-seed"
+    },
+    {
+      "lifecycle_state": "wit.quarantined",
+      "pack_eligible": false,
+      "promotion_consequence": "quarantined witness remains non-pack-eligible",
+      "quarantine_reason": "capture_insufficient",
+      "replay_validity_assessed": false,
+      "row_id": "witness.quarantined_verify_clean",
+      "scenario_id": "tc_verify_clean_no_publish_001",
+      "source_artifact": "docs/test-runs/core-engine/tracecalc-retained-failures/w023-sequence3-program-decision/cases/rf_verify_clean_quarantined_001/lifecycle.json",
+      "witness_id": "tc_verify_clean_no_publish_001--witness-seed"
+    },
+    {
+      "lifecycle_state": "retention_policy_declared_not_operated",
+      "pack_eligible": false,
+      "promotion_consequence": "retained-witness lifecycle service remains unpromoted until SLO enforcement exists",
+      "retention_slo_enforced": false,
+      "retention_slo_policy_declared": true,
+      "row_id": "witness.retention_slo_policy_declared",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json"
+    },
+    {
+      "lifecycle_state": "pack_governance_blocker_retained",
+      "pack_eligible": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "retained_witness_pack_blocker_present": true,
+      "row_id": "witness.pack_governance_blocker_retained",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-grade-replay-governance-c5-promotion-decision-001/decision/pack_capability_decision.json"
+    },
+    {
+      "lifecycle_state": "retention_slo_policy_declared_not_enforced",
+      "pack_eligible": false,
+      "promotion_consequence": "retained-witness lifecycle service remains unpromoted until SLO enforcement exists",
+      "retention_slo_enforced": false,
+      "retention_slo_policy_declared": true,
+      "row_id": "witness.w042_retention_slo_service_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json"
+    },
+    {
+      "lifecycle_state": "pack_governance_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_promoted": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "row_id": "witness.w042_pack_grade_replay_governance_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
+      "stage2_retained_witness_lifecycle_promoted": false
+    },
+    {
+      "lifecycle_state": "retention_slo_policy_declared_not_enforced",
+      "pack_eligible": false,
+      "promotion_consequence": "retained-witness lifecycle service and retention SLO enforcement remain unpromoted until operated enforcement exists",
+      "retention_slo_enforced": false,
+      "retention_slo_policy_declared": true,
+      "row_id": "witness.w043_retention_slo_service_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json"
+    },
+    {
+      "lifecycle_state": "pack_governance_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_promoted": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "row_id": "witness.w043_pack_grade_replay_governance_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+      "stage2_retained_witness_lifecycle_promoted": false
+    },
+    {
+      "lifecycle_state": "retention_slo_policy_declared_not_enforced",
+      "pack_eligible": false,
+      "promotion_consequence": "retained-witness lifecycle service and retention SLO enforcement remain unpromoted until operated enforcement exists",
+      "retention_slo_enforced": false,
+      "retention_slo_policy_declared": true,
+      "row_id": "witness.w044_retention_slo_service_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json"
+    },
+    {
+      "lifecycle_state": "stage2_retained_witness_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_promoted": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "row_id": "witness.w044_stage2_retained_witness_pack_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+      "stage2_retained_witness_lifecycle_promoted": false
+    },
+    {
+      "lifecycle_state": "pack_governance_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_governance_promoted": false,
+      "promotion_consequence": "pack-grade replay governance service remains unpromoted",
+      "row_id": "witness.w044_pack_grade_replay_governance_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json"
+    },
+    {
+      "lifecycle_state": "retention_slo_policy_declared_local_harness_observed_not_enforced",
+      "local_harness_runnable": true,
+      "pack_eligible": false,
+      "promotion_consequence": "retained-witness lifecycle service and retention SLO enforcement remain unpromoted until operated enforcement exists",
+      "retention_slo_enforced": false,
+      "retention_slo_policy_declared": true,
+      "row_id": "witness.w045_retention_slo_local_harness_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+    },
+    {
+      "lifecycle_state": "stage2_retained_witness_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_promoted": false,
+      "promotion_consequence": "pack-grade replay and C5 remain unpromoted",
+      "row_id": "witness.w045_stage2_retained_witness_pack_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json",
+      "stage2_retained_witness_lifecycle_promoted": false
+    },
+    {
+      "lifecycle_state": "pack_governance_dependency_retained",
+      "pack_eligible": false,
+      "pack_grade_replay_governance_promoted": false,
+      "promotion_consequence": "pack-grade replay governance service remains unpromoted",
+      "row_id": "witness.w045_pack_grade_replay_governance_gate",
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json"
+    },
+    {
+      "lifecycle_state": "local_harness_not_pack_eligibility",
+      "local_harness_runnable": true,
+      "pack_eligible": false,
+      "promotion_consequence": "local harness evidence cannot promote retained witnesses into pack-grade replay eligibility",
+      "row_id": "witness.w045_no_proxy_pack_eligibility_guard",
+      "service_endpoint_present": false,
+      "source_artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json"
+    }
+  ],
+  "run_id": "w045-operated-assurance-retained-history-retained-witness-slo-service-001",
+  "schema_version": "oxcalc.operated_assurance.w045.retained_witness_lifecycle.v1",
+  "witness_lifecycle_row_count": 15
+}

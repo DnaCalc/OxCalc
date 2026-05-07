@@ -1,0 +1,333 @@
+{
+  "local_proof_row_count": 11,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4",
+      "bounded_model": false,
+      "disposition": "bind the current Lean inventory and zero-placeholder audit as checked W045 evidence without promoting full Lean verification",
+      "disposition_kind": "checked_lean_inventory_evidence",
+      "evidence_paths": [
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+        "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+        "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "lean_placeholder_count": 0
+      },
+      "promotion_consequence": "full Lean verification remains unpromoted until all semantic proof boundaries are discharged",
+      "reason": "The Lean files parse and the placeholder census is zero, but this remains row-model evidence rather than whole-engine semantic proof.",
+      "row_id": "w045_lean_inventory_checked_no_placeholder_evidence",
+      "source_inputs": [
+        "W037 formal inventory",
+        "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-016"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4",
+      "bounded_model": false,
+      "disposition": "bind the W044 Lean/TLA packet as a checked non-promoting predecessor input",
+      "disposition_kind": "checked_lean_bridge_evidence",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_discharge_ledger.json",
+        "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean/TLA verification remains unpromoted",
+      "reason": "The W044 Lean/TLA packet remains valid and records five exact blockers; W045.4 builds on it without treating it as full verification.",
+      "row_id": "w045_w044_lean_tla_predecessor_bridge",
+      "source_inputs": [
+        "W044 Lean/TLA proof-model packet",
+        "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-016",
+        "W045-OBL-017",
+        "W045-OBL-018"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3; calc-zkio.4",
+      "bounded_model": false,
+      "disposition": "bind the W045 mixed dynamic add/remove/reclassify refinement row as a checked Lean/TLA proof input",
+      "disposition_kind": "checked_lean_refinement_bridge",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "automatic_dynamic_transition_row_count": 1,
+        "w045_rust_exact_blocker_count": 7
+      },
+      "promotion_consequence": "Rust refinement and full optimized/core verification remain unpromoted because retained blockers remain",
+      "reason": "W045.3 carries the mixed dynamic refinement bridge while keeping broader dynamic and soft-reference/INDIRECT blockers.",
+      "row_id": "w045_lean_rust_dynamic_refinement_bridge",
+      "source_inputs": [
+        "W045 Rust refinement packet",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-014",
+        "W045-OBL-018"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3; calc-zkio.4",
+      "bounded_model": false,
+      "disposition": "bind the W045 reject/no-publication fence row as a checked Lean/TLA proof input",
+      "disposition_kind": "checked_lean_publication_fence_bridge",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "publication-fence behavior is evidenced for the exercised reject path, while production publication breadth remains blocked",
+      "reason": "W045.3 carries the W044 no-publication fence as a validated Rust row.",
+      "row_id": "w045_lean_rust_publication_fence_no_publish_bridge",
+      "source_inputs": [
+        "W045 Rust publication-fence no-publish row",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-013",
+        "W045-OBL-018"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3; calc-zkio.4; calc-zkio.8",
+      "bounded_model": false,
+      "disposition": "bind the ordinary LET/LAMBDA value-carrier row as checked input while keeping callable carrier sufficiency and general OxFunc kernels unpromoted",
+      "disposition_kind": "checked_lean_callable_carrier_bridge",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "callable carrier sufficiency and general OxFunc kernel claims remain unpromoted",
+      "reason": "W045.3 carries ordinary value-carrier evidence, not metadata projection or broad OxFunc semantics.",
+      "row_id": "w045_lean_callable_carrier_boundary_bridge",
+      "source_inputs": [
+        "W045 Rust callable value-carrier row",
+        "W045 successor obligation map"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-015",
+        "W045-OBL-033"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4; calc-zkio.5",
+      "bounded_model": false,
+      "disposition": "carry W044 declared-profile scheduler-equivalence and pack-governance predicate evidence as checked non-promoting input",
+      "disposition_kind": "checked_lean_policy_predicate",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
+        "archive/lean-w038-w045/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "observed": {
+        "policy_row_count": 25,
+        "satisfied_policy_row_count": 17
+      },
+      "promotion_consequence": "Stage 2 production policy and pack-grade replay remain unpromoted until W045 production evidence exists",
+      "reason": "W044 Stage 2 evidence is declared-profile evidence with retained exact blockers; W045.5 owns the production-partition successor lane.",
+      "row_id": "w045_lean_stage2_scheduler_pack_predicate_carried",
+      "source_inputs": [
+        "W044 Stage 2 scheduler/pack packet",
+        "archive/lean-w038-w045/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_proof_row_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-017",
+        "W045-OBL-018"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4; calc-zkio.11",
+      "bounded_model": false,
+      "disposition": "retain full Lean verification as an exact proof blocker despite checked row-model and placeholder evidence",
+      "disposition_kind": "exact_lean_verification_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean verification remains unpromoted",
+      "reason": "Checked classification files and zero placeholders do not cover all semantic proof obligations.",
+      "row_id": "w045_full_lean_verification_exact_blocker",
+      "source_inputs": [
+        "W045 residual no-promotion guard",
+        "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_lean_tla_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-016"
+      ]
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.3; calc-zkio.4; calc-zkio.10",
+      "bounded_model": false,
+      "disposition": "retain Rust totality/refinement dependency as exact proof/model blocker while W045 Rust packet still carries exact blockers",
+      "disposition_kind": "exact_rust_dependency_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "Rust totality/refinement and full optimized/core verification remain unpromoted",
+      "reason": "W045.3 adds a fresh Rust row model but retains runtime panic, broader dynamic, soft-reference/INDIRECT, snapshot/capability breadth, callable metadata, and full optimized/core blockers.",
+      "row_id": "w045_rust_totality_dependency_exact_blocker",
+      "source_inputs": [
+        "W045 Rust totality/refinement packet",
+        "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean"
+      ],
+      "totality_boundary": true,
+      "validation_state": "w045_lean_tla_exact_blocker_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-014",
+        "W045-OBL-018"
+      ]
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4; calc-zkio.11",
+      "bounded_model": false,
+      "disposition": "preserve formalization as spec evolution and implementation improvement, not a fixed-spec verification only",
+      "disposition_kind": "accepted_spec_evolution_guard",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+        "archive/worksets-w038-w045/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
+      "reason": "W045 remains a formalization, spec-evolution, and engine-improvement workset.",
+      "row_id": "w045_formal_model_spec_evolution_guard",
+      "source_inputs": [
+        "W045 successor obligation map"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_tla_boundary_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-002"
+      ]
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4; calc-zkio.8",
+      "bounded_model": false,
+      "disposition": "carry W073 typed-rule-only formatting intake as an accepted non-Lean/TLA promotion boundary",
+      "disposition_kind": "accepted_formatting_boundary",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "W073 formatting intake does not promote full Lean/TLA verification, broad OxFml, or downstream request-construction uptake",
+      "reason": "W045.1 records typed-rule-only formatting intake and downstream request construction remains unverified.",
+      "row_id": "w045_w073_typed_formatting_lean_tla_boundary_guard",
+      "source_inputs": [
+        "W045 W073 typed-only formatting intake"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_tla_boundary_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-003",
+        "W045-OBL-031"
+      ]
+    },
+    {
+      "accepted_boundary": true,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-zkio.4; calc-zkio.11",
+      "bounded_model": false,
+      "disposition": "retain proof/model no-proxy promotion guard across Lean, TLA, Rust, Stage 2, pack, and release-grade rows",
+      "disposition_kind": "accepted_no_proxy_promotion_guard",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+      ],
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "local_checked_proof": true,
+      "promotion_consequence": "full Lean/TLA, scheduler fairness, Rust totality/refinement, Stage 2, pack/C5, and release-grade claims remain blocked if any proxy row is counted as a proof discharge",
+      "reason": "W045.1 records no-promotion claims for proof/model and release-grade lanes and W045.4 carries them explicitly.",
+      "row_id": "w045_no_proxy_proof_model_promotion_guard",
+      "source_inputs": [
+        "W045 no-promotion claims",
+        "W045 successor obligation map"
+      ],
+      "totality_boundary": false,
+      "validation_state": "w045_lean_tla_boundary_validated",
+      "w045_obligation_ids": [
+        "W045-OBL-001",
+        "W045-OBL-002",
+        "W045-OBL-016",
+        "W045-OBL-017",
+        "W045-OBL-018"
+      ]
+    }
+  ],
+  "run_id": "w045-lean-tla-verification-fairness-totality-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.w045_lean_proof_register.v1"
+}

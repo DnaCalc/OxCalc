@@ -76,8 +76,8 @@ The decision is emitted under `docs/test-runs/core-engine/closure-audit/w037-clo
 W038 is created as the next ordered successor tranche:
 
 1. workset: `W038 Core Formalization Release-Grade Closure Hardening`
-2. workset packet: `docs/worksets/W038_CORE_FORMALIZATION_RELEASE_GRADE_CLOSURE_HARDENING.md`
-3. artifact root: `docs/spec/core-engine/w038-formalization/`
+2. workset packet: `archive/worksets-w038-w045/W038_CORE_FORMALIZATION_RELEASE_GRADE_CLOSURE_HARDENING.md`
+3. artifact root: `archive/w038-formalization/`
 4. parent epic: `calc-zsr`
 5. dependency: follows W037 parent epic `calc-ubd`; after W037 parent closure the first ready bead is `calc-zsr.1`
 

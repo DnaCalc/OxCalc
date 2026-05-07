@@ -1,0 +1,127 @@
+{
+  "fully_independent_evaluator_promoted": false,
+  "row_count": 15,
+  "rows": [
+    {
+      "case_count": 8,
+      "disposition_kind": "broadened_independent_implementation",
+      "evidence": "w044_independent_reference_model_implementation.json",
+      "independence_state": "independent_reference_model_slice_present",
+      "match_count": 8,
+      "promotion_consequence": "W044 broadens the independent slice with soft-reference rebind and retained-witness attachment controls, but still does not cover full TreeCalc/OxCalc evaluator breadth.",
+      "row_id": "independent.w044_reference_model_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_reference_model_implementation.json",
+      "independence_state": "predecessor_reference_model_slice_subsumed_by_w044_slice",
+      "promotion_consequence": "W043 reference-model evidence remains evidence lineage only.",
+      "row_id": "independent.w043_reference_model_predecessor",
+      "w043_case_count": 6,
+      "w043_fully_independent_evaluator_promoted": false,
+      "w043_row_count": 13
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "w044_independent_reference_model_implementation.json",
+      "independence_state": "soft_reference_rebind_control_present",
+      "promotion_consequence": "The W044 soft-reference case is a deterministic control row for later differential-service comparison, not broad dynamic-reference authority.",
+      "row_id": "independent.w044_soft_reference_rebind_control"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "w044_independent_reference_model_implementation.json",
+      "independence_state": "retained_witness_attachment_control_present",
+      "promotion_consequence": "The W044 retained-witness case models mismatch attachment intent without operating a witness lifecycle service.",
+      "row_id": "independent.w044_retained_witness_attachment_control"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "TraceCalc",
+      "independence_state": "tracecalc_is_correctness_oracle_not_independent_implementation",
+      "promotion_consequence": "TraceCalc remains the correctness oracle for covered behavior, not a diversity implementation.",
+      "row_id": "independent.tracecalc_reference_oracle_boundary"
+    },
+    {
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+      "exact_remaining_blocker_count": 4,
+      "independence_state": "optimized_core_same_implementation_family",
+      "promotion_consequence": "Optimized/core evidence strengthens conformance but is not independent implementation authority.",
+      "row_id": "independent.optimized_core_same_family"
+    },
+    {
+      "direct_evidence_bound": true,
+      "disposition_kind": "same_engine_family_not_independent",
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+      "independence_state": "treecalc_same_oxcalc_family",
+      "promotion_consequence": "TreeCalc evidence is core conformance evidence, not independent evaluator diversity.",
+      "row_id": "independent.treecalc_same_family"
+    },
+    {
+      "disposition_kind": "accepted_external_slice",
+      "evidence": "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
+      "independence_state": "external_formula_evaluator_not_oxcalc_coordinator",
+      "promotion_consequence": "OxFml formula evidence remains an external formula-evaluator slice, including narrow LET/LAMBDA seam evidence, not OxCalc coordinator breadth.",
+      "row_id": "independent.direct_oxfml_external_formula_slice"
+    },
+    {
+      "bounded_model_row_count": 4,
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+      "independence_state": "proof_model_not_executable_runtime_evaluator",
+      "promotion_consequence": "Proof/model evidence supports specification and refinement, but does not supply runtime diversity.",
+      "row_id": "independent.proof_model_not_runtime_evaluator"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+      "independence_state": "rust_refinement_bridge_not_second_evaluator",
+      "promotion_consequence": "Rust refinement bridge evidence supports the main implementation family and does not establish independent evaluator breadth.",
+      "refinement_row_count": 9,
+      "row_id": "independent.rust_refinement_not_runtime_diversity"
+    },
+    {
+      "disposition_kind": "accepted_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+      "independence_state": "stage2_policy_profiles_not_second_evaluator",
+      "policy_row_count": 25,
+      "promotion_consequence": "Stage 2 scheduler-equivalence evidence remains policy/replay evidence, not separate evaluator implementation authority.",
+      "row_id": "independent.stage2_policy_not_independent_runtime",
+      "stage2_policy_promoted": false
+    },
+    {
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+      "independence_state": "service_packet_file_backed_not_independent_evaluator",
+      "promotion_consequence": "Service evidence improves retention and authority routing but is not independent evaluator breadth.",
+      "row_id": "independent.w044_service_packet_not_independent_runtime",
+      "service_readiness_blocked_count": 6
+    },
+    {
+      "disposition_kind": "service_contract_boundary",
+      "evidence": "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_alert_dispatch_service_register.json",
+      "independence_state": "local_quarantine_contract_not_independent_evaluator",
+      "promotion_consequence": "Local mismatch/quarantine rules are not a second evaluator implementation.",
+      "row_id": "independent.mismatch_quarantine_contract_not_independent_runtime"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+      "independence_state": "callable_metadata_projection_blocked",
+      "promotion_consequence": "Callable metadata and LET/LAMBDA carrier sufficiency remain successor dependencies.",
+      "row_id": "independent.callable_metadata_dependency"
+    },
+    {
+      "disposition_kind": "exact_remaining_blocker",
+      "evidence": "w044_independent_reference_model_implementation.json",
+      "independence_state": "full_independent_implementation_breadth_absent",
+      "promotion_consequence": "Full evaluator diversity remains blocked until a broader independent implementation covers scheduler, references, publication, effects, broad OxFml, and callable metadata.",
+      "row_id": "independent.full_independent_implementation_breadth_absent"
+    }
+  ],
+  "run_id": "w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001",
+  "schema_version": "oxcalc.diversity_seam.w044.independent_evaluator_breadth_register.v1",
+  "w044_independent_reference_model_case_count": 8,
+  "w044_independent_reference_model_match_count": 8
+}

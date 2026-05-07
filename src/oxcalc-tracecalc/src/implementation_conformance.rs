@@ -3248,7 +3248,7 @@ fn evaluate_w044_declared_counterpart_exact_blocker_row(
             "authority_owner": "calc-b1t.2; calc-b1t.5",
             "promotion_consequence": promotion_consequence,
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json"
             ],
             "validation_state": if failures.is_empty() { "w044_disposition_validated" } else { "w044_disposition_failed" },
             "failures": failures,
@@ -3304,8 +3304,8 @@ fn evaluate_w044_callable_metadata_exact_blocker_row(
             "authority_owner": "calc-b1t.2; calc-b1t.8",
             "promotion_consequence": "callable metadata projection, registered external callable projection, and provider-failure callable publication semantics remain unpromoted",
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
-                "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json"
             ],
             "validation_state": if failures.is_empty() { "w044_disposition_validated" } else { "w044_disposition_failed" },
             "failures": failures,
@@ -3338,7 +3338,7 @@ fn evaluate_w044_match_guard_row(w043_match_guard: &Value) -> EvaluatedW044Dispo
             "authority_owner": "calc-b1t.2; calc-b1t.11",
             "promotion_consequence": "full optimized/core, release-grade, C5, pack-grade, Stage 2, callable metadata, and general OxFunc claims remain blocked if any proxy row is counted as a match",
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_match_promotion_guard.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_match_promotion_guard.json"
             ],
             "validation_state": if failures.is_empty() { "w044_disposition_validated" } else { "w044_disposition_failed" },
             "failures": failures,
@@ -3497,7 +3497,7 @@ fn evaluate_w045_soft_reference_indirect_exact_blocker_row(
             "authority_owner": "calc-zkio.2",
             "promotion_consequence": "soft-reference and INDIRECT coverage remains unpromoted until direct broader fixture evidence or a sufficiency proof exists",
             "source_artifacts": [
-                "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
+                "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json"
             ],
             "validation_state": if failures.is_empty() { "w045_disposition_validated" } else { "w045_disposition_failed" },
             "failures": failures,
@@ -3559,7 +3559,7 @@ fn evaluate_w045_counterpart_exact_blocker_row(
             "authority_owner": "calc-zkio.2; calc-zkio.5",
             "promotion_consequence": promotion_consequence,
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
             ],
             "validation_state": if failures.is_empty() { "w045_disposition_validated" } else { "w045_disposition_failed" },
             "failures": failures,
@@ -3607,8 +3607,8 @@ fn evaluate_w045_callable_metadata_exact_blocker_row(
             "authority_owner": "calc-zkio.2; calc-zkio.8",
             "promotion_consequence": "callable metadata projection, registered external callable projection, and provider-failure callable publication semantics remain unpromoted",
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
-                "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json"
             ],
             "validation_state": if failures.is_empty() { "w045_disposition_validated" } else { "w045_disposition_failed" },
             "failures": failures,
@@ -3649,7 +3649,7 @@ fn evaluate_w045_match_guard_row(
             "authority_owner": "calc-zkio.2; calc-zkio.11",
             "promotion_consequence": "full optimized/core, release-grade, C5, pack-grade, Stage 2, callable metadata, registered-external, and general OxFunc claims remain blocked if any proxy row is counted as a match",
             "source_artifacts": [
-                "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_match_promotion_guard.json"
+                "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_match_promotion_guard.json"
             ],
             "validation_state": if failures.is_empty() { "w045_disposition_validated" } else { "w045_disposition_failed" },
             "failures": failures,
@@ -4878,12 +4878,30 @@ fn bool_at(value: &Value, key: &str) -> bool {
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
-    segments
+    let parts = segments
         .into_iter()
         .filter(|segment| !segment.trim().is_empty())
         .map(|segment| segment.replace('\\', "/").trim_matches('/').to_string())
-        .collect::<Vec<_>>()
-        .join("/")
+        .collect::<Vec<_>>();
+    historical_w038_w045_artifact_path(&parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[String]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend(parts[3..].iter().map(String::as_str));
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 fn w037_treecalc_case_path(case_id: &str, leaf: &str) -> String {
@@ -5295,7 +5313,7 @@ const W038_DISPOSITION_SPECS: &[W038DispositionSpec] = &[
             "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json",
             "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
             "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
-            "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+            "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
         ],
         required_evidence_checks: &[
             "w037_direct_oxfml_let_lambda",
@@ -5362,7 +5380,7 @@ const W038_DISPOSITION_SPECS: &[W038DispositionSpec] = &[
             "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
             "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
             "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
-            "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+            "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
         ],
         required_evidence_checks: &[
             "w037_callable_treecalc_value_only",

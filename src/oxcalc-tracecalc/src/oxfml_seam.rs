@@ -89,94 +89,94 @@ const W045_BLOCKER_REGISTER_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w045.exact_bloc
 const W045_PROMOTION_DECISION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w045.promotion_decision.v1";
 const W045_VALIDATION_SCHEMA_V1: &str = "oxcalc.oxfml_seam.w045.validation.v1";
 
-const W039_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json";
-const W039_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json";
-const W039_W073_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W039_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W039_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W039_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json";
-const W039_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json";
-const W039_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json";
+const W039_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json";
+const W039_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json";
+const W039_W073_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W039_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W039_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W039_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json";
+const W039_IMPLEMENTATION_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json";
+const W039_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json";
 
-const W040_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json";
-const W040_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/case_index.json";
-const W040_W073_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W040_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W040_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W040_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json";
-const W040_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json";
-const W040_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json";
-const W040_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json";
-const W040_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json";
-const W041_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/run_summary.json";
-const W041_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/case_index.json";
-const W041_W073_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W041_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W041_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W041_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
-const W041_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json";
-const W041_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/promotion_decision.json";
-const W042_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json";
-const W042_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json";
-const W042_W073_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W042_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W042_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W042_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json";
-const W042_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json";
-const W042_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json";
-const W042_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json";
-const W042_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json";
-const W042_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json";
-const W041_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json";
-const W042_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/promotion_decision.json";
-const W043_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json";
-const W043_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/case_index.json";
-const W043_W073_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W043_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W043_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W043_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
-const W043_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json";
-const W043_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json";
-const W043_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json";
-const W043_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
-const W043_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json";
-const W043_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json";
-const W044_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json";
-const W044_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json";
-const W044_W073_TOP_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W044_W073_COLOR_SCALE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_color_scale_guard_001/result.json";
-const W044_W073_DATA_BAR_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_data_bar_guard_001/result.json";
-const W044_W073_ICON_SET_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_icon_set_guard_001/result.json";
-const W044_W073_AVERAGE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_average_guard_001/result.json";
-const W044_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W044_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W044_BLOCKER_RECLASSIFICATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json";
-const W044_PROMOTION_CONTRACT_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json";
-const W044_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json";
-const W044_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
-const W044_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json";
-const W044_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json";
-const W044_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
-const W044_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json";
-const W044_OXFML_SEAM_DECISION: &str = "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json";
-const W045_UPSTREAM_HOST_SUMMARY: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json";
-const W045_UPSTREAM_HOST_CASE_INDEX: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json";
-const W045_W073_TOP_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
-const W045_W073_COLOR_SCALE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_color_scale_guard_001/result.json";
-const W045_W073_DATA_BAR_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_data_bar_guard_001/result.json";
-const W045_W073_ICON_SET_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_icon_set_guard_001/result.json";
-const W045_W073_AVERAGE_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_average_guard_001/result.json";
-const W045_LET_LEXICAL_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
-const W045_RETURNED_LAMBDA_RESULT: &str = "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
-const W045_RELEASE_GRADE_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
-const W045_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json";
-const W045_PROMOTION_CONTRACT_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json";
-const W045_OXFML_INBOUND_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json";
-const W045_IMPLEMENTATION_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
-const W045_CALLABLE_METADATA_REGISTER: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json";
-const W045_IMPLEMENTATION_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json";
-const W045_DIVERSITY_DECISION: &str = "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json";
-const W045_DIVERSITY_BLOCKERS: &str = "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json";
+const W040_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json";
+const W040_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/case_index.json";
+const W040_W073_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W040_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W040_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W040_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json";
+const W040_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json";
+const W040_IMPLEMENTATION_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json";
+const W040_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json";
+const W040_OXFML_SEAM_DECISION: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json";
+const W041_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/run_summary.json";
+const W041_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/case_index.json";
+const W041_W073_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W041_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W041_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W041_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
+const W041_IMPLEMENTATION_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json";
+const W041_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/promotion_decision.json";
+const W042_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json";
+const W042_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json";
+const W042_W073_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W042_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W042_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W042_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json";
+const W042_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json";
+const W042_IMPLEMENTATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json";
+const W042_CALLABLE_METADATA_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json";
+const W042_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json";
+const W042_DIVERSITY_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json";
+const W041_OXFML_SEAM_DECISION: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json";
+const W042_OXFML_SEAM_DECISION: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/promotion_decision.json";
+const W043_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json";
+const W043_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/case_index.json";
+const W043_W073_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W043_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W043_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W043_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
+const W043_OXFML_INBOUND_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json";
+const W043_IMPLEMENTATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json";
+const W043_CALLABLE_METADATA_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json";
+const W043_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
+const W043_DIVERSITY_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json";
+const W043_OXFML_SEAM_DECISION: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json";
+const W044_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json";
+const W044_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json";
+const W044_W073_TOP_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W044_W073_COLOR_SCALE_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_color_scale_guard_001/result.json";
+const W044_W073_DATA_BAR_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_data_bar_guard_001/result.json";
+const W044_W073_ICON_SET_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_icon_set_guard_001/result.json";
+const W044_W073_AVERAGE_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_typed_cf_average_guard_001/result.json";
+const W044_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W044_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W044_BLOCKER_RECLASSIFICATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json";
+const W044_PROMOTION_CONTRACT_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json";
+const W044_OXFML_INBOUND_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json";
+const W044_IMPLEMENTATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
+const W044_CALLABLE_METADATA_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json";
+const W044_IMPLEMENTATION_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json";
+const W044_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json";
+const W044_DIVERSITY_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json";
+const W044_OXFML_SEAM_DECISION: &str = "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json";
+const W045_UPSTREAM_HOST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json";
+const W045_UPSTREAM_HOST_CASE_INDEX: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json";
+const W045_W073_TOP_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_top_rank_guard_001/result.json";
+const W045_W073_COLOR_SCALE_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_color_scale_guard_001/result.json";
+const W045_W073_DATA_BAR_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_data_bar_guard_001/result.json";
+const W045_W073_ICON_SET_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_icon_set_guard_001/result.json";
+const W045_W073_AVERAGE_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_average_guard_001/result.json";
+const W045_LET_LEXICAL_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json";
+const W045_RETURNED_LAMBDA_RESULT: &str = "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_returned_lambda_invocation_eval_001/result.json";
+const W045_RELEASE_GRADE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
+const W045_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json";
+const W045_PROMOTION_CONTRACT_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json";
+const W045_OXFML_INBOUND_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json";
+const W045_IMPLEMENTATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
+const W045_CALLABLE_METADATA_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json";
+const W045_IMPLEMENTATION_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json";
+const W045_DIVERSITY_DECISION: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json";
+const W045_DIVERSITY_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json";
 const OXFML_W073_WORKSET: &str =
     "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md";
 const OXFML_W073_HANDOFF: &str =
@@ -7430,7 +7430,25 @@ fn bool_at(value: &Value, key: &str) -> bool {
 }
 
 fn relative_artifact_path(parts: &[&str]) -> String {
-    parts.join("/")
+    historical_w038_w045_artifact_path(parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

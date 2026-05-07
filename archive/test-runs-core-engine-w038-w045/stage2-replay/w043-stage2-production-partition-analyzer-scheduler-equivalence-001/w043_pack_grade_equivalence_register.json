@@ -1,0 +1,170 @@
+{
+  "exact_remaining_blocker_count": 3,
+  "row_count": 11,
+  "rows": [
+    {
+      "disposition": "carry W042 bounded baseline-versus-Stage-2 replay rows into W043 pack-grade equivalence classification",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "bounded_baseline_vs_stage2_replay",
+      "promotion_consequence": "bounded replay remains declared-profile evidence only",
+      "row_id": "w043_stage2_bounded_replay_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-018"
+    },
+    {
+      "disposition": "carry one nontrivial partition-order permutation row and six total permutation rows",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "partition_order_permutation_replay",
+      "promotion_consequence": "bounded permutation replay supports declared-profile scheduler equivalence but does not discharge unbounded fairness",
+      "row_id": "w043_stage2_partition_order_permutation_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-017"
+    },
+    {
+      "disposition": "carry W042 observable-result invariance rows for values, rejects, fence no-publish behavior, and formatting watch surfaces",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "observable_result_invariance",
+      "promotion_consequence": "observable invariance is evidenced for declared bounded profiles only",
+      "row_id": "w043_stage2_observable_invariance_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-017"
+    },
+    {
+      "disposition": "bind W043 optimized/core and Rust declared-profile snapshot-fence reject/no-publish counterpart evidence without match promotion",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "snapshot_fence_counterpart",
+      "promotion_consequence": "snapshot-fence counterpart is evidenced for declared profiles; production Stage 2 policy remains blocked by broader gates",
+      "row_id": "w043_stage2_snapshot_fence_counterpart_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-004"
+    },
+    {
+      "disposition": "bind W043 optimized/core and Rust declared-profile capability-view reject/no-publish counterpart evidence without match promotion",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "capability_view_fence_counterpart",
+      "promotion_consequence": "capability-view counterpart is evidenced for declared profiles; production Stage 2 policy remains blocked by broader gates",
+      "row_id": "w043_stage2_capability_view_counterpart_evidence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-005"
+    },
+    {
+      "disposition": "retain the W073 direct-replacement rule for aggregate and visualization conditional-formatting metadata",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "w073_typed_formatting_watch",
+      "promotion_consequence": "typed-only formatting is carried as an observable-surface guard; broad OxFml seam breadth remains under calc-2p3.8",
+      "row_id": "w043_stage2_w073_typed_formatting_guard_carried",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json"
+      ],
+      "w043_obligation_id": "W043-OBL-027"
+    },
+    {
+      "disposition": "classify values, rejects, fence no-publish behavior, typed-formatting watch, replay validation, and W043 counterpart rows as declared-profile pack-equivalence inputs",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "declared_profile_pack_replay_equivalence",
+      "promotion_consequence": "declared-profile equivalence evidence is not pack-grade replay governance",
+      "row_id": "w043_stage2_declared_pack_replay_equivalence",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-018"
+    },
+    {
+      "disposition": "keep bounded-only, declared-profile, retained-blocker, and predecessor evidence out of promotion counts",
+      "exact_remaining_blocker": false,
+      "failures": [],
+      "policy_area": "no_proxy_promotion_guard",
+      "promotion_consequence": "Stage 2, pack, and release-grade gates remain blocked unless direct target evidence is present",
+      "row_id": "w043_stage2_no_proxy_promotion_guard",
+      "satisfied_for_declared_profile": true,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json",
+        "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json"
+      ],
+      "w043_obligation_id": "W043-OBL-008"
+    },
+    {
+      "disposition": "retain operated cross-engine differential service as successor dependency",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "operated_cross_engine_stage2_differential_service",
+      "promotion_consequence": "operated Stage 2 differential evidence remains required before policy promotion",
+      "row_id": "w043_stage2_operated_cross_engine_service_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-023"
+    },
+    {
+      "disposition": "retain retained-witness lifecycle and retention SLO as a pack-grade replay dependency rather than treating deterministic replay files as operated witness evidence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "retained_witness_lifecycle_pack_dependency",
+      "promotion_consequence": "pack-grade replay equivalence remains blocked until retained-witness lifecycle and retention SLO evidence exists",
+      "row_id": "w043_stage2_retained_witness_lifecycle_pack_dependency_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-021"
+    },
+    {
+      "disposition": "retain pack-grade replay governance as release-decision blocker beyond declared-profile equivalence",
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "policy_area": "pack_grade_replay_governance",
+      "promotion_consequence": "pack-grade replay, C5, and release-grade verification remain blocked",
+      "related_w043_obligation_ids": [
+        "W043-OBL-018"
+      ],
+      "row_id": "w043_stage2_pack_grade_replay_governance_blocker",
+      "satisfied_for_declared_profile": false,
+      "source_artifacts": [
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+        "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json"
+      ],
+      "w043_obligation_id": "W043-OBL-034"
+    }
+  ],
+  "run_id": "w043-stage2-production-partition-analyzer-scheduler-equivalence-001",
+  "satisfied_policy_row_count": 8,
+  "schema_version": "oxcalc.stage2_replay.w043.pack_grade_equivalence_register.v1",
+  "semantic_equivalence_statement": "Declared-profile values, rejects, fence no-publish behavior, typed-formatting observable guards, replay validation, W043 counterpart evidence, and no-proxy promotion guards are bound as pack-equivalence inputs. This still is not pack-grade replay governance because retained-witness lifecycle, operated-service evidence, and pack governance remain blocked."
+}

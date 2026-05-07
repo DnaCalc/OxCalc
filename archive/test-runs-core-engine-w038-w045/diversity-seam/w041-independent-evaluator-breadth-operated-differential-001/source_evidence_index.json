@@ -1,0 +1,140 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_successor_obligation_map",
+      "semantic_state": "w041_successor_obligations_bound_with_formatting_guard",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w040_diversity_predecessor",
+      "semantic_state": "w040_diversity_predecessor_bound_without_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w040_independent_scalar_predecessor",
+      "semantic_state": "w040_bounded_scalar_slice_narrowed_by_w041_formula_fragment",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_optimized_core_conformance",
+      "semantic_state": "w041_optimized_core_conformance_bound_without_full_verification",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_treecalc_dynamic_transition",
+      "semantic_state": "w041_treecalc_dynamic_transition_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_rust_refinement",
+      "semantic_state": "w041_rust_totality_refinement_bound_without_full_proof_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_lean_tla_boundaries",
+      "semantic_state": "w041_lean_tla_boundaries_bound_without_full_model_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_stage2_service_dependency",
+      "semantic_state": "w041_stage2_service_dependency_bound_without_policy_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_operated_assurance_service_envelope",
+      "semantic_state": "w041_file_backed_service_envelope_bound_without_operated_service_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_cross_engine_service_blocker",
+      "semantic_state": "w041_cross_engine_service_blocker_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_w073_typed_formatting_guard",
+      "semantic_state": "w073_typed_rule_only_formatting_guard_retained_for_diversity",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w041_diversity_promotion_guard",
+      "semantic_state": "diversity_stage2_pack_service_promotion_guard_clean",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w041-independent-evaluator-breadth-operated-differential-001",
+  "schema_version": "oxcalc.diversity_seam.w041.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "w040_cross_engine_differential": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_cross_engine_differential_register.json",
+    "w040_differential_authority": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_differential_authority_register.json",
+    "w040_diversity_blockers": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_exact_diversity_blocker_register.json",
+    "w040_diversity_decision": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json",
+    "w040_diversity_summary": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/run_summary.json",
+    "w040_formatting_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+    "w040_independent_implementation": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
+    "w040_independent_row_set": "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_evaluator_row_set.json",
+    "w041_alert_dispatch_register": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
+    "w041_conformance_summary": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+    "w041_cross_engine_service_register": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
+    "w041_lean_tla_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+    "w041_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "w041_obligation_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
+    "w041_operated_assurance_summary": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+    "w041_operated_service_blockers": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_exact_service_blocker_register.json",
+    "w041_retained_history_query": "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_history_service_query.json",
+    "w041_rust_totality_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "w041_stage2_blockers": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
+    "w041_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+    "w041_treecalc_summary": "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json"
+  },
+  "source_evidence_row_count": 12
+}

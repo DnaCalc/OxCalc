@@ -1,0 +1,36 @@
+{
+  "run_id": "w041-lean-tla-full-verification-fairness-discharge-001",
+  "schema_version": "oxcalc.formal_assurance.source_evidence_index.v1",
+  "source_artifacts": {
+    "w037_formal_inventory_summary": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/run_summary.json",
+    "w037_formal_inventory_validation": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/validation.json",
+    "w037_tla_inventory": "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/tla_inventory.json",
+    "w040_lean_tla_exact_blockers": "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_exact_blocker_register.json",
+    "w040_lean_tla_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
+    "w040_lean_tla_validation": "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json",
+    "w040_stage2_policy_file": "archive/lean-w038-w045/W040Stage2ProductionPolicyAndEquivalence.lean",
+    "w040_stage2_policy_gate": "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json",
+    "w040_stage2_summary": "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+    "w040_stage2_validation": "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json",
+    "w041_lean_tla_discharge_file": "archive/lean-w038-w045/W041LeanTlaFullVerificationAndFairnessDischarge.lean",
+    "w041_rust_exact_blockers": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_exact_blocker_register.json",
+    "w041_rust_formal_assurance_summary": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "w041_rust_formal_assurance_validation": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json",
+    "w041_rust_lean_file": "archive/lean-w038-w045/W041RustTotalityAndRefinement.lean",
+    "w041_rust_refinement_register": "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_refinement_register.json",
+    "w041_successor_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "w041_successor_obligation_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json"
+  },
+  "source_counts": {
+    "lean_placeholder_count": 0,
+    "w037_lean_file_count": 12,
+    "w037_tla_failed_config_count": 0,
+    "w037_tla_inventory_passed_count": 11,
+    "w037_tla_routine_config_count": 11,
+    "w040_lean_tla_exact_blocker_count": 5,
+    "w040_stage2_exact_blocker_count": 4,
+    "w041_dynamic_refinement_row_count": 1,
+    "w041_obligation_count": 28,
+    "w041_rust_exact_blocker_count": 4
+  }
+}

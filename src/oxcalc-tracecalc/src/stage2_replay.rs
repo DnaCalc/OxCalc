@@ -111,152 +111,152 @@ const W037_STAGE2_SEMANTIC_REQUIREMENTS: &str = "docs/test-runs/core-engine/stag
 const W037_STAGE2_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/promotion_decision.json";
 const W037_DIRECT_OXFML_SUMMARY: &str =
     "docs/test-runs/core-engine/upstream-host/w037-direct-oxfml-evaluator-001/run_summary.json";
-const W039_RESIDUAL_LEDGER: &str = "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json";
-const W038_STAGE2_RUN_SUMMARY: &str =
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json";
-const W038_STAGE2_VALIDATION: &str =
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/validation.json";
-const W038_STAGE2_PARTITION_MATRIX: &str = "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json";
-const W038_STAGE2_PERMUTATION_REPLAY: &str = "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json";
-const W038_STAGE2_BLOCKER_REGISTER: &str = "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json";
-const W039_CONFORMANCE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json";
-const W039_CONFORMANCE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json";
-const W039_FORMAL_ASSURANCE_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json";
-const W039_FORMAL_ASSURANCE_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json";
-const W039_STAGE2_LEAN_FILE: &str = "formal/lean/OxCalc/CoreEngine/W039Stage2ProductionPolicy.lean";
-const W039_STAGE2_RUN_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json";
-const W039_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json";
-const W039_STAGE2_POLICY_GATE: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json";
-const W039_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json";
-const W040_DIRECT_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/run_summary.json";
-const W040_DIRECT_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json";
-const W040_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json";
-const W040_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json";
-const W040_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json";
-const W040_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json";
-const W040_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json";
-const W040_LEAN_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json";
+const W039_RESIDUAL_LEDGER: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json";
+const W038_STAGE2_RUN_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json";
+const W038_STAGE2_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/validation.json";
+const W038_STAGE2_PARTITION_MATRIX: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json";
+const W038_STAGE2_PERMUTATION_REPLAY: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json";
+const W038_STAGE2_BLOCKER_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json";
+const W039_CONFORMANCE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json";
+const W039_CONFORMANCE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json";
+const W039_FORMAL_ASSURANCE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json";
+const W039_FORMAL_ASSURANCE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json";
+const W039_STAGE2_LEAN_FILE: &str = "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean";
+const W039_STAGE2_RUN_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json";
+const W039_STAGE2_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json";
+const W039_STAGE2_POLICY_GATE: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json";
+const W039_STAGE2_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json";
+const W040_DIRECT_OBLIGATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/run_summary.json";
+const W040_DIRECT_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json";
+const W040_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json";
+const W040_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json";
+const W040_TREECALC_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/run_summary.json";
+const W040_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json";
+const W040_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json";
+const W040_LEAN_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json";
 const W040_STAGE2_LEAN_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean";
-const W040_STAGE2_RUN_SUMMARY: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json";
-const W040_STAGE2_VALIDATION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json";
-const W040_STAGE2_POLICY_GATE: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json";
-const W040_STAGE2_PARTITION_ANALYZER: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json";
-const W040_STAGE2_OBSERVABLE_EQUIVALENCE: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json";
-const W040_STAGE2_BLOCKERS: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json";
-const W040_STAGE2_PROMOTION_DECISION: &str = "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json";
-const W041_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json";
-const W041_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
-const W041_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json";
-const W041_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json";
-const W041_OPTIMIZED_CORE_DISPOSITIONS: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json";
-const W041_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json";
-const W041_DYNAMIC_AUTO_TRANSITION: &str = "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json";
-const W041_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json";
-const W041_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json";
-const W041_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json";
-const W041_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json";
-const W041_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/validation.json";
-const W041_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json";
+    "archive/lean-w038-w045/W040Stage2ProductionPolicyAndEquivalence.lean";
+const W040_STAGE2_RUN_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json";
+const W040_STAGE2_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json";
+const W040_STAGE2_POLICY_GATE: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json";
+const W040_STAGE2_PARTITION_ANALYZER: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json";
+const W040_STAGE2_OBSERVABLE_EQUIVALENCE: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json";
+const W040_STAGE2_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json";
+const W040_STAGE2_PROMOTION_DECISION: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json";
+const W041_OBLIGATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json";
+const W041_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json";
+const W041_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json";
+const W041_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json";
+const W041_OPTIMIZED_CORE_DISPOSITIONS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json";
+const W041_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json";
+const W041_DYNAMIC_AUTO_TRANSITION: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json";
+const W041_TREECALC_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/run_summary.json";
+const W041_RUST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json";
+const W041_RUST_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json";
+const W041_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json";
+const W041_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/validation.json";
+const W041_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json";
 const W041_STAGE2_LEAN_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean";
+    "archive/lean-w038-w045/W041Stage2ProductionAnalyzerAndPackEquivalence.lean";
 const W036_STAGE2_TLA_PROMOTION_BLOCKERS: &str =
     "docs/test-runs/core-engine/tla/w036-stage2-partition-001/promotion_blockers.json";
-const W042_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json";
-const W042_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json";
-const W042_PROMOTION_TARGET_GATE_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json";
-const W042_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w073_formatting_intake.json";
-const W042_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json";
-const W042_OPTIMIZED_CORE_COUNTERPART: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json";
-const W042_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json";
-const W042_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/run_summary.json";
-const W042_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json";
-const W042_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json";
-const W042_RUST_REFINEMENT_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json";
-const W042_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json";
-const W042_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/validation.json";
-const W042_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json";
-const W042_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json";
-const W041_STAGE2_RUN_SUMMARY_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json";
-const W041_STAGE2_VALIDATION_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json";
-const W041_STAGE2_POLICY_GATE_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_policy_gate_register.json";
-const W041_STAGE2_PRODUCTION_ANALYZER_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_production_analyzer_soundness_register.json";
-const W041_STAGE2_PACK_EQUIVALENCE_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_pack_equivalence_register.json";
-const W041_STAGE2_BLOCKERS_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json";
-const W041_STAGE2_PROMOTION_DECISION_FOR_W042: &str = "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json";
+const W042_OBLIGATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json";
+const W042_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json";
+const W042_PROMOTION_TARGET_GATE_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json";
+const W042_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w073_formatting_intake.json";
+const W042_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json";
+const W042_OPTIMIZED_CORE_COUNTERPART: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json";
+const W042_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json";
+const W042_TREECALC_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/run_summary.json";
+const W042_RUST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json";
+const W042_RUST_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json";
+const W042_RUST_REFINEMENT_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json";
+const W042_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json";
+const W042_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/validation.json";
+const W042_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json";
+const W042_LEAN_TLA_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json";
+const W041_STAGE2_RUN_SUMMARY_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json";
+const W041_STAGE2_VALIDATION_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json";
+const W041_STAGE2_POLICY_GATE_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_policy_gate_register.json";
+const W041_STAGE2_PRODUCTION_ANALYZER_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_production_analyzer_soundness_register.json";
+const W041_STAGE2_PACK_EQUIVALENCE_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_pack_equivalence_register.json";
+const W041_STAGE2_BLOCKERS_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json";
+const W041_STAGE2_PROMOTION_DECISION_FOR_W042: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json";
 const W042_STAGE2_LEAN_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean";
-const W043_OBLIGATION_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json";
-const W043_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
-const W043_PROMOTION_TARGET_GATE_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json";
-const W043_FORMATTING_INTAKE: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json";
-const W043_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json";
-const W043_OPTIMIZED_CORE_COUNTERPART: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json";
-const W043_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json";
-const W043_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json";
-const W043_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json";
-const W043_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json";
-const W043_RUST_REFINEMENT_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json";
-const W043_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json";
-const W043_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/validation.json";
-const W043_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json";
-const W043_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json";
-const W042_STAGE2_RUN_SUMMARY_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json";
-const W042_STAGE2_VALIDATION_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json";
-const W042_STAGE2_POLICY_GATE_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json";
-const W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json";
-const W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json";
-const W042_STAGE2_BLOCKERS_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json";
-const W042_STAGE2_PROMOTION_DECISION_FOR_W043: &str = "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json";
-const W043_STAGE2_LEAN_FILE: &str = "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
-const W044_RESIDUAL_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json";
-const W044_RESIDUAL_BLOCKER_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json";
-const W044_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
-const W044_OPTIMIZED_CORE_DISPOSITIONS: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_optimized_core_disposition_register.json";
-const W044_OPTIMIZED_CORE_DYNAMIC_EVIDENCE: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json";
-const W044_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json";
-const W044_TREECALC_SUMMARY: &str = "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/run_summary.json";
-const W044_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json";
-const W044_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json";
-const W044_RUST_REFINEMENT_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json";
-const W044_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json";
-const W044_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json";
-const W044_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json";
-const W044_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json";
-const W043_STAGE2_RUN_SUMMARY_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
-const W043_STAGE2_VALIDATION_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json";
-const W043_STAGE2_POLICY_GATE_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_policy_gate_register.json";
-const W043_STAGE2_PRODUCTION_ANALYZER_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_production_partition_analyzer_register.json";
-const W043_STAGE2_SCHEDULER_EQUIVALENCE_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_scheduler_equivalence_register.json";
-const W043_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_pack_grade_equivalence_register.json";
-const W043_STAGE2_BLOCKERS_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json";
-const W043_STAGE2_PROMOTION_DECISION_FOR_W044: &str = "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json";
-const W044_STAGE2_LEAN_FILE: &str = "formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
-const W045_RESIDUAL_SUMMARY: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
-const W045_RESIDUAL_OBLIGATION_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json";
-const W045_RESIDUAL_PROMOTION_CONTRACT_MAP: &str = "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json";
-const W045_OPTIMIZED_CORE_SUMMARY: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
-const W045_OPTIMIZED_CORE_DYNAMIC_COVERAGE: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json";
-const W045_OPTIMIZED_CORE_COUNTERPART_COVERAGE: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json";
-const W045_OPTIMIZED_CORE_BLOCKERS: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json";
-const W045_OPTIMIZED_CORE_MATCH_GUARD: &str = "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json";
-const W045_RUST_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
-const W045_RUST_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json";
-const W045_RUST_REFINEMENT_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json";
-const W045_RUST_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json";
-const W045_LEAN_TLA_SUMMARY: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
-const W045_LEAN_TLA_VALIDATION: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json";
-const W045_TLA_MODEL_REGISTER: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json";
-const W045_LEAN_TLA_BLOCKERS: &str = "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json";
-const W044_STAGE2_RUN_SUMMARY_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
-const W044_STAGE2_VALIDATION_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json";
-const W044_STAGE2_POLICY_GATE_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_policy_gate_register.json";
-const W044_STAGE2_PRODUCTION_ANALYZER_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_production_partition_analyzer_register.json";
-const W044_STAGE2_SCHEDULER_EQUIVALENCE_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_scheduler_equivalence_register.json";
-const W044_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_pack_grade_equivalence_register.json";
-const W044_STAGE2_BLOCKERS_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json";
-const W044_STAGE2_PROMOTION_DECISION_FOR_W045: &str = "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json";
-const W045_STAGE2_LEAN_FILE: &str = "formal/lean/OxCalc/CoreEngine/W045Stage2ProductionPartitionAndPackGradeEquivalenceServiceEvidence.lean";
+    "archive/lean-w038-w045/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean";
+const W043_OBLIGATION_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json";
+const W043_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json";
+const W043_PROMOTION_TARGET_GATE_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json";
+const W043_FORMATTING_INTAKE: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json";
+const W043_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json";
+const W043_OPTIMIZED_CORE_COUNTERPART: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json";
+const W043_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json";
+const W043_TREECALC_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/run_summary.json";
+const W043_RUST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json";
+const W043_RUST_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json";
+const W043_RUST_REFINEMENT_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json";
+const W043_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json";
+const W043_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/validation.json";
+const W043_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json";
+const W043_LEAN_TLA_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json";
+const W042_STAGE2_RUN_SUMMARY_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json";
+const W042_STAGE2_VALIDATION_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json";
+const W042_STAGE2_POLICY_GATE_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json";
+const W042_STAGE2_PRODUCTION_ANALYZER_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json";
+const W042_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json";
+const W042_STAGE2_BLOCKERS_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json";
+const W042_STAGE2_PROMOTION_DECISION_FOR_W043: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json";
+const W043_STAGE2_LEAN_FILE: &str =
+    "archive/lean-w038-w045/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
+const W044_RESIDUAL_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json";
+const W044_RESIDUAL_BLOCKER_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json";
+const W044_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json";
+const W044_OPTIMIZED_CORE_DISPOSITIONS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_optimized_core_disposition_register.json";
+const W044_OPTIMIZED_CORE_DYNAMIC_EVIDENCE: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json";
+const W044_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json";
+const W044_TREECALC_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/run_summary.json";
+const W044_RUST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json";
+const W044_RUST_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json";
+const W044_RUST_REFINEMENT_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json";
+const W044_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json";
+const W044_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json";
+const W044_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json";
+const W044_LEAN_TLA_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json";
+const W043_STAGE2_RUN_SUMMARY_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
+const W043_STAGE2_VALIDATION_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json";
+const W043_STAGE2_POLICY_GATE_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_policy_gate_register.json";
+const W043_STAGE2_PRODUCTION_ANALYZER_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_production_partition_analyzer_register.json";
+const W043_STAGE2_SCHEDULER_EQUIVALENCE_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_scheduler_equivalence_register.json";
+const W043_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_pack_grade_equivalence_register.json";
+const W043_STAGE2_BLOCKERS_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json";
+const W043_STAGE2_PROMOTION_DECISION_FOR_W044: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json";
+const W044_STAGE2_LEAN_FILE: &str =
+    "archive/lean-w038-w045/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
+const W045_RESIDUAL_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json";
+const W045_RESIDUAL_OBLIGATION_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json";
+const W045_RESIDUAL_PROMOTION_CONTRACT_MAP: &str = "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json";
+const W045_OPTIMIZED_CORE_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json";
+const W045_OPTIMIZED_CORE_DYNAMIC_COVERAGE: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json";
+const W045_OPTIMIZED_CORE_COUNTERPART_COVERAGE: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json";
+const W045_OPTIMIZED_CORE_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json";
+const W045_OPTIMIZED_CORE_MATCH_GUARD: &str = "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json";
+const W045_RUST_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json";
+const W045_RUST_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json";
+const W045_RUST_REFINEMENT_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json";
+const W045_RUST_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json";
+const W045_LEAN_TLA_SUMMARY: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json";
+const W045_LEAN_TLA_VALIDATION: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json";
+const W045_TLA_MODEL_REGISTER: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json";
+const W045_LEAN_TLA_BLOCKERS: &str = "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json";
+const W044_STAGE2_RUN_SUMMARY_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json";
+const W044_STAGE2_VALIDATION_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json";
+const W044_STAGE2_POLICY_GATE_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_policy_gate_register.json";
+const W044_STAGE2_PRODUCTION_ANALYZER_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_production_partition_analyzer_register.json";
+const W044_STAGE2_SCHEDULER_EQUIVALENCE_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_scheduler_equivalence_register.json";
+const W044_STAGE2_PACK_GRADE_EQUIVALENCE_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_pack_grade_equivalence_register.json";
+const W044_STAGE2_BLOCKERS_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json";
+const W044_STAGE2_PROMOTION_DECISION_FOR_W045: &str = "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json";
+const W045_STAGE2_LEAN_FILE: &str = "archive/lean-w038-w045/W045Stage2ProductionPartitionAndPackGradeEquivalenceServiceEvidence.lean";
 
 const TRACE_ACCEPT_RESULT: &str = "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_accept_publish_001/result.json";
 const TREE_INDEPENDENT_RESULT: &str = "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_w034_independent_order_equiv_001/result.json";
@@ -6074,7 +6074,25 @@ fn reject_kind_present(value: &Value, reject_kind: &str) -> bool {
 }
 
 fn relative_artifact_path(parts: &[&str]) -> String {
-    parts.join("/")
+    historical_w038_w045_artifact_path(parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 const STAGE2_REPLAY_SPECS: &[Stage2ReplaySpec] = &[

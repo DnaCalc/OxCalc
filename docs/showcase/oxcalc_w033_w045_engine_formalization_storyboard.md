@@ -32,7 +32,7 @@ Visual assets generated for the HTML deck:
 | --- | --- |
 | `assets/engine-pipeline-hero.png` | opening and phase overview |
 | `assets/dependency-graph-scale.png` | dependency graph, SCC, invalidation, scale section |
-| `assets/formal-verification-lab.png` | Lean/TLA/proof section |
+| `archive/formal-verification-lab.png` | Lean/TLA/proof section |
 | `assets/evidence-instrument-finale.png` | closing/future section |
 
 ## 50-Slide Storyboard

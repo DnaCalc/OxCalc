@@ -378,63 +378,63 @@ const W037_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     },
 ];
 const W038_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w038-formalization/W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md",
-    "docs/spec/core-engine/w038-formalization/W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md",
-    "formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean",
+    "archive/w038-formalization/W038_PROOF_MODEL_ASSUMPTION_DISCHARGE_AND_TOTALITY_BOUNDARY_HARDENING.md",
+    "archive/w038-formalization/W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md",
+    "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean",
 ];
 const W038_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w038-formalization/W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md",
-    "docs/spec/core-engine/w038-formalization/W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md",
+    "archive/w038-formalization/W038_STAGE2_PARTITION_REPLAY_AND_SEMANTIC_EQUIVALENCE_EXECUTION.md",
+    "archive/w038-formalization/W038_INDEPENDENT_EVALUATOR_DIVERSITY_AND_OXFML_SEAM_WATCH_CLOSURE.md",
 ];
 const W038_TRACECALC_AUTHORITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
-    "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/authority_discharge_ledger.json",
-    "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/oracle_authority_map.json",
-    "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/authority_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/oracle_authority_map.json",
+    "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/validation.json",
 ];
 const W038_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/evidence_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_conformance_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/evidence_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_conformance_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/validation.json",
 ];
 const W038_FORMAL_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_assumption_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/w038_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w038-proof-model-assumption-discharge-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/w038_assumption_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/w038_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/w038_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/validation.json",
 ];
 const W038_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/semantic_equivalence_report.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w038-stage2-partition-replay-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/semantic_equivalence_report.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/validation.json",
 ];
 const W038_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/multi_run_history.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/alert_quarantine_enforcement.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/cross_engine_service_disposition.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/service_readiness_disposition.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w038-operated-assurance-alert-quarantine-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/multi_run_history.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/alert_quarantine_enforcement.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/cross_engine_service_disposition.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/service_readiness_disposition.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w038-operated-assurance-alert-quarantine-001/validation.json",
 ];
 const W038_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json",
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/oxfml_seam_watch_packet.json",
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/exact_diversity_seam_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w038-diversity-seam-watch-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/implementation_diversity_disposition.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/oxfml_seam_watch_packet.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/exact_diversity_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w038-diversity-seam-watch-001/validation.json",
 ];
 const W038_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -525,84 +525,84 @@ const W038_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     },
 ];
 const W039_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w039-formalization/W039_LEAN_TLA_TOTALITY_AND_PROOF_MODEL_CLOSURE_TRANCHE.md",
-    "docs/spec/core-engine/w039-formalization/W039_STAGE2_PRODUCTION_PARTITION_POLICY_AND_REPLAY_GOVERNANCE.md",
-    "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean",
-    "formal/lean/OxCalc/CoreEngine/W039Stage2ProductionPolicy.lean",
+    "archive/w039-formalization/W039_LEAN_TLA_TOTALITY_AND_PROOF_MODEL_CLOSURE_TRANCHE.md",
+    "archive/w039-formalization/W039_STAGE2_PRODUCTION_PARTITION_POLICY_AND_REPLAY_GOVERNANCE.md",
+    "archive/lean-w038-w045/W039ProofModelTotalityClosure.lean",
+    "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean",
 ];
 const W039_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w039-formalization/W039_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_CLOSURE.md",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+    "archive/w039-formalization/W039_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_CLOSURE.md",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
 ];
 const W039_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/promotion_readiness_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w039-residual-successor-obligation-ledger-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/promotion_readiness_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/w073_formatting_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/validation.json",
 ];
 const W039_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/evidence_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_blocker_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/evidence_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_blocker_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/w039_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w039-optimized-core-exact-blocker-disposition-001/validation.json",
 ];
 const W039_FORMAL_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_proof_model_totality_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/w039_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w039-proof-model-totality-closure-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_proof_model_totality_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_exact_proof_model_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/w039_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w039-proof-model-totality-closure-001/validation.json",
 ];
 const W039_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_partition_soundness_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_replay_governance_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_partition_soundness_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_replay_governance_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/w039_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w039-stage2-production-policy-replay-governance-001/validation.json",
 ];
 const W039_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_retained_history_lifecycle.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_alert_dispatcher_enforcement.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w039-operated-assurance-retained-history-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_retained_history_lifecycle.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_alert_dispatcher_enforcement.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_cross_engine_service_substrate.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/w039_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w039-operated-assurance-retained-history-001/validation.json",
 ];
 const W039_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_independent_evaluator_row_set.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_cross_engine_diversity_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_differential_service_authority_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_independent_evaluator_row_set.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_cross_engine_diversity_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_differential_service_authority_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/w039_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w039-independent-evaluator-cross-engine-diversity-001/validation.json",
 ];
 const W039_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_oxfml_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_callable_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_oxfml_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_callable_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/w039_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w039-oxfml-seam-breadth-callable-metadata-001/validation.json",
 ];
 const W039_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w039-oxfml-seam-breadth-callable-metadata-001/case_index.json",
 ];
 const W039_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -724,95 +724,95 @@ const W039_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 const W040_TREECALC_CONFORMANCE_RUN_ID: &str =
     "w040-optimized-core-dynamic-release-reclassification-001";
 const W040_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w040-formalization/W040_RUST_TOTALITY_AND_REFINEMENT_PROOF_TRANCHE.md",
-    "docs/spec/core-engine/w040-formalization/W040_LEAN_TLA_FULL_VERIFICATION_DISCHARGE_TRANCHE.md",
-    "docs/spec/core-engine/w040-formalization/W040_STAGE2_PRODUCTION_POLICY_AND_EQUIVALENCE_IMPLEMENTATION.md",
+    "archive/w040-formalization/W040_RUST_TOTALITY_AND_REFINEMENT_PROOF_TRANCHE.md",
+    "archive/w040-formalization/W040_LEAN_TLA_FULL_VERIFICATION_DISCHARGE_TRANCHE.md",
+    "archive/w040-formalization/W040_STAGE2_PRODUCTION_POLICY_AND_EQUIVALENCE_IMPLEMENTATION.md",
 ];
 const W040_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w040-formalization/W040_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_IMPLEMENTATION.md",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+    "archive/w040-formalization/W040_OXFML_SEAM_BREADTH_AND_CALLABLE_METADATA_IMPLEMENTATION.md",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
 ];
 const W040_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/promotion_target_gate_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w040-direct-verification-obligation-map-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/direct_verification_obligation_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/promotion_target_gate_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/w073_formatting_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w040-direct-verification-obligation-map-001/validation.json",
 ];
 const W040_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_blocker_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/dynamic_release_reclassification_evidence.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_blocker_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/w040_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w040-optimized-core-exact-blocker-fixes-differentials-001/validation.json",
 ];
 const W040_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/w040_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-rust-totality-refinement-proof-tranche-001/validation.json",
 ];
 const W040_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/w040_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w040-lean-tla-full-verification-discharge-001/validation.json",
 ];
 const W040_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_partition_analyzer_soundness_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_observable_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/w040_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w040-stage2-production-policy-equivalence-001/validation.json",
 ];
 const W040_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_operated_runner_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_alert_dispatcher_enforcement.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w040-operated-assurance-retained-history-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_operated_runner_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_retained_history_store_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_alert_dispatcher_enforcement.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/w040_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w040-operated-assurance-retained-history-service-001/validation.json",
 ];
 const W040_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_evaluator_row_set.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_cross_engine_differential_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_differential_authority_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w040-independent-evaluator-operated-differential-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_scalar_evaluator_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_independent_evaluator_row_set.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_cross_engine_differential_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_differential_authority_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/w040_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w040-independent-evaluator-operated-differential-001/validation.json",
 ];
 const W040_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_callable_metadata_implementation_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_callable_metadata_implementation_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/w040_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w040-oxfml-seam-breadth-callable-metadata-001/validation.json",
 ];
 const W040_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w040-oxfml-seam-breadth-callable-metadata-001/case_index.json",
 ];
 const W040_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -950,100 +950,100 @@ const W040_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 const W041_TREECALC_CONFORMANCE_RUN_ID: &str =
     "w041-optimized-core-automatic-dynamic-transition-001";
 const W041_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w041-formalization/W041_RUST_TOTALITY_REFINEMENT_AND_PANIC_BOUNDARY_DISCHARGE.md",
-    "docs/spec/core-engine/w041-formalization/W041_LEAN_TLA_FULL_VERIFICATION_AND_FAIRNESS_DISCHARGE.md",
-    "docs/spec/core-engine/w041-formalization/W041_STAGE2_PRODUCTION_ANALYZER_AND_PACK_EQUIVALENCE_PROOF_TRANCHE.md",
-    "formal/lean/OxCalc/CoreEngine/W041RustTotalityAndRefinement.lean",
-    "formal/lean/OxCalc/CoreEngine/W041LeanTlaFullVerificationAndFairnessDischarge.lean",
-    "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean",
+    "archive/w041-formalization/W041_RUST_TOTALITY_REFINEMENT_AND_PANIC_BOUNDARY_DISCHARGE.md",
+    "archive/w041-formalization/W041_LEAN_TLA_FULL_VERIFICATION_AND_FAIRNESS_DISCHARGE.md",
+    "archive/w041-formalization/W041_STAGE2_PRODUCTION_ANALYZER_AND_PACK_EQUIVALENCE_PROOF_TRANCHE.md",
+    "archive/lean-w038-w045/W041RustTotalityAndRefinement.lean",
+    "archive/lean-w038-w045/W041LeanTlaFullVerificationAndFairnessDischarge.lean",
+    "archive/lean-w038-w045/W041Stage2ProductionAnalyzerAndPackEquivalence.lean",
 ];
 const W041_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w041-formalization/W041_OXFML_BROAD_DISPLAY_PUBLICATION_AND_CALLABLE_CARRIER_CLOSURE.md",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
+    "archive/w041-formalization/W041_OXFML_BROAD_DISPLAY_PUBLICATION_AND_CALLABLE_CARRIER_CLOSURE.md",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
 ];
 const W041_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/promotion_target_gate_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/successor_obligation_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/promotion_target_gate_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/w073_formatting_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w041-residual-release-grade-successor-obligation-map-001/validation.json",
 ];
 const W041_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/dynamic_release_reclassification_auto_transition_evidence.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_blocker_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/w041_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w041-optimized-core-residual-blocker-differentials-001/validation.json",
 ];
 const W041_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/w041_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-rust-totality-refinement-proof-tranche-001/validation.json",
 ];
 const W041_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/w041_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w041-lean-tla-full-verification-fairness-discharge-001/validation.json",
 ];
 const W041_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_production_analyzer_soundness_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_pack_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_production_analyzer_soundness_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_pack_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/w041_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w041-stage2-production-analyzer-pack-equivalence-001/validation.json",
 ];
 const W041_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_operated_service_envelope.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_history_service_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_witness_lifecycle_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_operated_service_envelope.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_history_service_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_retained_witness_lifecycle_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_alert_dispatch_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/w041_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w041-operated-assurance-retained-history-alert-dispatch-001/validation.json",
 ];
 const W041_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_independent_formula_evaluator_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_independent_evaluator_breadth_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_cross_engine_differential_service_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_mismatch_authority_router.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_independent_formula_evaluator_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_independent_evaluator_breadth_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_cross_engine_differential_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_mismatch_authority_router.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/w041_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w041-independent-evaluator-breadth-operated-differential-001/validation.json",
 ];
 const W041_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_callable_carrier_and_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_registered_external_provider_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_callable_carrier_and_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_registered_external_provider_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/w041_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w041-oxfml-broad-display-publication-callable-carrier-001/validation.json",
 ];
 const W041_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w041-oxfml-broad-display-callable-carrier-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w041-oxfml-broad-display-callable-carrier-001/case_index.json",
 ];
 const W041_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -1186,100 +1186,100 @@ const W041_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 const W042_TREECALC_CONFORMANCE_RUN_ID: &str =
     "w042-optimized-core-counterpart-conformance-treecalc-001";
 const W042_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w042-formalization/W042_RUST_TOTALITY_REFINEMENT_AND_CORE_PANIC_BOUNDARY_CLOSURE.md",
-    "docs/spec/core-engine/w042-formalization/W042_LEAN_TLA_FAIRNESS_AND_FULL_VERIFICATION_EXPANSION.md",
-    "docs/spec/core-engine/w042-formalization/W042_STAGE2_PRODUCTION_ANALYZER_AND_PACK_GRADE_EQUIVALENCE_CLOSURE.md",
-    "formal/lean/OxCalc/CoreEngine/W042RustTotalityAndRefinement.lean",
-    "formal/lean/OxCalc/CoreEngine/W042LeanTlaFairnessFullVerificationExpansion.lean",
-    "formal/lean/OxCalc/CoreEngine/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean",
+    "archive/w042-formalization/W042_RUST_TOTALITY_REFINEMENT_AND_CORE_PANIC_BOUNDARY_CLOSURE.md",
+    "archive/w042-formalization/W042_LEAN_TLA_FAIRNESS_AND_FULL_VERIFICATION_EXPANSION.md",
+    "archive/w042-formalization/W042_STAGE2_PRODUCTION_ANALYZER_AND_PACK_GRADE_EQUIVALENCE_CLOSURE.md",
+    "archive/lean-w038-w045/W042RustTotalityAndRefinement.lean",
+    "archive/lean-w038-w045/W042LeanTlaFairnessFullVerificationExpansion.lean",
+    "archive/lean-w038-w045/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean",
 ];
 const W042_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w042-formalization/W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+    "archive/w042-formalization/W042_OXFML_PUBLIC_MIGRATION_CALLABLE_CARRIER_AND_REGISTERED_EXTERNAL_CLOSURE.md",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
 ];
 const W042_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/closure_obligation_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/promotion_target_gate_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/w073_formatting_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w042-residual-release-grade-closure-obligation-ledger-001/validation.json",
 ];
 const W042_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_counterpart_conformance_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_callable_metadata_projection_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w042_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/validation.json",
 ];
 const W042_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/w042_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-rust-totality-refinement-core-panic-boundary-001/validation.json",
 ];
 const W042_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/w042_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w042-lean-tla-fairness-full-verification-expansion-001/validation.json",
 ];
 const W042_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_production_analyzer_soundness_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_pack_grade_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/w042_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w042-stage2-production-analyzer-pack-grade-equivalence-closure-001/validation.json",
 ];
 const W042_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_operated_service_envelope.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_history_service_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_witness_lifecycle_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_alert_dispatch_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_operated_service_envelope.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_history_service_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_retained_witness_lifecycle_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_alert_dispatch_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/w042_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w042-operated-assurance-retained-history-retained-witness-alert-service-001/validation.json",
 ];
 const W042_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_evaluator_breadth_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_reference_model_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_independent_evaluator_breadth_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_cross_engine_differential_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_mismatch_quarantine_authority_router.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/w042_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w042-independent-evaluator-breadth-mismatch-quarantine-operated-differential-001/validation.json",
 ];
 const W042_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_callable_carrier_and_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_registered_external_provider_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_callable_carrier_and_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_registered_external_provider_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/w042_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w042-oxfml-public-migration-callable-carrier-registered-external-001/validation.json",
 ];
 const W042_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w042-oxfml-public-migration-callable-carrier-registered-external-001/case_index.json",
 ];
 const W042_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -1424,103 +1424,103 @@ const W042_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 ];
 const W043_TREECALC_CONFORMANCE_RUN_ID: &str = "w043-optimized-core-broad-conformance-treecalc-001";
 const W043_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w043-formalization/W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md",
-    "docs/spec/core-engine/w043-formalization/W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md",
-    "docs/spec/core-engine/w043-formalization/W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md",
-    "formal/lean/OxCalc/CoreEngine/W043RustTotalityAndRefinement.lean",
-    "formal/lean/OxCalc/CoreEngine/W043LeanTlaFullVerificationAndFairness.lean",
-    "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean",
+    "archive/w043-formalization/W043_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_FRONTIER.md",
+    "archive/w043-formalization/W043_LEAN_TLA_FULL_VERIFICATION_AND_UNBOUNDED_FAIRNESS_DISCHARGE.md",
+    "archive/w043-formalization/W043_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE.md",
+    "archive/lean-w038-w045/W043RustTotalityAndRefinement.lean",
+    "archive/lean-w038-w045/W043LeanTlaFullVerificationAndFairness.lean",
+    "archive/lean-w038-w045/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean",
 ];
 const W043_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w043-formalization/W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
+    "archive/w043-formalization/W043_OXFML_PUBLIC_MIGRATION_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_SEAM.md",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
 ];
 const W043_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/proof_service_obligation_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/promotion_target_gate_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/oxfml_inbound_observation_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w043-residual-release-grade-proof-service-obligation-map-001/validation.json",
 ];
 const W043_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_dynamic_transition_evidence.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json",
-    "docs/test-runs/core-engine/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_counterpart_conformance_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_dynamic_transition_evidence.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_callable_metadata_projection_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w043_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/w073_formatting_intake.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w043-optimized-core-broad-conformance-callable-metadata-closure-001/validation.json",
 ];
 const W043_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/w043_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-rust-totality-refinement-panic-free-frontier-001/validation.json",
 ];
 const W043_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/w043_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w043-lean-tla-full-verification-unbounded-fairness-001/validation.json",
 ];
 const W043_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_production_partition_analyzer_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_scheduler_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_pack_grade_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_production_partition_analyzer_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_scheduler_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_pack_grade_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/w043_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w043-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
 ];
 const W043_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_operated_service_envelope.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_operated_service_envelope.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_history_service_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_retained_witness_lifecycle_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_alert_dispatch_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/w043_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w043-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json",
 ];
 const W043_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_reference_model_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_evaluator_breadth_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_cross_engine_differential_service_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_mismatch_quarantine_authority_router.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_reference_model_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_independent_evaluator_breadth_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_cross_engine_differential_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_mismatch_quarantine_authority_router.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w043_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w043-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/validation.json",
 ];
 const W043_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_callable_carrier_and_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_registered_external_provider_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_callable_carrier_and_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_registered_external_provider_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/w043_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w043-oxfml-public-migration-formatting-callable-registered-external-001/validation.json",
 ];
 const W043_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w043-oxfml-public-migration-formatting-callable-registered-external-001/case_index.json",
 ];
 const W043_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -1667,112 +1667,112 @@ const W043_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 const W044_TREECALC_CONFORMANCE_RUN_ID: &str =
     "w044-optimized-core-dynamic-transition-treecalc-001";
 const W044_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w044-formalization/W044_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_PROOF_EXPANSION.md",
-    "docs/spec/core-engine/w044-formalization/W044_LEAN_TLA_UNBOUNDED_FAIRNESS_AND_FULL_VERIFICATION_PROOF_EXPANSION.md",
-    "docs/spec/core-engine/w044-formalization/W044_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE_IMPLEMENTATION.md",
-    "formal/lean/OxCalc/CoreEngine/W044RustTotalityAndRefinement.lean",
-    "formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean",
-    "formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean",
+    "archive/w044-formalization/W044_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_PROOF_EXPANSION.md",
+    "archive/w044-formalization/W044_LEAN_TLA_UNBOUNDED_FAIRNESS_AND_FULL_VERIFICATION_PROOF_EXPANSION.md",
+    "archive/w044-formalization/W044_STAGE2_PRODUCTION_PARTITION_ANALYZER_AND_SCHEDULER_EQUIVALENCE_IMPLEMENTATION.md",
+    "archive/lean-w038-w045/W044RustTotalityAndRefinement.lean",
+    "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean",
+    "archive/lean-w038-w045/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean",
 ];
 const W044_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w044-formalization/W044_OXFML_PUBLIC_MIGRATION_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md",
-    "docs/spec/core-engine/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
+    "archive/w044-formalization/W044_OXFML_PUBLIC_MIGRATION_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md",
+    "archive/w044-formalization/W044_RELEASE_SCALE_REPLAY_PERFORMANCE_AND_SCALING_EVIDENCE_UNDER_SEMANTIC_GUARDS.md",
 ];
 const W044_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/blocker_reclassification_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/promotion_contract_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/oxfml_inbound_observation_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w044-residual-release-grade-blocker-reclassification-map-001/validation.json",
 ];
 const W044_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/evidence_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_optimized_core_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/evidence_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_optimized_core_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_dynamic_transition_evidence.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_callable_metadata_projection_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/w044_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w044-optimized-core-dynamic-transition-callable-metadata-001/validation.json",
 ];
 const W044_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/w044_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-rust-totality-refinement-panic-surface-expansion-001/validation.json",
 ];
 const W044_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/w044_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w044-lean-tla-unbounded-fairness-full-verification-expansion-001/validation.json",
 ];
 const W044_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_production_partition_analyzer_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_scheduler_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_pack_grade_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_production_partition_analyzer_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_scheduler_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_pack_grade_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/w044_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w044-stage2-production-partition-analyzer-scheduler-equivalence-001/validation.json",
 ];
 const W044_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_operated_service_envelope.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_history_service_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_witness_lifecycle_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_alert_dispatch_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_operated_service_envelope.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_history_service_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_retained_witness_lifecycle_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_alert_dispatch_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/w044_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w044-operated-assurance-retained-history-witness-slo-alert-service-001/validation.json",
 ];
 const W044_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_independent_reference_model_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_independent_evaluator_breadth_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_cross_engine_differential_service_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_mismatch_quarantine_authority_router.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_independent_reference_model_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_independent_evaluator_breadth_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_cross_engine_differential_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_mismatch_quarantine_authority_router.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/w044_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w044-independent-evaluator-breadth-mismatch-quarantine-differential-service-001/validation.json",
 ];
 const W044_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_callable_carrier_and_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_registered_external_provider_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_callable_carrier_and_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_registered_external_provider_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/w044_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/validation.json",
 ];
 const W044_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/case_index.json",
 ];
 const W044_SCALE_SEMANTIC_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/run_summary.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/evidence/scale_semantic_evidence_index.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/differentials/scale_signature_differential.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay_conformance_bindings.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/continuous_scale_assurance_criteria.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/scale_no_promotion_decision.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/bundle_manifest.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/validation/bundle_validation.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/evidence/scale_semantic_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/differentials/scale_signature_differential.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay_conformance_bindings.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/continuous_scale_assurance_criteria.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/decision/scale_no_promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/bundle_manifest.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w044-release-scale-replay-performance-scaling-001/replay-appliance/validation/bundle_validation.json",
 ];
 const W044_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -1935,120 +1935,120 @@ const W044_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
 const W045_TREECALC_CONFORMANCE_RUN_ID: &str =
     "w044-optimized-core-dynamic-transition-treecalc-001";
 const W045_FORMAL_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w045-formalization/W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md",
-    "docs/spec/core-engine/w045-formalization/W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md",
-    "docs/spec/core-engine/w045-formalization/W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md",
-    "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean",
-    "formal/lean/OxCalc/CoreEngine/W045LeanTlaVerificationFairnessAndTotality.lean",
-    "formal/lean/OxCalc/CoreEngine/W045Stage2ProductionPartitionAndPackGradeEquivalenceServiceEvidence.lean",
+    "archive/w045-formalization/W045_RUST_TOTALITY_REFINEMENT_AND_PANIC_SURFACE_HARDENING.md",
+    "archive/w045-formalization/W045_LEAN_TLA_VERIFICATION_FAIRNESS_AND_TOTALITY_DISCHARGE.md",
+    "archive/w045-formalization/W045_STAGE2_PRODUCTION_PARTITION_AND_PACK_GRADE_EQUIVALENCE_SERVICE_EVIDENCE.md",
+    "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean",
+    "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean",
+    "archive/lean-w038-w045/W045Stage2ProductionPartitionAndPackGradeEquivalenceServiceEvidence.lean",
 ];
 const W045_FORMATTING_WATCH_ARTIFACTS: &[&str] = &[
-    "docs/spec/core-engine/w045-formalization/W045_OXFML_PUBLIC_SURFACE_W073_DOWNSTREAM_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md",
-    "docs/spec/core-engine/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
+    "archive/w045-formalization/W045_OXFML_PUBLIC_SURFACE_W073_DOWNSTREAM_TYPED_FORMATTING_CALLABLE_AND_REGISTERED_EXTERNAL_UPTAKE.md",
+    "archive/w045-formalization/W045_CONTINUOUS_RELEASE_SCALE_ASSURANCE_AND_SEMANTIC_REGRESSION_SERVICE.md",
 ];
 const W045_RELEASE_LEDGER_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
-    "docs/test-runs/core-engine/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+    "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/validation.json",
 ];
 const W045_IMPLEMENTATION_CONFORMANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/evidence_summary.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_optimized_core_disposition_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json",
-    "docs/test-runs/core-engine/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/evidence_summary.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_optimized_core_disposition_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_dynamic_transition_coverage_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_counterpart_coverage_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_match_promotion_guard.json",
+    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/validation.json",
 ];
 const W045_RUST_TOTALITY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_boundary_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_panic_surface_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_refinement_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_totality_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_refinement_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_panic_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/w045_rust_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-rust-totality-refinement-panic-surface-hardening-001/validation.json",
 ];
 const W045_LEAN_TLA_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_discharge_ledger.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_proof_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json",
-    "docs/test-runs/core-engine/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_discharge_ledger.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_proof_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_tla_model_bound_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/w045_lean_tla_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/formal-assurance/w045-lean-tla-verification-fairness-totality-discharge-001/validation.json",
 ];
 const W045_STAGE2_REPLAY_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_policy_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_production_partition_analyzer_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_scheduler_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_pack_grade_equivalence_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_service_gate_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_exact_blocker_register.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_policy_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_production_partition_analyzer_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_scheduler_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_pack_grade_equivalence_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_service_gate_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/w045_stage2_exact_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/stage2-replay/w045-stage2-production-partition-pack-grade-equivalence-service-001/validation.json",
 ];
 const W045_OPERATED_ASSURANCE_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_envelope.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_harness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_history_service_query.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_witness_lifecycle_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_alert_dispatch_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_cross_engine_service_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_service_readiness_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_exact_service_blocker_register.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_envelope.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_operated_service_harness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_history_service_query.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_retained_witness_lifecycle_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_alert_dispatch_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_cross_engine_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_service_readiness_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/w045_exact_service_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/validation.json",
 ];
 const W045_DIVERSITY_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_reference_model_implementation.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_evaluator_breadth_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_cross_engine_differential_service_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_mismatch_quarantine_authority_router.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_retained_witness_attachment_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_operated_differential_service_harness_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json",
-    "docs/test-runs/core-engine/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_reference_model_implementation.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_independent_evaluator_breadth_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_cross_engine_differential_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_mismatch_quarantine_authority_router.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_retained_witness_attachment_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_operated_differential_service_harness_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/validation.json",
 ];
 const W045_OXFML_SEAM_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/source_evidence_index.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_oxfml_consumed_surface_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_publication_display_boundary_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_callable_carrier_and_metadata_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_registered_external_provider_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_exact_oxfml_seam_blocker_register.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/promotion_decision.json",
-    "docs/test-runs/core-engine/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/validation.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/source_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_oxfml_consumed_surface_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_publication_display_boundary_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_callable_carrier_and_metadata_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_registered_external_provider_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/w045_exact_oxfml_seam_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/validation.json",
 ];
 const W045_UPSTREAM_HOST_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
-    "docs/test-runs/core-engine/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
 ];
 const W045_SCALE_SEMANTIC_ARTIFACTS: &[&str] = &[
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/run_summary.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/evidence/scale_semantic_evidence_index.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/differentials/scale_signature_differential.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay_conformance_bindings.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/scale_no_promotion_decision.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/bundle_manifest.json",
-    "docs/test-runs/core-engine/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/run_summary.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/evidence/scale_semantic_evidence_index.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/differentials/scale_signature_differential.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay_conformance_bindings.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/continuous_scale_assurance_criteria.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/scale_no_promotion_decision.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/semantic_regression_service_register.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/decision/w045_exact_scale_blocker_register.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/bundle_manifest.json",
+    "archive/test-runs-core-engine-w038-w045/metamorphic-scale-semantic-binding/w045-continuous-release-scale-assurance-semantic-regression-001/replay-appliance/validation/bundle_validation.json",
 ];
 const W045_SUPPLEMENTAL_EVIDENCE: &[SupplementalEvidenceSpec] = &[
     SupplementalEvidenceSpec {
@@ -2982,7 +2982,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W045_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W045_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            program_governance_artifact: "archive/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
             formal_artifacts: W045_FORMAL_ARTIFACTS,
             formal_input_id: "w045_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w045_proof_model_stage2_packets_present",
@@ -3032,7 +3032,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W044_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W044_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w044-formalization/W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            program_governance_artifact: "archive/w044-formalization/W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
             formal_artifacts: W044_FORMAL_ARTIFACTS,
             formal_input_id: "w044_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w044_proof_model_stage2_packets_present",
@@ -3081,7 +3081,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W043_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W043_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w043-formalization/W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md",
+            program_governance_artifact: "archive/w043-formalization/W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md",
             formal_artifacts: W043_FORMAL_ARTIFACTS,
             formal_input_id: "w043_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w043_proof_model_stage2_packets_present",
@@ -3127,7 +3127,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W042_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W042_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w042-formalization/W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            program_governance_artifact: "archive/w042-formalization/W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             formal_artifacts: W042_FORMAL_ARTIFACTS,
             formal_input_id: "w042_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w042_proof_model_stage2_packets_present",
@@ -3172,7 +3172,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W041_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W041_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w041-formalization/W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            program_governance_artifact: "archive/w041-formalization/W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             formal_artifacts: W041_FORMAL_ARTIFACTS,
             formal_input_id: "w041_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w041_proof_model_stage2_packets_present",
@@ -3214,7 +3214,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W040_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W040_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w040-formalization/W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md",
+            program_governance_artifact: "archive/w040-formalization/W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md",
             formal_artifacts: W040_FORMAL_ARTIFACTS,
             formal_input_id: "w040_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w040_proof_model_stage2_packets_present",
@@ -3255,7 +3255,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            program_governance_artifact: "archive/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             formal_artifacts: W039_FORMAL_ARTIFACTS,
             formal_input_id: "w039_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w039_proof_model_stage2_packets_present",
@@ -3296,7 +3296,7 @@ fn pack_capability_profile(run_id: &str) -> PackCapabilityProfile {
             let_lambda_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
             independent_treecalc_run_id: W037_TREECALC_CONFORMANCE_RUN_ID,
             independent_conformance_run_id: W036_INDEPENDENT_DIFFERENTIAL_RUN_ID,
-            program_governance_artifact: "docs/spec/core-engine/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md",
+            program_governance_artifact: "archive/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md",
             formal_artifacts: W038_FORMAL_ARTIFACTS,
             formal_input_id: "w038_proof_model_stage2_formal_packets",
             formal_satisfied_input_id: "w038_proof_model_stage2_packets_present",
@@ -3694,7 +3694,26 @@ fn required_artifacts(run_id: &str, profile: &PackCapabilityProfile) -> Vec<Stri
 }
 
 fn relative_artifact_path<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
-    segments.into_iter().collect::<Vec<_>>().join("/")
+    let parts = segments.into_iter().collect::<Vec<_>>();
+    historical_w038_w045_artifact_path(&parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -3966,7 +3985,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w038-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4026,7 +4045,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w038-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w038-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4050,7 +4069,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w039-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w039-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4119,7 +4138,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w039-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w039-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4143,7 +4162,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w040-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4220,7 +4239,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w040-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w040-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4244,7 +4263,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w041-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w041-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4321,7 +4340,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w041-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w041-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4345,7 +4364,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w042-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w042-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4430,7 +4449,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w042-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w042-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4454,7 +4473,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w043-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4547,7 +4566,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w043-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w043-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4571,7 +4590,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w044-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w044-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4648,7 +4667,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w044-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w044-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -4672,7 +4691,7 @@ mod tests {
 
         let decision = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w045-pack-capability-test/decision/pack_capability_decision.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w045-pack-capability-test/decision/pack_capability_decision.json",
         );
         assert_eq!(
             decision["evidence_profile"],
@@ -4757,7 +4776,7 @@ mod tests {
 
         let validation = read_required_json(
             &repo_root,
-            "docs/test-runs/core-engine/pack-capability/w045-pack-capability-test/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/pack-capability/w045-pack-capability-test/replay-appliance/validation/bundle_validation.json",
         );
         assert_eq!(validation["status"], "bundle_valid");
 
@@ -5136,7 +5155,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md",
+            "archive/w038-formalization/W038_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_DECISION.md",
             "W038 pack-grade replay governance and C5 release decision\n",
         );
     }
@@ -5181,7 +5200,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            "archive/w039-formalization/W039_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             "W039 pack-grade replay governance and C5 reassessment\n",
         );
     }
@@ -5190,14 +5209,14 @@ mod tests {
         create_w039_source_artifacts(repo_root);
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/replay-appliance/validation/bundle_validation.json",
             json!({
                 "status": "bundle_valid",
             }),
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w040-optimized-core-dynamic-release-reclassification-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
             json!({
                 "claimed_capability_levels": [
                     "cap.C0.ingest_valid",
@@ -5250,7 +5269,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w040-formalization/W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md",
+            "archive/w040-formalization/W040_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_PROMOTION_DECISION.md",
             "W040 pack-grade replay governance and C5 promotion decision\n",
         );
     }
@@ -5259,14 +5278,14 @@ mod tests {
         create_w040_source_artifacts(repo_root);
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/replay-appliance/validation/bundle_validation.json",
             json!({
                 "status": "bundle_valid",
             }),
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w041-optimized-core-automatic-dynamic-transition-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
             json!({
                 "claimed_capability_levels": [
                     "cap.C0.ingest_valid",
@@ -5319,7 +5338,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w041-formalization/W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            "archive/w041-formalization/W041_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             "W041 pack-grade replay governance and C5 reassessment\n",
         );
     }
@@ -5328,14 +5347,14 @@ mod tests {
         create_w041_source_artifacts(repo_root);
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
             json!({
                 "status": "bundle_valid",
             }),
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w042-optimized-core-counterpart-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
             json!({
                 "claimed_capability_levels": [
                     "cap.C0.ingest_valid",
@@ -5388,7 +5407,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w042-formalization/W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
+            "archive/w042-formalization/W042_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_REASSESSMENT.md",
             "W042 pack-grade replay governance and C5 reassessment\n",
         );
     }
@@ -5397,14 +5416,14 @@ mod tests {
         create_w042_source_artifacts(repo_root);
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/replay-appliance/validation/bundle_validation.json",
             json!({
                 "status": "bundle_valid",
             }),
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w043-optimized-core-broad-conformance-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
             json!({
                 "claimed_capability_levels": [
                     "cap.C0.ingest_valid",
@@ -5457,7 +5476,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w043-formalization/W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md",
+            "archive/w043-formalization/W043_PACK_GRADE_REPLAY_GOVERNANCE_AND_C5_RELEASE_REASSESSMENT.md",
             "W043 pack-grade replay governance and C5 release reassessment\n",
         );
     }
@@ -5466,14 +5485,14 @@ mod tests {
         create_w043_source_artifacts(repo_root);
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/replay-appliance/validation/bundle_validation.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/replay-appliance/validation/bundle_validation.json",
             json!({
                 "status": "bundle_valid",
             }),
         );
         write_json_test(
             repo_root,
-            "docs/test-runs/core-engine/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
+            "archive/test-runs-core-engine-w038-w045/treecalc-local/w044-optimized-core-dynamic-transition-treecalc-001/replay-appliance/adapter_capabilities/oxcalc_treecalc.json",
             json!({
                 "claimed_capability_levels": [
                     "cap.C0.ingest_valid",
@@ -5516,7 +5535,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w044-formalization/W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            "archive/w044-formalization/W044_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
             "W044 pack-grade replay governance service and C5 reassessment\n",
         );
     }
@@ -5552,7 +5571,7 @@ mod tests {
         }
         write_text_test(
             repo_root,
-            "docs/spec/core-engine/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
+            "archive/w045-formalization/W045_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_REASSESSMENT.md",
             "W045 pack-grade replay governance service and C5 reassessment\n",
         );
     }

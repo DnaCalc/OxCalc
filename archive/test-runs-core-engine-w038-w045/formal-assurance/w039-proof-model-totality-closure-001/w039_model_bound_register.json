@@ -1,0 +1,55 @@
+{
+  "bounded_model_row_count": 2,
+  "rows": [
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.3; calc-f7o.4; calc-f7o.9",
+      "bounded_model": true,
+      "disposition": "retain the checked TLA/TLC surface as bounded model evidence while carrying unbounded/model-completeness as exact blocker",
+      "disposition_kind": "bounded_model_with_exact_totality_boundary",
+      "evidence_paths": [
+        "formal/tla/CoreEngineW036Stage2Partition.tla",
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/run_summary.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "full TLA verification remains unpromoted",
+      "reason": "W039 preserves bounded model evidence and promotion predicates, but does not claim unbounded scheduler/partition model coverage.",
+      "row_id": "w039_model_tla_bounded_model_boundary",
+      "source_inputs": [
+        "W038 bounded TLC routine floor",
+        "archive/lean-w038-w045/W039ProofModelTotalityClosure.lean"
+      ],
+      "totality_boundary": true,
+      "w039_obligation_id": "W039-OBL-007"
+    },
+    {
+      "accepted_boundary": false,
+      "accepted_external_seam": false,
+      "authority_owner": "calc-f7o.4",
+      "bounded_model": true,
+      "disposition": "carry Stage 2 partition policy as exact proof/model and replay-governance blocker",
+      "disposition_kind": "exact_promotion_gate_blocker",
+      "evidence_paths": [
+        "archive/test-runs-core-engine-w038-w045/formal-assurance/w038-proof-model-assumption-discharge-001/w038_exact_proof_model_blocker_register.json",
+        "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w039-residual-successor-obligation-ledger-001/successor_obligation_ledger.json"
+      ],
+      "exact_remaining_blocker": true,
+      "failures": [],
+      "local_checked_proof": false,
+      "promotion_consequence": "Stage 2 production policy remains unpromoted",
+      "reason": "Production partition analyzer soundness and observable-result invariance are owned by calc-f7o.4.",
+      "row_id": "w039_stage2_partition_policy_proof_gate",
+      "source_inputs": [
+        "W038 proof/model blocker register",
+        "W039 promotion-readiness map"
+      ],
+      "totality_boundary": false,
+      "w039_obligation_id": "W039-OBL-009"
+    }
+  ],
+  "run_id": "w039-proof-model-totality-closure-001",
+  "schema_version": "oxcalc.formal_assurance.w039_model_bound_register.v1"
+}

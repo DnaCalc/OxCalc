@@ -1,0 +1,196 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/oxfml-seam/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "rows": [
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_upstream_host_direct_oxfml",
+      "semantic_state": "fresh_w045_direct_oxfml_runtime_slice_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_upstream_host_case_index",
+      "semantic_state": "case_index_covers_w045_direct_oxfml_let_lambda_and_w073_visual_surfaces",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_w073_typed_rule_request_construction",
+      "semantic_state": "oxcalc_fixture_request_construction_exercises_rank_average_color_scale_data_bar_and_icon_set_typed_rule_families",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_current_oxfml_publication_code_direct_replacement",
+      "semantic_state": "current_oxfml_formatting_code_requires_typed_options_for_w073_aggregate_visualization_metadata",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_current_oxfml_formatting_rejection_tests",
+      "semantic_state": "current_oxfml_tests_reject_legacy_bounded_strings_for_w073_families",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_w073_formatting_intake",
+      "semantic_state": "w073_typed_only_formatting_intake_bound_for_w045",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_direct_replacement_workset_current",
+      "semantic_state": "current_oxfml_w073_direct_replacement_contract_reviewed",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_w073_downstream_handoff_current",
+      "semantic_state": "w073_dnaonecalc_request_construction_remains_downstream_handoff",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_successor_obligation_map_oxfml_lanes",
+      "semantic_state": "w045_oxfml_w073_callable_and_registered_external_obligations_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_promotion_contract_oxfml_blocked",
+      "semantic_state": "w045_oxfml_promotion_contracts_remain_blocked",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_callable_metadata_projection_blocker",
+      "semantic_state": "w045_callable_metadata_exact_blocker_retained",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_optimized_core_no_callable_or_registered_promotion",
+      "semantic_state": "w045_optimized_core_callable_projection_no_promotion_guard_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_implementation_callable_blocker",
+      "semantic_state": "w045_implementation_callable_metadata_blocker_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w044_oxfml_predecessor_no_promotion",
+      "semantic_state": "predecessor_w044_oxfml_packet_preserves_no_promotion",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_diversity_oxfml_dependency",
+      "semantic_state": "w045_diversity_retains_oxfml_callable_and_w073_dependency_blockers",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_current_public_consumer_surface",
+      "semantic_state": "current_oxfml_public_consumer_surface_bound_as_watch_lane",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.oxfml_registered_external_and_publication_notes",
+      "semantic_state": "registered_external_format_display_publication_watch_lanes_bound",
+      "unexpected_mismatch_count": 0
+    },
+    {
+      "artifact": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+      "failed_row_count": 0,
+      "missing_artifact_count": 0,
+      "promotion_guard": true,
+      "row_id": "source.w045_release_grade_current_oxfml_intake_reviewed",
+      "semantic_state": "w045_current_oxfml_intake_carried_forward_without_downstream_uptake_promotion",
+      "unexpected_mismatch_count": 0
+    }
+  ],
+  "run_id": "w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001",
+  "schema_version": "oxcalc.oxfml_seam.w045.source_evidence_index.v1",
+  "source_artifacts": {
+    "oxfml_conditional_formatting_array_tests": "../OxFml/crates/oxfml_core/tests/conditional_formatting_array_tests.rs",
+    "oxfml_inbound_notes": "../OxFml/docs/upstream/NOTES_FOR_OXCALC.md",
+    "oxfml_publication_mod": "../OxFml/crates/oxfml_core/src/publication/mod.rs",
+    "oxfml_w073_handoff": "../OxFml/docs/handoffs/HANDOFF-DNAONECALC-012_W073_TYPED_CF_PAYLOAD_FIRST_SLICE.md",
+    "oxfml_w073_workset": "../OxFml/docs/worksets/W073_conditional_formatting_typed_visualization_payload.md",
+    "w044_oxfml_seam_decision": "archive/test-runs-core-engine-w038-w045/oxfml-seam/w044-oxfml-public-migration-typed-formatting-callable-registered-external-001/promotion_decision.json",
+    "w045_callable_metadata_register": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_callable_metadata_projection_register.json",
+    "w045_diversity_blockers": "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/w045_exact_diversity_blocker_register.json",
+    "w045_diversity_decision": "archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/promotion_decision.json",
+    "w045_implementation_blockers": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/w045_exact_remaining_blocker_register.json",
+    "w045_implementation_summary": "archive/test-runs-core-engine-w038-w045/implementation-conformance/w045-optimized-core-counterpart-callable-metadata-001/run_summary.json",
+    "w045_let_lexical_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_let_lambda_lexical_capture_eval_001/result.json",
+    "w045_obligation_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/successor_obligation_map.json",
+    "w045_oxfml_inbound_intake": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/oxfml_inbound_observation_intake.json",
+    "w045_promotion_contract_map": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/promotion_contract_map.json",
+    "w045_release_grade_summary": "archive/test-runs-core-engine-w038-w045/release-grade-ledger/w045-residual-release-grade-successor-obligation-current-oxfml-intake-map-001/run_summary.json",
+    "w045_returned_lambda_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_returned_lambda_invocation_eval_001/result.json",
+    "w045_upstream_host_case_index": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/case_index.json",
+    "w045_upstream_host_summary": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/run_summary.json",
+    "w045_w073_average_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_average_guard_001/result.json",
+    "w045_w073_color_scale_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_color_scale_guard_001/result.json",
+    "w045_w073_data_bar_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_data_bar_guard_001/result.json",
+    "w045_w073_icon_set_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_icon_set_guard_001/result.json",
+    "w045_w073_top_result": "archive/test-runs-core-engine-w038-w045/upstream-host/w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001/cases/uh_typed_cf_top_rank_guard_001/result.json"
+  },
+  "source_evidence_row_count": 18
+}

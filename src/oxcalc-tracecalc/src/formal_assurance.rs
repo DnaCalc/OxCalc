@@ -133,21 +133,20 @@ const W038_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w038-optimized-core-conformance-disposition-001";
 const W038_TRACECALC_AUTHORITY_RUN_ID: &str = "w038-tracecalc-authority-discharge-001";
 const W038_LEAN_ASSUMPTION_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean";
+    "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean";
 const W039_RESIDUAL_LEDGER_RUN_ID: &str = "w039-residual-successor-obligation-ledger-001";
 const W039_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w039-optimized-core-exact-blocker-disposition-001";
-const W039_LEAN_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W039ProofModelTotalityClosure.lean";
+const W039_LEAN_TOTALITY_FILE: &str = "archive/lean-w038-w045/W039ProofModelTotalityClosure.lean";
 const W040_DIRECT_OBLIGATION_RUN_ID: &str = "w040-direct-verification-obligation-map-001";
 const W040_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w040-optimized-core-exact-blocker-fixes-differentials-001";
 const W040_TREECALC_RUN_ID: &str = "w040-optimized-core-dynamic-release-reclassification-001";
 const W040_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W040RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W040RustTotalityAndRefinement.lean";
 const W040_RUST_FORMAL_ASSURANCE_RUN_ID: &str = "w040-rust-totality-refinement-proof-tranche-001";
 const W040_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W040LeanTlaFullVerificationDischarge.lean";
+    "archive/lean-w038-w045/W040LeanTlaFullVerificationDischarge.lean";
 const W040_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str = "w040-lean-tla-full-verification-discharge-001";
 const W041_RESIDUAL_LEDGER_RUN_ID: &str =
     "w041-residual-release-grade-successor-obligation-map-001";
@@ -156,13 +155,13 @@ const W041_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
 const W041_TREECALC_RUN_ID: &str = "w041-optimized-core-automatic-dynamic-transition-001";
 const W041_RUST_FORMAL_ASSURANCE_RUN_ID: &str = "w041-rust-totality-refinement-proof-tranche-001";
 const W041_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W041RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W041RustTotalityAndRefinement.lean";
 const W041_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W041LeanTlaFullVerificationAndFairnessDischarge.lean";
+    "archive/lean-w038-w045/W041LeanTlaFullVerificationAndFairnessDischarge.lean";
 const W041_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w041-lean-tla-full-verification-fairness-discharge-001";
 const W041_STAGE2_POLICY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W041Stage2ProductionAnalyzerAndPackEquivalence.lean";
+    "archive/lean-w038-w045/W041Stage2ProductionAnalyzerAndPackEquivalence.lean";
 const W041_STAGE2_REPLAY_RUN_ID: &str = "w041-stage2-production-analyzer-pack-equivalence-001";
 const W042_RESIDUAL_LEDGER_RUN_ID: &str =
     "w042-residual-release-grade-closure-obligation-ledger-001";
@@ -170,15 +169,15 @@ const W042_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w042-optimized-core-counterpart-conformance-callable-metadata-001";
 const W042_TREECALC_RUN_ID: &str = "w042-optimized-core-counterpart-conformance-treecalc-001";
 const W042_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W042RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W042RustTotalityAndRefinement.lean";
 const W042_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
     "w042-rust-totality-refinement-core-panic-boundary-001";
 const W042_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W042LeanTlaFairnessFullVerificationExpansion.lean";
+    "archive/lean-w038-w045/W042LeanTlaFairnessFullVerificationExpansion.lean";
 const W042_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w042-lean-tla-fairness-full-verification-expansion-001";
 const W042_STAGE2_POLICY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean";
+    "archive/lean-w038-w045/W042Stage2ProductionAnalyzerAndPackGradeEquivalence.lean";
 const W042_STAGE2_REPLAY_RUN_ID: &str =
     "w042-stage2-production-analyzer-pack-grade-equivalence-closure-001";
 const W043_RESIDUAL_LEDGER_RUN_ID: &str =
@@ -187,9 +186,9 @@ const W043_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w043-optimized-core-broad-conformance-callable-metadata-closure-001";
 const W043_TREECALC_RUN_ID: &str = "w043-optimized-core-broad-conformance-treecalc-001";
 const W043_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W043RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W043RustTotalityAndRefinement.lean";
 const W043_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W043LeanTlaFullVerificationAndFairness.lean";
+    "archive/lean-w038-w045/W043LeanTlaFullVerificationAndFairness.lean";
 const W043_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
     "w043-rust-totality-refinement-panic-free-frontier-001";
 const W043_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
@@ -200,14 +199,15 @@ const W044_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w044-optimized-core-dynamic-transition-callable-metadata-001";
 const W044_TREECALC_RUN_ID: &str = "w044-optimized-core-dynamic-transition-treecalc-001";
 const W044_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W044RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W044RustTotalityAndRefinement.lean";
 const W044_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
     "w044-rust-totality-refinement-panic-surface-expansion-001";
 const W044_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W044LeanTlaFullVerificationAndFairness.lean";
+    "archive/lean-w038-w045/W044LeanTlaFullVerificationAndFairness.lean";
 const W044_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w044-lean-tla-unbounded-fairness-full-verification-expansion-001";
-const W044_STAGE2_POLICY_FILE: &str = "formal/lean/OxCalc/CoreEngine/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
+const W044_STAGE2_POLICY_FILE: &str =
+    "archive/lean-w038-w045/W044Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
 const W044_STAGE2_REPLAY_RUN_ID: &str =
     "w044-stage2-production-partition-analyzer-scheduler-equivalence-001";
 const W045_RESIDUAL_LEDGER_RUN_ID: &str =
@@ -215,20 +215,20 @@ const W045_RESIDUAL_LEDGER_RUN_ID: &str =
 const W045_IMPLEMENTATION_CONFORMANCE_RUN_ID: &str =
     "w045-optimized-core-counterpart-callable-metadata-001";
 const W045_LEAN_RUST_TOTALITY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W045RustTotalityAndRefinement.lean";
+    "archive/lean-w038-w045/W045RustTotalityAndRefinement.lean";
 const W045_RUST_FORMAL_ASSURANCE_RUN_ID: &str =
     "w045-rust-totality-refinement-panic-surface-hardening-001";
 const W045_LEAN_TLA_DISCHARGE_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W045LeanTlaVerificationFairnessAndTotality.lean";
+    "archive/lean-w038-w045/W045LeanTlaVerificationFairnessAndTotality.lean";
 const W045_LEAN_TLA_FORMAL_ASSURANCE_RUN_ID: &str =
     "w045-lean-tla-verification-fairness-totality-discharge-001";
-const W043_STAGE2_POLICY_FILE: &str = "formal/lean/OxCalc/CoreEngine/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
+const W043_STAGE2_POLICY_FILE: &str =
+    "archive/lean-w038-w045/W043Stage2ProductionPartitionAnalyzerAndSchedulerEquivalence.lean";
 const W043_STAGE2_REPLAY_RUN_ID: &str =
     "w043-stage2-production-partition-analyzer-scheduler-equivalence-001";
-const W039_STAGE2_POLICY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W039Stage2ProductionPolicy.lean";
+const W039_STAGE2_POLICY_FILE: &str = "archive/lean-w038-w045/W039Stage2ProductionPolicy.lean";
 const W040_STAGE2_POLICY_FILE: &str =
-    "formal/lean/OxCalc/CoreEngine/W040Stage2ProductionPolicyAndEquivalence.lean";
+    "archive/lean-w038-w045/W040Stage2ProductionPolicyAndEquivalence.lean";
 const W040_STAGE2_REPLAY_RUN_ID: &str = "w040-stage2-production-policy-equivalence-001";
 const W040_RUST_PANIC_AUDIT_FILES: &[&str] = &[
     "src/oxcalc-core/src/coordinator.rs",
@@ -1037,7 +1037,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-tv5.4; calc-tv5.10",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W040 explicitly allows proof/model evidence to evolve the specs rather than testing against a fixed initial document set.",
-                "evidence_paths": [&w040_obligation_map_path, "docs/worksets/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"],
+                "evidence_paths": [&w040_obligation_map_path, "archive/worksets-w038-w045/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"],
                 "failures": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-008") { Vec::<String>::new() } else { vec!["w040_lean_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-008") { "w040_lean_tla_boundary_validated" } else { "w040_lean_tla_boundary_failed" }
             }),
@@ -1679,7 +1679,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-tv5.3; calc-tv5.10",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "The W040 charter records spec-evolution hooks for Rust totality and refinement obligations.",
-                "evidence_paths": [&w040_obligation_map_path, "docs/worksets/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"],
+                "evidence_paths": [&w040_obligation_map_path, "archive/worksets-w038-w045/W040_CORE_FORMALIZATION_RELEASE_GRADE_DIRECT_VERIFICATION.md"],
                 "failures": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-007") { Vec::<String>::new() } else { vec!["w040_refinement_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w040_obligation_map, "W040-OBL-007") { "w040_rust_boundary_validated" } else { "w040_rust_boundary_failed" }
             }),
@@ -2367,7 +2367,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-sui.3; calc-sui.10",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "The W041 charter records spec-evolution hooks for Rust totality and refinement obligations.",
-                "evidence_paths": [&w041_obligation_map_path, "docs/worksets/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md"],
+                "evidence_paths": [&w041_obligation_map_path, "archive/worksets-w038-w045/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md"],
                 "failures": if w040_obligation_exists(&w041_obligation_map, "W041-OBL-009") { Vec::<String>::new() } else { vec!["w041_refinement_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w041_obligation_map, "W041-OBL-009") { "w041_rust_boundary_validated" } else { "w041_rust_boundary_failed" }
             }),
@@ -3206,7 +3206,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-2p3.4; calc-2p3.10",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W043 remains a formalization, spec-evolution, and engine-improvement workset.",
-                "evidence_paths": [&w043_obligation_map_path, "docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md"],
+                "evidence_paths": [&w043_obligation_map_path, "archive/worksets-w038-w045/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md"],
                 "failures": if w040_obligation_exists(&w043_obligation_map, "W043-OBL-012") && w040_obligation_exists(&w043_obligation_map, "W043-OBL-014") { Vec::<String>::new() } else { vec!["w043_lean_tla_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w043_obligation_map, "W043-OBL-012") && w040_obligation_exists(&w043_obligation_map, "W043-OBL-014") { "w043_lean_tla_boundary_validated" } else { "w043_lean_tla_boundary_failed" }
             }),
@@ -4072,7 +4072,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-b1t.4; calc-b1t.11",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W044 remains a formalization, spec-evolution, and engine-improvement workset.",
-                "evidence_paths": [&w044_blocker_map_path, "docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md"],
+                "evidence_paths": [&w044_blocker_map_path, "archive/worksets-w038-w045/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md"],
                 "failures": if row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.lean_tla_full_verification") && row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.release_grade_full_verification") { Vec::<String>::new() } else { vec!["w044_lean_tla_obligation_missing".to_string()] },
                 "validation_state": if row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.lean_tla_full_verification") && row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.release_grade_full_verification") { "w044_lean_tla_boundary_validated" } else { "w044_lean_tla_boundary_failed" }
             }),
@@ -4999,7 +4999,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-zkio.4; calc-zkio.11",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W045 remains a formalization, spec-evolution, and engine-improvement workset.",
-                "evidence_paths": [&w045_successor_map_path, "docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
+                "evidence_paths": [&w045_successor_map_path, "archive/worksets-w038-w045/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
                 "failures": if obligation_exists(&w045_successor_map, "W045-OBL-002") { Vec::<String>::new() } else { vec!["w045_spec_evolution_obligation_missing".to_string()] },
                 "validation_state": if obligation_exists(&w045_successor_map, "W045-OBL-002") { "w045_lean_tla_boundary_validated" } else { "w045_lean_tla_boundary_failed" }
             }),
@@ -5985,7 +5985,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-zkio.3; calc-zkio.11",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "W045.1 records spec-evolution hooks and routes release-grade decisions to direct evidence rather than proxy promotion.",
-                "evidence_paths": [&w045_successor_map_path, "docs/worksets/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
+                "evidence_paths": [&w045_successor_map_path, "archive/worksets-w038-w045/W045_CORE_FORMALIZATION_RELEASE_GRADE_SERVICE_AND_CROSS_REPO_UPTAKE_VERIFICATION.md"],
                 "failures": if obligation_exists(&w045_successor_map, "W045-OBL-002") { Vec::<String>::new() } else { vec!["w045_spec_evolution_obligation_missing".to_string()] },
                 "validation_state": if obligation_exists(&w045_successor_map, "W045-OBL-002") { "w045_rust_boundary_validated" } else { "w045_rust_boundary_failed" }
             }),
@@ -6935,7 +6935,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-b1t.3; calc-b1t.11",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "The W044 workset records spec-evolution hooks for Rust totality and refinement obligations.",
-                "evidence_paths": [&w044_blocker_map_path, "docs/worksets/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md"],
+                "evidence_paths": [&w044_blocker_map_path, "archive/worksets-w038-w045/W044_CORE_FORMALIZATION_RELEASE_GRADE_BLOCKER_BURN_DOWN_AND_SERVICE_PROOF_CLOSURE.md"],
                 "failures": if row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.rust_totality_refinement_panic_surface") { Vec::<String>::new() } else { vec!["w044_refinement_obligation_missing".to_string()] },
                 "validation_state": if row_with_field_exists(&w044_blocker_map, "source_lane", "w043_residual.rust_totality_refinement_panic_surface") { "w044_rust_boundary_validated" } else { "w044_rust_boundary_failed" }
             }),
@@ -7894,7 +7894,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-2p3.3; calc-2p3.10",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "The W043 charter records spec-evolution hooks for Rust totality and refinement obligations.",
-                "evidence_paths": [&w043_obligation_map_path, "docs/worksets/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md"],
+                "evidence_paths": [&w043_obligation_map_path, "archive/worksets-w038-w045/W043_CORE_FORMALIZATION_RELEASE_GRADE_PROOF_AND_OPERATED_SERVICE_INTEGRATION.md"],
                 "failures": if w040_obligation_exists(&w043_obligation_map, "W043-OBL-011") { Vec::<String>::new() } else { vec!["w043_refinement_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w043_obligation_map, "W043-OBL-011") { "w043_rust_boundary_validated" } else { "w043_rust_boundary_failed" }
             }),
@@ -8734,7 +8734,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-czd.3; calc-czd.10",
                 "promotion_consequence": "future proof evidence may correct specs or implementation before promotion",
                 "reason": "The W042 charter records spec-evolution hooks for Rust totality and refinement obligations.",
-                "evidence_paths": [&w042_obligation_map_path, "docs/worksets/W042_CORE_FORMALIZATION_RELEASE_GRADE_EVIDENCE_CLOSURE_EXPANSION.md"],
+                "evidence_paths": [&w042_obligation_map_path, "archive/worksets-w038-w045/W042_CORE_FORMALIZATION_RELEASE_GRADE_EVIDENCE_CLOSURE_EXPANSION.md"],
                 "failures": if w040_obligation_exists(&w042_obligation_map, "W042-OBL-009") { Vec::<String>::new() } else { vec!["w042_refinement_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w042_obligation_map, "W042-OBL-009") { "w042_rust_boundary_validated" } else { "w042_rust_boundary_failed" }
             }),
@@ -9482,7 +9482,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-sui.4; calc-sui.10",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W041 explicitly allows proof/model evidence to evolve the specs rather than testing against a fixed initial document set.",
-                "evidence_paths": [&w041_obligation_map_path, "docs/worksets/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md"],
+                "evidence_paths": [&w041_obligation_map_path, "archive/worksets-w038-w045/W041_CORE_FORMALIZATION_RELEASE_GRADE_SUCCESSOR_VERIFICATION.md"],
                 "failures": if w040_obligation_exists(&w041_obligation_map, "W041-OBL-010") { Vec::<String>::new() } else { vec!["w041_lean_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w041_obligation_map, "W041-OBL-010") { "w041_lean_tla_boundary_validated" } else { "w041_lean_tla_boundary_failed" }
             }),
@@ -10281,7 +10281,7 @@ impl FormalAssuranceRunner {
                 "authority_owner": "calc-czd.4; calc-czd.10",
                 "promotion_consequence": "future proof/model evidence may correct specs or implementation before promotion",
                 "reason": "W042 explicitly allows proof/model evidence to evolve the specs rather than testing against a fixed initial document set.",
-                "evidence_paths": [&w042_obligation_map_path, "docs/worksets/W042_CORE_FORMALIZATION_RELEASE_GRADE_EVIDENCE_CLOSURE_EXPANSION.md"],
+                "evidence_paths": [&w042_obligation_map_path, "archive/worksets-w038-w045/W042_CORE_FORMALIZATION_RELEASE_GRADE_EVIDENCE_CLOSURE_EXPANSION.md"],
                 "failures": if w040_obligation_exists(&w042_obligation_map, "W042-OBL-010") && w040_obligation_exists(&w042_obligation_map, "W042-OBL-011") { Vec::<String>::new() } else { vec!["w042_lean_tla_obligation_missing".to_string()] },
                 "validation_state": if w040_obligation_exists(&w042_obligation_map, "W042-OBL-010") && w040_obligation_exists(&w042_obligation_map, "W042-OBL-011") { "w042_lean_tla_boundary_validated" } else { "w042_lean_tla_boundary_failed" }
             }),
@@ -11256,8 +11256,8 @@ fn evaluate_assumption_check(
                 check_id,
                 passed,
                 &[
-                    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
-                    "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+                    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/run_summary.json",
+                    "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
                 ],
                 json!({
                     "callable_metadata_blocker_present": blocker_present,
@@ -11279,7 +11279,7 @@ fn evaluate_assumption_check(
                 check_id,
                 passed,
                 &[
-                    "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+                    "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
                 ],
                 json!({
                     "accepted_external_exclusion_count": w038_tracecalc_authority["accepted_external_exclusion_count"].clone(),
@@ -11528,7 +11528,25 @@ fn write_json(path: &Path, value: &Value) -> Result<(), FormalAssuranceError> {
 }
 
 fn relative_artifact_path(parts: &[&str]) -> String {
-    parts.join("/")
+    historical_w038_w045_artifact_path(parts).unwrap_or_else(|| parts.join("/"))
+}
+
+fn historical_w038_w045_artifact_path(parts: &[&str]) -> Option<String> {
+    if parts.len() >= 5
+        && parts[0] == "docs"
+        && parts[1] == "test-runs"
+        && parts[2] == "core-engine"
+        && matches!(
+            parts[4].get(..4),
+            Some("w038" | "w039" | "w040" | "w041" | "w042" | "w043" | "w044" | "w045")
+        )
+    {
+        let mut archived = vec!["archive", "test-runs-core-engine-w038-w045"];
+        archived.extend_from_slice(&parts[3..]);
+        Some(archived.join("/"))
+    } else {
+        None
+    }
 }
 
 const W038_ASSUMPTION_DISCHARGE_SPECS: &[AssumptionDischargeSpec] = &[
@@ -11606,7 +11624,7 @@ const W038_ASSUMPTION_DISCHARGE_SPECS: &[AssumptionDischargeSpec] = &[
         evidence_paths: &[
             "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
             "formal/lean/OxCalc/CoreEngine/W037ProofModelClosureInventory.lean",
-            "docs/test-runs/core-engine/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
+            "archive/test-runs-core-engine-w038-w045/tracecalc-authority/w038-tracecalc-authority-discharge-001/run_summary.json",
         ],
         required_evidence_checks: &[
             "w037_general_oxfunc_boundary_present",
@@ -11694,7 +11712,7 @@ const W038_ASSUMPTION_DISCHARGE_SPECS: &[AssumptionDischargeSpec] = &[
         promotion_consequence: "future proof/model evidence may correct specs; W038 does not freeze the initial model universe",
         reason: "The formalization path uses proof/model evidence to evolve the spec rather than testing against a fixed initial document set.",
         evidence_paths: &[
-            "formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean",
+            "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean",
             "docs/test-runs/core-engine/formal-inventory/w037-proof-model-closure-001/promotion_blockers.json",
         ],
         required_evidence_checks: &[
@@ -11719,9 +11737,9 @@ const W038_ASSUMPTION_DISCHARGE_SPECS: &[AssumptionDischargeSpec] = &[
         promotion_consequence: "callable metadata projection remains unpromoted until carrier sufficiency is proven or a metadata projection fixture is added",
         reason: "The W038 conformance disposition proves the value-only carrier boundary but not metadata projection totality or sufficiency.",
         evidence_paths: &[
-            "docs/test-runs/core-engine/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
+            "archive/test-runs-core-engine-w038-w045/implementation-conformance/w038-optimized-core-conformance-disposition-001/w038_exact_remaining_blocker_register.json",
             "formal/lean/OxCalc/CoreEngine/W036CallableBoundaryInventory.lean",
-            "formal/lean/OxCalc/CoreEngine/W038AssumptionDischargeAndTotality.lean",
+            "archive/lean-w038-w045/W038AssumptionDischargeAndTotality.lean",
         ],
         required_evidence_checks: &[
             "w038_callable_metadata_blocker_present",
@@ -12385,7 +12403,7 @@ mod tests {
         );
         assert_eq!(
             source_index["source_artifacts"]["w042_w073_formatting_intake"],
-            "docs/test-runs/core-engine/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w073_formatting_intake.json"
+            "archive/test-runs-core-engine-w038-w045/implementation-conformance/w042-optimized-core-counterpart-conformance-callable-metadata-001/w073_formatting_intake.json"
         );
 
         cleanup();

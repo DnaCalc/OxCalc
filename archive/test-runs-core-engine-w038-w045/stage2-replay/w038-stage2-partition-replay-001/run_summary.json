@@ -1,0 +1,21 @@
+{
+  "artifact_root": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001",
+  "exact_remaining_blocker_count": 3,
+  "failed_row_count": 0,
+  "formatting_watch_row_count": 1,
+  "nontrivial_permutation_row_count": 1,
+  "observable_invariance_row_count": 5,
+  "partition_order_permutation_replay_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_order_permutation_replay.json",
+  "partition_replay_matrix_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/partition_replay_matrix.json",
+  "partition_replay_row_count": 5,
+  "permutation_replay_row_count": 6,
+  "promotion_decision_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/promotion_decision.json",
+  "run_id": "w038-stage2-partition-replay-001",
+  "schema_version": "oxcalc.stage2_replay.w038.run_summary.v1",
+  "semantic_equivalence_report_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/semantic_equivalence_report.json",
+  "source_evidence_index_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/source_evidence_index.json",
+  "stage2_exact_blocker_register_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/stage2_exact_blocker_register.json",
+  "stage2_policy_promoted": false,
+  "stage2_promotion_candidate": false,
+  "validation_path": "archive/test-runs-core-engine-w038-w045/stage2-replay/w038-stage2-partition-replay-001/validation.json"
+}

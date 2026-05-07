@@ -15,6 +15,7 @@ Archived files are retained for provenance, predecessor evidence, and occasional
 8. `rewrite-control-2026-03/` - older rewrite-control archive moved up from `docs/spec/core-engine/archive/`.
 9. `W046_CLEANUP_MANIFEST.md` - manifest for the W046 cleanup prelude.
 10. `test-runs-core-engine-w038-w045/` - archived W038-W045 generated evidence roots from `docs/test-runs/core-engine/`.
+11. `replay-tooling-w038-w045/` - archived historical TraceCalc runner/classifier source files removed from the active crate surface.
 
 ## Use Rule
 Before using an archived artifact to steer new work, distill the needed semantic content into an active spec, test, proof model, or source comment. Do not make the active W046 path depend on reading this archive as a normal prerequisite.

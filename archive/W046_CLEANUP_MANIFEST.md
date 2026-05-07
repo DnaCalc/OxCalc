@@ -1,6 +1,6 @@
 # W046 Cleanup Manifest
 
-Beads: `calc-gucd.12`, `calc-gucd.13`
+Beads: `calc-gucd.12`, `calc-gucd.13`, `calc-gucd.14`
 
 Date: 2026-05-07
 
@@ -31,6 +31,10 @@ Reset the active W046 surface around the engine semantic proof spine. The cleanu
 2. Historical TraceCalc runner path rules
    - W038-W045 predecessor-evidence reads assembled through local artifact-path helpers now resolve to `archive/test-runs-core-engine-w038-w045/`.
    - Test-only roots such as `test-w038-*` still use transient `docs/test-runs/core-engine/` locations and clean themselves up.
+3. `archive/replay-tooling-w038-w045/`
+   - 9 historical TraceCalc runner/classifier source files moved from `src/oxcalc-tracecalc/src/`.
+   - active `oxcalc-tracecalc` module exports now keep current semantic replay machinery only.
+   - active `oxcalc-tracecalc-cli` command parsing now excludes the retired historical runner modes.
 
 ## Active Surfaces Kept
 1. `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`
@@ -41,8 +45,7 @@ Reset the active W046 surface around the engine semantic proof spine. The cleanu
 6. W033-W037 formalization specs and current formal/TLA models that still carry useful semantic foundation material.
 
 ## Deferred Cleanup
-1. `src/oxcalc-tracecalc/` still contains W038-W045 runner branches and classifiers as historical replay tools. The next cleanup slice can delete or compress them after their useful semantics are distilled into W046.
-2. W033-W037 specs should be reviewed next for semantic content worth promoting into W046, then further archived if they no longer guide engine behavior.
+1. W033-W037 specs should be reviewed next for semantic content worth promoting into W046, then further archived if they no longer guide engine behavior.
 
 ## Active-Path Rule
 The active W046 path should cite this archive only as predecessor context. New W046 proof or implementation work should cite active semantic specs, current tests, current models, or freshly generated replay evidence.

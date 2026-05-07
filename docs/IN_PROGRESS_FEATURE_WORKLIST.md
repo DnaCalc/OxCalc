@@ -7,7 +7,8 @@ This file is a compact orientation surface. It is not live execution state; `.be
 2. Epic: `calc-gucd`
 3. Cleanup prelude: `calc-gucd.12`
 4. Generated evidence isolation follow-up: `calc-gucd.13`
-5. First semantic bead after cleanup: `calc-gucd.1`
+5. Replay-tooling source cleanup follow-up: `calc-gucd.14`
+6. First semantic bead after cleanup: `calc-gucd.1`
 
 ## Active Aim
 W046 redirects formalization toward the calculation engine's semantic proof spine:
@@ -37,5 +38,4 @@ W038-W045 packet docs, workset docs, late row-classifier Lean files, generated e
 The archive is retained as historical evidence and predecessor context. It is not the active direction for W046.
 
 ## Open Cleanup Lanes
-1. Retire or compress W038-W045 source-side runner branches that only reproduce historical classification packets, after useful semantics are distilled into W046.
-2. Distill any useful W033-W045 semantic fragments into W046 specs before further archiving.
+1. Distill any useful W033-W045 semantic fragments into W046 specs before further archiving.

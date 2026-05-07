@@ -38,16 +38,17 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
 ## Planned Packets
 
 1. `W046_ENGINE_SEMANTIC_CATALOG_AND_EFFECT_SIGNATURE_PLAN.md` - `calc-gucd.1` redirect, showcase finding uptake, semantic catalog, and algebraic-effects handler-law plan.
-2. `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` - `calc-gucd.2` graph, reverse-edge, and cycle/SCC model.
-3. `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` - `calc-gucd.3` invalidation, soft-reference, dynamic-reference, and rebind model.
-4. `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md` - `calc-gucd.4` recalc state transition model.
-5. `W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md` - `calc-gucd.5` evaluation order and read-discipline model.
-6. `W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md` - `calc-gucd.6` TraceCalc reference kernel and TreeCalc/CoreEngine replay binding.
-7. `W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md` - `calc-gucd.7` OxFml seam and narrow carrier model.
-8. `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` - `calc-gucd.8` proof-service/classifier coverage recast over the semantic spine.
-9. `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` - `calc-gucd.9` scale/performance semantic-regression signatures and phase timing.
-10. `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` - `calc-gucd.10` downstream consequence reassessment after semantic-spine evidence.
-11. `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` - `calc-gucd.11` closure audit and successor routing.
+2. `W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md` - `calc-gucd.1` first-pass review ledger mapping engine fragments to implementation, specs, formal artifacts, evidence, and successor beads.
+3. `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` - `calc-gucd.2` graph, reverse-edge, and cycle/SCC model.
+4. `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` - `calc-gucd.3` invalidation, soft-reference, dynamic-reference, and rebind model.
+5. `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md` - `calc-gucd.4` recalc state transition model.
+6. `W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md` - `calc-gucd.5` evaluation order and read-discipline model.
+7. `W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md` - `calc-gucd.6` TraceCalc reference kernel and TreeCalc/CoreEngine replay binding.
+8. `W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md` - `calc-gucd.7` OxFml seam and narrow carrier model.
+9. `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` - `calc-gucd.8` proof-service/classifier coverage recast over the semantic spine.
+10. `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` - `calc-gucd.9` scale/performance semantic-regression signatures and phase timing.
+11. `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` - `calc-gucd.10` downstream consequence reassessment after semantic-spine evidence.
+12. `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` - `calc-gucd.11` closure audit and successor routing.
 
 ## Current Status
 
@@ -56,7 +57,7 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-gucd.1` semantic-spine redirect, catalog promotion, and effect-signature plan validation is pending
+  - `calc-gucd.1` semantic-spine redirect, catalog promotion, fragment review, and effect-signature plan validation is in progress
   - graph/reverse-edge/SCC formal model remains open
   - invalidation/soft-reference/rebind formal model remains open
   - recalc tracker and evaluation-order formal models remain open

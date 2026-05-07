@@ -24,6 +24,7 @@ The immediate target is not release-grade promotion. The target is to make the n
 | `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md` | TraceCalc oracle/reference-machine scope |
 | `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` | OxCalc/OxFml seam scope |
 | `archive/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` | predecessor audit and residual lanes |
+| `W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md` | first-pass semantic fragment review and successor-bead mapping |
 
 ## 3. Catalog Promotion Target
 
@@ -124,14 +125,26 @@ The previous W046 residual-promotion ledger shape is superseded by this semantic
 
 Promotion-readiness gates are still relevant, but they are downstream consequences. They should not drive the first bead path until the graph, invalidation, recalc, evaluation, OxFml-seam, and TraceCalc-refinement semantics have specs, model targets, replay evidence, or exact blockers.
 
-## 7. Current Status
+## 7. First Review Finding
 
-- execution_state: `calc-gucd.1_redirect_and_semantic_catalog_in_progress`
+The first semantic-fragment review is recorded in `W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md`.
+
+The review starts from actual engine fragments rather than closure taxonomy:
+
+1. dependency graph build, reverse-edge converse, SCC classification, invalidation closure, rebind, topological order, and working-value reads are the highest-priority semantic gaps;
+2. candidate/publication separation, reject-is-no-publish, atomic publication, pinned readers, and overlay retention already have stronger TLA/Lean scaffolding and can be reused as proof backbone;
+3. TraceCalc should be formalized as a selected-kernel observable oracle before additional comparison rows are treated as semantic evidence;
+4. the OxFml seam should be recast as an effect-signature and handler-law boundary, with `LET`/`LAMBDA` kept as a narrow carrier fragment.
+
+## 8. Current Status
+
+- execution_state: `calc-gucd.1_semantic_fragment_review_started`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - catalog promotion into durable `docs/spec` surfaces is pending
+  - catalog promotion into durable `docs/spec` surfaces is partial
+  - semantic fragment review is started but not closed
   - new-idea triage is drafted but not yet bound to Lean/TLA/TraceCalc artifacts
   - graph/reverse-edge/SCC bead has not started
   - invalidation/rebind bead has not started

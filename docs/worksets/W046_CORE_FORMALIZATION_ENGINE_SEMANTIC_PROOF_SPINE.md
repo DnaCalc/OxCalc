@@ -229,12 +229,12 @@ Validation requirements scale by bead:
 
 ## 10. Current Status
 
-- execution_state: `calc-gucd.1_semantic_fragment_review_started`
+- execution_state: `calc-gucd.1_state_transition_catalog_added`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-gucd.1` semantic-spine redirect, catalog promotion, fragment review, and effect-signature plan validation is in progress
+  - `calc-gucd.1` semantic-spine redirect, catalog promotion, fragment review, transition catalog, and effect-signature plan validation is in progress
   - graph/reverse-edge/SCC formal model remains open
   - invalidation/soft-reference/rebind formal model remains open
   - recalc tracker and evaluation-order formal models remain open

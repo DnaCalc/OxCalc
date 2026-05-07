@@ -25,6 +25,7 @@ The immediate target is not release-grade promotion. The target is to make the n
 | `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` | OxCalc/OxFml seam scope |
 | `archive/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` | predecessor audit and residual lanes |
 | `W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md` | first-pass semantic fragment review and successor-bead mapping |
+| `W046_ENGINE_STATE_TRANSITION_CATALOG.md` | state vocabulary, transition catalog, invariant targets, and successor-bead routing |
 
 ## 3. Catalog Promotion Target
 
@@ -136,15 +137,18 @@ The review starts from actual engine fragments rather than closure taxonomy:
 3. TraceCalc should be formalized as a selected-kernel observable oracle before additional comparison rows are treated as semantic evidence;
 4. the OxFml seam should be recast as an effect-signature and handler-law boundary, with `LET`/`LAMBDA` kept as a narrow carrier fragment.
 
+The first transition catalog is recorded in `W046_ENGINE_STATE_TRANSITION_CATALOG.md`. It names the concrete phase transitions from formula preparation through graph build, invalidation, recalc scheduling, evaluation, rejection, publication, and trace emission. It also gives `calc-gucd.2` an exact start condition: model `BuildGraph`, `BuildReverseEdges`, and `ClassifySCC` against graph converse, diagnostic-preservation, and cycle-classification invariants.
+
 ## 8. Current Status
 
-- execution_state: `calc-gucd.1_semantic_fragment_review_started`
+- execution_state: `calc-gucd.1_state_transition_catalog_added`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - catalog promotion into durable `docs/spec` surfaces is partial
   - semantic fragment review is started but not closed
+  - state transition catalog is drafted but not mechanized
   - new-idea triage is drafted but not yet bound to Lean/TLA/TraceCalc artifacts
   - graph/reverse-edge/SCC bead has not started
   - invalidation/rebind bead has not started

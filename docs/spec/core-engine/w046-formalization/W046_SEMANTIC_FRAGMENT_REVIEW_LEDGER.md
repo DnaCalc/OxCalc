@@ -73,7 +73,7 @@ The first-pass finding is uneven but useful:
 
 The next W046 bead should start with these exact inputs:
 
-1. `calc-gucd.2`: `dependency.rs`, `planner.rs`, TreeCalc dependency graph JSON, `tc_cycle_region_reject_001`, and a new graph/SCC model target.
+1. `calc-gucd.2`: `dependency.rs`, `planner.rs`, `W046_ENGINE_STATE_TRANSITION_CATALOG.md`, TreeCalc dependency graph JSON, `tc_cycle_region_reject_001`, and a new graph/SCC model target.
 2. `calc-gucd.3`: `derive_invalidation_closure`, dynamic/rebind TreeCalc post-edit artifacts, W034 dependency Lean fragments, and a new closure/rebind theorem target.
 3. `calc-gucd.4`: `Stage1RecalcTracker`, `TreeCalcCoordinator`, `CoreEngineStage1.tla`, `Stage1State.lean`, and a transition crosswalk.
 4. `calc-gucd.5`: `topological_formula_order`, `working_values` evaluation loop, TreeCalc evaluation-order artifacts, and a working-value read-discipline invariant.
@@ -82,12 +82,13 @@ The next W046 bead should start with these exact inputs:
 
 ## 7. Current Status
 
-- execution_state: `calc-gucd.1_semantic_fragment_review_started`
+- execution_state: `calc-gucd.1_state_transition_catalog_added`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - this is a first-pass ledger, not a closed semantic catalog
+  - state transition catalog exists but is not yet mechanized
   - graph/reverse-edge/SCC formal model remains open
   - invalidation/rebind formal model remains open
   - recalc tracker transition crosswalk remains open

@@ -1,0 +1,1371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OxCalc W033-W045 Engine Formalization Review</title>
+  <style>
+    :root {
+      --bg: #07111d;
+      --ink: #eef6ff;
+      --muted: #9fb0c0;
+      --panel: rgba(10, 21, 34, 0.92);
+      --line: rgba(216, 235, 255, 0.18);
+      --engine: #59a8ff;
+      --engine-bg: rgba(89, 168, 255, 0.12);
+      --formal: #ffc766;
+      --formal-bg: rgba(255, 199, 102, 0.13);
+      --artifact: #62d98b;
+      --artifact-bg: rgba(98, 217, 139, 0.12);
+      --gap: #ff7474;
+      --gap-bg: rgba(255, 116, 116, 0.12);
+      --teal: #39d8ca;
+      --code: #091523;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); }
+    body { overflow: hidden; }
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(57,216,202,0.12), transparent 30%),
+        radial-gradient(circle at 88% 4%, rgba(255,199,102,0.10), transparent 24%),
+        linear-gradient(135deg, #07111d 0%, #0b1b2b 48%, #09111c 100%);
+      position: relative;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: 34px 42px 42px;
+      overflow: hidden;
+    }
+    .slide.active { display: grid; }
+    .slide::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.38;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: linear-gradient(to bottom, transparent 0, black 11%, black 84%, transparent 100%);
+    }
+    .hero {
+      background-size: cover;
+      background-position: center;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(7,17,29,0.95), rgba(7,17,29,0.67), rgba(7,17,29,0.90)),
+        linear-gradient(180deg, rgba(7,17,29,0.20), rgba(7,17,29,0.88));
+      z-index: 0;
+    }
+    .top, .body, .foot { position: relative; z-index: 1; }
+    .top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: start;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      padding-bottom: 10px;
+    }
+    .kicker {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(48px, 5.2vw, 82px); line-height: 0.96; letter-spacing: 0; max-width: 1160px; }
+    h2 { font-size: clamp(30px, 3.3vw, 54px); line-height: 1.02; letter-spacing: 0; max-width: 1240px; }
+    h3 { font-size: 18px; line-height: 1.18; }
+    .sub { margin-top: 12px; color: #ccdae8; font-size: 22px; line-height: 1.32; max-width: 1120px; }
+    .num { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .body { min-height: 0; overflow: hidden; }
+    .foot {
+      border-top: 1px solid rgba(255,255,255,0.10);
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: #91a5b8;
+      font-size: 12px;
+    }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; height: 100%; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; height: 100%; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .stack { display: grid; gap: 10px; align-content: start; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      box-shadow: 0 18px 55px rgba(0,0,0,0.32);
+      min-width: 0;
+    }
+    .panel p, .panel li { color: #c9d6e3; font-size: 14px; line-height: 1.34; }
+    .lead { color: #f5fbff; font-size: 22px; line-height: 1.27; }
+    .micro { color: #a7b9c9; font-size: 11px; line-height: 1.25; }
+    .lane {
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+    .lane.engine { background: var(--engine-bg); border-color: rgba(89,168,255,0.42); }
+    .lane.formal { background: var(--formal-bg); border-color: rgba(255,199,102,0.48); }
+    .lane.artifact { background: var(--artifact-bg); border-color: rgba(98,217,139,0.44); }
+    .lane.gap { background: var(--gap-bg); border-color: rgba(255,116,116,0.48); }
+    .lane h3 { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .engine .dot { background: var(--engine); box-shadow: 0 0 14px var(--engine); }
+    .formal .dot { background: var(--formal); box-shadow: 0 0 14px var(--formal); }
+    .artifact .dot { background: var(--artifact); box-shadow: 0 0 14px var(--artifact); }
+    .gap .dot { background: var(--gap); box-shadow: 0 0 14px var(--gap); }
+    .triad { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .quad { display: grid; grid-template-columns: 1fr 1fr 1fr 0.85fr; gap: 12px; }
+    ul { margin: 0; padding-left: 17px; }
+    li { margin: 4px 0; }
+    .code {
+      background: var(--code);
+      border: 1px solid rgba(144,190,255,0.24);
+      border-radius: 8px;
+      padding: 10px 12px;
+      overflow: hidden;
+    }
+    .path { color: #9cc6ff; font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; margin-bottom: 6px; }
+    pre {
+      margin: 0;
+      color: #dbeaff;
+      white-space: pre-wrap;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 11.5px;
+      line-height: 1.25;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid rgba(255,255,255,0.10); padding: 6px 7px; text-align: left; vertical-align: top; color: #cbd8e5; }
+    th { color: #f3f9ff; background: rgba(255,255,255,0.07); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .matrix td:nth-child(n+2), .matrix th:nth-child(n+2) { text-align: center; }
+    .ok { color: var(--artifact); font-weight: 800; }
+    .warn { color: var(--formal); font-weight: 800; }
+    .bad { color: var(--gap); font-weight: 800; }
+    .info { color: var(--engine); font-weight: 800; }
+    .pillrow { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { border-radius: 999px; padding: 4px 8px; font-size: 11px; border: 1px solid rgba(255,255,255,0.18); color: #dcecff; background: rgba(255,255,255,0.06); }
+    .pill.e { border-color: rgba(89,168,255,0.5); color: #cfe6ff; }
+    .pill.f { border-color: rgba(255,199,102,0.55); color: #ffe4ad; }
+    .pill.a { border-color: rgba(98,217,139,0.55); color: #c9f7d6; }
+    .pill.g { border-color: rgba(255,116,116,0.55); color: #ffd0d0; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric { background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 12px; min-height: 80px; }
+    .metric strong { display: block; font-size: 28px; line-height: 1; color: #fff; margin-bottom: 8px; }
+    .metric span { color: #b4c6d6; font-size: 12px; line-height: 1.25; display: block; }
+    .flow { display: grid; grid-template-columns: repeat(8, 1fr); gap: 7px; }
+    .flow div { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13); border-radius: 8px; padding: 8px; font-size: 11px; color: #dbeaff; min-height: 58px; }
+    .diagram {
+      min-height: 210px;
+      background-size: cover;
+      background-position: center;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+    .diagram::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,17,29,0.20), rgba(7,17,29,0.86)); }
+    .diagram > * { position: relative; z-index: 1; }
+    .controls { position: fixed; right: 18px; bottom: 16px; z-index: 5; display: flex; gap: 8px; align-items: center; font-size: 12px; color: #c7d6e4; }
+    button { background: rgba(255,255,255,0.08); color: var(--ink); border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+    button:hover { border-color: var(--teal); }
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+      .deck { height: auto; }
+      .slide, .slide.active { position: relative; min-height: 100vh; padding: 24px 16px 68px; }
+      .grid2, .grid3, .grid4, .grid5, .triad, .quad, .metrics, .flow { grid-template-columns: 1fr; }
+      pre { font-size: 10.5px; }
+    }
+    @media print {
+      body { overflow: visible; background: #fff; }
+      .deck { height: auto; }
+      .slide, .slide.active { display: grid !important; position: relative; width: 100vw; height: 100vh; page-break-after: always; background: #07111d !important; }
+      .controls { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="deck">
+
+  <section class="slide hero active" style="background-image:url('assets/engine-pipeline-hero.png')">
+    <div class="top"><div><div class="kicker">W033-W045 engine formalization review</div><h1>OxCalc Calculation Semantics: Engine Design, Formal Targets, Evidence Today</h1><p class="sub">A denser review deck for deciding whether the current formalization path is truly modeling the calculation engine: state transitions, graph construction, SCCs, invalidation, recalc, OxFml evaluation, publish/reject, replay, scale, and proof obligations.</p></div><div class="num">1 / 50</div></div>
+    <div class="body">
+      <div class="metrics" style="max-width:1180px;margin-top:24px">
+        <div class="metric"><strong>50</strong><span>dense review slides using a three-lane color grammar</span></div>
+        <div class="metric"><strong>24</strong><span>cataloged engine formalization areas in the review catalog</span></div>
+        <div class="metric"><strong>11</strong><span>named transition pre/post rows for recalc, graph, closure, publish, reject</span></div>
+        <div class="metric"><strong>C4</strong><span>highest honest W045 capability: `cap.C4.distill_valid`</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>Deck path: `docs/showcase/oxcalc_w033_w045_formalization_showcase.html`</span><span>Review catalog: `oxcalc_w033_w045_engine_formalization_review_catalog.md`</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Reframe</div><h2>This deck is a formalization review, not a capability victory lap</h2></div><div class="num">2 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>Show the actual Rust/spec execution mechanisms: formula preparation, graph build, SCC detection, invalidation, recalc tracker, OxFml evaluation, coordinator publication.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Name intended invariants, preconditions, postconditions, refinement statements, and theorem families for each phase.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Identify what exists now: Lean proved fragments, Lean classifiers, bounded TLA models, replay evidence, scale signatures, run summaries.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap / Direction</h3><p>State what remains only a formal target. This is where W046+ should go if the goal is a full mechanized semantics proof.</p></div>
+    </div>
+    <div class="foot"><span>Color grammar is used consistently throughout the deck.</span><span>Every major phase is reviewed in all four lanes.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Execution dance</div><h2>The engine is more than 8 concepts: it is a staged transition system</h2></div><div class="num">3 / 50</div></div>
+    <div class="body stack">
+      <div class="flow">
+        <div>snapshot + formula catalog</div><div>OxFml prepare</div><div>reference lowering</div><div>descriptor owner index</div><div>graph build</div><div>reverse edges</div><div>SCC groups</div><div>diagnostics</div>
+      </div>
+      <div class="flow">
+        <div>edit/dependency seeds</div><div>closure BFS</div><div>rebind gate</div><div>recalc state marks</div><div>topological order</div><div>working values</div><div>OxFml eval</div><div>residual gate</div>
+      </div>
+      <div class="flow">
+        <div>runtime effects</div><div>overlays</div><div>verified clean</div><div>local candidate</div><div>accepted result</div><div>reject detail</div><div>publication bundle</div><div>phase timings</div>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Formal review question</th><th>Answer at W045</th><th>Next target</th></tr>
+          <tr><td>Do we have a full semantic proof of all transitions?</td><td class="bad">No</td><td>Turn transition catalog into Lean/TLA models tied to Rust artifacts.</td></tr>
+          <tr><td>Do we have meaningful semantic fragments?</td><td class="ok">Yes</td><td>Expand from publish/reject/overlay fragments to graph/closure/eval semantics.</td></tr>
+          <tr><td>Do replay and scale artifacts expose the engine shape?</td><td class="ok">Yes</td><td>Bind evidence to explicit formal obligations stage by stage.</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Implementation spine: `src/oxcalc-core/src/treecalc.rs` and supporting modules.</span><span>Formal spine needs to become explicit phase-by-phase.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Coverage types</div><h2>The artifacts are not all the same kind of formal progress</h2></div><div class="num">4 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Label</th><th>Meaning</th><th>Concrete examples through W045</th><th>Strength</th></tr>
+          <tr><td class="ok">proved_fragment</td><td>Small semantic definition/theorem in Lean</td><td>`applyReject_noPublish`, `applyPublish_atomic`, `conservativeAffectedSet_refl`, `emptyOverlays_safe`</td><td>Real proof, narrow scope</td></tr>
+          <tr><td class="warn">checked_classifier</td><td>Lean proves evidence-row classification/count/no-promotion</td><td>W035-W045 assumption, Rust, Lean/TLA, Stage2 files</td><td>Useful guardrail, not engine semantics by itself</td></tr>
+          <tr><td class="ok">bounded_model</td><td>TLA+ bounded transition system and invariants</td><td>Stage1, W035 non-routine interleavings, W036 Stage2 partition</td><td>Strong bounded safety evidence</td></tr>
+          <tr><td class="ok">replay_evidence</td><td>TraceCalc/TreeCalc/OxFml deterministic runs</td><td>TreeCalc local, TraceCalc reference-machine, implementation-conformance, stage2-replay</td><td>Strong behavioral evidence</td></tr>
+          <tr><td class="warn">scale_signature</td><td>Closed-form large-model correctness plus timings</td><td>grid/fanout/indirect/rebind profiles</td><td>Regression evidence, not proof</td></tr>
+          <tr><td class="bad">formal_target_only</td><td>The theorem is clear but not mechanized</td><td>SCC correctness, invalidation closure reachability/minimality, topological-order proof</td><td>Next workset material</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Source: new review catalog plus W033-W045 formal artifacts.</span><span>This slide directly answers the concern about vague "guardrails".</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Evidence surface</div><h2>The repo has broad evidence, but the mechanized semantic center is still narrow</h2></div><div class="num">5 / 50</div></div>
+    <div class="body grid2">
+      <div class="panel">
+        <h3>Artifact weight scan</h3>
+        <div class="metrics" style="margin-top:10px">
+          <div class="metric"><strong>10,848</strong><span>core-engine run files</span></div>
+          <div class="metric"><strong>21.07 MB</strong><span>core-engine run artifacts</span></div>
+          <div class="metric"><strong>2,660</strong><span>formal files, mostly TLA outputs</span></div>
+          <div class="metric"><strong>34</strong><span>Lean source files</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Mechanized center of gravity</h3>
+        <table>
+          <tr><th>Area</th><th>Current center</th></tr>
+          <tr><td>Strong semantic proof fragments</td><td>publish/reject/affected-set/empty overlay</td></tr>
+          <tr><td>Strong bounded models</td><td>candidate/reject/publish, overlays, Stage2 gating</td></tr>
+          <tr><td>Strong replay evidence</td><td>TreeCalc/TraceCalc/OxFml fixtures and run artifacts</td></tr>
+          <tr><td>Weak mechanized semantics</td><td>graph/SCC/closure/topological order/working-value evaluation</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Dominant evidence roots: TreeCalc local and TraceCalc reference machine.</span><span>Formalization direction should now move from classifiers toward semantic models.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Catalog snapshot</div><h2>A candidate catalog of engine invariants and theorem families now exists</h2></div><div class="num">6 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Family</th><th>Representative invariant/theorem target</th><th>Best artifact today</th><th>Gap</th></tr>
+          <tr><td>`REF/DEP`</td><td>reference lowering is total; forward/reverse edge maps are exact converses</td><td>Rust tests and graph artifacts</td><td class="bad">Lean graph model planned</td></tr>
+          <tr><td>`SCC`</td><td>cycle groups equal non-trivial SCCs plus self-cycles</td><td>cycle reject fixtures</td><td class="bad">SCC proof planned</td></tr>
+          <tr><td>`INV`</td><td>closure contains all reverse-reachable dependents, no under-invalidation</td><td>TreeCalc/scale artifacts; W035 classifier</td><td class="bad">reachability theorem planned</td></tr>
+          <tr><td>`REC`</td><td>tracker transition pre/postconditions preserve demand/overlay/state invariants</td><td>Rust unit tests; TLA node states</td><td class="warn">partial bounded model</td></tr>
+          <tr><td>`EVAL`</td><td>working-value evaluation reads stable/prior ordered values and short-circuits on failure</td><td>TreeCalc evidence</td><td class="bad">semantic refinement planned</td></tr>
+          <tr><td>`PUB/REJ`</td><td>reject preserves publication; publish is atomic and candidate-derived</td><td>W033 Lean + TLA + fixtures</td><td class="ok">strongest current area</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>New catalog: `oxcalc_w033_w045_engine_formalization_review_catalog.md`.</span><span>The deck uses these IDs throughout.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Transition catalog</div><h2>We need pre/postconditions, not only property lanes</h2></div><div class="num">7 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Transition</th><th>Rust precondition</th><th>Rust postcondition</th><th>Formal artifact today</th><th>Missing</th></tr>
+          <tr><td>`mark_needed(n)`</td><td>`state[n] = DirtyPending`</td><td>`state[n] = Needed`; `n` in demand set</td><td>TLA `A2MarkNeeded`; unit test</td><td>Lean tracker-map theorem</td></tr>
+          <tr><td>`begin_evaluate(n,basis)`</td><td>`state[n] = Needed`</td><td>`state[n] = Evaluating`; protected basis overlay</td><td>TLA `A3BeginEvaluate`</td><td>basis/fence invariant</td></tr>
+          <tr><td>`verify_clean(n)`</td><td>`state[n] = Evaluating`; value unchanged</td><td>`VerifiedClean`; demand removed; no bundle</td><td>TLA verify-clean; fixture</td><td>value equality proof</td></tr>
+          <tr><td>`produce_candidate_result(n)`</td><td>`state[n] = Evaluating`; value changed</td><td>`PublishReady`; candidate overlay</td><td>unit test; publish fixture</td><td>candidate envelope theorem</td></tr>
+          <tr><td>`reject_or_fallback(n)`</td><td>`Evaluating` or `PublishReady`</td><td>`RejectedPendingRepair`; demand retained</td><td>W033 reject/no-publish</td><td>per-node reject transition proof</td></tr>
+          <tr><td>`publish_and_clear(n)`</td><td>`PublishReady` after coordinator publish</td><td>`Clean`; demand removed; overlay eligible</td><td>unit test; W033 publish atomic</td><td>coordinator/tracker bridge proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is the shape of the desired formal catalog.</span><span>Only some rows have direct semantic proof today.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">STATE-01</div><h2>Structural snapshots are immutable truth for the run</h2></div><div class="num">8 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>`LocalTreeCalcInput` carries `structural_snapshot`; dependency graph, recalc tracker, coordinator, and OxFml preparation receive snapshot-derived truth.</p><div class="code"><pre>structural_snapshot
+formula_catalog
+seeded_published_values
+invalidation_seeds</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Runtime work must not mutate canonical structure; every graph/closure/publication artifact is indexed by one snapshot id or an explicit successor snapshot.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Architecture spec states immutable/versioned truth; TLA has snapshot constants; TreeCalc artifacts carry snapshot ids in graph, closure, candidate, and publication data.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No full Lean algebra yet for snapshot identity, edit outcome, structural successor relation, and graph validity across snapshots.</p></div>
+    </div>
+    <div class="foot"><span>Spec anchor: `CORE_ENGINE_ARCHITECTURE.md` snapshot/publication architecture.</span><span>Rust anchor: `LocalTreeCalcInput`.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Run boundary</div><h2>`LocalTreeCalcRunArtifacts` is the concrete proof/replay envelope</h2></div><div class="num">9 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>pub struct LocalTreeCalcRunArtifacts {
+  result_state: LocalTreeCalcRunState,
+  dependency_graph: DependencyGraph,
+  invalidation_closure: InvalidationClosure,
+  evaluation_order: Vec&lt;TreeNodeId&gt;,
+  runtime_effects: Vec&lt;RuntimeEffect&gt;,
+  runtime_effect_overlays: Vec&lt;OverlayEntry&gt;,
+  local_candidate: Option&lt;LocalEvaluatorCandidate&gt;,
+  candidate_result: Option&lt;AcceptedCandidateResult&gt;,
+  publication_bundle: Option&lt;PublicationBundle&gt;,
+  reject_detail: Option&lt;RejectDetail&gt;,
+  published_values: BTreeMap&lt;TreeNodeId, String&gt;,
+  node_states: BTreeMap&lt;TreeNodeId, NodeCalcState&gt;,
+  phase_timings_micros: BTreeMap&lt;String, u128&gt;,
+  diagnostics: Vec&lt;String&gt;,
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Artifact field</th><th>Intended proof use</th><th>Today</th></tr>
+          <tr><td>graph + closure + order</td><td>dependency/recalc semantics</td><td class="warn">replay; proof planned</td></tr>
+          <tr><td>candidate/publication/reject</td><td>publish/reject safety</td><td class="ok">Lean/TLA/replay fragments</td></tr>
+          <tr><td>effects/overlays</td><td>runtime effect visibility</td><td class="warn">TLA bounded + replay</td></tr>
+          <tr><td>timings</td><td>phase split and scale regression</td><td class="ok">scale signatures</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is why the engine has a formalization-ready shape.</span><span>The missing step is mechanized semantics for more fields.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">FML-01</div><h2>OxFml preparation is the first semantic normalization phase</h2></div><div class="num">10 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>TreeCalc maps each formula binding through `prepare_oxfml_formula`, collecting bound formula, translated structure, residuals, unresolved references, and diagnostics.</p><div class="code"><pre>bindings_by_owner()
+  .map(|binding| prepare_oxfml_formula(snapshot, binding))
+  .collect::&lt;Result&lt;BTreeMap&lt;_, _&gt;, _&gt;&gt;()?</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Preparation totality: every binding becomes a prepared object with descriptors/residuals or fails through a typed no-publish path. No untyped evaluator failure should leak to publication.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Direct OxFml and upstream-host cases; W045 reports 7 direct OxFml cases, 16 upstream-host cases, 0 mismatches; seam docs define OxCalc/OxFml ownership.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No full mechanized model of OxFml preparation or formula-language semantics in OxCalc. LET/LAMBDA gets a scoped seam treatment only.</p></div>
+    </div>
+    <div class="foot"><span>OxCalc owns how OxFml artifacts affect graph/recalc/publication, not the whole formula language.</span><span>Formal seam must remain explicit.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">REF-01</div><h2>Reference lowering currently has a rich concrete taxonomy</h2></div><div class="num">11 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/formula.rs</div>
+<pre>pub enum TreeReference {
+  DirectNode { target_node_id },
+  ProjectionPath { projection_path },
+  RelativePath { base, path },
+  SiblingOffset { offset },
+  HostSensitive { carrier_id, detail },
+  CapabilitySensitive { carrier_id, detail },
+  ShapeTopology { carrier_id, detail },
+  DynamicPotential { carrier_id, detail },
+  DynamicResolved { carrier_id, target_node_id, detail },
+  Unresolved { token },
+}
+
+pub fn descriptor_kind(&amp;self) -&gt; DependencyDescriptorKind { ... }</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Reference family</th><th>Target resolution</th><th>Descriptor kind</th><th>Formal target</th></tr>
+          <tr><td>direct/projection</td><td>static</td><td>`StaticDirect`</td><td>edge exists iff target valid</td></tr>
+          <tr><td>relative/sibling</td><td>snapshot context</td><td>`RelativeBound`</td><td>rebind sensitivity proof</td></tr>
+          <tr><td>dynamic resolved</td><td>runtime target</td><td>`DynamicPotential`</td><td>shape update/effect visible</td></tr>
+          <tr><td>host/capability/shape/dynamic potential/unresolved</td><td>none at graph time</td><td>diagnostic/reject family</td><td>typed no-publish proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Strong design shape exists.</span><span>Mechanized lowering soundness is still a target.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">DEP-01</div><h2>Dependency descriptors are the bridge from formula semantics to graph semantics</h2></div><div class="num">12 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><div class="code"><pre>DependencyDescriptor {
+  descriptor_id,
+  owner_node_id,
+  target_node_id,
+  kind,
+  carrier_detail,
+  requires_rebind_on_structural_change,
+}</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Descriptor family preservation: lowering preserves owner, target option, semantic family, and structural rebind sensitivity. Dynamic resolved references remain dynamic-family evidence.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Formula and TreeCalc tests assert descriptor kinds; TreeCalc artifacts serialize graph descriptors; W045 optimized/core packet carries dynamic/counterpart/callable metadata rows.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No dependent-type model yet tying every `TreeReference` constructor to descriptor postconditions and diagnostic/reject consequences.</p></div>
+    </div>
+    <div class="foot"><span>Catalog IDs: `REF-01`, `DEP-01`, `INV-03`.</span><span>Best next proof surface: descriptor-kind preservation and target resolution soundness.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">DEP-02</div><h2>Graph construction separates edges from diagnostics</h2></div><div class="num">13 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/dependency.rs</div>
+<pre>match descriptor.target_node_id {
+  Some(target_node_id) =&gt; {
+    let edge = DependencyEdge {
+      edge_id,
+      descriptor_id,
+      owner_node_id,
+      target_node_id,
+      kind,
+    };
+    edges_by_owner.entry(owner).or_default().push(edge);
+  }
+  None =&gt; diagnostics.push(DependencyDiagnostic { descriptor_id, kind, detail })
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Invariant candidate</th><th>Current evidence</th><th>Proof status</th></tr>
+          <tr><td>Every edge references existing owner and target nodes.</td><td>builder checks + fixtures</td><td class="warn">not mechanized</td></tr>
+          <tr><td>Untargeted descriptors produce matching diagnostic family.</td><td>dynamic/host/capability/shape reject fixtures</td><td class="warn">not mechanized</td></tr>
+          <tr><td>Sorted maps make graph artifacts deterministic.</td><td>stable JSON artifacts</td><td class="warn">not mechanized</td></tr>
+          <tr><td>Cycle scan consumes `edges_by_owner` after construction.</td><td>cycle fixtures</td><td class="bad">SCC proof planned</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is a central formalization gap.</span><span>Current W045 proof classifiers do not prove graph construction correctness.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Reverse edges</div><h2>Invalidation depends on exact converse indexing</h2></div><div class="num">14 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>For each forward edge `owner -> target`, graph build inserts a reverse index entry under `target` pointing back to `owner`.</p><div class="code"><pre>reverse_edges
+  .entry(edge.target_node_id)
+  .or_default()
+  .push(edge.clone())</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Converse theorem: edge `e` is in `edges_by_owner[o]` iff edge `e` is in `reverse_edges[t]` for `t = e.target_node_id`, modulo deterministic sorting.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Serialized dependency graphs in TreeCalc local cases; scale runner validates counts and closure consequences indirectly.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No explicit Lean/TLA graph datatype or converse-index theorem yet. This blocks a rigorous invalidation-closure proof.</p></div>
+    </div>
+    <div class="foot"><span>Catalog ID: `DEP-02`.</span><span>This is one of the highest-leverage formalization targets.</span></div>
+  </section>
+
+  <section class="slide hero" style="background-image:url('assets/dependency-graph-scale.png')">
+    <div class="top"><div><div class="kicker">SCC-01</div><h2>Cycle groups use Tarjan-style SCC detection, but proof is still future work</h2></div><div class="num">15 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/dependency.rs</div>
+<pre>struct TarjanState {
+  index, stack, on_stack, indices, lowlinks, groups
+}
+
+if state.indices[&amp;node_id] == state.lowlinks[&amp;node_id] {
+  pop stack into group;
+  if group.len() &gt; 1 || is_self_cycle {
+    state.groups.push(group);
+  }
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>SCC theorem target</th><th>Today</th></tr>
+          <tr><td>Completeness: every cycle/SCC member appears in one group.</td><td class="bad">planned</td></tr>
+          <tr><td>Soundness: every emitted group is cyclic or self-cyclic.</td><td class="bad">planned</td></tr>
+          <tr><td>Determinism: group sort/order stable for artifacts.</td><td class="warn">observed via artifacts</td></tr>
+          <tr><td>Runtime consequence: cycle members block evaluation/reject.</td><td class="ok">fixture evidence</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is not adequately covered by current classifier files.</span><span>It should become a named graph-theory proof lane.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">INV-01</div><h2>Invalidation starts with seed derivation, not with a generic dirty set</h2></div><div class="num">16 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>derive_structural_invalidation_seeds(...)
+  = dependency_descriptor_transition_seeds(...)
+    + derive_structural_context_invalidation_seeds(...)
+
+reason:
+  StructuralRebindRequired
+  StructuralRecalcOnly
+  UpstreamPublication
+  DependencyAdded
+  DependencyRemoved
+  DependencyReclassified</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Seed class</th><th>Precondition</th><th>Postcondition target</th></tr>
+          <tr><td>default</td><td>no explicit seeds/edit outcomes</td><td>formula owners are conservatively dirty</td></tr>
+          <tr><td>structural context</td><td>rename/removal/rebind pressure</td><td>affected owner/context references get rebind seeds</td></tr>
+          <tr><td>descriptor transition</td><td>formula catalog changed</td><td>add/remove/reclassify reasons emitted</td></tr>
+          <tr><td>upstream</td><td>published dependency changed</td><td>closure propagates through reverse edges</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>W035 classified dependency no-under-invalidation, but did not prove the Rust seed/closure algorithms.</span><span>This is a prime semantic-proof target.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">INV-02</div><h2>`derive_invalidation_closure` is reverse-graph BFS with per-node records</h2></div><div class="num">17 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>Queue starts from seeds, records reasons, marks rebind flags, then walks `reverse_edges[target]` to dependent owners.</p><div class="code"><pre>while let Some(target) = queue.pop_front() {
+  for edge in reverse_edges[target] {
+    dependent = edge.owner_node_id;
+    record UpstreamPublication;
+    queue.push_back(dependent);
+  }
+}</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Reachability soundness/completeness, reason monotonicity, deterministic impacted order, rebind flag soundness, cycle-block propagation.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>TreeCalc invalidation closure JSON, post-edit fixtures, scale runner phase timings and validation. W045 scale artifacts required count: 30.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>There is not yet a formal reverse-reachability theorem. Current Lean "dependency closure" rows are classification/proof-map facts, not a mechanized closure proof.</p></div>
+    </div>
+    <div class="foot"><span>Catalog IDs: `INV-02`, `INV-03`.</span><span>This should be central in W046+.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Rebind gate</div><h2>Structural rebind is a local-evaluation safety barrier</h2></div><div class="num">18 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>let rebind_blocked_node =
+  evaluation_order.iter().copied().find(|node_id| {
+    invalidation_closure.records
+      .get(node_id)
+      .is_some_and(|record| record.requires_rebind)
+  });
+
+if let Some(node_id) = rebind_blocked_node {
+  return reject_run(... StructuralRebindRequired { node_id });
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Property</th><th>Current artifact</th><th>Status</th></tr>
+          <tr><td>Local recalc cannot publish under stale structural binding.</td><td>TreeCalc rebind fixtures</td><td class="ok">replay evidence</td></tr>
+          <tr><td>Rebind flag arises from rebind reason/context.</td><td>code + artifacts</td><td class="warn">proof planned</td></tr>
+          <tr><td>Soft-reference/INDIRECT resolution breadth is total.</td><td>scale stress lanes</td><td class="bad">exact W045 blocker</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>W045 non-promotion reason: soft-reference/INDIRECT totality boundary absent.</span><span>This is an engine semantics issue, not a process issue.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">ORDER-01</div><h2>Topological ordering is observable and should have a theorem</h2></div><div class="num">19 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>`topological_formula_order(&dependency_graph, &formula_owner_ids)` returns an order or rejects through `reject_run` on cycle/incompatibility.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>For every edge `owner -> target` among formula owners, `target` appears before `owner` in order. If impossible because of a cycle, no evaluation/publish occurs.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>TreeCalc result JSON includes `evaluation_order`; cycle and missing-target fixtures reject; TraceCalc/TreeCalc expectation matrices compare outcomes.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No Lean theorem for topological ordering or proof that evaluation loop respects the order's dependency preconditions.</p></div>
+    </div>
+    <div class="foot"><span>Catalog ID: `ORDER-01`.</span><span>Next proof should connect graph, order, working values, and evaluation correctness.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">REC-01</div><h2>`Stage1RecalcTracker` is a real state machine with enforceable preconditions</h2></div><div class="num">20 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/recalc.rs</div>
+<pre>pub enum NodeCalcState {
+  Clean,
+  DirtyPending,
+  Needed,
+  Evaluating,
+  VerifiedClean,
+  PublishReady,
+  RejectedPendingRepair,
+  CycleBlocked,
+}
+
+mark_needed: DirtyPending -&gt; Needed
+begin_evaluate: Needed -&gt; Evaluating
+verify_clean: Evaluating -&gt; VerifiedClean
+produce_candidate_result: Evaluating -&gt; PublishReady
+publish_and_clear: PublishReady -&gt; Clean</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>State invariant</th><th>Evidence today</th><th>Gap</th></tr>
+          <tr><td>Wrong transitions return `RecalcError::WrongState`.</td><td>Rust code/tests</td><td>Lean transition model</td></tr>
+          <tr><td>Demand set tracks dirty needed/rejected work.</td><td>code/tests</td><td>demand-set theorem</td></tr>
+          <tr><td>Protected overlays remain non-evictable until released.</td><td>TLA W035 + W033 Lean empty overlay</td><td>full overlay lifecycle proof</td></tr>
+          <tr><td>Publish clear only after publish-ready.</td><td>unit test + publish fixtures</td><td>coordinator bridge theorem</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>TLA has `NodeStates`; Lean has first-slice fragments, not the full tracker.</span><span>This is a tractable next mechanization target.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">REC-02</div><h2>The verified-clean branch is a semantic no-publication path</h2></div><div class="num">21 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>If computed value equals the seeded published value, tracker records `VerifiedClean`, no local candidate is produced, and publication is suppressed.</p><div class="code"><pre>if published_value.is_some_and(|v| v == &amp;computed_value) {
+  recalc_tracker.verify_clean(*node_id)?;
+  diagnostics.push("verified_clean...");
+} else {
+  produce_candidate_result(...);
+  value_updates.insert(...);
+}</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Verified-clean postcondition: published view unchanged, no publication bundle, demand removed for node, value equality witness retained in diagnostics/artifacts.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>TreeCalc verified-clean fixture; TLA Stage1 has verify-clean decision with `NullPublication`; W033 first slice includes no-publish model checks.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No end-to-end proof tying computed equality, tracker transition, and coordinator no-publish artifact.</p></div>
+    </div>
+    <div class="foot"><span>Verified-clean is more than an optimization; it is a distinct semantic result state.</span><span>Catalog ID: `REC-02`.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">EVAL-01</div><h2>The evaluation loop is where graph semantics meet value semantics</h2></div><div class="num">22 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>for node_id in &amp;evaluation_order {
+  recalc_tracker.begin_evaluate(*node_id, &amp;input.compatibility_basis)?;
+  let prepared = prepared_formulas.get(node_id).ok_or(...)?;
+  let evaluation_result = evaluate_via_oxfml(prepared, &amp;working_values);
+  let computed_value = match evaluation_result {
+    Ok(success) =&gt; success.value,
+    Err(failure) =&gt; return reject_run(...),
+  };
+  working_values.insert(*node_id, computed_value.clone());
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Theorem target</th><th>Why it matters</th><th>Status</th></tr>
+          <tr><td>Read-before-write discipline</td><td>formula sees only published or earlier ordered values</td><td class="bad">planned</td></tr>
+          <tr><td>Failure short-circuit</td><td>no later node can publish after failure</td><td class="warn">replay/TLA no-publish fragments</td></tr>
+          <tr><td>Working-values determinism</td><td>same snapshot/order/evaluator results imply same updates</td><td class="bad">planned</td></tr>
+          <tr><td>TraceCalc refinement</td><td>TreeCalc values match oracle for covered kernel</td><td class="warn">replay evidence, proof planned</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is the core calculation semantics frontier.</span><span>Current formalization has not yet mechanized it fully.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">EVAL-02</div><h2>OxFml/OxFunc-backed results are adapted through an explicit accept/reject seam</h2></div><div class="num">23 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><div class="code"><pre>build_upstream_host_packet(prepared, working_values)
+  .recalc(EvaluationBackend::OxFuncBacked)
+
+match run.commit_decision {
+  Accepted(bundle) =&gt; validate_oxfml_commit_bundle(...)
+  Rejected(reject) =&gt; Err(LocalFormulaEvaluationFailure)
+}</pre></div></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Evaluator seam contract: accepted candidate has validated bundle and value payload; rejected/residual/host outcome maps to typed no-publish failure.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>W045 upstream-host fixtures, direct OxFml cases, OxFml seam docs, W033 read-only FEC bridge, W045 public-surface guard.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>Full OxFml formula semantics and general OxFunc kernel are outside local proof; OxCalc still needs a precise seam proof for accepted/rejected candidate adaptation.</p></div>
+    </div>
+    <div class="foot"><span>This is where LET/LAMBDA requires an OxFunc peek.</span><span>General OxFunc kernel promotion remains false.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Residual gate</div><h2>Residuals and host-provider outcomes are publication blockers unless explicitly allowed</h2></div><div class="num">24 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>let should_reject_residual = matches!(
+  run.returned_value_surface.kind,
+  ReturnedValueSurfaceKind::TypedHostProviderOutcome
+) || (!prepared.translated.residuals.is_empty()
+  &amp;&amp; !formula_allows_lazy_residual_publication(&amp;prepared.binding.expression));
+
+if should_reject_residual {
+  return Err(residual_evaluation_failure(...));
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Residual class</th><th>Runtime consequence</th><th>Evidence today</th></tr>
+          <tr><td>unresolved binding</td><td>`OxfmlBindUnresolved` reject</td><td>TreeCalc/OxFml fixtures</td></tr>
+          <tr><td>typed host provider outcome</td><td>runtime residual failure</td><td>upstream-host cases</td></tr>
+          <tr><td>dynamic potential</td><td>dynamic dependency failure or shape update</td><td>W044/W045 dynamic evidence</td></tr>
+          <tr><td>lazy residual allowed</td><td>may publish under explicit formula policy</td><td>seam docs; needs proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is a proof target for typed failure totality and no-publish preservation.</span><span>Current evidence is strong but mostly replay/classification.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">DYN-01</div><h2>Dynamic dependencies are explicit runtime effects and shape updates</h2></div><div class="num">25 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>Resolved dynamic descriptors with targets produce `DependencyShapeUpdate` and `RuntimeEffectFamily::DynamicDependency` entries; unresolved dynamic potential rejects.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Dynamic add/remove/reclassify is replay-visible and never hidden graph mutation; runtime-discovered dependencies are overlays/effects, not silent structural truth.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>W044 mixed dynamic transition evidence; W045 carries this as direct evidence; dynamic reject and resolved dynamic fixtures.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>Broader dynamic transition coverage, INDIRECT selector churn, and soft-reference resolution remain exact blockers.</p></div>
+    </div>
+    <div class="foot"><span>Spec anchor: dynamic dependency discipline in `CORE_ENGINE_ARCHITECTURE.md`.</span><span>W045: broad dynamic coverage remains partial.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">OVL-01</div><h2>Overlays model runtime-derived consequences without mutating structural truth</h2></div><div class="num">26 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/recalc.rs</div>
+<pre>OverlayEntry {
+  key: OverlayKey {
+    owner_node_id,
+    overlay_kind,
+    structural_snapshot_id,
+    compatibility_basis,
+    payload_identity,
+  },
+  is_protected,
+  is_eviction_eligible,
+  detail,
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Overlay invariant</th><th>Artifact today</th><th>Status</th></tr>
+          <tr><td>protected overlays cannot be evicted</td><td>W033 `emptyOverlays_safe`; W035 TLA multi-reader</td><td class="ok">fragment/bounded</td></tr>
+          <tr><td>release marks overlays eligible only after clean/verified-clean</td><td>Rust unit test</td><td class="warn">proof planned</td></tr>
+          <tr><td>runtime effects become replay-visible overlay diagnostics</td><td>TreeCalc overlay fixtures</td><td class="warn">replay evidence</td></tr>
+          <tr><td>overlay consequences reach stable observers only through coordinator publication</td><td>coordinator spec/TLA</td><td class="warn">bounded/model target</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Overlays are a major example where the architecture is proof-oriented but not fully mechanized.</span><span>Catalog ID: `OVL-01`.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Candidate branch</div><h2>Local candidate construction is the bridge from evaluation to coordinator semantics</h2></div><div class="num">27 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc.rs</div>
+<pre>let local_candidate = LocalEvaluatorCandidate {
+  candidate_result_id,
+  target_set: evaluation_order.clone(),
+  value_updates,
+  dependency_shape_updates,
+  runtime_effects,
+  diagnostic_events,
+};
+let candidate_result = adapt_local_candidate(&amp;input, &amp;local_candidate);
+coordinator.admit_candidate_work(candidate_result.clone())?;
+coordinator.record_accepted_candidate_result(&amp;input.candidate_result_id)?;
+let publication_bundle = coordinator.accept_and_publish(&amp;input.publication_id)?;</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Candidate invariant</th><th>Formal target</th><th>Today</th></tr>
+          <tr><td>candidate target set equals evaluation order</td><td>all published updates were evaluated</td><td class="warn">artifact evidence</td></tr>
+          <tr><td>value updates are non-empty for publication branch</td><td>verified-clean separated from publish</td><td class="warn">replay evidence</td></tr>
+          <tr><td>candidate is not publication</td><td>candidate identity distinct from published view</td><td class="ok">W033 Lean/TLA</td></tr>
+          <tr><td>candidate carries runtime effects/shape updates</td><td>dynamic behavior is replay-visible</td><td class="warn">replay/classifier</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Candidate/publication separation is one of the better formalized areas.</span><span>The value-update/evaluation-order link remains a proof target.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">REJ-01</div><h2>The reject branch has the strongest semantic proof lineage</h2></div><div class="num">28 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">W033FirstSlice.lean</div>
+<pre>def RejectIsNoPublish (before after : CoordinatorState) : Prop :=
+  after.publishedView = before.publishedView
+    /\ after.commitHistory = before.commitHistory
+
+def ApplyReject (state : CoordinatorState) (reject : RejectFact) : CoordinatorState :=
+  { state with
+    inFlightCandidate := none,
+    acceptedCandidate := none,
+    rejectLog := reject :: state.rejectLog }
+
+theorem applyReject_noPublish :
+  RejectIsNoPublish state (ApplyReject state reject) := by
+  simp [RejectIsNoPublish, ApplyReject]</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Layer</th><th>Evidence</th></tr>
+          <tr><td>Lean</td><td>`applyReject_noPublish` proved fragment</td></tr>
+          <tr><td>TLA</td><td>`RejectIsNoPublish` in Stage1/PostW033/Stage2 configs</td></tr>
+          <tr><td>Rust</td><td>`reject_run`, `reject_candidate_work`, `RejectDetail`</td></tr>
+          <tr><td>Replay</td><td>dynamic, host, capability, shape, fence, unresolved reject fixtures</td></tr>
+          <tr><td>Gap</td><td>full refinement proof from every Rust error path to Lean/TLA reject relation</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This slide shows real work toward full mechanized semantics.</span><span>It is narrow but not superficial.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">PUB-01</div><h2>Atomic publication also has a real Lean/TLA/replay chain</h2></div><div class="num">29 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">W033FirstSlice.lean</div>
+<pre>def AtomicPublication (before after : CoordinatorState)
+    (commit : CommitBundleFact) (published : PublishedView) : Prop :=
+  after.publishedView = some published
+    /\ after.commitHistory = commit :: before.commitHistory
+    /\ published.sourceCandidateId = commit.candidateId
+    /\ published.epochId = commit.epochId
+
+theorem applyPublish_atomic :
+  AtomicPublication state (ApplyPublish state commit)
+    commit (PublishedViewFromCommit commit) := by
+  simp [AtomicPublication, ApplyPublish, PublishedViewFromCommit]</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Publication question</th><th>Artifact today</th><th>Status</th></tr>
+          <tr><td>accepted publication is atomic</td><td>W033 Lean + TLA `NoTornPublication`</td><td class="ok">proved/bounded fragment</td></tr>
+          <tr><td>publication derives from accepted candidate</td><td>Lean `sourceCandidateId`; coordinator code</td><td class="ok">fragment + tests</td></tr>
+          <tr><td>publication view extends previous values by candidate updates</td><td>coordinator code/test</td><td class="warn">proof planned</td></tr>
+          <tr><td>publication updates recalc tracker to clean</td><td>TreeCalc code/test</td><td class="warn">bridge proof planned</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Catalog IDs: `PUB-01`, `PUB-02`.</span><span>This is a foundation to build from, not a whole-engine proof.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Coordinator data model</div><h2>Coordinator structs match the publication/reject proof vocabulary</h2></div><div class="num">30 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/coordinator.rs</div>
+<pre>AcceptedCandidateResult {
+  candidate_result_id,
+  structural_snapshot_id,
+  artifact_token_basis,
+  compatibility_basis,
+  target_set,
+  value_updates,
+  dependency_shape_updates,
+  runtime_effects,
+  diagnostic_events,
+}
+
+PublicationBundle {
+  publication_id,
+  candidate_result_id,
+  structural_snapshot_id,
+  published_view_delta,
+  published_runtime_effects,
+  trace_markers,
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Struct field</th><th>Formal role</th></tr>
+          <tr><td>snapshot id</td><td>fence compatibility and no stale publication</td></tr>
+          <tr><td>artifact token / basis</td><td>compatibility proof input</td></tr>
+          <tr><td>target set</td><td>evaluated/published node set</td></tr>
+          <tr><td>value updates</td><td>published delta</td></tr>
+          <tr><td>runtime effects</td><td>replay-visible dynamic/capability/shape effects</td></tr>
+          <tr><td>trace markers</td><td>forensic/replay linkage</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>The Rust data model is formalization-friendly.</span><span>The next step is refinement proof, not just artifact classification.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Coordinator transitions</div><h2>Accept/publish and reject have concrete pre/post surfaces</h2></div><div class="num">31 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Transition</th><th>Rust precondition</th><th>Postcondition</th><th>Current formal artifact</th><th>Gap</th></tr>
+          <tr><td>`admit_candidate_work`</td><td>candidate snapshot matches coordinator snapshot</td><td>candidate is in-flight</td><td>TLA import/admit actions</td><td>Rust refinement theorem</td></tr>
+          <tr><td>`record_accepted_candidate_result`</td><td>candidate is in-flight</td><td>candidate becomes accepted; in-flight cleared</td><td>TLA record accepted</td><td>Rust refinement theorem</td></tr>
+          <tr><td>`accept_and_publish`</td><td>accepted candidate exists</td><td>published view values extend by candidate updates; counter increments</td><td>W033 `applyPublish_atomic` fragment</td><td>value-extension proof</td></tr>
+          <tr><td>`reject_candidate_work`</td><td>candidate known/admitted</td><td>reject log appended; candidate slots cleared; publication untouched</td><td>W033 `applyReject_noPublish`; TLA</td><td>all error-kind mapping proof</td></tr>
+          <tr><td>`pin_published_view`</td><td>reader id and current publication</td><td>pinned view stable for reader</td><td>TLA pinned reader models</td><td>broader epoch/GC proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Spec anchor: `CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`.</span><span>This should become a first-class Lean/TLA refinement lane.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">TLA Stage1</div><h2>TLA+ models the publication/reject state machine, not the whole value engine</h2></div><div class="num">32 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">formal/tla/CoreEngineStage1.tla</div>
+<pre>Next ==
+  \/ A1MarkDirty(node)
+  \/ A2MarkNeeded(node)
+  \/ A3BeginEvaluate(node, candidateId, compat)
+  \/ A4AdmitCandidateWork(candidateId, node, compat)
+  \/ A5RecordAcceptedCandidateResult(candidateId, node, compat)
+  \/ A6RejectCandidateWork(candidateId, rejectKind)
+  \/ A7AcceptAndPublish(candidateId, publicationId)
+
+TypeInvariant
+NoTornPublication
+RejectIsNoPublish
+CandidateIsNotPublication</pre>
+      </div>
+      <div class="panel">
+        <h3>Interpretation</h3>
+        <p class="lead">This is meaningful bounded formal work. It models coordinator/recalc safety and publication separation, but it abstracts away formula evaluation, graph construction, SCC, and invalidation closure details.</p>
+        <div class="pillrow" style="margin-top:12px"><span class="pill a">bounded_model</span><span class="pill a">publish/reject safety</span><span class="pill g">not graph proof</span><span class="pill g">not evaluator proof</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>W033 Stage1 smoke: 4,855 generated states, 908 distinct states, no error.</span><span>Clear model boundary is part of honesty.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">TLA Stage2</div><h2>Stage2 checks partition/fence/no-promotion properties under bounded schedules</h2></div><div class="num">33 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>Future partitioned/concurrent evaluator work must remain behind coordinator publication authority and deterministic replay obligations.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Observable result invariance under partition/permutation schedules, no publication from stale snapshot/capability, promotion only with required evidence.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>`CoreEngineW036Stage2Partition.tla`; checked properties include `NoStage2PolicyPromotion`, `RejectIsNoPublish`, `AcceptedCandidateRequiresFences`.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>Concrete partition analyzer soundness, unbounded fairness, operated differential service, and pack governance remain unpromoted.</p></div>
+    </div>
+    <div class="foot"><span>W045 Stage2: 29 policy rows, 19 satisfied, 10 exact blockers.</span><span>Bounded evidence does not promote Stage2 policy.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Lean proved fragments</div><h2>The work toward a mechanized semantics proof is real but narrow</h2></div><div class="num">34 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Lean item</th><th>Semantic content</th><th>Engine phase</th><th>Limit</th></tr>
+          <tr><td>`CandidateFact`, `CommitBundleFact`, `RejectFact`, `CoordinatorState`</td><td>formal objects for candidate, commit, reject, coordinator state</td><td>coordinator/publication</td><td>simplified model, not Rust refinement</td></tr>
+          <tr><td>`RejectIsNoPublish`, `applyReject_noPublish`</td><td>reject leaves publication and commit history unchanged</td><td>reject branch</td><td>does not cover every Rust error path</td></tr>
+          <tr><td>`AtomicPublication`, `applyPublish_atomic`</td><td>publish updates view/history atomically and ties published view to commit</td><td>publish branch</td><td>does not prove value update semantics</td></tr>
+          <tr><td>`ConservativeAffectedSet`, `conservativeAffectedSet_refl`</td><td>minimal affected-set proof vocabulary</td><td>invalidation vocabulary</td><td>not closure algorithm proof</td></tr>
+          <tr><td>`ProtectedOverlaySafe`, `emptyOverlays_safe`</td><td>initial overlay safety fragment</td><td>overlay lifecycle</td><td>not full overlay lifecycle proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Source: `formal/lean/OxCalc/CoreEngine/W033FirstSlice.lean`.</span><span>This is exactly where semantic proof work should grow outward.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Lean classifiers</div><h2>W035-W045 Lean mostly classifies evidence and boundaries</h2></div><div class="num">35 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">W035AssumptionDischarge.lean</div>
+<pre>inductive ProofDisposition where
+  | provedLocal
+  | explicitAxiom
+  | externalSeamAssumption
+  | opaqueKernelBoundary
+  | deferredToLaterLane
+
+def SnapshotFenceObligation : ObligationRow := ...
+def DependencyClosureObligation : ObligationRow := ...
+def OverlayRetentionObligation : ObligationRow := ...
+def CallableCarrierObligation : ObligationRow := ...
+
+theorem w035LeanAssumptionSummary_noFullLeanPromotion :
+  fullLeanVerificationPromoted = false := by rfl</pre>
+      </div>
+      <div class="panel">
+        <h3>Review verdict</h3>
+        <table>
+          <tr><th>Value</th><th>Risk</th><th>Direction</th></tr>
+          <tr><td>Prevents overclaiming and records ownership boundaries.</td><td>Can become process-formalization if it replaces engine semantics.</td><td>Keep classifiers, but make them secondary to semantic definitions.</td></tr>
+          <tr><td>Provides machine-checked no-promotion facts.</td><td>Does not prove graph, closure, order, or evaluation.</td><td>Use classifiers to manage proof backlog, not as the proof backlog itself.</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This directly addresses the earlier concern.</span><span>The new deck distinguishes classifier value from semantic proof value.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Rust totality/refinement classifiers</div><h2>W044-W045 improved evidence discipline around dynamic/refinement boundaries</h2></div><div class="num">36 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">W044RustTotalityAndRefinement.lean</div>
+<pre>def MixedDynamicTransitionRefinementRow : W044RustRow := {
+  evidenceKind := mixedDynamicTransitionEvidence,
+  dispositionKind := directRefinementEvidence,
+  localCheckedProof := true,
+  refinementRow := true,
+  automaticDynamicTransitionRow := true,
+  exactRemainingBlocker := false,
+  promotionClaim := false
+}
+
+theorem mixedDynamicTransition_isDirectRefinementEvidence : ...
+theorem counterpartBreadthRows_areExactRefinementBlockers : ...
+theorem allW044RustRows_nonPromoting : ...</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>What it gives us</th><th>What it does not give us</th></tr>
+          <tr><td>Dynamic mixed-transition evidence is classified and carried forward.</td><td>No general dynamic transition theorem.</td></tr>
+          <tr><td>Snapshot/capability breadth blockers are exact.</td><td>No broad fence-counterpart proof.</td></tr>
+          <tr><td>Panic surface and totality boundaries are visible.</td><td>No panic-free core proof.</td></tr>
+          <tr><td>Callable carrier vs metadata projection is separated.</td><td>No full callable metadata/semantic projection proof.</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>W045 Rust summary: 17 rows, 11 local checked-proof classifications, 7 exact blockers, panic marker count 158.</span><span>Good discipline, not full semantics.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">TraceCalc</div><h2>TraceCalc is the executable semantic oracle surface</h2></div><div class="num">37 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>TreeCalc is the local optimized/core engine path. TraceCalc provides an independent reference-machine and replay vocabulary for spec purposes.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>For selected kernels, prove or replay refinement: TreeCalc observable artifacts equal TraceCalc oracle artifacts under shared snapshot/formula/evaluator assumptions.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>`tracecalc-reference-machine`: 2,739 files; retained failures: 1,097 files; W033 12 self-check scenarios passed; W035 oracle matrix expanded.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>Full mechanized TraceCalc/TreeCalc refinement is not present. Current equivalence is primarily deterministic replay/comparison evidence.</p></div>
+    </div>
+    <div class="foot"><span>TraceCalc should expand during formalization as the reference implementation, not as another process ledger.</span><span>Catalog ID: `ASSURE-01`.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">TreeCalc evidence</div><h2>TreeCalc local artifacts expose the engine phases in detail</h2></div><div class="num">38 / 50</div></div>
+    <div class="body grid2">
+      <div class="panel">
+        <h3>Representative emitted files per case</h3>
+        <table>
+          <tr><th>File</th><th>Semantic role</th></tr>
+          <tr><td>`dependency_graph.json`</td><td>descriptors, edges, reverse edges, cycle groups, diagnostics</td></tr>
+          <tr><td>`invalidation_closure.json`</td><td>impacted order, reasons, rebind flags, node states</td></tr>
+          <tr><td>`node_states.json`</td><td>tracker terminal state map</td></tr>
+          <tr><td>`phase_timings.json`</td><td>phase split in microseconds/ms</td></tr>
+          <tr><td>`result.json` / `explain.json`</td><td>publication/reject/candidate/diagnostic summary</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>W045 closure audit metrics</h3>
+        <div class="metrics">
+          <div class="metric"><strong>28</strong><span>TreeCalc cases</span></div>
+          <div class="metric"><strong>0</strong><span>expectation mismatches</span></div>
+          <div class="metric"><strong>16</strong><span>upstream-host fixture cases</span></div>
+          <div class="metric"><strong>7</strong><span>direct OxFml cases</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span>Replay evidence is broad and useful.</span><span>The formalization gap is mapping those artifacts into semantic proof obligations.</span></div>
+  </section>
+
+  <section class="slide hero" style="background-image:url('assets/dependency-graph-scale.png')">
+    <div class="top"><div><div class="kicker">SCALE-01</div><h2>Scale models are semantic signatures, not just performance tests</h2></div><div class="num">39 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">src/oxcalc-core/src/treecalc_scale.rs</div>
+<pre>pub enum TreeCalcScaleProfile {
+  GridCrossSum,              // 1000 x 1000
+  FanoutBands,               // 1,000,000 nodes
+  DynamicIndirectStripes,    // 1000 x 1000 + selectors
+  RelativeRebindChurn,       // 1,000,000 nodes
+}</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Profile</th><th>What it stresses</th><th>Correctness check</th></tr>
+          <tr><td>GridCrossSum</td><td>many row/column references</td><td>closed-form delta sum</td></tr>
+          <tr><td>FanoutBands</td><td>dependency graph fanout</td><td>expected descriptor/edge counts</td></tr>
+          <tr><td>DynamicIndirectStripes</td><td>INDIRECT-like selector churn</td><td>dynamic slots and closed-form sum</td></tr>
+          <tr><td>RelativeRebindChurn</td><td>soft-reference update and rebind seeds</td><td>expected rebind seed count</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>Scale evidence can distinguish graph build, soft-reference update, invalidation, and recalc phases.</span><span>It is not promoted as release correctness proof at W045.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Phase timings</div><h2>Scale instrumentation uses the same formalization phase boundaries</h2></div><div class="num">40 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">treecalc_scale.rs</div>
+<pre>phase_timings.insert("model_build_structural_snapshot_and_formula_catalog", ...);
+phase_timings.insert("dependency_descriptor_lowering", ...);
+phase_timings.insert("dependency_graph_build_and_cycle_scan", ...);
+phase_timings.insert("soft_reference_update_rebind_seed_derivation", ...);
+phase_timings.insert("invalidation_closure_derivation", ...);
+phase_timings.insert("synthetic_closed_form_recalc", ...);
+phase_timings.insert("validation_checks", ...);</pre>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Timing phase</th><th>Formalization target</th></tr>
+          <tr><td>model build</td><td>snapshot/formula catalog generation relation</td></tr>
+          <tr><td>descriptor lowering</td><td>reference-to-descriptor preservation</td></tr>
+          <tr><td>graph + SCC</td><td>edge/reverse/SCC correctness</td></tr>
+          <tr><td>soft-reference update</td><td>rebind seed totality</td></tr>
+          <tr><td>closure</td><td>reverse reachability theorem</td></tr>
+          <tr><td>closed-form recalc</td><td>value semantics signature</td></tr>
+          <tr><td>validation</td><td>expected/observed equality proof artifact</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>W045 scale required artifacts: 30, no missing/unexpected mismatches in closure audit.</span><span>Continuous scale assurance service remains unpromoted.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Closed-form values</div><h2>Large recalc can be validated by equations</h2></div><div class="num">41 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">treecalc_scale.rs</div>
+<pre>baseline_sum = cols * sum(left_values) + rows * sum(top_values)
+expected_delta_sum =
+  cols * left_delta + rows * top_delta
+expected_after_sum = baseline_sum + expected_delta_sum
+
+observed_after_sum = sum(all generated cell results)
+validation requires observed_after_sum == expected_after_sum</pre>
+      </div>
+      <div class="panel">
+        <h3>Formal target</h3>
+        <p class="lead">Scale models should become semantic regression signatures: if graph/closure/recalc changes, the closed-form equality and phase-level counts catch semantic drift at one-million-node scale.</p>
+        <div class="pillrow" style="margin-top:12px"><span class="pill a">scale_signature</span><span class="pill f">model theorem target</span><span class="pill g">not proof by itself</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>This answers the earlier performance/scaling lane: testing can be high-scale and checkable.</span><span>Formalization should bind this to semantic properties.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">LET/LAMBDA seam</div><h2>Callable carriers are in scope because they thread through OxCalc + OxFml + OxFunc</h2></div><div class="num">42 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><p>OxCalc prepares formulas through OxFml and evaluates with an OxFunc-backed backend. LET/LAMBDA can be value carriers and callable objects, not just arithmetic values.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Specify carrier identity, invocation contract reference, dependency visibility, runtime-effect visibility, and publication/reject consequences without claiming full OxFunc kernel ownership.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>W033 `LetLambdaCarrierFact`; W035 callable carrier local proof row; W044/W045 callable value-carrier evidence; W045 has 2 LET/LAMBDA cases.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>Callable metadata projection, registered external callable projection, provider failure callable publication, and general OxFunc kernels remain unpromoted.</p></div>
+    </div>
+    <div class="foot"><span>This is an intended scoped peek into OxFunc, not a hidden expansion to full OxFunc formalization.</span><span>Catalog ID: `FML-02`.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Formatting seam</div><h2>W073 formatting is a seam guard, not a calculation semantics proof</h2></div><div class="num">43 / 50</div></div>
+    <div class="body grid2">
+      <div class="panel">
+        <h3>Current W045 intake</h3>
+        <ul>
+          <li>typed-rule path covers `colorScale`, `dataBar`, `iconSet`, `top`, `bottom`, `aboveAverage`, `belowAverage`</li>
+          <li>old W072 `thresholds` strings are ignored for those families</li>
+          <li>W045 carries 5 W073 formatting guard cases</li>
+          <li>downstream typed-rule request construction remains unverified by OxCalc</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <table>
+          <tr><th>Why include it?</th><th>Why constrain it?</th></tr>
+          <tr><td>Formatting payloads cross OxFml/public display seams and must not corrupt publication semantics.</td><td>It is not core value-recalc semantics and should not dominate engine formalization.</td></tr>
+          <tr><td>Typed-rule guard helps prevent seam drift.</td><td>Broad display/publication closure and public migration remain unpromoted.</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>FEC/F3E canonical sources remain OxFml-owned.</span><span>No OxFml files were edited for this deck.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Property coverage</div><h2>Review matrix: where formalization currently reaches engine semantics</h2></div><div class="num">44 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table class="matrix">
+          <tr><th>Property</th><th>Rust</th><th>TraceCalc</th><th>Lean semantic</th><th>Lean classifier</th><th>TLA</th><th>Scale</th><th>Verdict</th></tr>
+          <tr><td>reject preserves published view</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td><td>-</td><td class="ok">strong</td></tr>
+          <tr><td>publish is atomic and candidate-derived</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">fragment</td><td class="ok">yes</td><td class="ok">yes</td><td>-</td><td class="ok">strong fragment</td></tr>
+          <tr><td>tracker transition legality</td><td class="ok">yes</td><td class="warn">partial</td><td class="bad">no</td><td class="warn">some</td><td class="ok">bounded</td><td>-</td><td class="warn">good target</td></tr>
+          <tr><td>reference lowering soundness</td><td class="ok">yes</td><td class="warn">partial</td><td class="bad">no</td><td class="warn">some</td><td class="bad">no</td><td>-</td><td class="bad">planned</td></tr>
+          <tr><td>edge/reverse-edge converse</td><td class="ok">yes</td><td class="warn">partial</td><td class="bad">no</td><td class="bad">no</td><td class="bad">no</td><td class="warn">indirect</td><td class="bad">planned</td></tr>
+          <tr><td>SCC correctness</td><td class="ok">yes</td><td class="warn">cycle cases</td><td class="bad">no</td><td class="bad">no</td><td class="bad">no</td><td>-</td><td class="bad">planned</td></tr>
+          <tr><td>invalidation closure reachability</td><td class="ok">yes</td><td class="warn">partial</td><td class="bad">no</td><td class="warn">classified</td><td class="bad">no</td><td class="ok">indirect</td><td class="bad">planned</td></tr>
+          <tr><td>soft-reference/INDIRECT totality</td><td class="warn">stress</td><td class="warn">partial</td><td class="bad">no</td><td class="bad">blocker</td><td class="bad">no</td><td class="warn">stress</td><td class="bad">exact blocker</td></tr>
+          <tr><td>value-evaluation refinement</td><td class="ok">yes</td><td class="ok">selected</td><td class="bad">no</td><td class="warn">some</td><td class="bad">no</td><td class="ok">closed-form</td><td class="warn">replay strong, proof planned</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This matrix is the main correction to the previous deck.</span><span>It makes engine proof coverage inspectable rather than vague.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Exact blockers</div><h2>W045 blockers map to concrete engine proof gaps</h2></div><div class="num">45 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>W045 blocker / non-promotion reason</th><th>Engine phase affected</th><th>Formal work implied</th></tr>
+          <tr><td>broader dynamic dependency transition coverage partial</td><td>reference lowering, graph update, runtime effects</td><td>dynamic add/remove/reclassify theorem family plus replay matrix</td></tr>
+          <tr><td>soft-reference/INDIRECT totality boundary absent</td><td>rebind seed derivation, dynamic selector resolution</td><td>soft-reference semantics and totality/refinement proof</td></tr>
+          <tr><td>snapshot/capability counterpart breadth absent</td><td>fence checks, coordinator acceptance</td><td>fence compatibility theorem over broader cases</td></tr>
+          <tr><td>runtime panic-surface proof absent</td><td>all Rust transitions</td><td>totality/panic-free domain proof or exact typed boundary model</td></tr>
+          <tr><td>full Lean/TLA verification not promoted</td><td>whole engine</td><td>semantic model expansion beyond classifiers/bounded checks</td></tr>
+          <tr><td>fairness/unbounded scheduler coverage absent</td><td>Stage2 scheduler/partition</td><td>unbounded fairness or explicit bounded-production policy proof</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>These are not administrative blockers; they name real engine semantics not yet proven.</span><span>This deck now makes that visible.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">What full mechanized semantics would mean</div><h2>A full proof would need layered refinement, not only more row files</h2></div><div class="num">46 / 50</div></div>
+    <div class="body">
+      <div class="panel">
+        <table>
+          <tr><th>Layer</th><th>Mechanized object needed</th><th>Likely proof statements</th></tr>
+          <tr><td>Formula/reference layer</td><td>Lean model of references/descriptors/prepared formula surface</td><td>lowering totality; descriptor family preservation; residual typed failure</td></tr>
+          <tr><td>Graph layer</td><td>finite graph model with forward/reverse maps and SCCs</td><td>edge soundness; reverse converse; SCC soundness/completeness</td></tr>
+          <tr><td>Invalidation layer</td><td>seed/closure reachability model</td><td>no under-invalidation; rebind flag soundness; deterministic closure</td></tr>
+          <tr><td>Recalc layer</td><td>state transition system for `Stage1RecalcTracker`</td><td>transition pre/postconditions; demand/overlay preservation</td></tr>
+          <tr><td>Evaluation layer</td><td>kernel reference semantics, probably via TraceCalc for scoped formulas</td><td>working-value determinism; TreeCalc refines TraceCalc for selected kernels</td></tr>
+          <tr><td>Coordinator layer</td><td>candidate/reject/publication refinement model</td><td>reject no-publish; atomic publish; fence preservation; pinned view stability</td></tr>
+          <tr><td>Scale/regression layer</td><td>closed-form models tied to phase artifacts</td><td>large-model expected equality and phase count sanity</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="foot"><span>This is the ambitious direction the deck now proposes.</span><span>W033 fragments give a seed; W046+ should expand the semantic core.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Recommended W046+ proof program</div><h2>Make the engine abstractions first-class formal objects</h2></div><div class="num">47 / 50</div></div>
+    <div class="body grid2">
+      <div class="panel">
+        <h3>Priority 1: core semantic spine</h3>
+        <ol>
+          <li>Lean graph datatype: descriptors, edges, reverse edges.</li>
+          <li>Reference lowering preservation theorems.</li>
+          <li>Tarjan/SCC specification and emitted group theorem target.</li>
+          <li>Invalidation closure reachability and rebind flag soundness.</li>
+          <li>Recalc tracker transition pre/postconditions.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h3>Priority 2: refinement and replay</h3>
+        <ol>
+          <li>TraceCalc semantic kernel for a scoped formula subset.</li>
+          <li>TreeCalc/TraceCalc refinement replay table with explicit theorem IDs.</li>
+          <li>Coordinator publish/reject refinement from Rust struct transitions.</li>
+          <li>Scale signatures linked to formal obligations.</li>
+          <li>Stage2 partition equivalence proof obligations kept separate from Stage1 baseline.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="foot"><span>This preserves W033-W045 evidence while changing the center of gravity.</span><span>Do not discard classifiers; subordinate them to semantic proof progress.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">Deck design review</div><h2>How this showcase should now be read</h2></div><div class="num">48 / 50</div></div>
+    <div class="body quad">
+      <div class="lane engine"><h3><span class="dot"></span>Engine Story</h3><p>The execution dance is concrete and rich. The Rust design already emits artifacts that can support formalization.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Ambition</h3><p>The desired model is not just claim/blocker logic; it is a layered semantics of graph, closure, state, evaluation, and publication.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Current Evidence</h3><p>W033-W045 produced useful proof fragments, bounded TLA, replay artifacts, classifier files, seam guards, and scale signatures.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Decision Point</h3><p>The next phase should materially deepen the semantic proof spine. More closure artifacts alone would not answer the user's concern.</p></div>
+    </div>
+    <div class="foot"><span>This is intentionally more critical and denser than the prior deck.</span><span>It is meant to guide the next worksets.</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="top"><div><div class="kicker">W045 status</div><h2>W045 is strong C4 evidence with explicit residual boundaries</h2></div><div class="num">49 / 50</div></div>
+    <div class="body grid2">
+      <div class="code">
+        <div class="path">W045 closure audit summary</div>
+<pre>evidence_packets: 10
+closure_obligation_count: 36
+promotion_contract_count: 18
+w045_treecalc_case_count: 28
+w045_treecalc_expectation_mismatch_count: 0
+w045_pack_required_artifact_count: 107
+w045_scale_required_artifact_count: 30
+highest_honest_capability: cap.C4.distill_valid
+release_grade_verification_promoted: false
+full_formalization_promoted: false
+c5_promoted: false
+successor_workset: W046</pre>
+      </div>
+      <div class="panel">
+        <h3>Interpretation</h3>
+        <p class="lead">This is not weak. It is a strong, honest intermediate state: broad deterministic evidence, selected semantic proof fragments, bounded formal models, and a clear list of proof gaps.</p>
+        <div class="pillrow" style="margin-top:12px"><span class="pill a">C4 evidence</span><span class="pill f">bounded formal checks</span><span class="pill g">not release grade</span><span class="pill g">not full mechanized semantics</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>Source: `docs/test-runs/core-engine/closure-audit/w045-closure-audit-release-grade-verification-decision-001`.</span><span>W046 remains future scope here.</span></div>
+  </section>
+
+  <section class="slide hero" style="background-image:url('assets/evidence-instrument-finale.png')">
+    <div class="top"><div><div class="kicker">Closing</div><h2>The next pass should formalize the calculation engine itself</h2><p class="sub">The path forward is clear: keep the replay and classifier infrastructure, but center the work on mechanized semantics for reference lowering, dependency graphs, SCCs, invalidation closure, recalc state transitions, evaluation/refinement, and publication safety.</p></div><div class="num">50 / 50</div></div>
+    <div class="body">
+      <div class="metrics" style="max-width:1180px;margin-top:22px">
+        <div class="metric"><strong>graph</strong><span>descriptor, edge, reverse edge, SCC theorem families</span></div>
+        <div class="metric"><strong>closure</strong><span>seed coverage, reverse reachability, rebind soundness</span></div>
+        <div class="metric"><strong>recalc</strong><span>state pre/postconditions and working-value semantics</span></div>
+        <div class="metric"><strong>publish</strong><span>extend the strongest Lean/TLA fragments into Rust refinement</span></div>
+      </div>
+    </div>
+    <div class="foot"><span>The revised showcase is a review instrument, not a claim of full proof.</span><span>Use the catalog to steer W046+.</span></div>
+  </section>
+
+</main>
+<div class="controls">
+  <button id="prev" type="button">Prev</button>
+  <span id="counter">1 / 50</span>
+  <button id="next" type="button">Next</button>
+</div>
+<script>
+  (function () {
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const counter = document.getElementById("counter");
+    let index = 0;
+    function show(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      window.location.hash = `slide-${index + 1}`;
+    }
+    document.getElementById("prev").addEventListener("click", () => show(index - 1));
+    document.getElementById("next").addEventListener("click", () => show(index + 1));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") show(index + 1);
+      if (event.key === "ArrowLeft" || event.key === "PageUp" || event.key === "Backspace") show(index - 1);
+      if (event.key === "Home") show(0);
+      if (event.key === "End") show(slides.length - 1);
+    });
+    const match = window.location.hash.match(/slide-(\d+)/);
+    if (match) show(Number(match[1]) - 1);
+    else show(0);
+  }());
+</script>
+</body>
+</html>

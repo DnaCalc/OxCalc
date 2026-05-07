@@ -1,0 +1,2112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OxCalc — Deep Technical Brochure</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --ink:#1a1f2b;
+    --ink-soft:#3a4253;
+    --paper:#fbfaf6;
+    --rule:#cdd2dc;
+    --accent:#1f6feb;
+    --accent-soft:#cfe1ff;
+    --accent-2:#9a3412;
+    --accent-3:#0f766e;
+    --accent-4:#7c3aed;
+    --warn:#b91c1c;
+    --good:#15803d;
+    --code-bg:#0f172a;
+    --code-fg:#e2e8f0;
+    --code-key:#93c5fd;
+    --code-fn:#f0abfc;
+    --code-str:#86efac;
+    --code-com:#94a3b8;
+    --code-num:#fcd34d;
+    --highlight:#fff7d6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#e9ecef;color:var(--ink);font-family:"Inter","Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.45}
+  .doc{max-width:880px;margin:0 auto;padding:24px 0}
+  .page{
+    background:var(--paper);
+    width:880px;min-height:1180px;
+    margin:18px auto;
+    padding:46px 56px 56px 56px;
+    box-shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+    position:relative;
+    page-break-after:always;
+  }
+  .page:last-of-type{page-break-after:auto}
+  .page-num{
+    position:absolute;right:32px;bottom:18px;
+    font-size:11px;color:var(--ink-soft);letter-spacing:1px;font-variant:small-caps;
+  }
+  .page-rail{
+    position:absolute;left:32px;top:46px;bottom:46px;width:3px;
+    background:linear-gradient(to bottom,var(--accent) 0%,var(--accent-3) 50%,var(--accent-4) 100%);
+    border-radius:2px;
+  }
+  h1,h2,h3,h4{font-family:"Newsreader","Source Serif 4",Georgia,serif;color:var(--ink);font-weight:600;margin:0 0 .5em 0;letter-spacing:-0.01em}
+  h1{font-size:36px;line-height:1.1}
+  h2{font-size:24px;line-height:1.2;border-bottom:1px solid var(--rule);padding-bottom:.25em;margin-top:.2em}
+  h3{font-size:17px;color:var(--accent);margin-top:1.2em}
+  h4{font-size:14px;color:var(--accent-2);text-transform:uppercase;letter-spacing:.08em;margin-top:1em;margin-bottom:.3em}
+  p{margin:.5em 0}
+  small,.small{font-size:11.5px;color:var(--ink-soft)}
+  .eyebrow{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
+  .lede{font-size:16px;line-height:1.55;color:var(--ink-soft)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .grid12{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+  .grid21{display:grid;grid-template-columns:1fr 1.4fr;gap:18px}
+  .card{
+    background:#fff;border:1px solid var(--rule);border-radius:6px;
+    padding:12px 14px;font-size:12.5px;line-height:1.45;
+  }
+  .card.callout{border-left:4px solid var(--accent);background:#f4f8ff}
+  .card.warn{border-left:4px solid var(--warn);background:#fff5f5}
+  .card.good{border-left:4px solid var(--good);background:#f3fbf4}
+  .card.theory{border-left:4px solid var(--accent-4);background:#faf5ff}
+  .card h4{margin-top:0}
+  .pill{
+    display:inline-block;padding:1px 8px;border-radius:99px;
+    font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    background:var(--accent-soft);color:#0a3d91;border:1px solid #c5d8ff;
+  }
+  .pill.warn{background:#ffe4e0;color:#7a1d12;border-color:#fac4ba}
+  .pill.good{background:#dcfce7;color:#065f46;border-color:#bbf7d0}
+  .pill.theory{background:#ede9fe;color:#5b21b6;border-color:#ddd0fb}
+  .pill.muted{background:#eef0f4;color:#46505d;border-color:#d8dde4}
+  pre.code{
+    background:var(--code-bg);color:var(--code-fg);
+    border-radius:6px;padding:12px 14px;
+    font-family:"JetBrains Mono","Fira Code",Consolas,monospace;
+    font-size:11.5px;line-height:1.5;overflow-x:auto;margin:8px 0;
+  }
+  pre.code .k{color:var(--code-key);font-weight:600}
+  pre.code .f{color:var(--code-fn)}
+  pre.code .s{color:var(--code-str)}
+  pre.code .c{color:var(--code-com);font-style:italic}
+  pre.code .n{color:var(--code-num)}
+  pre.code .h{background:rgba(252,211,77,.18);border-radius:3px}
+  .tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--ink-soft)}
+  .legend .swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  table{border-collapse:collapse;width:100%;font-size:12px;margin:6px 0}
+  th,td{border:1px solid var(--rule);padding:5px 7px;vertical-align:top;text-align:left}
+  th{background:#eef2f7;color:var(--ink);font-weight:600}
+  td.mono{font-family:"JetBrains Mono",Consolas,monospace;font-size:11px}
+  .toc{columns:2;column-gap:24px}
+  .toc ol{padding-left:18px;margin:0}
+  .toc li{break-inside:avoid;margin:2px 0}
+  .toc li small{color:var(--ink-soft)}
+  .doc-meta{
+    display:flex;gap:16px;align-items:flex-end;justify-content:space-between;
+    border-top:1px solid var(--rule);padding-top:14px;margin-top:24px;font-size:11.5px;color:var(--ink-soft)
+  }
+  .kbd{display:inline-block;padding:1px 6px;background:#fff;border:1px solid var(--rule);border-radius:4px;font-family:Consolas,monospace;font-size:11px}
+  .arrow-list{list-style:none;padding:0;margin:.4em 0}
+  .arrow-list li{padding-left:18px;position:relative;margin:3px 0}
+  .arrow-list li:before{content:"›";position:absolute;left:4px;top:-1px;color:var(--accent);font-weight:700}
+  .footnote{font-size:10.5px;color:var(--ink-soft);border-top:1px dashed var(--rule);padding-top:6px;margin-top:14px}
+  svg{display:block;margin:6px auto;max-width:100%;height:auto}
+  .svg-frame{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:10px 8px;margin:8px 0}
+  .caption{text-align:center;font-size:11px;color:var(--ink-soft);margin:2px 0 6px 0;font-style:italic}
+  .strong-num{font-family:"Newsreader",Georgia,serif;font-size:22px;color:var(--accent);font-weight:700;line-height:1}
+  .stamp{
+    position:absolute;top:36px;right:48px;
+    border:2px solid var(--accent);color:var(--accent);
+    padding:4px 8px;border-radius:4px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
+    transform:rotate(2deg);
+  }
+  .glyph-row{display:flex;gap:10px;align-items:center;margin:8px 0}
+  .quote{font-family:"Newsreader",Georgia,serif;font-style:italic;font-size:15px;color:var(--ink-soft);border-left:3px solid var(--accent);padding:4px 12px;margin:10px 0}
+  @media print{
+    body{background:white}
+    .page{box-shadow:none;margin:0;page-break-after:always}
+    .doc{padding:0}
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- =================================================================
+     PAGE 1 — COVER
+     ================================================================= -->
+<section class="page" id="p1">
+  <div class="page-rail"></div>
+  <div class="stamp">Internal · Deep Dive</div>
+  <div class="eyebrow">DNA Calc · OxCalc Lane</div>
+  <h1 style="margin-top:120px;font-size:50px">OxCalc</h1>
+  <h1 style="font-size:30px;color:var(--ink-soft);margin-top:0">A guided dissection of the multi-node core calculation engine</h1>
+  <p class="lede" style="margin-top:36px;max-width:640px">
+    OxCalc is the calculation engine lane for DNA Calc. It owns the structural snapshot
+    kernel, the dependency-and-invalidation substrate, the recalc/overlay lifecycle, and the
+    coordinator that gives the rest of the system one publication authority. This brochure
+    is a 20-page tour of how those pieces fit together — the data structures that hold the
+    truth, the state machines that move work through the engine, and the seam through
+    which OxCalc consumes <em>OxFml</em> as its formula evaluator.
+  </p>
+
+  <div class="svg-frame" style="margin-top:42px">
+    <svg viewBox="0 0 760 320" width="760" height="320" role="img" aria-label="OxCalc layered architecture">
+      <defs>
+        <linearGradient id="bandA" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#dceaff"/><stop offset="1" stop-color="#aac6ff"/>
+        </linearGradient>
+        <linearGradient id="bandB" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#e2f7f0"/><stop offset="1" stop-color="#b6e3d2"/>
+        </linearGradient>
+        <linearGradient id="bandC" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#f4ecff"/><stop offset="1" stop-color="#cdb4fb"/>
+        </linearGradient>
+        <linearGradient id="bandD" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#fff1e6"/><stop offset="1" stop-color="#fbcfa3"/>
+        </linearGradient>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker>
+      </defs>
+      <!-- Hosts band -->
+      <rect x="20" y="20" width="720" height="48" rx="6" fill="url(#bandA)" stroke="#7eaaff"/>
+      <text x="380" y="50" text-anchor="middle" font-family="Inter" font-size="14" font-weight="700" fill="#0a3d91">Downstream Hosts &nbsp;·&nbsp; DNA TreeCalc &nbsp;·&nbsp; OxCalcTree consumer surface</text>
+      <!-- Coordinator band -->
+      <rect x="20" y="84" width="720" height="48" rx="6" fill="url(#bandB)" stroke="#5fbf9c"/>
+      <text x="380" y="114" text-anchor="middle" font-family="Inter" font-size="14" font-weight="700" fill="#0f5f4b">Coordinator · Publication · Pinned Views · Reject Authority</text>
+      <!-- Recalc / Dependency / Overlay band -->
+      <rect x="20" y="148" width="350" height="58" rx="6" fill="url(#bandC)" stroke="#9e80e0"/>
+      <text x="195" y="174" text-anchor="middle" font-family="Inter" font-size="13" font-weight="700" fill="#3b1473">Dependency Graph · Invalidation Closure</text>
+      <text x="195" y="192" text-anchor="middle" font-family="Inter" font-size="11" fill="#3b1473">Tarjan SCC · reverse edges · cycle blocking</text>
+      <rect x="390" y="148" width="350" height="58" rx="6" fill="url(#bandC)" stroke="#9e80e0"/>
+      <text x="565" y="174" text-anchor="middle" font-family="Inter" font-size="13" font-weight="700" fill="#3b1473">Stage1 Recalc Tracker · Overlay Lifecycle</text>
+      <text x="565" y="192" text-anchor="middle" font-family="Inter" font-size="11" fill="#3b1473">8-state node lifecycle · capability fence</text>
+      <!-- Structural kernel -->
+      <rect x="20" y="222" width="720" height="46" rx="6" fill="url(#bandD)" stroke="#dd9555"/>
+      <text x="380" y="251" text-anchor="middle" font-family="Inter" font-size="14" font-weight="700" fill="#7a3210">Structural Snapshot Kernel · immutable trees, projection paths, edits</text>
+      <!-- OxFml plate -->
+      <rect x="20" y="282" width="720" height="22" rx="4" fill="#fff" stroke="#cdd2dc"/>
+      <text x="380" y="298" text-anchor="middle" font-family="Inter" font-size="12" fill="#3a4253">OxFml seam &nbsp;·&nbsp; parse → bind → run via <tspan font-family="JetBrains Mono">MinimalUpstreamHostPacket</tspan></text>
+      <!-- vertical flow arrow -->
+      <line x1="380" y1="68" x2="380" y2="84" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="380" y1="132" x2="380" y2="148" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="380" y1="206" x2="380" y2="222" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr)"/>
+      <line x1="380" y1="268" x2="380" y2="282" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr)"/>
+    </svg>
+    <div class="caption">Five layers of OxCalc, top to bottom: hosts, coordinator authority, recalc/dependency substrate, immutable structural truth, OxFml seam.</div>
+  </div>
+
+  <div class="doc-meta">
+    <div>
+      <strong>Audience.</strong> Engineers and decision-makers who already know what DNA&nbsp;Calc is,
+      and now need to understand OxCalc <em>internally</em>: its data shapes, its invariants, and its seams.
+    </div>
+    <div style="text-align:right">
+      <div><span class="pill">v1.0 · 2026-05-07</span></div>
+      <div class="small">docs/showcase/oxcalc-deep-technical-brochure/</div>
+    </div>
+  </div>
+  <div class="page-num">01 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 2 — EXECUTIVE OVERVIEW & CRATE MAP
+     ================================================================= -->
+<section class="page" id="p2">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§01 · Executive overview</div>
+  <h2>What OxCalc is — and is not</h2>
+
+  <div class="grid12">
+    <div>
+      <p>
+        OxCalc owns the <strong>core calculation engine</strong> for DNA Calc. Its responsibilities are
+        deliberately narrow and load-bearing:
+      </p>
+      <ol class="arrow-list">
+        <li>Hold the <em>immutable</em> structural truth of a tree-shaped calc graph (nodes, parents, projections, formula handles).</li>
+        <li>Lower formulas to a <em>dependency descriptor</em> set, build the dependency graph, and detect cycles.</li>
+        <li>Drive the <em>recalc state machine</em>: dirty&nbsp;→&nbsp;needed&nbsp;→&nbsp;evaluating&nbsp;→&nbsp;publish-ready (or rejected).</li>
+        <li>Govern the <em>capability-fenced overlay store</em> that protects in-flight execution state from premature eviction.</li>
+        <li>Run a single-publisher <em>coordinator</em> that admits, accepts, rejects, and publishes candidate work atomically.</li>
+        <li>Hand evaluation to <em>OxFml</em> through a <em>minimal upstream-host packet</em> — and validate every commit bundle on the way back.</li>
+      </ol>
+
+      <h4>What OxCalc explicitly is not</h4>
+      <ul class="arrow-list">
+        <li>It is <em>not</em> a host UI, document loader, file-format adapter, or workbook editor.</li>
+        <li>It does <em>not</em> own formula syntax, parsing, binding, or function-library semantics — that is OxFml &amp; OxFunc.</li>
+        <li>It does <em>not</em> publish without coordinator authority; no evaluator may smuggle results around the seam.</li>
+      </ul>
+
+      <div class="quote">
+        “Structural truth is immutable. Identity precedes projection. Runtime state is derived and versioned.”
+        <br><small>— CORE_ENGINE_STATE_AND_SNAPSHOTS.md, the kernel’s constitution.</small>
+      </div>
+    </div>
+    <div>
+      <h4>Workspace at a glance</h4>
+      <div class="card">
+        <strong>Cargo workspace</strong> <span class="pill muted">Rust 2021</span><br>
+        <span class="small">Three crates with strict layering: core ← tracecalc ← cli.</span>
+        <pre class="code" style="font-size:10.5px"><span class="c">// Cargo.toml</span>
+[<span class="k">workspace</span>]
+members = [
+  <span class="s">"src/oxcalc-core"</span>,        <span class="c">// engine kernel</span>
+  <span class="s">"src/oxcalc-tracecalc"</span>,   <span class="c">// reference machine</span>
+  <span class="s">"src/oxcalc-tracecalc-cli"</span>,<span class="c">// CLI host</span>
+]</pre>
+      </div>
+
+      <div class="card" style="margin-top:8px">
+        <strong>Dependency constitution</strong>
+        <ul class="arrow-list" style="margin:.4em 0">
+          <li>May depend on <code>OxFml</code>, <code>OxFunc</code>.</li>
+          <li>Must <em>not</em> depend on host/UI/file-adapter layers.</li>
+          <li><code>#![forbid(unsafe_code)]</code> at every crate root.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="margin-top:8px">
+        <strong>Module map of <code>oxcalc-core</code></strong>
+        <table style="margin-top:4px">
+          <thead><tr><th>Module</th><th>Owns</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">structural</td><td>snapshot kernel, edits, projection paths</td></tr>
+            <tr><td class="mono">formula</td><td><code>TreeFormula</code>, <code>TreeReference</code>, catalog</td></tr>
+            <tr><td class="mono">dependency</td><td>descriptor → graph → invalidation closure</td></tr>
+            <tr><td class="mono">recalc</td><td>node calc-state machine, overlay store</td></tr>
+            <tr><td class="mono">coordinator</td><td>single-publisher authority, pins, rejects</td></tr>
+            <tr><td class="mono">treecalc</td><td>local sequential engine + OxFml glue</td></tr>
+            <tr><td class="mono">upstream_host</td><td><code>MinimalUpstreamHostPacket</code> seam</td></tr>
+            <tr><td class="mono">consumer</td><td>OxCalcTree contract for host integration</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h3>Document map</h3>
+  <div class="toc">
+    <ol>
+      <li>Cover &amp; mission <small>p.1</small></li>
+      <li>Executive overview &amp; crate map <small>p.2</small></li>
+      <li>The six state-kernel principles <small>p.3</small></li>
+      <li>Anatomy of a <code>StructuralSnapshot</code> <small>p.4</small></li>
+      <li>Structural edits &amp; impact taxonomy <small>p.5</small></li>
+      <li>The reference algebra <small>p.6</small></li>
+      <li>From formulas to dependency descriptors <small>p.7</small></li>
+      <li>Dependency graph internals <small>p.8</small></li>
+      <li>Invalidation closure &amp; cycle blocking <small>p.9</small></li>
+      <li>Stage 1 recalc state machine <small>p.10</small></li>
+      <li>Overlay lifecycle &amp; capability fence <small>p.11</small></li>
+      <li>Coordinator: single-publisher authority <small>p.12</small></li>
+      <li>Published view &amp; pinned readers <small>p.13</small></li>
+      <li>Local TreeCalc engine end-to-end <small>p.14</small></li>
+      <li>The OxFml seam <small>p.15</small></li>
+      <li>Residuals &amp; runtime effects <small>p.16</small></li>
+      <li>TraceCalc reference machine <small>p.17</small></li>
+      <li>Formal assurance: TLA+ &amp; Lean <small>p.18</small></li>
+      <li>Staged realization &amp; consumer contract <small>p.19</small></li>
+      <li>Glossary &amp; forward look <small>p.20</small></li>
+    </ol>
+  </div>
+  <div class="page-num">02 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 3 — SIX STATE-KERNEL PRINCIPLES
+     ================================================================= -->
+<section class="page" id="p3">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§02 · Theoretical foundation</div>
+  <h2>The six state-kernel principles</h2>
+  <p class="lede">Six rules anchor everything else. They are constraints first, design choices second — they define
+  what OxCalc may and may not do with state.</p>
+
+  <div class="grid2">
+    <div class="card theory">
+      <span class="pill theory">Rule 1</span>
+      <h4>Structural truth is immutable</h4>
+      <p>Any persistent change <em>produces a new snapshot</em>; existing snapshots never mutate. Snapshots are reference-counted, value-typed, and distinguishable by <code>StructuralSnapshotId</code>.</p>
+      <p class="small">Implementation: <code>StructuralSnapshot::create</code> validates and freezes; <code>apply_edit</code> returns a successor.</p>
+    </div>
+
+    <div class="card theory">
+      <span class="pill theory">Rule 2</span>
+      <h4>Identity precedes projection</h4>
+      <p><code>TreeNodeId(u64)</code> is engine truth; the slash-separated projection path <code>"Root/Branch/Leaf"</code> is derived. Renames invalidate paths but never identity.</p>
+    </div>
+
+    <div class="card theory">
+      <span class="pill theory">Rule 3</span>
+      <h4>Runtime state is derived and versioned</h4>
+      <p>Invalidation, overlays, publications, and caches are <em>runtime</em> state, attached to a structural snapshot via explicit fence keys (<code>structural_snapshot_id</code> + <code>compatibility_basis</code>).</p>
+    </div>
+
+    <div class="card theory">
+      <span class="pill theory">Rule 4</span>
+      <h4>Pinned readers see stable state</h4>
+      <p>A pinned reader binds a snapshot id, a publication id (or none), and a values map. The view is value-frozen even as the live engine moves on.</p>
+    </div>
+
+    <div class="card theory">
+      <span class="pill theory">Rule 5</span>
+      <h4>No structural smuggling through runtime mutation</h4>
+      <p>If a fact is structural, it must live in the snapshot. Caches may be lossy; structure may not. This rule kills a whole class of correctness drift before it starts.</p>
+    </div>
+
+    <div class="card theory">
+      <span class="pill theory">Rule 6</span>
+      <h4>Future concurrency must not force a redesign</h4>
+      <p>The kernel is already shaped for staged concurrency. Stage 1 (sequential) produces the same observable artifacts that Stage 2 (partitioned) and Stage 3 (advanced lanes) will publish.</p>
+    </div>
+  </div>
+
+  <h3>Why this matters in code</h3>
+  <p>These six rules collapse into a few practical patterns you will see everywhere in the OxCalc Rust source:</p>
+  <ul class="arrow-list">
+    <li>Most public types are <code>Clone</code>, <code>PartialEq</code>, and <code>Eq</code>. Determinism is enforced by structure.</li>
+    <li>Mutating containers are <code>BTreeMap</code> / <code>BTreeSet</code> — sorted iteration order is part of the contract.</li>
+    <li>Edits return <em>outcomes</em> bundled with an <code>impact</code> classification (rebind required, recalc only, removal, no-rebind), not just a new state.</li>
+    <li>Every overlay key carries the snapshot id and a compatibility basis — overlays from a stale snapshot cannot be silently reused.</li>
+    <li>The coordinator never publishes without an explicit <em>accepted</em> candidate; <code>MissingAcceptedCandidate</code> is a real error.</li>
+  </ul>
+
+  <h3>The compact data model</h3>
+  <div class="svg-frame">
+    <svg viewBox="0 0 760 200" width="760" height="200" role="img" aria-label="Structural truth and runtime state separation">
+      <rect x="20" y="20" width="340" height="160" fill="#fff7e6" stroke="#dd9555" rx="6"/>
+      <text x="190" y="42" text-anchor="middle" font-weight="700" font-size="14" fill="#7a3210">STRUCTURAL TRUTH (immutable)</text>
+      <text x="40" y="68" font-size="12" fill="#1a1f2b">• <tspan font-family="JetBrains Mono">StructuralSnapshot</tspan></text>
+      <text x="40" y="86" font-size="12" fill="#1a1f2b">• <tspan font-family="JetBrains Mono">StructuralNode</tspan> · stable <tspan font-family="JetBrains Mono">TreeNodeId</tspan></text>
+      <text x="40" y="104" font-size="12" fill="#1a1f2b">• projection path index</text>
+      <text x="40" y="122" font-size="12" fill="#1a1f2b">• immutable <tspan font-family="JetBrains Mono">FormulaArtifactId</tspan> handles</text>
+      <text x="40" y="148" font-size="11" fill="#7a3210" font-style="italic">→ never mutated; successor snapshots produced by edits</text>
+      <rect x="400" y="20" width="340" height="160" fill="#f4ecff" stroke="#9e80e0" rx="6"/>
+      <text x="570" y="42" text-anchor="middle" font-weight="700" font-size="14" fill="#3b1473">RUNTIME STATE (derived)</text>
+      <text x="420" y="68" font-size="12" fill="#1a1f2b">• per-node <tspan font-family="JetBrains Mono">NodeCalcState</tspan></text>
+      <text x="420" y="86" font-size="12" fill="#1a1f2b">• overlay store, keyed by snapshot</text>
+      <text x="420" y="104" font-size="12" fill="#1a1f2b">• in-flight / accepted candidate</text>
+      <text x="420" y="122" font-size="12" fill="#1a1f2b">• <tspan font-family="JetBrains Mono">PublishedView</tspan>, pinned readers</text>
+      <text x="420" y="148" font-size="11" fill="#3b1473" font-style="italic">→ explicitly attached to a snapshot via fence keys</text>
+      <line x1="360" y1="100" x2="400" y2="100" stroke="#1f6feb" stroke-dasharray="4,4" stroke-width="2"/>
+      <text x="380" y="92" text-anchor="middle" font-size="10" fill="#1f6feb">attaches</text>
+    </svg>
+    <div class="caption">Two universes, one bridge: every overlay and publication record knows which snapshot it belongs to.</div>
+  </div>
+  <div class="page-num">03 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 4 — STRUCTURAL SNAPSHOT
+     ================================================================= -->
+<section class="page" id="p4">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§03 · Anatomy of structural truth</div>
+  <h2>The <code>StructuralSnapshot</code></h2>
+
+  <div class="grid12">
+    <div>
+      <p>The snapshot is the <strong>only</strong> place a node’s parent, children, symbol, formula handle, or constant value
+      may live as truth. Every read goes through it; every edit produces a successor of it.</p>
+
+      <h4>Core types</h4>
+      <pre class="code"><span class="c">// src/oxcalc-core/src/structural.rs</span>
+<span class="k">pub struct</span> <span class="f">TreeNodeId</span>(<span class="k">pub</span> u64);
+<span class="k">pub struct</span> <span class="f">StructuralSnapshotId</span>(<span class="k">pub</span> u64);
+<span class="k">pub struct</span> <span class="f">FormulaArtifactId</span>(<span class="k">pub</span> String);
+<span class="k">pub struct</span> <span class="f">BindArtifactId</span>(<span class="k">pub</span> String);
+
+<span class="k">pub enum</span> <span class="f">StructuralNodeKind</span> {
+    <span class="f">Root</span>, <span class="f">Container</span>, <span class="f">Calculation</span>, <span class="f">Constant</span>,
+}
+
+<span class="k">pub struct</span> <span class="f">StructuralNode</span> {
+    <span class="k">pub</span> node_id:             <span class="f">TreeNodeId</span>,
+    <span class="k">pub</span> kind:                <span class="f">StructuralNodeKind</span>,
+    <span class="k">pub</span> symbol:              String,
+    <span class="k">pub</span> parent_id:           <span class="f">Option</span>&lt;<span class="f">TreeNodeId</span>&gt;,
+    <span class="k">pub</span> child_ids:           <span class="f">Vec</span>&lt;<span class="f">TreeNodeId</span>&gt;,
+    <span class="k">pub</span> formula_artifact_id: <span class="f">Option</span>&lt;<span class="f">FormulaArtifactId</span>&gt;,
+    <span class="k">pub</span> bind_artifact_id:    <span class="f">Option</span>&lt;<span class="f">BindArtifactId</span>&gt;,
+    <span class="k">pub</span> constant_value:      <span class="f">Option</span>&lt;String&gt;,
+}
+
+<span class="k">pub struct</span> <span class="f">StructuralSnapshot</span> {
+    snapshot_id:   <span class="f">StructuralSnapshotId</span>,
+    root_node_id:  <span class="f">TreeNodeId</span>,
+    nodes:         <span class="f">BTreeMap</span>&lt;<span class="f">TreeNodeId</span>, <span class="f">StructuralNode</span>&gt;,
+    path_index:    <span class="f">BTreeMap</span>&lt;String, <span class="f">TreeNodeId</span>&gt;, <span class="c">// projection</span>
+}</pre>
+      <p class="small">All fields private; construction goes through <code>create()</code> which validates the tree
+      and builds the projection-path index in one pass.</p>
+    </div>
+
+    <div>
+      <h4>Construction guarantees</h4>
+      <p><code>StructuralSnapshot::create</code> rejects:</p>
+      <ul class="arrow-list">
+        <li><code>MissingRoot</code> · declared root not present</li>
+        <li><code>RootHasParent</code> · root with a parent_id</li>
+        <li><code>CycleDetected</code> · a node revisited during DFS</li>
+        <li><code>MissingChild</code> · child id not in the map</li>
+        <li><code>ParentMismatch</code> · child’s parent_id ≠ owning parent</li>
+        <li><code>DetachedNodes</code> · nodes unreachable from root</li>
+        <li><code>DuplicateProjectionPath</code> · path collision in index</li>
+      </ul>
+
+      <div class="card callout" style="margin-top:8px">
+        <strong>Why a path index?</strong>
+        Resolving <code>"Root/Branch/Leaf"</code> to a <code>TreeNodeId</code> in O(log n) lets formulas use
+        path-shaped references without rewalking the tree on every lookup.
+      </div>
+
+      <h4>Example: a 4-node tree</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 360 220" width="360" height="220" role="img" aria-label="Tree with root, branch, sibling, leaf">
+          <defs>
+            <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3a4253"/></marker>
+          </defs>
+          <g font-family="Inter" font-size="11">
+            <circle cx="180" cy="35" r="22" fill="#fff7e6" stroke="#dd9555"/>
+            <text x="180" y="33" text-anchor="middle" font-weight="700">1</text>
+            <text x="180" y="46" text-anchor="middle" font-size="9">Root</text>
+            <circle cx="100" cy="115" r="22" fill="#e2f7f0" stroke="#5fbf9c"/>
+            <text x="100" y="113" text-anchor="middle" font-weight="700">2</text>
+            <text x="100" y="126" text-anchor="middle" font-size="9">Branch</text>
+            <circle cx="260" cy="115" r="22" fill="#e2f7f0" stroke="#5fbf9c"/>
+            <text x="260" y="113" text-anchor="middle" font-weight="700">3</text>
+            <text x="260" y="126" text-anchor="middle" font-size="9">Sibling</text>
+            <circle cx="100" cy="195" r="22" fill="#dceaff" stroke="#7eaaff"/>
+            <text x="100" y="193" text-anchor="middle" font-weight="700">4</text>
+            <text x="100" y="206" text-anchor="middle" font-size="9">Leaf</text>
+            <line x1="180" y1="57" x2="100" y2="93" stroke="#3a4253" marker-end="url(#arr2)"/>
+            <line x1="180" y1="57" x2="260" y2="93" stroke="#3a4253" marker-end="url(#arr2)"/>
+            <line x1="100" y1="137" x2="100" y2="173" stroke="#3a4253" marker-end="url(#arr2)"/>
+            <text x="20" y="20" font-size="10" fill="#7a3210">Container</text>
+            <text x="20" y="115" font-size="10" fill="#0f5f4b">Containers</text>
+            <text x="20" y="195" font-size="10" fill="#0a3d91">Calculation</text>
+          </g>
+        </svg>
+        <div class="caption">Node identity is a <code>u64</code>. The projection path is computed from the chain of <code>symbol</code>s.</div>
+      </div>
+
+      <h4>Query API (selected)</h4>
+      <pre class="code"><span class="k">impl</span> <span class="f">StructuralSnapshot</span> {
+  <span class="k">fn</span> <span class="f">try_resolve_projection_path</span>(&self, &amp;str)
+    -&gt; <span class="f">Option</span>&lt;<span class="f">TreeNodeId</span>&gt;;
+  <span class="k">fn</span> <span class="f">parent_id_of</span>(&self, <span class="f">TreeNodeId</span>) -&gt; <span class="f">Option</span>&lt;_&gt;;
+  <span class="k">fn</span> <span class="f">nth_ancestor_of</span>(&self, _, <span class="f">usize</span>) -&gt; <span class="f">Option</span>&lt;_&gt;;
+  <span class="k">fn</span> <span class="f">try_resolve_sibling_offset</span>(&amp;self, _, <span class="f">isize</span>);
+  <span class="k">fn</span> <span class="f">describe_relative_context</span>(&amp;self, _);
+}</pre>
+      <p class="small">These five methods are the entire vocabulary the formula layer needs to resolve <em>any</em> reference shape.</p>
+    </div>
+  </div>
+  <div class="page-num">04 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 5 — STRUCTURAL EDITS & IMPACT TAXONOMY
+     ================================================================= -->
+<section class="page" id="p5">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§04 · Edits and impact</div>
+  <h2>Structural edits &amp; impact taxonomy</h2>
+  <p class="lede">Edits never mutate. <code>apply_edit</code> takes the current snapshot, the requested edit, and a successor id, and returns a <code>StructuralEditOutcome</code> that says exactly what kind of downstream pressure the edit creates.</p>
+
+  <div class="grid21">
+    <div>
+      <h4>The four impact classes</h4>
+      <div class="card good" style="margin-bottom:6px">
+        <span class="pill good">NoRebind</span>
+        Pure cache invalidation. No reference can have moved.
+      </div>
+      <div class="card callout" style="margin-bottom:6px">
+        <span class="pill">RecalcOnly</span>
+        Values changed; binding is still valid. Dependent nodes only need recalc.
+      </div>
+      <div class="card warn" style="margin-bottom:6px">
+        <span class="pill warn">RebindRequired</span>
+        Symbol moved/renamed; bindings that resolved through path or relative shape may now resolve differently.
+      </div>
+      <div class="card warn">
+        <span class="pill warn">Removal</span>
+        Subtree gone. Any descriptor pointing into it must be re-checked.
+      </div>
+
+      <h4 style="margin-top:14px">Edit menu</h4>
+      <ul class="arrow-list">
+        <li><code>RenameNode</code> — touches symbol</li>
+        <li><code>MoveNode</code> — re-parents a subtree</li>
+        <li><code>ReplaceFormulaAttachment</code> — swaps formula/bind handles</li>
+        <li><code>SetConstantValue</code> — changes a constant payload</li>
+        <li><code>InsertNode</code> — adds a node under a parent</li>
+        <li><code>RemoveNode</code> — drops a subtree (root excluded)</li>
+      </ul>
+
+      <div class="card theory" style="margin-top:8px">
+        <strong>Why classify impact?</strong>
+        The impact classification is consumed by <code>derive_structural_context_invalidation_seeds</code> to
+        decide whether dependents need <code>StructuralRebindRequired</code> or merely
+        <code>StructuralRecalcOnly</code> seeds. Wrong classification ⇒ wrong invalidation ⇒ silent staleness.
+      </div>
+    </div>
+
+    <div>
+      <h4>Edit pipeline</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 460 230" width="460" height="230" role="img" aria-label="Structural edit pipeline">
+          <defs>
+            <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker>
+          </defs>
+          <g font-family="Inter" font-size="12">
+            <rect x="14" y="20" width="100" height="48" rx="6" fill="#fff7e6" stroke="#dd9555"/>
+            <text x="64" y="42" text-anchor="middle" font-weight="700">Snapshot Sₙ</text>
+            <text x="64" y="58" text-anchor="middle" font-size="10">immutable</text>
+
+            <rect x="170" y="20" width="120" height="48" rx="6" fill="#fff" stroke="#1f6feb"/>
+            <text x="230" y="42" text-anchor="middle" font-weight="700">apply_edit</text>
+            <text x="230" y="58" text-anchor="middle" font-size="10">+ StructuralEdit</text>
+
+            <rect x="346" y="20" width="100" height="48" rx="6" fill="#fff7e6" stroke="#dd9555"/>
+            <text x="396" y="42" text-anchor="middle" font-weight="700">Snapshot Sₙ₊₁</text>
+            <text x="396" y="58" text-anchor="middle" font-size="10">successor</text>
+
+            <line x1="114" y1="44" x2="170" y2="44" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr3)"/>
+            <line x1="290" y1="44" x2="346" y2="44" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr3)"/>
+
+            <rect x="14" y="100" width="432" height="110" rx="6" fill="#f4ecff" stroke="#9e80e0"/>
+            <text x="230" y="120" text-anchor="middle" font-weight="700" fill="#3b1473">StructuralEditOutcome</text>
+            <text x="30" y="142" font-size="11">snapshot: Sₙ₊₁</text>
+            <text x="30" y="158" font-size="11">impact: NoRebind | RecalcOnly | RebindRequired | Removal</text>
+            <text x="30" y="174" font-size="11">affected_node_ids: [ … ]</text>
+            <text x="30" y="190" font-size="11">diagnostic_events: ["node_renamed:node:4:LeafRenamed", …]</text>
+          </g>
+        </svg>
+      </div>
+
+      <h4>What a real outcome looks like</h4>
+      <pre class="code"><span class="c">// from structural.rs unit test</span>
+<span class="k">let</span> moved = snapshot.apply_edit(
+    <span class="f">StructuralSnapshotId</span>(2),
+    <span class="f">StructuralEdit</span>::<span class="f">MoveNode</span> {
+        node_id: <span class="f">TreeNodeId</span>(4),
+        new_parent_id: <span class="f">TreeNodeId</span>(3),
+        new_index: <span class="f">None</span>,
+    },
+).<span class="f">unwrap</span>();
+
+<span class="k">assert_eq!</span>(moved.impact, <span class="f">StructuralEditImpact</span>::<span class="f">RebindRequired</span>);
+<span class="k">assert_eq!</span>(
+    moved.snapshot.<span class="f">get_projection_path</span>(<span class="f">TreeNodeId</span>(4)).<span class="f">unwrap</span>(),
+    <span class="s">"Root/Sibling/Leaf"</span>);  <span class="c">// path moved with the node</span></pre>
+
+      <h4>Edit→seed plumbing</h4>
+      <p>Downstream, <code>derive_structural_context_invalidation_seeds</code> walks
+      <code>edit_outcomes</code>, computes whether <em>rebind pressure</em> is present
+      (<code>RebindRequired</code> or <code>Removal</code>), and emits one seed per formula owner with
+      the correct <code>InvalidationReasonKind</code>:</p>
+      <pre class="code"><span class="k">if</span> outcome.impact == <span class="f">RebindRequired</span> ||
+   outcome.impact == <span class="f">Removal</span> {
+    rebind_pressure_present = <span class="k">true</span>;
+}
+<span class="c">// per owner: requires_rebind ⇒ StructuralRebindRequired
+//             else            ⇒ StructuralRecalcOnly</span></pre>
+    </div>
+  </div>
+  <div class="page-num">05 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 6 — REFERENCE ALGEBRA
+     ================================================================= -->
+<section class="page" id="p6">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§05 · Reference algebra</div>
+  <h2>Ten shapes of <code>TreeReference</code></h2>
+  <p class="lede">A formula’s power is the set of <em>ways it can name another node</em>. OxCalc enumerates ten
+  reference shapes, each with explicit resolution rules and an explicit policy on whether a structural
+  edit forces a rebind.</p>
+
+  <div class="grid12">
+    <div>
+      <pre class="code"><span class="k">pub enum</span> <span class="f">TreeReference</span> {
+    <span class="f">DirectNode</span>          { target_node_id: <span class="f">TreeNodeId</span> },
+    <span class="f">ProjectionPath</span>      { projection_path: String },
+    <span class="f">RelativePath</span>        { base, path_segments },
+    <span class="f">SiblingOffset</span>       { offset: <span class="f">isize</span>, tail_segments },
+    <span class="f">HostSensitive</span>       { carrier_id, detail },
+    <span class="f">CapabilitySensitive</span> { carrier_id, detail },
+    <span class="f">ShapeTopology</span>       { carrier_id, detail },
+    <span class="f">DynamicPotential</span>    { carrier_id, detail },
+    <span class="f">DynamicResolved</span>     { target_node_id, carrier_id, detail },
+    <span class="f">Unresolved</span>          { token: String },
+}</pre>
+
+      <h4>Three things every variant declares</h4>
+      <ol class="arrow-list">
+        <li><code>resolve_target(snapshot, owner)</code> — does it map to a <code>TreeNodeId</code> right now?</li>
+        <li><code>descriptor_kind()</code> — which lane in the dependency graph?</li>
+        <li><code>requires_rebind_on_structural_change()</code> — must any structural edit force re-binding?</li>
+      </ol>
+
+      <div class="card theory" style="margin-top:6px">
+        <strong>Theoretical lens.</strong>
+        Direct/Projection are <em>identity</em> references: deterministically resolvable from the snapshot alone.
+        Relative/Sibling are <em>contextual</em>: resolution depends on the owner’s position in the tree. The four
+        carriers (<code>HostSensitive</code>, <code>CapabilitySensitive</code>, <code>ShapeTopology</code>, <code>DynamicPotential</code>) are
+        <em>residuals</em>: they cannot resolve in the local sequential evaluator, and they emit runtime effects.
+      </div>
+    </div>
+
+    <div>
+      <h4>Resolution &amp; rebind policy at a glance</h4>
+      <table>
+        <thead><tr><th>Reference</th><th>Kind</th><th>Rebind</th></tr></thead>
+        <tbody>
+          <tr><td><code>DirectNode</code></td><td>StaticDirect</td><td>no</td></tr>
+          <tr><td><code>ProjectionPath</code></td><td>StaticDirect</td><td>no*</td></tr>
+          <tr><td><code>RelativePath</code></td><td>RelativeBound</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>SiblingOffset</code></td><td>RelativeBound</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>HostSensitive</code></td><td>HostSensitive</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>CapabilitySensitive</code></td><td>CapabilitySensitive</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>ShapeTopology</code></td><td>ShapeTopology</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>DynamicPotential</code></td><td>DynamicPotential</td><td>no</td></tr>
+          <tr><td><code>DynamicResolved</code></td><td>DynamicPotential</td><td><strong>yes</strong></td></tr>
+          <tr><td><code>Unresolved</code></td><td>Unresolved</td><td><strong>yes</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="small">* <code>ProjectionPath</code> is path-keyed, but the path index lives inside the snapshot,
+      so resolution is by-id once cached. The W026 rebind floor lists path as static-direct.</p>
+
+      <h4>Resolving a <code>RelativePath</code></h4>
+      <pre class="code"><span class="c">// formula.rs</span>
+<span class="k">match</span> base {
+    <span class="f">SelfNode</span>       =&gt; <span class="f">Some</span>(owner_node_id),
+    <span class="f">ParentNode</span>     =&gt; snapshot.<span class="f">parent_id_of</span>(owner_node_id),
+    <span class="f">Ancestor</span>(<span class="n">k</span>)   =&gt; snapshot.<span class="f">nth_ancestor_of</span>(owner_node_id, <span class="n">k</span>),
+}
+.<span class="f">and_then</span>(|base| snapshot.<span class="f">try_resolve_descendant_path</span>(base, &amp;segments))</pre>
+
+      <div class="card callout" style="margin-top:6px">
+        <strong>Why the rebind flag matters.</strong> Suppose a leaf moves in the tree. A <code>DirectNode</code>
+        reference still names the same id and still resolves; a <code>RelativePath</code> reference may now point
+        somewhere different. The flag is consumed by the dependency-descriptor diff that powers
+        <code>DependencyAdded</code>/<code>DependencyRemoved</code>/<code>DependencyReclassified</code> seeding.
+      </div>
+    </div>
+  </div>
+  <div class="page-num">06 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 7 — FORMULAS → DESCRIPTORS
+     ================================================================= -->
+<section class="page" id="p7">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§06 · Formulas to descriptors</div>
+  <h2>From <code>TreeFormula</code> to <code>DependencyDescriptor</code></h2>
+
+  <p>Every node that calculates carries a <code>TreeFormulaBinding</code>: an <code>owner_node_id</code>,
+  immutable artifact handles, and an expression tree. The expression is small and deliberate, so OxCalc can
+  reason about it without re-implementing OxFml.</p>
+
+  <div class="grid12">
+    <div>
+      <pre class="code"><span class="k">pub enum</span> <span class="f">TreeFormula</span> {
+    <span class="f">Literal</span>      { value: String },
+    <span class="f">Reference</span>    (<span class="f">TreeReference</span>),
+    <span class="f">Binary</span>       { op, left, right },
+    <span class="f">FunctionCall</span> { function_name, arguments,
+                    may_introduce_dynamic_dependencies },
+    <span class="f">RawOxfml</span>     { source_text, reference_carriers },
+}</pre>
+
+      <h4>The catalog</h4>
+      <p><code>TreeFormulaCatalog</code> indexes bindings by owner. Its job is twofold: lookup bindings during
+      evaluation, and lower the catalog to a deterministic, sorted vector of <code>DependencyDescriptor</code>s.</p>
+
+      <pre class="code"><span class="k">pub fn</span> <span class="f">to_dependency_descriptors</span>(
+    &amp;<span class="k">self</span>,
+    snapshot: &amp;<span class="f">StructuralSnapshot</span>,
+) -&gt; <span class="f">Vec</span>&lt;<span class="f">DependencyDescriptor</span>&gt; {
+    <span class="c">// recurse over expression trees</span>
+    <span class="c">// emit one descriptor per Reference site</span>
+    <span class="c">// sort by descriptor_id (deterministic)</span>
+}</pre>
+
+      <h4>Lowering rules</h4>
+      <ul class="arrow-list">
+        <li>One descriptor per <code>Reference</code> site, with a deterministic <code>descriptor_id</code> like
+          <code>bind:formula:leaf:ref:0</code>.</li>
+        <li><code>Literal</code> emits nothing. <code>Binary</code> recurses into both subtrees. <code>FunctionCall</code> recurses into args.</li>
+        <li><code>RawOxfml</code> uses the explicit <code>reference_carriers</code> list — OxCalc does not re-parse OxFml syntax.</li>
+        <li>The descriptor’s <code>requires_rebind_on_structural_change</code> is copied from the reference shape.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h4>Worked example</h4>
+      <p>A formula that adds the parent’s “Neighbor” to a 2-up-ancestor’s “Sibling” lowers to two
+      relative-bound descriptors:</p>
+      <pre class="code"><span class="c">// expression</span>
+<span class="f">Binary</span>(<span class="f">Add</span>,
+  <span class="f">RelativePath</span> { base: <span class="f">ParentNode</span>,    seg: [<span class="s">"Neighbor"</span>] },
+  <span class="f">RelativePath</span> { base: <span class="f">Ancestor</span>(2), seg: [<span class="s">"Sibling"</span>] }
+)
+
+<span class="c">// lowered descriptors (in path-resolution order)</span>
+<span class="f">DependencyDescriptor</span> {
+    descriptor_id:        <span class="s">"bind:formula:leaf:ref:0"</span>,
+    owner_node_id:        node:4,
+    target_node_id:       <span class="f">Some</span>(node:5),  <span class="c">// Neighbor</span>
+    kind:                 <span class="f">RelativeBound</span>,
+    carrier_detail:       <span class="s">"relative_path:ParentNode:Neighbor"</span>,
+    requires_rebind_on_structural_change: <span class="k">true</span>,
+}
+<span class="f">DependencyDescriptor</span> {
+    descriptor_id:        <span class="s">"bind:formula:leaf:ref:1"</span>,
+    owner_node_id:        node:4,
+    target_node_id:       <span class="f">Some</span>(node:3),  <span class="c">// Sibling</span>
+    kind:                 <span class="f">RelativeBound</span>,
+    requires_rebind_on_structural_change: <span class="k">true</span>,
+}</pre>
+
+      <h4>Diagnostics emerge here</h4>
+      <p>If a reference cannot resolve at lowering time, the descriptor still exists — but with
+      <code>target_node_id = None</code>. This becomes a <em>graph diagnostic</em> downstream
+      (<code>UnresolvedReference</code>, <code>HostSensitiveReference</code>, …) rather than silently
+      dropping the dependency.</p>
+
+      <h4>Determinism</h4>
+      <div class="card good">
+        Sorting by <code>descriptor_id</code> after lowering is deliberate: every downstream pass — graph build,
+        invalidation closure, evaluation order — is sensitive to ordering. Determinism here is a load-bearing
+        invariant for <em>diff-stable trace artifacts</em> in TraceCalc.
+      </div>
+
+      <div class="svg-frame" style="margin-top:8px">
+        <svg viewBox="0 0 380 130" width="380" height="130" role="img">
+          <defs><marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+          <rect x="10" y="20" width="100" height="40" rx="6" fill="#fff" stroke="#1f6feb"/>
+          <text x="60" y="44" text-anchor="middle" font-size="12">TreeFormula</text>
+          <rect x="140" y="20" width="100" height="40" rx="6" fill="#fff" stroke="#1f6feb"/>
+          <text x="190" y="44" text-anchor="middle" font-size="12">descriptors</text>
+          <rect x="270" y="20" width="100" height="40" rx="6" fill="#fff" stroke="#1f6feb"/>
+          <text x="320" y="44" text-anchor="middle" font-size="12">DependencyGraph</text>
+          <line x1="110" y1="40" x2="140" y2="40" stroke="#1f6feb" marker-end="url(#arr4)"/>
+          <line x1="240" y1="40" x2="270" y2="40" stroke="#1f6feb" marker-end="url(#arr4)"/>
+          <text x="125" y="80" font-size="10" fill="#1f6feb">lower</text>
+          <text x="245" y="80" font-size="10" fill="#1f6feb">build</text>
+          <rect x="10" y="90" width="360" height="32" rx="6" fill="#f4f8ff" stroke="#7eaaff"/>
+          <text x="190" y="110" text-anchor="middle" font-size="11" fill="#0a3d91">deterministic, sorted, snapshot-keyed</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="page-num">07 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 8 — DEPENDENCY GRAPH INTERNALS
+     ================================================================= -->
+<section class="page" id="p8">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§07 · Graph internals</div>
+  <h2>The <code>DependencyGraph</code> in detail</h2>
+
+  <div class="grid12">
+    <div>
+      <p>One graph per snapshot. It is built once per recalc run and never mutated thereafter.</p>
+
+      <pre class="code"><span class="k">pub struct</span> <span class="f">DependencyGraph</span> {
+    <span class="k">pub</span> snapshot_id:           <span class="f">StructuralSnapshotId</span>,
+    <span class="k">pub</span> descriptors_by_owner:  <span class="f">BTreeMap</span>&lt;_,Vec&lt;_&gt;&gt;,
+    <span class="k">pub</span> edges_by_owner:        <span class="f">BTreeMap</span>&lt;_,Vec&lt;<span class="f">DependencyEdge</span>&gt;&gt;,
+    <span class="k">pub</span> reverse_edges:         <span class="f">BTreeMap</span>&lt;_,Vec&lt;_&gt;&gt;,
+    <span class="k">pub</span> cycle_groups:          <span class="f">Vec</span>&lt;<span class="f">Vec</span>&lt;<span class="f">TreeNodeId</span>&gt;&gt;,
+    <span class="k">pub</span> diagnostics:           <span class="f">Vec</span>&lt;<span class="f">DependencyDiagnostic</span>&gt;,
+}</pre>
+
+      <h4>Cycle detection: Tarjan’s SCC</h4>
+      <p>Cycle groups are produced by Tarjan’s strongly-connected-components algorithm directly over
+      <code>edges_by_owner</code>. Singletons that don’t self-loop are filtered out — only true cycles survive.</p>
+      <pre class="code"><span class="k">fn</span> <span class="f">strong_connect</span>(node, edges, &amp;<span class="k">mut</span> state) {
+    state.indices.<span class="f">insert</span>(node, state.index);
+    state.lowlinks.<span class="f">insert</span>(node, state.index);
+    state.index += <span class="n">1</span>;
+    state.stack.<span class="f">push</span>(node);
+    state.on_stack.<span class="f">insert</span>(node);
+
+    <span class="k">for</span> edge <span class="k">in</span> edges_for(node) {
+        <span class="k">if</span> !state.indices.<span class="f">contains_key</span>(&amp;edge.target) {
+            <span class="f">strong_connect</span>(edge.target, …);
+            state.lowlinks[node] = min(state.lowlinks[node],
+                                       state.lowlinks[edge.target]);
+        } <span class="k">else if</span> state.on_stack.<span class="f">contains</span>(&amp;edge.target) {
+            state.lowlinks[node] = min(state.lowlinks[node],
+                                       state.indices[edge.target]);
+        }
+    }
+
+    <span class="k">if</span> indices[node] == lowlinks[node] {
+        <span class="c">// pop SCC</span>
+    }
+}</pre>
+
+      <h4>Diagnostic taxonomy</h4>
+      <p>Every descriptor whose target cannot resolve becomes a typed diagnostic, not a silent drop:</p>
+      <ul class="arrow-list">
+        <li><code>MissingOwner</code>, <code>MissingTarget</code> — referential integrity</li>
+        <li><code>UnresolvedReference</code>, <code>HostSensitiveReference</code></li>
+        <li><code>DynamicPotentialReference</code>, <code>CapabilitySensitiveReference</code>, <code>ShapeTopologyReference</code></li>
+      </ul>
+    </div>
+
+    <div>
+      <h4>Three indexes, one truth</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 220" width="400" height="220" role="img">
+          <defs><marker id="arr5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3a4253"/></marker></defs>
+          <rect x="20" y="20" width="100" height="180" rx="6" fill="#dceaff" stroke="#7eaaff"/>
+          <text x="70" y="42" text-anchor="middle" font-weight="700" font-size="12">descriptors</text>
+          <text x="70" y="58" text-anchor="middle" font-size="10">_by_owner</text>
+          <text x="70" y="86" text-anchor="middle" font-size="10">node:2 → [d0,d1]</text>
+          <text x="70" y="102" text-anchor="middle" font-size="10">node:3 → [d2]</text>
+          <text x="70" y="118" text-anchor="middle" font-size="10">node:4 → [d3,d4]</text>
+          <text x="70" y="172" text-anchor="middle" font-size="9" font-style="italic" fill="#0a3d91">lowering output</text>
+
+          <rect x="150" y="20" width="100" height="180" rx="6" fill="#e2f7f0" stroke="#5fbf9c"/>
+          <text x="200" y="42" text-anchor="middle" font-weight="700" font-size="12">edges</text>
+          <text x="200" y="58" text-anchor="middle" font-size="10">_by_owner</text>
+          <text x="200" y="86" text-anchor="middle" font-size="10">node:2 → e1</text>
+          <text x="200" y="102" text-anchor="middle" font-size="10">node:3 → e2</text>
+          <text x="200" y="172" text-anchor="middle" font-size="9" font-style="italic" fill="#0f5f4b">forward edges</text>
+
+          <rect x="280" y="20" width="100" height="180" rx="6" fill="#f4ecff" stroke="#9e80e0"/>
+          <text x="330" y="42" text-anchor="middle" font-weight="700" font-size="12">reverse</text>
+          <text x="330" y="58" text-anchor="middle" font-size="10">edges</text>
+          <text x="330" y="86" text-anchor="middle" font-size="10">node:2 → e2</text>
+          <text x="330" y="102" text-anchor="middle" font-size="10">node:3 → e1</text>
+          <text x="330" y="172" text-anchor="middle" font-size="9" font-style="italic" fill="#3b1473">propagation key</text>
+
+          <line x1="120" y1="100" x2="150" y2="100" stroke="#3a4253" marker-end="url(#arr5)"/>
+          <line x1="250" y1="100" x2="280" y2="100" stroke="#3a4253" marker-end="url(#arr5)"/>
+        </svg>
+        <div class="caption">Forward edges drive evaluation order; reverse edges drive invalidation closure.</div>
+      </div>
+
+      <h4>Why both directions?</h4>
+      <ul class="arrow-list">
+        <li>Forward (<code>edges_by_owner</code>) is what <em>topological evaluation</em> needs: who must compute before me?</li>
+        <li>Reverse (<code>reverse_edges</code>) is what <em>invalidation closure</em> needs: when X publishes, who is dependent?</li>
+      </ul>
+
+      <h4>Cycle handling</h4>
+      <div class="card warn">
+        Stage 1 cannot evaluate a cycle. The local engine raises
+        <code>LocalTreeCalcError::CycleDetected</code> and the coordinator records a
+        <code>SyntheticCycleReject</code>. Cycle members in the closure are stamped as
+        <code>NodeCalcState::CycleBlocked</code> so dependents know <em>why</em> they cannot progress.
+      </div>
+
+      <h4>Snapshot-keyed identity</h4>
+      <p>The graph carries <code>snapshot_id</code> by value. There is no scenario where a graph from
+      one snapshot is reused for a different snapshot — every recalc rebuilds from descriptors derived against
+      the exact snapshot the run targets.</p>
+    </div>
+  </div>
+  <div class="page-num">08 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 9 — INVALIDATION CLOSURE
+     ================================================================= -->
+<section class="page" id="p9">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§08 · Invalidation closure</div>
+  <h2>Seeds → closure → calc-state</h2>
+  <p class="lede">An <strong>invalidation closure</strong> is the deterministic answer to “given these dirty seeds, exactly which
+  nodes are impacted, in what order, with what calc state, and which require a rebind?”</p>
+
+  <div class="grid12">
+    <div>
+      <h4>Seed reasons</h4>
+      <table>
+        <thead><tr><th>Reason</th><th>Initial state</th><th>Rebind?</th></tr></thead>
+        <tbody>
+          <tr><td><code>UpstreamPublication</code></td><td><code>Needed</code></td><td>no</td></tr>
+          <tr><td><code>StructuralRecalcOnly</code></td><td><code>DirtyPending</code></td><td>no</td></tr>
+          <tr><td><code>StructuralRebindRequired</code></td><td><code>DirtyPending</code></td><td><strong>yes</strong></td></tr>
+          <tr><td><code>DependencyAdded</code></td><td><code>DirtyPending</code></td><td><strong>yes</strong></td></tr>
+          <tr><td><code>DependencyRemoved</code></td><td><code>DirtyPending</code></td><td><strong>yes</strong></td></tr>
+          <tr><td><code>DependencyReclassified</code></td><td><code>DirtyPending</code></td><td><strong>yes</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="small">Cycle members override: any seed inside a cycle group is stamped <code>CycleBlocked</code>.</p>
+
+      <h4>Closure algorithm</h4>
+      <pre class="code"><span class="c">// dependency.rs (paraphrased)</span>
+<span class="k">fn</span> <span class="f">derive_invalidation_closure</span>(seeds) -&gt; <span class="f">InvalidationClosure</span> {
+    <span class="k">for</span> seed <span class="k">in</span> seeds {
+        record(seed.node, derive_seed_state(seed.reason, in_cycle));
+        queue.<span class="f">push</span>(seed.node);
+    }
+
+    <span class="k">while let</span> <span class="f">Some</span>(target) = queue.<span class="f">pop_front</span>() {
+        <span class="k">for</span> edge <span class="k">in</span> reverse_edges[target] {
+            mark(edge.owner, <span class="f">UpstreamPublication</span>);
+            <span class="k">if</span> in_cycle(edge.owner) { state = <span class="f">CycleBlocked</span>; }
+            <span class="k">if</span> queued.<span class="f">insert</span>(edge.owner) {
+                impacted_order.<span class="f">push</span>(edge.owner);
+                queue.<span class="f">push_back</span>(edge.owner);
+            }
+        }
+    }
+}</pre>
+      <p class="small">BFS over <code>reverse_edges</code>; every visited node is folded into a single
+      <code>NodeInvalidationRecord</code> with merged reasons.</p>
+    </div>
+
+    <div>
+      <h4>Worked example</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 240" width="400" height="240" role="img">
+          <defs><marker id="arrI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+          <g font-family="Inter" font-size="11">
+            <circle cx="80" cy="60" r="22" fill="#fff5f5" stroke="#b91c1c" stroke-width="2"/>
+            <text x="80" y="58" text-anchor="middle" font-weight="700">A</text>
+            <text x="80" y="72" text-anchor="middle" font-size="9" fill="#b91c1c">seed</text>
+
+            <circle cx="200" cy="60" r="22" fill="#dceaff" stroke="#7eaaff"/>
+            <text x="200" y="58" text-anchor="middle" font-weight="700">B</text>
+            <text x="200" y="72" text-anchor="middle" font-size="9">B → A</text>
+
+            <circle cx="320" cy="60" r="22" fill="#dceaff" stroke="#7eaaff"/>
+            <text x="320" y="58" text-anchor="middle" font-weight="700">C</text>
+            <text x="320" y="72" text-anchor="middle" font-size="9">C → A</text>
+
+            <line x1="178" y1="60" x2="103" y2="60" stroke="#3a4253" marker-end="url(#arrI)"/>
+            <line x1="298" y1="60" x2="103" y2="60" stroke="#3a4253" marker-end="url(#arrI)"/>
+
+            <rect x="20" y="115" width="360" height="105" rx="6" fill="#fff" stroke="#cdd2dc"/>
+            <text x="200" y="135" text-anchor="middle" font-weight="700" fill="#1f6feb">closure(A,UpstreamPublication)</text>
+            <text x="32" y="158" font-size="11">impacted_order = [A, B, C]</text>
+            <text x="32" y="176" font-size="11">A.calc_state = Needed</text>
+            <text x="32" y="194" font-size="11">B.calc_state = DirtyPending; reasons=[UpstreamPublication]</text>
+            <text x="32" y="212" font-size="11">C.calc_state = DirtyPending; reasons=[UpstreamPublication]</text>
+          </g>
+        </svg>
+      </div>
+
+      <h4>Cycle interaction</h4>
+      <pre class="code"><span class="c">// dependency.rs test (paraphrased)</span>
+<span class="k">let</span> closure = graph.<span class="f">derive_invalidation_closure</span>(&amp;[<span class="f">InvalidationSeed</span>{
+    node_id: <span class="f">TreeNodeId</span>(<span class="n">2</span>),
+    reason: <span class="f">StructuralRebindRequired</span>,
+}]);
+<span class="c">// 2 ↔ 3 form a cycle group; 4 → 2 is acyclic</span>
+<span class="k">assert_eq!</span>(closure.records[&amp;node:<span class="n">2</span>].calc_state, <span class="f">CycleBlocked</span>);
+<span class="k">assert!</span>(closure.records[&amp;node:<span class="n">2</span>].requires_rebind);
+<span class="k">assert_eq!</span>(closure.records[&amp;node:<span class="n">4</span>].calc_state, <span class="f">DirtyPending</span>);</pre>
+
+      <div class="card good">
+        Reasons accumulate. A node can be marked for several reasons (e.g. both
+        <code>DependencyRemoved</code> and <code>DependencyAdded</code> when a binding swap re-routes a
+        dependency). All are kept; downstream policy decides what to do.
+      </div>
+
+      <h4>Where it plugs in</h4>
+      <p>The closure is consumed by <code>treecalc.rs</code>’s <strong>rebind gate</strong>: if any node in the
+      evaluation order has <code>requires_rebind=true</code>, the entire run is rejected with
+      <code>StructuralRebindRequired</code> rather than producing a partial publication.</p>
+    </div>
+  </div>
+  <div class="page-num">09 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 10 — STAGE 1 RECALC STATE MACHINE
+     ================================================================= -->
+<section class="page" id="p10">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§09 · Recalc state machine</div>
+  <h2>Eight node states. One transition table.</h2>
+
+  <p class="lede">Every formula-bearing node walks a strict state machine on every recalc. The
+  <code>Stage1RecalcTracker</code> enforces the legal transitions and maintains the matching overlays.</p>
+
+  <div class="svg-frame">
+    <svg viewBox="0 0 880 360" width="880" height="360" role="img" aria-label="Stage1 recalc state machine">
+      <defs>
+        <marker id="arrS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker>
+        <marker id="arrSr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#b91c1c"/></marker>
+      </defs>
+      <g font-family="Inter" font-size="12">
+        <!-- Clean -->
+        <rect x="40" y="160" width="100" height="44" rx="8" fill="#dcfce7" stroke="#15803d"/>
+        <text x="90" y="186" text-anchor="middle" font-weight="700">Clean</text>
+        <!-- DirtyPending -->
+        <rect x="180" y="160" width="120" height="44" rx="8" fill="#fff7d6" stroke="#b45309"/>
+        <text x="240" y="178" text-anchor="middle" font-weight="700">DirtyPending</text>
+        <text x="240" y="194" text-anchor="middle" font-size="10">mark_dirty</text>
+        <!-- Needed -->
+        <rect x="340" y="160" width="100" height="44" rx="8" fill="#fff7d6" stroke="#b45309"/>
+        <text x="390" y="178" text-anchor="middle" font-weight="700">Needed</text>
+        <text x="390" y="194" text-anchor="middle" font-size="10">mark_needed</text>
+        <!-- Evaluating -->
+        <rect x="480" y="160" width="120" height="44" rx="8" fill="#dceaff" stroke="#1f6feb"/>
+        <text x="540" y="178" text-anchor="middle" font-weight="700">Evaluating</text>
+        <text x="540" y="194" text-anchor="middle" font-size="10">begin_evaluate</text>
+        <!-- PublishReady -->
+        <rect x="640" y="120" width="140" height="44" rx="8" fill="#cffafe" stroke="#0e7490"/>
+        <text x="710" y="138" text-anchor="middle" font-weight="700">PublishReady</text>
+        <text x="710" y="154" text-anchor="middle" font-size="10">produce_candidate_result</text>
+        <!-- VerifiedClean -->
+        <rect x="640" y="200" width="140" height="44" rx="8" fill="#dcfce7" stroke="#15803d"/>
+        <text x="710" y="218" text-anchor="middle" font-weight="700">VerifiedClean</text>
+        <text x="710" y="234" text-anchor="middle" font-size="10">verify_clean</text>
+        <!-- RejectedPendingRepair -->
+        <rect x="380" y="280" width="200" height="44" rx="8" fill="#fee2e2" stroke="#b91c1c"/>
+        <text x="480" y="298" text-anchor="middle" font-weight="700">RejectedPendingRepair</text>
+        <text x="480" y="314" text-anchor="middle" font-size="10">reject_or_fallback</text>
+        <!-- CycleBlocked -->
+        <rect x="180" y="40" width="160" height="44" rx="8" fill="#fde68a" stroke="#92400e"/>
+        <text x="260" y="58" text-anchor="middle" font-weight="700">CycleBlocked</text>
+        <text x="260" y="74" text-anchor="middle" font-size="10">closure tags as cycle</text>
+
+        <!-- arrows -->
+        <line x1="140" y1="182" x2="180" y2="182" stroke="#1f6feb" marker-end="url(#arrS)"/>
+        <line x1="300" y1="182" x2="340" y2="182" stroke="#1f6feb" marker-end="url(#arrS)"/>
+        <line x1="440" y1="182" x2="480" y2="182" stroke="#1f6feb" marker-end="url(#arrS)"/>
+        <line x1="600" y1="172" x2="640" y2="142" stroke="#1f6feb" marker-end="url(#arrS)"/>
+        <line x1="600" y1="192" x2="640" y2="222" stroke="#1f6feb" marker-end="url(#arrS)"/>
+
+        <!-- publish back to clean -->
+        <path d="M710 120 C 710 90 90 90 90 158" fill="none" stroke="#15803d" stroke-width="1.6" marker-end="url(#arrS)"/>
+        <text x="400" y="86" font-size="11" fill="#15803d">publish_and_clear</text>
+
+        <!-- verified clean back to clean -->
+        <path d="M710 244 C 710 250 90 250 90 204" fill="none" stroke="#15803d" stroke-width="1.6" stroke-dasharray="3,3" marker-end="url(#arrS)"/>
+        <text x="350" y="252" font-size="10" fill="#15803d">value matched seed → no publication</text>
+
+        <!-- evaluating to rejected -->
+        <line x1="540" y1="204" x2="500" y2="280" stroke="#b91c1c" marker-end="url(#arrSr)"/>
+        <text x="430" y="245" font-size="11" fill="#b91c1c">reject</text>
+
+        <!-- publishready to rejected -->
+        <line x1="700" y1="164" x2="540" y2="280" stroke="#b91c1c" marker-end="url(#arrSr)"/>
+
+        <!-- rejected -> needed (reenter) -->
+        <path d="M380 302 C 350 270 350 230 360 204" fill="none" stroke="#b45309" marker-end="url(#arrS)"/>
+        <text x="300" y="270" font-size="10" fill="#b45309">reenter_rejected_pending_repair</text>
+
+        <!-- closure -> cycleblocked -->
+        <line x1="240" y1="160" x2="240" y2="84" stroke="#92400e" stroke-dasharray="3,3"/>
+      </g>
+    </svg>
+    <div class="caption">Solid blue = forward evaluation; green = published; red = reject path; brown = repair re-entry; dashed orange = cycle override.</div>
+  </div>
+
+  <div class="grid2" style="margin-top:6px">
+    <div>
+      <h4>Per-state overlay protection</h4>
+      <p>Every transition writes an <code>InvalidationExecutionState</code> overlay marked
+      <code>is_protected = true</code>. Overlays only become eviction-eligible after
+      <code>publish_and_clear</code> or <code>release_and_evict_eligible</code>.</p>
+      <pre class="code"><span class="k">fn</span> <span class="f">begin_evaluate</span>(node, basis) {
+    require_state(node, <span class="f">Needed</span>)?;
+    set_state(node, <span class="f">Evaluating</span>);
+    protect_execution_overlay(node, <span class="s">"evaluating"</span>);
+    upsert_overlay(<span class="f">CapabilityFenceAttachment</span>(basis), …);
+}</pre>
+    </div>
+    <div>
+      <h4>Required preconditions</h4>
+      <ul class="arrow-list">
+        <li><code>begin_evaluate</code> requires <code>Needed</code></li>
+        <li><code>verify_clean</code> requires <code>Evaluating</code></li>
+        <li><code>produce_candidate_result</code> requires <code>Evaluating</code></li>
+        <li><code>publish_and_clear</code> requires <code>PublishReady</code></li>
+        <li><code>release_and_evict_eligible</code> requires <code>Clean</code> | <code>VerifiedClean</code></li>
+      </ul>
+      <p class="small">Wrong-state attempts return <code>RecalcError::WrongState{ expected, observed }</code>.
+      No silent advance.</p>
+    </div>
+  </div>
+  <div class="page-num">10 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 11 — OVERLAY LIFECYCLE
+     ================================================================= -->
+<section class="page" id="p11">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§10 · Overlay lifecycle</div>
+  <h2>Six overlay kinds. Two protection bits. One eviction discipline.</h2>
+
+  <div class="grid12">
+    <div>
+      <p>Overlays are how OxCalc carries <em>runtime</em> facts that aren’t structural truth — invalidation state,
+      dynamic dependency edges, capability fences, runtime-effect projections — without smuggling them into the
+      snapshot.</p>
+
+      <pre class="code"><span class="k">pub enum</span> <span class="f">OverlayKind</span> {
+    <span class="f">InvalidationExecutionState</span>,   <span class="c">// per-state lifecycle marker</span>
+    <span class="f">DynamicDependency</span>,            <span class="c">// late-bound edges</span>
+    <span class="f">ExecutionRestriction</span>,         <span class="c">// host/capability blockers</span>
+    <span class="f">ShapeTopology</span>,                <span class="c">// shape-sensitive carrier</span>
+    <span class="f">CapabilityFenceAttachment</span>,    <span class="c">// fence the run executed under</span>
+    <span class="f">ObserverPriorityMetadata</span>,     <span class="c">// pinned-reader hints</span>
+}
+
+<span class="k">pub struct</span> <span class="f">OverlayKey</span> {
+    <span class="k">pub</span> owner_node_id:           <span class="f">TreeNodeId</span>,
+    <span class="k">pub</span> overlay_kind:            <span class="f">OverlayKind</span>,
+    <span class="k">pub</span> structural_snapshot_id: <span class="f">StructuralSnapshotId</span>,
+    <span class="k">pub</span> compatibility_basis:    String,
+    <span class="k">pub</span> payload_identity:       <span class="f">Option</span>&lt;String&gt;,
+}
+
+<span class="k">pub struct</span> <span class="f">OverlayEntry</span> {
+    <span class="k">pub</span> key:                  <span class="f">OverlayKey</span>,
+    <span class="k">pub</span> is_protected:         <span class="f">bool</span>,
+    <span class="k">pub</span> is_eviction_eligible: <span class="f">bool</span>,
+    <span class="k">pub</span> detail:               String,
+}</pre>
+
+      <h4>Why two protection bits?</h4>
+      <ul class="arrow-list">
+        <li><code>is_protected</code> — overlay is <em>load-bearing</em> for the current run; do not evict.</li>
+        <li><code>is_eviction_eligible</code> — overlay <em>may</em> be evicted on the next sweep.</li>
+      </ul>
+      <p class="small">A protected overlay can be promoted to eligible by <code>release_and_evict_eligible</code>;
+      this is how a clean node releases its execution-state overlay back to the eviction sweeper.</p>
+    </div>
+
+    <div>
+      <h4>Lifecycle: a single node</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 240" width="400" height="240" role="img">
+          <defs><marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3a4253"/></marker></defs>
+          <g font-family="Inter" font-size="11">
+            <rect x="20" y="20" width="360" height="40" rx="6" fill="#dceaff" stroke="#1f6feb"/>
+            <text x="200" y="38" text-anchor="middle" font-weight="700">create &amp; protect (begin_evaluate)</text>
+            <text x="200" y="54" text-anchor="middle" font-size="10">protected=true · eligible=false</text>
+            <line x1="200" y1="60" x2="200" y2="78" stroke="#3a4253" marker-end="url(#arrO)"/>
+
+            <rect x="20" y="80" width="360" height="40" rx="6" fill="#fff7d6" stroke="#b45309"/>
+            <text x="200" y="98" text-anchor="middle" font-weight="700">candidate ready (produce_candidate_result)</text>
+            <text x="200" y="114" text-anchor="middle" font-size="10">CapabilityFenceAttachment overlay upsert</text>
+            <line x1="200" y1="120" x2="200" y2="138" stroke="#3a4253" marker-end="url(#arrO)"/>
+
+            <rect x="20" y="140" width="360" height="40" rx="6" fill="#dcfce7" stroke="#15803d"/>
+            <text x="200" y="158" text-anchor="middle" font-weight="700">publish_and_clear → mark eligible</text>
+            <text x="200" y="174" text-anchor="middle" font-size="10">protected=false · eligible=true</text>
+            <line x1="200" y1="180" x2="200" y2="198" stroke="#3a4253" marker-end="url(#arrO)"/>
+
+            <rect x="20" y="200" width="360" height="36" rx="6" fill="#fff" stroke="#cdd2dc"/>
+            <text x="200" y="222" text-anchor="middle">evict_eligible_overlays() removes it</text>
+          </g>
+        </svg>
+      </div>
+
+      <h4>Eviction predicate</h4>
+      <pre class="code"><span class="k">fn</span> <span class="f">evict_eligible_overlays</span>(&amp;<span class="k">mut self</span>) -&gt; <span class="f">usize</span> {
+    <span class="k">let</span> to_evict = self.overlays.<span class="f">iter</span>()
+        .<span class="f">filter</span>(|(_, e)|
+            e.is_eviction_eligible &amp;&amp; !e.is_protected)
+        .<span class="f">map</span>(|(k,_)| k.<span class="f">clone</span>())
+        .<span class="f">collect</span>::&lt;<span class="f">Vec</span>&lt;_&gt;&gt;();
+    <span class="k">for</span> key <span class="k">in</span> &amp;to_evict { self.overlays.<span class="f">remove</span>(key); }
+    to_evict.<span class="f">len</span>()
+}</pre>
+
+      <div class="card callout">
+        <strong>Pinned-reader interaction.</strong> The TraceCalc machine defers eviction while any pinned reader
+        remains. When the last pinned reader is unpinned, every clean node’s overlays are first <em>opened</em>
+        (release+eligible), then a sweep runs. This is how we avoid evicting state out from under a stable view.
+      </div>
+
+      <h4>Compatibility basis</h4>
+      <p>The <code>compatibility_basis</code> field on <code>OverlayKey</code> is a free-form fence string —
+      typically the snapshot id (<code>"snapshot:1"</code>) or a profile id. It is what makes
+      “same key, different fence” possible.</p>
+    </div>
+  </div>
+  <div class="page-num">11 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 12 — COORDINATOR
+     ================================================================= -->
+<section class="page" id="p12">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§11 · Coordinator</div>
+  <h2>The single-publisher rule, made concrete</h2>
+  <p class="lede">There is one and only one place where work becomes engine-visible: <code>TreeCalcCoordinator::accept_and_publish</code>.</p>
+
+  <div class="grid21">
+    <div>
+      <h4>State held</h4>
+      <pre class="code"><span class="k">pub struct</span> <span class="f">TreeCalcCoordinator</span> {
+    snapshot:             <span class="f">StructuralSnapshot</span>,
+    in_flight_candidate:  <span class="f">Option</span>&lt;<span class="f">AcceptedCandidateResult</span>&gt;,
+    accepted_candidate:   <span class="f">Option</span>&lt;<span class="f">AcceptedCandidateResult</span>&gt;,
+    published_view:       <span class="f">PublishedView</span>,
+    counters:             <span class="f">CoordinatorCounters</span>,
+    reject_log:           <span class="f">Vec</span>&lt;<span class="f">RejectDetail</span>&gt;,
+    pins:                 <span class="f">BTreeMap</span>&lt;String,<span class="f">PinnedPublicationView</span>&gt;,
+}</pre>
+
+      <h4>Eight reject kinds</h4>
+      <table>
+        <tbody>
+          <tr><td><code>SnapshotMismatch</code></td><td>candidate built against a different snapshot</td></tr>
+          <tr><td><code>ArtifactTokenMismatch</code></td><td>artifact basis no longer compatible</td></tr>
+          <tr><td><code>ProfileVersionMismatch</code></td><td>profile/version drift</td></tr>
+          <tr><td><code>CapabilityMismatch</code></td><td>fence revoked / changed</td></tr>
+          <tr><td><code>PublicationFenceMismatch</code></td><td>publication-state drift</td></tr>
+          <tr><td><code>DynamicDependencyFailure</code></td><td>late-bound edge could not resolve</td></tr>
+          <tr><td><code>SyntheticCycleReject</code></td><td>cycle in the formula family</td></tr>
+          <tr><td><code>HostInjectedFailure</code></td><td>OxFml/host failure mapped through</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <h4>The publication path</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 460 320" width="460" height="320" role="img">
+          <defs><marker id="arrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+          <g font-family="Inter" font-size="12">
+            <rect x="40" y="20" width="160" height="48" rx="6" fill="#fff" stroke="#1f6feb"/>
+            <text x="120" y="42" text-anchor="middle" font-weight="700">admit_candidate_work</text>
+            <text x="120" y="58" text-anchor="middle" font-size="10">checks snapshot fence</text>
+
+            <rect x="40" y="92" width="160" height="48" rx="6" fill="#fff" stroke="#1f6feb"/>
+            <text x="120" y="114" text-anchor="middle" font-weight="700">record_accepted</text>
+            <text x="120" y="130" text-anchor="middle" font-size="10">in_flight → accepted</text>
+
+            <rect x="40" y="164" width="160" height="48" rx="6" fill="#dcfce7" stroke="#15803d"/>
+            <text x="120" y="186" text-anchor="middle" font-weight="700">accept_and_publish</text>
+            <text x="120" y="202" text-anchor="middle" font-size="10">PublicationBundle out</text>
+
+            <rect x="260" y="92" width="160" height="48" rx="6" fill="#fee2e2" stroke="#b91c1c"/>
+            <text x="340" y="114" text-anchor="middle" font-weight="700">reject_candidate_work</text>
+            <text x="340" y="130" text-anchor="middle" font-size="10">RejectDetail logged</text>
+
+            <rect x="260" y="20" width="160" height="48" rx="6" fill="#f4ecff" stroke="#9e80e0"/>
+            <text x="340" y="42" text-anchor="middle" font-weight="700">pin_reader / unpin_reader</text>
+            <text x="340" y="58" text-anchor="middle" font-size="10">stable observer view</text>
+
+            <rect x="40" y="232" width="380" height="64" rx="6" fill="#dceaff" stroke="#7eaaff"/>
+            <text x="230" y="252" text-anchor="middle" font-weight="700" fill="#0a3d91">PublishedView</text>
+            <text x="230" y="268" text-anchor="middle" font-size="11">snapshot · publication: Option · values: BTreeMap</text>
+            <text x="230" y="284" text-anchor="middle" font-size="11">counters: { publication_count, reject_count, pin_count }</text>
+
+            <line x1="120" y1="68" x2="120" y2="92" stroke="#1f6feb" marker-end="url(#arrC)"/>
+            <line x1="120" y1="140" x2="120" y2="164" stroke="#1f6feb" marker-end="url(#arrC)"/>
+            <line x1="200" y1="116" x2="260" y2="116" stroke="#b91c1c" marker-end="url(#arrC)"/>
+            <line x1="120" y1="212" x2="120" y2="232" stroke="#15803d" marker-end="url(#arrC)"/>
+          </g>
+        </svg>
+      </div>
+
+      <h4>Atomic publication</h4>
+      <pre class="code"><span class="k">pub fn</span> <span class="f">accept_and_publish</span>(&amp;<span class="k">mut self</span>, publication_id) {
+    <span class="k">let</span> accepted = self.accepted_candidate.<span class="f">clone</span>()
+        .<span class="f">ok_or</span>(<span class="f">MissingAcceptedCandidate</span>)?;
+
+    <span class="k">let mut</span> values = self.published_view.values.<span class="f">clone</span>();
+    values.<span class="f">extend</span>(accepted.value_updates.<span class="f">clone</span>());
+
+    <span class="k">let</span> bundle = <span class="f">PublicationBundle</span> {
+        publication_id: ...,
+        candidate_result_id: accepted.candidate_result_id,
+        structural_snapshot_id: self.snapshot.<span class="f">snapshot_id</span>(),
+        published_view_delta: accepted.value_updates,
+        published_runtime_effects: accepted.runtime_effects,
+        trace_markers: <span class="k">vec</span>![<span class="s">"publication_committed"</span>],
+    };
+
+    self.published_view = <span class="f">PublishedView</span> {
+        snapshot: self.snapshot.<span class="f">clone</span>(),
+        publication: <span class="f">Some</span>(bundle.<span class="f">clone</span>()),
+        values,
+    };
+    self.in_flight_candidate = <span class="f">None</span>;
+    self.accepted_candidate  = <span class="f">None</span>;
+    self.counters = self.counters.<span class="f">increment_publications</span>();
+}</pre>
+
+      <div class="card good">
+        Once <code>accept_and_publish</code> returns, the new state is observable in one step. There is no torn
+        intermediate where some node values are old and others are new.
+      </div>
+    </div>
+  </div>
+  <div class="page-num">12 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 13 — PUBLISHED VIEW & PINNED READERS
+     ================================================================= -->
+<section class="page" id="p13">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§12 · Stable observation</div>
+  <h2>Published view, pinned readers, deferred eviction</h2>
+
+  <div class="grid12">
+    <div>
+      <p>The published view is the <em>only</em> stable answer to “what does node X currently evaluate to?”
+      Pinned readers freeze a copy of it for stable observation.</p>
+
+      <pre class="code"><span class="k">pub struct</span> <span class="f">PublishedView</span> {
+    <span class="k">pub</span> snapshot:    <span class="f">StructuralSnapshot</span>,
+    <span class="k">pub</span> publication: <span class="f">Option</span>&lt;<span class="f">PublicationBundle</span>&gt;,
+    <span class="k">pub</span> values:      <span class="f">BTreeMap</span>&lt;<span class="f">TreeNodeId</span>, String&gt;,
+}
+
+<span class="k">pub struct</span> <span class="f">PinnedPublicationView</span> {
+    <span class="k">pub</span> reader_id:       String,
+    <span class="k">pub</span> snapshot_id:     <span class="f">StructuralSnapshotId</span>,
+    <span class="k">pub</span> publication_id:  <span class="f">Option</span>&lt;String&gt;,
+    <span class="k">pub</span> structural_view: <span class="f">PinnedStructuralView</span>,
+    <span class="k">pub</span> values:          <span class="f">BTreeMap</span>&lt;<span class="f">TreeNodeId</span>, String&gt;,
+}</pre>
+
+      <h4>Three-step pin protocol</h4>
+      <ol class="arrow-list">
+        <li><code>pin_reader(view_id)</code> snapshots the live view by-value, returns the <code>PinnedPublicationView</code>.</li>
+        <li>Reader observes; even after subsequent publications, the pinned values do not change.</li>
+        <li><code>unpin_reader(view_id)</code> drops the pin; eviction-eligible overlays may now flow through the next sweep.</li>
+      </ol>
+
+      <h4>Why coordinator-owned, not reader-owned?</h4>
+      <p>A reader-owned snapshot would race the coordinator’s lifetime; a coordinator-owned pin lets the engine
+      <em>defer eviction</em> until it is genuinely safe. The TraceCalc machine implements exactly this contract,
+      and counts the deferred-eviction events as observable evidence.</p>
+    </div>
+
+    <div>
+      <h4>What an unpin actually triggers</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 240" width="400" height="240" role="img">
+          <defs><marker id="arrPP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+          <g font-family="Inter" font-size="11">
+            <rect x="20" y="20" width="360" height="32" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+            <text x="200" y="40" text-anchor="middle">unpin_reader(view_id)</text>
+            <line x1="200" y1="52" x2="200" y2="70" stroke="#1f6feb" marker-end="url(#arrPP)"/>
+
+            <rect x="20" y="72" width="360" height="32" fill="#fff" stroke="#cdd2dc" rx="5"/>
+            <text x="200" y="92" text-anchor="middle">remaining_reader_count &gt; 0?</text>
+            <line x1="80" y1="104" x2="80" y2="122" stroke="#1f6feb" marker-end="url(#arrPP)"/>
+            <line x1="320" y1="104" x2="320" y2="122" stroke="#1f6feb" marker-end="url(#arrPP)"/>
+            <text x="60" y="118" font-size="10" fill="#b45309">yes</text>
+            <text x="300" y="118" font-size="10" fill="#15803d">no</text>
+
+            <rect x="20" y="124" width="160" height="48" fill="#fff7d6" stroke="#b45309" rx="5"/>
+            <text x="100" y="144" text-anchor="middle" font-weight="700">defer eviction</text>
+            <text x="100" y="160" text-anchor="middle" font-size="10">overlay.release_deferred ++</text>
+
+            <rect x="220" y="124" width="160" height="48" fill="#dcfce7" stroke="#15803d" rx="5"/>
+            <text x="300" y="144" text-anchor="middle" font-weight="700">open eligibility</text>
+            <text x="300" y="160" text-anchor="middle" font-size="10">release_and_evict_eligible</text>
+            <line x1="300" y1="172" x2="300" y2="190" stroke="#15803d" marker-end="url(#arrPP)"/>
+
+            <rect x="220" y="192" width="160" height="40" fill="#fff" stroke="#cdd2dc" rx="5"/>
+            <text x="300" y="216" text-anchor="middle" font-size="11">evict_eligible_overlays()</text>
+          </g>
+        </svg>
+      </div>
+
+      <h4>Counters that prove it</h4>
+      <p>The TraceCalc reference machine increments observable counters at every coordinator boundary:</p>
+      <ul class="arrow-list">
+        <li><code>reader.pinned</code>, <code>reader.unpinned</code></li>
+        <li><code>candidate.admitted</code>, <code>candidate.published</code>, <code>candidate.rejected</code></li>
+        <li><code>overlay.release_deferred</code>, <code>overlay.eviction_eligible</code>, <code>overlay_evictions</code></li>
+        <li><code>retention_waiting_on_readers</code></li>
+      </ul>
+      <p class="small">These counters are part of the conformance contract — replays compare them across engines.</p>
+
+      <div class="card callout">
+        <strong>Stable observer rule.</strong> A pinned view never sees a “torn” combination of new structural state
+        with old values, or vice versa: both sides of a publication transition together.
+      </div>
+    </div>
+  </div>
+  <div class="page-num">13 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 14 — LOCAL TREECALC ENGINE END-TO-END
+     ================================================================= -->
+<section class="page" id="p14">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§13 · End-to-end run</div>
+  <h2><code>LocalTreeCalcEngine::execute</code> — the whole pipeline</h2>
+  <p class="lede">This is the inner loop that ties everything together. One method; thirteen explicitly timed phases.</p>
+
+  <div class="svg-frame">
+    <svg viewBox="0 0 880 270" width="880" height="270" role="img" aria-label="LocalTreeCalcEngine pipeline">
+      <defs><marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+      <g font-family="Inter" font-size="11">
+        <rect x="10" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="70" y="38" text-anchor="middle" font-weight="700">prepare formulas</text>
+        <text x="70" y="52" text-anchor="middle" font-size="9">parse · bind · red view</text>
+        <rect x="140" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="200" y="38" text-anchor="middle" font-weight="700">lower descriptors</text>
+        <text x="200" y="52" text-anchor="middle" font-size="9">references → edges</text>
+        <rect x="270" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="330" y="38" text-anchor="middle" font-weight="700">build graph</text>
+        <text x="330" y="52" text-anchor="middle" font-size="9">SCC · diagnostics</text>
+        <rect x="400" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="460" y="38" text-anchor="middle" font-weight="700">closure</text>
+        <text x="460" y="52" text-anchor="middle" font-size="9">seeds → impacted set</text>
+        <rect x="530" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="590" y="38" text-anchor="middle" font-weight="700">runtime setup</text>
+        <text x="590" y="52" text-anchor="middle" font-size="9">coordinator · tracker</text>
+        <rect x="660" y="20" width="120" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="720" y="38" text-anchor="middle" font-weight="700">topo order</text>
+        <text x="720" y="52" text-anchor="middle" font-size="9">Kahn’s algorithm</text>
+
+        <line x1="130" y1="38" x2="140" y2="38" stroke="#1f6feb" marker-end="url(#arrL)"/>
+        <line x1="260" y1="38" x2="270" y2="38" stroke="#1f6feb" marker-end="url(#arrL)"/>
+        <line x1="390" y1="38" x2="400" y2="38" stroke="#1f6feb" marker-end="url(#arrL)"/>
+        <line x1="520" y1="38" x2="530" y2="38" stroke="#1f6feb" marker-end="url(#arrL)"/>
+        <line x1="650" y1="38" x2="660" y2="38" stroke="#1f6feb" marker-end="url(#arrL)"/>
+
+        <rect x="10" y="80" width="280" height="38" fill="#fff7d6" stroke="#b45309" rx="5"/>
+        <text x="150" y="98" text-anchor="middle" font-weight="700">rebind gate</text>
+        <text x="150" y="112" text-anchor="middle" font-size="9">any node requires_rebind ⇒ reject</text>
+        <rect x="300" y="80" width="280" height="38" fill="#fff7d6" stroke="#b45309" rx="5"/>
+        <text x="440" y="98" text-anchor="middle" font-weight="700">descriptor diagnostic gate</text>
+        <text x="440" y="112" text-anchor="middle" font-size="9">missing owner/target ⇒ reject</text>
+        <rect x="590" y="80" width="280" height="38" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+        <text x="730" y="98" text-anchor="middle" font-weight="700">evaluate-via-OxFml loop</text>
+        <text x="730" y="112" text-anchor="middle" font-size="9">begin_evaluate · run · publish_ready or verify_clean</text>
+
+        <rect x="10" y="140" width="430" height="38" fill="#dcfce7" stroke="#15803d" rx="5"/>
+        <text x="225" y="158" text-anchor="middle" font-weight="700">candidate adapt &amp; admit (single-publisher)</text>
+        <text x="225" y="172" text-anchor="middle" font-size="9">accept_and_publish · publish_and_clear all</text>
+        <rect x="450" y="140" width="200" height="38" fill="#fee2e2" stroke="#b91c1c" rx="5"/>
+        <text x="550" y="158" text-anchor="middle" font-weight="700">on failure → reject_run</text>
+        <text x="550" y="172" text-anchor="middle" font-size="9">RejectDetail + overlays</text>
+        <rect x="660" y="140" width="210" height="38" fill="#f4ecff" stroke="#9e80e0" rx="5"/>
+        <text x="765" y="158" text-anchor="middle" font-weight="700">finalize artifacts</text>
+        <text x="765" y="172" text-anchor="middle" font-size="9">phase_timings_micros · diagnostics</text>
+
+        <rect x="10" y="200" width="860" height="48" fill="#fff" stroke="#cdd2dc" rx="6"/>
+        <text x="440" y="218" text-anchor="middle" font-weight="700" fill="#1f6feb">LocalTreeCalcRunArtifacts</text>
+        <text x="440" y="234" text-anchor="middle" font-size="10">result_state · dependency_graph · invalidation_closure · evaluation_order · runtime_effects · runtime_effect_overlays · candidate_result · publication_bundle · reject_detail · published_values · node_states · phase_timings_micros · diagnostics</text>
+      </g>
+    </svg>
+    <div class="caption">Each phase records its duration; the artifacts bundle is the canonical handoff to TraceCalc and consumer hosts.</div>
+  </div>
+
+  <div class="grid2" style="margin-top:6px">
+    <div>
+      <h4>Three result states</h4>
+      <ul class="arrow-list">
+        <li><code>Published</code> — at least one node’s value changed; coordinator emitted a bundle.</li>
+        <li><code>VerifiedClean</code> — all candidate values matched the seeded published values; no publication.</li>
+        <li><code>Rejected</code> — gate failed or evaluation surfaced an error; reject recorded.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Phase timings (selected)</h4>
+      <pre class="code">oxfml_prepare_formulas
+dependency_descriptor_lowering
+dependency_graph_build_and_cycle_scan
+invalidation_closure_derivation
+runtime_setup
+recalc_tracker_mark_dirty_needed
+topological_formula_order
+rebind_gate_scan
+oxfml_formula_evaluation        <span class="c">// accumulated</span>
+candidate_publication
+total_engine_execute</pre>
+    </div>
+  </div>
+  <div class="page-num">14 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 15 — OXFML SEAM
+     ================================================================= -->
+<section class="page" id="p15">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§14 · The OxFml seam</div>
+  <h2>How OxCalc consumes OxFml</h2>
+  <p class="lede">OxCalc owns recalc, coordination, and publication. OxFml owns formula syntax, binding, and runtime
+  evaluation. They meet at exactly one bridge: the <code>MinimalUpstreamHostPacket</code>.</p>
+
+  <div class="svg-frame">
+    <svg viewBox="0 0 880 320" width="880" height="320" role="img" aria-label="OxFml seam pipeline">
+      <defs><marker id="arrO2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+      <g font-family="Inter" font-size="11">
+        <rect x="20" y="20" width="280" height="280" rx="6" fill="#fff7e6" stroke="#dd9555"/>
+        <text x="160" y="40" text-anchor="middle" font-weight="700" font-size="13" fill="#7a3210">OxCalc side</text>
+        <rect x="60" y="60" width="200" height="36" rx="4" fill="#fff" stroke="#dd9555"/>
+        <text x="160" y="82" text-anchor="middle">TreeFormula</text>
+        <line x1="160" y1="96" x2="160" y2="114" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="60" y="116" width="200" height="36" rx="4" fill="#fff" stroke="#dd9555"/>
+        <text x="160" y="138" text-anchor="middle">translate_formula</text>
+        <line x1="160" y1="152" x2="160" y2="170" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="60" y="172" width="200" height="36" rx="4" fill="#fff" stroke="#dd9555"/>
+        <text x="160" y="194" text-anchor="middle">A1 source text + tokens</text>
+        <line x1="160" y1="208" x2="160" y2="226" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="60" y="228" width="200" height="36" rx="4" fill="#dceaff" stroke="#7eaaff"/>
+        <text x="160" y="250" text-anchor="middle" font-weight="700">MinimalUpstreamHostPacket</text>
+
+        <rect x="320" y="20" width="240" height="280" rx="6" fill="#e2f7f0" stroke="#5fbf9c"/>
+        <text x="440" y="40" text-anchor="middle" font-weight="700" font-size="13" fill="#0f5f4b">OxFml core</text>
+        <rect x="340" y="60" width="200" height="32" rx="4" fill="#fff" stroke="#5fbf9c"/>
+        <text x="440" y="80" text-anchor="middle">parse_formula</text>
+        <rect x="340" y="98" width="200" height="32" rx="4" fill="#fff" stroke="#5fbf9c"/>
+        <text x="440" y="118" text-anchor="middle">project_red_view</text>
+        <rect x="340" y="136" width="200" height="32" rx="4" fill="#fff" stroke="#5fbf9c"/>
+        <text x="440" y="156" text-anchor="middle">bind_formula</text>
+        <rect x="340" y="174" width="200" height="32" rx="4" fill="#fff" stroke="#5fbf9c"/>
+        <text x="440" y="194" text-anchor="middle">RuntimeEnvironment.execute</text>
+        <rect x="340" y="212" width="200" height="32" rx="4" fill="#fff" stroke="#5fbf9c"/>
+        <text x="440" y="232" text-anchor="middle">commit decision (Accept/Reject)</text>
+
+        <rect x="580" y="20" width="280" height="280" rx="6" fill="#f4ecff" stroke="#9e80e0"/>
+        <text x="720" y="40" text-anchor="middle" font-weight="700" font-size="13" fill="#3b1473">Back into OxCalc</text>
+        <rect x="620" y="60" width="200" height="36" rx="4" fill="#fff" stroke="#9e80e0"/>
+        <text x="720" y="82" text-anchor="middle">RuntimeFormulaResult</text>
+        <line x1="720" y1="96" x2="720" y2="114" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="620" y="116" width="200" height="36" rx="4" fill="#fff" stroke="#9e80e0"/>
+        <text x="720" y="138" text-anchor="middle">candidate diagnostics</text>
+        <line x1="720" y1="152" x2="720" y2="170" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="620" y="172" width="200" height="36" rx="4" fill="#fff" stroke="#9e80e0"/>
+        <text x="720" y="194" text-anchor="middle">validate_oxfml_commit_bundle</text>
+        <line x1="720" y1="208" x2="720" y2="226" stroke="#1f6feb" marker-end="url(#arrO2)"/>
+        <rect x="620" y="228" width="200" height="36" rx="4" fill="#dcfce7" stroke="#15803d"/>
+        <text x="720" y="250" text-anchor="middle" font-weight="700">value string + diagnostics</text>
+
+        <line x1="260" y1="246" x2="320" y2="78" stroke="#1f6feb" stroke-dasharray="3,3" marker-end="url(#arrO2)"/>
+        <line x1="540" y1="228" x2="620" y2="78" stroke="#1f6feb" stroke-dasharray="3,3" marker-end="url(#arrO2)"/>
+      </g>
+    </svg>
+    <div class="caption">OxCalc translates its <code>TreeFormula</code> into A1-flavoured OxFml source, hands the packet to OxFml, and validates the commit bundle on the way back.</div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h4>The packet, in shape</h4>
+      <pre class="code"><span class="k">pub struct</span> <span class="f">MinimalUpstreamHostPacket</span> {
+    <span class="k">pub</span> formula_slot:        <span class="f">MinimalFormulaSlotFacts</span>,
+    <span class="k">pub</span> binding_world:       <span class="f">MinimalBindingWorld</span>,
+    <span class="k">pub</span> typed_query_facts:   <span class="f">MinimalTypedQueryFacts</span>,
+    <span class="k">pub</span> runtime_catalog:     <span class="f">MinimalRuntimeCatalogFacts</span>,
+    <span class="k">pub</span> publication_context: <span class="f">Option</span>&lt;_&gt;,
+}</pre>
+      <ul class="arrow-list">
+        <li><code>formula_slot</code> — formula text, stable id, channel kind, caller anchor.</li>
+        <li><code>binding_world</code> — synthetic cell fixture &amp; defined-name bindings (one per resolved <code>TreeReference</code>).</li>
+        <li><code>typed_query_facts</code> — host info / RTD modes; how to refuse residuals deterministically.</li>
+        <li><code>runtime_catalog</code> — optional library-context snapshot.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h4>Translation discipline</h4>
+      <p>Each <code>TreeReference</code> becomes a synthetic A1 token:</p>
+      <pre class="code"><span class="c">// treecalc.rs · TranslationState::bind_target</span>
+<span class="k">let</span> token = <span class="k">format!</span>(<span class="s">"TREE_REF_{}_{}"</span>,
+                    self.owner_node_id.<span class="n">0</span>,
+                    self.next_reference_index);</pre>
+      <p>And each working value becomes a synthetic A1 cell at <code>A&lt;node_id&gt;</code>. Residual references emit
+      OxFml call-throughs that <em>deliberately</em> fail in deterministic ways:</p>
+      <pre class="code"><span class="f">HostSensitive</span>       =&gt; <span class="s">"INFO(\"system\")"</span>
+<span class="f">CapabilitySensitive</span> =&gt; <span class="s">"INFO(\"osversion\")"</span>
+<span class="f">ShapeTopology</span>       =&gt; <span class="s">"ROWS(A1:A1)"</span>
+<span class="f">DynamicPotential</span>    =&gt; <span class="s">"RTD(\"TREECALC\",\"\",topic)"</span></pre>
+      <p>OxFml then meets them with a typed query bundle that surfaces a
+      <code>HostInfoError::ProviderFailure</code> or <code>RtdProviderResult::CapabilityDenied</code> — the
+      seam handles errors, not silent fallbacks.</p>
+
+      <h4>Bundle validation</h4>
+      <p>The post-run bundle must agree with the candidate. Three identity checks must pass:</p>
+      <ol class="arrow-list">
+        <li><code>candidate_result_id</code> match</li>
+        <li><code>formula_stable_id</code> match</li>
+        <li><code>commit_value_delta.candidate_result_id</code> match</li>
+      </ol>
+      <p class="small">A mismatch surfaces as <code>OxfmlCommitBundleIncompatible</code> and the run rejects.</p>
+    </div>
+  </div>
+  <div class="page-num">15 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 16 — RESIDUALS & RUNTIME EFFECTS
+     ================================================================= -->
+<section class="page" id="p16">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§15 · Residuals</div>
+  <h2>What the local engine cannot evaluate, it surfaces</h2>
+
+  <div class="grid2">
+    <div>
+      <p>OxCalc’s local sequential engine is intentionally narrow. It evaluates structurally-resolvable references
+      and plain arithmetic / built-in functions. Anything else becomes a <em>residual</em>: a typed runtime effect
+      with explicit reject semantics. Stage 2/3 lanes will accept many of these natively; today they are
+      first-class evidence that a node cannot publish in this run.</p>
+
+      <h4>Four residual kinds</h4>
+      <table>
+        <thead><tr><th>ResidualCarrierKind</th><th>RuntimeEffectFamily</th><th>RejectKind</th></tr></thead>
+        <tbody>
+          <tr><td><code>HostSensitive</code></td><td><code>ExecutionRestriction</code></td><td><code>HostInjectedFailure</code></td></tr>
+          <tr><td><code>CapabilitySensitive</code></td><td><code>CapabilitySensitive</code></td><td><code>HostInjectedFailure</code></td></tr>
+          <tr><td><code>ShapeTopology</code></td><td><code>ShapeTopology</code></td><td><code>HostInjectedFailure</code></td></tr>
+          <tr><td><code>DynamicPotential</code></td><td><code>DynamicDependency</code></td><td><code>DynamicDependencyFailure</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Runtime effect shape</h4>
+      <pre class="code"><span class="k">pub struct</span> <span class="f">RuntimeEffect</span> {
+    <span class="k">pub</span> kind:   String,
+    <span class="k">pub</span> family: <span class="f">RuntimeEffectFamily</span>,
+    <span class="k">pub</span> detail: String,
+}
+
+<span class="c">// e.g.</span>
+<span class="f">RuntimeEffect</span> {
+    kind:   <span class="s">"runtime_effect.host_sensitive_reference"</span>,
+    family: <span class="f">ExecutionRestriction</span>,
+    detail: <span class="s">"owner_node:node:3;carrier_id:carrier:host;detail:active_selection
+            |runtime_lane:local_sequential_treecalc|session_id:none|...|"</span>,
+}</pre>
+
+      <h4>Annotation discipline</h4>
+      <p>Every emitted runtime effect is post-annotated with the environment context — runtime lane, session id,
+      capability profile id, runtime policy id — so downstream readers can correlate effects with the run that
+      produced them.</p>
+    </div>
+
+    <div>
+      <h4>From residual to overlay</h4>
+      <pre class="code"><span class="k">fn</span> <span class="f">build_runtime_effect_overlays</span>(input, owner, effects) {
+    effects.<span class="f">iter</span>().<span class="f">enumerate</span>().<span class="f">map</span>(|(i, e)|
+        <span class="f">OverlayEntry</span> {
+            key: <span class="f">OverlayKey</span> {
+                owner_node_id: owner,
+                overlay_kind:  runtime_effect_overlay_kind(e),
+                structural_snapshot_id: input.snapshot.<span class="f">id</span>(),
+                compatibility_basis:    input.basis.<span class="f">clone</span>(),
+                payload_identity:       <span class="f">Some</span>(<span class="k">format!</span>(
+                  <span class="s">"{}:runtime_effect:{i}"</span>,
+                  input.candidate_result_id)),
+            },
+            is_protected:         <span class="k">true</span>,
+            is_eviction_eligible: <span class="k">false</span>,
+            detail:               <span class="k">format!</span>(<span class="s">"{}|{}"</span>, e.kind, e.detail),
+        })
+    .<span class="f">collect</span>()
+}</pre>
+
+      <h4>Family → overlay kind</h4>
+      <table>
+        <tbody>
+          <tr><td><code>DynamicDependency</code></td><td><code>OverlayKind::DynamicDependency</code></td></tr>
+          <tr><td><code>ExecutionRestriction</code> · <code>CapabilitySensitive</code></td><td><code>OverlayKind::ExecutionRestriction</code></td></tr>
+          <tr><td><code>ShapeTopology</code></td><td><code>OverlayKind::ShapeTopology</code></td></tr>
+        </tbody>
+      </table>
+
+      <h4>Special case: lazy residual publication</h4>
+      <div class="card callout">
+        <code>IF</code>-formed function calls allow <em>lazy</em> residual publication: if a residual lives only on
+        an unselected branch, the run can still publish. The check lives at
+        <code>formula_allows_lazy_residual_publication</code>.
+      </div>
+
+      <h4>Resolved dynamic references</h4>
+      <p>A <code>DynamicResolved</code> reference (carrier-bound but with a known target id) is <em>publishable</em>:
+      the engine emits a <code>DependencyShapeUpdate{ kind: "dynamic_dependency_bound" }</code> and a runtime
+      effect, but the value is computed and the candidate goes through.</p>
+
+      <pre class="code"><span class="c">// dynamic_dependency_shape_updates(graph)</span>
+<span class="k">if</span> descriptor.kind == <span class="f">DynamicPotential</span>
+   &amp;&amp; descriptor.target_node_id.<span class="f">is_some</span>() {
+    emit <span class="f">DependencyShapeUpdate</span> { kind: <span class="s">"dynamic_dependency_bound"</span>,
+                                  affected_node_ids: [owner, target] };
+}</pre>
+    </div>
+  </div>
+  <div class="page-num">16 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 17 — TRACECALC REFERENCE MACHINE
+     ================================================================= -->
+<section class="page" id="p17">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§16 · TraceCalc</div>
+  <h2>The reference machine that watches the engine</h2>
+  <p class="lede">TraceCalc is OxCalc’s <em>second</em> implementation of the same coordinator-and-overlay
+  semantics, driven by JSON scenarios. It is how we prove the engine and reference agree, step by step,
+  counter by counter, event by event.</p>
+
+  <div class="grid12">
+    <div>
+      <h4>Anatomy of a scenario</h4>
+      <pre class="code"><span class="c">// from contracts.rs</span>
+<span class="k">pub struct</span> <span class="f">TraceCalcScenario</span> {
+    <span class="k">pub</span> schema_version:   String,
+    <span class="k">pub</span> scenario_id:      String,
+    <span class="k">pub</span> calc_space:       String,
+    <span class="k">pub</span> initial_graph:    <span class="f">TraceCalcInitialGraph</span>,
+    <span class="k">pub</span> initial_runtime:  <span class="f">TraceCalcInitialRuntime</span>,
+    <span class="k">pub</span> steps:            <span class="f">Vec</span>&lt;<span class="f">TraceCalcStep</span>&gt;,
+    <span class="k">pub</span> expected:         <span class="f">TraceCalcExpected</span>,
+    <span class="k">pub</span> replay_projection: <span class="f">Option</span>&lt;_&gt;,
+    <span class="k">pub</span> witness_anchors:  <span class="f">Option</span>&lt;_&gt;,
+    ...
+}</pre>
+
+      <h4>Step kinds</h4>
+      <ul class="arrow-list">
+        <li><code>pin_view</code> / <code>unpin_view</code></li>
+        <li><code>mark_stale</code> — seed dirty nodes</li>
+        <li><code>admit_work</code> — start a candidate</li>
+        <li><code>emit_candidate_result</code> — values + shape updates + effects</li>
+        <li><code>emit_reject</code> — typed reject path</li>
+        <li><code>publish_candidate</code> — accept_and_publish</li>
+        <li><code>verify_clean</code> — value-equal seed path</li>
+        <li><code>seed_overlay</code> — pre-load an overlay</li>
+        <li><code>reset_fixture</code> — wipe between phases</li>
+      </ul>
+
+      <h4>Two machines, one semantics</h4>
+      <p>The crate exposes <code>TraceCalcEngineMachine</code> (engine-driven) and
+      <code>TraceCalcReferenceMachine</code> (the gold-standard reference). Both call the same
+      <code>execute_shared</code>; conformance lanes diff their artifacts.</p>
+    </div>
+
+    <div>
+      <h4>What gets compared</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 240" width="400" height="240" role="img">
+          <g font-family="Inter" font-size="11">
+            <rect x="20" y="20" width="160" height="36" rx="6" fill="#dceaff" stroke="#7eaaff"/>
+            <text x="100" y="42" text-anchor="middle" font-weight="700">Engine machine</text>
+            <rect x="220" y="20" width="160" height="36" rx="6" fill="#f4ecff" stroke="#9e80e0"/>
+            <text x="300" y="42" text-anchor="middle" font-weight="700">Reference machine</text>
+            <rect x="20" y="80" width="360" height="40" rx="6" fill="#fff" stroke="#cdd2dc"/>
+            <text x="200" y="98" text-anchor="middle">trace_events · counters · published_values</text>
+            <text x="200" y="112" text-anchor="middle">pinned_views · rejects</text>
+            <line x1="100" y1="56" x2="120" y2="80" stroke="#1f6feb" stroke-dasharray="3,3"/>
+            <line x1="300" y1="56" x2="280" y2="80" stroke="#9e80e0" stroke-dasharray="3,3"/>
+            <rect x="20" y="140" width="360" height="36" rx="6" fill="#fff7d6" stroke="#b45309"/>
+            <text x="200" y="162" text-anchor="middle" font-weight="700">conformance diff</text>
+            <rect x="20" y="186" width="360" height="40" rx="6" fill="#dcfce7" stroke="#15803d"/>
+            <text x="200" y="204" text-anchor="middle" font-weight="700">eight mismatch kinds</text>
+            <text x="200" y="218" text-anchor="middle" font-size="10">PublishedView · Pin · Reject · Trace · Counter · …</text>
+          </g>
+        </svg>
+      </div>
+
+      <h4>Conformance mismatch taxonomy</h4>
+      <pre class="code"><span class="k">pub enum</span> <span class="f">TraceCalcConformanceMismatchKind</span> {
+    <span class="f">MissingScenarioResult</span>,
+    <span class="f">ResultStateMismatch</span>,
+    <span class="f">PublishedViewMismatch</span>,
+    <span class="f">PinnedViewMismatch</span>,
+    <span class="f">RejectMismatch</span>,
+    <span class="f">TraceCountMismatch</span>,
+    <span class="f">CounterMismatch</span>,
+    <span class="f">UnexpectedExtraArtifact</span>,
+}</pre>
+
+      <h4>Witness anchors</h4>
+      <p>Witness anchors give scenarios stable handles for downstream proof work — phase blocks, event groups,
+      reject records, view slices. They are how a Lean obligation can refer to “the third reject in this
+      scenario’s phase block 2” without copying contents.</p>
+
+      <div class="card good">
+        <strong>Why this matters.</strong> Two implementations that produce the same artifacts <em>by step</em>
+        are stronger evidence than two implementations that produce the same end state. Drift surfaces fast.
+      </div>
+    </div>
+  </div>
+  <div class="page-num">17 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 18 — FORMAL ASSURANCE
+     ================================================================= -->
+<section class="page" id="p18">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§17 · Formal assurance</div>
+  <h2>TLA+ and Lean: the engine’s second pair of eyes</h2>
+  <p class="lede">OxCalc maintains formal models alongside the implementation. They are not decorative —
+  they fail when the engine drifts, and they unblock when promotion ledgers say so.</p>
+
+  <div class="grid2">
+    <div class="card theory">
+      <h4>TLA+ — coordinator state model</h4>
+      <p>The <code>formal/tla/CoreEngineStage1.cfg</code> model formalizes the Stage 1 coordinator state
+      machine: snapshot id, in-flight candidate, accepted candidate, published view, pinned readers, reject log.
+      Safety properties include:</p>
+      <ul class="arrow-list">
+        <li>no publication without a recorded accepted candidate</li>
+        <li>candidate snapshot id matches coordinator snapshot id</li>
+        <li>reject log monotonically grows; published view never silently shrinks</li>
+        <li>pinned reader values do not change after the pin</li>
+      </ul>
+    </div>
+    <div class="card theory">
+      <h4>Lean — typed kernel obligations</h4>
+      <p><code>formal/lean/OxCalc/CoreEngine/Stage1State.lean</code> begins the typed obligation tree for Stage 1.
+      The intention is to prove, against a Lean-faithful state model, the same invariants TLA+ checks
+      operationally. Bridges to the implementation come through the conformance scaffolding.</p>
+    </div>
+  </div>
+
+  <h3>Replay-grade artifacts</h3>
+  <p>Every TraceCalc scenario produces a deterministic artifact set. Replays land under
+  <code>formal/replay/</code> and <code>docs/test-runs/</code>. A small example:</p>
+  <pre class="code"><span class="c">// formal/replay/stage1-hand-authored/r1_candidate_result_vs_publication_001.json (excerpted)</span>
+{
+  <span class="s">"scenario_id"</span>: <span class="s">"r1_candidate_result_vs_publication_001"</span>,
+  <span class="s">"steps"</span>: [
+    { <span class="s">"kind"</span>: <span class="s">"mark_stale"</span>, <span class="s">"targets"</span>: [<span class="s">"node:2"</span>] },
+    { <span class="s">"kind"</span>: <span class="s">"admit_work"</span>, <span class="s">"admission_id"</span>: <span class="s">"adm:1"</span>, <span class="s">"targets"</span>: [<span class="s">"node:2"</span>] },
+    { <span class="s">"kind"</span>: <span class="s">"emit_candidate_result"</span>, <span class="s">"candidate_result_id"</span>: <span class="s">"cand:1"</span>,
+      <span class="s">"value_updates"</span>: [{ <span class="s">"node_id"</span>: <span class="s">"node:2"</span>, <span class="s">"value"</span>: <span class="s">"5"</span> }] },
+    { <span class="s">"kind"</span>: <span class="s">"publish_candidate"</span>, <span class="s">"publication_id"</span>: <span class="s">"pub:1"</span> }
+  ],
+  <span class="s">"expected"</span>: { <span class="s">"published_values"</span>: [{ <span class="s">"node_id"</span>: <span class="s">"node:2"</span>, <span class="s">"value"</span>: <span class="s">"5"</span> }] }
+}</pre>
+
+  <h3>Three assurance lanes</h3>
+  <div class="grid3">
+    <div class="card">
+      <h4>Implementation conformance</h4>
+      <p class="small"><code>oxcalc-tracecalc::implementation_conformance</code></p>
+      <p>Engine vs reference machine, scenario by scenario, with the eight mismatch kinds above.</p>
+    </div>
+    <div class="card">
+      <h4>Independent conformance</h4>
+      <p class="small"><code>oxcalc-tracecalc::independent_conformance</code></p>
+      <p>An external evaluator (the diversity seam) replays scenarios and must agree on the same artifacts.</p>
+    </div>
+    <div class="card">
+      <h4>Formal assurance</h4>
+      <p class="small"><code>oxcalc-tracecalc::formal_assurance</code></p>
+      <p>TLA+/Lean state models bind to scenario witness anchors. Drift here is structural, not just behavioural.</p>
+    </div>
+  </div>
+
+  <h3>Promotion gates</h3>
+  <div class="card warn">
+    <strong>Release-grade promotion ledger.</strong> A change that touches coordinator semantics, residual
+    handling, or publication shape is held by the relevant workset’s <em>residual promotion-readiness ledger</em>
+    until conformance, diversity, and seam evidence agree. The W045 ledger is the most recent example;
+    W046 owns the next round.
+  </div>
+  <div class="page-num">18 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 19 — STAGED REALIZATION & CONSUMER CONTRACT
+     ================================================================= -->
+<section class="page" id="p19">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§18 · Staged realization &amp; consumer contract</div>
+  <h2>Today, tomorrow, and the contract you sign</h2>
+
+  <h3>Three stages, same artifacts</h3>
+  <div class="svg-frame">
+    <svg viewBox="0 0 880 200" width="880" height="200" role="img" aria-label="Three stages">
+      <g font-family="Inter" font-size="12">
+        <rect x="20" y="30" width="270" height="140" rx="8" fill="#dcfce7" stroke="#15803d"/>
+        <text x="155" y="56" text-anchor="middle" font-weight="700" font-size="14" fill="#0a4d2e">Stage 1 — sequential</text>
+        <text x="40" y="80" font-size="11">• one evaluator, in-process</text>
+        <text x="40" y="98" font-size="11">• topological order over formula owners</text>
+        <text x="40" y="116" font-size="11">• coordinator publishes one bundle</text>
+        <text x="40" y="134" font-size="11">• reject on cycle / residual / rebind</text>
+        <text x="40" y="152" font-size="11" fill="#0a4d2e"><strong>STATUS: shipped &amp; load-bearing</strong></text>
+
+        <rect x="305" y="30" width="270" height="140" rx="8" fill="#fff7d6" stroke="#b45309"/>
+        <text x="440" y="56" text-anchor="middle" font-weight="700" font-size="14" fill="#7c3a00">Stage 2 — partitioned</text>
+        <text x="325" y="80" font-size="11">• partitioned parallel evaluation</text>
+        <text x="325" y="98" font-size="11">• per-partition admission, single publisher</text>
+        <text x="325" y="116" font-size="11">• replay/conformance lanes already aware</text>
+        <text x="325" y="134" font-size="11">• stage2_replay scaffolding present</text>
+        <text x="325" y="152" font-size="11" fill="#7c3a00"><strong>STATUS: in flight</strong></text>
+
+        <rect x="590" y="30" width="270" height="140" rx="8" fill="#f4ecff" stroke="#9e80e0"/>
+        <text x="725" y="56" text-anchor="middle" font-weight="700" font-size="14" fill="#3b1473">Stage 3 — advanced lanes</text>
+        <text x="610" y="80" font-size="11">• dynamic-dependency hot paths</text>
+        <text x="610" y="98" font-size="11">• capability-fenced async lanes</text>
+        <text x="610" y="116" font-size="11">• shape-topology-driven fan-out</text>
+        <text x="610" y="134" font-size="11">• advanced overlay sweeps</text>
+        <text x="610" y="152" font-size="11" fill="#3b1473"><strong>STATUS: planned</strong></text>
+      </g>
+    </svg>
+    <div class="caption">All three stages publish the same artifact shape (<code>LocalTreeCalcRunArtifacts</code> generalized). The kernel was designed to absorb 2 and 3 without breaking 1.</div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>OxCalcTree: the consumer contract</h3>
+      <pre class="code"><span class="c">// src/oxcalc-core/src/consumer.rs</span>
+<span class="k">pub struct</span> <span class="f">OxCalcTreeDocument</span> {
+    <span class="k">pub</span> structural_snapshot:       <span class="f">StructuralSnapshot</span>,
+    <span class="k">pub</span> formula_catalog:           <span class="f">TreeFormulaCatalog</span>,
+    <span class="k">pub</span> seeded_published_values:   <span class="f">BTreeMap</span>&lt;_,String&gt;,
+}
+
+<span class="k">pub struct</span> <span class="f">OxCalcTreeRecalcRequest</span> {
+    <span class="k">pub</span> candidate_result_id:    String,
+    <span class="k">pub</span> publication_id:         String,
+    <span class="k">pub</span> compatibility_basis:    String,
+    <span class="k">pub</span> artifact_token_basis:   String,
+}
+
+<span class="k">pub enum</span> <span class="f">OxCalcTreeRunState</span> {
+    <span class="f">Published</span>, <span class="f">VerifiedClean</span>, <span class="f">Rejected</span>,
+}
+
+<span class="k">pub struct</span> <span class="f">OxCalcTreeHostCapabilitySnapshot</span> {
+    <span class="k">pub</span> capability_profile_id:       String,
+    <span class="k">pub</span> dynamic_dependency_effects:  <span class="f">bool</span>,
+    <span class="k">pub</span> execution_restriction_effects: <span class="f">bool</span>,
+    <span class="k">pub</span> capability_sensitive_effects: <span class="f">bool</span>,
+    <span class="k">pub</span> shape_topology_effects:       <span class="f">bool</span>,
+}</pre>
+      <p class="small"><code>DNA TreeCalc</code> and other tree-style hosts consume OxCalc through this surface; they
+      never reach into <code>treecalc.rs</code> internals.</p>
+    </div>
+
+    <div>
+      <h3>Five things consumer hosts get for free</h3>
+      <ol class="arrow-list">
+        <li><strong>Deterministic artifacts</strong> for every request — the dependency graph, invalidation closure,
+            evaluation order, runtime effects, and overlays are part of the response.</li>
+        <li><strong>Pinned-reader stability</strong> — the host can pin a view id, observe, and trust that pinned
+            values do not move under it.</li>
+        <li><strong>Typed reject paths</strong> — an eight-class taxonomy that maps host failures, capability
+            denials, cycles, and fence drifts to distinct codes.</li>
+        <li><strong>OxFml seam isolation</strong> — the host never sees OxFml directly; it sees only the
+            translated formulas, validated commit bundles, and runtime effects.</li>
+        <li><strong>Phase timings</strong> — every recalc returns a microsecond breakdown of the thirteen
+            phases so hosts can profile in production-grade telemetry.</li>
+      </ol>
+
+      <div class="card callout">
+        <strong>What changes between stages.</strong> Hosts see <em>more concurrency in the runtime effects
+        log</em>, fewer rejects on dynamic-dependency carriers, and lower wall-time on partitionable workloads —
+        but the same artifact shapes and the same publication semantics.
+      </div>
+
+      <h3>Compatibility basis is your contract</h3>
+      <p>Every overlay, candidate, and publication carries a <code>compatibility_basis</code>. Treat it as a
+      versioned fence string: changing it forces the engine to rebuild from a clean slate. It is the cheapest
+      way for a host to invalidate everything cleanly.</p>
+    </div>
+  </div>
+  <div class="page-num">19 / 20</div>
+</section>
+
+<!-- =================================================================
+     PAGE 20 — GLOSSARY & FORWARD LOOK
+     ================================================================= -->
+<section class="page" id="p20">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§19 · Glossary &amp; forward look</div>
+  <h2>What to remember when you walk away</h2>
+
+  <div class="grid2">
+    <div>
+      <h3>Glossary</h3>
+      <table>
+        <tbody>
+          <tr><td class="mono">StructuralSnapshot</td><td>Immutable tree truth, keyed by <code>StructuralSnapshotId</code>.</td></tr>
+          <tr><td class="mono">StructuralEditOutcome</td><td>Edit result + impact (NoRebind / RecalcOnly / RebindRequired / Removal).</td></tr>
+          <tr><td class="mono">TreeReference</td><td>Ten-shape algebra of how formulas name nodes.</td></tr>
+          <tr><td class="mono">DependencyDescriptor</td><td>Lowered reference; one per call site.</td></tr>
+          <tr><td class="mono">DependencyGraph</td><td>Forward + reverse edges + Tarjan SCCs + diagnostics.</td></tr>
+          <tr><td class="mono">InvalidationClosure</td><td>BFS over reverse edges, with reasons and rebind flags.</td></tr>
+          <tr><td class="mono">NodeCalcState</td><td>Eight-state recalc lifecycle.</td></tr>
+          <tr><td class="mono">OverlayKey/Entry</td><td>Snapshot-keyed runtime fact with two protection bits.</td></tr>
+          <tr><td class="mono">TreeCalcCoordinator</td><td>Single publication authority.</td></tr>
+          <tr><td class="mono">PublishedView</td><td>Snapshot + last bundle + current values.</td></tr>
+          <tr><td class="mono">PinnedPublicationView</td><td>Reader-stable copy of the published view.</td></tr>
+          <tr><td class="mono">MinimalUpstreamHostPacket</td><td>The OxFml seam payload.</td></tr>
+          <tr><td class="mono">RuntimeEffect</td><td>Typed evidence of what the local engine could not handle.</td></tr>
+          <tr><td class="mono">ResidualCarrier</td><td>Host / capability / shape / dynamic carrier kind.</td></tr>
+          <tr><td class="mono">TraceCalcScenario</td><td>JSON-driven step list with expectations and witness anchors.</td></tr>
+          <tr><td class="mono">OxCalcTree</td><td>Consumer surface for tree-style hosts.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <h3>Five takeaways</h3>
+      <ol class="arrow-list">
+        <li><strong>Identity is sacred.</strong> Everything else — projection paths, overlays, runtime effects —
+        is derived from snapshot-keyed identity.</li>
+        <li><strong>One publisher.</strong> Coordinator authority is a correctness property, not a coordination
+        convenience. Evaluators never publish.</li>
+        <li><strong>OxFml is a seam, not a leak.</strong> OxCalc translates, hands over a packet, validates the
+        bundle, and goes back to its own world. There is exactly one bridge.</li>
+        <li><strong>Residuals are first-class.</strong> What the local engine can’t evaluate becomes typed
+        evidence — never silent failure.</li>
+        <li><strong>The engine and its reference machine watch each other.</strong> TraceCalc’s eight mismatch
+        kinds catch drift before it becomes incident.</li>
+      </ol>
+
+      <h3>Open frontiers</h3>
+      <ul class="arrow-list">
+        <li>Stage 2 partitioned realization and replay shape</li>
+        <li>Broader OxFml capability surface uptake (W046+ ledgers)</li>
+        <li>Lean obligation expansion across coordinator and overlay invariants</li>
+        <li>OxCalcTree consumer contract v2 — host-driven eviction policies</li>
+        <li>Dynamic-dependency hot path lanes inside Stage 3</li>
+      </ul>
+
+      <h3>Where to read next</h3>
+      <ul class="arrow-list">
+        <li><code>docs/spec/core-engine/CORE_ENGINE_STATE_AND_SNAPSHOTS.md</code></li>
+        <li><code>docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md</code></li>
+        <li><code>docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md</code></li>
+        <li><code>docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md</code></li>
+        <li><code>src/oxcalc-core/src/treecalc.rs</code> — the canonical pipeline</li>
+      </ul>
+
+      <div class="quote" style="margin-top:18px">
+        OxCalc is small at every layer, and load-bearing at every layer. The point is not minimalism for its
+        own sake — it is that every fact has exactly one home, and every transition has exactly one
+        authority. That is what lets the rest of DNA Calc trust it.
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-meta" style="margin-top:30px">
+    <div>
+      <strong>OxCalc · Deep Technical Brochure</strong> · v1.0 · 2026-05-07<br>
+      <span class="small">Authored from the live Rust source under <code>src/oxcalc-core</code> and
+      <code>src/oxcalc-tracecalc</code>; cross-referenced to the active core-engine spec set.</span>
+    </div>
+    <div style="text-align:right" class="small">
+      End of document<br>
+      <span class="pill muted">20 / 20</span>
+    </div>
+  </div>
+  <div class="page-num">20 / 20</div>
+</section>
+
+</div>
+</body>
+</html>

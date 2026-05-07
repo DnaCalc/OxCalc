@@ -111,9 +111,11 @@ The machine-readable checklist lives at `docs/test-runs/core-engine/closure-audi
 
 ## 7. Successor Scope
 
-W045 does not promote release-grade verification. It creates W046 as the next proof-service consolidation and release-grade promotion-readiness scope.
+W045 does not promote release-grade verification. It originally created W046 as the next proof-service consolidation and release-grade promotion-readiness scope.
 
-The W046 successor lane is:
+Redirect note: W046 has since been redirected by `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md` toward the engine semantic proof spine. The list below records the original W045 handoff shape, not the current W046 execution plan.
+
+The original W046 successor lane was:
 
 1. `calc-gucd` parent: W046 core formalization proof-service consolidation and release-grade promotion readiness,
 2. `calc-gucd.1` residual promotion-readiness ledger and current uptake map,

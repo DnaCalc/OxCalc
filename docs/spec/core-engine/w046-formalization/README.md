@@ -1,10 +1,27 @@
 # W046 Formalization Artifact Root
 
-This directory is reserved for W046 evidence packets.
+This directory is reserved for W046 engine semantic proof-spine packets.
 
-W046 starts from `docs/spec/core-engine/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` and owns the next proof-service consolidation and release-grade promotion-readiness tranche for remaining release-grade blockers: optimized/core broad dynamic-transition coverage, snapshot/capability counterpart breadth, callable metadata projection, Rust totality/refinement, panic-free core boundaries, full Lean/TLA verification, unbounded fairness, Stage 2 production partition-analyzer soundness, scheduler equivalence, pack-grade replay equivalence, operated assurance services, retained history, retained witness lifecycle, retention SLO, mismatch quarantine, independent evaluator breadth, operated cross-engine differential service, broad OxFml display/publication, public migration, W073 downstream typed-rule request-construction uptake, callable carrier sufficiency, registered-external callable projection, provider-failure/callable-publication publication semantics, continuous release-scale assurance, pack-grade replay governance, C5 reassessment, and release-grade decision.
+W046 starts from `docs/spec/core-engine/w045-formalization/W045_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` and the showcase review in `docs/showcase/`. It redirects the next formalization tranche toward first-class semantic models of the calculation engine before returning to release-readiness classification.
 
-The governing workset is `docs/worksets/W046_CORE_FORMALIZATION_PROOF_SERVICE_CONSOLIDATION_AND_RELEASE_GRADE_PROMOTION_READINESS.md`.
+The governing workset is `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`.
+
+## Governing Intent
+
+W046 treats the calculation engine as the primary formal object:
+
+1. dependency graph construction,
+2. forward/reverse edge consistency,
+3. SCC and cycle classification,
+4. invalidation seeds and closure,
+5. soft-reference and dynamic-reference rebind behavior,
+6. recalc tracker state transitions,
+7. evaluation order and working-value read discipline,
+8. OxFml runtime candidate adaptation,
+9. rejection and publication semantics,
+10. TraceCalc refinement for selected kernels.
+
+Proof-service, release-grade, C5, operated-service, pack-governance, independent-evaluator, scale, and promotion-readiness lanes are supporting evidence layers over that semantic spine.
 
 ## Current OxFml Intake
 
@@ -20,24 +37,29 @@ The governing workset is `docs/worksets/W046_CORE_FORMALIZATION_PROOF_SERVICE_CO
 
 ## Planned Packets
 
-1. `W046_RESIDUAL_PROMOTION_READINESS_LEDGER_AND_CURRENT_UPTAKE_MAP.md` - `calc-gucd.1` residual map.
-2. `W046_OPTIMIZED_CORE_BROAD_TRANSITION_SNAPSHOT_CAPABILITY_AND_CALLABLE_METADATA_IMPLEMENTATION.md` - `calc-gucd.2` optimized/core and callable metadata tranche.
-3. `W046_RUST_TOTALITY_REFINEMENT_AND_PANIC_FREE_CORE_PROOF_SERVICE_CONSOLIDATION.md` - `calc-gucd.3` Rust totality/refinement tranche.
-4. `W046_LEAN_TLA_FULL_VERIFICATION_FAIRNESS_AND_MODEL_BOUND_DISCHARGE_CONSOLIDATION.md` - `calc-gucd.4` Lean/TLA proof/model tranche.
-5. `W046_STAGE2_PRODUCTION_POLICY_PACK_EQUIVALENCE_AND_SCHEDULER_SERVICE_PROMOTION_READINESS.md` - `calc-gucd.5` Stage 2 tranche.
-6. `W046_OPERATED_ASSURANCE_RETAINED_HISTORY_RETAINED_WITNESS_RETENTION_SLO_ALERT_SERVICE_READINESS.md` - `calc-gucd.6` operated assurance/service tranche.
-7. `W046_INDEPENDENT_EVALUATOR_MISMATCH_QUARANTINE_RETAINED_WITNESS_ATTACHMENT_OPERATED_DIFFERENTIAL_READINESS.md` - `calc-gucd.7` diversity/service tranche.
-8. `W046_OXFML_W073_DOWNSTREAM_UPTAKE_PUBLIC_MIGRATION_CALLABLE_REGISTERED_EXTERNAL_PROVIDER_CLOSURE.md` - `calc-gucd.8` OxFml seam tranche.
-9. `W046_CONTINUOUS_SCALE_ASSURANCE_OPERATED_SEMANTIC_REGRESSION_AND_RELEASE_SCALE_CORRECTNESS_GUARD.md` - `calc-gucd.9` scale assurance tranche.
-10. `W046_PACK_GRADE_REPLAY_GOVERNANCE_SERVICE_AND_C5_PROMOTION_READINESS_DECISION.md` - `calc-gucd.10` pack/C5 tranche.
-11. `W046_CLOSURE_AUDIT_AND_RELEASE_GRADE_VERIFICATION_DECISION.md` - `calc-gucd.11` closure audit and release-grade decision.
+1. `W046_ENGINE_SEMANTIC_CATALOG_AND_EFFECT_SIGNATURE_PLAN.md` - `calc-gucd.1` redirect, showcase finding uptake, semantic catalog, and algebraic-effects handler-law plan.
+2. `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` - `calc-gucd.2` graph, reverse-edge, and cycle/SCC model.
+3. `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` - `calc-gucd.3` invalidation, soft-reference, dynamic-reference, and rebind model.
+4. `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md` - `calc-gucd.4` recalc state transition model.
+5. `W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md` - `calc-gucd.5` evaluation order and read-discipline model.
+6. `W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md` - `calc-gucd.6` TraceCalc reference kernel and TreeCalc/CoreEngine replay binding.
+7. `W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md` - `calc-gucd.7` OxFml seam and narrow carrier model.
+8. `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` - `calc-gucd.8` proof-service/classifier coverage recast over the semantic spine.
+9. `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` - `calc-gucd.9` scale/performance semantic-regression signatures and phase timing.
+10. `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` - `calc-gucd.10` downstream consequence reassessment after semantic-spine evidence.
+11. `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` - `calc-gucd.11` closure audit and successor routing.
 
 ## Current Status
 
-- execution_state: `calc-gucd.1_ready_after_w045_closure`
+- execution_state: `calc-gucd.1_redirect_and_semantic_catalog_in_progress`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-gucd.1` residual promotion-readiness ledger and current uptake map is next
-  - release-grade verification, full formalization, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, callable metadata, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified
+  - `calc-gucd.1` semantic-spine redirect, catalog promotion, and effect-signature plan validation is pending
+  - graph/reverse-edge/SCC formal model remains open
+  - invalidation/soft-reference/rebind formal model remains open
+  - recalc tracker and evaluation-order formal models remain open
+  - TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding remain open
+  - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
+  - release-grade verification, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

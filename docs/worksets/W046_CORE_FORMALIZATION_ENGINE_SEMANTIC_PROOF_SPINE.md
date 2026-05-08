@@ -229,13 +229,12 @@ Validation requirements scale by bead:
 
 ## 10. Current Status
 
-- execution_state: `calc-gucd.2_dependency_graph_model_ready`
+- execution_state: `calc-gucd.3_invalidation_rebind_model_ready`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-gucd.2` graph/reverse-edge/SCC formal model is ready to start
-  - invalidation/soft-reference/rebind formal model remains open
+  - `calc-gucd.3` invalidation/soft-reference/rebind formal model is ready to start
   - recalc tracker and evaluation-order formal models remain open
   - TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding remain open
   - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open

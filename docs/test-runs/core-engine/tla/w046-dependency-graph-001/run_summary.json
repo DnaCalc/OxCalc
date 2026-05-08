@@ -1,0 +1,32 @@
+{
+  "schema_version": "oxcalc.tla.w046_dependency_graph.run_summary.v1",
+  "run_id": "w046-dependency-graph-001",
+  "model": "formal/tla/CoreEngineW046DependencyGraph.tla",
+  "model_family": "bounded_dependency_graph_reverse_edge_scc",
+  "tlc_version": "2.19 of 08 August 2024",
+  "result": "passed",
+  "config_count": 1,
+  "passed_config_count": 1,
+  "failed_config_count": 0,
+  "checked_invariants": [
+    "TypeInvariant",
+    "ForwardEdgesHaveValidTargets",
+    "ReverseEdgeConverse",
+    "DiagnosticsPreserved",
+    "CycleGroupClassification"
+  ],
+  "configs": [
+    {
+      "config": "formal/tla/CoreEngineW046DependencyGraph.smoke.cfg",
+      "purpose": "bounded graph-build smoke model with A<->B non-trivial SCC, C dynamic untargeted descriptor, forward/reverse edge converse, diagnostic preservation, and cycle-group shape classification",
+      "max_transitions": 2,
+      "states_generated": 3,
+      "distinct_states": 2,
+      "queue_left": 0,
+      "depth": 2,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w046-dependency-graph-001/CoreEngineW046DependencyGraph.smoke.tlc.txt"
+    }
+  ],
+  "semantic_equivalence_statement": "This run checks bounded TLA model evidence only. It does not change dependency graph construction, invalidation, recalc semantics, evaluation order, TraceCalc behavior, TreeCalc/CoreEngine behavior, publication semantics, rejection policy, OxFml/OxFunc behavior, pack decisions, or service readiness."
+}

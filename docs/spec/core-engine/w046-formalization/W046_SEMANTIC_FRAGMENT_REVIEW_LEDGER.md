@@ -1,6 +1,6 @@
 # W046 Semantic Fragment Review Ledger
 
-Status: `review_started`
+Status: `bead_closed`
 
 Workset: `W046`
 
@@ -82,16 +82,7 @@ The next W046 bead should start with these exact inputs:
 
 ## 7. Current Status
 
-- execution_state: `calc-gucd.1_state_transition_catalog_added`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - this is a first-pass ledger, not a closed semantic catalog
-  - state transition catalog exists but is not yet mechanized
-  - graph/reverse-edge/SCC formal model remains open
-  - invalidation/rebind formal model remains open
-  - recalc tracker transition crosswalk remains open
-  - evaluation-order and working-value proof targets remain open
-  - TraceCalc refinement relation remains open
-  - OxFml effect-signature/handler-law model remains open
+- execution_state: `calc-gucd.1_closed`
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`

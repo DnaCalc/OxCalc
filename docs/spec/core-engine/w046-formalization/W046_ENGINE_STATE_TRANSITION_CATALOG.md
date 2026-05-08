@@ -1,6 +1,6 @@
 # W046 Engine State Transition Catalog
 
-Status: `spec_drafted`
+Status: `bead_closed`
 
 Workset: `W046`
 
@@ -95,11 +95,7 @@ This catalog gives `calc-gucd.2` a concrete start condition:
 
 ## 7. Current Status
 
-- execution_state: `calc-gucd.1_state_transition_catalog_added`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - transition catalog is drafted but not mechanized
-  - `calc-gucd.2` graph/reverse-edge/SCC model has not started
-  - invalidation, recalc, evaluation, TraceCalc, and OxFml successor models remain open
+- execution_state: `calc-gucd.1_closed`
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`

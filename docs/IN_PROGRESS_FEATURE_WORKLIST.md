@@ -8,7 +8,8 @@ This file is a compact orientation surface. It is not live execution state; `.be
 3. Cleanup prelude: `calc-gucd.12`
 4. Generated evidence isolation follow-up: `calc-gucd.13`
 5. Replay-tooling source cleanup follow-up: `calc-gucd.14`
-6. First semantic bead after cleanup: `calc-gucd.1`
+6. Redirect and semantic catalog bead: `calc-gucd.1`
+7. Current semantic bead: `calc-gucd.2`
 
 ## Active Aim
 W046 redirects formalization toward the calculation engine's semantic proof spine:

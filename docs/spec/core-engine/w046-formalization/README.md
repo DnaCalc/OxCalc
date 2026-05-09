@@ -53,13 +53,12 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
 
 ## Current Status
 
-- execution_state: `calc-gucd.4_recalc_tracker_transition_model_ready`
+- execution_state: `calc-gucd.5_evaluation_order_read_discipline_model_ready`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `calc-gucd.4` recalc tracker transition formal model is ready to start
-  - evaluation-order formal model remains open
+  - `calc-gucd.5` evaluation-order and working-value read-discipline formal model is ready to start
   - TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding remain open
   - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
   - release-grade verification, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

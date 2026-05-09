@@ -1,0 +1,38 @@
+{
+  "schema_version": "oxcalc.tla.w046_recalc_tracker.run_summary.v1",
+  "run_id": "w046-recalc-tracker-001",
+  "model": "formal/tla/CoreEngineW046RecalcTracker.tla",
+  "model_family": "bounded_recalc_tracker_transition_pre_post",
+  "tlc_version": "2.19 of 08 August 2024",
+  "result": "passed",
+  "config_count": 1,
+  "passed_config_count": 1,
+  "failed_config_count": 0,
+  "checked_invariants": [
+    "TypeInvariant",
+    "DemandClearedForVerifiedClean",
+    "RejectedPendingRepairRetainsDemand",
+    "CycleBlockedRetainsDemand",
+    "PublishReadyHasCandidateSignal",
+    "RejectIsNoPublish",
+    "VerifiedCleanIsNoPublish",
+    "CycleBlockedIsNoPublish",
+    "CandidateStepsAreNoPublish",
+    "PublishRequiresAcceptedCandidate",
+    "PublicationOnlyFromAcceptedCandidate"
+  ],
+  "configs": [
+    {
+      "config": "formal/tla/CoreEngineW046RecalcTracker.smoke.cfg",
+      "purpose": "bounded recalc tracker and coordinator transition model covering dirty, needed, evaluating, cycle-blocked, verified-clean, publish-ready, rejected-pending-repair, candidate intake, rejection, accepted-candidate publication, and tracker publication clearing",
+      "max_transitions": 6,
+      "states_generated": 77096,
+      "distinct_states": 13671,
+      "queue_left": 0,
+      "depth": 7,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w046-recalc-tracker-001/CoreEngineW046RecalcTracker.smoke.tlc.txt"
+    }
+  ],
+  "semantic_equivalence_statement": "This run checks bounded TLA model evidence only. It does not change recalc tracker behavior, coordinator behavior, dependency graph construction, invalidation, evaluation order, working-value reads, TraceCalc behavior, TreeCalc/CoreEngine behavior, publication semantics, rejection policy, OxFml/OxFunc behavior, pack decisions, or service readiness."
+}

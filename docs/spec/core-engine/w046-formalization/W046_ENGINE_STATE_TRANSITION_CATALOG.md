@@ -65,12 +65,12 @@ It turns the first-pass fragment review into an engine transition surface that t
 | `INV.SCC.CYCLE_CLASSIFICATION` | non-trivial SCCs and self-loops are classified as cycle groups before order selection | `tc_cycle_region_reject_001` | checked SCC classification-shape model in `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` |
 | `INV.INV.NO_UNDER_INVALIDATION` | seed nodes and all reverse-reachable dependents are in invalidation records | W035 dirty-seed closure scenario; TreeCalc closure artifacts | checked Lean/TLA target in `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` |
 | `INV.INV.REBIND_NO_PUBLISH` | nodes with required rebind cannot publish through stale dependency bindings | rebind/dynamic post-edit artifacts | checked rebind gate model in `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` |
-| `INV.REC.LEGAL_STATES` | node states follow the declared recalc transition relation | TreeCalc node-state artifacts; TLA Stage 1 | transition crosswalk in `calc-gucd.4` |
+| `INV.REC.LEGAL_STATES` | node states follow the declared recalc transition relation | TreeCalc node-state artifacts; TLA Stage 1 | checked Lean/TLA target in `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md` |
 | `INV.ORDER.BEFORE_DEPENDENT` | if `owner` reads `target`, then `target` is evaluated earlier or read from seeded published state | TreeCalc evaluation-order artifacts | working-value model in `calc-gucd.5` |
 | `INV.EVAL.STABLE_PRIOR_READS` | formula evaluation reads only stable published values or prior ordered computed values | implementation loop in `treecalc.rs` | read-discipline theorem in `calc-gucd.5` |
-| `INV.CAND.NOT_PUBLICATION` | accepted candidate state is not stable published state | W033-W037 TLA/Lean and replay artifacts | reused in `calc-gucd.4` and `calc-gucd.6` |
-| `INV.REJ.NO_PUBLISH` | rejected work does not advance published values | publication-fence, dynamic, cycle, callable reject artifacts | reused and connected to failure causes in `calc-gucd.4`/`.6`/`.7` |
-| `INV.PUB.ATOMIC` | publication applies one coherent bundle and never exposes a partial value delta | publication bundle artifacts; TLA/Lean | reused backbone invariant |
+| `INV.CAND.NOT_PUBLICATION` | accepted candidate state is not stable published state | W033-W037 TLA/Lean and replay artifacts | checked recalc/coordinator pre/post model in `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md`; refinement widening remains `calc-gucd.6` |
+| `INV.REJ.NO_PUBLISH` | rejected work does not advance published values | publication-fence, dynamic, cycle, callable reject artifacts | checked recalc/coordinator no-publish target in `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md`; failure-cause widening remains `.6`/`.7` |
+| `INV.PUB.ATOMIC` | publication applies one coherent bundle and never exposes a partial value delta | publication bundle artifacts; TLA/Lean | accepted-candidate publication precondition checked in `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md`; atomic bundle refinement remains `calc-gucd.6` |
 | `INV.TRC.OBS_EQUIV` | TraceCalc and TreeCalc/CoreEngine agree on observable values, diagnostics, dependency effects, invalidation, rejection, publication, and traces for covered fragments | independent conformance and oracle-matrix artifacts | refinement relation in `calc-gucd.6` |
 
 ## 5. Minimal Formal Work Products
@@ -104,6 +104,12 @@ The result checks the reverse-edge constructor theorem in Lean and model-checks 
 `calc-gucd.3` adds `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md`, `formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, `formal/tla/CoreEngineW046InvalidationRebind.smoke.cfg`, and the TLC evidence root `docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/`.
 
 The result checks a Lean reachability/rebind model and model-checks a bounded TLA invalidation transition with reverse-reachability A->B->C, dependency-added/reclassified dynamic transition seeds, upstream dependent propagation, rebind flag soundness, and rejection before publication. It does not claim full Rust queue proof, full `INDIRECT`/OxFunc semantics, or unbounded TLA verification.
+
+### 6.3 `calc-gucd.4` Result
+
+`calc-gucd.4` adds `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md`, `formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean`, `formal/tla/CoreEngineW046RecalcTracker.tla`, `formal/tla/CoreEngineW046RecalcTracker.smoke.cfg`, and the TLC evidence root `docs/test-runs/core-engine/tla/w046-recalc-tracker-001/`.
+
+The result checks a Lean pre/post transition relation and model-checks a bounded TLA recalc tracker/coordinator model with dirty, needed, cycle-blocked closure records, evaluating, verified-clean, publish-ready, rejected-pending-repair, candidate intake, rejection, accepted-candidate publication, and tracker publication-clear paths. It models `mark_dirty` as the current permissive Rust method and keeps the stronger invalidation/scheduling phase guard outside that method. It also records that `CycleBlocked` is currently assigned by invalidation closure records rather than by a `Stage1RecalcTracker` mutator. It does not claim full Rust implementation proof, full cycle policy, evaluation-order/read-discipline proof, TraceCalc refinement, or unbounded TLA verification.
 
 ## 7. Current Status
 

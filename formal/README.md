@@ -114,20 +114,29 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - bounded smoke configuration for `CoreEngineW046InvalidationRebind`.
 8. `docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/`
    - W046 TLC evidence packet: 1 config checked, 4 states generated, 3 distinct states, depth 3, no error, and no full TLA/Rust/dynamic-reference/release-grade promotion.
+9. `formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean`
+   - W046 recalc tracker and coordinator pre/post model for dirty, needed, evaluating, verified-clean, publish-ready, rejected-pending-repair, candidate, reject, and accepted-candidate publication transitions.
+   - exercised with a local `lean formal\lean\OxCalc\CoreEngine\W046RecalcTrackerTransitions.lean` typecheck run.
+10. `formal/tla/CoreEngineW046RecalcTracker.tla`
+   - W046 bounded recalc tracker model for demand clearing, cycle-blocked demand/no-publish, publish-ready candidate signals, verified-clean no-publish, reject no-publish, candidate-not-publication, and publish-only-from-accepted-candidate checks.
+11. `formal/tla/CoreEngineW046RecalcTracker.smoke.cfg`
+   - bounded smoke configuration for `CoreEngineW046RecalcTracker`.
+12. `docs/test-runs/core-engine/tla/w046-recalc-tracker-001/`
+   - W046 TLC evidence packet: 1 config checked, 77,096 states generated, 13,671 distinct states, depth 7, no error, and no full TLA/Rust/release-grade promotion.
 
 ## Status
-- execution_state: `calc-gucd.4_recalc_tracker_transition_model_ready`
+- execution_state: `calc-gucd.5_evaluation_order_read_discipline_model_ready`
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices, and W046 now adds checked dependency-graph and invalidation/rebind model slices
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices, and W046 now adds checked dependency-graph, invalidation/rebind, and recalc-tracker model slices
   - full Lean verification remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
-  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, `formal/tla/CoreEngineW036Stage2Partition.tla`, `formal/tla/CoreEngineW046DependencyGraph.tla`, and `formal/tla/CoreEngineW046InvalidationRebind.tla` have bounded configs for routine TLC checks
+  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, `formal/tla/CoreEngineW036Stage2Partition.tla`, `formal/tla/CoreEngineW046DependencyGraph.tla`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, and `formal/tla/CoreEngineW046RecalcTracker.tla` have bounded configs for routine TLC checks
   - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - full TLA verification remains open
-  - W046 recalc tracker, evaluation order, TraceCalc refinement, OxFml seam, and scale semantic-regression models remain open
+  - W046 evaluation order, TraceCalc refinement, OxFml seam, and scale semantic-regression models remain open
   - W040 now binds declared-profile Stage 2 policy/equivalence evidence and snapshot/capability fence counterparts, but full production partition analyzer soundness, fairness/unbounded scheduler coverage, operated cross-engine service evidence, and pack-grade replay governance remain open; Stage 2 policy remains unpromoted
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
   - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface

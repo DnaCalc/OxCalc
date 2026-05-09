@@ -78,7 +78,12 @@ The next W046 bead should start with these exact inputs:
 3. `calc-gucd.4`: closed with `W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md`, `W046RecalcTrackerTransitions.lean`, `CoreEngineW046RecalcTracker.tla`, and TLC evidence.
 4. `calc-gucd.5`: closed with `W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md`, `W046EvaluationOrderReadDiscipline.lean`, `CoreEngineW046EvaluationOrder.tla`, and TLC evidence.
 5. `calc-gucd.6`: closed with `W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md`, `W046TraceCalcRefinement.lean`, `CoreEngineW046TraceCalcRefinement.tla`, TLC evidence, and a selected-kernel binding register.
-6. `calc-gucd.7`: OxFml seam docs, upstream-host fixtures, LET/LAMBDA witness docs, callable-boundary Lean, and the effect/handler-law table.
+6. `calc-gucd.7`: OxFml seam docs, upstream-host fixtures, LET/LAMBDA witness docs, callable-boundary Lean, current OxFml inbound ledger, and the effect/handler-law table.
+7. `calc-gucd.15`: all `.2-.7` packets and formal artifacts, plus `dependency.rs`, `recalc.rs`, `coordinator.rs`, `treecalc.rs`, and TraceCalc machine/planner/runner code, to build the integrated semantic kernel.
+8. `calc-gucd.16`: W046 graph/invalidation/evaluation Lean/TLA artifacts, Rust Tarjan/topo/closure code, TreeCalc graph artifacts, and scale graph shapes, to strengthen finite graph/dataflow/order proof targets.
+9. `calc-gucd.17`: TreeCalc runner emission, TraceCalc contracts/assertions/replay mappings, and existing W046/W037 evidence roots, to define and validate proof-carrying traces.
+10. `calc-gucd.18`: `.15` kernel, `.16` strengthened facts, `.17` checker, and real TreeCalc/CoreEngine/TraceCalc artifacts, to bridge Rust execution into the semantic vocabulary.
+11. `calc-gucd.8+`: downstream coverage, scale, consequence, and closure beads should consume `.15-.18`; they should not restart promotion-readiness classification from the older W033-W045 closure artifacts.
 
 ## 7. Current Status
 

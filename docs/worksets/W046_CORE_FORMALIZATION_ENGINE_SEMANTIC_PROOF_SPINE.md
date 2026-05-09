@@ -38,8 +38,12 @@ In scope:
 6. Add evaluation-order and working-value read-discipline targets: evaluated nodes read only stable published values or prior ordered computed values, and failures short-circuit to no-publish rejection.
 7. Add a TraceCalc refinement kernel for selected formulas and model shapes, then bind TreeCalc/CoreEngine replay evidence against it.
 8. Keep the OxCalc + OxFml seam in scope for evaluator-facing reference effects, dynamic references, formatting/publication boundaries consumed by OxCalc, and the narrow `LET`/`LAMBDA` carrier fragment.
-9. Bind scale and performance evidence to semantic regression signatures, closed-form checks, and phase timings without treating timing as correctness proof.
-10. Recast proof-service, release-grade, C5, operated-service, independent-evaluator, pack-governance, and promotion-readiness lanes as downstream evidence layers over the semantic spine.
+9. Integrate the phase-local models into one cross-phase semantic kernel so graph facts, invalidation facts, recalc state, evaluation order, OxFml effects, TraceCalc events, rejection, and publication are one engine transition system rather than separate examples.
+10. Strengthen finite graph, dataflow, and evaluation-order proof targets beyond smoke-sized examples.
+11. Add proof-carrying trace and semantic replay checking so emitted artifacts can be independently checked against the semantic catalog.
+12. Add a Rust refinement bridge that maps real TreeCalc/CoreEngine and TraceCalc artifacts into the semantic kernel or records exact blockers.
+13. Bind scale and performance evidence to semantic regression signatures, closed-form checks, trace-checker results, and phase timings without treating timing as correctness proof.
+14. Recast proof-service, release-grade, C5, operated-service, independent-evaluator, pack-governance, and promotion-readiness lanes as downstream evidence layers over the semantic spine.
 
 Out of scope:
 
@@ -91,7 +95,29 @@ W046 works through this proof spine before returning to promotion-readiness clas
    - Bind TraceCalc as the reference handler/oracle and TreeCalc/CoreEngine as optimized handlers.
    - Required output: replay artifacts that compare observable values, diagnostics, dependency effects, invalidation records, rejection, and publication decisions.
 
-7. **Evidence and readiness layer**
+7. **OxFml effect boundary**
+   - Model formula evaluation as effect requests handled by OxCalc phases.
+   - Keep `LET`/`LAMBDA` as the narrow carrier fragment inside this repo; keep general OxFunc kernels external.
+   - Required output: handler-law table, current OxFml intake, replay roots or exact blockers.
+
+8. **Integrated semantic kernel**
+   - Compose the phase-local artifacts into one state machine.
+   - The transition order must thread concrete state: prepared descriptors, graph facts, invalidation records, recalc state, selected order, working values, effects, candidate, reject, publication, and trace.
+   - Required output: integrated Lean/TLA or exact blocker packet that lets later beads reason about cross-phase invariants.
+
+9. **Finite proof strengthening**
+   - Generalize smoke examples into reusable finite graph/dataflow/order facts where feasible.
+   - Required output: stronger Lean/TLA proof targets for SCC, reverse reachability, invalidation closure, topological order, and stable/prior reads, or exact blockers with successor routes.
+
+10. **Proof-carrying traces**
+   - Define a checked trace/replay schema for graph, invalidation, order/read, candidate, reject, publication, diagnostic, dependency effect, and trace/refinement facts.
+   - Required output: validator implementation or exact implementation blocker plus deterministic validation artifacts over current runs.
+
+11. **Rust refinement bridge**
+   - Map real Rust artifacts into the integrated semantic vocabulary.
+   - Required output: checker output proving selected TreeCalc/CoreEngine/TraceCalc runs satisfy the kernel, or exact blockers such as missing dynamic-dependency projection or missing normalized invalidation comparator.
+
+12. **Evidence and readiness layer**
    - Only after the semantic spine has specs, models, replay roots, or exact blockers, classify proof-service, operated-service, scale, Stage 2, pack/C5, independent-evaluator, OxFml-public, and release-readiness consequences.
 
 ## 6. New Ideas To Explore
@@ -197,10 +223,14 @@ W046 exits only when:
 
 1. The engine semantic state/transition catalog is promoted into `docs/spec` and mapped to implementation code, formal artifacts, replay artifacts, and exact blockers.
 2. Graph/reverse-edge/SCC, invalidation/rebind, recalc-state, evaluation-order, working-value, and TraceCalc-refinement lanes emit Lean/TLA targets, checked artifacts, replay evidence, or exact blockers.
-3. The new-ideas section is triaged, with algebraic effects either incorporated into the spec model as an effect-signature/handler-law layer or explicitly deferred with a reason.
-4. Current OxFml inbound observations are reviewed, including W073 typed-rule direct replacement and public consumer surface updates.
-5. Proof-service, release-grade, C5, pack-grade replay, Stage 2, operated-service, independent-evaluator, OxFml/callable, release-scale, and promotion-readiness decisions are classified only as consequences of direct semantic evidence or exact blockers.
-6. Closure audit includes prompt-to-artifact checklist, OPERATIONS checklist, completion-claim self-audit, semantic-equivalence statement, direct-evidence coverage audit, reviewed inbound observations line, and three-axis report.
+3. The OxFml seam bead records effect/handler laws, current consumer-runtime intake, and the narrow `LET`/`LAMBDA` carrier model without importing broad OxFunc semantics.
+4. The integrated semantic kernel bead connects the phase-local models into one cross-phase transition system or records the exact blocker preventing integration.
+5. Finite graph/dataflow/order strengthening either deepens the smoke-sized models or records exact theorem/implementation blockers.
+6. Proof-carrying trace and Rust-refinement bridge beads either validate real emitted artifacts against the semantic kernel or record exact missing-artifact/comparator/projection blockers.
+7. The new-ideas section is triaged, with algebraic effects incorporated into the seam/kernel model where useful and other lenses routed as future optimizer/concurrency/provenance work.
+8. Current OxFml inbound observations are reviewed, including W073 typed-rule direct replacement and public consumer surface updates.
+9. Proof-service, release-grade, C5, pack-grade replay, Stage 2, operated-service, independent-evaluator, OxFml/callable, release-scale, and promotion-readiness decisions are classified only as consequences of direct semantic evidence or exact blockers.
+10. Closure audit includes prompt-to-artifact checklist, OPERATIONS checklist, completion-claim self-audit, semantic-equivalence statement, direct-evidence coverage audit, reviewed inbound observations line, and three-axis report.
 
 ## 8. Planned Bead Path
 
@@ -211,10 +241,32 @@ W046 exits only when:
 5. `calc-gucd.5` - evaluation-order and working-value read-discipline model.
 6. `calc-gucd.6` - TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding.
 7. `calc-gucd.7` - OxFml seam, `LET`/`LAMBDA` carrier, formatting/publication, and callable-boundary model.
-8. `calc-gucd.8` - proof-service and evidence-classifier coverage ledger recast over the semantic spine.
-9. `calc-gucd.9` - scale/performance semantic-regression signatures and phase-timing evidence binding.
-10. `calc-gucd.10` - Stage 2, pack-governance, C5, operated-service, independent-evaluator, and release-readiness consequence reassessment.
-11. `calc-gucd.11` - closure audit, semantic-spine coverage decision, and successor routing.
+8. `calc-gucd.15` - integrated semantic kernel and cross-phase engine state machine.
+9. `calc-gucd.16` - finite graph, dataflow, invalidation, and evaluation-order proof strengthening.
+10. `calc-gucd.17` - proof-carrying trace and semantic replay checker.
+11. `calc-gucd.18` - Rust refinement bridge and implementation trace validation.
+12. `calc-gucd.8` - proof-service and evidence-classifier coverage ledger recast over the semantic spine.
+13. `calc-gucd.9` - scale/performance semantic-regression signatures and phase-timing evidence binding.
+14. `calc-gucd.10` - Stage 2, pack-governance, C5, operated-service, independent-evaluator, and release-readiness consequence reassessment.
+15. `calc-gucd.11` - closure audit, semantic-spine coverage decision, and successor routing.
+
+## 8A. Remaining Bead Execution Guide
+
+The remaining W046 execution order is:
+
+`calc-gucd.7 -> calc-gucd.15 -> calc-gucd.16 -> calc-gucd.17 -> calc-gucd.18 -> calc-gucd.8 -> calc-gucd.9 -> calc-gucd.10 -> calc-gucd.11`
+
+| Bead | Primary implementation expectation | Required code/spec/evidence inspection | Exit evidence |
+| --- | --- | --- | --- |
+| `calc-gucd.7` | OxFml effects and handler-law model for formula evaluation, dynamic references, formatting/display deltas, candidate/reject/publication-adjacent facts, and LET/LAMBDA carrier behavior | `CORE_ENGINE_OXFML_SEAM.md`, `CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`, W046 `.1-.6` packets, `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`, OxFml consumer/runtime docs named there, and `src/oxcalc-core/src/treecalc.rs` formula prep/evaluation/runtime-effect paths | seam packet, checked Lean/TLA or exact blocker, inbound-observation intake, replay roots, phase-authority table for `.15` |
+| `calc-gucd.15` | integrated semantic kernel over graph, invalidation, recalc, evaluation, OxFml effects, TraceCalc events, rejection, and publication | W046 `.2-.7` formal artifacts; `dependency.rs`, `recalc.rs`, `coordinator.rs`, `treecalc.rs`, `src/oxcalc-tracecalc/src/machine.rs`, `planner.rs`, `runner.rs` | integrated packet, checked Lean/TLA or exact blocker, evidence root, updated formal index |
+| `calc-gucd.16` | finite graph/dataflow/order strengthening beyond smoke examples | W046 graph/invalidation/evaluation Lean/TLA, `dependency.rs` Tarjan/cycle code, `derive_invalidation_closure`, `topological_formula_order`, TreeCalc graph artifacts, scale graph shapes | generalized theorem/model targets, several graph shapes or exact blockers, checked commands, replay roots |
+| `calc-gucd.17` | proof-carrying trace schema and semantic replay checker | `treecalc_runner.rs`, `treecalc.rs` artifact emission, TraceCalc `contracts.rs`, `assertions.rs`, `replay_mappings.rs`, `runner.rs`, current `docs/test-runs/core-engine` roots | schema/spec packet, validator implementation or exact blocker, deterministic validation artifacts, failure-mode documentation |
+| `calc-gucd.18` | Rust-to-semantics refinement bridge over real emitted artifacts | `.15` kernel, `.16` strengthened graph/order facts, `.17` checker, all Rust semantic-state owners and emitters | implementation-to-semantics mapping, checker output for selected runs or exact blockers, focused Rust tests, dynamic/invalidation blocker disposition |
+| `calc-gucd.8` | coverage ledger over semantic objects, not readiness taxonomy | all W046 semantic packets and evidence roots, `formal/README.md`, archived W045 only as predecessor context | coverage packet keyed by semantic object/transition; no promotion from classifier rows alone |
+| `calc-gucd.9` | scale/performance as semantic regression evidence | integrated kernel, trace checker, Rust refinement bridge, scale runners, phase timers, million-node/fanout/indirect evidence | semantic-regression signatures, closed-form values, checker results, phase timings, correctness limits |
+| `calc-gucd.10` | downstream consequence reassessment | `.2-.18`, `.8`, `.9`, archived readiness packets, Stage 2/pack/C5/operated-service evidence | highest honest capability matrix, exact blockers, semantic-equivalence statements for any strategy claim |
+| `calc-gucd.11` | W046 closure audit and successor routing | full W046 packet/evidence set, `.beads`, OxFml inbound notes, workset register | closure audit, checklist/self-audit, three-axis report, concrete successor beads for every unresolved proof lane |
 
 ## 9. Evidence Policy
 
@@ -225,7 +277,9 @@ Validation requirements scale by bead:
 1. Spec/model beads require deterministic artifact indexes, proof/model commands where available, and explicit assumption/blocker registers.
 2. Code-bearing beads require focused tests plus relevant workspace checks.
 3. Runner/evidence beads require deterministic artifact emission, JSON validation, and non-mutation of prior baseline artifacts.
-4. Closure-audit beads require focused retests of the highest-risk seam and pack lanes, workset/bead validation, cycle checks, JSON validation, and diff hygiene.
+4. Integrated-kernel and refinement-bridge beads require both formal/model checks and artifact-level validation or exact blockers.
+5. Trace-checker beads must validate at least one existing baseline root without mutating that root, or explain why a new additive baseline root is required.
+6. Closure-audit beads require focused retests of the highest-risk seam and pack lanes, workset/bead validation, cycle checks, JSON validation, and diff hygiene.
 
 ## 10. Current Status
 
@@ -237,4 +291,5 @@ Validation requirements scale by bead:
   - `calc-gucd.5` evaluation-order and working-value read-discipline formal model is validated for its bounded declared scope
   - `calc-gucd.6` TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding is validated for its selected-kernel declared scope
   - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
+  - integrated semantic kernel, finite proof strengthening, proof-carrying trace checker, and Rust refinement bridge remain open
   - release-grade verification, pack-grade replay, C5, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

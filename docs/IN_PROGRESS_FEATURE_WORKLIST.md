@@ -21,7 +21,9 @@ W046 redirects formalization toward the calculation engine's semantic proof spin
 6. recalc tracker transitions,
 7. evaluation order and working-value read discipline,
 8. TraceCalc refinement for selected formulas,
-9. OxFml seam behavior where `LET`, `LAMBDA`, and dynamic references thread through the core engine.
+9. OxFml seam behavior where `LET`, `LAMBDA`, and dynamic references thread through the core engine,
+10. an integrated semantic kernel across phases,
+11. proof-carrying traces and Rust refinement validation for real emitted artifacts.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`

@@ -123,6 +123,20 @@ The result checks a Lean order/read decision vocabulary and model-checks a bound
 
 The result checks a Lean observable-packet refinement relation and model-checks a bounded TLA relation for accept/publish, verified-clean no-publication, reject no-publication, dynamic dependency, and invalidation-closure row shapes. The binding register ties the relation to 8 matched selected-kernel rows, 1 TraceCalc oracle self-check row, and 3 exact blockers. It does not claim full Rust implementation proof, full TraceCalc oracle promotion, full TreeCalc/CoreEngine refinement, full dynamic dependency projection, normalized invalidation comparator coverage, OxFml seam closure, or unbounded TLA verification.
 
+### 6.6 Remaining Deep-Proof Routing
+
+After the `calc-gucd.6` review, the remaining bead path is no longer allowed to jump directly from the OxFml seam to proof-service classification.
+
+The next deep-proof beads are:
+
+1. `calc-gucd.7`: complete the OxFml effect/handler boundary and narrow `LET`/`LAMBDA` carrier model.
+2. `calc-gucd.15`: integrate the phase-local models into one cross-phase semantic kernel over transitions `T01` through `T18`.
+3. `calc-gucd.16`: strengthen finite graph, dataflow, invalidation, and order proof targets beyond smoke examples.
+4. `calc-gucd.17`: define proof-carrying trace facts and a semantic replay checker over emitted artifacts.
+5. `calc-gucd.18`: map real Rust TreeCalc/CoreEngine and TraceCalc artifacts into the semantic kernel and validate refinement or record exact blockers.
+
+Only after those beads should `calc-gucd.8` recast proof-service/classifier coverage over the semantic spine.
+
 ## 7. Current Status
 
 - execution_state: `calc-gucd.1_closed`

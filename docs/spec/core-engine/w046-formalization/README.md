@@ -20,6 +20,8 @@ W046 treats the calculation engine as the primary formal object:
 8. OxFml runtime candidate adaptation,
 9. rejection and publication semantics,
 10. TraceCalc refinement for selected kernels.
+11. integrated cross-phase semantic kernel,
+12. proof-carrying traces and Rust refinement validation.
 
 Proof-service, release-grade, C5, operated-service, pack-governance, independent-evaluator, scale, and promotion-readiness lanes are supporting evidence layers over that semantic spine.
 
@@ -46,10 +48,14 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
 7. `W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md` - `calc-gucd.5` evaluation order and read-discipline model.
 8. `W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md` - `calc-gucd.6` TraceCalc reference kernel and TreeCalc/CoreEngine replay binding.
 9. `W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md` - `calc-gucd.7` OxFml seam and narrow carrier model.
-10. `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` - `calc-gucd.8` proof-service/classifier coverage recast over the semantic spine.
-11. `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` - `calc-gucd.9` scale/performance semantic-regression signatures and phase timing.
-12. `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` - `calc-gucd.10` downstream consequence reassessment after semantic-spine evidence.
-13. `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` - `calc-gucd.11` closure audit and successor routing.
+10. `W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md` - `calc-gucd.15` integrated engine state machine over `.2-.7`.
+11. `W046_FINITE_GRAPH_DATAFLOW_AND_ORDER_PROOF_STRENGTHENING.md` - `calc-gucd.16` generalized graph/dataflow/order proof targets.
+12. `W046_PROOF_CARRYING_TRACE_AND_SEMANTIC_REPLAY_CHECKER.md` - `calc-gucd.17` proof-carrying trace schema and checker.
+13. `W046_RUST_REFINEMENT_BRIDGE_AND_IMPLEMENTATION_TRACE_VALIDATION.md` - `calc-gucd.18` Rust artifact to semantic-kernel refinement bridge.
+14. `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` - `calc-gucd.8` proof-service/classifier coverage recast over the semantic spine.
+15. `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` - `calc-gucd.9` scale/performance semantic-regression signatures and phase timing.
+16. `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` - `calc-gucd.10` downstream consequence reassessment after semantic-spine evidence.
+17. `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` - `calc-gucd.11` closure audit and successor routing.
 
 ## Current Status
 
@@ -61,4 +67,5 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
   - `calc-gucd.5` evaluation-order and working-value read-discipline formal model is validated for its bounded declared scope
   - `calc-gucd.6` TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding is validated for its selected-kernel declared scope
   - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
+  - integrated semantic kernel, finite proof strengthening, proof-carrying trace checker, and Rust refinement bridge remain open
   - release-grade verification, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

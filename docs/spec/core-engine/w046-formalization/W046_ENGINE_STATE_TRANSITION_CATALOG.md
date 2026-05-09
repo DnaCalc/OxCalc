@@ -63,8 +63,8 @@ It turns the first-pass fragment review into an engine transition surface that t
 | `INV.GPH.CONVERSE` | every forward edge `(owner,target,descriptor)` appears in `reverse_edges[target]` and every reverse entry originates from a forward edge | TreeCalc dependency graph artifacts; `DependencyGraph::build` | checked Lean/TLA target in `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` |
 | `INV.GPH.DIAGNOSTIC_PRESERVATION` | unresolved or invalid descriptors are diagnostics, not silent missing edges | dependency diagnostics in TreeCalc artifacts | checked graph-build model target in `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` |
 | `INV.SCC.CYCLE_CLASSIFICATION` | non-trivial SCCs and self-loops are classified as cycle groups before order selection | `tc_cycle_region_reject_001` | checked SCC classification-shape model in `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md` |
-| `INV.INV.NO_UNDER_INVALIDATION` | seed nodes and all reverse-reachable dependents are in invalidation records | W035 dirty-seed closure scenario; TreeCalc closure artifacts | closure theorem in `calc-gucd.3` |
-| `INV.INV.REBIND_NO_PUBLISH` | nodes with required rebind cannot publish through stale dependency bindings | rebind/dynamic post-edit artifacts | rebind gate model in `calc-gucd.3` |
+| `INV.INV.NO_UNDER_INVALIDATION` | seed nodes and all reverse-reachable dependents are in invalidation records | W035 dirty-seed closure scenario; TreeCalc closure artifacts | checked Lean/TLA target in `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` |
+| `INV.INV.REBIND_NO_PUBLISH` | nodes with required rebind cannot publish through stale dependency bindings | rebind/dynamic post-edit artifacts | checked rebind gate model in `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md` |
 | `INV.REC.LEGAL_STATES` | node states follow the declared recalc transition relation | TreeCalc node-state artifacts; TLA Stage 1 | transition crosswalk in `calc-gucd.4` |
 | `INV.ORDER.BEFORE_DEPENDENT` | if `owner` reads `target`, then `target` is evaluated earlier or read from seeded published state | TreeCalc evaluation-order artifacts | working-value model in `calc-gucd.5` |
 | `INV.EVAL.STABLE_PRIOR_READS` | formula evaluation reads only stable published values or prior ordered computed values | implementation loop in `treecalc.rs` | read-discipline theorem in `calc-gucd.5` |
@@ -98,6 +98,12 @@ This catalog gives `calc-gucd.2` a concrete start condition:
 `calc-gucd.2` adds `W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md`, `formal/lean/OxCalc/CoreEngine/W046DependencyGraph.lean`, `formal/tla/CoreEngineW046DependencyGraph.tla`, `formal/tla/CoreEngineW046DependencyGraph.smoke.cfg`, and the TLC evidence root `docs/test-runs/core-engine/tla/w046-dependency-graph-001/`.
 
 The result checks the reverse-edge constructor theorem in Lean and model-checks a bounded TLA graph-build transition with valid forward edges, exact reverse converse, untargeted dynamic diagnostic preservation, and non-trivial SCC classification shape. It does not claim a line-by-line Rust Tarjan proof or arbitrary finite-graph SCC completeness.
+
+### 6.2 `calc-gucd.3` Result
+
+`calc-gucd.3` adds `W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md`, `formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, `formal/tla/CoreEngineW046InvalidationRebind.smoke.cfg`, and the TLC evidence root `docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/`.
+
+The result checks a Lean reachability/rebind model and model-checks a bounded TLA invalidation transition with reverse-reachability A->B->C, dependency-added/reclassified dynamic transition seeds, upstream dependent propagation, rebind flag soundness, and rejection before publication. It does not claim full Rust queue proof, full `INDIRECT`/OxFunc semantics, or unbounded TLA verification.
 
 ## 7. Current Status
 

@@ -1,0 +1,35 @@
+{
+  "schema_version": "oxcalc.tla.w046_invalidation_rebind.run_summary.v1",
+  "run_id": "w046-invalidation-rebind-001",
+  "model": "formal/tla/CoreEngineW046InvalidationRebind.tla",
+  "model_family": "bounded_invalidation_rebind_dynamic_transition",
+  "tlc_version": "2.19 of 08 August 2024",
+  "result": "passed",
+  "config_count": 1,
+  "passed_config_count": 1,
+  "failed_config_count": 0,
+  "checked_invariants": [
+    "TypeInvariant",
+    "NoUnderInvalidation",
+    "RebindReasonsSetFlag",
+    "NonRebindReasonsDoNotSetFlag",
+    "DynamicTransitionSeedsPresent",
+    "DependentPropagationRecordsUpstream",
+    "RebindNoPublish",
+    "RejectedDecisionIsNoPublish"
+  ],
+  "configs": [
+    {
+      "config": "formal/tla/CoreEngineW046InvalidationRebind.smoke.cfg",
+      "purpose": "bounded invalidation/rebind model with reverse-reachability A->B->C, dynamic dependency added/reclassified seeds on B, upstream propagation to C, and rebind-gate rejection before publication",
+      "max_transitions": 3,
+      "states_generated": 4,
+      "distinct_states": 3,
+      "queue_left": 0,
+      "depth": 3,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/CoreEngineW046InvalidationRebind.smoke.tlc.txt"
+    }
+  ],
+  "semantic_equivalence_statement": "This run checks bounded TLA model evidence only. It does not change invalidation closure, dependency graph construction, dynamic-reference resolution, soft-reference rebind derivation, recalc behavior, evaluation order, TraceCalc behavior, TreeCalc/CoreEngine behavior, publication semantics, rejection policy, OxFml/OxFunc behavior, pack decisions, or service readiness."
+}

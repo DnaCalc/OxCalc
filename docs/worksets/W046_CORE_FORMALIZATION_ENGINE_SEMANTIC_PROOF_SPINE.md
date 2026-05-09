@@ -229,12 +229,12 @@ Validation requirements scale by bead:
 
 ## 10. Current Status
 
-- execution_state: `calc-gucd.6_tracecalc_refinement_kernel_ready`
+- execution_state: `calc-gucd.7_oxfml_seam_ready`
 - scope_completeness: `scope_partial`
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
   - `calc-gucd.5` evaluation-order and working-value read-discipline formal model is validated for its bounded declared scope
-  - TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding remain open
+  - `calc-gucd.6` TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding is validated for its selected-kernel declared scope
   - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
   - release-grade verification, pack-grade replay, C5, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified

@@ -1,0 +1,39 @@
+{
+  "schema_version": "oxcalc.tla.w046_tracecalc_refinement.run_summary.v1",
+  "run_id": "w046-tracecalc-refinement-001",
+  "model": "formal/tla/CoreEngineW046TraceCalcRefinement.tla",
+  "model_family": "bounded_tracecalc_treecalc_observable_refinement",
+  "tlc_version": "2.19 of 08 August 2024",
+  "result": "passed",
+  "config_count": 1,
+  "passed_config_count": 1,
+  "failed_config_count": 0,
+  "checked_invariants": [
+    "TypeInvariant",
+    "CoveredRowsHaveNoExactBlockers",
+    "ResultStateMatches",
+    "PublishedValuesMatch",
+    "DiagnosticsMatch",
+    "RejectsMatch",
+    "DependencyEffectsPreserved",
+    "InvalidationRecordsPreserved",
+    "PublicationDecisionMatches",
+    "RequiredTraceFamiliesPreserved",
+    "RejectIsNoPublish",
+    "NoSemanticMismatchForCoveredRows"
+  ],
+  "configs": [
+    {
+      "config": "formal/tla/CoreEngineW046TraceCalcRefinement.smoke.cfg",
+      "purpose": "bounded TraceCalc-to-engine observable-refinement model covering accept/publish values, verified-clean no-publication, reject no-publication, dependency-effect preservation, invalidation-record preservation, publication decision matching, and required trace-family preservation",
+      "max_transitions": 2,
+      "states_generated": 11,
+      "distinct_states": 6,
+      "queue_left": 0,
+      "depth": 2,
+      "result": "no_error_found",
+      "log_path": "docs/test-runs/core-engine/tla/w046-tracecalc-refinement-001/CoreEngineW046TraceCalcRefinement.smoke.tlc.txt"
+    }
+  ],
+  "semantic_equivalence_statement": "This run checks bounded TLA model evidence only. It does not change TraceCalc execution semantics, TreeCalc/CoreEngine behavior, dependency graph construction, invalidation, rebind behavior, recalc tracker behavior, evaluation order, working-value reads, OxFml/OxFunc behavior, publication semantics, rejection policy, pack decisions, or service readiness."
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "oxcalc.refinement.w046_tracecalc_kernel.run_summary.v1",
+  "run_id": "w046-tracecalc-refinement-kernel-001",
+  "model_family": "tracecalc_treecalc_core_observable_refinement_kernel",
+  "tracecalc_oracle_run_id": "w037-tracecalc-observable-closure-001",
+  "treecalc_reference_run_id": "w037-optimized-core-conformance-treecalc-001",
+  "independent_conformance_run_id": "w036-independent-diversity-differential-001",
+  "tracecalc_oracle_scenario_count": 31,
+  "tracecalc_engine_diff_scenario_count": 31,
+  "tracecalc_engine_diff_mismatch_count": 0,
+  "oracle_matrix_row_count": 32,
+  "oracle_matrix_covered_row_count": 31,
+  "oracle_matrix_excluded_row_count": 1,
+  "oracle_matrix_missing_or_failed_row_count": 0,
+  "kernel_binding_row_count": 12,
+  "matched_refinement_row_count": 8,
+  "oracle_self_check_row_count": 1,
+  "exact_blocker_row_count": 3,
+  "unexpected_mismatch_count": 0,
+  "missing_artifact_count": 0,
+  "artifacts": {
+    "kernel_binding_register": "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/kernel_binding_register.json",
+    "validation": "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/validation.json",
+    "tracecalc_run_summary": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/run_summary.json",
+    "tracecalc_engine_diff": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/conformance/engine_diff.json",
+    "tracecalc_oracle_matrix": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/run_summary.json",
+    "independent_conformance_summary": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/run_summary.json",
+    "independent_conformance_diff": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+    "tla_summary": "docs/test-runs/core-engine/tla/w046-tracecalc-refinement-001/run_summary.json"
+  },
+  "promotion_claims": {
+    "full_tracecalc_oracle_promoted": false,
+    "full_treecalc_core_refinement_promoted": false,
+    "dynamic_dependency_projection_promoted": false,
+    "normalized_invalidation_comparator_promoted": false,
+    "release_grade_promoted": false
+  }
+}

@@ -132,20 +132,31 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - bounded smoke configuration for `CoreEngineW046EvaluationOrder`.
 16. `docs/test-runs/core-engine/tla/w046-evaluation-order-001/`
    - W046 TLC evidence packet: 1 config checked, 24 states generated, 16 distinct states, depth 5, no error, and no full TLA/Rust/TraceCalc/OxFml/release-grade promotion.
+17. `formal/lean/OxCalc/CoreEngine/W046TraceCalcRefinement.lean`
+   - W046 TraceCalc refinement kernel for observable packets, exact value/diagnostic/reject/publication matching, dependency/invalidation/trace-family preservation, and exact-blocker classification.
+   - exercised with a local `lean formal\lean\OxCalc\CoreEngine\W046TraceCalcRefinement.lean` typecheck run.
+18. `formal/tla/CoreEngineW046TraceCalcRefinement.tla`
+   - W046 bounded TraceCalc-to-engine observable-refinement model for accept/publish, verified-clean no-publication, reject no-publication, dynamic dependency, and invalidation-closure row shapes.
+19. `formal/tla/CoreEngineW046TraceCalcRefinement.smoke.cfg`
+   - bounded smoke configuration for `CoreEngineW046TraceCalcRefinement`.
+20. `docs/test-runs/core-engine/tla/w046-tracecalc-refinement-001/`
+   - W046 TLC evidence packet: 1 config checked, 11 states generated, 6 distinct states, depth 2, no error, and no full TLA/Rust/TraceCalc/TreeCalc/release-grade promotion.
+21. `docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/`
+   - W046 selected-kernel binding packet: 12 rows, 8 matched refinement rows, 1 TraceCalc oracle self-check row, 3 exact blockers, 0 unexpected mismatches, and no full TraceCalc/TreeCalc/CoreEngine or release-grade promotion.
 
 ## Status
-- execution_state: `calc-gucd.6_tracecalc_refinement_kernel_ready`
+- execution_state: `calc-gucd.7_oxfml_seam_ready`
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices, and W046 now adds checked dependency-graph, invalidation/rebind, recalc-tracker, and evaluation-order/read-discipline model slices
+  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices, and W046 now adds checked dependency-graph, invalidation/rebind, recalc-tracker, evaluation-order/read-discipline, and TraceCalc-refinement model slices
   - full Lean verification remains open
   - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
-  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, `formal/tla/CoreEngineW036Stage2Partition.tla`, `formal/tla/CoreEngineW046DependencyGraph.tla`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, `formal/tla/CoreEngineW046RecalcTracker.tla`, and `formal/tla/CoreEngineW046EvaluationOrder.tla` have bounded configs for routine TLC checks
+  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, `formal/tla/CoreEngineW036Stage2Partition.tla`, `formal/tla/CoreEngineW046DependencyGraph.tla`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, `formal/tla/CoreEngineW046RecalcTracker.tla`, `formal/tla/CoreEngineW046EvaluationOrder.tla`, and `formal/tla/CoreEngineW046TraceCalcRefinement.tla` have bounded configs for routine TLC checks
   - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - full TLA verification remains open
-  - W046 TraceCalc refinement, OxFml seam, and scale semantic-regression models remain open
+  - W046 OxFml seam and scale semantic-regression models remain open; TraceCalc refinement is currently scoped to the selected-kernel relation and binding packet
   - W040 now binds declared-profile Stage 2 policy/equivalence evidence and snapshot/capability fence counterparts, but full production partition analyzer soundness, fairness/unbounded scheduler coverage, operated cross-engine service evidence, and pack-grade replay governance remain open; Stage 2 policy remains unpromoted
   - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
   - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface

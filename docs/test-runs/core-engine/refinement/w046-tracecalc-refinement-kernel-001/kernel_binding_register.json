@@ -1,0 +1,127 @@
+{
+  "schema_version": "oxcalc.refinement.w046_tracecalc_kernel.binding_register.v1",
+  "run_id": "w046-tracecalc-refinement-kernel-001",
+  "comparison_rule": "A row is either matched on the declared observable surface, self-checked as TraceCalc oracle evidence, or recorded as an exact blocker. Declared blockers are not conformance matches.",
+  "rows": [
+    {
+      "row_id": "w046.ref.value.accept_publish",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["published_values", "publication_decision", "candidate_publication_boundary"],
+      "tracecalc_scenario_id": "tc_accept_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "source_row_id": "ic_exact_accept_publish_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.value.multinode_dag",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["published_values", "evaluation_order", "publication_decision"],
+      "tracecalc_scenario_id": "tc_multinode_dag_publish_001",
+      "treecalc_case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "source_row_id": "ic_exact_multinode_dag_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.value.let_lambda_capture",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["published_values", "narrow_let_lambda_carrier_value"],
+      "tracecalc_scenario_id": "tc_let_lambda_carrier_publish_001",
+      "treecalc_case_id": "tc_local_let_lambda_capture_publish_001",
+      "source_row_id": "ic_exact_let_lambda_capture_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.value.independent_order",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["published_values", "replay_equivalent_independent_order"],
+      "tracecalc_scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+      "treecalc_case_id": "tc_local_w034_independent_order_equiv_001",
+      "source_row_id": "ic_exact_w034_independent_order_value_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.no_publish.verified_clean",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["verified_clean", "no_publication", "trace_family"],
+      "tracecalc_scenario_id": "tc_verify_clean_no_publish_001",
+      "treecalc_case_id": "tc_local_verified_clean_001",
+      "source_row_id": "ic_no_publish_verified_clean_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.no_publish.reject",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["reject_set", "diagnostic_reject_detail", "no_publication"],
+      "tracecalc_scenario_id": "tc_reject_no_publish_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001",
+      "source_row_id": "ic_no_publish_reject_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.no_publish.capability_fence",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["reject_set", "capability_fence_reject", "no_publication"],
+      "tracecalc_scenario_id": "tc_w034_capability_fence_reject_001",
+      "treecalc_case_id": "tc_local_capability_sensitive_reject_001",
+      "source_row_id": "ic_no_publish_w034_capability_fence_reject_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.lifecycle.overlay_release",
+      "binding_state": "matched_refinement_surface",
+      "surfaces": ["pinned_reader_stability", "overlay_lifecycle", "semantic_counters"],
+      "tracecalc_scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+      "treecalc_case_id": null,
+      "source_row_id": "ic_lifecycle_w034_overlay_release_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": null
+    },
+    {
+      "row_id": "w046.ref.oracle.current_trace_family_coverage",
+      "binding_state": "oracle_self_check_passed",
+      "surfaces": ["trace_labels", "oracle_matrix", "scenario_presence"],
+      "tracecalc_scenario_id": "*",
+      "treecalc_case_id": null,
+      "source_row_id": "w037_oracle_matrix",
+      "evidence_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/oracle-matrix/run_summary.json",
+      "blocker": "full_oracle_claim_remains_false; one general OxFunc semantic-kernel row is excluded from the OxCalc TraceCalc profile"
+    },
+    {
+      "row_id": "w046.ref.blocker.dynamic_dependency_projection",
+      "binding_state": "exact_blocker_recorded",
+      "surfaces": ["dependency_effects", "runtime_effects", "publication_decision"],
+      "tracecalc_scenario_id": "tc_dynamic_dep_switch_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001",
+      "source_row_id": "ic_gap_dynamic_dependency_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": "treecalc_local_dynamic_dependency_projection_gap"
+    },
+    {
+      "row_id": "w046.ref.blocker.dynamic_negative_shape_update",
+      "binding_state": "exact_blocker_recorded",
+      "surfaces": ["dependency_shape_update", "runtime_effects", "diagnostics"],
+      "tracecalc_scenario_id": "tc_w034_dynamic_dependency_negative_001",
+      "treecalc_case_id": "tc_local_dynamic_reject_001",
+      "source_row_id": "ic_gap_w034_dynamic_dependency_negative_001",
+      "evidence_path": "docs/test-runs/core-engine/independent-conformance/w036-independent-diversity-differential-001/comparisons/treecalc_tracecalc_differential.json",
+      "blocker": "treecalc_local_dynamic_dependency_shape_update_projection_gap"
+    },
+    {
+      "row_id": "w046.ref.blocker.normalized_invalidation_records",
+      "binding_state": "exact_blocker_recorded",
+      "surfaces": ["invalidation_records", "no_under_invalidation", "post_edit_publication"],
+      "tracecalc_scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+      "treecalc_case_id": "tc_local_recalc_chain_after_constant_edit_001:post_edit",
+      "source_row_id": "w046_invalidation_record_binding_review",
+      "evidence_path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/invalidation_seeds.json",
+      "blocker": "tracecalc_to_treecalc_normalized_invalidation_record_comparator_missing"
+    }
+  ]
+}

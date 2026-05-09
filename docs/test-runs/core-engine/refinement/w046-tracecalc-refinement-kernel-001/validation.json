@@ -1,0 +1,23 @@
+{
+  "schema_version": "oxcalc.refinement.w046_tracecalc_kernel.validation.v1",
+  "run_id": "w046-tracecalc-refinement-kernel-001",
+  "validation_state": "w046_tracecalc_refinement_kernel_validated",
+  "all_referenced_summary_artifacts_present": true,
+  "tracecalc_engine_diff_mismatch_count": 0,
+  "oracle_matrix_missing_or_failed_row_count": 0,
+  "independent_conformance_missing_artifact_count": 0,
+  "independent_conformance_unexpected_mismatch_count": 0,
+  "matched_refinement_rows_have_no_blocker": true,
+  "exact_blocker_rows": [
+    "treecalc_local_dynamic_dependency_projection_gap",
+    "treecalc_local_dynamic_dependency_shape_update_projection_gap",
+    "tracecalc_to_treecalc_normalized_invalidation_record_comparator_missing"
+  ],
+  "promotion_claims": {
+    "full_tracecalc_oracle_promoted": false,
+    "full_treecalc_core_refinement_promoted": false,
+    "full_dependency_effect_projection_promoted": false,
+    "full_invalidation_projection_promoted": false,
+    "release_grade_promoted": false
+  }
+}

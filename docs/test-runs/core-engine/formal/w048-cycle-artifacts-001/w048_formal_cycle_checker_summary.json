@@ -1,0 +1,54 @@
+{
+  "schema_version": "oxcalc.w048.formal_cycle_checker_summary.v1",
+  "run_id": "w048-cycle-artifacts-001",
+  "status": "passed",
+  "errors": [],
+  "definition_packet": "docs/spec/core-engine/w048-cycles/W048_FORMAL_CYCLE_DEFINITIONS_AND_CHECKER_ARTIFACTS.md",
+  "tla_model": "formal/tla/CoreEngineW048CycleRegions.tla",
+  "source_treecalc_run": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001",
+  "graph_summary": {
+    "case_count": 33,
+    "layer_count": 99,
+    "cycle_region_count": 12,
+    "check_error_count": 0
+  },
+  "checked_layer_count": 99,
+  "checked_cycle_region_count": 12,
+  "case_results": {
+    "tc_w048_structural_self_cycle_reject_001": {
+      "initial_state": "rejected",
+      "reject_kind": "SyntheticCycleReject",
+      "publication_bundle_present": false,
+      "published_values": null
+    },
+    "tc_w048_structural_two_node_cycle_reject_001": {
+      "initial_state": "rejected",
+      "reject_kind": "SyntheticCycleReject",
+      "publication_bundle_present": false,
+      "published_values": null
+    },
+    "tc_w048_ctro_dynamic_self_cycle_reject_001": {
+      "initial_state": "rejected",
+      "reject_kind": "SyntheticCycleReject",
+      "publication_bundle_present": false,
+      "published_values": null
+    },
+    "tc_w048_ctro_dynamic_release_reentry_downstream_001": {
+      "initial_state": "rejected",
+      "reject_kind": "SyntheticCycleReject",
+      "publication_bundle_present": false,
+      "published_values": null,
+      "post_edit_state": "published",
+      "post_edit_published_values": {
+        "2": "10",
+        "4": "11"
+      }
+    }
+  },
+  "obligations": {
+    "forward_reverse_converse": true,
+    "cycle_regions_nonempty": true,
+    "cycle_reject_no_publication": true,
+    "release_reentry_publishes_owner_and_downstream": true
+  }
+}

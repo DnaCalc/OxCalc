@@ -34,11 +34,13 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
    - TraceCalc, TreeCalc, test, formal-artifact, and successor-consumption route.
 5. `W048_ITERATIVE_PROFILE_DECISION_AND_EXCEL_DISPOSITION.md`
    - explicit non-default iterative profile decision plus Excel-match disposition.
-6. `W048_TEST_CORPUS_AND_CONFORMANCE_PLAN.md`
+6. `W048_FORMAL_CYCLE_DEFINITIONS_AND_CHECKER_ARTIFACTS.md`
+   - formal definitions, TLA model sketch, and executable checker projection over W048 artifacts.
+7. `W048_TEST_CORPUS_AND_CONFORMANCE_PLAN.md`
    - circular-reference fixture corpus, Excel/OxCalc differential observations, and run-artifact expectations.
-7. `W048_CORPUS_AND_CONFORMANCE_EVIDENCE.md`
+8. `W048_CORPUS_AND_CONFORMANCE_EVIDENCE.md`
    - cross-corpus evidence summary and conformance checker binding.
-8. `W048_INNOVATION_OPPORTUNITY_LEDGER.md`
+9. `W048_INNOVATION_OPPORTUNITY_LEDGER.md`
    - candidate OxCalc innovations for cycle handling, kept profile-gated and evidence-driven.
 
 ## Current Conclusions
@@ -60,5 +62,5 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
   - materialized graph layers and sidecars: `calc-zci1.2`
   - TraceCalc reference cycle implementation: `calc-zci1.3`
   - iterative-profile decision ledger: `calc-zci1.4` decision recorded; Excel-match profile remains observation-gated
-  - W048 formal definitions and proof/model artifacts: `calc-zci1.5`
+  - W048 formal definitions and proof/model artifacts: `calc-zci1.5` checked model projection recorded; deeper iterative proof remains successor scope
   - innovation opportunity ledger and experimental profiles: `calc-zci1.8`

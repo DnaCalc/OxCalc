@@ -60,6 +60,8 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
    - cross-version repeat blocker packet explaining that only one Excel host/version is available locally.
 18. `W048_EXCEL_MULTITHREAD_VARIANT_PACKET.md`
    - multithread variant packet for declared falsification probes, preserving thread mode as a profile dimension.
+19. `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`
+   - exact external evidence/command packet for the remaining root/report-cell and second-version blockers.
 
 Active Excel observation packets:
 

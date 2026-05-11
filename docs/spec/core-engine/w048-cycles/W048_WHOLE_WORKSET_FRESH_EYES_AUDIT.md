@@ -36,6 +36,7 @@ Concrete deliverables checked here:
 | Reopened iterative graph sidecars | `w048-treecalc-cycles-002/w048_materialized_graph_check_summary.json`; `scripts/write-w048-materialized-graphs.ps1`; `scripts/check-w048-materialized-graphs.ps1` | satisfied: 37 cases / 111 layers / 24 cycle-region records |
 | Conformance matrix | `w048-conformance-002`; `scripts/check-w048-conformance.ps1` | passed with named blockers |
 | Whole-workset audit | this file | satisfied; parent W048 remains open/partial |
+| External unblock instructions | `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` | prepared for remaining blocked evidence lanes |
 
 ## 3. Fresh-Eyes Findings
 
@@ -45,6 +46,7 @@ Concrete deliverables checked here:
 4. **Observation caveats visible**: root/report-cell and cross-version repeat are explicit blockers; numeric/nonnumeric prior-state and multithread variant behavior have targeted evidence.
 5. **Rework performed after audit finding**: the initial whole-workset audit found that materialized graph sidecar validation was still bound to the predecessor `w048-treecalc-cycles-001` floor. This was reworked by adding `scripts/write-w048-materialized-graphs.ps1`, regenerating sidecars for `w048-treecalc-cycles-002`, and validating 37 cases / 111 layers / 24 cycle-region records / 0 checker errors.
 6. **Implementation scope caveat**: TreeCalc optimized support currently covers declared Excel falsification fixtures through an opt-in compatibility basis. It is not a universal parser/evaluator for arbitrary Excel circular-reference workbooks.
+7. **External unblock kit prepared**: `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` now gives exact PowerShell commands and UI evidence requirements for resolving the two remaining blockers.
 
 ## 4. Exact Open Blockers
 
@@ -87,7 +89,9 @@ br dep cycles --json
 - open_lanes:
   - `BLK-W048-EXCEL-ROOT`;
   - `BLK-W048-EXCEL-VERSION`;
-  - parent `calc-zci1` final closure after blocker disposition.
+  - parent `calc-zci1` final closure after blocker disposition or explicit user scope acceptance.
+
+Unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`.
 
 ## 7. Audit Decision
 

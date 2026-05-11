@@ -1,0 +1,68 @@
+{
+  "schema_version": "oxcalc.w048.iterative_profile_decision.v1",
+  "decision_id": "w048-iterative-profile-decision-001",
+  "status": "profile_decided_for_future_non_default_use",
+  "default_profile": {
+    "profile_id": "cycle.non_iterative_stage1",
+    "iteration_enabled": false,
+    "cycle_terminal_state": "reject_candidate",
+    "publication_rule": "whole_wave_reject_no_new_cycle_values",
+    "prior_value_visibility": "published_prior_values_remain_visible_but_are_not_new_publication",
+    "root_order_policy": "canonical_diagnostic_only"
+  },
+  "excel_disposition": {
+    "profile_id": "cycle.excel_match_iterative",
+    "status": "not_admitted_yet",
+    "reason": "Public Excel documentation names iteration controls but does not specify root selection, member order, initial vector, update model, or all terminal edge cases. The first W048 COM packet records 12 observations but Application.CircularReference did not report a stable root, so Excel-match iterative semantics remain observation-gated.",
+    "current_mapping": "deferred_unobserved_for_algorithmic_details",
+    "source_run": "docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json"
+  },
+  "future_profile": {
+    "profile_id": "cycle.iterative_deterministic_v0",
+    "admission": "explicit_opt_in_only",
+    "root_policy": "canonical_node_id_root",
+    "member_order_policy": "canonical_node_id_ascending_with_stable_tiebreak_by_artifact_token",
+    "initial_value_policy": {
+      "cycle_members": "last_published_numeric_value_or_zero_if_absent",
+      "non_numeric_or_error_prior": "reject_before_iteration",
+      "missing_boundary_value": "reject_before_iteration"
+    },
+    "update_model": "jacobi_snapshot_region_function",
+    "stop_metric": {
+      "kind": "max_absolute_member_delta",
+      "threshold_parameter": "max_change",
+      "default_max_change": "0.001",
+      "eligible_values": "finite_numeric_values_only"
+    },
+    "iteration_bound": {
+      "parameter": "max_iterations",
+      "default_max_iterations": 100,
+      "zero_or_negative": "profile_configuration_reject"
+    },
+    "terminal_states": {
+      "converged": "accept_candidate_and_publish_whole_region_atomically",
+      "max_iterations_without_convergence": "reject_candidate_no_publication",
+      "divergence_detected": "reject_candidate_no_publication",
+      "oscillation_detected": "reject_candidate_no_publication",
+      "non_numeric_result": "reject_candidate_no_publication"
+    },
+    "publication_rule": "publish_only_after_converged_complete_region_and_dependent_wave",
+    "diagnostics": [
+      "cycle_region_id",
+      "cycle_root",
+      "cycle_member_order",
+      "iteration_index",
+      "max_member_delta",
+      "terminal_state",
+      "divergence_or_oscillation_witness_when_detected"
+    ],
+    "semantic_equivalence_requirement": "Scheduler optimizations may change evaluation batching only if they preserve the Jacobi snapshot sequence, terminal state, publication bundle, and diagnostics modulo timing."
+  },
+  "open_observation_requirements_before_excel_match": [
+    "root/report-cell behavior under non-iterative and iterative settings",
+    "whether Excel iterative SCC updates are chain-ordered or snapshot-style",
+    "initial value behavior for fresh, prior-valued, retained-display, and cold-open cycles",
+    "exact max-change metric over multi-member SCCs",
+    "terminal behavior for oscillation, divergence, errors, blanks, and nonnumeric values"
+  ]
+}

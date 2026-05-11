@@ -1,0 +1,10 @@
+[
+  {
+    "node_id": 3,
+    "reason": "DynamicDependencyReleased"
+  },
+  {
+    "node_id": 3,
+    "reason": "DynamicDependencyReclassified"
+  }
+]

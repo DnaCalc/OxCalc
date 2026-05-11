@@ -1,0 +1,137 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+  "description": "W048 TreeCalc optimized/core behavior: a rejected dynamic self-cycle later releases to an acyclic target, re-enters calculation, and publishes the released owner plus downstream dependent atomically.",
+  "snapshot_id": 4804,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 3, 4],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "DynamicOwner",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w048:ctro:release-owner",
+      "bind_artifact_id": "bind:w048:ctro:release-owner",
+      "constant_value": null
+    },
+    {
+      "node_id": 3,
+      "kind": "constant",
+      "symbol": "ReleaseTarget",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "10"
+    },
+    {
+      "node_id": 4,
+      "kind": "calculation",
+      "symbol": "Downstream",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w048:ctro:downstream",
+      "bind_artifact_id": "bind:w048:ctro:downstream",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:w048:ctro:release-owner",
+      "bind_artifact_id": "bind:w048:ctro:release-owner",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "target_node_id": 2,
+            "carrier_id": "carrier:w048:ctro:release",
+            "detail": "candidate_overlay_self_cycle"
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 4,
+      "formula_artifact_id": "formula:w048:ctro:downstream",
+      "bind_artifact_id": "bind:w048:ctro:downstream",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
+          "right": { "Literal": { "value": "1" } }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {
+    "2": "1",
+    "3": "10",
+    "4": "2"
+  },
+  "post_edit": {
+    "successor_snapshot_start_id": 4805,
+    "edits": [],
+    "formulas": [
+      {
+        "owner_node_id": 2,
+        "formula_artifact_id": "formula:w048:ctro:release-owner",
+        "bind_artifact_id": "bind:w048:ctro:release-owner",
+        "expression": {
+          "Reference": {
+            "DynamicResolved": {
+              "target_node_id": 3,
+              "carrier_id": "carrier:w048:ctro:release",
+              "detail": "released_to_acyclic_target"
+            }
+          }
+        }
+      },
+      {
+        "owner_node_id": 4,
+        "formula_artifact_id": "formula:w048:ctro:downstream",
+        "bind_artifact_id": "bind:w048:ctro:downstream",
+        "expression": {
+          "Binary": {
+            "op": "Add",
+            "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
+            "right": { "Literal": { "value": "1" } }
+          }
+        }
+      }
+    ],
+    "invalidation_seeds": [],
+    "expected_impacts": [],
+    "expected_affected_node_ids": [],
+    "expected": {
+      "result_state": "published",
+      "published_values": {
+        "2": "10",
+        "3": "10",
+        "4": "11"
+      },
+      "evaluation_order": [2, 4],
+      "runtime_effect_kinds": ["runtime_effect.dynamic_reference"]
+    }
+  },
+  "expected": {
+    "result_state": "rejected",
+    "published_values": {
+      "2": "1",
+      "3": "10",
+      "4": "2"
+    },
+    "evaluation_order": [],
+    "reject_kind": "SyntheticCycleReject"
+  }
+}

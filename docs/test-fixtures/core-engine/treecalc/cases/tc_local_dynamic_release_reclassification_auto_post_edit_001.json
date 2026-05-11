@@ -1,7 +1,7 @@
 {
   "schema_version": "oxcalc.treecalc.fixture_case.v1",
   "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
-  "description": "A published resolved dynamic dependency is rerun with a successor formula catalog that releases the binding back to a dynamic potential reference, proving automatic dependency-release and dependency-reclassification invalidation seeds without manual overrides.",
+  "description": "A published resolved dynamic dependency is rerun with a successor formula catalog that releases the binding back to a dynamic potential reference, proving automatic CTRO dependency-release and dependency-reclassification invalidation seeds without manual overrides.",
   "snapshot_id": 42,
   "root_node_id": 1,
   "nodes": [
@@ -77,7 +77,10 @@
     "expected": {
       "result_state": "rejected",
       "evaluation_order": [3],
-      "reject_kind": "HostInjectedFailure"
+      "reject_kind": "DynamicDependencyFailure",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
     }
   },
   "expected": {

@@ -1,0 +1,25 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "events": [
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 4,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "label": "run_finished",
+      "result_state": "verified_clean",
+      "step_id": 3
+    }
+  ],
+  "phase": "post_edit",
+  "result_state": "verified_clean",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

@@ -79,6 +79,8 @@ Current useful floor:
 3. invalidation can mark cycle members;
 4. local cycle detection already maps to a reject path.
 
+First W048 TreeCalc evidence now lives in `W048_TREECALC_OPTIMIZED_CYCLE_BEHAVIOR.md` and run root `docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/`. That run covers structural self-cycle reject, structural two-node SCC reject, CTRO dynamic self-cycle reject, and CTRO release/re-entry/downstream publication, with 33 checked cases, 0 expectation mismatches, and 12 materialized cycle-region records.
+
 W048 should widen artifacts and policy while also adding the TreeCalc behavior needed for declared cycle cases. Performance-oriented dynamic topology remains a possible later optimization only after semantic behavior and artifacts are stable enough.
 
 ## 5. Non-Iterative Stage 1 Policy

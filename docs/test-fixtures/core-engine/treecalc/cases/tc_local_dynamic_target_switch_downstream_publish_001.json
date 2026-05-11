@@ -1,0 +1,165 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_local_dynamic_target_switch_downstream_publish_001",
+  "description": "A published resolved dynamic dependency switches from one runtime target to another under the same structural snapshot; the CTRO rerun releases the old target, activates the new target, invalidates the downstream dependent, and publishes atomically.",
+  "snapshot_id": 48,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2, 4, 3, 5],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "constant",
+      "symbol": "InitialSource",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "5"
+    },
+    {
+      "node_id": 4,
+      "kind": "constant",
+      "symbol": "SuccessorSource",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": "7"
+    },
+    {
+      "node_id": 3,
+      "kind": "calculation",
+      "symbol": "DynamicConsumer",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:dynamic:switch",
+      "bind_artifact_id": "bind:dynamic:switch",
+      "constant_value": null
+    },
+    {
+      "node_id": 5,
+      "kind": "calculation",
+      "symbol": "DownstreamConsumer",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:dynamic:downstream",
+      "bind_artifact_id": "bind:dynamic:downstream",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 3,
+      "formula_artifact_id": "formula:dynamic:switch",
+      "bind_artifact_id": "bind:dynamic:switch",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "target_node_id": 2,
+            "carrier_id": "carrier:dynamic:switch",
+            "detail": "runtime_target"
+          }
+        }
+      }
+    },
+    {
+      "owner_node_id": 5,
+      "formula_artifact_id": "formula:dynamic:downstream",
+      "bind_artifact_id": "bind:dynamic:downstream",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 3
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {},
+  "post_edit": {
+    "successor_snapshot_start_id": 49,
+    "edits": [],
+    "formulas": [
+      {
+        "owner_node_id": 3,
+        "formula_artifact_id": "formula:dynamic:switch",
+        "bind_artifact_id": "bind:dynamic:switch",
+        "expression": {
+          "Reference": {
+            "DynamicResolved": {
+              "target_node_id": 4,
+              "carrier_id": "carrier:dynamic:switch",
+              "detail": "runtime_target"
+            }
+          }
+        }
+      },
+      {
+        "owner_node_id": 5,
+        "formula_artifact_id": "formula:dynamic:downstream",
+        "bind_artifact_id": "bind:dynamic:downstream",
+        "expression": {
+          "Binary": {
+            "op": "Add",
+            "left": {
+              "Reference": {
+                "DirectNode": {
+                  "target_node_id": 3
+                }
+              }
+            },
+            "right": {
+              "Literal": {
+                "value": "1"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "invalidation_seeds": [],
+    "expected_impacts": [],
+    "expected_affected_node_ids": [],
+    "expected": {
+      "result_state": "published",
+      "published_values": {
+        "3": "7",
+        "5": "8"
+      },
+      "evaluation_order": [3, 5],
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
+    }
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "3": "5",
+      "5": "6"
+    },
+    "evaluation_order": [3, 5],
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ]
+  }
+}

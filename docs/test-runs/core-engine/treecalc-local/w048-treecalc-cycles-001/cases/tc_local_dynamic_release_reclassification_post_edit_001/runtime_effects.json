@@ -1,0 +1,9 @@
+[
+  {
+    "detail": "owner_node:node:3;target_node:node:2;detail:dynamic:carrier:dynamic:release-reclass:resolved_then_released_and_reclassified",
+    "family": "DynamicDependency",
+    "family_owner": "oxcalc_local_projection",
+    "kind": "runtime_effect.dynamic_reference",
+    "kind_owner": "oxcalc_local_projection"
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "calc_state": "DirtyPending",
+    "node_id": 3,
+    "reasons": [
+      "StructuralRebindRequired"
+    ],
+    "requires_rebind": true
+  }
+]

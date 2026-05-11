@@ -1,0 +1,21 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "residual:carrier:lambda.host:call_argument_host_query",
+      "descriptor_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+      "kind": "HostSensitive",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+      "detail": "residual:carrier:lambda.host:call_argument_host_query",
+      "kind": "HostSensitiveReference"
+    }
+  ],
+  "edges": []
+}

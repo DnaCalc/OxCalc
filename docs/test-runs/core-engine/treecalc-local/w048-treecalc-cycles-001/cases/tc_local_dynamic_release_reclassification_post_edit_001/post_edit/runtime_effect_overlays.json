@@ -1,0 +1,12 @@
+[
+  {
+    "compatibility_basis": "snapshot:41",
+    "detail": "runtime_effect.dynamic_reference|owner_node:node:3;carrier_id:carrier:dynamic:release-reclass;detail:released_to_runtime_resolution|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+    "is_eviction_eligible": false,
+    "is_protected": true,
+    "overlay_kind": "DynamicDependency",
+    "owner_node_id": 3,
+    "payload_identity": "fixture:tc_local_dynamic_release_reclassification_post_edit_001:candidate:post_edit:runtime_effect:0",
+    "structural_snapshot_id": 40
+  }
+]

@@ -1,0 +1,37 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "dynamic_resolved:node:2:carrier:dynamic:mixed-left:resolved_before_mixed_release",
+      "descriptor_id": "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "residual:carrier:dynamic:mixed-right:unresolved_before_mixed_addition",
+      "descriptor_id": "bind:formula:dynamic:mixed-add-release:oxfml_residual:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:dynamic:mixed-add-release:oxfml_residual:0",
+      "detail": "residual:carrier:dynamic:mixed-right:unresolved_before_mixed_addition",
+      "kind": "DynamicPotentialReference"
+    }
+  ],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": "oxcalc.treecalc.fixture_case.v1",
   "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
-  "description": "A mixed dynamic formula owner releases one resolved dynamic dependency and adds another in the successor formula catalog, proving automatic mixed dependency-addition, dependency-release, and dependency-reclassification seeds for soft-reference updates.",
+  "description": "A mixed dynamic formula owner releases one resolved dynamic dependency and adds another in the successor formula catalog, proving automatic mixed CTRO dependency-activation, dependency-release, and dependency-reclassification seeds for soft-reference updates.",
   "snapshot_id": 46,
   "root_node_id": 1,
   "nodes": [
@@ -114,7 +114,10 @@
     "expected": {
       "result_state": "rejected",
       "evaluation_order": [3],
-      "reject_kind": "HostInjectedFailure"
+      "reject_kind": "DynamicDependencyFailure",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
     }
   },
   "expected": {

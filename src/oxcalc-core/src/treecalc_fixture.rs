@@ -247,6 +247,7 @@ pub fn execute_fixture_case(
             structural_snapshot: structural_snapshot.clone(),
             formula_catalog: formula_catalog.clone(),
             seeded_published_values,
+            seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: Vec::new(),
             candidate_result_id: format!("fixture:{}:candidate", case.case_id),
             publication_id: format!("fixture:{}:publication", case.case_id),
@@ -336,11 +337,18 @@ fn execute_post_edit_plan(
             .collect::<Result<Vec<_>, _>>()?
     };
 
+    let seeded_published_runtime_effects = initial_artifacts
+        .publication_bundle
+        .as_ref()
+        .map(|bundle| bundle.published_runtime_effects.clone())
+        .unwrap_or_default();
+
     let rerun_artifacts = engine
         .execute(LocalTreeCalcInput {
             structural_snapshot: rerun_snapshot.clone(),
             formula_catalog: rerun_formula_catalog,
             seeded_published_values,
+            seeded_published_runtime_effects,
             invalidation_seeds: invalidation_seeds.clone(),
             candidate_result_id: format!("fixture:{}:candidate:post_edit", case.case_id),
             publication_id: format!("fixture:{}:publication:post_edit", case.case_id),
@@ -473,6 +481,15 @@ fn parse_invalidation_reason(
         "DependencyReclassified" | "dependency_reclassified" => {
             InvalidationReasonKind::DependencyReclassified
         }
+        "DynamicDependencyActivated" | "dynamic_dependency_activated" => {
+            InvalidationReasonKind::DynamicDependencyActivated
+        }
+        "DynamicDependencyReleased" | "dynamic_dependency_released" => {
+            InvalidationReasonKind::DynamicDependencyReleased
+        }
+        "DynamicDependencyReclassified" | "dynamic_dependency_reclassified" => {
+            InvalidationReasonKind::DynamicDependencyReclassified
+        }
         _ => {
             return Err(TreeCalcFixtureError::UnsupportedInvalidationReason {
                 case_id: case.case_id.clone(),
@@ -501,7 +518,7 @@ mod tests {
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
 
-        assert_eq!(manifest.cases.len(), 28);
+        assert_eq!(manifest.cases.len(), 33);
 
         for entry in &manifest.cases {
             let case_path = repo_root

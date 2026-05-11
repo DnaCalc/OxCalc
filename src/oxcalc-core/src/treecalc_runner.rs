@@ -735,6 +735,25 @@ fn write_post_edit_artifacts(
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
             "published_values": execution.rerun_artifacts.published_values.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+            "candidate_result": execution.rerun_artifacts.candidate_result.as_ref().map(|candidate_result| json!({
+                "aligned_canonical_family": "AcceptedCandidateResult",
+                "projection_owner": "oxcalc_local",
+                "candidate_result_id": candidate_result.candidate_result_id,
+                "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
+                "value_updates": candidate_result.value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "dependency_shape_updates": candidate_result.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
+                "runtime_effects": candidate_result.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
+            })),
+            "publication_bundle": execution.rerun_artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
+                "aligned_canonical_family": "CommitBundle",
+                "projection_owner": "oxcalc_local",
+                "publication_id": publication_bundle.publication_id,
+                "candidate_result_id": publication_bundle.candidate_result_id,
+                "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
+                "trace_markers": publication_bundle.trace_markers,
+                "carriage_classification": publication_carriage_classification_json(&execution.rerun_artifacts),
+            })),
             "phase_timings_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/phase_timings.json"),
         }),
     )?;
@@ -762,6 +781,16 @@ fn write_post_edit_artifacts(
             "counters": counter_entries_json(&post_edit_counters),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
+            "publication_bundle": execution.rerun_artifacts.publication_bundle.as_ref().map(|publication_bundle| json!({
+                "aligned_canonical_family": "CommitBundle",
+                "projection_owner": "oxcalc_local",
+                "publication_id": publication_bundle.publication_id,
+                "candidate_result_id": publication_bundle.candidate_result_id,
+                "published_value_delta_node_count": publication_bundle.published_view_delta.len(),
+                "published_runtime_effect_count": publication_bundle.published_runtime_effects.len(),
+                "trace_marker_count": publication_bundle.trace_markers.len(),
+                "carriage_classification": publication_carriage_classification_json(&execution.rerun_artifacts),
+            })),
             "phase_timings": phase_timings_json(&execution.rerun_artifacts),
         }),
     )?;
@@ -909,6 +938,27 @@ fn build_trace_events(
             "owner_node_id": overlay.key.owner_node_id.0,
             "overlay_kind": format!("{:?}", overlay.key.overlay_kind),
             "payload_identity": overlay.key.payload_identity,
+        }));
+        step_id += 1;
+    }
+
+    let dependency_shape_updates = artifacts
+        .candidate_result
+        .as_ref()
+        .map(|candidate| candidate.dependency_shape_updates.as_slice())
+        .or_else(|| {
+            artifacts
+                .local_candidate
+                .as_ref()
+                .map(|candidate| candidate.dependency_shape_updates.as_slice())
+        })
+        .unwrap_or(&[]);
+    for update in dependency_shape_updates {
+        events.push(json!({
+            "step_id": step_id,
+            "label": "dependency_shape_update_observed",
+            "kind": update.kind,
+            "affected_node_ids": update.affected_node_ids.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
         }));
         step_id += 1;
     }
@@ -2086,7 +2136,7 @@ mod tests {
         let runner = TreeCalcRunner::new();
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
-        assert_eq!(summary.case_count, 28);
+        assert_eq!(summary.case_count, 33);
         assert_eq!(summary.expectation_mismatch_count, 0);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
@@ -2219,7 +2269,7 @@ mod tests {
             replay_manifest["schema_version"],
             TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1
         );
-        assert_eq!(replay_manifest["case_count"], 28);
+        assert_eq!(replay_manifest["case_count"], 33);
         assert!(
             replay_manifest["required_root_artifacts"]
                 .as_array()
@@ -2671,7 +2721,7 @@ mod tests {
         assert_eq!(dynamic_resolved_result["result_state"], "published");
         assert_eq!(
             dynamic_resolved_result["candidate_result"]["dependency_shape_updates"][0]["kind"],
-            "dynamic_dependency_bound"
+            "activate_dynamic_dep"
         );
         assert_eq!(
             dynamic_resolved_result["publication_bundle"]["carriage_classification"]["dependency_shape_update_count"],
@@ -2700,14 +2750,14 @@ mod tests {
                 .as_array()
                 .is_some_and(|seeds| seeds
                     .iter()
-                    .any(|seed| seed["reason"] == "DependencyRemoved"))
+                    .any(|seed| seed["reason"] == "DynamicDependencyReleased"))
         );
         assert!(
             dynamic_release_reclass_seeds
                 .as_array()
                 .is_some_and(|seeds| seeds
                     .iter()
-                    .any(|seed| seed["reason"] == "DependencyReclassified"))
+                    .any(|seed| seed["reason"] == "DynamicDependencyReclassified"))
         );
 
         let dynamic_release_reclass_result = serde_json::from_str::<serde_json::Value>(
@@ -2722,7 +2772,7 @@ mod tests {
         assert_eq!(dynamic_release_reclass_result["result_state"], "rejected");
         assert_eq!(
             dynamic_release_reclass_result["reject_detail"]["kind"],
-            "HostInjectedFailure"
+            "DynamicDependencyFailure"
         );
         let dynamic_release_reclass_closure = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(
@@ -2738,12 +2788,14 @@ mod tests {
                 .as_array()
                 .is_some_and(|records| records.iter().any(|record| {
                     record["node_id"] == 3
-                        && record["requires_rebind"] == true
+                        && record["requires_rebind"] == false
                         && record["reasons"].as_array().is_some_and(|reasons| {
-                            reasons.iter().any(|reason| reason == "DependencyRemoved")
+                            reasons
+                                .iter()
+                                .any(|reason| reason == "DynamicDependencyReleased")
                                 && reasons
                                     .iter()
-                                    .any(|reason| reason == "DependencyReclassified")
+                                    .any(|reason| reason == "DynamicDependencyReclassified")
                         })
                 }))
         );
@@ -2766,14 +2818,14 @@ mod tests {
                 .as_array()
                 .is_some_and(|seeds| seeds
                     .iter()
-                    .any(|seed| seed["reason"] == "DependencyRemoved"))
+                    .any(|seed| seed["reason"] == "DynamicDependencyReleased"))
         );
         assert!(
             auto_dynamic_release_reclass_seeds
                 .as_array()
                 .is_some_and(|seeds| seeds
                     .iter()
-                    .any(|seed| seed["reason"] == "DependencyReclassified"))
+                    .any(|seed| seed["reason"] == "DynamicDependencyReclassified"))
         );
 
         let auto_dynamic_addition_seeds = serde_json::from_str::<serde_json::Value>(
@@ -2789,15 +2841,15 @@ mod tests {
             auto_dynamic_addition_seeds.as_array().map(Vec::len),
             Some(2)
         );
-        assert!(
-            auto_dynamic_addition_seeds
-                .as_array()
-                .is_some_and(|seeds| seeds.iter().any(|seed| seed["reason"] == "DependencyAdded"))
-        );
         assert!(auto_dynamic_addition_seeds.as_array().is_some_and(|seeds| {
             seeds
                 .iter()
-                .any(|seed| seed["reason"] == "DependencyReclassified")
+                .any(|seed| seed["reason"] == "DynamicDependencyActivated")
+        }));
+        assert!(auto_dynamic_addition_seeds.as_array().is_some_and(|seeds| {
+            seeds
+                .iter()
+                .any(|seed| seed["reason"] == "DynamicDependencyReclassified")
         }));
         let auto_dynamic_addition_result =
             serde_json::from_str::<serde_json::Value>(
@@ -2807,11 +2859,8 @@ mod tests {
                 .unwrap(),
             )
             .unwrap();
-        assert_eq!(auto_dynamic_addition_result["result_state"], "rejected");
-        assert_eq!(
-            auto_dynamic_addition_result["reject_detail"]["kind"],
-            "HostInjectedFailure"
-        );
+        assert_eq!(auto_dynamic_addition_result["result_state"], "published");
+        assert_eq!(auto_dynamic_addition_result["published_values"]["3"], "13");
         let auto_dynamic_addition_closure =
             serde_json::from_str::<serde_json::Value>(
                 &fs::read_to_string(artifact_root.join(
@@ -2825,12 +2874,14 @@ mod tests {
                 .as_array()
                 .is_some_and(|records| records.iter().any(|record| {
                     record["node_id"] == 3
-                        && record["requires_rebind"] == true
+                        && record["requires_rebind"] == false
                         && record["reasons"].as_array().is_some_and(|reasons| {
-                            reasons.iter().any(|reason| reason == "DependencyAdded")
+                            reasons
+                                .iter()
+                                .any(|reason| reason == "DynamicDependencyActivated")
                                 && reasons
                                     .iter()
-                                    .any(|reason| reason == "DependencyReclassified")
+                                    .any(|reason| reason == "DynamicDependencyReclassified")
                         })
                 }))
         );
@@ -2848,9 +2899,9 @@ mod tests {
             Some(3)
         );
         for expected_reason in [
-            "DependencyAdded",
-            "DependencyRemoved",
-            "DependencyReclassified",
+            "DynamicDependencyActivated",
+            "DynamicDependencyReleased",
+            "DynamicDependencyReclassified",
         ] {
             assert!(
                 mixed_dynamic_transition_seeds
@@ -2871,7 +2922,7 @@ mod tests {
         assert_eq!(mixed_dynamic_transition_result["result_state"], "rejected");
         assert_eq!(
             mixed_dynamic_transition_result["reject_detail"]["kind"],
-            "HostInjectedFailure"
+            "DynamicDependencyFailure"
         );
         let mixed_dynamic_transition_closure =
             serde_json::from_str::<serde_json::Value>(
@@ -2886,16 +2937,79 @@ mod tests {
                 .as_array()
                 .is_some_and(|records| records.iter().any(|record| {
                     record["node_id"] == 3
-                        && record["requires_rebind"] == true
+                        && record["requires_rebind"] == false
                         && record["reasons"].as_array().is_some_and(|reasons| {
-                            reasons.iter().any(|reason| reason == "DependencyAdded")
-                                && reasons.iter().any(|reason| reason == "DependencyRemoved")
+                            reasons
+                                .iter()
+                                .any(|reason| reason == "DynamicDependencyActivated")
                                 && reasons
                                     .iter()
-                                    .any(|reason| reason == "DependencyReclassified")
+                                    .any(|reason| reason == "DynamicDependencyReleased")
+                                && reasons
+                                    .iter()
+                                    .any(|reason| reason == "DynamicDependencyReclassified")
                         })
                 }))
         );
+
+        let dynamic_switch_result = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join(
+                "cases/tc_local_dynamic_target_switch_downstream_publish_001/post_edit/result.json",
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(dynamic_switch_result["result_state"], "published");
+        assert_eq!(dynamic_switch_result["published_values"]["3"], "7");
+        assert_eq!(dynamic_switch_result["published_values"]["5"], "8");
+        assert!(
+            dynamic_switch_result["candidate_result"]["dependency_shape_updates"]
+                .as_array()
+                .is_some_and(|updates| updates
+                    .iter()
+                    .any(|update| update["kind"] == "activate_dynamic_dep")
+                    && updates
+                        .iter()
+                        .any(|update| update["kind"] == "release_dynamic_dep"))
+        );
+        assert_eq!(
+            dynamic_switch_result["publication_bundle"]["published_view_delta"]["3"],
+            "7"
+        );
+        assert_eq!(
+            dynamic_switch_result["publication_bundle"]["published_view_delta"]["5"],
+            "8"
+        );
+        let dynamic_switch_closure = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join(
+                "cases/tc_local_dynamic_target_switch_downstream_publish_001/post_edit/invalidation_closure.json",
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(dynamic_switch_closure.as_array().is_some_and(|records| {
+            records.iter().any(|record| {
+                record["node_id"] == 3
+                    && record["requires_rebind"] == false
+                    && record["reasons"].as_array().is_some_and(|reasons| {
+                        reasons
+                            .iter()
+                            .any(|reason| reason == "DynamicDependencyActivated")
+                            && reasons
+                                .iter()
+                                .any(|reason| reason == "DynamicDependencyReleased")
+                            && reasons
+                                .iter()
+                                .any(|reason| reason == "DynamicDependencyReclassified")
+                    })
+            }) && records.iter().any(|record| {
+                record["node_id"] == 5
+                    && record["requires_rebind"] == false
+                    && record["reasons"].as_array().is_some_and(|reasons| {
+                        reasons.iter().any(|reason| reason == "UpstreamPublication")
+                    })
+            })
+        }));
 
         let host_sensitive_explain = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(

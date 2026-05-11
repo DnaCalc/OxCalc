@@ -1,0 +1,56 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_w048_ctro_dynamic_self_cycle_reject_001",
+  "description": "W048 TreeCalc optimized/core behavior: a resolved dynamic-reference candidate that points back to its owner is classified as a cycle and rejects without publishing new values or committing a candidate overlay.",
+  "snapshot_id": 4803,
+  "root_node_id": 1,
+  "nodes": [
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [2],
+      "formula_artifact_id": null,
+      "bind_artifact_id": null,
+      "constant_value": null
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "DynamicSelf",
+      "parent_id": 1,
+      "child_ids": [],
+      "formula_artifact_id": "formula:w048:ctro:self",
+      "bind_artifact_id": "bind:w048:ctro:self",
+      "constant_value": null
+    }
+  ],
+  "formulas": [
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:w048:ctro:self",
+      "bind_artifact_id": "bind:w048:ctro:self",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "target_node_id": 2,
+            "carrier_id": "carrier:w048:ctro:self",
+            "detail": "candidate_overlay_self_cycle"
+          }
+        }
+      }
+    }
+  ],
+  "seeded_published_values": {
+    "2": "1"
+  },
+  "expected": {
+    "result_state": "rejected",
+    "published_values": {
+      "2": "1"
+    },
+    "evaluation_order": [],
+    "reject_kind": "SyntheticCycleReject"
+  }
+}

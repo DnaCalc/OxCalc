@@ -1,0 +1,73 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "counters": [
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "verified_clean_nodes",
+      "value": 1
+    }
+  ],
+  "diagnostic_events": [
+    "node_moved:node:2:node:4"
+  ],
+  "edit_impacts": [
+    "RebindRequired"
+  ],
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase": "post_edit",
+  "phase_timings": {
+    "timings_micros": {
+      "dependency_descriptor_lowering": 16,
+      "dependency_descriptor_owner_index": 7,
+      "dependency_diagnostic_reject_scan": 0,
+      "dependency_graph_build_and_cycle_scan": 58,
+      "diagnostic_seed_collection": 3,
+      "evaluation_loop_total": 669,
+      "invalidation_closure_derivation": 14,
+      "oxfml_formula_evaluation": 631,
+      "oxfml_prepare_formulas": 183,
+      "rebind_gate_scan": 1,
+      "recalc_tracker_mark_dirty_needed": 8,
+      "runtime_setup": 37,
+      "topological_formula_order": 15,
+      "total_engine_execute": 1034,
+      "verified_clean_finalize": 1
+    },
+    "timings_ms": {
+      "dependency_descriptor_lowering": 0.016,
+      "dependency_descriptor_owner_index": 0.007,
+      "dependency_diagnostic_reject_scan": 0.0,
+      "dependency_graph_build_and_cycle_scan": 0.058,
+      "diagnostic_seed_collection": 0.003,
+      "evaluation_loop_total": 0.669,
+      "invalidation_closure_derivation": 0.014,
+      "oxfml_formula_evaluation": 0.631,
+      "oxfml_prepare_formulas": 0.183,
+      "rebind_gate_scan": 0.001,
+      "recalc_tracker_mark_dirty_needed": 0.008,
+      "runtime_setup": 0.037,
+      "topological_formula_order": 0.015,
+      "total_engine_execute": 1.034,
+      "verified_clean_finalize": 0.001
+    },
+    "unit": "microseconds"
+  },
+  "publication_bundle": null,
+  "reject_detail": null,
+  "result_state": "verified_clean",
+  "runtime_effect_overlays": [],
+  "runtime_effects": [],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

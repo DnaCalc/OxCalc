@@ -1,0 +1,91 @@
+{
+  "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+  "conformance_state": "matches_expected",
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.dynamic_dependency_failure",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.dynamic_dependency_failure",
+      "value": 1
+    }
+  ],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "mismatch_count": 0,
+  "mismatches": [],
+  "notes": [
+    "local fixture expectation floor matched observed artifacts",
+    "runtime-derived effects were emitted in the local sequential runtime",
+    "result ended in conservative local rejection"
+  ],
+  "publication_bundle": null,
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate",
+    "detail": "reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_mixed_addition",
+    "kind": "DynamicDependencyFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:46",
+      "detail": "runtime_effect.dynamic_reference|owner_node:node:3;carrier_id:carrier:dynamic:mixed-right;detail:unresolved_before_mixed_addition|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate:runtime_effect:0",
+      "structural_snapshot_id": 46
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:dynamic:mixed-right;detail:unresolved_before_mixed_addition|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection"
+    }
+  ],
+  "schema_version": "oxcalc.treecalc.local_explain.v1"
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": "oxcalc.treecalc.fixture_case.v1",
   "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
-  "description": "A rejected dynamic-potential formula is rerun with a successor formula catalog that resolves the dynamic dependency, proving automatic dependency-addition invalidation seeds without manual overrides.",
+  "description": "A rejected dynamic-potential formula is rerun with a successor formula catalog that resolves the dynamic dependency, proving automatic CTRO dependency-activation invalidation seeds and positive publication without manual overrides.",
   "snapshot_id": 44,
   "root_node_id": 1,
   "nodes": [
@@ -75,9 +75,14 @@
     "expected_impacts": [],
     "expected_affected_node_ids": [],
     "expected": {
-      "result_state": "rejected",
+      "result_state": "published",
+      "published_values": {
+        "3": "13"
+      },
       "evaluation_order": [3],
-      "reject_kind": "HostInjectedFailure"
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
     }
   },
   "expected": {

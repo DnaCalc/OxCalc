@@ -1,0 +1,26 @@
+[
+  {
+    "node_id": 1,
+    "state": "Clean"
+  },
+  {
+    "node_id": 2,
+    "state": "Clean"
+  },
+  {
+    "node_id": 3,
+    "state": "Clean"
+  },
+  {
+    "node_id": 4,
+    "state": "Clean"
+  },
+  {
+    "node_id": 5,
+    "state": "Clean"
+  },
+  {
+    "node_id": 6,
+    "state": "Clean"
+  }
+]

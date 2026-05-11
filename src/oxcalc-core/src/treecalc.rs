@@ -48,6 +48,7 @@ pub struct LocalTreeCalcInput {
     pub structural_snapshot: StructuralSnapshot,
     pub formula_catalog: TreeFormulaCatalog,
     pub seeded_published_values: BTreeMap<TreeNodeId, String>,
+    pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
     pub invalidation_seeds: Vec<InvalidationSeed>,
     pub candidate_result_id: String,
     pub publication_id: String,
@@ -254,6 +255,12 @@ impl LocalTreeCalcEngine {
         let phase_start = Instant::now();
         let dependency_graph =
             DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
+        let published_dynamic_dependencies =
+            dynamic_dependency_facts_from_runtime_effects(&input.seeded_published_runtime_effects);
+        let dynamic_dependency_shape_updates =
+            dynamic_dependency_shape_updates(&published_dynamic_dependencies, &dependency_graph);
+        let dynamic_dependency_delta_owner_ids =
+            dynamic_dependency_delta_owner_ids(&published_dynamic_dependencies, &dependency_graph);
         phase_timer.record_duration(
             "dependency_graph_build_and_cycle_scan",
             phase_start.elapsed(),
@@ -272,7 +279,13 @@ impl LocalTreeCalcEngine {
 
         let phase_start = Instant::now();
         let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot.clone());
-        coordinator.seed_published_view(&input.seeded_published_values, None, &[]);
+        let seeded_publication_id =
+            (!input.seeded_published_runtime_effects.is_empty()).then_some("seed:published-view");
+        coordinator.seed_published_view(
+            &input.seeded_published_values,
+            seeded_publication_id,
+            &input.seeded_published_runtime_effects,
+        );
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot.clone());
         let mut working_values =
             seed_working_values(&input.structural_snapshot, &input.seeded_published_values);
@@ -434,7 +447,7 @@ impl LocalTreeCalcEngine {
                             candidate_result_id: input.candidate_result_id.clone(),
                             target_set: formula_owner_ids.clone(),
                             value_updates,
-                            dependency_shape_updates: Vec::new(),
+                            dependency_shape_updates: dynamic_dependency_shape_updates.clone(),
                             runtime_effects: failure_runtime_effects,
                             diagnostic_events: vec![failure.error.to_string()],
                         }),
@@ -443,24 +456,38 @@ impl LocalTreeCalcEngine {
                 }
             };
             let published_value = input.seeded_published_values.get(node_id);
+            let has_dynamic_dependency_delta = dynamic_dependency_delta_owner_ids.contains(node_id);
 
-            if published_value.is_some_and(|value| value == &computed_value) {
+            if published_value.is_some_and(|value| value == &computed_value)
+                && !has_dynamic_dependency_delta
+            {
                 recalc_tracker.verify_clean(*node_id)?;
                 diagnostics.push(format!("verified_clean:{node_id}"));
                 diagnostics.push(format!("verified_clean_publication_suppressed:{node_id}"));
             } else {
-                recalc_tracker.produce_candidate_result(
-                    *node_id,
-                    &input.compatibility_basis,
-                    &input.candidate_result_id,
-                )?;
+                if has_dynamic_dependency_delta {
+                    recalc_tracker.produce_dependency_shape_update(
+                        *node_id,
+                        &input.compatibility_basis,
+                        &input.candidate_result_id,
+                    )?;
+                    diagnostics.push(format!("ctro_dependency_shape_delta:{node_id}"));
+                } else {
+                    recalc_tracker.produce_candidate_result(
+                        *node_id,
+                        &input.compatibility_basis,
+                        &input.candidate_result_id,
+                    )?;
+                }
                 working_values.insert(*node_id, computed_value.clone());
-                value_updates.insert(*node_id, computed_value);
+                if published_value.is_none_or(|value| value != &computed_value) {
+                    value_updates.insert(*node_id, computed_value);
+                }
             }
         }
         phase_timer.record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
 
-        if value_updates.is_empty() {
+        if value_updates.is_empty() && dynamic_dependency_shape_updates.is_empty() {
             let phase_start = Instant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
@@ -487,10 +514,9 @@ impl LocalTreeCalcEngine {
         }
 
         let phase_start = Instant::now();
-        let dependency_shape_updates = dynamic_dependency_shape_updates(&dependency_graph);
         runtime_effects.extend(dynamic_dependency_runtime_effects(&dependency_graph));
         diagnostics.extend(
-            dependency_shape_updates
+            dynamic_dependency_shape_updates
                 .iter()
                 .map(|update| format!("dependency_shape_update:{}", update.kind)),
         );
@@ -498,7 +524,7 @@ impl LocalTreeCalcEngine {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
             value_updates,
-            dependency_shape_updates,
+            dependency_shape_updates: dynamic_dependency_shape_updates,
             runtime_effects,
             diagnostic_events: diagnostics.clone(),
         };
@@ -507,7 +533,13 @@ impl LocalTreeCalcEngine {
         coordinator.admit_candidate_work(candidate_result.clone())?;
         coordinator.record_accepted_candidate_result(&input.candidate_result_id)?;
         let publication_bundle = coordinator.accept_and_publish(&input.publication_id)?;
-        for node_id in local_candidate.value_updates.keys().copied() {
+        let publish_ready_node_ids = local_candidate
+            .value_updates
+            .keys()
+            .copied()
+            .chain(dynamic_dependency_delta_owner_ids.iter().copied())
+            .collect::<BTreeSet<_>>();
+        for node_id in publish_ready_node_ids {
             recalc_tracker.publish_and_clear(node_id)?;
         }
         diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
@@ -763,32 +795,45 @@ fn dependency_descriptor_transition_seeds(
                         reasons_by_owner
                             .entry(owner_node_id)
                             .or_default()
-                            .insert(InvalidationReasonKind::DependencyAdded);
+                            .insert(dependency_activated_reason(next));
                     }
                     if previous.target_node_id.is_some() && next.target_node_id.is_none() {
                         reasons_by_owner
                             .entry(owner_node_id)
                             .or_default()
-                            .insert(InvalidationReasonKind::DependencyRemoved);
+                            .insert(dependency_released_reason(previous));
+                    }
+                    if previous
+                        .target_node_id
+                        .zip(next.target_node_id)
+                        .is_some_and(|(previous_target, next_target)| {
+                            previous_target != next_target
+                                && descriptor_is_dynamic(previous)
+                                && descriptor_is_dynamic(next)
+                        })
+                    {
+                        let owner_reasons = reasons_by_owner.entry(owner_node_id).or_default();
+                        owner_reasons.insert(InvalidationReasonKind::DynamicDependencyReleased);
+                        owner_reasons.insert(InvalidationReasonKind::DynamicDependencyActivated);
                     }
                     if descriptor_reclassified(previous, next) {
                         reasons_by_owner
                             .entry(owner_node_id)
                             .or_default()
-                            .insert(InvalidationReasonKind::DependencyReclassified);
+                            .insert(dependency_reclassified_reason(previous, next));
                     }
                 }
-                (Some(_), None) => {
+                (Some(previous), None) => {
                     reasons_by_owner
                         .entry(owner_node_id)
                         .or_default()
-                        .insert(InvalidationReasonKind::DependencyRemoved);
+                        .insert(dependency_released_reason(previous));
                 }
-                (None, Some(_)) => {
+                (None, Some(next)) => {
                     reasons_by_owner
                         .entry(owner_node_id)
                         .or_default()
-                        .insert(InvalidationReasonKind::DependencyAdded);
+                        .insert(dependency_activated_reason(next));
                 }
                 (None, None) => {}
             }
@@ -831,6 +876,37 @@ fn descriptor_reclassified(previous: &DependencyDescriptor, next: &DependencyDes
             .is_some_and(|(previous_target, next_target)| previous_target != next_target)
 }
 
+fn descriptor_is_dynamic(descriptor: &DependencyDescriptor) -> bool {
+    descriptor.kind == DependencyDescriptorKind::DynamicPotential
+}
+
+fn dependency_activated_reason(descriptor: &DependencyDescriptor) -> InvalidationReasonKind {
+    if descriptor_is_dynamic(descriptor) && descriptor.target_node_id.is_some() {
+        InvalidationReasonKind::DynamicDependencyActivated
+    } else {
+        InvalidationReasonKind::DependencyAdded
+    }
+}
+
+fn dependency_released_reason(descriptor: &DependencyDescriptor) -> InvalidationReasonKind {
+    if descriptor_is_dynamic(descriptor) && descriptor.target_node_id.is_some() {
+        InvalidationReasonKind::DynamicDependencyReleased
+    } else {
+        InvalidationReasonKind::DependencyRemoved
+    }
+}
+
+fn dependency_reclassified_reason(
+    previous: &DependencyDescriptor,
+    next: &DependencyDescriptor,
+) -> InvalidationReasonKind {
+    if descriptor_is_dynamic(previous) || descriptor_is_dynamic(next) {
+        InvalidationReasonKind::DynamicDependencyReclassified
+    } else {
+        InvalidationReasonKind::DependencyReclassified
+    }
+}
+
 fn dependency_carrier_family(carrier_detail: &str) -> &str {
     carrier_detail
         .split_once(':')
@@ -854,51 +930,157 @@ fn adapt_local_candidate(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct DynamicDependencyFact {
+    owner_node_id: TreeNodeId,
+    target_node_id: TreeNodeId,
+    identity: String,
+}
+
 fn dynamic_dependency_shape_updates(
+    published_dynamic_dependencies: &[DynamicDependencyFact],
     dependency_graph: &DependencyGraph,
 ) -> Vec<DependencyShapeUpdate> {
-    let mut updates = dependency_graph
-        .descriptors_by_owner
-        .values()
-        .flatten()
-        .filter_map(|descriptor| {
-            if descriptor.kind != DependencyDescriptorKind::DynamicPotential {
-                return None;
-            }
-            let target_node_id = descriptor.target_node_id?;
-            let mut affected_node_ids = vec![descriptor.owner_node_id, target_node_id];
-            affected_node_ids.sort();
-            affected_node_ids.dedup();
-            Some(DependencyShapeUpdate {
-                kind: "dynamic_dependency_bound".to_string(),
-                affected_node_ids,
-            })
-        })
-        .collect::<Vec<_>>();
-    updates.sort_by(|left, right| left.affected_node_ids.cmp(&right.affected_node_ids));
+    let current_dynamic_dependencies = dynamic_dependency_facts_from_graph(dependency_graph);
+    let published_set = published_dynamic_dependencies
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let current_set = current_dynamic_dependencies
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    let mut updates = Vec::new();
+    for released in published_set.difference(&current_set) {
+        updates.push(DependencyShapeUpdate {
+            kind: "release_dynamic_dep".to_string(),
+            affected_node_ids: sorted_node_pair(released.owner_node_id, released.target_node_id),
+        });
+    }
+    for activated in current_set.difference(&published_set) {
+        updates.push(DependencyShapeUpdate {
+            kind: "activate_dynamic_dep".to_string(),
+            affected_node_ids: sorted_node_pair(activated.owner_node_id, activated.target_node_id),
+        });
+    }
+
+    updates.sort_by(|left, right| {
+        left.kind
+            .cmp(&right.kind)
+            .then_with(|| left.affected_node_ids.cmp(&right.affected_node_ids))
+    });
     updates
 }
 
+fn dynamic_dependency_delta_owner_ids(
+    published_dynamic_dependencies: &[DynamicDependencyFact],
+    dependency_graph: &DependencyGraph,
+) -> BTreeSet<TreeNodeId> {
+    let current_dynamic_dependencies = dynamic_dependency_facts_from_graph(dependency_graph);
+    let published_set = published_dynamic_dependencies
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let current_set = current_dynamic_dependencies
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    published_set
+        .difference(&current_set)
+        .chain(current_set.difference(&published_set))
+        .map(|fact| fact.owner_node_id)
+        .collect()
+}
+
 fn dynamic_dependency_runtime_effects(dependency_graph: &DependencyGraph) -> Vec<RuntimeEffect> {
+    dynamic_dependency_facts_from_graph(dependency_graph)
+        .into_iter()
+        .map(|fact| RuntimeEffect {
+            kind: "runtime_effect.dynamic_reference".to_string(),
+            family: RuntimeEffectFamily::DynamicDependency,
+            detail: format!(
+                "owner_node:{};target_node:{};detail:{}",
+                fact.owner_node_id, fact.target_node_id, fact.identity
+            ),
+        })
+        .collect()
+}
+
+fn dynamic_dependency_facts_from_graph(
+    dependency_graph: &DependencyGraph,
+) -> Vec<DynamicDependencyFact> {
     dependency_graph
         .descriptors_by_owner
         .values()
         .flatten()
         .filter_map(|descriptor| {
-            let target_node_id = descriptor.target_node_id?;
             if descriptor.kind != DependencyDescriptorKind::DynamicPotential {
                 return None;
             }
-            Some(RuntimeEffect {
-                kind: "runtime_effect.dynamic_reference".to_string(),
-                family: RuntimeEffectFamily::DynamicDependency,
-                detail: format!(
-                    "owner_node:{};target_node:{};detail:{}",
-                    descriptor.owner_node_id, target_node_id, descriptor.carrier_detail
-                ),
+            Some(DynamicDependencyFact {
+                owner_node_id: descriptor.owner_node_id,
+                target_node_id: descriptor.target_node_id?,
+                identity: dynamic_dependency_identity(&descriptor.carrier_detail),
             })
         })
         .collect()
+}
+
+fn dynamic_dependency_facts_from_runtime_effects(
+    runtime_effects: &[RuntimeEffect],
+) -> Vec<DynamicDependencyFact> {
+    runtime_effects
+        .iter()
+        .filter(|effect| {
+            effect.family == RuntimeEffectFamily::DynamicDependency
+                && effect.kind == "runtime_effect.dynamic_reference"
+        })
+        .filter_map(|effect| {
+            let owner_node_id = parse_runtime_effect_node(&effect.detail, "owner_node:")?;
+            let target_node_id = parse_runtime_effect_node(&effect.detail, "target_node:")?;
+            let detail = parse_runtime_effect_detail(&effect.detail)?;
+            Some(DynamicDependencyFact {
+                owner_node_id,
+                target_node_id,
+                identity: dynamic_dependency_identity(detail),
+            })
+        })
+        .collect()
+}
+
+fn dynamic_dependency_identity(carrier_detail: &str) -> String {
+    if let Some(rest) = carrier_detail.strip_prefix("dynamic_resolved:node:")
+        && let Some((_, identity)) = rest.split_once(':')
+    {
+        return format!("dynamic:{identity}");
+    }
+
+    if let Some(identity) = carrier_detail.strip_prefix("dynamic_potential:") {
+        return format!("dynamic:{identity}");
+    }
+
+    carrier_detail.to_string()
+}
+
+fn parse_runtime_effect_node(detail: &str, prefix: &str) -> Option<TreeNodeId> {
+    let (_, rest) = detail.split_once(prefix)?;
+    let value = rest.split([';', '|']).next()?;
+    let value = value.strip_prefix("node:").unwrap_or(value);
+    value.parse::<u64>().ok().map(TreeNodeId)
+}
+
+fn parse_runtime_effect_detail(detail: &str) -> Option<&str> {
+    let (_, rest) = detail.split_once("detail:")?;
+    Some(rest.split('|').next().unwrap_or(rest))
+}
+
+fn sorted_node_pair(left: TreeNodeId, right: TreeNodeId) -> Vec<TreeNodeId> {
+    let mut nodes = vec![left, right];
+    nodes.sort();
+    nodes.dedup();
+    nodes
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2041,6 +2223,7 @@ mod tests {
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:local".to_string(),
                 publication_id: "pub:local".to_string(),
@@ -2069,6 +2252,129 @@ mod tests {
                 .iter()
                 .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
         );
+    }
+
+    fn assert_w046_refinement_bridge_facts(run: &LocalTreeCalcRunArtifacts) {
+        let order_index = run
+            .evaluation_order
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(index, node_id)| (node_id, index))
+            .collect::<BTreeMap<_, _>>();
+
+        for edges in run.dependency_graph.edges_by_owner.values() {
+            for edge in edges {
+                let reverse_edges = run
+                    .dependency_graph
+                    .reverse_edges
+                    .get(&edge.target_node_id)
+                    .expect("reverse edge bucket exists for every forward edge target");
+                assert!(
+                    reverse_edges.contains(edge),
+                    "forward edge must have reverse converse entry"
+                );
+
+                if let (Some(target_index), Some(owner_index)) = (
+                    order_index.get(&edge.target_node_id),
+                    order_index.get(&edge.owner_node_id),
+                ) {
+                    assert!(
+                        target_index < owner_index,
+                        "formula target must be evaluated before dependent owner"
+                    );
+                }
+            }
+        }
+
+        for node_id in &run.evaluation_order {
+            assert!(
+                run.invalidation_closure.records.contains_key(node_id),
+                "evaluated node must be present in invalidation closure"
+            );
+        }
+
+        match run.result_state {
+            LocalTreeCalcRunState::Published => {
+                let candidate = run
+                    .candidate_result
+                    .as_ref()
+                    .expect("published run carries accepted candidate result");
+                let publication = run
+                    .publication_bundle
+                    .as_ref()
+                    .expect("published run carries publication bundle");
+                assert!(run.reject_detail.is_none());
+                assert_eq!(candidate.target_set, run.evaluation_order);
+                assert_eq!(candidate.value_updates, publication.published_view_delta);
+                assert_eq!(
+                    candidate.candidate_result_id,
+                    publication.candidate_result_id
+                );
+            }
+            LocalTreeCalcRunState::Rejected => {
+                assert!(run.publication_bundle.is_none());
+                assert!(run.reject_detail.is_some());
+            }
+            LocalTreeCalcRunState::VerifiedClean => {
+                assert!(run.publication_bundle.is_none());
+                assert!(run.reject_detail.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn local_treecalc_engine_exposes_w046_refinement_bridge_facts() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: TreeFormulaCatalog::new([
+                    TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: TreeFormula::Binary {
+                            op: FormulaBinaryOp::Add,
+                            left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+                                target_node_id: TreeNodeId(2),
+                            })),
+                            right: Box::new(TreeFormula::Literal {
+                                value: "3".to_string(),
+                            }),
+                        },
+                    },
+                    TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(4),
+                        formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
+                        expression: TreeFormula::FunctionCall {
+                            function_name: "SUM".to_string(),
+                            arguments: vec![
+                                TreeFormula::Reference(TreeReference::RelativePath {
+                                    base: RelativeReferenceBase::ParentNode,
+                                    path_segments: vec!["A".to_string()],
+                                }),
+                                TreeFormula::Reference(TreeReference::DirectNode {
+                                    target_node_id: TreeNodeId(3),
+                                }),
+                            ],
+                            may_introduce_dynamic_dependencies: false,
+                        },
+                    },
+                ]),
+                seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                candidate_result_id: "cand:w046:bridge".to_string(),
+                publication_id: "pub:w046:bridge".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .unwrap();
+
+        assert_w046_refinement_bridge_facts(&run);
     }
 
     #[test]
@@ -2110,6 +2416,7 @@ mod tests {
                 structural_snapshot: snapshot(),
                 formula_catalog: formula_catalog.clone(),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:xyz:initial".to_string(),
                 publication_id: "pub:xyz:initial".to_string(),
@@ -2139,6 +2446,7 @@ mod tests {
                 structural_snapshot: edited_snapshot,
                 formula_catalog,
                 seeded_published_values: initial.published_values.clone(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
                     node_id: TreeNodeId(2),
                     reason: InvalidationReasonKind::UpstreamPublication,
@@ -2185,6 +2493,7 @@ mod tests {
                     },
                 }]),
                 seeded_published_values: seeded,
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:verified".to_string(),
                 publication_id: "pub:verified".to_string(),
@@ -2245,6 +2554,7 @@ mod tests {
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:cycle".to_string(),
                 publication_id: "pub:cycle".to_string(),
@@ -2281,6 +2591,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:host".to_string(),
                 publication_id: "pub:host".to_string(),
@@ -2340,6 +2651,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:dynamic".to_string(),
                 publication_id: "pub:dynamic".to_string(),
@@ -2395,6 +2707,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 candidate_result_id: "cand:dynamic:resolved".to_string(),
                 publication_id: "pub:dynamic:resolved".to_string(),
@@ -2416,7 +2729,7 @@ mod tests {
                 .map(|candidate| candidate.dependency_shape_updates.clone())
                 .unwrap(),
             vec![DependencyShapeUpdate {
-                kind: "dynamic_dependency_bound".to_string(),
+                kind: "activate_dynamic_dep".to_string(),
                 affected_node_ids: vec![TreeNodeId(2), TreeNodeId(3)],
             }]
         );
@@ -2443,6 +2756,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRebindRequired,
@@ -2492,6 +2806,7 @@ mod tests {
                     }),
                 }]),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRecalcOnly,
@@ -2697,11 +3012,11 @@ mod tests {
             vec![
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyRemoved,
+                    reason: InvalidationReasonKind::DynamicDependencyReleased,
                 },
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyReclassified,
+                    reason: InvalidationReasonKind::DynamicDependencyReclassified,
                 },
             ]
         );
@@ -2743,11 +3058,11 @@ mod tests {
             vec![
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyAdded,
+                    reason: InvalidationReasonKind::DynamicDependencyActivated,
                 },
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyReclassified,
+                    reason: InvalidationReasonKind::DynamicDependencyReclassified,
                 },
             ]
         );
@@ -2804,15 +3119,15 @@ mod tests {
             vec![
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyAdded,
+                    reason: InvalidationReasonKind::DynamicDependencyActivated,
                 },
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyRemoved,
+                    reason: InvalidationReasonKind::DynamicDependencyReleased,
                 },
                 InvalidationSeed {
                     node_id: TreeNodeId(3),
-                    reason: InvalidationReasonKind::DependencyReclassified,
+                    reason: InvalidationReasonKind::DynamicDependencyReclassified,
                 },
             ]
         );

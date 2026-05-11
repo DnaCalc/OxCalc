@@ -1,7 +1,7 @@
 {
   "schema_version": "oxcalc.treecalc.fixture_case.v1",
   "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
-  "description": "A published resolved dynamic dependency is rerun with explicit dependency-release and dependency-reclassification invalidation seeds, proving the local runner treats those soft-dependency changes as rebind-required rather than clean matches.",
+  "description": "A published resolved dynamic dependency is rerun with explicit CTRO dependency-release and dependency-reclassification invalidation seeds, proving dynamic release reaches the dynamic-dependency reject lane rather than the structural rebind gate.",
   "snapshot_id": 40,
   "root_node_id": 1,
   "nodes": [
@@ -56,14 +56,29 @@
   "post_edit": {
     "successor_snapshot_start_id": 41,
     "edits": [],
+    "formulas": [
+      {
+        "owner_node_id": 3,
+        "formula_artifact_id": "formula:dynamic:release-reclass",
+        "bind_artifact_id": "bind:dynamic:release-reclass",
+        "expression": {
+          "Reference": {
+            "DynamicPotential": {
+              "carrier_id": "carrier:dynamic:release-reclass",
+              "detail": "released_to_runtime_resolution"
+            }
+          }
+        }
+      }
+    ],
     "invalidation_seeds": [
       {
         "node_id": 3,
-        "reason": "DependencyRemoved"
+        "reason": "DynamicDependencyReleased"
       },
       {
         "node_id": 3,
-        "reason": "DependencyReclassified"
+        "reason": "DynamicDependencyReclassified"
       }
     ],
     "expected_impacts": [],
@@ -71,7 +86,10 @@
     "expected": {
       "result_state": "rejected",
       "evaluation_order": [3],
-      "reject_kind": "HostInjectedFailure"
+      "reject_kind": "DynamicDependencyFailure",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
     }
   },
   "expected": {

@@ -1,0 +1,110 @@
+{
+  "case_id": "tc_local_shape_topology_reject_001",
+  "check_errors": [],
+  "layers": [
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": null,
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_shape_topology_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:c98f486f5749df6beb81f264df1ac8f1aeb134578d1cd76a8ae6d190c7a5d2fe",
+      "graph_id": "structural:tc_local_shape_topology_reject_001",
+      "graph_layer": "structural",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:shape:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_shape_topology_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:4b250977be17cc74853fb0be64a53313555bdb443f8ac4aebe7de990c5ec4dd4",
+      "graph_id": "published_effective:tc_local_shape_topology_reject_001",
+      "graph_layer": "published_effective",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:shape:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": "treecalc-local-run",
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_shape_topology_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:53c9623e690d4728e0c24997add5d37ed2dd3756287a1511806199e1b7375833",
+      "graph_id": "candidate_effective:tc_local_shape_topology_reject_001",
+      "graph_layer": "candidate_effective",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:shape:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    }
+  ],
+  "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+  "source_artifacts": {
+    "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_shape_topology_reject_001/dependency_graph.json",
+    "result": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_shape_topology_reject_001/result.json"
+  }
+}

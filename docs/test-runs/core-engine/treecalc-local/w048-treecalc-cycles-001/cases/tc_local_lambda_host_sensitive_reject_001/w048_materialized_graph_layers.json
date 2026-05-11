@@ -1,0 +1,110 @@
+{
+  "case_id": "tc_local_lambda_host_sensitive_reject_001",
+  "check_errors": [],
+  "layers": [
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": null,
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:ce301784d5948e6391c1da4ec37f2385ebd7ba9962c71b45a1d58846d882914a",
+      "graph_id": "structural:tc_local_lambda_host_sensitive_reject_001",
+      "graph_layer": "structural",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:b682fa3702238189cfa96f979444fe8259b0f19a4d884fd1f02254c30300b7ae",
+      "graph_id": "published_effective:tc_local_lambda_host_sensitive_reject_001",
+      "graph_layer": "published_effective",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": "treecalc-local-run",
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "cycle_regions": [],
+      "edge_provenance": [],
+      "forward_edges": [],
+      "graph_hash": "sha256:845aaa868eef5b153f4d733f36fac1c1b79cb5c3f765230cd95d6b995e810f93",
+      "graph_id": "candidate_effective:tc_local_lambda_host_sensitive_reject_001",
+      "graph_layer": "candidate_effective",
+      "nodes": [
+        {
+          "calc_state": "rejected",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:lambda-host-sensitive:oxfml_residual:0",
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        2
+      ]
+    }
+  ],
+  "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+  "source_artifacts": {
+    "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_lambda_host_sensitive_reject_001/dependency_graph.json",
+    "result": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json"
+  }
+}

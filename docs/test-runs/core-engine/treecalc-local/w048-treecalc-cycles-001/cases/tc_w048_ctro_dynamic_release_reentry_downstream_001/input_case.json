@@ -1,0 +1,170 @@
+{
+  "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+  "description": "W048 TreeCalc optimized/core behavior: a rejected dynamic self-cycle later releases to an acyclic target, re-enters calculation, and publishes the released owner plus downstream dependent atomically.",
+  "expected": {
+    "evaluation_order": [],
+    "published_values": {
+      "2": "1",
+      "3": "10",
+      "4": "2"
+    },
+    "reject_kind": "SyntheticCycleReject",
+    "result_state": "rejected",
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:w048:ctro:release-owner",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "carrier_id": "carrier:w048:ctro:release",
+            "detail": "candidate_overlay_self_cycle",
+            "target_node_id": 2
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w048:ctro:release-owner",
+      "owner_node_id": 2
+    },
+    {
+      "bind_artifact_id": "bind:w048:ctro:downstream",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w048:ctro:downstream",
+      "owner_node_id": 4
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3,
+        4
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": "bind:w048:ctro:release-owner",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w048:ctro:release-owner",
+      "kind": "calculation",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "DynamicOwner"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "10",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "ReleaseTarget"
+    },
+    {
+      "bind_artifact_id": "bind:w048:ctro:downstream",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w048:ctro:downstream",
+      "kind": "calculation",
+      "node_id": 4,
+      "parent_id": 1,
+      "symbol": "Downstream"
+    }
+  ],
+  "post_edit": {
+    "edits": [],
+    "expected": {
+      "evaluation_order": [
+        2,
+        4
+      ],
+      "published_values": {
+        "2": "10",
+        "3": "10",
+        "4": "11"
+      },
+      "reject_kind": null,
+      "result_state": "published",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ],
+      "runtime_effect_overlay_kinds": null
+    },
+    "expected_affected_node_ids": [],
+    "expected_impacts": [],
+    "formulas": [
+      {
+        "bind_artifact_id": "bind:w048:ctro:release-owner",
+        "expression": {
+          "Reference": {
+            "DynamicResolved": {
+              "carrier_id": "carrier:w048:ctro:release",
+              "detail": "released_to_acyclic_target",
+              "target_node_id": 3
+            }
+          }
+        },
+        "formula_artifact_id": "formula:w048:ctro:release-owner",
+        "owner_node_id": 2
+      },
+      {
+        "bind_artifact_id": "bind:w048:ctro:downstream",
+        "expression": {
+          "Binary": {
+            "left": {
+              "Reference": {
+                "DirectNode": {
+                  "target_node_id": 2
+                }
+              }
+            },
+            "op": "Add",
+            "right": {
+              "Literal": {
+                "value": "1"
+              }
+            }
+          }
+        },
+        "formula_artifact_id": "formula:w048:ctro:downstream",
+        "owner_node_id": 4
+      }
+    ],
+    "invalidation_seeds": [],
+    "successor_snapshot_start_id": 4805
+  },
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {
+    "2": "1",
+    "3": "10",
+    "4": "2"
+  },
+  "snapshot_id": 4804
+}

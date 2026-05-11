@@ -1,0 +1,221 @@
+{
+  "case_id": "tc_local_publish_001",
+  "check_errors": [],
+  "layers": [
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": null,
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_publish_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "stability_class": "structural"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "kind": "StaticDirect",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "structural",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": null
+        }
+      ],
+      "graph_hash": "sha256:ea40949c4361dbc6b2a0353d8adabae51067bfda89836a0089e9e5f58437eb55",
+      "graph_id": "structural:tc_local_publish_001",
+      "graph_layer": "structural",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:b:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:d10a4bc9e0c1fa4e8f3d7ce2512b8756e47ca5fa451f373c39a1431bb88db49f",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_publish_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "stability_class": "structural"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "kind": "StaticDirect",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "structural",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": null
+        }
+      ],
+      "graph_hash": "sha256:9666c0112b44ff16f10cb470c57c5cb8e7055d64316935ec99cb6a0be7a0041e",
+      "graph_id": "published_effective:tc_local_publish_001",
+      "graph_layer": "published_effective",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:b:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:d10a4bc9e0c1fa4e8f3d7ce2512b8756e47ca5fa451f373c39a1431bb88db49f",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": "treecalc-local-run",
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_publish_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "stability_class": "structural"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "edge_origin": "structural_static",
+          "kind": "StaticDirect",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "structural",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": "treecalc-local-run"
+        }
+      ],
+      "graph_hash": "sha256:2650085639bc208130ab175d53e2721d9276b9f9ecae8fcc2d55a798e99c5892",
+      "graph_id": "candidate_effective:tc_local_publish_001",
+      "graph_layer": "candidate_effective",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:b:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:d10a4bc9e0c1fa4e8f3d7ce2512b8756e47ca5fa451f373c39a1431bb88db49f",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:b:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:b:oxfml_ref:0",
+          "kind": "StaticDirect",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    }
+  ],
+  "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+  "source_artifacts": {
+    "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_publish_001/dependency_graph.json",
+    "result": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/cases/tc_local_publish_001/result.json"
+  }
+}

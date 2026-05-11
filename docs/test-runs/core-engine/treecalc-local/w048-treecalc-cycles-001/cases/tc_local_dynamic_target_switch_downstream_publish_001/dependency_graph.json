@@ -1,0 +1,38 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "dynamic_resolved:node:2:carrier:dynamic:switch:runtime_target",
+      "descriptor_id": "bind:formula:dynamic:switch:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "direct_node:node:3",
+      "descriptor_id": "bind:formula:dynamic:downstream:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 3
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:dynamic:switch:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:dynamic:switch:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:dynamic:downstream:oxfml_ref:0",
+      "edge_id": "dep:5:3:bind:formula:dynamic:downstream:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 3
+    }
+  ]
+}

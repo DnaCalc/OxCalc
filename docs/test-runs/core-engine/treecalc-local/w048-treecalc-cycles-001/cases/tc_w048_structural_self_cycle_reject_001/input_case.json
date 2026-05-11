@@ -1,0 +1,59 @@
+{
+  "case_id": "tc_w048_structural_self_cycle_reject_001",
+  "description": "W048 TreeCalc optimized/core behavior: a structural direct self-cycle is rejected under the Stage 1 non-iterative profile and publishes no new value.",
+  "expected": {
+    "evaluation_order": [],
+    "published_values": {
+      "2": "7"
+    },
+    "reject_kind": "SyntheticCycleReject",
+    "result_state": "rejected",
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:w048:struct:self",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w048:struct:self",
+      "owner_node_id": 2
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:self",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w048:struct:self",
+      "kind": "calculation",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "CycleSelf"
+    }
+  ],
+  "post_edit": null,
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {
+    "2": "7"
+  },
+  "snapshot_id": 4801
+}

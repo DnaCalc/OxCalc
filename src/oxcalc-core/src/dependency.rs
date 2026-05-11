@@ -73,6 +73,9 @@ pub enum InvalidationReasonKind {
     DependencyAdded,
     DependencyRemoved,
     DependencyReclassified,
+    DynamicDependencyActivated,
+    DynamicDependencyReleased,
+    DynamicDependencyReclassified,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,7 +303,10 @@ fn derive_seed_state(reason: InvalidationReasonKind, in_cycle: bool) -> NodeCalc
         InvalidationReasonKind::StructuralRebindRequired
         | InvalidationReasonKind::DependencyAdded
         | InvalidationReasonKind::DependencyRemoved
-        | InvalidationReasonKind::DependencyReclassified => NodeCalcState::DirtyPending,
+        | InvalidationReasonKind::DependencyReclassified
+        | InvalidationReasonKind::DynamicDependencyActivated
+        | InvalidationReasonKind::DynamicDependencyReleased
+        | InvalidationReasonKind::DynamicDependencyReclassified => NodeCalcState::DirtyPending,
     }
 }
 
@@ -615,6 +621,40 @@ mod tests {
                 InvalidationReasonKind::DependencyAdded,
                 InvalidationReasonKind::DependencyRemoved,
                 InvalidationReasonKind::DependencyReclassified,
+            ]
+        );
+    }
+
+    #[test]
+    fn invalidation_closure_keeps_dynamic_dependency_changes_repairable() {
+        let graph = DependencyGraph::build(&snapshot(), &[]);
+
+        let closure = graph.derive_invalidation_closure(&[
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DynamicDependencyReleased,
+            },
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DynamicDependencyActivated,
+            },
+            InvalidationSeed {
+                node_id: TreeNodeId(4),
+                reason: InvalidationReasonKind::DynamicDependencyReclassified,
+            },
+        ]);
+
+        assert_eq!(
+            closure.records[&TreeNodeId(4)].calc_state,
+            NodeCalcState::DirtyPending
+        );
+        assert!(!closure.records[&TreeNodeId(4)].requires_rebind);
+        assert_eq!(
+            closure.records[&TreeNodeId(4)].reasons,
+            vec![
+                InvalidationReasonKind::DynamicDependencyActivated,
+                InvalidationReasonKind::DynamicDependencyReleased,
+                InvalidationReasonKind::DynamicDependencyReclassified,
             ]
         );
     }

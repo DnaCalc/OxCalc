@@ -1,0 +1,30 @@
+﻿[
+    {
+        "cell":  "Sheet1!A1",
+        "formula":  "=INDIRECT(B1)+1",
+        "value2":  11,
+        "text":  "11",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!B1",
+        "formula":  "C1",
+        "value2":  "C1",
+        "text":  "C1",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!C1",
+        "formula":  "10",
+        "value2":  10,
+        "text":  "10",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!D1",
+        "formula":  "=A1+1",
+        "value2":  12,
+        "text":  "12",
+        "error":  null
+    }
+]

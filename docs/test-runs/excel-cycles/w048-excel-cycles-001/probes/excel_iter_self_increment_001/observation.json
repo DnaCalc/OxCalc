@@ -1,0 +1,119 @@
+﻿{
+    "probe_id":  "excel_iter_self_increment_001",
+    "run_id":  "w048-excel-cycles-001",
+    "status":  "observed",
+    "cycle_kind":  "structural",
+    "iteration_profile":  {
+                              "enabled":  true,
+                              "max_iterations":  5,
+                              "max_change":  0.001
+                          },
+    "questions":  [
+                      "max-iteration terminal",
+                      "starting value"
+                  ],
+    "reported_cycle_cells":  [
+
+                             ],
+    "cell_results":  [
+                         {
+                             "cell":  "Sheet1!A1",
+                             "formula":  "=A1+1",
+                             "value2":  1,
+                             "text":  "1",
+                             "error":  null
+                         }
+                     ],
+    "calc_chain":  {
+                       "present":  true,
+                       "entries":  [
+                                       "A1"
+                                   ],
+                       "raw_xml":  "\u003c?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?\u003e\r\n\u003ccalcChain xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"\u003e\u003cc r=\"A1\" i=\"1\" l=\"1\"/\u003e\u003c/calcChain\u003e",
+                       "note":  null
+                   },
+    "chain_sensitive":  "unknown",
+    "root_hypothesis":  "unknown",
+    "update_model_hypothesis":  "unknown",
+    "initial_value_hypothesis":  "published_prior_value_probe",
+    "operation_steps":  [
+                            {
+                                "probe_id":  "excel_iter_self_increment_001",
+                                "step_index":  1,
+                                "operation":  "set_value",
+                                "target":  "Sheet1!A1",
+                                "formula":  null,
+                                "value":  0,
+                                "before":  {
+                                               "cell":  "Sheet1!A1",
+                                               "formula":  "",
+                                               "value2":  null,
+                                               "text":  "",
+                                               "error":  null
+                                           },
+                                "after":  {
+                                              "cell":  "Sheet1!A1",
+                                              "formula":  "0",
+                                              "value2":  0,
+                                              "text":  "0",
+                                              "error":  null
+                                          },
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            },
+                            {
+                                "probe_id":  "excel_iter_self_increment_001",
+                                "step_index":  2,
+                                "operation":  "calculate_full_rebuild",
+                                "target":  null,
+                                "formula":  null,
+                                "value":  null,
+                                "before":  {
+                                               "cell":  "Sheet1!A1",
+                                               "formula":  "0",
+                                               "value2":  0,
+                                               "text":  "0",
+                                               "error":  null
+                                           },
+                                "after":  {
+                                              "cell":  "Sheet1!A1",
+                                              "formula":  "0",
+                                              "value2":  0,
+                                              "text":  "0",
+                                              "error":  null
+                                          },
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            },
+                            {
+                                "probe_id":  "excel_iter_self_increment_001",
+                                "step_index":  3,
+                                "operation":  "set_formula",
+                                "target":  "Sheet1!A1",
+                                "formula":  "=A1+1",
+                                "value":  null,
+                                "before":  {
+                                               "cell":  "Sheet1!A1",
+                                               "formula":  "0",
+                                               "value2":  0,
+                                               "text":  "0",
+                                               "error":  null
+                                           },
+                                "after":  {
+                                              "cell":  "Sheet1!A1",
+                                              "formula":  "=A1+1",
+                                              "value2":  1,
+                                              "text":  "1",
+                                              "error":  null
+                                          },
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            }
+                        ],
+    "notes":  [
+                  "Generated by clean-room COM black-box probe harness; no internal Excel implementation evidence used."
+              ]
+}

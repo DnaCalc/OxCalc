@@ -1,0 +1,23 @@
+﻿[
+    {
+        "cell":  "Sheet1!A1",
+        "formula":  "=B1+1",
+        "value2":  2,
+        "text":  "2",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!B1",
+        "formula":  "=C1+1",
+        "value2":  1,
+        "text":  "1",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!C1",
+        "formula":  "=A1+1",
+        "value2":  3,
+        "text":  "3",
+        "error":  null
+    }
+]

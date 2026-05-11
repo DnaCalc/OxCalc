@@ -1,0 +1,18 @@
+﻿{
+    "excel_version":  "16.0",
+    "build":  "19929",
+    "channel":  "unknown",
+    "platform":  "Windows",
+    "workbook_calculation_mode":  "manual",
+    "application_calculation_mode":  "manual_requested_but_set_failed: Exception setting \"Calculation\": \"Exception from HRESULT: 0x800A03EC\"",
+    "iteration_enabled":  false,
+    "max_iterations":  100,
+    "max_change":  0.001,
+    "multi_threaded_calculation_enabled":  false,
+    "thread_count":  1,
+    "precision_as_displayed":  false,
+    "calculate_before_save":  false,
+    "locale":  "en-ZA",
+    "probe_runner":  "scripts/run-w048-excel-cycle-probes.ps1",
+    "observation_time_utc":  "2026-05-11T19:50:16.9102716Z"
+}

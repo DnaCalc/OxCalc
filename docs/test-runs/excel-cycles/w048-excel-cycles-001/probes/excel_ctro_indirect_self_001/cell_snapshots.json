@@ -1,0 +1,16 @@
+﻿[
+    {
+        "cell":  "Sheet1!A1",
+        "formula":  "=INDIRECT(B1)+1",
+        "value2":  1,
+        "text":  "1",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!B1",
+        "formula":  "A1",
+        "value2":  "A1",
+        "text":  "A1",
+        "error":  null
+    }
+]

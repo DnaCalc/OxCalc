@@ -1,0 +1,79 @@
+{
+  "schema_version": "oxcalc.w048.innovation_opportunity_ledger.v1",
+  "ledger_id": "w048-innovation-opportunities-001",
+  "default_rule": "No innovation profile is default Excel compatibility. Every entry requires explicit opt-in and replay/formal evidence before use.",
+  "entries": [
+    {
+      "profile_id": "cycle.fixed_point.monotone_lfp.v0",
+      "status": "candidate_profile_not_admitted",
+      "target_problem": "Intentional monotone model equations currently encoded as accidental circular references.",
+      "excel_relation": "not_excel_match_default",
+      "semantic_contract": "Declared finite lattice/domain, monotone transfer functions, least fixed-point target.",
+      "termination_or_rejection_policy": "Iterate to least fixed point or reject if monotonicity/domain proof is absent.",
+      "graph_requirements": ["cycle_region", "domain_annotation", "monotonicity_witness", "iteration_trace"],
+      "required_tests": ["monotone_two_node_lfp", "non_monotone_reject", "domain_violation_reject"],
+      "formal_obligations": ["monotone_function_witness", "least_fixed_point_soundness", "finite_height_or_widening_bound"],
+      "admission_gate": "successor_profile_bead"
+    },
+    {
+      "profile_id": "cycle.recurrence.explicit_state.v0",
+      "status": "candidate_profile_not_admitted",
+      "target_problem": "Stateful recurrence modeled without accidental same-wave SCCs.",
+      "excel_relation": "clearer_than_excel_circular_reference_iteration",
+      "semantic_contract": "Typed previous-state edge separates recurrence time from current-wave dependency.",
+      "termination_or_rejection_policy": "Reject unbounded same-wave SCCs; evaluate recurrence over declared index/time domain.",
+      "graph_requirements": ["typed_previous_state_edge", "time_index", "initial_state", "current_wave_acyclic_graph"],
+      "required_tests": ["simple_recurrence_sequence", "missing_initial_state_reject", "same_wave_cycle_reject"],
+      "formal_obligations": ["time_index_well_founded", "same_wave_acyclicity", "state_transition_determinism"],
+      "admission_gate": "successor_profile_bead"
+    },
+    {
+      "profile_id": "cycle.diagnostics.materialized_region.v0",
+      "status": "diagnostic_profile_partially_exercised",
+      "target_problem": "Large or dynamic circular references are hard to debug.",
+      "excel_relation": "diagnostic_improvement_can_coexist_with_excel_match_behavior",
+      "semantic_contract": "Expose cycle-region members, internal/boundary edges, CTRO provenance, graph hash, and release history without changing calculation result.",
+      "termination_or_rejection_policy": "Follows active calculation profile; diagnostics are observational sidecars only.",
+      "graph_requirements": ["materialized_graph_layers", "reverse_edges", "cycle_regions", "overlay_provenance", "graph_hash"],
+      "required_tests": ["w048_treecalc_cycle_sidecars", "reverse_edge_converse", "ctro_candidate_cycle_sidecar"],
+      "formal_obligations": ["sidecar_semantic_invariance", "forward_reverse_converse", "scc_region_soundness"],
+      "admission_gate": "already_exercised_as_w048_diagnostic_sidecar_floor"
+    },
+    {
+      "profile_id": "cycle.retained_prior.safe_state.v0",
+      "status": "candidate_profile_not_admitted",
+      "target_problem": "Retained prior values should not masquerade as fresh publication after cycle rejection.",
+      "excel_relation": "may_match_visible_excel_surface_while_adding_machine_readable_state",
+      "semantic_contract": "Prior values remain visible only with explicit retained/stale/cycle-rejected state.",
+      "termination_or_rejection_policy": "Rejected cycle publishes no new values; downstream freshness requires explicit profile allowance.",
+      "graph_requirements": ["retained_value_state", "cycle_reject_marker", "downstream_freshness_policy"],
+      "required_tests": ["prior_value_visible_not_fresh", "downstream_freshness_guard", "release_clears_retained_state"],
+      "formal_obligations": ["no_publication_on_reject", "freshness_state_preservation", "release_state_transition"],
+      "admission_gate": "successor_profile_bead"
+    },
+    {
+      "profile_id": "cycle.iterative.bounded_with_oscillation_diagnostics.v0",
+      "status": "candidate_profile_not_admitted",
+      "target_problem": "Bounded iterative cycles need clear convergence, divergence, and oscillation diagnostics.",
+      "excel_relation": "may_match_values_under selected profile while adding diagnostics",
+      "semantic_contract": "Profile records every iteration delta and terminal classification.",
+      "termination_or_rejection_policy": "Publish only converged complete region; reject max-iteration, divergence, oscillation, and nonnumeric terminals.",
+      "graph_requirements": ["cycle_region", "iteration_trace", "terminal_state", "max_delta"],
+      "required_tests": ["convergent_self_cycle", "two_cycle_oscillation", "divergent_cycle", "max_iteration_reject"],
+      "formal_obligations": ["terminal_classification_determinism", "no_publication_on_nonconvergence", "scheduler_equivalence_under_jacobi_sequence"],
+      "admission_gate": "depends_on_cycle.iterative_deterministic_v0"
+    },
+    {
+      "profile_id": "cycle.release.local_frontier_repair.v0",
+      "status": "optimization_profile_partially_exercised",
+      "target_problem": "Dynamic cycle release should avoid unnecessary full rebuild when local repair is equivalent.",
+      "excel_relation": "optimization_only_if_observable_results_match_selected_profile",
+      "semantic_contract": "Use reverse edges and overlay deltas to invalidate exactly affected members and dependents, then prove/check equivalence to full rebuild.",
+      "termination_or_rejection_policy": "If local repair proof/check fails, fall back to full rebuild or reject publication.",
+      "graph_requirements": ["reverse_edges", "overlay_delta", "release_transition", "downstream_reachability"],
+      "required_tests": ["w048_ctro_release_reentry_downstream", "local_vs_full_rebuild_equivalence", "stale_overlay_not_basis"],
+      "formal_obligations": ["reverse_reachability_soundness", "from_scratch_equivalence", "rejected_overlay_not_published_basis"],
+      "admission_gate": "successor_optimization_bead"
+    }
+  ]
+}

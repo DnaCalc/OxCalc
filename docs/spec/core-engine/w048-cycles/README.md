@@ -63,4 +63,4 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
   - TraceCalc reference cycle implementation: `calc-zci1.3`
   - iterative-profile decision ledger: `calc-zci1.4` decision recorded; Excel-match profile remains observation-gated
   - W048 formal definitions and proof/model artifacts: `calc-zci1.5` checked model projection recorded; deeper iterative proof remains successor scope
-  - innovation opportunity ledger and experimental profiles: `calc-zci1.8`
+  - innovation opportunity ledger and experimental profiles: `calc-zci1.8` ledger recorded; profiles remain non-default and admission-gated

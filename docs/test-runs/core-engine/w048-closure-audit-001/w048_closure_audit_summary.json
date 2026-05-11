@@ -1,0 +1,23 @@
+{
+  "schema_version": "oxcalc.w048.closure_audit.v1",
+  "run_id": "w048-closure-audit-001",
+  "status": "passed",
+  "errors": [],
+  "bead_statuses": {
+    "calc-zci1": "closed",
+    "calc-zci1.1": "closed",
+    "calc-zci1.2": "closed",
+    "calc-zci1.3": "closed",
+    "calc-zci1.4": "closed",
+    "calc-zci1.5": "closed",
+    "calc-zci1.6": "closed",
+    "calc-zci1.7": "closed",
+    "calc-zci1.8": "closed"
+  },
+  "required_file_count": 20,
+  "missing_files": [],
+  "scope_completeness": "scope_complete",
+  "target_completeness": "target_complete",
+  "integration_completeness": "integrated",
+  "open_lanes": []
+}

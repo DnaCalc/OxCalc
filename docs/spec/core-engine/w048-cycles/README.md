@@ -1,6 +1,6 @@
 # W048 Cycles Packet Root
 
-Status: `active_execution_workset`
+Status: `closure_audit_passed`
 
 Parent workset: `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
 
@@ -42,6 +42,8 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
    - cross-corpus evidence summary and conformance checker binding.
 9. `W048_INNOVATION_OPPORTUNITY_LEDGER.md`
    - candidate OxCalc innovations for cycle handling, kept profile-gated and evidence-driven.
+10. `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
+   - final W048 audit checklist, evidence summary, and W049 routing.
 
 ## Current Conclusions
 
@@ -53,14 +55,9 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
 
 ## Status Surface
 
-- execution_state: `in_progress`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - Excel probe harness and observation ledger: `calc-zci1.1`
-  - materialized graph layers and sidecars: `calc-zci1.2`
-  - TraceCalc reference cycle implementation: `calc-zci1.3`
-  - iterative-profile decision ledger: `calc-zci1.4` decision recorded; Excel-match profile remains observation-gated
-  - W048 formal definitions and proof/model artifacts: `calc-zci1.5` checked model projection recorded; deeper iterative proof remains successor scope
-  - innovation opportunity ledger and experimental profiles: `calc-zci1.8` ledger recorded; profiles remain non-default and admission-gated
+- execution_state: `closure_audit_passed`
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
+- closure_audit: `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
+- open_lanes: []

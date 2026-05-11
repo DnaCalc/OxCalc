@@ -1,0 +1,80 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w048_structural_self_cycle_reject_001",
+  "description": "W048 TraceCalc reference behavior for a structural self-cycle: non-iterative profile rejects and publishes no new value.",
+  "calc_space": "TraceCalc",
+  "tags": ["cycle", "w048", "structural-cycle", "non-iterative"],
+  "pack_tags": ["stage1", "w048", "cycle-reject"],
+  "initial_graph": {
+    "snapshot_id": "s-w048-cycle-struct-self",
+    "nodes": [
+      {
+        "node_id": "A",
+        "kind": "value",
+        "expr": { "op": "sum", "deps": ["A"] }
+      }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      { "node_id": "A", "value": 7 }
+    ]
+  },
+  "steps": [
+    { "step_id": "st1", "kind": "mark_stale", "targets": ["A"] },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-w048-struct-self",
+      "compatibility_basis": "s-w048-cycle-struct-self",
+      "targets": ["A"]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-w048-struct-self",
+      "reject_kind": "synthetic_cycle_reject",
+      "reject_detail": {
+        "cycle_source": "structural",
+        "cycle_region_id": "cycle:struct:self:A",
+        "members": ["A"],
+        "publication_policy": "no_new_cycle_values",
+        "overlay_commit_policy": "not_applicable"
+      },
+      "diagnostic_events": ["cycle_reject_published_no_new_values"]
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s-w048-cycle-struct-self",
+      "node_values": [
+        { "node_id": "A", "value": 7 }
+      ]
+    },
+    "trace_labels": [
+      { "label": "cycle_region_detected", "count": 1 },
+      { "label": "scc_group_scheduled", "count": 1 },
+      { "label": "candidate_rejected", "count": 1 },
+      { "label": "cycle_reject_published_no_new_values", "count": 1 }
+    ],
+    "counter_expectations": [
+      { "counter": "cycle_region_groups", "comparison": "eq", "value": 1 },
+      { "counter": "rejects_by_class.synthetic_cycle_reject", "comparison": "eq", "value": 1 }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-w048-struct-self",
+        "reject_kind": "synthetic_cycle_reject",
+        "detail_contains": "no_new_cycle_values"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": ["oxcalc.local.w048.cycle_reject"],
+    "pack_bindings": ["PACK.dag.cycle_iterative_semantics"],
+    "required_equality_surfaces": ["published_view", "reject_set", "trace_labels", "counters"],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": ["cycle_reject_no_publish"],
+    "transition_labels": ["W048_STRUCTURAL_CYCLE_REJECT"]
+  }
+}

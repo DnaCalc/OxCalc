@@ -1,0 +1,23 @@
+{
+  "adapter_id": "oxcalc-tracecalc-replay-adapter",
+  "canonical_manifest_ref": "docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json",
+  "claimed_capability_levels": [
+    "cap.C0.ingest_valid",
+    "cap.C1.replay_valid",
+    "cap.C2.diff_valid",
+    "cap.C3.explain_valid",
+    "cap.C4.distill_valid"
+  ],
+  "known_limits": [
+    "oxcalc.local.limit.explain_coverage_is_current_family_only",
+    "oxcalc.local.limit.pack_valid_not_proven"
+  ],
+  "lane_id": "oxcalc",
+  "projection_scope": "run_local_snapshot_only",
+  "registry_version_ref": "foundation.replay.authoritative-pass-01.2026-03-15",
+  "run_id": "w048-tracecalc-cycles-003",
+  "schema_version": "oxcalc.local.adapter_capability_snapshot.v1",
+  "target_capability_levels": [
+    "cap.C5.pack_valid"
+  ]
+}

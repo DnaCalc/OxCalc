@@ -1,0 +1,118 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w048_ctro_release_reentry_downstream_001",
+  "description": "W048 TraceCalc reference behavior for release after a rejected CTRO-created cycle: rejected work re-enters, publishes the released value, and recomputes a downstream dependent.",
+  "calc_space": "TraceCalc",
+  "tags": ["cycle", "w048", "ctro", "release", "downstream"],
+  "pack_tags": ["stage1", "w048", "cycle-release-reentry"],
+  "initial_graph": {
+    "snapshot_id": "s-w048-ctro-release",
+    "nodes": [
+      { "node_id": "A", "kind": "value", "expr": { "op": "sum", "deps": ["C"] } },
+      { "node_id": "C", "kind": "value", "expr": { "op": "const", "value": 10 } },
+      { "node_id": "D", "kind": "value", "expr": { "op": "sum", "deps": ["A"] } }
+    ]
+  },
+  "initial_runtime": {
+    "published_values": [
+      { "node_id": "A", "value": 1 },
+      { "node_id": "C", "value": 10 },
+      { "node_id": "D", "value": 2 }
+    ]
+  },
+  "steps": [
+    { "step_id": "st1", "kind": "mark_stale", "targets": ["A"] },
+    {
+      "step_id": "st2",
+      "kind": "admit_work",
+      "admission_id": "adm-w048-ctro-cycle-first",
+      "compatibility_basis": "s-w048-ctro-release",
+      "targets": ["A"]
+    },
+    {
+      "step_id": "st3",
+      "kind": "emit_reject",
+      "reject_id": "rej-w048-ctro-cycle-first",
+      "reject_kind": "synthetic_cycle_reject",
+      "reject_detail": {
+        "cycle_source": "candidate_overlay",
+        "cycle_region_members": ["A"],
+        "overlay_commit_policy": "commit_no_candidate_overlay",
+        "downstream_state": "blocked_until_release"
+      },
+      "diagnostic_events": ["candidate_cycle_region_detected", "downstream_blocked_by_cycle"]
+    },
+    { "step_id": "st4", "kind": "mark_stale", "targets": ["A"] },
+    {
+      "step_id": "st5",
+      "kind": "admit_work",
+      "admission_id": "adm-w048-ctro-release",
+      "compatibility_basis": "s-w048-ctro-release",
+      "targets": ["A"]
+    },
+    {
+      "step_id": "st6",
+      "kind": "emit_candidate_result",
+      "candidate_result_id": "cand-w048-ctro-release",
+      "compatibility_basis": "s-w048-ctro-release",
+      "value_updates": [
+        { "node_id": "A", "value": 11 },
+        { "node_id": "D", "value": 12 }
+      ],
+      "dependency_shape_updates": [
+        {
+          "node_id": "A",
+          "kind": "dynamic_ref_released_to_acyclic_target",
+          "dep_id": "C",
+          "payload": { "released_from_cycle_region_id": "cycle:candidate:A", "new_target": "C" }
+        }
+      ],
+      "diagnostic_events": ["cycle_release_detected", "downstream_reentered_after_release"]
+    },
+    {
+      "step_id": "st7",
+      "kind": "publish_candidate",
+      "candidate_result_id": "cand-w048-ctro-release",
+      "publication_id": "pub-w048-ctro-release"
+    }
+  ],
+  "expected": {
+    "published_view": {
+      "snapshot_id": "s-w048-ctro-release",
+      "node_values": [
+        { "node_id": "A", "value": 11 },
+        { "node_id": "C", "value": 10 },
+        { "node_id": "D", "value": 12 }
+      ]
+    },
+    "trace_labels": [
+      { "label": "candidate_rejected", "count": 1 },
+      { "label": "candidate_cycle_region_detected", "count": 1 },
+      { "label": "downstream_blocked_by_cycle", "count": 1 },
+      { "label": "fallback_reentered", "count": 2 },
+      { "label": "candidate_shape_update_produced", "count": 1 },
+      { "label": "cycle_release_detected", "count": 1 },
+      { "label": "downstream_reentered_after_release", "count": 1 },
+      { "label": "candidate_published", "count": 1 }
+    ],
+    "counter_expectations": [
+      { "counter": "rejects_by_class.synthetic_cycle_reject", "comparison": "eq", "value": 1 },
+      { "counter": "publications_committed", "comparison": "eq", "value": 1 }
+    ],
+    "rejects": [
+      {
+        "reject_id": "rej-w048-ctro-cycle-first",
+        "reject_kind": "synthetic_cycle_reject",
+        "detail_contains": "blocked_until_release"
+      }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": ["oxcalc.local.w048.ctro_cycle_release"],
+    "pack_bindings": ["PACK.dag.dynamic_dependency_bind_semantics", "PACK.dag.cycle_iterative_semantics"],
+    "required_equality_surfaces": ["published_view", "reject_set", "trace_labels", "counters"],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": ["cycle_release_invalidates_members_and_dependents"],
+    "transition_labels": ["W048_CTRO_RELEASE_REENTRY"]
+  }
+}

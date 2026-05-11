@@ -1,0 +1,92 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_w037_overlay_multi_reader_release_order_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters",
+    "overlay_lifecycle",
+    "multi_reader_release_order"
+  ],
+  "run_id": "w048-tracecalc-cycles-003",
+  "scenario_id": "tc_w037_overlay_multi_reader_release_order_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_w037_overlay_multi_reader_release_order_001/scenario",
+      "closure_unit_ids": [
+        "phase:overlay-multi-reader-retain-release",
+        "events:multi-reader-overlay-lifecycle",
+        "view:published/current"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4",
+        "st5",
+        "st6",
+        "st7"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "overlay-multi-reader-retain-release",
+      "closure_unit_ids": [
+        "events:multi-reader-overlay-lifecycle"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4",
+        "st5",
+        "st6",
+        "st7"
+      ],
+      "unit_id": "phase:overlay-multi-reader-retain-release",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "multi-reader-overlay-lifecycle",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st5",
+        "st6",
+        "st7"
+      ],
+      "unit_id": "events:multi-reader-overlay-lifecycle",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [
+        "events:multi-reader-overlay-lifecycle"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st5"
+      ],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_w037_overlay_multi_reader_release_order_001--witness-seed"
+}

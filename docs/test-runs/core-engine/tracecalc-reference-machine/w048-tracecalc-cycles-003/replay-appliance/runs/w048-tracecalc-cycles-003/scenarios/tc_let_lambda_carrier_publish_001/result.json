@@ -1,0 +1,45 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.let_lambda.carrier_identity",
+      "PACK.dag.dependency_bind_semantics"
+    ],
+    "replay_classes": [
+      "R7"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "dependency_shape_updates",
+      "callable_carrier_identity"
+    ],
+    "safety_properties": [
+      "S1",
+      "S3"
+    ],
+    "transition_labels": [
+      "C1",
+      "C2",
+      "C4",
+      "I3",
+      "I8"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_let_lambda_carrier_publish_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/reductions/tc_let_lambda_carrier_publish_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_let_lambda_carrier_publish_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/witnesses/tc_let_lambda_carrier_publish_001--witness-seed/lifecycle.json"
+  },
+  "validation_failures": []
+}

@@ -1,0 +1,482 @@
+[
+  {
+    "focus": [
+      "candidate-publication-boundary",
+      "accept-publish"
+    ],
+    "path": "hand-auditable/tc_accept_publish_001.json",
+    "scenario_id": "tc_accept_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "reject-is-no-publish",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_reject_no_publish_001.json",
+    "scenario_id": "tc_reject_no_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "pinned-view",
+      "stable-reader"
+    ],
+    "path": "hand-auditable/tc_pinned_view_stability_001.json",
+    "scenario_id": "tc_pinned_view_stability_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "dynamic-dependency",
+      "runtime-effects"
+    ],
+    "path": "hand-auditable/tc_dynamic_dep_switch_001.json",
+    "scenario_id": "tc_dynamic_dep_switch_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "overlay-retention",
+      "runtime-effects"
+    ],
+    "path": "hand-auditable/tc_overlay_retention_001.json",
+    "scenario_id": "tc_overlay_retention_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "scale-seed",
+      "generator-metadata"
+    ],
+    "path": "hand-auditable/tc_scale_chain_seed_001.json",
+    "scenario_id": "tc_scale_chain_seed_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "scale"
+    ]
+  },
+  {
+    "focus": [
+      "verify-clean",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_verify_clean_no_publish_001.json",
+    "scenario_id": "tc_verify_clean_no_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable"
+    ]
+  },
+  {
+    "focus": [
+      "multi-node-dag",
+      "topo-scheduling"
+    ],
+    "path": "hand-auditable/tc_multinode_dag_publish_001.json",
+    "scenario_id": "tc_multinode_dag_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "publication-fence-reject",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_publication_fence_reject_001.json",
+    "scenario_id": "tc_publication_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "artifact-token-reject",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_artifact_token_reject_001.json",
+    "scenario_id": "tc_artifact_token_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "fallback-reentry",
+      "overlay-reuse"
+    ],
+    "path": "hand-auditable/tc_fallback_reentry_001.json",
+    "scenario_id": "tc_fallback_reentry_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "cycle-region",
+      "scc-handling"
+    ],
+    "path": "hand-auditable/tc_cycle_region_reject_001.json",
+    "scenario_id": "tc_cycle_region_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w014"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "capture",
+      "dependency-visibility"
+    ],
+    "path": "hand-auditable/tc_let_lambda_carrier_publish_001.json",
+    "scenario_id": "tc_let_lambda_carrier_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "arity",
+      "invocation-contract"
+    ],
+    "path": "hand-auditable/tc_let_lambda_invocation_reject_001.json",
+    "scenario_id": "tc_let_lambda_invocation_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "runtime-effect-visibility",
+      "replay-identity"
+    ],
+    "path": "hand-auditable/tc_let_lambda_runtime_effect_001.json",
+    "scenario_id": "tc_let_lambda_runtime_effect_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w033",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "snapshot-fence-reject",
+      "typed-reject",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_w034_snapshot_fence_reject_001.json",
+    "scenario_id": "tc_w034_snapshot_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034"
+    ]
+  },
+  {
+    "focus": [
+      "capability-fence-reject",
+      "typed-reject",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_w034_capability_fence_reject_001.json",
+    "scenario_id": "tc_w034_capability_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034"
+    ]
+  },
+  {
+    "focus": [
+      "dynamic-dependency-negative",
+      "soft-reference-resolution",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_w034_dynamic_dependency_negative_001.json",
+    "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034",
+      "dynamic-dependency"
+    ]
+  },
+  {
+    "focus": [
+      "overlay-retention",
+      "overlay-eviction",
+      "pinned-reader-release"
+    ],
+    "path": "hand-auditable/tc_w034_overlay_eviction_after_unpin_001.json",
+    "scenario_id": "tc_w034_overlay_eviction_after_unpin_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "higher-order-callable",
+      "replay-identity"
+    ],
+    "path": "hand-auditable/tc_w034_let_lambda_higher_order_replay_001.json",
+    "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "replay-equivalent-history",
+      "independent-order",
+      "candidate-publication-boundary"
+    ],
+    "path": "hand-auditable/tc_w034_replay_equivalent_independent_order_001.json",
+    "scenario_id": "tc_w034_replay_equivalent_independent_order_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w034"
+    ]
+  },
+  {
+    "focus": [
+      "profile-fence-reject",
+      "typed-reject",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_w035_profile_fence_reject_001.json",
+    "scenario_id": "tc_w035_profile_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035"
+    ]
+  },
+  {
+    "focus": [
+      "post-candidate-fence-reject",
+      "candidate-publication-boundary",
+      "no-publication"
+    ],
+    "path": "hand-auditable/tc_w035_candidate_after_emit_fence_reject_001.json",
+    "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035"
+    ]
+  },
+  {
+    "focus": [
+      "dependency-update",
+      "static-dependency-add",
+      "publication"
+    ],
+    "path": "hand-auditable/tc_w035_static_dependency_add_publish_001.json",
+    "scenario_id": "tc_w035_static_dependency_add_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "dependency-update"
+    ]
+  },
+  {
+    "focus": [
+      "dependency-update",
+      "dynamic-dependency-switch",
+      "publication"
+    ],
+    "path": "hand-auditable/tc_w035_dynamic_dependency_switch_publish_001.json",
+    "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "dynamic-dependency"
+    ]
+  },
+  {
+    "focus": [
+      "dependency-update",
+      "dynamic-dependency-release",
+      "publication"
+    ],
+    "path": "hand-auditable/tc_w035_dynamic_dependency_release_publish_001.json",
+    "scenario_id": "tc_w035_dynamic_dependency_release_publish_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "dynamic-dependency"
+    ]
+  },
+  {
+    "focus": [
+      "dependency-update",
+      "invalidation-closure",
+      "no-under-invalidation"
+    ],
+    "path": "hand-auditable/tc_w035_dirty_seed_closure_no_under_invalidation_001.json",
+    "scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "dependency-update"
+    ]
+  },
+  {
+    "focus": [
+      "overlay-retention",
+      "overlay-reuse",
+      "dynamic-dependency"
+    ],
+    "path": "hand-auditable/tc_w035_overlay_reuse_protected_dynamic_001.json",
+    "scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "overlay"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "defined-name-callable",
+      "publication"
+    ],
+    "path": "hand-auditable/tc_w035_let_lambda_defined_name_callable_001.json",
+    "scenario_id": "tc_w035_let_lambda_defined_name_callable_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "let-lambda-carrier",
+      "callable-publication-policy",
+      "typed-reject"
+    ],
+    "path": "hand-auditable/tc_w035_lambda_callable_publication_reject_001.json",
+    "scenario_id": "tc_w035_lambda_callable_publication_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w035",
+      "let-lambda"
+    ]
+  },
+  {
+    "focus": [
+      "overlay-retention",
+      "multi-reader",
+      "release-order"
+    ],
+    "path": "hand-auditable/tc_w037_overlay_multi_reader_release_order_001.json",
+    "scenario_id": "tc_w037_overlay_multi_reader_release_order_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w037",
+      "overlay"
+    ]
+  },
+  {
+    "focus": [
+      "w048",
+      "cycle",
+      "structural-cycle",
+      "reference-reject"
+    ],
+    "path": "hand-auditable/tc_w048_structural_self_cycle_reject_001.json",
+    "scenario_id": "tc_w048_structural_self_cycle_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w048",
+      "cycle"
+    ]
+  },
+  {
+    "focus": [
+      "w048",
+      "cycle",
+      "ctro",
+      "candidate-overlay",
+      "reference-reject"
+    ],
+    "path": "hand-auditable/tc_w048_ctro_candidate_cycle_reject_001.json",
+    "scenario_id": "tc_w048_ctro_candidate_cycle_reject_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w048",
+      "cycle"
+    ]
+  },
+  {
+    "focus": [
+      "w048",
+      "cycle",
+      "ctro",
+      "release",
+      "downstream",
+      "reference-publish"
+    ],
+    "path": "hand-auditable/tc_w048_ctro_release_reentry_downstream_001.json",
+    "scenario_id": "tc_w048_ctro_release_reentry_downstream_001",
+    "tags": [
+      "stage1",
+      "hand-auditable",
+      "w048",
+      "cycle"
+    ]
+  }
+]

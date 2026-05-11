@@ -1,0 +1,9 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003",
+  "result_counts": {
+    "passed": 34
+  },
+  "run_id": "w048-tracecalc-cycles-003",
+  "scenario_count": 34,
+  "schema_version": "tracecalc-corpus-s1"
+}

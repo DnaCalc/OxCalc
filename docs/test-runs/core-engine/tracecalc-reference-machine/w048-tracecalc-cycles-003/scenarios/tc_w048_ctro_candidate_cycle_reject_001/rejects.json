@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"candidate_wave_id\":\"wave-w048-ctro-cycle\",\"cycle_region_members\":[\"A\"],\"cycle_source\":\"candidate_overlay\",\"introduced_by_overlay_delta_ids\":[\"delta:wave-w048-ctro-cycle:A\"],\"overlay_commit_policy\":\"commit_no_candidate_overlay\",\"publication_policy\":\"no_new_cycle_values\"}",
+      "reject_id": "rej-w048-ctro-cycle",
+      "reject_kind": "synthetic_cycle_reject"
+    }
+  ],
+  "scenario_id": "tc_w048_ctro_candidate_cycle_reject_001"
+}

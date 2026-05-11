@@ -431,6 +431,57 @@
         "w037",
         "overlay"
       ]
+    },
+    {
+      "scenario_id": "tc_w048_structural_self_cycle_reject_001",
+      "path": "hand-auditable/tc_w048_structural_self_cycle_reject_001.json",
+      "focus": [
+        "w048",
+        "cycle",
+        "structural-cycle",
+        "reference-reject"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w048",
+        "cycle"
+      ]
+    },
+    {
+      "scenario_id": "tc_w048_ctro_candidate_cycle_reject_001",
+      "path": "hand-auditable/tc_w048_ctro_candidate_cycle_reject_001.json",
+      "focus": [
+        "w048",
+        "cycle",
+        "ctro",
+        "candidate-overlay",
+        "reference-reject"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w048",
+        "cycle"
+      ]
+    },
+    {
+      "scenario_id": "tc_w048_ctro_release_reentry_downstream_001",
+      "path": "hand-auditable/tc_w048_ctro_release_reentry_downstream_001.json",
+      "focus": [
+        "w048",
+        "cycle",
+        "ctro",
+        "release",
+        "downstream",
+        "reference-publish"
+      ],
+      "tags": [
+        "stage1",
+        "hand-auditable",
+        "w048",
+        "cycle"
+      ]
     }
   ]
 }

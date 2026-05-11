@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"expected_snapshot\":\"snapshot:s0\",\"fence_member\":\"snapshot_epoch\",\"observed_snapshot\":\"snapshot:s1\"}",
+      "reject_id": "rej-snapshot-fence",
+      "reject_kind": "snapshot_mismatch"
+    }
+  ],
+  "scenario_id": "tc_w034_snapshot_fence_reject_001"
+}

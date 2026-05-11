@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"cycle_region_id\":\"cycle:struct:self:A\",\"cycle_source\":\"structural\",\"members\":[\"A\"],\"overlay_commit_policy\":\"not_applicable\",\"publication_policy\":\"no_new_cycle_values\"}",
+      "reject_id": "rej-w048-struct-self",
+      "reject_kind": "synthetic_cycle_reject"
+    }
+  ],
+  "scenario_id": "tc_w048_structural_self_cycle_reject_001"
+}

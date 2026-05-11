@@ -1,0 +1,40 @@
+{
+  "artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/reductions/tc_artifact_token_reject_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_artifact_token_reject_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/witnesses/tc_artifact_token_reject_001--witness-seed/lifecycle.json"
+  },
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.reject_detail_replay"
+    ],
+    "replay_classes": [
+      "R6"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "assertion_result_set"
+    ],
+    "safety_properties": [
+      "S2"
+    ],
+    "transition_labels": [
+      "C1",
+      "C3",
+      "I6"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_artifact_token_reject_001",
+  "validation_failures": []
+}

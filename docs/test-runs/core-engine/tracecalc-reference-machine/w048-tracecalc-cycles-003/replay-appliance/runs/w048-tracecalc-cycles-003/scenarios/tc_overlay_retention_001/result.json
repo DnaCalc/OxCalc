@@ -1,0 +1,41 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.fec.overlay_lifecycle",
+      "PACK.concurrent.epochs"
+    ],
+    "replay_classes": [
+      "R5"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters"
+    ],
+    "safety_properties": [
+      "S5",
+      "S6"
+    ],
+    "transition_labels": [
+      "C4",
+      "A9",
+      "A10"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_overlay_retention_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/reductions/tc_overlay_retention_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_overlay_retention_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/replay-appliance/witnesses/tc_overlay_retention_001--witness-seed/lifecycle.json"
+  },
+  "validation_failures": []
+}

@@ -304,9 +304,16 @@ fn emit_plan_artifacts(state: &mut MachineState, step_id: &str) {
         return;
     }
 
+    let cycle_groups = state
+        .current_plan
+        .cycle_groups
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
     let groups = state.current_plan.groups.clone();
     for (index, group) in groups.into_iter().enumerate() {
-        if group.len() > 1 {
+        let is_cycle_group = cycle_groups.contains(&group);
+        if is_cycle_group {
             state.increment_counter("cycle_region_groups");
             state.add_event(
                 step_id,
@@ -320,7 +327,7 @@ fn emit_plan_artifacts(state: &mut MachineState, step_id: &str) {
 
         state.add_event(
             step_id,
-            if group.len() > 1 {
+            if is_cycle_group {
                 "scc_group_scheduled"
             } else {
                 "topo_group_scheduled"
@@ -491,6 +498,7 @@ fn emit_candidate_result(
             ),
         ],
     );
+    emit_step_diagnostic_events(state, step);
     Ok(())
 }
 
@@ -572,7 +580,18 @@ fn emit_reject(
             ),
         ],
     );
+    emit_step_diagnostic_events(state, step);
     Ok(())
+}
+
+fn emit_step_diagnostic_events(state: &mut MachineState, step: &TraceCalcStep) {
+    for diagnostic_event in &step.diagnostic_events {
+        state.add_event(
+            &step.step_id,
+            diagnostic_event,
+            vec![("diagnostic_event".to_string(), diagnostic_event.clone())],
+        );
+    }
 }
 
 fn publish_candidate(

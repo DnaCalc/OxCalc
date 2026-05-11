@@ -1,0 +1,36 @@
+{
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.dag.cycle_iterative_semantics"
+    ],
+    "replay_classes": [
+      "oxcalc.local.w048.cycle_reject"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ],
+    "safety_properties": [
+      "cycle_reject_no_publish"
+    ],
+    "transition_labels": [
+      "W048_STRUCTURAL_CYCLE_REJECT"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_w048_structural_self_cycle_reject_001",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/published_view.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003/scenarios/tc_w048_structural_self_cycle_reject_001/trace.json"
+  },
+  "validation_failures": []
+}

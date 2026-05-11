@@ -193,16 +193,16 @@ impl TraceCalcOracleMatrixRunner {
             write_json(&matrix_root.join("no_loss_crosswalk.json"), &crosswalk)?;
             write_json(
                 &matrix_root.join("coverage_closure_criteria.json"),
-                &coverage_closure_criteria_json(
+                &coverage_closure_criteria_json(CoverageClosureCriteriaInput {
                     run_id,
                     profile,
-                    trace_summary.scenario_count,
-                    rows.len(),
+                    tracecalc_scenario_count: trace_summary.scenario_count,
+                    matrix_row_count: rows.len(),
                     covered_row_count,
                     uncovered_row_count,
                     excluded_row_count,
                     missing_or_failed_row_count,
-                ),
+                }),
             )?;
             Some(crosswalk)
         } else {
@@ -592,8 +592,8 @@ fn no_loss_crosswalk_json(
     })
 }
 
-fn coverage_closure_criteria_json(
-    run_id: &str,
+struct CoverageClosureCriteriaInput<'a> {
+    run_id: &'a str,
     profile: MatrixProfile,
     tracecalc_scenario_count: usize,
     matrix_row_count: usize,
@@ -601,9 +601,11 @@ fn coverage_closure_criteria_json(
     uncovered_row_count: usize,
     excluded_row_count: usize,
     missing_or_failed_row_count: usize,
-) -> Value {
+}
+
+fn coverage_closure_criteria_json(input: CoverageClosureCriteriaInput<'_>) -> Value {
     let (closure_state, no_loss_criterion, promotion_blockers, semantic_equivalence_statement) =
-        match profile {
+        match input.profile {
             MatrixProfile::W037ObservableClosure => (
                 "observable_rows_covered_no_full_oracle_claim",
                 "Every W035 matrix row identity is retained, every W033-W035 tagged corpus scenario maps to a W037 row, and the prior multi-reader overlay release-order row has direct TraceCalc replay evidence.",
@@ -632,15 +634,15 @@ fn coverage_closure_criteria_json(
 
     json!({
         "schema_version": ORACLE_MATRIX_CLOSURE_CRITERIA_SCHEMA_V1,
-        "run_id": run_id,
+        "run_id": input.run_id,
         "closure_state": closure_state,
         "full_oracle_claim": false,
-        "matrix_row_count": matrix_row_count,
-        "covered_row_count": covered_row_count,
-        "classified_uncovered_row_count": uncovered_row_count,
-        "excluded_row_count": excluded_row_count,
-        "missing_or_failed_row_count": missing_or_failed_row_count,
-        "current_tracecalc_corpus_scenario_count": tracecalc_scenario_count,
+        "matrix_row_count": input.matrix_row_count,
+        "covered_row_count": input.covered_row_count,
+        "classified_uncovered_row_count": input.uncovered_row_count,
+        "excluded_row_count": input.excluded_row_count,
+        "missing_or_failed_row_count": input.missing_or_failed_row_count,
+        "current_tracecalc_corpus_scenario_count": input.tracecalc_scenario_count,
         "criteria": {
             "covered_row": "A row is covered only when its scenario result passed, validation/assertion/conformance mismatch arrays are empty, and every required trace label is present.",
             "uncovered_row": "A row is uncovered when the surface is relevant to future core-engine verification but has no deterministic TraceCalc scenario in this profile.",
@@ -1100,7 +1102,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 31);
+        assert_eq!(summary.tracecalc_scenario_count, 34);
         assert_eq!(summary.matrix_row_count, MATRIX_ROWS.len());
         assert!(summary.covered_row_count >= 15);
         assert_eq!(summary.uncovered_row_count, 2);
@@ -1140,7 +1142,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 31);
+        assert_eq!(summary.tracecalc_scenario_count, 34);
         assert_eq!(
             summary.matrix_row_count,
             MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()
@@ -1228,7 +1230,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 31);
+        assert_eq!(summary.tracecalc_scenario_count, 34);
         assert_eq!(
             summary.matrix_row_count,
             MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()

@@ -1,0 +1,268 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "1",
+        "nodes": "D"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-release",
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "D"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "D"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-release",
+        "node_id": "D"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-w048-ctro-cycle-first",
+        "compatibility_basis": "s-w048-ctro-release",
+        "target_count": "2"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "candidate_rejected",
+      "normalized_event_family": "reject.issued",
+      "payload": {
+        "reject_id": "rej-w048-ctro-cycle-first",
+        "reject_kind": "synthetic_cycle_reject",
+        "target_count": "2"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0011",
+      "label": "candidate_cycle_region_detected",
+      "normalized_event_family": "oxcalc.local.event.candidate_cycle_region_detected",
+      "payload": {
+        "diagnostic_event": "candidate_cycle_region_detected"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0012",
+      "label": "downstream_blocked_by_cycle",
+      "normalized_event_family": "oxcalc.local.event.downstream_blocked_by_cycle",
+      "payload": {
+        "diagnostic_event": "downstream_blocked_by_cycle"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0013",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0014",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0015",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "1",
+        "nodes": "D"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0016",
+      "label": "fallback_reentered",
+      "normalized_event_family": "oxcalc.local.event.fallback_reentered",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0017",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-release",
+        "node_id": "A"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0018",
+      "label": "fallback_reentered",
+      "normalized_event_family": "oxcalc.local.event.fallback_reentered",
+      "payload": {
+        "node_id": "D"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0019",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-release",
+        "node_id": "D"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0020",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-w048-ctro-release",
+        "compatibility_basis": "s-w048-ctro-release",
+        "target_count": "2"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0021",
+      "label": "candidate_shape_update_produced",
+      "normalized_event_family": "oxcalc.local.event.candidate_shape_update_produced",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st6"
+    },
+    {
+      "event_id": "evt-0022",
+      "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
+      "payload": {
+        "candidate_result_id": "cand-w048-ctro-release",
+        "target_count": "2"
+      },
+      "step_id": "st6"
+    },
+    {
+      "event_id": "evt-0023",
+      "label": "cycle_release_detected",
+      "normalized_event_family": "oxcalc.local.event.cycle_release_detected",
+      "payload": {
+        "diagnostic_event": "cycle_release_detected"
+      },
+      "step_id": "st6"
+    },
+    {
+      "event_id": "evt-0024",
+      "label": "downstream_reentered_after_release",
+      "normalized_event_family": "oxcalc.local.event.downstream_reentered_after_release",
+      "payload": {
+        "diagnostic_event": "downstream_reentered_after_release"
+      },
+      "step_id": "st6"
+    },
+    {
+      "event_id": "evt-0025",
+      "label": "overlay_retained",
+      "normalized_event_family": "overlay.retained",
+      "payload": {
+        "publication_id": "pub-w048-ctro-release"
+      },
+      "step_id": "st7"
+    },
+    {
+      "event_id": "evt-0026",
+      "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
+      "payload": {
+        "candidate_result_id": "cand-w048-ctro-release",
+        "publication_id": "pub-w048-ctro-release"
+      },
+      "step_id": "st7"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "oxcalc.local.w048.ctro_cycle_release"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ]
+  },
+  "run_id": "w048-tracecalc-cycles-003",
+  "scenario_id": "tc_w048_ctro_release_reentry_downstream_001"
+}

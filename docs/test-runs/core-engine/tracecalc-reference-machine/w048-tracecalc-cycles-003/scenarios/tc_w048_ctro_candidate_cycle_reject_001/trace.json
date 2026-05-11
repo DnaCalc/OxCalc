@@ -1,0 +1,143 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "1",
+        "nodes": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-cycle",
+        "node_id": "A"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s-w048-ctro-cycle",
+        "node_id": "B"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-w048-ctro-cycle",
+        "compatibility_basis": "s-w048-ctro-cycle",
+        "target_count": "2"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "candidate_rejected",
+      "normalized_event_family": "reject.issued",
+      "payload": {
+        "reject_id": "rej-w048-ctro-cycle",
+        "reject_kind": "synthetic_cycle_reject",
+        "target_count": "2"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0011",
+      "label": "candidate_cycle_region_detected",
+      "normalized_event_family": "oxcalc.local.event.candidate_cycle_region_detected",
+      "payload": {
+        "diagnostic_event": "candidate_cycle_region_detected"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0012",
+      "label": "candidate_overlay_commit_suppressed",
+      "normalized_event_family": "oxcalc.local.event.candidate_overlay_commit_suppressed",
+      "payload": {
+        "diagnostic_event": "candidate_overlay_commit_suppressed"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0013",
+      "label": "cycle_reject_published_no_new_values",
+      "normalized_event_family": "oxcalc.local.event.cycle_reject_published_no_new_values",
+      "payload": {
+        "diagnostic_event": "cycle_reject_published_no_new_values"
+      },
+      "step_id": "st3"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "oxcalc.local.w048.ctro_cycle_reject"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters"
+    ]
+  },
+  "run_id": "w048-tracecalc-cycles-003",
+  "scenario_id": "tc_w048_ctro_candidate_cycle_reject_001"
+}

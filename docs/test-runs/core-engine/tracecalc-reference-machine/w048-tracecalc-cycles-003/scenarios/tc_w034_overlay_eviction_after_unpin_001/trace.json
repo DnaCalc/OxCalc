@@ -1,0 +1,142 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "reader_pinned",
+      "normalized_event_family": "session.reader_pinned",
+      "payload": {
+        "snapshot_id": "s0",
+        "view_id": "view-pick"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "Pick"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "Pick"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "Pick"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "s0",
+        "node_id": "Pick"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-overlay",
+        "compatibility_basis": "s0",
+        "target_count": "1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "candidate_shape_update_produced",
+      "normalized_event_family": "oxcalc.local.event.candidate_shape_update_produced",
+      "payload": {
+        "node_id": "Pick"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
+      "payload": {
+        "candidate_result_id": "cand-overlay",
+        "target_count": "1"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "overlay_retained",
+      "normalized_event_family": "overlay.retained",
+      "payload": {
+        "publication_id": "pub-overlay"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
+      "payload": {
+        "candidate_result_id": "cand-overlay",
+        "publication_id": "pub-overlay"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0011",
+      "label": "reader_unpinned",
+      "normalized_event_family": "session.reader_unpinned",
+      "payload": {
+        "view_id": "view-pick"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0012",
+      "label": "eviction_eligibility_opened",
+      "normalized_event_family": "overlay.eviction_eligible",
+      "payload": {
+        "view_id": "view-pick"
+      },
+      "step_id": "st5"
+    },
+    {
+      "event_id": "evt-0013",
+      "label": "overlay_released",
+      "normalized_event_family": "overlay.released",
+      "payload": {
+        "evicted_count": "3"
+      },
+      "step_id": "st5"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "R5"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters",
+      "overlay_lifecycle"
+    ]
+  },
+  "run_id": "w048-tracecalc-cycles-003",
+  "scenario_id": "tc_w034_overlay_eviction_after_unpin_001"
+}

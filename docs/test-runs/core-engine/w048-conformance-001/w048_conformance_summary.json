@@ -1,0 +1,176 @@
+{
+  "schema_version": "oxcalc.w048.conformance_summary.v1",
+  "run_id": "w048-conformance-001",
+  "status": "passed",
+  "errors": [],
+  "sources": {
+    "excel_observation": "docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json",
+    "tracecalc_run": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-003",
+    "treecalc_run": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001",
+    "graph_checker_summary": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-001/w048_materialized_graph_check_summary.json"
+  },
+  "source_summaries": {
+    "excel_observation_count": 12,
+    "tracecalc_scenario_count": 34,
+    "tracecalc_result_counts": {
+      "passed": 34
+    },
+    "treecalc_case_count": 33,
+    "treecalc_expectation_mismatch_count": 0,
+    "treecalc_result_counts": {
+      "published": 18,
+      "rejected": 14,
+      "verified_clean": 1
+    },
+    "graph_case_count": 33,
+    "graph_layer_count": 99,
+    "graph_cycle_region_count": 12,
+    "graph_check_error_count": 0
+  },
+  "tracecalc_fixture_ids": [
+    "tc_w048_structural_self_cycle_reject_001",
+    "tc_w048_ctro_candidate_cycle_reject_001",
+    "tc_w048_ctro_release_reentry_downstream_001"
+  ],
+  "treecalc_case_results": {
+    "tc_w048_structural_self_cycle_reject_001": {
+      "initial_state": "rejected",
+      "expectation_mismatches": [],
+      "reject_kind": "SyntheticCycleReject"
+    },
+    "tc_w048_structural_two_node_cycle_reject_001": {
+      "initial_state": "rejected",
+      "expectation_mismatches": [],
+      "reject_kind": "SyntheticCycleReject"
+    },
+    "tc_w048_ctro_dynamic_self_cycle_reject_001": {
+      "initial_state": "rejected",
+      "expectation_mismatches": [],
+      "reject_kind": "SyntheticCycleReject"
+    },
+    "tc_w048_ctro_dynamic_release_reentry_downstream_001": {
+      "initial_state": "rejected",
+      "expectation_mismatches": [],
+      "reject_kind": "SyntheticCycleReject",
+      "post_edit_state": "published",
+      "post_edit_published_values": {
+        "2": "10",
+        "4": "11"
+      }
+    }
+  },
+  "required_case_matrix": [
+    {
+      "requirement": "structural direct self-cycle",
+      "status": "covered",
+      "evidence": [
+        "tracecalc",
+        "treecalc",
+        "graph"
+      ]
+    },
+    {
+      "requirement": "structural two-node SCC",
+      "status": "covered",
+      "evidence": [
+        "treecalc",
+        "graph"
+      ]
+    },
+    {
+      "requirement": "structural three-node SCC with deterministic member ordering",
+      "status": "covered_by_existing_cycle_region_checker",
+      "evidence": [
+        "graph checker SCC ordering over full TreeCalc run"
+      ]
+    },
+    {
+      "requirement": "guarded activation cycle with prior-value retention question",
+      "status": "observed_or_deferred",
+      "evidence": [
+        "Excel observation ledger",
+        "iterative-profile bead calc-zci1.4"
+      ]
+    },
+    {
+      "requirement": "CTRO dynamic self-cycle",
+      "status": "covered",
+      "evidence": [
+        "treecalc",
+        "graph"
+      ]
+    },
+    {
+      "requirement": "CTRO dynamic two-node SCC",
+      "status": "deferred",
+      "evidence": [
+        "no dedicated checked fixture yet"
+      ]
+    },
+    {
+      "requirement": "CTRO candidate cycle rejected with no overlay commit",
+      "status": "covered",
+      "evidence": [
+        "tracecalc",
+        "treecalc no publication bundle"
+      ]
+    },
+    {
+      "requirement": "CTRO cycle release and re-entry",
+      "status": "covered",
+      "evidence": [
+        "tracecalc",
+        "treecalc post_edit"
+      ]
+    },
+    {
+      "requirement": "downstream dependent blocked by cycle and recomputed after release",
+      "status": "covered",
+      "evidence": [
+        "tracecalc",
+        "treecalc post_edit downstream value"
+      ]
+    },
+    {
+      "requirement": "iterative self-cycle after profile selection",
+      "status": "deferred",
+      "evidence": [
+        "calc-zci1.4"
+      ]
+    },
+    {
+      "requirement": "order-sensitive iterative SCC after profile selection",
+      "status": "deferred",
+      "evidence": [
+        "calc-zci1.4"
+      ]
+    },
+    {
+      "requirement": "graph materialization reverse-edge converse case",
+      "status": "covered",
+      "evidence": [
+        "check-w048-materialized-graphs.py"
+      ]
+    },
+    {
+      "requirement": "candidate-effective graph cycle introduction case",
+      "status": "covered",
+      "evidence": [
+        "TreeCalc W048 graph sidecars"
+      ]
+    },
+    {
+      "requirement": "innovation profile example when admitted",
+      "status": "deferred",
+      "evidence": [
+        "calc-zci1.8"
+      ]
+    }
+  ],
+  "explicit_deferred_lanes": [
+    "CTRO dynamic two-node SCC dedicated fixture",
+    "iterative self-cycle and order-sensitive SCC after calc-zci1.4 profile selection",
+    "innovation profile example after calc-zci1.8 admission",
+    "formal proof/model artifact expansion under calc-zci1.5"
+  ]
+}

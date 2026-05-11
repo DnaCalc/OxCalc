@@ -1,6 +1,6 @@
 # W048 Cycles Packet Root
 
-Status: `closure_audit_passed`
+Status: `reopened_in_progress`
 
 Parent workset: `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
 
@@ -43,21 +43,51 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
 9. `W048_INNOVATION_OPPORTUNITY_LEDGER.md`
    - candidate OxCalc innovations for cycle handling, kept profile-gated and evidence-driven.
 10. `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
-   - final W048 audit checklist, evidence summary, and W049 routing.
+   - superseded predecessor audit checklist, evidence summary, and W049 routing from the conservative Stage 1 slice.
+11. `W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`
+   - active reopen audit explaining the prior scope narrowing and the repaired full Excel-match iterative target.
+12. `W048_TOOLING_MIGRATION_OFF_PYTHON.md`
+   - active tooling packet replacing W048 Python checkers with PowerShell entry points.
+13. `W048_WHOLE_WORKSET_FRESH_EYES_AUDIT.md`
+   - whole-workset audit after reopened child beads, preserving named blockers and partial status.
+14. `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md`
+   - targeted root/report-cell blocker packet showing `Application.CircularReference` remained null across variants.
+15. `W048_EXCEL_INITIAL_VECTOR_PACKET.md`
+   - targeted numeric-prior initial-vector packet showing prior numeric seeds do not survive self-cycle formula assignment in declared probes.
+16. `W048_EXCEL_NONNUMERIC_PRIOR_PACKET.md`
+   - targeted blank/text/error prior packet replacing the ambiguous predecessor text-prior observation.
+17. `W048_EXCEL_VERSION_REPEAT_BLOCKER_PACKET.md`
+   - cross-version repeat blocker packet explaining that only one Excel host/version is available locally.
+18. `W048_EXCEL_MULTITHREAD_VARIANT_PACKET.md`
+   - multithread variant packet for declared falsification probes, preserving thread mode as a profile dimension.
+
+Active Excel observation packets:
+
+1. `docs/test-runs/excel-cycles/w048-excel-cycles-001/`
+   - first 12-probe core black-box Excel packet.
+2. `docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/`
+   - expanded 19-probe bit-exact black-box Excel packet used by reopened W048.
 
 ## Current Conclusions
 
 1. Excel has deterministic machinery, but public documentation shows that determinism is stateful: Excel builds a dependency tree, creates and revises a calculation chain, and can save calculation-chain metadata to the workbook.
 2. Excel-compatible cycle behavior therefore cannot be inferred from formula text alone. The observation unit must include workbook history, calculation-chain state, recalc command, calculation mode, iteration settings, and version/platform metadata.
 3. Non-iterative OxCalc Stage 1 should keep the current no-publication cycle boundary until Excel observations and explicit policy justify any narrower publication rule.
-4. Iterative cycle support needs a declared profile, not hidden scheduler behavior. The profile must name its root/order policy, initial-value policy, update model, convergence metric, max-iteration rule, terminal state, and publication rule.
-5. The existing Rust floor already has structural forward edges, reverse edges, and cycle groups. W048 must extend that floor into materialized graph artifacts, executable cycle policies, tests, and formal definitions/models.
+4. Iterative cycle support is now an active W048 target, not successor-only scope. The Excel-match profile must name its root/order policy, initial-value policy, update model, convergence metric, max-iteration rule, terminal state, publication rule, and bit-exact comparison obligations.
+5. The existing Rust floor already has structural forward edges, reverse edges, and cycle groups. W048 must extend that floor into materialized graph artifacts, executable cycle policies, tests, formal definitions/models, and Excel-match iterative behavior.
+6. Local W048 tooling must be PowerShell, Rust, or C#; Python checker paths in predecessor packets are legacy evidence only.
 
 ## Status Surface
 
-- execution_state: `closure_audit_passed`
-- scope_completeness: `scope_complete`
-- target_completeness: `target_complete`
-- integration_completeness: `integrated`
-- closure_audit: `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
-- open_lanes: []
+- execution_state: `in_progress`
+- scope_completeness: `scope_partial`
+- target_completeness: `target_partial`
+- integration_completeness: `partial`
+- closure_audit: superseded predecessor `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
+- active_reopen_packet: `W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`
+- open_lanes:
+  - keep W048 tooling on PowerShell/Rust/C#;
+  - derive Excel bit-exact iterative profile from recorded observation packets and any targeted follow-up;
+  - Excel-match iterative profile specification;
+  - TraceCalc and TreeCalc iterative implementations;
+  - final parent closure after named blocker disposition and, if required, regenerated iterative graph sidecars.

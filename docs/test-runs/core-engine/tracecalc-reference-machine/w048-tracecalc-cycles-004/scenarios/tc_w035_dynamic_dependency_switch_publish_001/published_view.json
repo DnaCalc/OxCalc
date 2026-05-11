@@ -1,0 +1,22 @@
+{
+  "node_values": [
+    {
+      "node_id": "Left",
+      "value": "10"
+    },
+    {
+      "node_id": "Mode",
+      "value": "right"
+    },
+    {
+      "node_id": "Pick",
+      "value": "20"
+    },
+    {
+      "node_id": "Right",
+      "value": "20"
+    }
+  ],
+  "scenario_id": "tc_w035_dynamic_dependency_switch_publish_001",
+  "snapshot_id": "s0"
+}

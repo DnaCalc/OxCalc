@@ -1,0 +1,187 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "A1"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "B1"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "C1"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "cycle_region_detected",
+      "normalized_event_family": "oxcalc.local.event.cycle_region_detected",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A1,B1,C1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "scc_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.scc_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "A1,B1,C1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "A1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0007",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "excel:w048-excel-cycles-bitexact-001:excel_iter_three_node_order_001",
+        "node_id": "A1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0008",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "B1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0009",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "excel:w048-excel-cycles-bitexact-001:excel_iter_three_node_order_001",
+        "node_id": "B1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0010",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "C1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0011",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "excel:w048-excel-cycles-bitexact-001:excel_iter_three_node_order_001",
+        "node_id": "C1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0012",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-w048-excel-iter-three-node",
+        "compatibility_basis": "excel:w048-excel-cycles-bitexact-001:excel_iter_three_node_order_001",
+        "target_count": "3"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0013",
+      "label": "cycle_iteration_trace",
+      "normalized_event_family": "oxcalc.local.event.cycle_iteration_trace",
+      "payload": {
+        "cycle_member_order": "C1,B1,A1",
+        "initial_vector": "A1=1;B1=10;C1=100",
+        "iteration_index": "2",
+        "max_change": "0.001",
+        "max_iterations": "2",
+        "probe_id": "excel_iter_three_node_order_001",
+        "profile": "cycle.excel_match_iterative",
+        "terminal_state": "max_iteration_terminal_published",
+        "terminal_vector": "A1=102;B1=101;C1=103"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0014",
+      "label": "excel_match_iteration_trace_emitted",
+      "normalized_event_family": "oxcalc.local.event.excel_match_iteration_trace_emitted",
+      "payload": {
+        "diagnostic_event": "excel_match_iteration_trace_emitted"
+      },
+      "step_id": "st3"
+    },
+    {
+      "event_id": "evt-0015",
+      "label": "candidate_emitted",
+      "normalized_event_family": "candidate.built",
+      "payload": {
+        "candidate_result_id": "cand-w048-excel-iter-three-node",
+        "target_count": "3"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0016",
+      "label": "excel_match_iterative_candidate_emitted",
+      "normalized_event_family": "oxcalc.local.event.excel_match_iterative_candidate_emitted",
+      "payload": {
+        "diagnostic_event": "excel_match_iterative_candidate_emitted"
+      },
+      "step_id": "st4"
+    },
+    {
+      "event_id": "evt-0017",
+      "label": "candidate_published",
+      "normalized_event_family": "publication.committed",
+      "payload": {
+        "candidate_result_id": "cand-w048-excel-iter-three-node",
+        "publication_id": "pub-w048-excel-iter-three-node"
+      },
+      "step_id": "st5"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "oxcalc.local.w048.excel_match_iterative"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters"
+    ]
+  },
+  "run_id": "w048-tracecalc-cycles-004",
+  "scenario_id": "tc_w048_excel_iter_three_node_order_001"
+}

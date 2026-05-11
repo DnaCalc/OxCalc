@@ -1,0 +1,159 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_local_dynamic_addition_auto_post_edit_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_hash":  "sha256:e312f922ac299c0ee35c920c8adb46c0145fa291a3cc25329b64070446c3e39b",
+                       "basis":  {
+                                     "snapshot_id":  44,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:auto-addition",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_hash":  "sha256:6dd3d013a664453174c2d38c4892c011f276dc7aaf5c50ab60edc49985c77327",
+                       "basis":  {
+                                     "snapshot_id":  44,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:auto-addition",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_local_dynamic_addition_auto_post_edit_001",
+                       "graph_hash":  "sha256:0f1cc0c7392cec70338e6e3bde3e8054056b40edb8d2a04c9467c90e0157b7a2",
+                       "basis":  {
+                                     "snapshot_id":  44,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:auto-addition",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   }
+               ]
+}

@@ -1,0 +1,21 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "residual:carrier:dynamic:auto-addition:unresolved_before_automatic_addition",
+      "descriptor_id": "bind:formula:dynamic:auto-addition:oxfml_residual:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:dynamic:auto-addition:oxfml_residual:0",
+      "detail": "residual:carrier:dynamic:auto-addition:unresolved_before_automatic_addition",
+      "kind": "DynamicPotentialReference"
+    }
+  ],
+  "edges": []
+}

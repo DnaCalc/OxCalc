@@ -1,0 +1,336 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_local_recalc_chain_after_constant_edit_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_hash":  "sha256:67ea093df7efd680310c9c8dd08a23d848810360ec294be00e05daa413f11948",
+                       "basis":  {
+                                     "snapshot_id":  14,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:b",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:c",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  [
+                                                 3,
+                                                 4
+                                             ],
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_hash":  "sha256:99f5b9f4e2de609345a253c6b574e755c4390584eb6e2bce99b9147ba8033483",
+                       "basis":  {
+                                     "snapshot_id":  14,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:b",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:c",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  [
+                                                 3,
+                                                 4
+                                             ],
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_local_recalc_chain_after_constant_edit_001",
+                       "graph_hash":  "sha256:28ff8d374acd73c260e3a33abfc2f9b867099190dcf18ab17a13921c0dc054c5",
+                       "basis":  {
+                                     "snapshot_id":  14,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  "fixture:tc_local_recalc_chain_after_constant_edit_001:candidate",
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:b",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:c",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:b:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:c:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  3
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:b:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:3:bind:formula:c:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  [
+                                                 3,
+                                                 4
+                                             ],
+                       "blocked_reason":  null
+                   }
+               ]
+}

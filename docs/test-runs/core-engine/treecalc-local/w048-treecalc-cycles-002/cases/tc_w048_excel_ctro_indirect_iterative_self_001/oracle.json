@@ -1,0 +1,13 @@
+{
+  "case_id": "tc_w048_excel_ctro_indirect_iterative_self_001",
+  "expected_evaluation_order": [
+    2
+  ],
+  "expected_published_values": {
+    "2": "1",
+    "3": "A1"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

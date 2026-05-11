@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"cycle_region_members\":[\"A\"],\"cycle_source\":\"candidate_overlay\",\"downstream_state\":\"blocked_until_release\",\"overlay_commit_policy\":\"commit_no_candidate_overlay\"}",
+      "reject_id": "rej-w048-ctro-cycle-first",
+      "reject_kind": "synthetic_cycle_reject"
+    }
+  ],
+  "scenario_id": "tc_w048_ctro_release_reentry_downstream_001"
+}

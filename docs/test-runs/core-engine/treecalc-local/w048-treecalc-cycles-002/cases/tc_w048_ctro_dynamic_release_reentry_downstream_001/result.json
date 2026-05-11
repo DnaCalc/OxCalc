@@ -1,0 +1,35 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/dependency_graph.json",
+  "diagnostics": [
+    "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:0"
+  ],
+  "evaluation_order": [],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/phase_timings.json",
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_w048_ctro_dynamic_release_reentry_downstream_001:candidate",
+    "detail": "formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "kind": "SyntheticCycleReject",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/runtime_effects.json"
+}

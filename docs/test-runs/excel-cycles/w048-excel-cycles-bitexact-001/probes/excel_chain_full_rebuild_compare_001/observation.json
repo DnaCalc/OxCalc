@@ -1,0 +1,188 @@
+﻿{
+    "probe_id":  "excel_chain_full_rebuild_compare_001",
+    "run_id":  "w048-excel-cycles-bitexact-001",
+    "status":  "observed",
+    "cycle_kind":  "structural",
+    "iteration_profile":  {
+                              "enabled":  true,
+                              "max_iterations":  3,
+                              "max_change":  0.001
+                          },
+    "questions":  [
+                      "full rebuild versus ordinary calculate",
+                      "saved chain effect"
+                  ],
+    "reported_cycle_cells":  [
+
+                             ],
+    "cell_results":  [
+                         {
+                             "cell":  "Sheet1!A1",
+                             "formula":  "=B1+1",
+                             "value2":  1,
+                             "text":  "1",
+                             "error":  null
+                         },
+                         {
+                             "cell":  "Sheet1!B1",
+                             "formula":  "=A1+1",
+                             "value2":  2,
+                             "text":  "2",
+                             "error":  null
+                         }
+                     ],
+    "calc_chain":  {
+                       "present":  true,
+                       "entries":  [
+                                       "B1",
+                                       "A1"
+                                   ],
+                       "raw_xml":  "\u003c?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?\u003e\r\n\u003ccalcChain xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"\u003e\u003cc r=\"B1\" i=\"1\" l=\"1\"/\u003e\u003cc r=\"A1\" i=\"1\"/\u003e\u003c/calcChain\u003e",
+                       "note":  null
+                   },
+    "chain_sensitive":  "unknown",
+    "root_hypothesis":  "unknown",
+    "update_model_hypothesis":  "unknown",
+    "initial_value_hypothesis":  "published_prior_value_probe",
+    "operation_steps":  [
+                            {
+                                "probe_id":  "excel_chain_full_rebuild_compare_001",
+                                "step_index":  1,
+                                "operation":  "set_formula",
+                                "target":  "Sheet1!A1",
+                                "formula":  "=B1+1",
+                                "value":  null,
+                                "before":  {
+                                               "cell":  "Sheet1!A1",
+                                               "formula":  "",
+                                               "value2":  null,
+                                               "text":  "",
+                                               "error":  null
+                                           },
+                                "after":  {
+                                              "cell":  "Sheet1!A1",
+                                              "formula":  "=B1+1",
+                                              "value2":  1,
+                                              "text":  "1",
+                                              "error":  null
+                                          },
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            },
+                            {
+                                "probe_id":  "excel_chain_full_rebuild_compare_001",
+                                "step_index":  2,
+                                "operation":  "set_formula",
+                                "target":  "Sheet1!B1",
+                                "formula":  "=A1+1",
+                                "value":  null,
+                                "before":  {
+                                               "cell":  "Sheet1!B1",
+                                               "formula":  "",
+                                               "value2":  null,
+                                               "text":  "",
+                                               "error":  null
+                                           },
+                                "after":  {
+                                              "cell":  "Sheet1!B1",
+                                              "formula":  "=A1+1",
+                                              "value2":  2,
+                                              "text":  "2",
+                                              "error":  null
+                                          },
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            },
+                            {
+                                "probe_id":  "excel_chain_full_rebuild_compare_001",
+                                "step_index":  3,
+                                "operation":  "calculate_full_rebuild",
+                                "target":  null,
+                                "formula":  null,
+                                "value":  null,
+                                "before":  [
+                                               {
+                                                   "cell":  "Sheet1!A1",
+                                                   "formula":  "=B1+1",
+                                                   "value2":  1,
+                                                   "text":  "1",
+                                                   "error":  null
+                                               },
+                                               {
+                                                   "cell":  "Sheet1!B1",
+                                                   "formula":  "=A1+1",
+                                                   "value2":  2,
+                                                   "text":  "2",
+                                                   "error":  null
+                                               }
+                                           ],
+                                "after":  [
+                                              {
+                                                  "cell":  "Sheet1!A1",
+                                                  "formula":  "=B1+1",
+                                                  "value2":  1,
+                                                  "text":  "1",
+                                                  "error":  null
+                                              },
+                                              {
+                                                  "cell":  "Sheet1!B1",
+                                                  "formula":  "=A1+1",
+                                                  "value2":  2,
+                                                  "text":  "2",
+                                                  "error":  null
+                                              }
+                                          ],
+                                "calculation_command":  "Application.CalculateFullRebuild",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            },
+                            {
+                                "probe_id":  "excel_chain_full_rebuild_compare_001",
+                                "step_index":  4,
+                                "operation":  "calculate",
+                                "target":  null,
+                                "formula":  null,
+                                "value":  null,
+                                "before":  [
+                                               {
+                                                   "cell":  "Sheet1!A1",
+                                                   "formula":  "=B1+1",
+                                                   "value2":  1,
+                                                   "text":  "1",
+                                                   "error":  null
+                                               },
+                                               {
+                                                   "cell":  "Sheet1!B1",
+                                                   "formula":  "=A1+1",
+                                                   "value2":  2,
+                                                   "text":  "2",
+                                                   "error":  null
+                                               }
+                                           ],
+                                "after":  [
+                                              {
+                                                  "cell":  "Sheet1!A1",
+                                                  "formula":  "=B1+1",
+                                                  "value2":  1,
+                                                  "text":  "1",
+                                                  "error":  null
+                                              },
+                                              {
+                                                  "cell":  "Sheet1!B1",
+                                                  "formula":  "=A1+1",
+                                                  "value2":  2,
+                                                  "text":  "2",
+                                                  "error":  null
+                                              }
+                                          ],
+                                "calculation_command":  "Application.Calculate",
+                                "circular_reference":  null,
+                                "calculation_state":  "xlDone"
+                            }
+                        ],
+    "notes":  [
+                  "Generated by clean-room COM black-box probe harness; no internal Excel implementation evidence used."
+              ]
+}

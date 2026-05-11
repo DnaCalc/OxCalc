@@ -117,6 +117,10 @@ fn execute_step(
         "publish_candidate" => publish_candidate(state, step),
         "verify_clean" => verify_clean(state, scenario, step),
         "seed_overlay" => seed_overlay(state, scenario, step),
+        "emit_iteration_trace" => {
+            emit_iteration_trace(state, step);
+            Ok(())
+        }
         "reset_fixture" => {
             reset_fixture(state, step);
             Ok(())
@@ -591,6 +595,37 @@ fn emit_step_diagnostic_events(state: &mut MachineState, step: &TraceCalcStep) {
             diagnostic_event,
             vec![("diagnostic_event".to_string(), diagnostic_event.clone())],
         );
+    }
+}
+
+fn emit_iteration_trace(state: &mut MachineState, step: &TraceCalcStep) {
+    let mut payload = step
+        .payload
+        .as_ref()
+        .and_then(|value| value.as_object())
+        .map(|object| {
+            object
+                .iter()
+                .map(|(key, value)| (key.clone(), json_value_to_event_text(value)))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    payload.push((
+        "profile".to_string(),
+        "cycle.excel_match_iterative".to_string(),
+    ));
+    state.increment_counter("cycle.iteration_trace_events");
+    state.add_event(&step.step_id, "cycle_iteration_trace", payload);
+    emit_step_diagnostic_events(state, step);
+}
+
+fn json_value_to_event_text(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Number(number) => number.to_string(),
+        serde_json::Value::Bool(flag) => flag.to_string(),
+        serde_json::Value::Null => "null".to_string(),
+        other => other.to_string(),
     }
 }
 

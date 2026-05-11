@@ -26,7 +26,7 @@ Current known engine floor:
 
 W048 first sidecar evidence:
 
-1. `scripts/check-w048-materialized-graphs.py` now normalizes TreeCalc run artifacts into W048 graph-layer sidecars.
+1. `scripts/check-w048-materialized-graphs.ps1` now normalizes TreeCalc run artifacts into W048 graph-layer sidecars.
 2. `docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/` contains the first checked packet: 29 cases, 87 graph layers, 111 reverse-edge records, and zero checker errors.
 3. Per-case `w048_materialized_graph_layers.json` files expose structural, published-effective, and candidate-effective layers with forward edges, materialized reverse edges, edge provenance, overlay delta slots, cycle-region slots, topological order/blocked reason, and stable graph hashes.
 4. `W048_MATERIALIZED_GRAPH_SIDECAR_EVIDENCE.md` records the evidence summary, review commands, and current limits.

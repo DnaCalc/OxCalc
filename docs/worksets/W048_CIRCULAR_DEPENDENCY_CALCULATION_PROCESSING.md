@@ -1,10 +1,10 @@
 # W048 Circular Dependency Calculation Processing
 
-Status: `closure_audit_passed`
+Status: `reopened_in_progress`
 
 Parent predecessor: `W047` (Calc-Time Rebinding Overlay implementation core)
 
-Successor dependency: `W049` (successor formalization/deepening after W048 cycle artifacts exist)
+Successor dependency: `W049` (successor formalization/deepening only after reopened W048 full circular-reference scope is no longer hiding core Excel-match semantics)
 
 Parent epic: `calc-zci1`
 
@@ -14,7 +14,9 @@ Spec packet root: `docs/spec/core-engine/w048-cycles/`
 
 W048 owns circular dependency calculation processing end to end. It covers cycles discovered in the structural-derived graph and cycles introduced, preserved, released, or reclassified by Calc-Time Rebinding Overlay candidate graphs.
 
-The workset includes design, planning, Excel exploration, reference and optimized/core implementations, formal definitions and first proof/model/checker artifacts, a deterministic testing corpus, and a profile-gated innovation ledger. It does not claim Excel-compatible cycle closure or iterative calculation support until those lanes have evidence.
+The workset includes design, planning, Excel exploration, reference and optimized/core implementations, formal definitions and proof/model/checker artifacts, a deterministic testing corpus, and a profile-gated innovation ledger.
+
+Corrected scope after reopen: W048 owns the comprehensive circular-reference solution, including Excel-behavior matching and bit-exact iterative calculation for the declared probe/profile coverage. The prior conservative Stage 1 closure is superseded because it deferred Excel-match iterative behavior instead of implementing or exactly blocking it with user acceptance.
 
 ## 2. Why W048 Comes Before W049
 
@@ -37,9 +39,9 @@ Current known floor:
 5. TreeCalc graph sidecars expose descriptors, forward edges, diagnostics, and cycle groups;
 6. TraceCalc planning has direct dependencies, reverse dependencies, SCC grouping, and cycle groups;
 7. non-iterative Stage 1 therefore has an explicit no-publication cycle boundary;
-8. broad Excel-compatible iterative cycle semantics are not yet selected.
+8. Excel-compatible iterative cycle semantics are selected and implemented for the declared single-host/single-thread fixture coverage.
 
-W048 must widen the artifacts and policy around this floor, implement the selected behavior in TraceCalc and TreeCalc, and bind the behavior to tests and formal artifacts rather than hide cycle behavior behind fallback.
+W048 has widened the artifacts and policy around this floor, implemented the selected declared behavior in TraceCalc and TreeCalc, and bound that behavior to tests and formal artifacts rather than hiding cycle behavior behind fallback. Parent W048 remains open because two exact Excel-evidence blockers remain.
 
 ## 4. Public Excel Evidence Baseline
 
@@ -92,9 +94,9 @@ W048 must make these choices explicit and executable:
 12. test corpus obligations for Excel observations, TraceCalc, TreeCalc, and checker/formal projections.
 13. innovation profiles that OxCalc may offer beyond Excel behavior.
 
-## 7. Provisional Stage 1 Policy
+## 7. Prior Conservative Stage 1 Policy Superseded As Closure Gate
 
-W048 starts from this conservative Stage 1 target:
+W048 still retains the conservative Stage 1 target as predecessor evidence, but it no longer closes W048. The prior run stopped at:
 
 1. classify SCCs with the same deterministic classifier across structural, published-effective, and candidate-effective graph layers;
 2. preserve cycle provenance as diagnostic data, not as a separate semantic class;
@@ -105,6 +107,8 @@ W048 starts from this conservative Stage 1 target:
 7. retain the last published effective graph as the basis after reject;
 8. emit materialized graph, cycle-region, and invalidation facts;
 9. route future iterative behavior through an explicit profile after Excel probes and algorithm decisions.
+
+That route is now insufficient as a closure condition. W048 remains open until Excel-compatible iterative behavior is specified, implemented in TraceCalc and TreeCalc for the declared coverage, and validated against reproducible Excel observations, or exact blockers are explicitly accepted.
 
 ## 8. Required Materialized Graph Surface
 
@@ -152,8 +156,21 @@ Work proceeds through the W048 bead epic:
 | `calc-zci1.5` | W048 formal definitions and proof/model artifacts |
 | `calc-zci1.6` | TreeCalc optimized cycle implementation |
 | `calc-zci1.7` | circular-reference test corpus and conformance runs |
-| `calc-zci1.8` | innovation opportunity ledger and experimental profiles |
+| `calc-zci1.8` | predecessor innovation opportunity ledger and experimental profiles |
+| `calc-zci1.9` | reopen audit and full Excel-match scope repair |
+| `calc-zci1.10` | migrate local cycle tooling off Python |
+| `calc-zci1.11` | Excel bit-exact circular-reference observation suite |
+| `calc-zci1.12` | Excel-match iterative profile specification |
+| `calc-zci1.13` | TraceCalc bit-exact iterative cycle reference implementation |
+| `calc-zci1.14` | TreeCalc optimized iterative cycle implementation |
+| `calc-zci1.15` | full circular-reference conformance and closure audit |
+| `calc-zci1.16` | root/report-cell blocker packet; blocked on UI warning or alternate public object-model evidence |
+| `calc-zci1.17` | numeric-prior initial-vector packet; closed for declared self-cycle coverage |
+| `calc-zci1.18` | blank/text/error prior packet; closed for declared self-cycle coverage |
+| `calc-zci1.19` | second Excel host/version repeat; blocked on external host packet or user single-host scope acceptance |
+| `calc-zci1.20` | multithread variant packet; closed as a run requirement, thread mode retained as a profile dimension |
 
+The reopen audit lives in `docs/spec/core-engine/w048-cycles/W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`.
 The roadmap lives in `docs/spec/core-engine/w048-cycles/W048_ENGINE_AND_FORMALIZATION_ROADMAP.md`.
 
 ## 11. Test Corpus And Innovation Surfaces
@@ -183,14 +200,15 @@ Successor work should not deepen or reorganize cycle behavior until W048 provide
 4. CTRO-created cycle fixture evidence;
 5. cycle release/re-entry fixture evidence or exact blocker;
 6. Excel observation disposition for core probes;
-7. iterative-profile selection or explicit deferral;
+7. Excel-match iterative profile implementation and validation for declared coverage, or exact blockers explicitly accepted by the user;
 8. W048 formal definitions/models/checker targets grounded in W048 artifacts;
 9. test corpus run evidence for the declared scope;
-10. innovation ledger entries separated from default Excel-match behavior.
+10. innovation ledger entries separated from default Excel-match behavior;
+11. replacement of Python W048 validation with PowerShell, Rust, or C#.
 
-## 13. Non-Claims
+## 13. Reopen Non-Claims And Active Target
 
-This packet does not claim:
+The predecessor W048 run does not claim:
 
 1. Excel-compatible circular-reference closure;
 2. iterative calculation support;
@@ -199,20 +217,24 @@ This packet does not claim:
 5. pack/C5/operated-service readiness;
 6. formal proof of SCC/cycle equivalence.
 
-It records the next engineering and evidence surface needed to make cycle behavior deterministic and comparable before W049 formalization.
-It also records implementation, test, and formal-artifact scope owned by W048 itself.
+Those first two items are now active W048 target gaps, not acceptable closure exclusions. W048 remains in progress until the full intended solution is implemented and validated or exact blockers are explicitly accepted.
+
+Local W048 tooling must not use Python. New or replacement tooling must be PowerShell, Rust, or C#.
 
 ## 14. Status Surface
 
-- execution_state: `closure_audit_passed`
-- scope_completeness: `scope_complete`
-- target_completeness: `target_complete`
-- integration_completeness: `integrated`
+- execution_state: `in_progress`
+- scope_completeness: `scope_partial`
+- target_completeness: `target_partial`
+- integration_completeness: `partial`
 - prerequisites:
   - W047 CTRO design and bounded implementation-core progress sufficient to run structural and CTRO-created cycle probes
   - Excel host availability for black-box observation packets
 - bead_path: `calc-zci1`
-- exit_gate: satisfied by `docs/spec/core-engine/w048-cycles/W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
-- evidence_policy: public docs plus reproducible black-box Excel probes plus TraceCalc/TreeCalc artifacts plus W048 checkers
-- closure_audit: `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json`
-- open_lanes: []
+- exit_gate: reopened; the prior audit is superseded by `docs/spec/core-engine/w048-cycles/W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`
+- evidence_policy: public docs plus reproducible black-box Excel probes plus TraceCalc/TreeCalc artifacts plus W048 checkers, using PowerShell/Rust/C# tooling only
+- closure_audit: superseded predecessor `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json`
+- open_lanes:
+  - `BLK-W048-EXCEL-ROOT`: capture circular-reference report-cell/root behavior through UI warning evidence or a public object-model surface that does not return null;
+  - `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version, or obtain explicit user acceptance of a single-host scoped claim;
+  - parent `calc-zci1` final disposition after blocker resolution or user scope acceptance.

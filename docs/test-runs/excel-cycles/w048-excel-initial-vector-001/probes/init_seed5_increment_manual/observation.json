@@ -1,0 +1,42 @@
+{
+    "probe_id":  "init_seed5_increment_manual",
+    "seed":  5,
+    "formula":  "=A1+1",
+    "command":  "none",
+    "status":  "observed",
+    "records":  [
+                    {
+                        "moment":  "initial_blank",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "",
+                                         "value2":  null,
+                                         "text":  ""
+                                     }
+                    },
+                    {
+                        "moment":  "after_seed",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "5",
+                                         "value2":  5,
+                                         "text":  "5"
+                                     }
+                    },
+                    {
+                        "moment":  "after_formula_assignment",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "=A1+1",
+                                         "value2":  1,
+                                         "text":  "1"
+                                     }
+                    }
+                ],
+    "final_snapshot":  {
+                           "cell":  "Sheet1!A1",
+                           "formula":  "=A1+1",
+                           "value2":  1,
+                           "text":  "1"
+                       }
+}

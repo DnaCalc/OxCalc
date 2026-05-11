@@ -1,0 +1,525 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_w048_excel_iter_three_node_order_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_three_node_order_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_w048_excel_iter_three_node_order_001",
+                       "graph_hash":  "sha256:bad5b70da26d8ef27f822c5ba734ea36ed4b05c172f32af786ca617608b84528",
+                       "basis":  {
+                                     "snapshot_id":  4814,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:B1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:C1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_three_node_order_001:structural:0",
+                                                 "graph_id":  "structural:tc_w048_excel_iter_three_node_order_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2,
+                                                                 3,
+                                                                 4
+                                                             ],
+                                                 "member_order":  [
+                                                                      4,
+                                                                      3,
+                                                                      2
+                                                                  ],
+                                                 "cycle_root":  4,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                                        "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                                        "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103"
+                                             }
+                                         ],
+                       "topological_order":  [
+                                                 4,
+                                                 3,
+                                                 2
+                                             ],
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_three_node_order_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_w048_excel_iter_three_node_order_001",
+                       "graph_hash":  "sha256:7df3372a99be688aca62591427ab9ec04754b5bbcd559acf6adb36624be34631",
+                       "basis":  {
+                                     "snapshot_id":  4814,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:B1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:C1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_three_node_order_001:structural:0",
+                                                 "graph_id":  "published_effective:tc_w048_excel_iter_three_node_order_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2,
+                                                                 3,
+                                                                 4
+                                                             ],
+                                                 "member_order":  [
+                                                                      4,
+                                                                      3,
+                                                                      2
+                                                                  ],
+                                                 "cycle_root":  4,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                                        "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                                        "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103"
+                                             }
+                                         ],
+                       "topological_order":  [
+                                                 4,
+                                                 3,
+                                                 2
+                                             ],
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_three_node_order_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_w048_excel_iter_three_node_order_001",
+                       "graph_hash":  "sha256:89e3502b2af3af10ec1d8cf32c16bcf14a4c66b4247d9ab88d296bd4da0a1019",
+                       "basis":  {
+                                     "snapshot_id":  4814,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  "fixture:tc_w048_excel_iter_three_node_order_001:candidate",
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:B1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:iter3:C1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  3
+                                             },
+                                             {
+                                                 "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  4
+                                             },
+                                             {
+                                                 "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  4,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               },
+                                               {
+                                                   "edge_id":  "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_three_node_order_001:structural:0",
+                                                 "graph_id":  "candidate_effective:tc_w048_excel_iter_three_node_order_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2,
+                                                                 3,
+                                                                 4
+                                                             ],
+                                                 "member_order":  [
+                                                                      4,
+                                                                      3,
+                                                                      2
+                                                                  ],
+                                                 "cycle_root":  4,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:3:bind:formula:w048:excel:iter3:A1:oxfml_ref:0",
+                                                                        "dep:3:4:bind:formula:w048:excel:iter3:B1:oxfml_ref:0",
+                                                                        "dep:4:2:bind:formula:w048:excel:iter3:C1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103"
+                                             }
+                                         ],
+                       "topological_order":  [
+                                                 4,
+                                                 3,
+                                                 2
+                                             ],
+                       "blocked_reason":  null
+                   }
+               ]
+}

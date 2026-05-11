@@ -1,0 +1,8 @@
+{
+    "excel_version":  "16.0",
+    "build":  "19929",
+    "platform":  "Windows",
+    "locale":  "en-ZA",
+    "probe_runner":  "scripts/run-w048-excel-initial-vector-probes.ps1",
+    "observation_time_utc":  "2026-05-11T22:02:09.3126664Z"
+}

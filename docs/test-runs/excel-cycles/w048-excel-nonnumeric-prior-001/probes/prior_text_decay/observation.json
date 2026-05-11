@@ -1,0 +1,64 @@
+{
+    "probe_id":  "prior_text_decay",
+    "prior":  "text",
+    "formula":  "=A1/2",
+    "status":  "observed",
+    "records":  [
+                    {
+                        "moment":  "initial_blank",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "",
+                                         "value2":  null,
+                                         "text":  "",
+                                         "error":  null
+                                     }
+                    },
+                    {
+                        "moment":  "after_prior",
+                        "prior":  "text",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "text",
+                                         "value2":  "text",
+                                         "text":  "text",
+                                         "error":  null
+                                     }
+                    },
+                    {
+                        "moment":  "after_formula_assignment",
+                        "formula":  "=A1/2",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "=A1/2",
+                                         "value2":  0,
+                                         "text":  "0",
+                                         "error":  null
+                                     }
+                    },
+                    {
+                        "moment":  "after_calculate",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "=A1/2",
+                                         "value2":  0,
+                                         "text":  "0",
+                                         "error":  null
+                                     }
+                    }
+                ],
+    "assignment_snapshot":  {
+                                "cell":  "Sheet1!A1",
+                                "formula":  "=A1/2",
+                                "value2":  0,
+                                "text":  "0",
+                                "error":  null
+                            },
+    "final_snapshot":  {
+                           "cell":  "Sheet1!A1",
+                           "formula":  "=A1/2",
+                           "value2":  0,
+                           "text":  "0",
+                           "error":  null
+                       }
+}

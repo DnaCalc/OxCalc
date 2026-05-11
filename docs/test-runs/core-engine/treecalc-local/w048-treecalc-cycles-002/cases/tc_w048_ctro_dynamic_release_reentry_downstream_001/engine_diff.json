@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "rejected"
+}

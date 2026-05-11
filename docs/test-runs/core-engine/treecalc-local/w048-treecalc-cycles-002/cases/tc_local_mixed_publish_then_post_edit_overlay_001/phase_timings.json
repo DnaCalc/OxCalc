@@ -1,0 +1,37 @@
+{
+  "timings_micros": {
+    "candidate_publication": 124,
+    "dependency_descriptor_lowering": 29,
+    "dependency_descriptor_owner_index": 14,
+    "dependency_diagnostic_reject_scan": 1,
+    "dependency_graph_build_and_cycle_scan": 102,
+    "diagnostic_seed_collection": 7,
+    "evaluation_loop_total": 2660,
+    "invalidation_closure_derivation": 33,
+    "oxfml_formula_evaluation": 2568,
+    "oxfml_prepare_formulas": 518,
+    "rebind_gate_scan": 2,
+    "recalc_tracker_mark_dirty_needed": 16,
+    "runtime_setup": 78,
+    "topological_formula_order": 23,
+    "total_engine_execute": 3638
+  },
+  "timings_ms": {
+    "candidate_publication": 0.124,
+    "dependency_descriptor_lowering": 0.029,
+    "dependency_descriptor_owner_index": 0.014,
+    "dependency_diagnostic_reject_scan": 0.001,
+    "dependency_graph_build_and_cycle_scan": 0.102,
+    "diagnostic_seed_collection": 0.007,
+    "evaluation_loop_total": 2.66,
+    "invalidation_closure_derivation": 0.033,
+    "oxfml_formula_evaluation": 2.568,
+    "oxfml_prepare_formulas": 0.518,
+    "rebind_gate_scan": 0.002,
+    "recalc_tracker_mark_dirty_needed": 0.016,
+    "runtime_setup": 0.078,
+    "topological_formula_order": 0.023,
+    "total_engine_execute": 3.638
+  },
+  "unit": "microseconds"
+}

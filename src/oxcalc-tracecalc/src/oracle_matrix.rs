@@ -1102,7 +1102,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 34);
+        assert_eq!(summary.tracecalc_scenario_count, 38);
         assert_eq!(summary.matrix_row_count, MATRIX_ROWS.len());
         assert!(summary.covered_row_count >= 15);
         assert_eq!(summary.uncovered_row_count, 2);
@@ -1142,7 +1142,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 34);
+        assert_eq!(summary.tracecalc_scenario_count, 38);
         assert_eq!(
             summary.matrix_row_count,
             MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()
@@ -1230,7 +1230,7 @@ mod tests {
             .execute(&repo_root, &run_id)
             .unwrap();
 
-        assert_eq!(summary.tracecalc_scenario_count, 34);
+        assert_eq!(summary.tracecalc_scenario_count, 38);
         assert_eq!(
             summary.matrix_row_count,
             MATRIX_ROWS.len() + W036_EXTENSION_ROWS.len()

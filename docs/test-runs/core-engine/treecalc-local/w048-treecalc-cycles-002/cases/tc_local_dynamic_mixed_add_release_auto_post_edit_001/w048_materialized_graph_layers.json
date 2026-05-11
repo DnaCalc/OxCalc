@@ -1,0 +1,252 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_hash":  "sha256:30d097357e39ef163373cf234414a97b4e36d3f47d5ea15a9a7cd03011ceb486",
+                       "basis":  {
+                                     "snapshot_id":  46,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:mixed-add-release",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_hash":  "sha256:86108e17c53a8376836d835ddb31e24454e558b6afc80b17c00a15f992e1e51e",
+                       "basis":  {
+                                     "snapshot_id":  46,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:mixed-add-release",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                       "graph_hash":  "sha256:470150e5fbe7dd16b04512affcac60387e83852a8971ed8b1880c682433852e3",
+                       "basis":  {
+                                     "snapshot_id":  46,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  4,
+                                         "stable_symbol":  "node:4",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:dynamic:mixed-add-release",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                 "kind":  "DynamicPotential",
+                                                 "owner_node_id":  3,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:3:2:bind:formula:dynamic:mixed-add-release:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  3,
+                       "blocked_reason":  "cycle_detected"
+                   }
+               ]
+}

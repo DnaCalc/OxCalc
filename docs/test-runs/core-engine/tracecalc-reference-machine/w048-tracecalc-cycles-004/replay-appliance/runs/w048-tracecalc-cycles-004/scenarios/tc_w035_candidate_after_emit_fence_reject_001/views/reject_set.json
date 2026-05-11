@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"candidate_result_id\":\"cand-post-candidate\",\"expected_fence\":\"s0\",\"observed_fence\":\"s1\",\"phase\":\"pre_publish\"}",
+      "reject_id": "rej-post-candidate",
+      "reject_kind": "publication_fence_mismatch"
+    }
+  ],
+  "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001"
+}

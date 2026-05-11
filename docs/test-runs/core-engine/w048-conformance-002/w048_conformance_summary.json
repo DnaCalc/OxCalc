@@ -1,0 +1,40 @@
+{
+    "schema_version":  "oxcalc.w048.conformance_summary.v2",
+    "status":  "passed_with_named_excel_blockers",
+    "run_id":  "w048-conformance-002",
+    "scope_completeness":  "scope_partial",
+    "target_completeness":  "target_partial",
+    "integration_completeness":  "partial",
+    "source_summaries":  {
+                             "excel_core_observation_count":  12,
+                             "excel_bitexact_observation_count":  19,
+                             "tracecalc_scenario_count":  38,
+                             "tracecalc_passed":  38,
+                             "treecalc_case_count":  37,
+                             "treecalc_expectation_mismatch_count":  0,
+                             "graph_case_count":  37,
+                             "graph_layer_count":  111,
+                             "graph_cycle_region_count":  24,
+                             "graph_check_error_count":  0
+                         },
+    "tracecalc_iterative_fixtures":  [
+                                         "tc_w048_excel_iter_two_node_order_001",
+                                         "tc_w048_excel_iter_three_node_order_001",
+                                         "tc_w048_excel_iter_fraction_precision_001",
+                                         "tc_w048_excel_ctro_indirect_iterative_self_001"
+                                     ],
+    "treecalc_iterative_fixtures":  [
+                                        "tc_w048_excel_iter_two_node_order_001",
+                                        "tc_w048_excel_iter_three_node_order_001",
+                                        "tc_w048_excel_iter_fraction_precision_001",
+                                        "tc_w048_excel_ctro_indirect_iterative_self_001"
+                                    ],
+    "blockers":  [
+                     "BLK-W048-EXCEL-ROOT",
+                     "BLK-W048-EXCEL-VERSION"
+                 ],
+    "errors":  [
+
+               ],
+    "multithread_variant_run":  "docs/test-runs/excel-cycles/w048-excel-multithread-variant-001/observation.json"
+}

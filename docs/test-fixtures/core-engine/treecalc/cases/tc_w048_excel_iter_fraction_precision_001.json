@@ -1,0 +1,17 @@
+{
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "case_id": "tc_w048_excel_iter_fraction_precision_001",
+  "description": "W048 TreeCalc optimized Excel-match iterative fractional precision fixture from Excel observation excel_iter_fraction_precision_001.",
+  "snapshot_id": 4815,
+  "root_node_id": 1,
+  "compatibility_basis": "cycle.excel_match_iterative:excel:w048-excel-cycles-bitexact-001:excel_iter_fraction_precision_001",
+  "nodes": [
+    { "node_id": 1, "kind": "root", "symbol": "Root", "parent_id": null, "child_ids": [2], "formula_artifact_id": null, "bind_artifact_id": null, "constant_value": null },
+    { "node_id": 2, "kind": "calculation", "symbol": "A1", "parent_id": 1, "child_ids": [], "formula_artifact_id": "formula:w048:excel:fraction:A1", "bind_artifact_id": "bind:w048:excel:fraction:A1", "constant_value": null }
+  ],
+  "formulas": [
+    { "owner_node_id": 2, "formula_artifact_id": "formula:w048:excel:fraction:A1", "bind_artifact_id": "bind:w048:excel:fraction:A1", "expression": { "Binary": { "op": "Divide", "left": { "Binary": { "op": "Add", "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } }, "right": { "Literal": { "value": "1" } } } }, "right": { "Literal": { "value": "3" } } } } }
+  ],
+  "seeded_published_values": { "2": "0" },
+  "expected": { "result_state": "published", "published_values": { "2": "0.33333333333333331" }, "evaluation_order": [2] }
+}

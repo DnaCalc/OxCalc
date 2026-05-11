@@ -1,0 +1,51 @@
+{
+    "probe_id":  "init_seed8_decay_full_rebuild",
+    "seed":  8,
+    "formula":  "=A1/2",
+    "command":  "full_rebuild",
+    "status":  "observed",
+    "records":  [
+                    {
+                        "moment":  "initial_blank",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "",
+                                         "value2":  null,
+                                         "text":  ""
+                                     }
+                    },
+                    {
+                        "moment":  "after_seed",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "8",
+                                         "value2":  8,
+                                         "text":  "8"
+                                     }
+                    },
+                    {
+                        "moment":  "after_formula_assignment",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "=A1/2",
+                                         "value2":  0,
+                                         "text":  "0"
+                                     }
+                    },
+                    {
+                        "moment":  "after_full_rebuild",
+                        "snapshot":  {
+                                         "cell":  "Sheet1!A1",
+                                         "formula":  "=A1/2",
+                                         "value2":  0,
+                                         "text":  "0"
+                                     }
+                    }
+                ],
+    "final_snapshot":  {
+                           "cell":  "Sheet1!A1",
+                           "formula":  "=A1/2",
+                           "value2":  0,
+                           "text":  "0"
+                       }
+}

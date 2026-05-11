@@ -1,0 +1,65 @@
+{
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.emitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.rejected",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.publication_fence_mismatch",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.publication_fence_mismatch",
+      "value": 1
+    }
+  ],
+  "scenario_id": "tc_w035_candidate_after_emit_fence_reject_001"
+}

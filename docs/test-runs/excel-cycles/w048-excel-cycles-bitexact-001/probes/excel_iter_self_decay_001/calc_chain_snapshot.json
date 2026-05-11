@@ -1,0 +1,8 @@
+﻿{
+    "present":  true,
+    "entries":  [
+                    "A1"
+                ],
+    "raw_xml":  "\u003c?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?\u003e\r\n\u003ccalcChain xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"\u003e\u003cc r=\"A1\" i=\"1\" l=\"1\"/\u003e\u003c/calcChain\u003e",
+    "note":  null
+}

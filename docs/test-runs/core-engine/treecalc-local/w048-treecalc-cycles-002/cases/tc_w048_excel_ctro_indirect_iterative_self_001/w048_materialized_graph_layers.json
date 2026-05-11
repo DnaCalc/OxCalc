@@ -1,0 +1,312 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_hash":  "sha256:d61947b18f83f06bb1eb4d34b5adf6dafe3a68341eee8e0ca2d3ca614c9e1772",
+                       "basis":  {
+                                     "snapshot_id":  4816,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:ctro:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_ctro_indirect_iterative_self_001:structural:0",
+                                                 "graph_id":  "structural:tc_w048_excel_ctro_indirect_iterative_self_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_hash":  "sha256:12eea68ef25732418b43b19ba8ed0eb5e0bfe9027feec9a2c7b9dc35cdc6038b",
+                       "basis":  {
+                                     "snapshot_id":  4816,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:ctro:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_ctro_indirect_iterative_self_001:structural:0",
+                                                 "graph_id":  "published_effective:tc_w048_excel_ctro_indirect_iterative_self_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_w048_excel_ctro_indirect_iterative_self_001",
+                       "graph_hash":  "sha256:4fa4da167c8fa204316cc936990ef5ba4956ed52b340240131f1199ab9ce6c25",
+                       "basis":  {
+                                     "snapshot_id":  4816,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  "fixture:tc_w048_excel_ctro_indirect_iterative_self_001:candidate",
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:ctro:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     },
+                                     {
+                                         "node_id":  3,
+                                         "stable_symbol":  "node:3",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  null,
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_ctro_indirect_iterative_self_001:structural:0",
+                                                 "graph_id":  "candidate_effective:tc_w048_excel_ctro_indirect_iterative_self_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:ctro:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   }
+               ]
+}

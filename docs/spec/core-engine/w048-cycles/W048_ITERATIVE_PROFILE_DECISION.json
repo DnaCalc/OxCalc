@@ -1,68 +1,186 @@
 {
-  "schema_version": "oxcalc.w048.iterative_profile_decision.v1",
-  "decision_id": "w048-iterative-profile-decision-001",
-  "status": "profile_decided_for_future_non_default_use",
-  "default_profile": {
-    "profile_id": "cycle.non_iterative_stage1",
-    "iteration_enabled": false,
-    "cycle_terminal_state": "reject_candidate",
-    "publication_rule": "whole_wave_reject_no_new_cycle_values",
-    "prior_value_visibility": "published_prior_values_remain_visible_but_are_not_new_publication",
-    "root_order_policy": "canonical_diagnostic_only"
-  },
-  "excel_disposition": {
-    "profile_id": "cycle.excel_match_iterative",
-    "status": "not_admitted_yet",
-    "reason": "Public Excel documentation names iteration controls but does not specify root selection, member order, initial vector, update model, or all terminal edge cases. The first W048 COM packet records 12 observations but Application.CircularReference did not report a stable root, so Excel-match iterative semantics remain observation-gated.",
-    "current_mapping": "deferred_unobserved_for_algorithmic_details",
-    "source_run": "docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json"
-  },
-  "future_profile": {
-    "profile_id": "cycle.iterative_deterministic_v0",
-    "admission": "explicit_opt_in_only",
-    "root_policy": "canonical_node_id_root",
-    "member_order_policy": "canonical_node_id_ascending_with_stable_tiebreak_by_artifact_token",
-    "initial_value_policy": {
-      "cycle_members": "last_published_numeric_value_or_zero_if_absent",
-      "non_numeric_or_error_prior": "reject_before_iteration",
-      "missing_boundary_value": "reject_before_iteration"
-    },
-    "update_model": "jacobi_snapshot_region_function",
-    "stop_metric": {
-      "kind": "max_absolute_member_delta",
-      "threshold_parameter": "max_change",
-      "default_max_change": "0.001",
-      "eligible_values": "finite_numeric_values_only"
-    },
-    "iteration_bound": {
-      "parameter": "max_iterations",
-      "default_max_iterations": 100,
-      "zero_or_negative": "profile_configuration_reject"
-    },
-    "terminal_states": {
-      "converged": "accept_candidate_and_publish_whole_region_atomically",
-      "max_iterations_without_convergence": "reject_candidate_no_publication",
-      "divergence_detected": "reject_candidate_no_publication",
-      "oscillation_detected": "reject_candidate_no_publication",
-      "non_numeric_result": "reject_candidate_no_publication"
-    },
-    "publication_rule": "publish_only_after_converged_complete_region_and_dependent_wave",
-    "diagnostics": [
-      "cycle_region_id",
-      "cycle_root",
-      "cycle_member_order",
-      "iteration_index",
-      "max_member_delta",
-      "terminal_state",
-      "divergence_or_oscillation_witness_when_detected"
-    ],
-    "semantic_equivalence_requirement": "Scheduler optimizations may change evaluation batching only if they preserve the Jacobi snapshot sequence, terminal state, publication bundle, and diagnostics modulo timing."
-  },
-  "open_observation_requirements_before_excel_match": [
-    "root/report-cell behavior under non-iterative and iterative settings",
-    "whether Excel iterative SCC updates are chain-ordered or snapshot-style",
-    "initial value behavior for fresh, prior-valued, retained-display, and cold-open cycles",
-    "exact max-change metric over multi-member SCCs",
-    "terminal behavior for oscillation, divergence, errors, blanks, and nonnumeric values"
-  ]
+    "schema_version":  "oxcalc.w048.iterative_profile_decision.v2",
+    "decision_id":  "w048-iterative-profile-decision-002",
+    "status":  "excel_match_profile_specified_with_named_open_blockers",
+    "default_profile":  {
+                            "profile_id":  "cycle.non_iterative_stage1",
+                            "iteration_enabled":  false,
+                            "cycle_terminal_state":  "reject_candidate",
+                            "publication_rule":  "whole_wave_reject_no_new_cycle_values",
+                            "prior_value_visibility":  "published_prior_values_remain_visible_but_are_not_new_publication",
+                            "root_order_policy":  "canonical_diagnostic_only"
+                        },
+    "excel_match_profile":  {
+                                "profile_id":  "cycle.excel_match_iterative",
+                                "admission":  "implementation_target_for_reopened_w048",
+                                "evidence_runs":  [
+                                                      "docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json",
+                                                      "docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/observation.json"
+                                                  ],
+                                "root_policy":  {
+                                                    "status":  "blocked_for_report_cell_exactness",
+                                                    "implementation_policy_until_unblocked":  "saved_calc_chain_first_entry_for_member_order_diagnostics_only",
+                                                    "blocker":  "Application.CircularReference returned null in both COM packets; UI warning/report-cell capture or another public object-model surface is required before exact Excel report-cell claims."
+                                                },
+                                "member_order_policy":  {
+                                                            "status":  "observed_candidate",
+                                                            "policy":  "saved_calc_chain_order_when_available; otherwise workbook_edit_order_reconstruction_required_or_blocked",
+                                                            "evidence":  [
+                                                                             "excel_chain_edit_order_ab_001 =\u003e B1,A1 with A1=1,B1=2",
+                                                                             "excel_chain_edit_order_ba_001 =\u003e A1,B1 with A1=2,B1=1",
+                                                                             "excel_struct_three_node_001 =\u003e C1,B1,A1 with A1=2,B1=1,C1=3",
+                                                                             "excel_iter_three_node_order_001 =\u003e C1,B1,A1 with A1=102,B1=101,C1=103"
+                                                                         ]
+                                                        },
+                                "initial_value_policy":  {
+                                                             "status":  "observed_for_declared_self_cycle_prior_states",
+                                                             "fresh_numeric_or_absent":  "observed_zero_or_blank_base_for_recorded_self_cycles",
+                                                             "published_prior_numeric":  "numeric prior seeds do not survive self-cycle formula assignment for w048-excel-initial-vector-001; assignment uses zero_or_blank_derived_base for tested formulas",
+                                                             "text_or_non_numeric_prior":  "blank_text_and_error_prior_states_do_not_survive_self_cycle_formula_assignment_for_w048-excel-nonnumeric-prior-001",
+                                                             "error_prior":  "error_prior_states_do_not_survive_self_cycle_formula_assignment_for_declared_NA_and_DIV0_probes",
+                                                             "blank_prior":  "blank_prior_uses_zero_or_blank_derived_base_for_declared_self_cycle_probes"
+                                                         },
+                                "update_model":  {
+                                                     "status":  "observed_candidate",
+                                                     "policy":  "chain_ordered_sequential_region_update",
+                                                     "evidence":  [
+                                                                      "excel_iter_two_node_order_001 with max_iterations=1 yielded A1=11,B1=22, matching sequential A-then-B for the recorded workbook/edit sequence and not Jacobi snapshot B1=2.",
+                                                                      "chain-sensitive edit-order pairs produced different visible surfaces."
+                                                                  ]
+                                                 },
+                                "stop_metric":  {
+                                                    "status":  "specified_for_implementation_then_falsification",
+                                                    "kind":  "maximum_absolute_visible_numeric_delta_over_cycle_members",
+                                                    "threshold_parameter":  "max_change",
+                                                    "default_max_change":  0.001,
+                                                    "precision":  "IEEE-754 double Value2 comparison unless later Excel packet falsifies this"
+                                                },
+                                "iteration_bound":  {
+                                                        "parameter":  "max_iterations",
+                                                        "default_max_iterations":  100,
+                                                        "observed_values":  [
+                                                                                1,
+                                                                                2,
+                                                                                3,
+                                                                                5,
+                                                                                6,
+                                                                                20,
+                                                                                50
+                                                                            ]
+                                                    },
+                                "terminal_states":  {
+                                                        "converged":  "publish_whole_cycle_region_atomically_then_recompute_downstream",
+                                                        "max_iterations_without_convergence":  "publish_observed_terminal_cycle_values_if_excel_iteration_enabled_and_packet_expected_surface_matches",
+                                                        "oscillation":  "publish_observed_terminal_value_after_iteration_bound_for_excel_match_profile; reject_in_oxcalc_deterministic_profile",
+                                                        "non_numeric_or_error":  "blocked_pending_targeted_probe_for_excel_match_profile",
+                                                        "dynamic_release":  "publish_released_acyclic_candidate_and_downstream_values"
+                                                    },
+                                "publication_rule":  "Excel-match profile may publish cycle-region terminal values only when iteration is enabled; non-iterative default remains no-new-cycle-values rejection.",
+                                "diagnostics":  [
+                                                    "cycle_region_id",
+                                                    "cycle_root_report_cell_status",
+                                                    "cycle_member_order",
+                                                    "initial_value_vector",
+                                                    "iteration_index",
+                                                    "max_member_delta",
+                                                    "terminal_state",
+                                                    "publication_decision",
+                                                    "evidence_run_id"
+                                                ],
+                                "thread_mode_policy":  {
+                                                           "single_thread_observed":  "implemented_declared_fixture_profile",
+                                                           "multithread_observed":  "observed_variant_not_yet_implemented_in_tracecalc_treecalc",
+                                                           "multithread_evidence_run":  "docs/test-runs/excel-cycles/w048-excel-multithread-variant-001/observation.json"
+                                                       }
+                            },
+    "oxcalc_deterministic_profile":  {
+                                         "profile_id":  "cycle.iterative_deterministic_v0",
+                                         "admission":  "explicit_opt_in_only",
+                                         "root_policy":  "canonical_node_id_root",
+                                         "member_order_policy":  "canonical_node_id_ascending_with_stable_tiebreak_by_artifact_token",
+                                         "initial_value_policy":  {
+                                                                      "cycle_members":  "last_published_numeric_value_or_zero_if_absent",
+                                                                      "non_numeric_or_error_prior":  "reject_before_iteration",
+                                                                      "missing_boundary_value":  "reject_before_iteration"
+                                                                  },
+                                         "update_model":  "jacobi_snapshot_region_function",
+                                         "stop_metric":  {
+                                                             "kind":  "max_absolute_member_delta",
+                                                             "threshold_parameter":  "max_change",
+                                                             "default_max_change":  0.001,
+                                                             "eligible_values":  "finite_numeric_values_only"
+                                                         },
+                                         "iteration_bound":  {
+                                                                 "parameter":  "max_iterations",
+                                                                 "default_max_iterations":  100,
+                                                                 "zero_or_negative":  "profile_configuration_reject"
+                                                             },
+                                         "terminal_states":  {
+                                                                 "converged":  "accept_candidate_and_publish_whole_region_atomically",
+                                                                 "max_iterations_without_convergence":  "reject_candidate_no_publication",
+                                                                 "divergence_detected":  "reject_candidate_no_publication",
+                                                                 "oscillation_detected":  "reject_candidate_no_publication",
+                                                                 "non_numeric_result":  "reject_candidate_no_publication"
+                                                             },
+                                         "publication_rule":  "publish_only_after_converged_complete_region_and_dependent_wave",
+                                         "diagnostics":  [
+                                                             "cycle_region_id",
+                                                             "cycle_root",
+                                                             "cycle_member_order",
+                                                             "iteration_index",
+                                                             "max_member_delta",
+                                                             "terminal_state",
+                                                             "divergence_or_oscillation_witness_when_detected"
+                                                         ],
+                                         "semantic_equivalence_requirement":  "Scheduler optimizations may change evaluation batching only if they preserve the Jacobi snapshot sequence, terminal state, publication bundle, and diagnostics modulo timing."
+                                     },
+    "falsification_fixtures":  [
+                                   {
+                                       "probe_id":  "excel_iter_two_node_order_001",
+                                       "expected_cells":  {
+                                                              "Sheet1!A1":  11,
+                                                              "Sheet1!B1":  22
+                                                          },
+                                       "expected_chain":  [
+                                                              "B1",
+                                                              "A1"
+                                                          ]
+                                   },
+                                   {
+                                       "probe_id":  "excel_iter_three_node_order_001",
+                                       "expected_cells":  {
+                                                              "Sheet1!A1":  102,
+                                                              "Sheet1!B1":  101,
+                                                              "Sheet1!C1":  103
+                                                          },
+                                       "expected_chain":  [
+                                                              "C1",
+                                                              "B1",
+                                                              "A1"
+                                                          ]
+                                   },
+                                   {
+                                       "probe_id":  "excel_iter_fraction_precision_001",
+                                       "expected_cells":  {
+                                                              "Sheet1!A1":  0.33333333333333331
+                                                          },
+                                       "expected_chain":  [
+                                                              "A1"
+                                                          ]
+                                   },
+                                   {
+                                       "probe_id":  "excel_ctro_indirect_iterative_self_001",
+                                       "expected_cells":  {
+                                                              "Sheet1!A1":  1,
+                                                              "Sheet1!B1":  "A1"
+                                                          },
+                                       "expected_chain":  [
+                                                              "A1"
+                                                          ]
+                                   }
+                               ],
+    "open_blockers_before_final_excel_match_claim":  [
+                                                         "BLK-W048-EXCEL-ROOT: capture report-cell/root behavior through UI warning or an object-model surface that does not return null for circular references in the current COM packets.",
+                                                         "BLK-W048-EXCEL-VERSION: repeat at least the falsification fixture set on a second Excel host/version before broad Excel compatibility claims."
+                                                     ]
 }

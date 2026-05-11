@@ -1,0 +1,132 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_local_shape_topology_reject_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_shape_topology_reject_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_local_shape_topology_reject_001",
+                       "graph_hash":  "sha256:6516a7883a41091e029691dbcc1214be39c9850bd06e543bb4ee35905885e9a9",
+                       "basis":  {
+                                     "snapshot_id":  21,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:shape",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_shape_topology_reject_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_local_shape_topology_reject_001",
+                       "graph_hash":  "sha256:1dbc559fbeb56282ab768bbb3c17606c74368d3bcf3077d232a29ee491f76318",
+                       "basis":  {
+                                     "snapshot_id":  21,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:shape",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  "cycle_detected"
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_local_shape_topology_reject_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_local_shape_topology_reject_001",
+                       "graph_hash":  "sha256:b07e0aacf23199765591acc6deac9909624b530e116c1c1fa49087ca4bf82a48",
+                       "basis":  {
+                                     "snapshot_id":  21,
+                                     "profile_id":  "stage1.non_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:shape",
+                                         "calc_state":  "RejectedPendingRepair",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+
+                                         ],
+                       "reverse_edges":  [
+
+                                         ],
+                       "edge_provenance":  [
+
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  "cycle_detected"
+                   }
+               ]
+}

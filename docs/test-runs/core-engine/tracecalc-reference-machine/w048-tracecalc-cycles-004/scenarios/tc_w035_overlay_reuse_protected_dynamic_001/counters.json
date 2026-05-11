@@ -1,0 +1,65 @@
+{
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 2
+    },
+    {
+      "counter": "candidate.admitted",
+      "value": 2
+    },
+    {
+      "counter": "candidate.emitted",
+      "value": 2
+    },
+    {
+      "counter": "candidate.published",
+      "value": 2
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 2
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_hits",
+      "value": 1
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 2
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "overlay_reuse_after_retention",
+      "value": 1
+    },
+    {
+      "counter": "publications_committed",
+      "value": 2
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 2
+    }
+  ],
+  "scenario_id": "tc_w035_overlay_reuse_protected_dynamic_001"
+}

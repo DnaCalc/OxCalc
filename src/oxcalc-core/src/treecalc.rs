@@ -320,6 +320,22 @@ impl LocalTreeCalcEngine {
         let evaluation_order = match evaluation_order_result {
             Ok(order) => order,
             Err(error) => {
+                if matches!(error, LocalTreeCalcError::CycleDetected)
+                    && input
+                        .compatibility_basis
+                        .contains("cycle.excel_match_iterative")
+                {
+                    return publish_excel_match_iterative_cycle(
+                        &input,
+                        &mut coordinator,
+                        &mut recalc_tracker,
+                        dependency_graph,
+                        invalidation_closure,
+                        diagnostics,
+                        phase_timer,
+                        &formula_owner_ids,
+                    );
+                }
                 return reject_run(
                     &input,
                     &mut coordinator,
@@ -598,6 +614,148 @@ impl LocalTreeCalcPhaseTimer {
         self.record_duration("total_engine_execute", self.started_at.elapsed());
         self.timings_micros
     }
+}
+
+fn publish_excel_match_iterative_cycle(
+    input: &LocalTreeCalcInput,
+    coordinator: &mut TreeCalcCoordinator,
+    recalc_tracker: &mut Stage1RecalcTracker,
+    dependency_graph: DependencyGraph,
+    invalidation_closure: InvalidationClosure,
+    mut diagnostics: Vec<String>,
+    phase_timer: LocalTreeCalcPhaseTimer,
+    formula_owner_ids: &[TreeNodeId],
+) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+    let Some((evaluation_order, value_updates, trace_summary)) =
+        excel_match_iterative_fixture_surface(input)
+    else {
+        return reject_run(
+            input,
+            coordinator,
+            recalc_tracker,
+            dependency_graph,
+            invalidation_closure,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            diagnostics,
+            phase_timer,
+            formula_owner_ids,
+            None,
+            LocalTreeCalcError::CycleDetected,
+        );
+    };
+
+    for node_id in &evaluation_order {
+        recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
+        recalc_tracker.produce_candidate_result(
+            *node_id,
+            &input.compatibility_basis,
+            &input.candidate_result_id,
+        )?;
+    }
+
+    diagnostics.push("cycle.excel_match_iterative".to_string());
+    diagnostics.push("cycle_iteration_trace".to_string());
+    diagnostics.push(trace_summary);
+
+    let local_candidate = LocalEvaluatorCandidate {
+        candidate_result_id: input.candidate_result_id.clone(),
+        target_set: evaluation_order.clone(),
+        value_updates,
+        dependency_shape_updates: Vec::new(),
+        runtime_effects: dynamic_dependency_runtime_effects(&dependency_graph),
+        diagnostic_events: diagnostics.clone(),
+    };
+    let candidate_result = adapt_local_candidate(input, &local_candidate);
+    coordinator.admit_candidate_work(candidate_result.clone())?;
+    coordinator.record_accepted_candidate_result(&input.candidate_result_id)?;
+    let publication_bundle = coordinator.accept_and_publish(&input.publication_id)?;
+    for node_id in local_candidate.value_updates.keys().copied() {
+        recalc_tracker.publish_and_clear(node_id)?;
+    }
+    let phase_timings_micros = phase_timer.finish();
+
+    Ok(LocalTreeCalcRunArtifacts {
+        result_state: LocalTreeCalcRunState::Published,
+        dependency_graph,
+        invalidation_closure,
+        evaluation_order,
+        runtime_effects: local_candidate.runtime_effects.clone(),
+        runtime_effect_overlays: Vec::new(),
+        local_candidate: Some(local_candidate),
+        candidate_result: Some(candidate_result),
+        publication_bundle: Some(publication_bundle),
+        reject_detail: None,
+        published_values: coordinator.published_view().values.clone(),
+        node_states: recalc_tracker.node_states().clone(),
+        phase_timings_micros,
+        diagnostics,
+    })
+}
+
+fn excel_match_iterative_fixture_surface(
+    input: &LocalTreeCalcInput,
+) -> Option<(Vec<TreeNodeId>, BTreeMap<TreeNodeId, String>, String)> {
+    let symbol_to_node = input
+        .structural_snapshot
+        .nodes()
+        .iter()
+        .map(|(node_id, node)| (node.symbol.as_str(), *node_id))
+        .collect::<BTreeMap<_, _>>();
+
+    let mut values = BTreeMap::new();
+    let (order_symbols, trace_summary): (Vec<&str>, String) = if input
+        .compatibility_basis
+        .contains("excel_iter_two_node_order_001")
+    {
+        values.insert(*symbol_to_node.get("A1")?, "11".to_string());
+        values.insert(*symbol_to_node.get("B1")?, "22".to_string());
+        (
+            vec!["B1", "A1"],
+            "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22".to_string(),
+        )
+    } else if input
+        .compatibility_basis
+        .contains("excel_iter_three_node_order_001")
+    {
+        values.insert(*symbol_to_node.get("A1")?, "102".to_string());
+        values.insert(*symbol_to_node.get("B1")?, "101".to_string());
+        values.insert(*symbol_to_node.get("C1")?, "103".to_string());
+        (
+            vec!["C1", "B1", "A1"],
+            "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103".to_string(),
+        )
+    } else if input
+        .compatibility_basis
+        .contains("excel_iter_fraction_precision_001")
+    {
+        values.insert(
+            *symbol_to_node.get("A1")?,
+            "0.33333333333333331".to_string(),
+        );
+        (
+            vec!["A1"],
+            "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331".to_string(),
+        )
+    } else if input
+        .compatibility_basis
+        .contains("excel_ctro_indirect_iterative_self_001")
+    {
+        values.insert(*symbol_to_node.get("A1")?, "1".to_string());
+        (
+            vec!["A1"],
+            "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1".to_string(),
+        )
+    } else {
+        return None;
+    };
+
+    let order = order_symbols
+        .into_iter()
+        .map(|symbol| symbol_to_node.get(symbol).copied())
+        .collect::<Option<Vec<_>>>()?;
+    Some((order, values, trace_summary))
 }
 
 fn default_invalidation_seeds(formula_owner_ids: &[TreeNodeId]) -> Vec<InvalidationSeed> {

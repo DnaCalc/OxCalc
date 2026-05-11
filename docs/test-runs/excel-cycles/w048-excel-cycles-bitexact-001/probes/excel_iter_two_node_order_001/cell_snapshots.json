@@ -1,0 +1,16 @@
+﻿[
+    {
+        "cell":  "Sheet1!A1",
+        "formula":  "=B1+1",
+        "value2":  11,
+        "text":  "11",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!B1",
+        "formula":  "=A1*2",
+        "value2":  22,
+        "text":  "22",
+        "error":  null
+    }
+]

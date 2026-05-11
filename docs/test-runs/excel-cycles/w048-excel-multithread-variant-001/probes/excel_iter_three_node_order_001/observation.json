@@ -1,0 +1,36 @@
+{
+    "probe_id":  "excel_iter_three_node_order_001",
+    "status":  "observed",
+    "iteration_profile":  {
+                              "enabled":  true,
+                              "max_iterations":  2,
+                              "max_change":  0.001
+                          },
+    "multi_threaded_enabled":  true,
+    "thread_count":  16,
+    "cell_results":  [
+                         {
+                             "cell":  "Sheet1!A1",
+                             "formula":  "=B1+1",
+                             "value2":  5,
+                             "text":  "5"
+                         },
+                         {
+                             "cell":  "Sheet1!B1",
+                             "formula":  "=C1+1",
+                             "value2":  107,
+                             "text":  "107"
+                         },
+                         {
+                             "cell":  "Sheet1!C1",
+                             "formula":  "=A1+1",
+                             "value2":  6,
+                             "text":  "6"
+                         }
+                     ],
+    "expected":  {
+                     "A1":  "102",
+                     "B1":  "101",
+                     "C1":  "103"
+                 }
+}

@@ -1,0 +1,35 @@
+{
+  "artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/counters.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/published_view.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w048_excel_iter_fraction_precision_001/trace.json"
+  },
+  "assertion_failures": [],
+  "conformance_mismatches": [],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "pack_bindings": [
+      "PACK.dag.cycle_iterative_semantics"
+    ],
+    "replay_classes": [
+      "oxcalc.local.w048.excel_match_iterative"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "trace_labels",
+      "counters"
+    ],
+    "safety_properties": [
+      "cycle_iterative_publish_is_atomic"
+    ],
+    "transition_labels": [
+      "W048_EXCEL_ITERATIVE_FRACTION_PRECISION"
+    ]
+  },
+  "result_state": "passed",
+  "scenario_id": "tc_w048_excel_iter_fraction_precision_001",
+  "validation_failures": []
+}

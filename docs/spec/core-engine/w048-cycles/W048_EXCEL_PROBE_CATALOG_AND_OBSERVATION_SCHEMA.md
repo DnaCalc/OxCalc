@@ -15,7 +15,10 @@ Excel matching must be based on explicit observation packets. Public documentati
 7. release/re-entry behavior;
 8. downstream dependent state.
 
-This document defines the probe catalog and observation schema. The first normalized observation ledger now lives in `W048_EXCEL_OBSERVATION_LEDGER.md` and points to `docs/test-runs/excel-cycles/w048-excel-cycles-001/`.
+This document defines the probe catalog and observation schema. Normalized observation ledgers live in `W048_EXCEL_OBSERVATION_LEDGER.md` and currently point to:
+
+1. `docs/test-runs/excel-cycles/w048-excel-cycles-001/` — first 12-probe core packet;
+2. `docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/` — expanded 19-probe bit-exact packet.
 
 The W048 scope includes executing these probes where Excel is available, normalizing observations, and using them to drive OxCalc implementation and tests.
 
@@ -189,6 +192,7 @@ Allowed hypothesis confidence:
 | `excel_chain_edit_order_ba_001` | same cycle by editing B then A | compare root/order with AB |
 | `excel_chain_cold_open_001` | save/reopen existing cycle | saved chain effect |
 | `excel_chain_full_rebuild_001` | run full rebuild before observation | dependency-tree/chain rebuild effect |
+| `excel_chain_full_rebuild_compare_001` | iterative two-node cycle, full rebuild then ordinary calculate | full rebuild versus ordinary calculate in saved chain state |
 | `excel_chain_range_rowmajor_001` | use row-major range calculation where available | row-major command effect |
 
 ### 7.4 CTRO/Dynamic Reference Probes
@@ -200,6 +204,7 @@ Allowed hypothesis confidence:
 | `excel_ctro_indirect_release_001` | dynamic target moves from self-cycle to acyclic target | release/re-entry timing |
 | `excel_ctro_downstream_001` | dynamic cycle has dependent `D1 = C1 + 1` | downstream retained/stale/recomputed value |
 | `excel_ctro_volatile_selector_001` | volatile selector affects dynamic target | volatility plus dynamic cycle |
+| `excel_ctro_indirect_iterative_self_001` | `INDIRECT` self-cycle with iteration enabled | dynamic-reference iterative profile input |
 
 ### 7.5 Region And Spill Probes
 
@@ -242,18 +247,30 @@ Root/order should be probed by varying only one factor:
 
 If a pair differs only in edit order and reports different cycle cells or iterative results, W048 should treat chain/edit history as part of the Excel-match profile.
 
-## 10. First Execution Packet
+## 10. Execution Packets
 
 Run `w048-excel-cycles-001` executed a 12-probe core packet through `scripts/run-w048-excel-cycle-probes.ps1`. It covers structural self/two/three-node cycles, prior-value and guarded activation probes, first iterative order probes, edit-order calculation-chain probes, and INDIRECT/dynamic-reference CTRO analog release/downstream probes.
 
 Evidence root: `docs/test-runs/excel-cycles/w048-excel-cycles-001/`.
 
+Run `w048-excel-cycles-bitexact-001` executed the expanded 19-probe `bitexact` packet through the same PowerShell runner. It includes the 12 core probes plus convergence, three-node order, oscillation, non-numeric prior, fractional precision, full-rebuild compare, and iterative INDIRECT self-cycle probes.
+
+Evidence root: `docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/`.
+
+Both packets are validated by:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-observation-packet.ps1 docs/test-runs/excel-cycles/w048-excel-cycles-001
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-observation-packet.ps1 docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001 -MinimumProbeCount 19
+```
+
 Interpretation status:
 
 1. observed cell values and saved calculation-chain entries are recorded as black-box workbook evidence;
-2. `Application.CircularReference` did not surface a reported root in this automation packet, so root/report-cell behavior remains inconclusive;
+2. `Application.CircularReference` did not surface a reported root in these automation packets, so root/report-cell behavior remains inconclusive;
 3. edit-order probes produced different saved chain entries and different visible values, so W048 must keep chain/order as an explicit Excel-compatible profile axis;
-4. CTRO analog release/downstream probes give first visible targets for W048 release/re-entry fixtures, but do not change the conservative OxCalc no-publication/no-overlay-commit Stage 1 policy.
+4. CTRO analog release/downstream probes give first visible targets for W048 release/re-entry fixtures, but do not change the conservative OxCalc no-publication/no-overlay-commit Stage 1 policy;
+5. iterative probes now cover max-iteration, update order, convergence, oscillation, non-numeric prior state, fractional precision, full-rebuild comparison, and dynamic-reference self-cycles, but they are still observation inputs rather than an implementation/closure claim.
 
 See `W048_EXCEL_OBSERVATION_LEDGER.md` for the normalized summary and caveats.
 
@@ -286,7 +303,6 @@ If Excel behavior cannot be matched without hidden chain state, the W048 output 
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - Excel host availability and automated runner
-  - workbook packet creation
-  - observation normalization
+  - Excel-match iterative profile derivation from recorded packets
   - comparison against OxCalc graph/cycle artifacts
+  - TraceCalc/TreeCalc implementation and conformance fixtures

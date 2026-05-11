@@ -1,0 +1,29 @@
+{
+    "probe_id":  "excel_ctro_indirect_iterative_self_001",
+    "status":  "observed",
+    "iteration_profile":  {
+                              "enabled":  true,
+                              "max_iterations":  5,
+                              "max_change":  0.001
+                          },
+    "multi_threaded_enabled":  true,
+    "thread_count":  16,
+    "cell_results":  [
+                         {
+                             "cell":  "Sheet1!A1",
+                             "formula":  "=INDIRECT(B1)+1",
+                             "value2":  10,
+                             "text":  "10"
+                         },
+                         {
+                             "cell":  "Sheet1!B1",
+                             "formula":  "A1",
+                             "value2":  "A1",
+                             "text":  "A1"
+                         }
+                     ],
+    "expected":  {
+                     "B1":  "A1",
+                     "A1":  "1"
+                 }
+}

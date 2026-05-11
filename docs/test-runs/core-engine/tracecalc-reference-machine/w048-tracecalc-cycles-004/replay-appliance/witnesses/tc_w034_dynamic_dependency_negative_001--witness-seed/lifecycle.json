@@ -1,0 +1,28 @@
+{
+  "anchor_counts": {
+    "event_group_count": 1,
+    "phase_block_count": 1,
+    "reject_record_count": 1,
+    "view_slice_count": 1
+  },
+  "lifecycle_state": "wit.generated_local",
+  "pack_eligible": false,
+  "quarantine_reason": null,
+  "reduction_manifest_path": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/replay-appliance/reductions/tc_w034_dynamic_dependency_negative_001--reduction-seed/reduction_manifest.json",
+  "replay_validity_assessed": false,
+  "run_id": "w048-tracecalc-cycles-004",
+  "scenario_id": "tc_w034_dynamic_dependency_negative_001",
+  "schema_version": "oxcalc.tracecalc.witness_lifecycle.v1",
+  "source_artifact_paths": {
+    "counters": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/counters.json",
+    "engine_diff": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/conformance/engine_diff.json",
+    "pinned_views": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/pinned_views.json",
+    "published_view": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/published_view.json",
+    "reduction_manifest": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/replay-appliance/reductions/tc_w034_dynamic_dependency_negative_001--reduction-seed/reduction_manifest.json",
+    "rejects": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/rejects.json",
+    "result": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/result.json",
+    "trace": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/scenarios/tc_w034_dynamic_dependency_negative_001/trace.json",
+    "witness_lifecycle": "docs/test-runs/core-engine/tracecalc-reference-machine/w048-tracecalc-cycles-004/replay-appliance/witnesses/tc_w034_dynamic_dependency_negative_001--witness-seed/lifecycle.json"
+  },
+  "witness_id": "tc_w034_dynamic_dependency_negative_001--witness-seed"
+}

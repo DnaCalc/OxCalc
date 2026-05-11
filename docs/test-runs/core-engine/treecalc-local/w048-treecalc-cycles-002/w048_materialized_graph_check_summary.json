@@ -1,0 +1,269 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_check_summary.v1",
+    "run_root":  "docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002",
+    "case_count":  37,
+    "layer_count":  111,
+    "cycle_region_count":  24,
+    "check_error_count":  0,
+    "case_summaries":  [
+                           {
+                               "case_id":  "tc_local_capability_sensitive_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_capability_sensitive_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_addition_auto_post_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_addition_auto_post_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_release_reclassification_post_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_release_reclassification_post_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_resolved_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_resolved_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_dynamic_target_switch_downstream_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_dynamic_target_switch_downstream_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_host_sensitive_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_host_sensitive_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_lambda_host_sensitive_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_lambda_host_sensitive_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_let_lambda_capture_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_let_lambda_capture_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_mixed_publish_then_post_edit_overlay_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_mixed_publish_then_post_edit_overlay_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_move_direct_target_rebind_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_move_direct_target_rebind_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_post_edit_capability_sensitive_overlay_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_post_edit_capability_sensitive_overlay_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_post_edit_host_sensitive_overlay_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_post_edit_host_sensitive_overlay_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_post_edit_shape_topology_overlay_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_post_edit_shape_topology_overlay_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_rebind_after_rename_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_rebind_after_rename_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_recalc_after_constant_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_recalc_after_constant_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_recalc_chain_after_constant_edit_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_recalc_chain_after_constant_edit_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_relative_sum_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_relative_sum_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_remove_direct_target_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_remove_direct_target_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_shape_topology_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_shape_topology_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_sibling_offset_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_sibling_offset_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_tracecalc_accept_publish_equiv_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_tracecalc_accept_publish_equiv_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_tracecalc_multinode_dag_equiv_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_tracecalc_multinode_dag_equiv_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_verified_clean_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_verified_clean_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_w034_higher_order_let_lambda_publish_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_w034_higher_order_let_lambda_publish_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_local_w034_independent_order_equiv_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_local_w034_independent_order_equiv_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  0,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_ctro_dynamic_self_cycle_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_ctro_dynamic_self_cycle_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_excel_ctro_indirect_iterative_self_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_excel_iter_fraction_precision_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_excel_iter_fraction_precision_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_excel_iter_three_node_order_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_excel_iter_three_node_order_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_excel_iter_two_node_order_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_excel_iter_two_node_order_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_structural_self_cycle_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_structural_self_cycle_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           },
+                           {
+                               "case_id":  "tc_w048_structural_two_node_cycle_reject_001",
+                               "materialized_graph_layers_path":  "C:/Work/DnaCalc/OxCalc/docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/cases/tc_w048_structural_two_node_cycle_reject_001/w048_materialized_graph_layers.json",
+                               "layer_count":  3,
+                               "cycle_region_count":  3,
+                               "check_error_count":  0
+                           }
+                       ]
+}

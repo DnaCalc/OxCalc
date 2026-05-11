@@ -1,0 +1,21 @@
+[
+  {
+    "calc_state": "DirtyPending",
+    "node_id": 2,
+    "reasons": [
+      "DynamicDependencyActivated",
+      "DynamicDependencyReleased",
+      "DynamicDependencyReclassified"
+    ],
+    "requires_rebind": false
+  },
+  {
+    "calc_state": "DirtyPending",
+    "node_id": 4,
+    "reasons": [
+      "StructuralRecalcOnly",
+      "UpstreamPublication"
+    ],
+    "requires_rebind": false
+  }
+]

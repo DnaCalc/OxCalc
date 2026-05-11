@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OxCalc — CTRO and Circular-Reference Core Engine Showcase</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--ink:#172033;--soft:#465064;--paper:#fbfaf6;--rule:#cfd6e3;--blue:#1f6feb;--teal:#0f766e;--violet:#7c3aed;--orange:#b45309;--red:#b91c1c;--green:#15803d;--code:#0f172a;--codefg:#e5edf7;--hl:#fff7d6}
+  *{box-sizing:border-box} body{margin:0;background:#e8ebef;color:var(--ink);font:14px/1.45 "Inter","Segoe UI",system-ui,sans-serif}.doc{max-width:900px;margin:0 auto;padding:24px 0}.page{width:900px;min-height:1180px;background:var(--paper);margin:18px auto;padding:46px 58px 56px 58px;position:relative;box-shadow:0 1px 2px #0001,0 8px 24px #0002;page-break-after:always}.page:last-child{page-break-after:auto}.rail{position:absolute;left:32px;top:46px;bottom:46px;width:3px;border-radius:2px;background:linear-gradient(var(--blue),var(--teal),var(--violet))}.num{position:absolute;right:32px;bottom:18px;font-size:11px;color:var(--soft);letter-spacing:.12em}.eyebrow{font-size:11px;color:var(--blue);font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}h1,h2,h3,h4{font-family:"Newsreader","Source Serif 4",Georgia,serif;margin:0 0 .55em 0;letter-spacing:-.01em}h1{font-size:35px;line-height:1.08}h2{font-size:24px;border-bottom:1px solid var(--rule);padding-bottom:.25em}h3{font-size:17px;color:var(--blue);margin-top:1.1em}h4{font:700 12px/1.2 "Inter",system-ui,sans-serif;color:var(--orange);text-transform:uppercase;letter-spacing:.08em;margin:.8em 0 .35em}.lede{font-size:16px;color:var(--soft);line-height:1.55}.small,small{font-size:11.5px;color:var(--soft)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid12{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}.grid21{display:grid;grid-template-columns:1fr 1.35fr;gap:18px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.card{background:#fff;border:1px solid var(--rule);border-radius:7px;padding:12px 14px;font-size:12.5px}.card.callout{border-left:4px solid var(--blue);background:#f4f8ff}.card.good{border-left:4px solid var(--green);background:#f3fbf4}.card.warn{border-left:4px solid var(--red);background:#fff5f5}.card.theory{border-left:4px solid var(--violet);background:#faf5ff}.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:#dbeafe;color:#0a3d91;border:1px solid #bfdbfe;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.pill.good{background:#dcfce7;color:#065f46;border-color:#bbf7d0}.pill.warn{background:#fee2e2;color:#991b1b;border-color:#fecaca}.pill.theory{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}.pill.muted{background:#eef2f7;color:#475569;border-color:#dbe2ea}pre.code{background:var(--code);color:var(--codefg);border-radius:7px;padding:12px 14px;font:11.5px/1.48 "JetBrains Mono",Consolas,monospace;overflow:auto}.k{color:#93c5fd;font-weight:700}.s{color:#86efac}.n{color:#fcd34d}.c{color:#94a3b8;font-style:italic}.h{background:#fcd34d33;border-radius:3px}table{border-collapse:collapse;width:100%;font-size:12px;margin:7px 0}th,td{border:1px solid var(--rule);padding:5px 7px;vertical-align:top;text-align:left}th{background:#eef2f7}.toc{columns:2}.toc li{break-inside:avoid;margin:2px 0}.arrow{list-style:none;padding:0;margin:.4em 0}.arrow li{position:relative;padding-left:18px;margin:3px 0}.arrow li:before{content:"›";position:absolute;left:4px;color:var(--blue);font-weight:800}.svgbox{background:#fff;border:1px solid var(--rule);border-radius:7px;padding:10px;margin:8px 0}.caption{text-align:center;font-size:11px;color:var(--soft);font-style:italic}.mono{font-family:"JetBrains Mono",Consolas,monospace}.metric{display:flex;gap:8px;align-items:baseline}.metric b{font-family:Georgia,serif;font-size:25px;color:var(--blue)}button.step{border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:5px;padding:4px 8px;margin:2px;font-weight:700;cursor:pointer}button.step.active{background:#1f6feb;color:white}.stepbox{min-height:118px;border:1px solid var(--rule);border-radius:7px;background:white;padding:10px;margin-top:8px}.bar{height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--teal))}.note{border-top:1px dashed var(--rule);padding-top:7px;margin-top:10px}.stamp{position:absolute;right:52px;top:36px;border:2px solid var(--blue);color:var(--blue);transform:rotate(3deg);padding:5px 10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:#ffffffaa}
+</style>
+</head>
+<body><main class="doc">
+<section class="page"><div class="rail"></div><div class="stamp">Showcase</div>
+  <div class="eyebrow">OxCalc core engine · W047 + W048</div>
+  <h1>Calc-Time Rebinding Overlay and Circular-Reference Processing</h1>
+  <p class="lede">A deep technical brochure for the current OxCalc core-engine state after W047 and the predecessor W048 Stage 1 cycle slice: how dynamic dependency rebinding is represented as an effective-graph overlay, how circular references are classified across structural and candidate graph layers, and how TraceCalc reference behavior and TreeCalc optimized/core behavior line up under deterministic evidence. Reopen note: W048 is now in progress again for the fuller Excel-match, bit-exact iterative circular-reference target.</p>
+  <div class="grid3">
+    <div class="card"><div class="metric"><b>29</b><span>checked-in W047 TreeCalc cases</span></div><p class="small">Run root: <code>docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001</code>.</p></div>
+    <div class="card"><div class="metric"><b>33</b><span>W048 TreeCalc cycle cases</span></div><p class="small">W048 run has 18 published, 14 rejected, 1 verified-clean, 0 expectation mismatches.</p></div>
+    <div class="card"><div class="metric"><b>99</b><span>materialized graph layers</span></div><p class="small">W048 emits structural, published-effective, and candidate-effective graph layers.</p></div>
+  </div>
+  <div class="doc-meta grid2">
+    <div><b>Primary artifacts</b><br><span class="small">W047: <code>docs/spec/core-engine/w047-ctro/</code><br>W048: <code>docs/spec/core-engine/w048-cycles/</code></span></div>
+    <div><b>Evidence used by this brochure</b><br><span class="small"><code>cargo run -p oxcalc-tracecalc-cli -- treecalc w047-ctro-dynamic-positive-publication-001</code><br><code>cargo run -p oxcalc-tracecalc-cli -- treecalc w048-treecalc-cycles-001</code><br><code>legacy W048 checker artifacts are referenced only as predecessor evidence</code><br><code>reopened W048 must use PowerShell/Rust/C# tooling</code></span></div>
+  </div>
+  <div class="num">01 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Table of contents</div><h2>What this brochure covers</h2>
+  <div class="toc"><ol>
+    <li>One map of the two worksets <small>p.3</small></li><li>The CTRO state model <small>p.4</small></li><li>CTRO data structures in Rust <small>p.5</small></li><li>CTRO algorithm and correctness properties <small>p.6</small></li><li>Interactive CTRO target-switch example <small>p.7</small></li><li>Cycle graph layers and policy <small>p.8</small></li><li>Cycle data structures and Tarjan SCC pass <small>p.9</small></li><li>Interactive release/re-entry example <small>p.10</small></li><li>TraceCalc vs TreeCalc <small>p.11</small></li><li>Formal/checker surface <small>p.12</small></li><li>Run/evidence inventory <small>p.13</small></li><li>Where the core engine stands now <small>p.14</small></li>
+  </ol></div>
+  <div class="card callout"><b>Terminology note.</b> W047 uses <em>CTRO</em> to mean Calc-Time Rebinding Overlay: runtime-observed dependency-shape facts are staged as candidate overlay facts and only become future graph truth through an accepted publication. W048 uses that same graph model to make cycle handling explicit.</div>
+  <div class="num">02 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">System map</div><h2>W047 and W048 are one pipeline, not two isolated features</h2>
+  <div class="grid12"><div>
+    <p>W047 established the effective-graph overlay model. A formula can discover at calculation time that it depends on a new node, no longer depends on an old node, or changed the class of a runtime-derived dependency. Those facts do not mutate the structural snapshot. They form <code>O_candidate</code>.</p>
+    <p>W048 then asks what happens when a structural graph or a candidate overlay graph contains a cycle. The answer is now explicit: materialize the relevant graph layer, classify SCCs, reject non-iterative cycles with no publication, and preserve evidence for replay and future formalization.</p>
+    <div class="card good"><b>Core shape now:</b> structural graph build → published overlay composition → invalidation → evaluation → candidate overlay diff → candidate graph cycle classification → atomic publish or no-publish reject.</div>
+  </div><div class="svgbox">
+    <svg viewBox="0 0 360 360" aria-label="pipeline diagram">
+      <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1f6feb"/></marker></defs>
+      <rect x="20" y="22" width="130" height="45" rx="8" fill="#eff6ff" stroke="#93c5fd"/><text x="85" y="49" text-anchor="middle" font-size="12">S + G_struct</text>
+      <rect x="210" y="22" width="130" height="45" rx="8" fill="#ecfdf5" stroke="#5eead4"/><text x="275" y="49" text-anchor="middle" font-size="12">O_published</text>
+      <rect x="80" y="112" width="200" height="48" rx="8" fill="#fff" stroke="#cfd6e3"/><text x="180" y="141" text-anchor="middle" font-size="12">G_eff + reverse edges</text>
+      <rect x="80" y="205" width="200" height="48" rx="8" fill="#faf5ff" stroke="#c4b5fd"/><text x="180" y="234" text-anchor="middle" font-size="12">O_candidate + G_eff_next</text>
+      <rect x="20" y="298" width="130" height="42" rx="8" fill="#fee2e2" stroke="#fca5a5"/><text x="85" y="324" text-anchor="middle" font-size="12">Reject/no publish</text>
+      <rect x="210" y="298" width="130" height="42" rx="8" fill="#dcfce7" stroke="#86efac"/><text x="275" y="324" text-anchor="middle" font-size="12">Atomic publish</text>
+      <path d="M85 67 L135 112" stroke="#1f6feb" marker-end="url(#a)" fill="none"/><path d="M275 67 L225 112" stroke="#1f6feb" marker-end="url(#a)" fill="none"/><path d="M180 160 L180 205" stroke="#1f6feb" marker-end="url(#a)" fill="none"/><path d="M160 253 L95 298" stroke="#1f6feb" marker-end="url(#a)" fill="none"/><path d="M200 253 L265 298" stroke="#1f6feb" marker-end="url(#a)" fill="none"/>
+    </svg><div class="caption">The W047 overlay pipeline creates the W048 candidate-effective graph classification point.</div>
+  </div></div>
+  <table><tr><th>Layer</th><th>Question answered</th><th>Current status</th></tr><tr><td><code>G_struct</code></td><td>What follows from the immutable structural snapshot?</td><td>Implemented in TreeCalc graph build with forward/reverse edges and SCC groups.</td></tr><tr><td><code>G_eff</code></td><td>What graph is effective after previously accepted runtime overlay facts?</td><td>Represented by seeded published runtime effects and materialized W048 graph sidecars.</td></tr><tr><td><code>G_eff_candidate</code></td><td>What would be effective if this candidate overlay published?</td><td>Classified for cycle/reject/no-overlay-commit behavior in W048 artifacts.</td></tr></table>
+  <div class="num">03 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">W047 state model</div><h2>CTRO: runtime graph shape without structural mutation</h2>
+  <div class="grid2"><div>
+    <h3>State vocabulary</h3><table><tr><th>Symbol</th><th>Meaning</th></tr><tr><td><code>S</code></td><td>Immutable structural snapshot: nodes, formulas, names, and static binding facts.</td></tr><tr><td><code>G_struct</code></td><td>Dependency graph derived only from <code>S</code>.</td></tr><tr><td><code>O_published</code></td><td>Accepted runtime overlay from prior publications.</td></tr><tr><td><code>G_eff</code></td><td>Composed graph: <code>compose(S, G_struct, O_published)</code>.</td></tr><tr><td><code>O_candidate</code></td><td>Candidate-local runtime overlay facts from the current attempt.</td></tr><tr><td><code>G_eff_next</code></td><td>Candidate effective graph for cycle classification and repair.</td></tr></table>
+  </div><div>
+    <h3>Delta taxonomy</h3><ul class="arrow"><li><code>activate_dependency</code>: new runtime dependency observed.</li><li><code>release_dependency</code>: prior runtime dependency not observed now.</li><li><code>reclassify_dependency</code>: same edge, different dependency class.</li><li><code>activate_region</code> / <code>release_region</code>: future grid/spill-shaped dependency/output changes.</li><li><code>cycle_introduction</code>: candidate graph creates or exposes an SCC.</li><li><code>unsupported_or_unresolved</code>: insufficient facts; reject/fallback rather than publish unsafely.</li></ul>
+    <div class="card warn"><b>Design constraint.</b> CTRO never promotes runtime facts into structural truth. Runtime graph truth only advances through an accepted publication bundle.</div>
+  </div></div>
+  <pre class="code"><span class="c">// Conceptual transition</span>
+G_eff       = compose(S, G_struct, O_published)
+frontier    = invalidate(G_eff, seeds)
+EvalResult  = evaluate(frontier, values)
+O_candidate = diff(runtime_effects, O_published)
+G_eff_next  = compose(S, G_struct, O_candidate)
+if cycle_or_unsafe(G_eff_next): reject(no_overlay_commit)
+else publish(value_delta + overlay_delta)</pre>
+  <div class="num">04 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Rust surface</div><h2>The current CTRO-bearing data structures</h2>
+  <div class="grid12"><div><pre class="code"><span class="k">pub struct</span> DependencyGraph {
+  snapshot_id: StructuralSnapshotId,
+  descriptors_by_owner: BTreeMap&lt;TreeNodeId, Vec&lt;DependencyDescriptor&gt;&gt;,
+  edges_by_owner: BTreeMap&lt;TreeNodeId, Vec&lt;DependencyEdge&gt;&gt;,
+  reverse_edges: BTreeMap&lt;TreeNodeId, Vec&lt;DependencyEdge&gt;&gt;,
+  cycle_groups: Vec&lt;Vec&lt;TreeNodeId&gt;&gt;,
+  diagnostics: Vec&lt;DependencyDiagnostic&gt;,
+}
+
+<span class="k">pub enum</span> InvalidationReasonKind {
+  StructuralRebindRequired,
+  StructuralRecalcOnly,
+  UpstreamPublication,
+  DependencyAdded, DependencyRemoved, DependencyReclassified,
+  <span class="h">DynamicDependencyActivated</span>,
+  <span class="h">DynamicDependencyReleased</span>,
+  <span class="h">DynamicDependencyReclassified</span>,
+}</pre></div><div>
+    <h3>Why this matters</h3><p>W047 added CTRO-specific invalidation reasons that are dirtying reasons but not structural rebind gates. A dynamic dependency activation or release means the owner and downstream dependents need recalculation; it does not imply the formula binding itself must be rebuilt.</p>
+    <div class="card good"><b>Key distinction:</b> <code>DependencyAdded</code> forces rebind; <code>DynamicDependencyActivated</code> marks work repairable through the CTRO path.</div>
+  </div></div>
+  <pre class="code"><span class="k">fn</span> reason_requires_rebind(reason: InvalidationReasonKind) -&gt; bool {
+  matches!(reason,
+    StructuralRebindRequired | DependencyAdded |
+    DependencyRemoved | DependencyReclassified)
+}
+
+<span class="k">fn</span> dynamic_dependency_shape_updates(published, graph) -&gt; Vec&lt;DependencyShapeUpdate&gt; {
+  current = dynamic_dependency_facts_from_graph(graph)
+  for released in published - current: emit(<span class="s">"release_dynamic_dep"</span>)
+  for activated in current - published: emit(<span class="s">"activate_dynamic_dep"</span>)
+  sort_by(kind, affected_node_ids)
+}</pre>
+  <div class="num">05 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Correctness properties</div><h2>The CTRO rebinding properties captured so far</h2>
+  <p>The W047 semantics packet names the strategy-equivalence and safety properties that later implementation and formalization must preserve. The current W047/W048 evidence exercises the dynamic dependency subset directly.</p>
+  <table><tr><th>Property</th><th>Captured statement</th><th>Evidence surface now</th></tr>
+    <tr><td>Structural immutability</td><td>Runtime facts never mutate <code>S</code> or become structural graph truth.</td><td>CTRO specs; TreeCalc keeps runtime effects separate from structural snapshot.</td></tr>
+    <tr><td>Effective graph determinism</td><td>Given stable structural and overlay inputs, graph composition and delta ordering are deterministic.</td><td>Sorted graph/delta artifacts; W048 graph hashes.</td></tr>
+    <tr><td>Overlay compatibility</td><td>Overlay entries are usable only under their declared basis.</td><td>Seeded published runtime-effect path and publication IDs.</td></tr>
+    <tr><td>No under-invalidation</td><td>Activation/release/reclassification reaches every value that may differ.</td><td>Target-switch case recalculates owner and downstream dependent.</td></tr>
+    <tr><td>No silent release</td><td>Dependency release changes future graph shape only through accepted publication or explicit repair.</td><td>Release events appear as dependency-shape updates.</td></tr>
+    <tr><td>Shared cycle policy</td><td>Structural and CTRO-created cycles use the same SCC/cycle policy.</td><td>W048 TreeCalc cycle fixtures and sidecars.</td></tr>
+    <tr><td>No overlay commit on reject</td><td>Rejected candidates do not advance <code>O_published</code>.</td><td>W048 formal checker obligation.</td></tr>
+    <tr><td>Atomic value-overlay publication</td><td>Published values and accepted overlay consequences become visible together.</td><td>Publication bundle carries value delta and published runtime effects.</td></tr>
+    <tr><td>Diagnostic provenance</td><td>Reject/fallback records preserve structural vs overlay-derived causes.</td><td>Trace/explain artifacts and W048 materialized graph provenance.</td></tr>
+    <tr><td>Retention safety</td><td>Accepted overlays remain available while readers/replay need them.</td><td>Specified; fuller pinned-reader proof remains successor work.</td></tr>
+  </table>
+  <div class="card theory"><b>Equivalence rule.</b> Local frontier repair, conservative rebuild, and fallback are interchangeable only when they produce the same accepted values, overlay consequences, cycle/reject decision, future invalidation graph, and replay-visible diagnostics.</div>
+  <div class="num">06 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Interactive example · W047</div><h2>Dynamic target switch with downstream publication</h2>
+  <div class="grid12"><div><p>This W047 case shows a runtime dependency changing target. Node 3 switches from a previously published dynamic edge to node 2 toward a new dynamic edge to node 4. Node 5 depends on node 3, so it must be invalidated and recalculated. The result publishes node 3 = 7 and node 5 = 8 atomically with the runtime-effect update.</p>
+    <div id="ctroButtons"></div><div id="ctroBox" class="stepbox"></div>
+  </div><div class="svgbox"><svg viewBox="0 0 310 270"><defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1f6feb"/></marker></defs><circle cx="70" cy="70" r="26" fill="#e0f2fe" stroke="#38bdf8"/><text x="70" y="75" text-anchor="middle">2</text><circle cx="165" cy="70" r="26" fill="#e0f2fe" stroke="#38bdf8"/><text x="165" y="75" text-anchor="middle">4</text><circle cx="115" cy="155" r="28" fill="#faf5ff" stroke="#a78bfa"/><text x="115" y="160" text-anchor="middle">3</text><circle cx="210" cy="155" r="28" fill="#dcfce7" stroke="#86efac"/><text x="210" y="160" text-anchor="middle">5</text><path d="M102 139 L76 94" stroke="#b91c1c" stroke-width="3" fill="none" stroke-dasharray="5 4"/><text x="52" y="122" font-size="11" fill="#991b1b">release</text><path d="M126 132 L154 94" stroke="#15803d" stroke-width="3" marker-end="url(#arr)" fill="none"/><text x="152" y="124" font-size="11" fill="#166534">activate</text><path d="M143 155 L182 155" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr)" fill="none"/><text x="157" y="146" font-size="11">downstream</text></svg><div class="caption">Activation [3,4] and release [2,3] are both replay-visible.</div></div></div>
+  <pre class="code"><span class="c">// Excerpt from post_edit/result.json</span>
+"result_state": "published",
+"evaluation_order": [3, 5],
+"dependency_shape_updates": [
+  { "kind": "activate_dynamic_dep", "affected_node_ids": [3, 4] },
+  { "kind": "release_dynamic_dep",  "affected_node_ids": [2, 3] }
+],
+"published_view_delta": { "3": "7", "5": "8" }</pre>
+  <div class="num">07 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">W048 graph model</div><h2>Circular references are classified over materialized graph layers</h2>
+  <p>W048 treats cycles as graph facts that must be visible at the layer where they are discovered. The same SCC classification vocabulary is used for structural cycles, published-overlay cycles, and candidate-overlay cycles.</p>
+  <div class="grid3"><div class="card"><span class="pill">structural</span><h3><code>G_struct</code></h3><p>Formula text and static binding facts already contain an SCC. Non-iterative Stage 1 rejects before ordinary acyclic evaluation.</p></div><div class="card"><span class="pill good">published effective</span><h3><code>G_eff</code></h3><p>A previously accepted overlay edge participates in the current effective graph. Invalidation and cycle diagnostics see it as graph truth for this run.</p></div><div class="card"><span class="pill theory">candidate effective</span><h3><code>G_eff_candidate</code></h3><p>A current candidate would create an SCC if published. The candidate is rejected and the overlay is not committed.</p></div></div>
+  <table><tr><th>Cycle-region field</th><th>Meaning</th></tr><tr><td><code>cycle_region_id</code></td><td>Stable evidence identifier scoped to case, graph layer, and ordinal.</td></tr><tr><td><code>cycle_source</code></td><td>Where the SCC came from: structural, published overlay, or candidate overlay.</td></tr><tr><td><code>member_order</code></td><td>Deterministic sorted member order for replay and diagnostics.</td></tr><tr><td><code>internal_edges</code></td><td>Edges that keep the SCC closed.</td></tr><tr><td><code>incoming_boundary_edges</code></td><td>Dependents or precedents at the cycle-region boundary.</td></tr><tr><td><code>terminal_policy</code></td><td>Current profile decision: <code>stage1_non_iterative_reject</code>.</td></tr></table>
+  <div class="card warn"><b>Reopen note.</b> This page describes the predecessor non-iterative Stage 1 slice. W048 is reopened because Excel-match iterative semantics are now an active W048 target, not acceptable successor-only scope.</div>
+  <div class="num">08 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Cycle data structures</div><h2>Forward/reverse edges plus Tarjan SCCs are the current core</h2>
+  <div class="grid21"><div><p>TreeCalc builds forward dependency edges from lowered descriptors, derives reverse edges for invalidation, then runs a deterministic Tarjan pass over all snapshot nodes. Self-loops are cycle groups, not just multi-node SCCs.</p><ul class="arrow"><li>Forward edge: owner formula → precedent target.</li><li>Reverse edge: target → dependent owner.</li><li>Cycle group: non-trivial SCC or self-loop.</li><li>Invalidation uses reverse edges and changes node state to <code>CycleBlocked</code> when needed.</li></ul></div><div><pre class="code"><span class="k">fn</span> find_cycle_groups(snapshot, edges_by_owner) -&gt; Vec&lt;Vec&lt;TreeNodeId&gt;&gt; {
+  <span class="c">// Tarjan SCC over deterministic node order</span>
+  for node_id in snapshot.nodes().keys() {
+    if !indices.contains(node_id) { strong_connect(node_id) }
+  }
+  if group.len() &gt; 1 || is_self_cycle(node_id) {
+    group.sort(); groups.push(group)
+  }
+  groups.sort(); groups
+}</pre></div></div>
+  <pre class="code"><span class="k">fn</span> derive_invalidation_closure(seeds) -&gt; InvalidationClosure {
+  cycle_members = flatten(graph.cycle_groups)
+  queue = seeds
+  while target = queue.pop_front() {
+    for reverse_edge in graph.reverse_edges[target] {
+      mark(dependent, UpstreamPublication)
+      if cycle_members.contains(dependent) { state = CycleBlocked }
+      queue.push(dependent)
+    }
+  }
+}</pre>
+  <div class="card good"><b>W048 checker obligations:</b> forward/reverse converse, non-empty cycle regions, cycle reject/no publication, and release/re-entry publication for owner plus downstream dependent.</div>
+  <div class="num">09 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Interactive example · W048</div><h2>CTRO-created self-cycle rejects, then release/re-entry publishes</h2>
+  <div class="grid12"><div><p>The W048 release/re-entry case starts with a dynamic dependency forming a self-cycle at node 2. Stage 1 non-iterative policy rejects with <code>SyntheticCycleReject</code> and no publication bundle. A later post-edit run points the dynamic dependency to node 3 instead, making the graph acyclic; node 2 and downstream node 4 publish.</p><div id="cycleButtons"></div><div id="cycleBox" class="stepbox"></div></div><div class="svgbox"><svg viewBox="0 0 310 270"><defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1f6feb"/></marker></defs><circle cx="90" cy="90" r="30" fill="#fee2e2" stroke="#f87171"/><text x="90" y="95" text-anchor="middle">2</text><path d="M78 63 C35 30 145 28 102 62" stroke="#b91c1c" stroke-width="3" fill="none" marker-end="url(#arr2)"/><text x="33" y="42" font-size="11" fill="#991b1b">cycle</text><circle cx="205" cy="90" r="30" fill="#e0f2fe" stroke="#38bdf8"/><text x="205" y="95" text-anchor="middle">3</text><circle cx="148" cy="180" r="30" fill="#dcfce7" stroke="#86efac"/><text x="148" y="185" text-anchor="middle">4</text><path d="M118 91 L176 91" stroke="#15803d" stroke-width="3" marker-end="url(#arr2)"/><text x="140" y="82" font-size="11" fill="#166534">release to 3</text><path d="M108 113 L134 154" stroke="#1f6feb" stroke-width="2" marker-end="url(#arr2)"/><text x="77" y="150" font-size="11">downstream</text></svg><div class="caption">Reject preserves old state; a later acyclic candidate re-enters and publishes.</div></div></div>
+  <pre class="code"><span class="c">// Initial result</span>
+"result_state": "rejected",
+"reject_detail": { "kind": "SyntheticCycleReject" },
+"publication_bundle": null
+
+<span class="c">// Post-edit result</span>
+"result_state": "published",
+"evaluation_order": [2, 4],
+"published_values": { "2": "10", "3": "10", "4": "11" }</pre>
+  <div class="num">10 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Reference vs optimized</div><h2>TraceCalc and TreeCalc intentionally carry different responsibilities</h2>
+  <table><tr><th>Area</th><th>TraceCalc reference machine</th><th>TreeCalc optimized/core engine</th></tr>
+    <tr><td>Purpose</td><td>Executable semantic oracle and replay-friendly reference trace.</td><td>Rust core path that builds graphs, invalidates, evaluates, and publishes.</td></tr>
+    <tr><td>W047 CTRO</td><td>Reference-oriented scenarios identify expected runtime dependency facts and publication outcomes.</td><td>Computes dynamic dependency facts from graph/runtime effects, diffs against seeded published effects, emits shape updates.</td></tr>
+    <tr><td>W048 cycles</td><td>Fixtures carry explicit diagnostic events for cycle rejection, no-overlay-commit, and release/re-entry.</td><td>Runs graph build, SCC classification, rejection/publication, and materialized graph sidecars.</td></tr>
+    <tr><td>Trace style</td><td>Rich, scenario-shaped events for proof and replay consumption.</td><td>Run artifacts: result, trace, explain, dependency graph, invalidation closure, materialized graph layers.</td></tr>
+    <tr><td>Limits</td><td>Does not prove optimized graph maintenance.</td><td>Does not claim all future TraceCalc/Excel behavior; current cycle policy is non-iterative Stage 1.</td></tr>
+  </table>
+  <div class="grid2"><div class="card"><h3>TraceCalc W048 evidence</h3><p><code>w048-tracecalc-cycles-003</code>: 34 scenarios passed. The W048 scenario set includes structural self-cycle reject, CTRO candidate-cycle reject, and CTRO release/re-entry downstream recomputation.</p></div><div class="card"><h3>TreeCalc W048 evidence</h3><p><code>w048-treecalc-cycles-001</code>: 33 cases, 0 expectation mismatches. Materialized graph checker: 99 layers, 12 cycle-region records, 0 check errors.</p></div></div>
+  <div class="num">11 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Formalization and checkers</div><h2>What is formalized now, and what remains successor work</h2>
+  <div class="grid12"><div>
+    <h3>W047 formal/checker position</h3><p>W047 records CTRO formal targets rather than claiming Lean/TLA closure. The key W049 targets are effective graph composition, no-under-invalidation, reject implies no candidate overlay publication, and atomic value/overlay publication.</p>
+    <h3>W048 formal/checker position</h3><p>W048 adds a checked model projection over actual TreeCalc artifacts. The executable checker validates graph-layer obligations and cycle publication behavior against the W048 run root.</p>
+  </div><div class="card theory"><h4>W048 checked obligations</h4><ul class="arrow"><li>Every forward edge has reverse converse.</li><li>Every reverse edge has forward converse.</li><li>Every cycle region is non-empty.</li><li>Structural and CTRO cycle fixtures reject with <code>SyntheticCycleReject</code>.</li><li>Rejected cycle fixtures emit no publication bundle.</li><li>Release/re-entry publishes owner and downstream dependent.</li></ul></div></div>
+  <pre class="code"><span class="c">// w048_formal_cycle_checker_summary.json</span>
+"status": "passed",
+"graph_summary": { "case_count": 33, "layer_count": 99,
+  "cycle_region_count": 12, "check_error_count": 0 },
+"obligations": {
+  "forward_reverse_converse": true,
+  "cycle_regions_nonempty": true,
+  "cycle_reject_no_publication": true,
+  "release_reentry_publishes_owner_and_downstream": true
+}</pre>
+  <div class="card warn"><b>Remaining formal limits:</b> full dynamic-graph equivalence to from-scratch SCC classification, iterative-profile convergence/terminal determinism, Excel-match iterative model, and proof-carrying trace integration for all cycle cases.</div>
+  <div class="num">12 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Evidence inventory</div><h2>Run roots, commands, and what they demonstrate</h2>
+  <table><tr><th>Run / checker</th><th>Command</th><th>What to inspect</th></tr>
+    <tr><td>W047 CTRO TreeCalc evidence</td><td><code>cargo run -p oxcalc-tracecalc-cli -- treecalc w047-ctro-dynamic-positive-publication-001</code></td><td><code>run_summary.json</code>, target-switch <code>post_edit/result.json</code>, <code>trace.json</code>.</td></tr>
+    <tr><td>W048 TreeCalc cycles</td><td><code>cargo run -p oxcalc-tracecalc-cli -- treecalc w048-treecalc-cycles-001</code></td><td>Structural/self-cycle reject, CTRO self-cycle reject, release/re-entry post-edit publish.</td></tr>
+    <tr><td>W048 materialized graph checker</td><td><code>powershell -File scripts/check-w048-materialized-graphs.ps1</code></td><td>Forward/reverse converse, graph layers, cycle-region records.</td></tr>
+    <tr><td>W048 cross-corpus conformance</td><td><code>powershell -File scripts/check-w048-conformance.ps1</code></td><td>Excel observations, TraceCalc, TreeCalc, graph checker summary.</td></tr>
+    <tr><td>W048 formal cycle checker</td><td><code>powershell -File scripts/check-w048-formal-cycle-artifacts.ps1</code></td><td>Formal/checker projection and obligations.</td></tr>
+  </table>
+  <div class="grid2"><div class="card good"><h3>Evidence posture</h3><p>The W047 and predecessor W048 TreeCalc command roots are checked in as evidence. W048 local checker entry points are now PowerShell scripts; future reopened W048 closure cannot depend on Python tooling.</p></div><div class="card"><h3>Interactive panels</h3><p>The step-through examples on pages 7 and 10 are distilled from checked-in run artifacts. They are designed for human understanding, not as a new normative evidence source.</p></div></div>
+  <div class="num">13 / 14</div>
+</section>
+
+<section class="page"><div class="rail"></div><div class="eyebrow">Current state</div><h2>Where the core engine stands after W047 and W048</h2>
+  <div class="grid2"><div><h3>What looks strong now</h3><ul class="arrow"><li>Dynamic dependency activation/release is a first-class CTRO path, not a structural-rebind overclassification.</li><li>Publication bundles can carry value updates and runtime dependency consequences atomically.</li><li>Cycle behavior is visible across graph layers, not hidden in scheduler fallback.</li><li>Structural cycles and CTRO-created cycles share one Stage 1 rejection boundary.</li><li>TraceCalc, TreeCalc, graph sidecars, and checkers align on the predecessor W048 examples.</li></ul></div><div><h3>What is reopened now</h3><ul class="arrow"><li>Excel-match, bit-exact iterative circular calculation is active W048 scope.</li><li>Legacy Python W048 tooling has PowerShell replacements and must not be used for future W048 closure.</li><li>Grid/spill and data-table cycle disposition must be exactly scoped or blocked.</li><li>Full closure cannot rely on routing core circular semantics to W049.</li></ul></div></div>
+  <div class="card callout"><b>Bottom line.</b> OxCalc has a concrete, evidence-backed Stage 1 model for dynamic dependency rebinding and circular-reference rejection/re-entry. W048 is now reopened to extend that foundation into the comprehensive Excel-match circular-reference solution, including bit-exact iterative calculation.</div>
+  <div class="note small">Status report for this showcase document: scope_completeness=<code>scope_complete</code> for a brochure artifact; target_completeness=<code>target_complete</code>; integration_completeness=<code>integrated</code> as a standalone docs/showcase page; open_lanes=<code>[]</code> for the brochure. This does not alter W047/W048 engine status or promote successor readiness.</div>
+  <div class="num">14 / 14</div>
+</section>
+</main>
+<script>
+const ctroSteps=[
+ ['Load post-edit case','The run loads tc_local_dynamic_target_switch_downstream_publish_001 with two formulas and seeded published dynamic state.'],
+ ['Evaluate owner 3','Node 3 resolves the dynamic carrier to node 4 and computes value 7.'],
+ ['Evaluate downstream 5','Node 5 reads the repaired owner value and computes 8.'],
+ ['Observe runtime effect','A DynamicDependency runtime effect records owner node 3 and target node 4.'],
+ ['Classify overlay delta','The candidate activates [3,4] and releases [2,3]. Both are dependency-shape updates.'],
+ ['Adapt candidate','The accepted candidate target set is [3,5] with value updates {3:7,5:8}.'],
+ ['Publish atomically','The publication bundle commits value delta and published runtime effect together.']
+];
+const cycleSteps=[
+ ['Initial graph','Node 2 has a dynamic self-edge; graph layer records a cycle region rooted at 2.'],
+ ['Reject boundary','Stage 1 non-iterative policy maps the cycle to SyntheticCycleReject. No candidate result publishes.'],
+ ['No overlay commit','The rejected candidate overlay remains diagnostic evidence only; O_published does not advance.'],
+ ['Post-edit acyclic target','The later run redirects the dynamic dependency from node 2 to node 3.'],
+ ['Re-enter frontier','Invalidation seeds mark node 2 and downstream node 4 dirty/needed without structural rebind.'],
+ ['Publish release/re-entry','The post-edit run publishes node 2 = 10 and downstream node 4 = 11.']
+];
+function mount(id,steps){const buttons=document.getElementById(id+'Buttons'), box=document.getElementById(id+'Box');function render(i){buttons.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('active',i===j));box.innerHTML='<h3 style="margin-top:0">'+(i+1)+'. '+steps[i][0]+'</h3><p>'+steps[i][1]+'</p><div class="bar"><span style="width:'+((i+1)/steps.length*100)+'%"></span></div>'}steps.forEach((s,i)=>{const b=document.createElement('button');b.className='step';b.textContent=String(i+1);b.onclick=()=>render(i);buttons.appendChild(b)});render(0)}
+mount('ctro',ctroSteps); mount('cycle',cycleSteps);
+</script>
+</body></html>

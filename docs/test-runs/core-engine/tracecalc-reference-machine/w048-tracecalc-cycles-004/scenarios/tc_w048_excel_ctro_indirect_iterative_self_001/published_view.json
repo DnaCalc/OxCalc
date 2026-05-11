@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "A1",
+      "value": "1"
+    },
+    {
+      "node_id": "B1",
+      "value": "A1"
+    }
+  ],
+  "scenario_id": "tc_w048_excel_ctro_indirect_iterative_self_001",
+  "snapshot_id": "s-w048-excel-ctro-indirect-iter-self"
+}

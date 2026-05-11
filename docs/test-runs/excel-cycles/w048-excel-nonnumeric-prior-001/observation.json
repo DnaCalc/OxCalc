@@ -1,0 +1,529 @@
+{
+    "schema_version":  "oxcalc.w048.excel_nonnumeric_prior_probe.v1",
+    "run_id":  "w048-excel-nonnumeric-prior-001",
+    "status":  "observed",
+    "environment":  {
+                        "excel_version":  "16.0",
+                        "build":  "19929",
+                        "platform":  "Windows",
+                        "locale":  "en-ZA",
+                        "probe_runner":  "scripts/run-w048-excel-nonnumeric-prior-probes.ps1",
+                        "observation_time_utc":  "2026-05-11T22:04:35.7719478Z"
+                    },
+    "observation_count":  8,
+    "observations":  [
+                         {
+                             "probe_id":  "prior_blank_increment",
+                             "prior":  "blank",
+                             "formula":  "=A1+1",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1+1",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  6,
+                                                                  "text":  "6",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1+1",
+                                                         "value2":  1,
+                                                         "text":  "1",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  6,
+                                                    "text":  "6",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_blank_decay",
+                             "prior":  "blank",
+                             "formula":  "=A1/2",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1/2",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1/2",
+                                                         "value2":  0,
+                                                         "text":  "0",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_text_increment",
+                             "prior":  "text",
+                             "formula":  "=A1+1",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "text",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "text",
+                                                                  "value2":  "text",
+                                                                  "text":  "text",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1+1",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  6,
+                                                                  "text":  "6",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1+1",
+                                                         "value2":  1,
+                                                         "text":  "1",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  6,
+                                                    "text":  "6",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_text_decay",
+                             "prior":  "text",
+                             "formula":  "=A1/2",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "text",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "text",
+                                                                  "value2":  "text",
+                                                                  "text":  "text",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1/2",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1/2",
+                                                         "value2":  0,
+                                                         "text":  "0",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_error_na_increment",
+                             "prior":  "error_na",
+                             "formula":  "=A1+1",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "error_na",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=NA()",
+                                                                  "value2":  -2146826246,
+                                                                  "text":  "#N/A",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1+1",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  6,
+                                                                  "text":  "6",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1+1",
+                                                         "value2":  1,
+                                                         "text":  "1",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  6,
+                                                    "text":  "6",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_error_na_decay",
+                             "prior":  "error_na",
+                             "formula":  "=A1/2",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "error_na",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=NA()",
+                                                                  "value2":  -2146826246,
+                                                                  "text":  "#N/A",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1/2",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1/2",
+                                                         "value2":  0,
+                                                         "text":  "0",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_error_div0_increment",
+                             "prior":  "error_div0",
+                             "formula":  "=A1+1",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "error_div0",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=1/0",
+                                                                  "value2":  -2146826281,
+                                                                  "text":  "#DIV/0!",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1+1",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  6,
+                                                                  "text":  "6",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1+1",
+                                                         "value2":  1,
+                                                         "text":  "1",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  6,
+                                                    "text":  "6",
+                                                    "error":  null
+                                                }
+                         },
+                         {
+                             "probe_id":  "prior_error_div0_decay",
+                             "prior":  "error_div0",
+                             "formula":  "=A1/2",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  "",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_prior",
+                                                 "prior":  "error_div0",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=1/0",
+                                                                  "value2":  -2146826281,
+                                                                  "text":  "#DIV/0!",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "formula":  "=A1/2",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0",
+                                                                  "error":  null
+                                                              }
+                                             }
+                                         ],
+                             "assignment_snapshot":  {
+                                                         "cell":  "Sheet1!A1",
+                                                         "formula":  "=A1/2",
+                                                         "value2":  0,
+                                                         "text":  "0",
+                                                         "error":  null
+                                                     },
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0",
+                                                    "error":  null
+                                                }
+                         }
+                     ],
+    "disposition":  "Blank, text, and error prior surfaces are overwritten by self-cycle formula assignment in declared probes; assignment/final values match zero-or-error-coercion visible surfaces captured per probe."
+}

@@ -1,0 +1,97 @@
+{
+    "probe_id":  "root_self_iteration",
+    "iteration_enabled":  true,
+    "status":  "observed",
+    "records":  [
+                    {
+                        "moment":  "initial",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "",
+                                      "value2":  null,
+                                      "text":  ""
+                                  }
+                    },
+                    {
+                        "moment":  "after_edit_1",
+                        "target":  "A1",
+                        "formula":  "=A1+1",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "=A1+1",
+                                      "value2":  5,
+                                      "text":  "5"
+                                  }
+                    },
+                    {
+                        "moment":  "after_worksheet_calculate",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "=A1+1",
+                                      "value2":  10,
+                                      "text":  "10"
+                                  }
+                    },
+                    {
+                        "moment":  "after_application_calculate",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "=A1+1",
+                                      "value2":  15,
+                                      "text":  "15"
+                                  }
+                    },
+                    {
+                        "moment":  "after_calculate_full",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "=A1+1",
+                                      "value2":  20,
+                                      "text":  "20"
+                                  }
+                    },
+                    {
+                        "moment":  "after_calculate_full_rebuild",
+                        "circular_reference":  {
+                                                   "status":  "null",
+                                                   "address":  null,
+                                                   "error":  null
+                                               },
+                        "cells":  {
+                                      "cell":  "Sheet1!A1",
+                                      "formula":  "=A1+1",
+                                      "value2":  25,
+                                      "text":  "25"
+                                  }
+                    }
+                ],
+    "reported_addresses":  [
+
+                           ],
+    "null_report_count":  6
+}

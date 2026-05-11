@@ -1,0 +1,80 @@
+{
+  "events": [
+    {
+      "event_id": "evt-0001",
+      "label": "node_marked_dirty",
+      "normalized_event_family": "oxcalc.local.event.node_marked_dirty",
+      "payload": {
+        "node_id": "Secure"
+      },
+      "step_id": "st1"
+    },
+    {
+      "event_id": "evt-0002",
+      "label": "topo_group_scheduled",
+      "normalized_event_family": "oxcalc.local.event.topo_group_scheduled",
+      "payload": {
+        "group_index": "0",
+        "nodes": "Secure"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0003",
+      "label": "node_marked_needed",
+      "normalized_event_family": "oxcalc.local.event.node_marked_needed",
+      "payload": {
+        "node_id": "Secure"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0004",
+      "label": "evaluation_started",
+      "normalized_event_family": "oxcalc.local.event.evaluation_started",
+      "payload": {
+        "compatibility_basis": "capability-view:old",
+        "node_id": "Secure"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0005",
+      "label": "candidate_admitted",
+      "normalized_event_family": "candidate.admitted",
+      "payload": {
+        "admission_id": "adm-capability-fence",
+        "compatibility_basis": "capability-view:old",
+        "target_count": "1"
+      },
+      "step_id": "st2"
+    },
+    {
+      "event_id": "evt-0006",
+      "label": "candidate_rejected",
+      "normalized_event_family": "reject.issued",
+      "payload": {
+        "reject_id": "rej-capability-fence",
+        "reject_kind": "capability_mismatch",
+        "target_count": "1"
+      },
+      "step_id": "st3"
+    }
+  ],
+  "replay_projection": {
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "replay_classes": [
+      "R3",
+      "R6"
+    ],
+    "required_equality_surfaces": [
+      "published_view",
+      "reject_set",
+      "trace_labels",
+      "counters",
+      "capability_view_key"
+    ]
+  },
+  "run_id": "w048-tracecalc-cycles-004",
+  "scenario_id": "tc_w034_capability_fence_reject_001"
+}

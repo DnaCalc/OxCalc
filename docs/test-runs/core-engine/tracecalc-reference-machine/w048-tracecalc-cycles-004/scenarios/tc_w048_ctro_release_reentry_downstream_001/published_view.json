@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "11"
+    },
+    {
+      "node_id": "C",
+      "value": "10"
+    },
+    {
+      "node_id": "D",
+      "value": "12"
+    }
+  ],
+  "scenario_id": "tc_w048_ctro_release_reentry_downstream_001",
+  "snapshot_id": "s-w048-ctro-release"
+}

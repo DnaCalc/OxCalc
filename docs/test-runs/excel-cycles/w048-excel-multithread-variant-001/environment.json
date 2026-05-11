@@ -1,0 +1,11 @@
+{
+    "excel_version":  "16.0",
+    "build":  "19929",
+    "platform":  "Windows",
+    "locale":  "en-ZA",
+    "probe_runner":  "scripts/run-w048-excel-multithread-variant-probes.ps1",
+    "observation_time_utc":  "2026-05-11T22:09:02.6146749Z",
+    "multi_threaded_before":  true,
+    "multi_threaded_after":  true,
+    "thread_count":  16
+}

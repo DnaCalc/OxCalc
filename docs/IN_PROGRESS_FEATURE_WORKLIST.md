@@ -4,31 +4,28 @@ This file is a compact orientation surface. It is not live execution state; `.be
 
 ## Current Focus
 1. `W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
-2. Current route: execute the full W048 circular dependency lane before successor formalization/deepening
+2. Current route: reopened W048 scope repair and full Excel-match circular-reference implementation before successor formalization/deepening
 3. Predecessor: W047 CTRO implementation-first work through `calc-aylq`
-4. W049 route: formal/checker/sidecar/readiness successor work after W047 and W048
+4. W049 route: deferred until W048 no longer hides Excel-match circular-reference semantics as successor scope
 
 ## Active Aim
-W048 now owns the circular dependency calculation target end to end:
-1. collect reproducible Excel circular-reference observations,
-2. materialize dependency graphs explicitly across structural, published-effective, and candidate-effective layers,
-3. make cycle-root/order, initial-value, terminal, publication, and release/re-entry choices explicit,
-4. implement the reference behavior in TraceCalc,
-5. implement the optimized/core behavior in TreeCalc,
-6. develop and execute the circular-reference test corpus,
-7. introduce W048-owned formal definitions, proof/model artifacts, and checker targets,
-8. capture innovation opportunities in explicit opt-in profiles,
-9. leave W049 as successor deepening/organization after W048 artifacts exist.
+W048 now owns the circular dependency calculation target end to end. The scope was reopened because the prior run closed on a conservative non-iterative slice and deferred Excel-match iterative behavior. Corrected active aim:
+1. repair W048 scope/status surfaces and mark the prior closure audit superseded,
+2. replace W048 Python tooling with PowerShell, Rust, or C#,
+3. collect reproducible, bit-exact Excel circular-reference observations including iterative calculation,
+4. materialize dependency graphs explicitly across structural, published-effective, and candidate-effective layers,
+5. make cycle-root/order, initial-value, terminal, publication, release/re-entry, and calculation-chain choices explicit,
+6. implement Excel-match iterative circular-reference behavior in TraceCalc,
+7. implement the same behavior in TreeCalc optimized/core,
+8. develop and execute the circular-reference conformance corpus against Excel, TraceCalc, and TreeCalc,
+9. introduce W048-owned formal definitions, proof/model artifacts, and checker targets using non-Python tooling,
+10. capture innovation opportunities only as explicit opt-in profiles after the Excel-match default is separated.
 
 Current next engineering move:
 
-1. execute `calc-zci1.1` Excel probes,
-2. execute `calc-zci1.2` materialized graph sidecar widening,
-3. execute `calc-zci1.3` TraceCalc reference cycle behavior,
-4. execute `calc-zci1.6` TreeCalc optimized cycle behavior,
-5. execute `calc-zci1.7` circular-reference corpus and conformance runs,
-6. execute `calc-zci1.5` W048 formal cycle artifacts,
-7. use the W048 result as the artifact base for successor formalization/deepening.
+1. blocked: `calc-zci1.16` / `BLK-W048-EXCEL-ROOT` needs UI warning capture or another public object-model report-cell/root surface;
+2. blocked: `calc-zci1.19` / `BLK-W048-EXCEL-VERSION` needs a second Excel host/version packet, or explicit user acceptance of a single-host scoped claim;
+3. no W048 ready beads remain until one of those blockers is resolved or user-scoped.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

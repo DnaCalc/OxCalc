@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"expected_basis\":\"s0\",\"observed_basis\":\"s1\"}",
+      "reject_id": "rej1",
+      "reject_kind": "publication_fence_mismatch"
+    }
+  ],
+  "scenario_id": "tc_publication_fence_reject_001"
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "detail": "owner_node:node:2;target_node:node:3;detail:dynamic:carrier:w048:ctro:release:released_to_acyclic_target",
+    "family": "DynamicDependency",
+    "family_owner": "oxcalc_local_projection",
+    "kind": "runtime_effect.dynamic_reference",
+    "kind_owner": "oxcalc_local_projection"
+  }
+]

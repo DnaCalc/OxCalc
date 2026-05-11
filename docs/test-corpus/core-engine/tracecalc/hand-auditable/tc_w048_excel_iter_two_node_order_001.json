@@ -1,0 +1,46 @@
+{
+  "schema_version": "tracecalc-s1",
+  "scenario_id": "tc_w048_excel_iter_two_node_order_001",
+  "description": "W048 TraceCalc Excel-match iterative profile fixture for the two-node order probe: chain-ordered sequential update publishes A=11 and B=22.",
+  "calc_space": "TraceCalc",
+  "tags": ["cycle", "w048", "excel-match-iterative", "tracecalc-reference"],
+  "pack_tags": ["stage1", "w048", "cycle-iterative"],
+  "initial_graph": {
+    "snapshot_id": "s-w048-excel-iter-two-node-order",
+    "nodes": [
+      { "node_id": "A1", "kind": "value", "expr": { "op": "ref_add", "deps": ["B1"], "add": 1 } },
+      { "node_id": "B1", "kind": "value", "expr": { "op": "ref_mul", "deps": ["A1"], "mul": 2 } }
+    ]
+  },
+  "initial_runtime": { "published_values": [ { "node_id": "A1", "value": 1 }, { "node_id": "B1", "value": 10 } ] },
+  "steps": [
+    { "step_id": "st1", "kind": "mark_stale", "targets": ["A1", "B1"] },
+    { "step_id": "st2", "kind": "admit_work", "admission_id": "adm-w048-excel-iter-two-node", "compatibility_basis": "excel:w048-excel-cycles-bitexact-001:excel_iter_two_node_order_001", "targets": ["A1", "B1"] },
+    { "step_id": "st3", "kind": "emit_iteration_trace", "payload": { "probe_id": "excel_iter_two_node_order_001", "cycle_member_order": "B1,A1", "iteration_index": 1, "initial_vector": "A1=1;B1=10", "terminal_vector": "A1=11;B1=22", "max_iterations": 1, "max_change": 0.001, "terminal_state": "max_iteration_terminal_published" }, "diagnostic_events": ["excel_match_iteration_trace_emitted"] },
+    { "step_id": "st4", "kind": "emit_candidate_result", "candidate_result_id": "cand-w048-excel-iter-two-node", "value_updates": [ { "node_id": "A1", "value": 11 }, { "node_id": "B1", "value": 22 } ], "diagnostic_events": ["excel_match_iterative_candidate_emitted"] },
+    { "step_id": "st5", "kind": "publish_candidate", "candidate_result_id": "cand-w048-excel-iter-two-node", "publication_id": "pub-w048-excel-iter-two-node" }
+  ],
+  "expected": {
+    "published_view": { "snapshot_id": "s-w048-excel-iter-two-node-order", "node_values": [ { "node_id": "A1", "value": 11 }, { "node_id": "B1", "value": 22 } ] },
+    "trace_labels": [
+      { "label": "cycle_region_detected", "count": 1 },
+      { "label": "cycle_iteration_trace", "count": 1 },
+      { "label": "excel_match_iteration_trace_emitted", "count": 1 },
+      { "label": "excel_match_iterative_candidate_emitted", "count": 1 },
+      { "label": "candidate_published", "count": 1 }
+    ],
+    "counter_expectations": [
+      { "counter": "cycle_region_groups", "comparison": "eq", "value": 1 },
+      { "counter": "cycle.iteration_trace_events", "comparison": "eq", "value": 1 },
+      { "counter": "publications_committed", "comparison": "eq", "value": 1 }
+    ]
+  },
+  "replay_projection": {
+    "replay_classes": ["oxcalc.local.w048.excel_match_iterative"],
+    "pack_bindings": ["PACK.dag.cycle_iterative_semantics"],
+    "required_equality_surfaces": ["published_view", "trace_labels", "counters"],
+    "normalized_event_family_map_ref": "CORE_ENGINE_REPLAY_APPLIANCE_ADAPTER.md#mapping-table-v1",
+    "safety_properties": ["cycle_iterative_publish_is_atomic"],
+    "transition_labels": ["W048_EXCEL_ITERATIVE_TWO_NODE_ORDER"]
+  }
+}

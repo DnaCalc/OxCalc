@@ -35,7 +35,7 @@ The W048 checker verifies the following against `w048-treecalc-cycles-001`:
 
 | Artifact | Path |
 | --- | --- |
-| executable checker | `scripts/check-w048-formal-cycle-artifacts.py` |
+| executable checker | `scripts/check-w048-formal-cycle-artifacts.ps1` |
 | checker summary | `docs/test-runs/core-engine/formal/w048-cycle-artifacts-001/w048_formal_cycle_checker_summary.json` |
 | TLA model sketch | `formal/tla/CoreEngineW048CycleRegions.tla` |
 | TLA smoke config | `formal/tla/CoreEngineW048CycleRegions.smoke.cfg` |

@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "A1",
+      "value": "11"
+    },
+    {
+      "node_id": "B1",
+      "value": "22"
+    }
+  ],
+  "scenario_id": "tc_w048_excel_iter_two_node_order_001",
+  "snapshot_id": "s-w048-excel-iter-two-node-order"
+}

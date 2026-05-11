@@ -1,0 +1,67 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:3",
+      "descriptor_id": "bind:formula:b:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 4,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 3
+    },
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:c:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "direct_node:node:4",
+      "descriptor_id": "bind:formula:c:oxfml_ref:1",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 4
+    },
+    {
+      "carrier_detail": "residual:carrier:host:active_selection",
+      "descriptor_id": "bind:formula:c:oxfml_residual:0",
+      "kind": "HostSensitive",
+      "owner_node_id": 5,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:c:oxfml_residual:0",
+      "detail": "residual:carrier:host:active_selection",
+      "kind": "HostSensitiveReference"
+    }
+  ],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:b:oxfml_ref:0",
+      "edge_id": "dep:4:3:bind:formula:b:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 4,
+      "target_node_id": 3
+    },
+    {
+      "descriptor_id": "bind:formula:c:oxfml_ref:0",
+      "edge_id": "dep:5:2:bind:formula:c:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 2
+    },
+    {
+      "descriptor_id": "bind:formula:c:oxfml_ref:1",
+      "edge_id": "dep:5:4:bind:formula:c:oxfml_ref:1",
+      "kind": "StaticDirect",
+      "owner_node_id": 5,
+      "target_node_id": 4
+    }
+  ]
+}

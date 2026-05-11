@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "A1",
+      "value": "102"
+    },
+    {
+      "node_id": "B1",
+      "value": "101"
+    },
+    {
+      "node_id": "C1",
+      "value": "103"
+    }
+  ],
+  "scenario_id": "tc_w048_excel_iter_three_node_order_001",
+  "snapshot_id": "s-w048-excel-iter-three-node-order"
+}

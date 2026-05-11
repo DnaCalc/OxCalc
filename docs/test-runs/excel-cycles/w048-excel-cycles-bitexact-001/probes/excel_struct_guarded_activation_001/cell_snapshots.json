@@ -1,0 +1,16 @@
+﻿[
+    {
+        "cell":  "Sheet1!A1",
+        "formula":  "=IF(B1=0,0,A1+1)",
+        "value2":  0,
+        "text":  "0",
+        "error":  null
+    },
+    {
+        "cell":  "Sheet1!B1",
+        "formula":  "1",
+        "value2":  1,
+        "text":  "1",
+        "error":  null
+    }
+]

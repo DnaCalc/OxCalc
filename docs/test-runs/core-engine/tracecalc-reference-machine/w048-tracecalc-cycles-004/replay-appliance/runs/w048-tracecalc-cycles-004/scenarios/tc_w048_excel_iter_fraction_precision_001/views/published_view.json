@@ -1,0 +1,10 @@
+{
+  "node_values": [
+    {
+      "node_id": "A1",
+      "value": "0.33333333333333331"
+    }
+  ],
+  "scenario_id": "tc_w048_excel_iter_fraction_precision_001",
+  "snapshot_id": "s-w048-excel-iter-fraction-precision"
+}

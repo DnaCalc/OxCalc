@@ -1,0 +1,11 @@
+[
+  {
+    "calc_state": "CycleBlocked",
+    "node_id": 2,
+    "reasons": [
+      "StructuralRecalcOnly",
+      "UpstreamPublication"
+    ],
+    "requires_rebind": false
+  }
+]

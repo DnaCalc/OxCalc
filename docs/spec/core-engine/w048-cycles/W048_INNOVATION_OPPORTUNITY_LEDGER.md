@@ -4,7 +4,7 @@ Status: `profile_gated_ledger_recorded`
 
 Machine-readable ledger: `W048_INNOVATION_OPPORTUNITY_LEDGER.json`
 
-Validation command: `python scripts/check-w048-innovation-ledger.py`
+Validation command: `scripts/check-w048-innovation-ledger.ps1`
 
 ## 1. Purpose
 

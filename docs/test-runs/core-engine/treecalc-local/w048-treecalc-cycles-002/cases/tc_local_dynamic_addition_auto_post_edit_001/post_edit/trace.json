@@ -1,0 +1,61 @@
+{
+  "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+  "events": [
+    {
+      "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "detail": "owner_node:node:3;target_node:node:2;detail:dynamic:carrier:dynamic:auto-addition:resolved_after_runtime_resolution",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 3
+    },
+    {
+      "affected_node_ids": [
+        2,
+        3
+      ],
+      "kind": "activate_dynamic_dep",
+      "label": "dependency_shape_update_observed",
+      "step_id": 4
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate:post_edit",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 5,
+      "target_set": [
+        3
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate:post_edit",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:publication:post_edit",
+      "step_id": 6
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 7
+    }
+  ],
+  "phase": "post_edit",
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

@@ -450,6 +450,7 @@ pub fn validate_scenario(
         "reset_fixture",
         "admit_work",
         "emit_candidate_result",
+        "emit_iteration_trace",
         "emit_reject",
         "publish_candidate",
         "verify_clean",

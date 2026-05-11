@@ -1,0 +1,61 @@
+{
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate.admitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.emitted",
+      "value": 1
+    },
+    {
+      "counter": "candidate.published",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "cycle.iteration_trace_events",
+      "value": 1
+    },
+    {
+      "counter": "cycle_region_groups",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 2
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 2
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 2
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 2
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    },
+    {
+      "counter": "recalc.mark_dirty",
+      "value": 2
+    }
+  ],
+  "scenario_id": "tc_w048_excel_iter_two_node_order_001"
+}

@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "Left",
+      "value": "10"
+    },
+    {
+      "node_id": "Mode",
+      "value": "left"
+    },
+    {
+      "node_id": "Pick",
+      "value": "10"
+    }
+  ],
+  "scenario_id": "tc_w037_overlay_multi_reader_release_order_001",
+  "snapshot_id": "s0"
+}

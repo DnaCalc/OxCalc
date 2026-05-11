@@ -1,0 +1,407 @@
+{
+    "schema_version":  "oxcalc.w048.excel_initial_vector_probe.v1",
+    "run_id":  "w048-excel-initial-vector-001",
+    "status":  "observed",
+    "environment":  {
+                        "excel_version":  "16.0",
+                        "build":  "19929",
+                        "platform":  "Windows",
+                        "locale":  "en-ZA",
+                        "probe_runner":  "scripts/run-w048-excel-initial-vector-probes.ps1",
+                        "observation_time_utc":  "2026-05-11T22:02:09.3126664Z"
+                    },
+    "observation_count":  8,
+    "observations":  [
+                         {
+                             "probe_id":  "init_seed5_increment_manual",
+                             "seed":  5,
+                             "formula":  "=A1+1",
+                             "command":  "none",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "5",
+                                                                  "value2":  5,
+                                                                  "text":  "5"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  1,
+                                                    "text":  "1"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed8_decay_manual",
+                             "seed":  8,
+                             "formula":  "=A1/2",
+                             "command":  "none",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "8",
+                                                                  "value2":  8,
+                                                                  "text":  "8"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed5_increment_calculate",
+                             "seed":  5,
+                             "formula":  "=A1+1",
+                             "command":  "calculate",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "5",
+                                                                  "value2":  5,
+                                                                  "text":  "5"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  11,
+                                                                  "text":  "11"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  11,
+                                                    "text":  "11"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed8_decay_calculate",
+                             "seed":  8,
+                             "formula":  "=A1/2",
+                             "command":  "calculate",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "8",
+                                                                  "value2":  8,
+                                                                  "text":  "8"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed5_increment_full_rebuild",
+                             "seed":  5,
+                             "formula":  "=A1+1",
+                             "command":  "full_rebuild",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "5",
+                                                                  "value2":  5,
+                                                                  "text":  "5"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_full_rebuild",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  11,
+                                                                  "text":  "11"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  11,
+                                                    "text":  "11"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed8_decay_full_rebuild",
+                             "seed":  8,
+                             "formula":  "=A1/2",
+                             "command":  "full_rebuild",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "8",
+                                                                  "value2":  8,
+                                                                  "text":  "8"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_full_rebuild",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed5_increment_save_reopen",
+                             "seed":  5,
+                             "formula":  "=A1+1",
+                             "command":  "save_reopen",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "5",
+                                                                  "value2":  5,
+                                                                  "text":  "5"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  1,
+                                                                  "text":  "1"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_save_reopen",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1+1",
+                                                                  "value2":  11,
+                                                                  "text":  "11"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1+1",
+                                                    "value2":  11,
+                                                    "text":  "11"
+                                                }
+                         },
+                         {
+                             "probe_id":  "init_seed8_decay_save_reopen",
+                             "seed":  8,
+                             "formula":  "=A1/2",
+                             "command":  "save_reopen",
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial_blank",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "",
+                                                                  "value2":  null,
+                                                                  "text":  ""
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_seed",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "8",
+                                                                  "value2":  8,
+                                                                  "text":  "8"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_formula_assignment",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             },
+                                             {
+                                                 "moment":  "after_save_reopen",
+                                                 "snapshot":  {
+                                                                  "cell":  "Sheet1!A1",
+                                                                  "formula":  "=A1/2",
+                                                                  "value2":  0,
+                                                                  "text":  "0"
+                                                              }
+                                             }
+                                         ],
+                             "final_snapshot":  {
+                                                    "cell":  "Sheet1!A1",
+                                                    "formula":  "=A1/2",
+                                                    "value2":  0,
+                                                    "text":  "0"
+                                                }
+                         }
+                     ],
+    "disposition":  "Numeric prior seeds did not survive formula assignment in these self-cycle probes; observed terminal surfaces match zero/blank initial base for the tested formulas and commands."
+}

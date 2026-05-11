@@ -1,7 +1,7 @@
 param(
     [string]$RunId = "w048-excel-cycles-001",
     [string]$OutputRoot = "docs/test-runs/excel-cycles",
-    [ValidateSet("core")]
+    [ValidateSet("core", "bitexact")]
     [string]$ProbeSet = "core"
 )
 
@@ -97,6 +97,18 @@ $probes = @(
     [ordered]@{ id="excel_ctro_indirect_release_001"; cycle_kind="dynamic_reference"; iteration=$false; max_iterations=100; max_change=0.001; cells=@("A1","B1","C1"); steps=@(@{op="set_value"; target="C1"; value=10}, @{op="set_value"; target="B1"; value="A1"}, @{op="set_formula"; target="A1"; formula="=INDIRECT(B1)+1"}, @{op="calculate_full_rebuild"}, @{op="set_value"; target="B1"; value="C1"}); questions=@("dynamic cycle release", "re-entry timing") },
     [ordered]@{ id="excel_ctro_downstream_001"; cycle_kind="dynamic_reference"; iteration=$false; max_iterations=100; max_change=0.001; cells=@("A1","B1","C1","D1"); steps=@(@{op="set_value"; target="C1"; value=10}, @{op="set_value"; target="B1"; value="A1"}, @{op="set_formula"; target="A1"; formula="=INDIRECT(B1)+1"}, @{op="set_formula"; target="D1"; formula="=A1+1"}, @{op="calculate_full_rebuild"}, @{op="set_value"; target="B1"; value="C1"}); questions=@("downstream retained/stale/recomputed value", "release propagation") }
 )
+
+if ($ProbeSet -eq "bitexact") {
+    $probes += @(
+        [ordered]@{ id="excel_iter_self_decay_001"; cycle_kind="structural"; iteration=$true; max_iterations=50; max_change=0.001; cells=@("A1"); steps=@(@{op="set_value"; target="A1"; value=8}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=A1/2"}); questions=@("convergence threshold", "initial vector from prior numeric value", "terminal value precision") },
+        [ordered]@{ id="excel_iter_three_node_order_001"; cycle_kind="structural"; iteration=$true; max_iterations=2; max_change=0.001; cells=@("A1","B1","C1"); steps=@(@{op="set_value"; target="A1"; value=1}, @{op="set_value"; target="B1"; value=10}, @{op="set_value"; target="C1"; value=100}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=B1+1"}, @{op="set_formula"; target="B1"; formula="=C1+1"}, @{op="set_formula"; target="C1"; formula="=A1+1"}); questions=@("three-node iterative order", "chain-state-sensitive value sequence") },
+        [ordered]@{ id="excel_iter_oscillation_001"; cycle_kind="structural"; iteration=$true; max_iterations=6; max_change=0.001; cells=@("A1"); steps=@(@{op="set_value"; target="A1"; value=1}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=-A1"}); questions=@("oscillation terminal", "max-iteration behavior", "sign-flip sequence") },
+        [ordered]@{ id="excel_iter_non_numeric_prior_001"; cycle_kind="structural"; iteration=$true; max_iterations=5; max_change=0.001; cells=@("A1"); steps=@(@{op="set_value"; target="A1"; value="text"}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=A1+1"}); questions=@("non-numeric prior coercion", "error/terminal value") },
+        [ordered]@{ id="excel_iter_fraction_precision_001"; cycle_kind="structural"; iteration=$true; max_iterations=20; max_change=0.000001; cells=@("A1"); steps=@(@{op="set_value"; target="A1"; value=0}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=(A1+1)/3"}); questions=@("bit-exact numeric convergence", "max-change precision") },
+        [ordered]@{ id="excel_chain_full_rebuild_compare_001"; cycle_kind="structural"; iteration=$true; max_iterations=3; max_change=0.001; cells=@("A1","B1"); steps=@(@{op="set_formula"; target="A1"; formula="=B1+1"}, @{op="set_formula"; target="B1"; formula="=A1+1"}, @{op="calculate_full_rebuild"}, @{op="calculate"}); questions=@("full rebuild versus ordinary calculate", "saved chain effect") },
+        [ordered]@{ id="excel_ctro_indirect_iterative_self_001"; cycle_kind="dynamic_reference"; iteration=$true; max_iterations=5; max_change=0.001; cells=@("A1","B1"); steps=@(@{op="set_value"; target="B1"; value="A1"}, @{op="set_value"; target="A1"; value=0}, @{op="calculate_full_rebuild"}, @{op="set_formula"; target="A1"; formula="=INDIRECT(B1)+1"}); questions=@("dynamic-reference iterative self-cycle", "CTRO iterative profile input") }
+    )
+}
 
 $runRoot = Join-Path $OutputRoot $RunId
 New-Dir $runRoot

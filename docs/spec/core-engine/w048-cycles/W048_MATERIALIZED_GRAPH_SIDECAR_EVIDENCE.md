@@ -10,7 +10,7 @@ This packet records the first W048 materialized graph sidecar widening for TreeC
 
 | Surface | Path |
 | --- | --- |
-| checker/normalizer | `scripts/check-w048-materialized-graphs.py` |
+| checker/normalizer | `scripts/check-w048-materialized-graphs.ps1` |
 | TreeCalc run root | `docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/` |
 | W048 summary | `docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/w048_materialized_graph_check_summary.json` |
 | per-case sidecars | `docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/cases/*/w048_materialized_graph_layers.json` |
@@ -19,28 +19,14 @@ Commands used:
 
 ```powershell
 cargo run -p oxcalc-tracecalc-cli -- treecalc w048-materialized-graph-001
-python scripts/check-w048-materialized-graphs.py docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001
+scripts/check-w048-materialized-graphs.ps1 docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001
 ```
 
 Review commands used before bead closure:
 
 ```powershell
-python scripts/check-w048-materialized-graphs.py docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001
-python - <<'PY'
-import json, pathlib
-root=pathlib.Path('docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001')
-summary=json.load(open(root/'w048_materialized_graph_check_summary.json', encoding='utf-8'))
-assert summary['case_count'] == 29
-assert summary['layer_count'] == 87
-assert summary['check_error_count'] == 0
-for case in summary['case_summaries']:
-    sidecar=json.load(open(case['materialized_graph_layers_path'], encoding='utf-8'))
-    assert len(sidecar['layers']) == 3
-    for layer in sidecar['layers']:
-        assert layer['graph_hash'].startswith('sha256:')
-        assert {'structural','published_effective','candidate_effective'} >= {layer['graph_layer']}
-print('w048 materialized sidecar review ok')
-PY
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-materialized-graphs.ps1 docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root='docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001'; $s = Get-Content (Join-Path $root 'w048_materialized_graph_check_summary.json') -Raw | ConvertFrom-Json; if ($s.case_count -ne 29 -or $s.layer_count -ne 87 -or $s.check_error_count -ne 0) { throw 'w048 materialized sidecar summary mismatch' }; foreach ($case in $s.case_summaries) { $sidecar = Get-Content $case.materialized_graph_layers_path -Raw | ConvertFrom-Json; if (@($sidecar.layers).Count -ne 3) { throw 'expected three graph layers' }; foreach ($layer in $sidecar.layers) { if (($layer.graph_hash -as [string]) -notmatch '^sha256:') { throw 'missing graph hash' } } }"
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-worksets.ps1
 ```
 

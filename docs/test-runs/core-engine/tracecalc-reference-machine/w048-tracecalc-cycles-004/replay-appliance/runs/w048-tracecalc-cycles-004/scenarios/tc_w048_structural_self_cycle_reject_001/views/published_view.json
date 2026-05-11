@@ -1,0 +1,10 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "7"
+    }
+  ],
+  "scenario_id": "tc_w048_structural_self_cycle_reject_001",
+  "snapshot_id": "s-w048-cycle-struct-self"
+}

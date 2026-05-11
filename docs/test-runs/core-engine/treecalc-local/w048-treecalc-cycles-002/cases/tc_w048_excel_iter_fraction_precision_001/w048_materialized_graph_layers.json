@@ -1,0 +1,285 @@
+{
+    "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+    "case_id":  "tc_w048_excel_iter_fraction_precision_001",
+    "check_errors":  [
+
+                     ],
+    "layers":  [
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_fraction_precision_001",
+                       "graph_layer":  "structural",
+                       "graph_id":  "structural:tc_w048_excel_iter_fraction_precision_001",
+                       "graph_hash":  "sha256:87b1f15b68473d1e022ea20d2c15fef1af4a96b5640fe4d926f61894abc7521b",
+                       "basis":  {
+                                     "snapshot_id":  4815,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:fraction:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_fraction_precision_001:structural:0",
+                                                 "graph_id":  "structural:tc_w048_excel_iter_fraction_precision_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_fraction_precision_001",
+                       "graph_layer":  "published_effective",
+                       "graph_id":  "published_effective:tc_w048_excel_iter_fraction_precision_001",
+                       "graph_hash":  "sha256:f7e514eb165747424a5f63b1ac29c95b2e534c1c0ed4e99dfc3bdba359a2f60f",
+                       "basis":  {
+                                     "snapshot_id":  4815,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  null,
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:fraction:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_fraction_precision_001:structural:0",
+                                                 "graph_id":  "published_effective:tc_w048_excel_iter_fraction_precision_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   },
+                   {
+                       "schema_version":  "oxcalc.w048.materialized_graph_layers.v1",
+                       "case_id":  "tc_w048_excel_iter_fraction_precision_001",
+                       "graph_layer":  "candidate_effective",
+                       "graph_id":  "candidate_effective:tc_w048_excel_iter_fraction_precision_001",
+                       "graph_hash":  "sha256:cf4139041554a91227791b0fec53eaf9211aefa9e3dcf73010148ae390b43148",
+                       "basis":  {
+                                     "snapshot_id":  4815,
+                                     "profile_id":  "cycle.excel_match_iterative",
+                                     "candidate_wave_id":  "fixture:tc_w048_excel_iter_fraction_precision_001:candidate",
+                                     "published_overlay_epoch":  null
+                                 },
+                       "nodes":  [
+                                     {
+                                         "node_id":  2,
+                                         "stable_symbol":  "node:2",
+                                         "node_kind":  "formula_or_value",
+                                         "formula_bind_artifact_id":  "bind:w048:excel:fraction:A1",
+                                         "calc_state":  "Clean",
+                                         "demanded":  true,
+                                         "published_value_hash":  null
+                                     }
+                                 ],
+                       "forward_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2,
+                                                 "edge_origin":  "structural_static",
+                                                 "stability_class":  "structural",
+                                                 "overlay_epoch":  null,
+                                                 "wave_id":  null,
+                                                 "dynamic_carrier_detail":  null,
+                                                 "value_read_eligible":  true
+                                             }
+                                         ],
+                       "reverse_edges":  [
+                                             {
+                                                 "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "descriptor_id":  "bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                 "kind":  "StaticDirect",
+                                                 "owner_node_id":  2,
+                                                 "target_node_id":  2
+                                             }
+                                         ],
+                       "edge_provenance":  [
+                                               {
+                                                   "edge_id":  "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0",
+                                                   "edge_origin":  "structural_static",
+                                                   "stability_class":  "structural"
+                                               }
+                                           ],
+                       "overlay_deltas":  [
+
+                                          ],
+                       "cycle_regions":  [
+                                             {
+                                                 "cycle_region_id":  "cycle:tc_w048_excel_iter_fraction_precision_001:structural:0",
+                                                 "graph_id":  "candidate_effective:tc_w048_excel_iter_fraction_precision_001",
+                                                 "cycle_source":  "excel_match_iterative",
+                                                 "members":  [
+                                                                 2
+                                                             ],
+                                                 "member_order":  2,
+                                                 "cycle_root":  2,
+                                                 "root_policy":  "excel_observed_chain_order",
+                                                 "terminal_policy":  "excel_match_iterative_publish",
+                                                 "terminal_state":  "iterative_terminal_published",
+                                                 "internal_edges":  [
+                                                                        "dep:2:2:bind:formula:w048:excel:fraction:A1:oxfml_ref:0"
+                                                                    ],
+                                                 "incoming_boundary_edges":  [
+
+                                                                             ],
+                                                 "outgoing_boundary_edges":  [
+
+                                                                             ],
+                                                 "prior_value_basis":  [
+
+                                                                       ],
+                                                 "introduced_by_overlay_delta_ids":  [
+
+                                                                                     ],
+                                                 "released_from_cycle_region_id":  null,
+                                                 "iteration_summary":  "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331"
+                                             }
+                                         ],
+                       "topological_order":  2,
+                       "blocked_reason":  null
+                   }
+               ]
+}

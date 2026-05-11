@@ -1,0 +1,29 @@
+{
+  "case_id": "tc_w048_structural_self_cycle_reject_001",
+  "events": [
+    {
+      "case_id": "tc_w048_structural_self_cycle_reject_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 2,
+      "step_id": 1
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_w048_structural_self_cycle_reject_001:candidate",
+      "detail": "formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+      "kind": "SyntheticCycleReject",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 2
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 3
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

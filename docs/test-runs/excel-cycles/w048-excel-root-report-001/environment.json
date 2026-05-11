@@ -1,0 +1,11 @@
+{
+    "excel_version":  "16.0",
+    "build":  "19929",
+    "platform":  "Windows",
+    "locale":  "en-ZA",
+    "probe_runner":  "scripts/run-w048-excel-root-report-probes.ps1",
+    "observation_time_utc":  "2026-05-11T21:59:25.5298456Z",
+    "display_alerts":  false,
+    "visible":  false,
+    "note":  "Targets Application.CircularReference report-cell/root behavior using COM without UI automation."
+}

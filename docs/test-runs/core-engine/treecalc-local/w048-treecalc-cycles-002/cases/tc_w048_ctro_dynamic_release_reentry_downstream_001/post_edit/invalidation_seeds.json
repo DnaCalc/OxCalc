@@ -1,0 +1,18 @@
+[
+  {
+    "node_id": 2,
+    "reason": "DynamicDependencyActivated"
+  },
+  {
+    "node_id": 2,
+    "reason": "DynamicDependencyReleased"
+  },
+  {
+    "node_id": 2,
+    "reason": "DynamicDependencyReclassified"
+  },
+  {
+    "node_id": 4,
+    "reason": "StructuralRecalcOnly"
+  }
+]

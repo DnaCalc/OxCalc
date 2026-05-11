@@ -52,6 +52,8 @@ pub struct TreeCalcFixtureCase {
     #[serde(default)]
     pub seeded_published_values: BTreeMap<u64, String>,
     #[serde(default)]
+    pub compatibility_basis: Option<String>,
+    #[serde(default)]
     pub post_edit: Option<TreeCalcFixturePostEditPlan>,
     pub expected: TreeCalcFixtureExpected,
 }
@@ -251,7 +253,10 @@ pub fn execute_fixture_case(
             invalidation_seeds: Vec::new(),
             candidate_result_id: format!("fixture:{}:candidate", case.case_id),
             publication_id: format!("fixture:{}:publication", case.case_id),
-            compatibility_basis: format!("snapshot:{}", case.snapshot_id),
+            compatibility_basis: case
+                .compatibility_basis
+                .clone()
+                .unwrap_or_else(|| format!("snapshot:{}", case.snapshot_id)),
             artifact_token_basis: format!("snapshot:{}", case.snapshot_id),
             environment_context: crate::treecalc::LocalTreeCalcEnvironmentContext::default(),
         })
@@ -518,7 +523,7 @@ mod tests {
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
 
-        assert_eq!(manifest.cases.len(), 33);
+        assert_eq!(manifest.cases.len(), 37);
 
         for entry in &manifest.cases {
             let case_path = repo_root

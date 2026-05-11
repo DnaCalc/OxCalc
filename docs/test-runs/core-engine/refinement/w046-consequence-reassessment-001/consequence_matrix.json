@@ -1,0 +1,110 @@
+{
+  "schema_version": "oxcalc.w046.consequence_reassessment.v1",
+  "run_id": "w046-consequence-reassessment-001",
+  "workset": "W046",
+  "bead": "calc-gucd.10",
+  "policy": {
+    "readiness_claim_may_not_outrun_semantic_evidence": true,
+    "classifier_rows_do_not_promote": true,
+    "scale_timings_do_not_promote_correctness": true
+  },
+  "lanes": [
+    {
+      "lane": "semantic_spine",
+      "highest_honest_capability": "selected semantic spine validated for declared W046 scoped targets",
+      "direct_semantic_evidence": ["docs/spec/core-engine/w046-formalization/", "formal/lean/OxCalc/CoreEngine/", "formal/tla/"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json", "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json"],
+      "operational_evidence": [],
+      "missing_evidence": ["full Rust line proof", "unbounded TLA", "arbitrary finite graph proof"],
+      "external_ownership": [],
+      "promotion_decision": "validated_scope_only_no_release_promotion"
+    },
+    {
+      "lane": "stage2_partition_and_scheduler",
+      "highest_honest_capability": "historical bounded partition/scheduler criteria remain context only; no W046 Stage 2 promotion",
+      "direct_semantic_evidence": ["docs/test-runs/core-engine/tla/w036-stage2-partition-001/", "docs/test-runs/core-engine/stage2-criteria/w037-stage2-deterministic-replay-criteria-001/"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"],
+      "operational_evidence": [],
+      "missing_evidence": ["full production partition analyzer soundness", "scheduler fairness/unbounded coverage", "semantic equivalence under all Stage 2 profiles"],
+      "external_ownership": [],
+      "promotion_decision": "no_stage2_promotion"
+    },
+    {
+      "lane": "pack_grade_replay_governance",
+      "highest_honest_capability": "pack evidence remains historical/contextual; W046 adds semantic coverage inputs only",
+      "direct_semantic_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "operational_evidence": ["docs/test-runs/core-engine/pack-capability/w037-pack-c5-candidate-decision-001/"],
+      "missing_evidence": ["pack-grade replay governance regenerated over W046 semantic checker", "current pack manifest with semantic-spine fact coverage"],
+      "external_ownership": [],
+      "promotion_decision": "no_pack_grade_promotion"
+    },
+    {
+      "lane": "c5_candidate",
+      "highest_honest_capability": "no C5 promotion; semantic spine supplies better evidence inputs only",
+      "direct_semantic_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/semantic_regression_signatures.json"],
+      "operational_evidence": ["archive/test-runs-core-engine-w038-w045/pack-capability/w045-pack-grade-replay-governance-service-c5-reassessment-001/"],
+      "missing_evidence": ["current C5 criteria rerun", "pack-grade semantic replay closure", "operated service dependency closure"],
+      "external_ownership": [],
+      "promotion_decision": "no_c5_promotion"
+    },
+    {
+      "lane": "operated_assurance_service",
+      "highest_honest_capability": "historical operated-service pilots remain archived; W046 does not operate a current service",
+      "direct_semantic_evidence": ["docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "operational_evidence": ["archive/test-runs-core-engine-w038-w045/operated-assurance/w045-operated-assurance-retained-history-retained-witness-slo-service-001/"],
+      "missing_evidence": ["current operated service envelope over W046 checker", "SLO/alert history on W046 semantic facts", "retained witness service evidence regenerated in active surface"],
+      "external_ownership": [],
+      "promotion_decision": "no_operated_service_claim"
+    },
+    {
+      "lane": "independent_evaluator",
+      "highest_honest_capability": "historical independent evaluator differential evidence remains archived; W046 does not expand evaluator breadth",
+      "direct_semantic_evidence": ["docs/spec/core-engine/w046-formalization/W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "operational_evidence": ["archive/test-runs-core-engine-w038-w045/diversity-seam/w045-independent-evaluator-breadth-mismatch-quarantine-operated-differential-service-001/"],
+      "missing_evidence": ["current independent evaluator breadth over W046 traces", "mismatch quarantine over proof-carrying trace facts"],
+      "external_ownership": [],
+      "promotion_decision": "no_independent_evaluator_promotion"
+    },
+    {
+      "lane": "oxfml_callable_and_formatting",
+      "highest_honest_capability": "narrow OxCalc/OxFml LET/LAMBDA/effect-boundary model validated; broad OxFml/OxFunc remains external",
+      "direct_semantic_evidence": ["docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md", "docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "operational_evidence": [],
+      "missing_evidence": ["positive format/display projection", "registered external publication consequence", "broad OxFml evaluator proof", "general OxFunc kernel proof"],
+      "external_ownership": ["../OxFml", "OxFunc"],
+      "promotion_decision": "narrow_seam_only_no_broad_oxfml_promotion"
+    },
+    {
+      "lane": "scale_performance",
+      "highest_honest_capability": "semantic-regression signatures over four scale profiles; no continuous scale assurance or optimization promotion",
+      "direct_semantic_evidence": ["docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/semantic_regression_signatures.json"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"],
+      "operational_evidence": ["docs/test-runs/core-engine/treecalc-scale/million_grid_r2/run_summary.json", "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json", "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json", "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json"],
+      "missing_evidence": ["continuous scale gate over W046 checker", "optimization semantic preservation proof"],
+      "external_ownership": [],
+      "promotion_decision": "semantic_regression_only_no_optimization_promotion"
+    },
+    {
+      "lane": "release_readiness",
+      "highest_honest_capability": "not release ready; W046 improves proof-spine evidence only",
+      "direct_semantic_evidence": ["docs/spec/core-engine/w046-formalization/README.md"],
+      "replay_checker_evidence": ["docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"],
+      "operational_evidence": [],
+      "missing_evidence": ["full verification", "current pack-grade replay", "current operated service", "current independent evaluator breadth", "release checklist and acceptance gates"],
+      "external_ownership": [],
+      "promotion_decision": "no_release_readiness_claim"
+    }
+  ],
+  "summary": {
+    "lane_count": 9,
+    "promotion_rows": 0,
+    "no_promotion_rows": 8,
+    "validated_scope_only_rows": 1,
+    "semantic_equivalence_required_for_strategy_claims": true
+  }
+}

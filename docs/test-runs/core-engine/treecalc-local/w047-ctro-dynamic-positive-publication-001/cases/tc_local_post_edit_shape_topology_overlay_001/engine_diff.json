@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "rejected"
+}

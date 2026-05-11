@@ -143,21 +143,28 @@ This directory contains the first OxCalc-local assurance artifacts that move W00
    - W046 TLC evidence packet: 1 config checked, 11 states generated, 6 distinct states, depth 2, no error, and no full TLA/Rust/TraceCalc/TreeCalc/release-grade promotion.
 21. `docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/`
    - W046 selected-kernel binding packet: 12 rows, 8 matched refinement rows, 1 TraceCalc oracle self-check row, 3 exact blockers, 0 unexpected mismatches, and no full TraceCalc/TreeCalc/CoreEngine or release-grade promotion.
+22. `formal/lean/OxCalc/CoreEngine/W046OxfmlEffectBoundary.lean` and `formal/tla/CoreEngineW046OxfmlEffectBoundary.tla`
+   - W046 narrow OxFml effect-boundary model for LET/LAMBDA, runtime-effect rejection, publication authority, and current format/display absence.
+23. `formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean` and `formal/tla/CoreEngineW046IntegratedKernel.tla`
+   - W046 integrated semantic kernel and bounded cross-phase state machine over graph, invalidation, order/read, candidate, reject, publication, and trace facts.
+24. `formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean` and `formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla`
+   - W046 finite graph/dataflow/order strengthening over chain, diamond, fanout rebind, self-cycle, and two-node SCC shapes.
+25. `scripts/check-w046-proof-carrying-trace.py`
+   - W046 deterministic proof-carrying trace checker over selected TreeCalc and TraceCalc emitted artifacts.
+26. `formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean`
+   - W046 selected implementation-trace refinement relation for publication and reject facts.
+27. `docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/`, `docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/`, and `docs/test-runs/core-engine/refinement/w046-consequence-reassessment-001/`
+   - W046 coverage, scale semantic-regression, and consequence-reassessment evidence roots.
 
 ## Status
-- execution_state: `calc-gucd.7_oxfml_seam_ready`
+- execution_state: `calc-gucd.11_closure_audit_ready`
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: integrated
 - open_lanes:
-  - the Stage 1 Lean skeleton has been typechecked once locally, W033 adds a checked first-slice Lean artifact, the post-W033 successor slice widens checked theorem coverage, W034 adds checked adjacent proof-family slices, W035/W036 add proof-inventory slices, W037 adds a checked proof/model closure inventory, W038 adds checked assumption-discharge and totality-boundary classification, W040 adds checked Rust, Lean/TLA, and Stage 2 policy/equivalence classification slices, and W046 now adds checked dependency-graph, invalidation/rebind, recalc-tracker, evaluation-order/read-discipline, and TraceCalc-refinement model slices
+  - W046 now includes checked Lean/TLA slices for dependency graph, invalidation/rebind, recalc tracker, evaluation-order/read discipline, TraceCalc refinement, OxFml effect boundary, integrated kernel, finite graph/dataflow/order strengthening, and selected Rust refinement facts
+  - W046 proof-carrying trace checker, coverage ledger, scale semantic-regression signatures, and consequence matrix exist as deterministic evidence roots
   - full Lean verification remains open
-  - repo-local TLC tooling now exists via `scripts/bootstrap-tla-tools.ps1` and `scripts/run-tlc.ps1`
-  - `formal/tla/CoreEngineStage1.tla`, `formal/tla/CoreEnginePostW033.tla`, `formal/tla/CoreEngineW034Interleavings.tla`, `formal/tla/CoreEngineW035NonRoutineInterleavings.tla`, `formal/tla/CoreEngineW036Stage2Partition.tla`, `formal/tla/CoreEngineW046DependencyGraph.tla`, `formal/tla/CoreEngineW046InvalidationRebind.tla`, `formal/tla/CoreEngineW046RecalcTracker.tla`, `formal/tla/CoreEngineW046EvaluationOrder.tla`, and `formal/tla/CoreEngineW046TraceCalcRefinement.tla` have bounded configs for routine TLC checks
-  - `formal/tla/CoreEngineStage1.cfg` remains a deeper exploration config and is not yet declared as a routine terminating baseline
   - full TLA verification remains open
-  - W046 OxFml seam, integrated semantic kernel, finite proof strengthening, proof-carrying trace checker, Rust refinement bridge, and scale semantic-regression models remain open; TraceCalc refinement is currently scoped to the selected-kernel relation and binding packet
-  - W040 now binds declared-profile Stage 2 policy/equivalence evidence and snapshot/capability fence counterparts, but full production partition analyzer soundness, fairness/unbounded scheduler coverage, operated cross-engine service evidence, and pack-grade replay governance remain open; Stage 2 policy remains unpromoted
-  - replay artifacts now include a first emitted harness and oracle baseline run, but replay-pack export and richer replay families remain open
-  - measurement artifacts remain schema/register definitions; running code emits scenario counters, but not the later full measurement surface
-  - the artifact set is still a first assurance floor rather than a fully matured proof, model-check, replay-pack, or instrumentation lane
+  - Rust Tarjan/topological queue line proofs, arbitrary finite graph refinement, native reverse-edge JSON sidecar emission, native per-read trace emission, broad OxFml/OxFunc proof, Stage 2 production policy, pack-grade replay, C5, operated service, independent evaluator breadth, continuous scale assurance, and release-grade verification remain unpromoted or future work
+  - the artifact set is a coherent semantic proof spine for the declared W046 target, not a fully matured release-readiness lane

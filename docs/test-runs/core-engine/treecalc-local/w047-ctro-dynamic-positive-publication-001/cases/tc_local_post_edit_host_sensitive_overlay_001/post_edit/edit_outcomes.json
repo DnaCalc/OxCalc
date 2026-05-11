@@ -1,0 +1,12 @@
+[
+  {
+    "affected_node_ids": [
+      2
+    ],
+    "diagnostic_events": [
+      "constant_value_changed:node:2:7"
+    ],
+    "impact": "RecalcOnly",
+    "snapshot_id": 17
+  }
+]

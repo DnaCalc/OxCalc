@@ -1,0 +1,17 @@
+{
+  "run_id": "w046-consequence-reassessment-001",
+  "workset": "W046",
+  "bead": "calc-gucd.10",
+  "matrix": "docs/test-runs/core-engine/refinement/w046-consequence-reassessment-001/consequence_matrix.json",
+  "result": "passed",
+  "lane_count": 9,
+  "promotion_rows": 0,
+  "validated_scope_only_rows": 1,
+  "no_promotion_rows": 8,
+  "validation": {
+    "json_parseable": true,
+    "referenced_artifacts_exist": true,
+    "no_readiness_claim_outruns_evidence": true,
+    "semantic_equivalence_statement_required_for_strategy_claims": true
+  }
+}

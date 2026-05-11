@@ -444,3 +444,51 @@ It does mean:
    redirect showcase finding uptake engine semantic catalog and effect-signature plan, dependency graph reverse-edge and SCC model, invalidation soft-reference dynamic-reference and rebind model, recalc tracker transition pre/post model, evaluation-order and working-value read-discipline model, TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding, OxFml seam LET/LAMBDA formatting/publication and callable-boundary model, proof-service and evidence-classifier coverage ledger recast over the semantic spine, scale/performance semantic-regression signatures, Stage 2 pack-governance C5 operated-service independent-evaluator and release-readiness consequence reassessment, closure audit semantic-spine coverage decision and successor routing
 7. rollout_mode:
    `execution_target`
+
+### W047 Calc-Time Rebinding Overlay Design Sweep
+1. purpose:
+   continue after W046 by restoring Calc-Time Rebinding Overlay as a central engine design concept rather than a bolt-on: runtime-derived dependency-shape changes discovered during evaluation, including dynamic references, region membership, dynamic array/spill resizing, and candidate-overlay cycle creation or release, must be modeled as effective-graph overlay changes with explicit SCC/cycle classification, frontier repair, fallback/reject, candidate, publication, trace, and proof obligations.
+2. depends_on:
+   `W046`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/spec/core-engine/w047-ctro/W047_HISTORICAL_NO_LOSS_CTRO_CROSSWALK.md`, `docs/spec/core-engine/w047-ctro/W047_EFFECTIVE_GRAPH_OVERLAY_AND_FRONTIER_REPAIR_SEMANTICS.md`, `docs/spec/core-engine/w047-ctro/W047_CTRO_SCENARIO_MATRIX_AND_TRACE_FACTS.md`, `docs/spec/core-engine/w047-ctro/W047_IMPLEMENTATION_ROADMAP_AND_SUCCESSOR_GATES.md`, `docs/spec/core-engine/w047-ctro/W047_DYNAMIC_DEPENDENCY_POSITIVE_PUBLICATION_EVIDENCE.md`, `docs/worksets/W003_STAGE1_COORDINATOR_AND_PUBLICATION_BASELINE.md`, `docs/worksets/W004_INCREMENTAL_RECALC_AND_OVERLAY_BASELINE.md`, `docs/worksets/W007_LEAN_FACING_STATE_OBJECTS_AND_TRANSITION_BOUNDARY_PLAN.md`, `docs/worksets/W008_TLA_COORDINATOR_PUBLICATION_AND_FENCE_SAFETY_MODEL_PLAN.md`, `docs/worksets/W009_REPLAY_AND_PACK_BINDING_FOR_STAGE1_SEAM_AND_COORDINATOR_BEHAVIOR.md`, `docs/worksets/W010_EXPERIMENT_REGISTER_AND_MEASUREMENT_SCHEMA_PLANNING.md`, `docs/worksets/W012_TRACECALC_REFERENCE_MACHINE_AND_CONFORMANCE_ORACLE.md`, `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/w046-formalization/`
+4. upstream_dependencies:
+   `OxFml` for dynamic reference, region/spill, and runtime-derived effect seam implications if W047 discovers current shared contracts are too narrow.
+5. closure_condition:
+   historical no-loss crosswalk is complete; Calc-Time Rebinding Overlay is integrated into core recalc, graph, OxFml seam, TraceCalc, TreeCalc, and design surfaces (formal/checker/sidecar surfaces are explicitly **not** changed under W047 — see scope reset 2026-05-10 in W047 §1); static, dynamic switch, unresolved dynamic, downstream dependent, spill expansion/contraction, structural cycle, CTRO-created cycle, CTRO cycle release, and fallback scenarios are covered or exact-blocked; effective graph/frontier repair/cycle-policy semantics are specified at design level (bounded-model/checker validation deferred to W049); implementation lands the CTRO phase in the engine core; circular dependency calculation processing is routed to W048 before formalization; pack/C5/operated/release promotion gates pass through W049's evidence layer.
+6. initial_epic_lanes:
+   historical no-loss design sweep and CTRO doctrine, effective graph frontier repair and shared cycle-policy semantics (design-level), scenario matrix and TraceCalc/TreeCalc evidence plan, implementation/evidence roadmap and successor gates, dynamic dependency positive publication implementation refinement and CTRO phase landing.
+7. rollout_mode:
+   `execution_target` (implementation-first; circular dependency calculation processing routes to W048; formal/checker/sidecar/readiness-gate work transfers to W049 — see W047 §1 scope reset and §10 deferred bead path).
+
+### W048 Circular Dependency Calculation Processing
+1. purpose:
+   execute circular dependency calculation processing end to end before successor formalization/deepening: structural cycles, CTRO-created cycles, cycle release/re-entry, downstream invalidation, non-iterative no-publication policy, future iterative-profile questions, Excel comparison probes, materialized graph facts, TraceCalc reference behavior, TreeCalc optimized/core behavior, W048 formal definitions/models/checker targets, deterministic test corpus, and profile-gated innovation opportunities must be handled as calculation behavior rather than deferred proof-only work.
+2. depends_on:
+   `W047`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/spec/core-engine/w048-cycles/`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/spec/core-engine/w047-ctro/`, `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+4. upstream_dependencies:
+   Excel behavior observation inputs for circular-reference comparison; OxFml handoff only if W048 discovers shared evaluator-facing contract changes are needed.
+5. closure_condition:
+   W048 can route successor work only after it records the selected non-iterative cycle policy, binds materialized graph requirements to TraceCalc/TreeCalc artifacts or exact blockers, exercises or exact-blocks structural and CTRO-created cycle fixtures, specifies cycle release/re-entry and downstream invalidation behavior, records Excel observation disposition for the core probe set, executes the declared circular-reference corpus or records exact blockers, introduces W048-owned formal definitions/models/checker targets grounded in artifacts, captures innovation profiles separately from default Excel-match behavior, and either selects an initial iterative profile or explicitly defers it with decision axes preserved.
+6. initial_epic_lanes:
+   Excel circular-reference probes (`calc-zci1.1`), materialized dependency graph layers and sidecars (`calc-zci1.2`), TraceCalc reference cycle implementation (`calc-zci1.3`), iterative-profile algorithm decision and Excel disposition (`calc-zci1.4`), W048 formal definitions and proof/model artifacts (`calc-zci1.5`), TreeCalc optimized cycle implementation (`calc-zci1.6`), circular-reference test corpus and conformance runs (`calc-zci1.7`), innovation opportunity ledger and experimental profiles (`calc-zci1.8`).
+7. rollout_mode:
+   `closure_audit_passed` (child beads `calc-zci1.1` through `calc-zci1.8` closed; closure audit at `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json`; successor routing in `docs/spec/core-engine/w048-cycles/W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`).
+
+### W049 Core Engine Formalization Restart After CTRO And Cycles
+1. purpose:
+   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer.
+2. depends_on:
+   `W047`, `W048`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`, `docs/spec/core-engine/w046-formalization/`, `docs/spec/core-engine/w047-ctro/`
+4. upstream_dependencies:
+   none planned at activation; W049 is a follow-on workset over OxCalc's own engine core after W047 implementation and W048 cycle semantics. To be re-evaluated when the W049 plan is finalized.
+5. closure_condition:
+   not yet specified — pre-planning only. Will be specified after W047 and W048 clarify scope, beads, exit gate, and evidence policy. The W046 successor obligations currently mislabeled against W047 `calc-aylq.1`–`.4` (Rust Tarjan / sidecar enrichment / dynamic publication / readiness gate) transfer into the W049 epic at activation; the W046 closure docs will be re-pointed at that time.
+6. initial_epic_lanes:
+   pre-planning background only — see W049 doc §2 for the W046 punch list inherited as inputs and §2.6 working theory; lanes to be specified after W047 and W048 unblock a stable implementation and cycle-semantics target.
+7. rollout_mode:
+   `pre_planning` (not yet `execution_target`).

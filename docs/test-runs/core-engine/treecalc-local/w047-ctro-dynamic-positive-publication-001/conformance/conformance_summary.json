@@ -1,0 +1,8 @@
+{
+  "case_count": 29,
+  "conformance_pass_count": 29,
+  "engine_diff_path": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001/conformance/engine_diff.json",
+  "expectation_mismatch_count": 0,
+  "mismatch_case_count": 0,
+  "oracle_baseline_path": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001/conformance/oracle_baseline.json"
+}

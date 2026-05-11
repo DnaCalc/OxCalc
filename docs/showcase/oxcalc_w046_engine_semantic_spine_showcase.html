@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OxCalc W046 Engine Semantic Spine Review</title>
+  <style>
+    :root {
+      --bg: #07111d;
+      --panel: #0c1928;
+      --panel2: #0f2235;
+      --ink: #eef6ff;
+      --muted: #9fb2c5;
+      --line: rgba(218, 237, 255, 0.18);
+      --blue: #62b0ff;
+      --teal: #35d7c5;
+      --green: #6fe58e;
+      --amber: #ffc861;
+      --red: #ff7676;
+      --purple: #c997ff;
+      --code: #06101c;
+      --shadow: rgba(0,0,0,.35);
+      color-scheme: dark;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(53,215,197,.16), transparent 28%),
+        radial-gradient(circle at 82% 2%, rgba(255,200,97,.11), transparent 26%),
+        radial-gradient(circle at 58% 40%, rgba(98,176,255,.08), transparent 38%),
+        linear-gradient(135deg, #07111d, #0a1725 48%, #07111d);
+    }
+    a { color: #a9d3ff; text-decoration: none; }
+    a:hover { color: white; text-decoration: underline; }
+    .shell { max-width: 1500px; margin: 0 auto; padding: 28px 28px 80px; }
+    .hero {
+      min-height: 520px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr);
+      gap: 24px;
+      align-items: stretch;
+      padding-top: 24px;
+    }
+    .hero-card, .panel {
+      background: linear-gradient(180deg, rgba(15,34,53,.94), rgba(9,20,34,.94));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 22px 65px var(--shadow);
+    }
+    .hero-card { padding: 34px; position: relative; overflow: hidden; }
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .35;
+      background-image:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(circle at 50% 18%, black, transparent 72%);
+    }
+    .hero-card > * { position: relative; z-index: 1; }
+    .kicker { color: var(--teal); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: 12px; }
+    h1 { font-size: clamp(44px, 5.4vw, 88px); line-height: .93; margin: 12px 0 18px; letter-spacing: -0.04em; }
+    h2 { font-size: clamp(28px, 3vw, 46px); line-height: 1.02; margin: 0 0 14px; letter-spacing: -0.025em; }
+    h3 { font-size: 20px; line-height: 1.15; margin: 0 0 8px; }
+    h4 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #dbefff; margin: 0 0 8px; }
+    p { color: #c9d7e6; line-height: 1.48; margin: 0 0 12px; }
+    .lead { color: #f4fbff; font-size: 21px; line-height: 1.42; max-width: 1060px; }
+    .micro { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .verdict {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      align-content: start;
+    }
+    .verdict .big { font-size: 60px; font-weight: 900; line-height: .9; color: var(--green); letter-spacing: -0.05em; }
+    .pillrow { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0; }
+    .pill { border-radius: 999px; padding: 5px 9px; border: 1px solid var(--line); background: rgba(255,255,255,.055); color: #dcecff; font-size: 12px; font-weight: 650; }
+    .pill.blue { border-color: rgba(98,176,255,.45); color: #cde7ff; }
+    .pill.green { border-color: rgba(111,229,142,.45); color: #cffadb; }
+    .pill.amber { border-color: rgba(255,200,97,.45); color: #ffe3a8; }
+    .pill.red { border-color: rgba(255,118,118,.45); color: #ffd0d0; }
+    .pill.purple { border-color: rgba(201,151,255,.45); color: #ead8ff; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin: 18px 0 26px;
+      padding: 10px;
+      background: rgba(7,17,29,.88);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    nav a { font-size: 12px; color: #bdd5ec; padding: 6px 9px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+    section { margin: 34px 0; }
+    .panel { padding: 20px; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .metric { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.045); min-height: 120px; }
+    .metric strong { display: block; font-size: 38px; line-height: 1; color: white; margin-bottom: 8px; letter-spacing: -0.03em; }
+    .metric span { display: block; font-size: 12px; color: var(--muted); line-height: 1.3; }
+    .metric em { color: var(--green); font-style: normal; font-weight: 800; }
+    .lane { padding: 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.045); }
+    .lane.engine { background: rgba(98,176,255,.10); border-color: rgba(98,176,255,.36); }
+    .lane.formal { background: rgba(255,200,97,.11); border-color: rgba(255,200,97,.38); }
+    .lane.trace { background: rgba(111,229,142,.09); border-color: rgba(111,229,142,.34); }
+    .lane.gap { background: rgba(255,118,118,.10); border-color: rgba(255,118,118,.36); }
+    .lane.purple { background: rgba(201,151,255,.10); border-color: rgba(201,151,255,.36); }
+    .tag { display: inline-flex; align-items: center; gap: 6px; color: #dfefff; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .engine .dot { background: var(--blue); box-shadow: 0 0 16px var(--blue); }
+    .formal .dot { background: var(--amber); box-shadow: 0 0 16px var(--amber); }
+    .trace .dot { background: var(--green); box-shadow: 0 0 16px var(--green); }
+    .gap .dot { background: var(--red); box-shadow: 0 0 16px var(--red); }
+    .purple .dot { background: var(--purple); box-shadow: 0 0 16px var(--purple); }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(110px, 1fr));
+      gap: 8px;
+      align-items: stretch;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .step {
+      position: relative;
+      min-height: 150px;
+      padding: 12px;
+      border-radius: 13px;
+      border: 1px solid rgba(98,176,255,.28);
+      background: linear-gradient(180deg, rgba(98,176,255,.12), rgba(255,255,255,.035));
+    }
+    .step b { display: block; color: white; font-size: 13px; margin-bottom: 7px; }
+    .step span { display: block; color: #aebfd0; font-size: 11px; line-height: 1.28; }
+    .step::after { content: "→"; position: absolute; right: -12px; top: 48%; color: var(--teal); font-weight: 900; z-index: 2; }
+    .step:last-child::after { content: ""; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { border-bottom: 1px solid rgba(255,255,255,.10); padding: 8px 9px; text-align: left; vertical-align: top; color: #c9d8e7; }
+    th { color: #f5fbff; background: rgba(255,255,255,.07); text-transform: uppercase; letter-spacing: .05em; font-size: 11px; }
+    td code, p code, li code { color: #b9dcff; background: rgba(98,176,255,.10); padding: 1px 4px; border-radius: 4px; font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #dcecff;
+      font: 12px/1.35 "Cascadia Code", Consolas, monospace;
+    }
+    .code { background: var(--code); border: 1px solid rgba(98,176,255,.22); border-radius: 13px; padding: 14px; overflow: auto; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 5px 0; color: #cbd9e6; line-height: 1.35; }
+    .ok { color: var(--green); font-weight: 900; }
+    .warn { color: var(--amber); font-weight: 900; }
+    .bad { color: var(--red); font-weight: 900; }
+    .info { color: var(--blue); font-weight: 900; }
+    .callout { border-left: 4px solid var(--teal); padding: 14px 16px; background: rgba(53,215,197,.08); border-radius: 10px; }
+    .honesty { border-left-color: var(--amber); background: rgba(255,200,97,.09); }
+    .danger { border-left-color: var(--red); background: rgba(255,118,118,.09); }
+    .mini { font-size: 11px; }
+    .matrix td:nth-child(n+3), .matrix th:nth-child(n+3) { text-align: center; }
+    .footer { margin-top: 48px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 18px; }
+    @media (max-width: 1050px) {
+      .hero, .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: repeat(9, 220px); }
+      .shell { padding: 18px 14px 60px; }
+      nav { position: static; }
+    }
+    @media print {
+      body { background: #07111d; }
+      nav { position: static; }
+      section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="hero-card">
+        <div class="kicker">OxCalc W046 engineering review · semantic proof spine</div>
+        <h1>We now understand the calculation engine as a transition system, not a bag of tests.</h1>
+        <p class="lead">W046 made substantial progress. It converted the core engine into named semantic objects, phase transitions, invariants, finite graph models, checked traces, and a selected Rust refinement bridge. It also drew a bright line around what is <em>not</em> proved yet: full Rust line proof, arbitrary finite graph completeness, broad OxFml/OxFunc semantics, Stage 2, pack/C5, operated service, and release readiness.</p>
+        <div class="pillrow">
+          <span class="pill green">calc-gucd closed</span>
+          <span class="pill blue">9 W046 Lean artifacts checked</span>
+          <span class="pill blue">8 W046 TLA smoke models checked</span>
+          <span class="pill green">proof-carrying trace checker added</span>
+          <span class="pill purple">Rust refinement bridge added</span>
+          <span class="pill amber">non-promotion boundaries explicit</span>
+        </div>
+        <div class="callout honesty">
+          <p><strong>Honest answer:</strong> yes, W046 is a real step-change in engine understanding. Before W046, much of the assurance surface leaned toward release/readiness classification. After W046, the engine has an explicit semantic spine: dependency graph → invalidation/rebind → recalc states → evaluation order/read discipline → OxFml effect boundary → candidate/reject/publication → TraceCalc refinement → proof-carrying trace → Rust artifact bridge.</p>
+        </div>
+      </div>
+      <aside class="hero-card verdict">
+        <div class="big">YES</div>
+        <h3>Substantial progress, with scoped claims.</h3>
+        <p>W046 does not make the engine “fully verified.” It makes the engine legible enough that future verification and optimization work can target named facts rather than vague confidence.</p>
+        <div class="grid2" style="gap:10px">
+          <div class="metric"><strong>18</strong><span>calc-gucd child beads closed</span></div>
+          <div class="metric"><strong>13</strong><span>prompt-to-artifact checklist rows in closure audit</span></div>
+          <div class="metric"><strong>10</strong><span>local_treecalc_engine tests passed in closure audit</span></div>
+          <div class="metric"><strong>0</strong><span>promotion rows in coverage/consequence ledgers</span></div>
+        </div>
+      </aside>
+    </header>
+
+    <nav>
+      <a href="#verdict">Verdict</a>
+      <a href="#heart">Heart of engine</a>
+      <a href="#pipeline">Execution pipeline</a>
+      <a href="#objects">Semantic objects</a>
+      <a href="#lenses">Formal lenses</a>
+      <a href="#artifact-map">Artifact map</a>
+      <a href="#proof-carrying">Proof-carrying traces</a>
+      <a href="#rust-bridge">Rust bridge</a>
+      <a href="#scale">Scale signatures</a>
+      <a href="#limits">Limits</a>
+      <a href="#successors">Successors</a>
+    </nav>
+
+    <section id="verdict" class="panel">
+      <h2>1. The W046 verdict</h2>
+      <div class="grid3">
+        <div class="lane trace"><div class="tag"><span class="dot"></span>What improved</div><p>We now have a named semantic model for the engine’s execution phases, with Lean/TLA artifacts and replay/checker roots attached to concrete engine concepts rather than only readiness labels.</p></div>
+        <div class="lane formal"><div class="tag"><span class="dot"></span>What it means</div><p>The calculation engine can now be explained as a small-step transition system with graph/dataflow invariants, phase authority boundaries, observable refinement targets, and proof-carrying evidence.</p></div>
+        <div class="lane gap"><div class="tag"><span class="dot"></span>What it does not mean</div><p>W046 is not full verification. It is a coherent proof spine with selected checked artifacts, bounded models, selected trace validation, exact blockers, and successor routing.</p></div>
+      </div>
+      <div class="callout" style="margin-top:16px"><p><strong>The main intellectual gain:</strong> W046 makes engine correctness decomposable. Instead of asking “does the calculator work?”, we can ask: did graph construction preserve edge facts, did invalidation cover all reverse-reachable dependents, did order select dependencies before dependents, did reads use only stable/prior values, did rejection prevent publication, did OxFml effects stay outside publication authority, and did emitted artifacts carry enough facts to check these claims?</p></div>
+    </section>
+
+    <section id="heart" class="panel">
+      <h2>2. The heart of the calc engine</h2>
+      <p class="lead">At its core, OxCalc is an incremental dataflow engine around a structural tree. Formulas are attached to nodes; formulas lower into dependency descriptors; descriptors become a dependency graph; edits seed invalidation; invalidation selects affected formulas; formulas are evaluated in dependency order using stable or prior values; results become candidates; the coordinator either publishes atomically or rejects without mutating the published view.</p>
+      <div class="flow" style="margin-top:18px">
+        <div class="step"><b>Structural snapshot</b><span>Tree nodes, symbols, parents, formulas, constants, bind artifacts, snapshot id.</span></div>
+        <div class="step"><b>Formula catalog</b><span>Tree formula bindings by owner node; OxFml preparation inputs.</span></div>
+        <div class="step"><b>Descriptors</b><span>Static, relative, dynamic, host/capability/topology-sensitive or unresolved references.</span></div>
+        <div class="step"><b>Dependency graph</b><span>Forward edges, reverse edges, diagnostics, cycle groups/SCCs.</span></div>
+        <div class="step"><b>Invalidation</b><span>Seeds and reverse-reachability closure; rebind flags and dirty records.</span></div>
+        <div class="step"><b>Order & reads</b><span>Topological formula order; stable published inputs plus prior computed updates.</span></div>
+        <div class="step"><b>Evaluate</b><span>OxFml/TreeCalc formula execution produces values, diagnostics, runtime effects, or typed failures.</span></div>
+        <div class="step"><b>Candidate / reject</b><span>AcceptedCandidateResult or RejectDetail; cycle/dynamic/rebind failures route to no-publish.</span></div>
+        <div class="step"><b>Publish / trace</b><span>CommitBundle atomically updates published view; traces/replay artifacts expose facts.</span></div>
+      </div>
+    </section>
+
+    <section id="pipeline" class="grid2">
+      <div class="panel">
+        <h2>3. Execution as phase authority</h2>
+        <p>W046’s clearest engine insight is that each phase has authority over only some facts. Correctness depends on preventing authority leaks.</p>
+        <table>
+          <tr><th>Phase</th><th>May create</th><th>Must not do</th></tr>
+          <tr><td>Formula preparation</td><td>prepared formulas; dependency descriptors</td><td>publish values</td></tr>
+          <tr><td>Graph build</td><td>edges, reverse edges, diagnostics, cycle groups</td><td>evaluate formulas or commit values</td></tr>
+          <tr><td>Invalidation/rebind</td><td>closure records, rebind requirements, dirty/needed state</td><td>hide impacted dependents</td></tr>
+          <tr><td>Order selection</td><td>dependency-before-dependent sequence or cycle rejection</td><td>evaluate cyclic formulas as if acyclic</td></tr>
+          <tr><td>Evaluation</td><td>local candidate values, runtime effects, diagnostics</td><td>read future values or publish directly</td></tr>
+          <tr><td>Coordinator</td><td>accepted candidate, reject, publication bundle</td><td>publish rejected or stale candidates</td></tr>
+          <tr><td>Trace/replay</td><td>observable facts and validation sidecars</td><td>override native artifacts</td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>4. Engine state in one breath</h2>
+        <div class="code"><pre>State = {
+  snapshot,
+  formula_catalog,
+  prepared_formulas,
+  dependency_descriptors,
+  graph: { edges, reverse_edges, diagnostics, cycle_groups },
+  invalidation: { seeds, closure_records, rebind_flags },
+  recalc: { clean, dirty, needed, evaluating, verified_clean, rejected },
+  order,
+  working_values,
+  runtime_effects,
+  candidate_result,
+  reject_detail,
+  publication_bundle,
+  trace_events
+}</pre></div>
+        <p style="margin-top:12px">The integrated kernel’s purpose is to stop these fields from being reasoned about in isolation. A publication is only meaningful if graph facts, invalidation facts, order/read facts, candidate facts, effect-boundary facts, and refinement facts cohere.</p>
+      </div>
+    </section>
+
+    <section id="objects" class="panel">
+      <h2>5. Semantic objects W046 made first-class</h2>
+      <table>
+        <tr><th>Object</th><th>What it means</th><th>Correctness question</th><th>W046 evidence</th></tr>
+        <tr><td>Dependency descriptor</td><td>A formula-owner reference fact before graph admission.</td><td>Does every lowered reference become an edge or diagnostic with preserved ownership/detail?</td><td>DependencyGraph Lean/TLA; trace checker edge/descriptor links.</td></tr>
+        <tr><td>Forward edge</td><td>owner formula reads target node.</td><td>Does the target exist and does the edge point to the intended snapshot node?</td><td>Graph model, finite graph model, checker.</td></tr>
+        <tr><td>Reverse edge</td><td>target-to-owner dependency index.</td><td>Does every forward edge have a reverse converse?</td><td>Lean/TLA converse; Rust unit test over in-memory reverse_edges; checker-derived projection.</td></tr>
+        <tr><td>Cycle group / SCC</td><td>self-loop or mutually recursive formula region.</td><td>Does cycle classification route to rejection/no order?</td><td>Dependency graph and finite SCC shapes; TraceCalc cycle reject checker.</td></tr>
+        <tr><td>Invalidation closure</td><td>dirty/impacted region from seeds via reverse reachability.</td><td>Are all reverse-reachable dependents included?</td><td>Invalidation model; finite graph closure; scale counts.</td></tr>
+        <tr><td>Rebind flag</td><td>structural change invalidates binding, not just value.</td><td>Does stale binding reject/no-publish?</td><td>Invalidation/rebind model; Rust bridge residual sharpening.</td></tr>
+        <tr><td>Evaluation order</td><td>formula nodes selected for evaluation.</td><td>Does target precede dependent owner when both are formulas?</td><td>Order/read Lean/TLA; finite graph shapes; checker; Rust test.</td></tr>
+        <tr><td>Working values</td><td>seeded published values plus already computed formula updates.</td><td>Can a formula read only stable or prior values?</td><td>Order/read model; checker derives stable/prior observations.</td></tr>
+        <tr><td>Candidate result</td><td>proposed value updates and effects.</td><td>Does the candidate target set match the evaluation order and publication delta?</td><td>Recalc tracker model; checker; Rust bridge.</td></tr>
+        <tr><td>Reject detail</td><td>typed no-publication terminal decision.</td><td>Does rejection preserve published view?</td><td>Recalc/OxFml/integrated models; checker.</td></tr>
+        <tr><td>Publication bundle</td><td>atomic committed value delta.</td><td>Can publication only come from accepted candidates?</td><td>Recalc tracker; integrated kernel; Rust bridge.</td></tr>
+      </table>
+    </section>
+
+    <section id="lenses" class="panel">
+      <h2>6. The formalization angles: seven lenses on one engine</h2>
+      <div class="grid3">
+        <div class="lane formal"><div class="tag"><span class="dot"></span>Graph/dataflow</div><p>Dependency edges define dataflow. Reverse edges define invalidation flow. SCCs define where acyclic evaluation stops and cycle rejection begins.</p><ul><li>edge target soundness</li><li>reverse-edge converse</li><li>cycle group support</li><li>closure reachability</li></ul></div>
+        <div class="lane formal"><div class="tag"><span class="dot"></span>Operational semantics</div><p>The engine is a small-step machine: BuildGraph, CloseInvalidation, MarkDirty, SelectOrder, Evaluate, Accept, Reject, Publish, EmitTrace.</p><ul><li>pre/post conditions</li><li>terminal exclusivity</li><li>no publish from rejected state</li></ul></div>
+        <div class="lane formal"><div class="tag"><span class="dot"></span>Type/effect boundary</div><p>OxFml evaluation can request effects; OxCalc owns handlers for graph, invalidation, candidate, reject, and publication.</p><ul><li>OxFml cannot publish directly</li><li>dynamic effects route through rebind/reject</li><li>format/display are distinct from value publication</li></ul></div>
+        <div class="lane trace"><div class="tag"><span class="dot"></span>Refinement</div><p>TraceCalc is a selected reference machine; TreeCalc/CoreEngine traces are implementation observations to compare against observable values, diagnostics, rejects, publications, and dependency effects.</p></div>
+        <div class="lane trace"><div class="tag"><span class="dot"></span>Proof-carrying traces</div><p>Important runs should emit or reference enough facts that a smaller checker can validate semantic properties without trusting the full engine.</p></div>
+        <div class="lane purple"><div class="tag"><span class="dot"></span>Rust bridge</div><p>W046 maps implementation fields and emitted artifacts back to semantic facts, then checks selected traces and in-memory invariants.</p></div>
+        <div class="lane engine"><div class="tag"><span class="dot"></span>Scale semantics</div><p>Performance profiles become semantic-regression signatures only when closed-form values and graph/invalidation/dynamic counts pass. Timing alone is never correctness.</p></div>
+        <div class="lane gap"><div class="tag"><span class="dot"></span>Consequence matrix</div><p>Readiness lanes are downstream consequences. W046 keeps them honest: no promotion without direct semantic or checker-backed evidence.</p></div>
+        <div class="lane trace"><div class="tag"><span class="dot"></span>Closure audit</div><p>The final audit maps every W046 promise to concrete specs, formal artifacts, test roots, blockers, and W047 successor beads.</p></div>
+      </div>
+    </section>
+
+    <section id="artifact-map" class="panel">
+      <h2>7. Artifact map: what W046 actually produced</h2>
+      <table>
+        <tr><th>Bead</th><th>Core contribution</th><th>Primary artifacts</th><th>Claim strength</th></tr>
+        <tr><td>.1</td><td>semantic catalog and effect-signature plan</td><td>`W046_ENGINE_SEMANTIC_CATALOG...`, transition catalog</td><td>spec foundation</td></tr>
+        <tr><td>.2</td><td>dependency graph/reverse/SCC model</td><td>`W046DependencyGraph.lean`, `CoreEngineW046DependencyGraph.tla`</td><td>checked bounded model + Lean targets</td></tr>
+        <tr><td>.3</td><td>invalidation, dynamic, soft reference, rebind</td><td>`W046InvalidationRebind.lean`, TLA model</td><td>checked scoped semantics</td></tr>
+        <tr><td>.4</td><td>recalc tracker pre/post states</td><td>`W046RecalcTrackerTransitions.lean`, TLA model</td><td>checked transition constraints</td></tr>
+        <tr><td>.5</td><td>evaluation order and read discipline</td><td>`W046EvaluationOrderReadDiscipline.lean`, TLA model</td><td>checked order/read laws</td></tr>
+        <tr><td>.6</td><td>TraceCalc refinement kernel</td><td>`W046TraceCalcRefinement.lean`, binding root</td><td>selected-kernel refinement</td></tr>
+        <tr><td>.7</td><td>OxFml seam and LET/LAMBDA carrier boundary</td><td>`W046OxfmlEffectBoundary.lean`, TLA, replay roots</td><td>narrow seam model</td></tr>
+        <tr><td>.15</td><td>integrated cross-phase state machine</td><td>`W046IntegratedSemanticKernel.lean`, TLA, binding root</td><td>composed semantic kernel</td></tr>
+        <tr><td>.16</td><td>finite graph/dataflow/order strengthening</td><td>`W046FiniteGraphDataflowOrder.lean`, TLA, five graph shapes</td><td>stronger finite shapes; not arbitrary proof</td></tr>
+        <tr><td>.17</td><td>proof-carrying trace checker</td><td>`scripts/check-w046-proof-carrying-trace.py`, checker output</td><td>selected emitted artifact validation</td></tr>
+        <tr><td>.18</td><td>Rust refinement bridge</td><td>`W046RustRefinementBridge.lean`, Rust test, mapping register</td><td>selected implementation-trace bridge</td></tr>
+        <tr><td>.8</td><td>coverage ledger over semantic spine</td><td>`w046-proof-service-coverage-001`</td><td>coverage accounting, no promotion</td></tr>
+        <tr><td>.9</td><td>scale semantic-regression signatures</td><td>`w046-scale-semantic-signatures-001`</td><td>scale correctness-by-validation, timing as telemetry</td></tr>
+        <tr><td>.10</td><td>downstream consequence reassessment</td><td>`w046-consequence-reassessment-001`</td><td>highest honest capability matrix</td></tr>
+        <tr><td>.11</td><td>closure audit and successor routing</td><td>`W046_CLOSURE_AUDIT...`, `w046-closure-audit-001`</td><td>workset closure with successor beads</td></tr>
+      </table>
+    </section>
+
+    <section class="grid2">
+      <div class="panel">
+        <h2>8. Dependency graph: the first semantic hinge</h2>
+        <p>The engine starts becoming formal when formula references stop being strings and become graph facts.</p>
+        <div class="code"><pre>descriptor(owner, maybe_target, kind, carrier_detail)
+  ↳ if target exists: edge(owner, target, kind)
+  ↳ if target absent/dynamic/host-sensitive: diagnostic(owner, kind, detail)
+
+reverse_edges[target] contains edge(owner,target)
+cycle_groups = SCCs or self-loops over formula edges</pre></div>
+        <p style="margin-top:12px">This is the hinge between syntax and execution. Once descriptors are graph facts, invalidation and evaluation can be stated as graph/dataflow properties rather than incidental implementation behavior.</p>
+      </div>
+      <div class="panel">
+        <h2>9. Invalidation: change as reverse reachability</h2>
+        <p>Invalidation is not “rerun everything.” It is a reverse-edge closure from seeds.</p>
+        <table>
+          <tr><th>Seed class</th><th>Meaning</th><th>Expected consequence</th></tr>
+          <tr><td>structural recalc</td><td>node value changed or structure affects formula</td><td>dirty impacted formulas</td></tr>
+          <tr><td>upstream publication</td><td>dependency published new value</td><td>propagate to dependents</td></tr>
+          <tr><td>dependency added/removed/reclassified</td><td>graph shape changed</td><td>rebind/reject if stale</td></tr>
+          <tr><td>dynamic potential</td><td>late-bound reference unresolved</td><td>diagnostic or reject/no-publish</td></tr>
+        </table>
+        <p>The important formal target is <strong>no-under-invalidation</strong>: if a dependent is reverse-reachable from an invalidation seed, it must not be silently skipped.</p>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="panel">
+        <h2>10. Evaluation order and read discipline</h2>
+        <p>Evaluation is safe only if each formula reads a stable published input or a prior computed formula value.</p>
+        <div class="code"><pre>for edge(owner, target):
+  if owner and target are both formula nodes:
+    target appears before owner in evaluation_order
+
+read(owner, target) is legal iff:
+  target is stable published input
+  OR target was already computed earlier in evaluation_order</pre></div>
+        <p style="margin-top:12px">This is the core execution law. It is why topological order is not an implementation detail; it is the semantic condition that prevents future reads and torn candidates.</p>
+      </div>
+      <div class="panel">
+        <h2>11. Candidate, reject, publication</h2>
+        <p>The coordinator is the publication authority. Formula evaluation proposes; coordinator disposes.</p>
+        <table>
+          <tr><th>Terminal</th><th>Facts required</th><th>Published view</th></tr>
+          <tr><td><span class="ok">published</span></td><td>accepted candidate, target set, value delta, compatible basis</td><td>atomically updated</td></tr>
+          <tr><td><span class="warn">verified clean</span></td><td>no changed values; order/closure facts still coherent</td><td>unchanged</td></tr>
+          <tr><td><span class="bad">rejected</span></td><td>typed reject detail, no publication bundle</td><td>unchanged</td></tr>
+        </table>
+        <p>W046 repeatedly checks the no-publish law: cycles, dynamic failures, stale rebind, diagnostics, and host-sensitive effects cannot mutate the published view directly.</p>
+      </div>
+    </section>
+
+    <section id="proof-carrying" class="panel">
+      <h2>12. Proof-carrying traces: the engine explains itself</h2>
+      <p class="lead">The checker added in W046 is small but strategically important. It turns emitted artifacts into independently checkable semantic evidence.</p>
+      <div class="grid3">
+        <div class="lane trace"><div class="tag"><span class="dot"></span>TreeCalc facts checked</div><ul><li>graph artifact parseable</li><li>edge/descriptor links</li><li>derived reverse index</li><li>order covered by closure/reject</li><li>formula edges respect order</li><li>stable/prior observations</li><li>candidate/publication consistency</li><li>reject has no publication</li><li>dynamic potential rejects</li></ul></div>
+        <div class="lane trace"><div class="tag"><span class="dot"></span>TraceCalc facts checked</div><ul><li>sidecars parse</li><li>normalized event families exist</li><li>required equality surfaces have artifacts</li><li>cycle region rejects</li><li>cycle trace has no publication</li><li>assertions/conformance clean</li></ul></div>
+        <div class="lane formal"><div class="tag"><span class="dot"></span>Why this matters</div><p>Proof-carrying traces decouple expensive execution from cheaper validation. Future optimized engines can emit semantic facts, and a checker can reject runs whose facts violate the kernel.</p></div>
+      </div>
+      <div class="code" style="margin-top:16px"><pre>Checker input: selected existing W037/W046 TreeCalc + TraceCalc JSON artifacts
+Checker output: docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json
+Observed result: 5 artifacts checked, 0 failures</pre></div>
+    </section>
+
+    <section id="rust-bridge" class="panel">
+      <h2>13. Rust refinement bridge: connecting implementation state to semantic state</h2>
+      <p>W046 added a selected bridge from real Rust structures and emitted artifacts to semantic facts. It is not a full implementation proof, but it changes the conversation from “trust the code” to “show how code fields satisfy semantic predicates.”</p>
+      <table>
+        <tr><th>Semantic fact</th><th>Rust/artifact authority</th><th>Residual honesty</th></tr>
+        <tr><td>graphBuilt</td><td>`DependencyGraph::build`, `LocalTreeCalcRunArtifacts.dependency_graph`</td><td>selected traces only</td></tr>
+        <tr><td>reverseConverse</td><td>in-memory `reverse_edges`; checker-derived reverse index</td><td>native reverse-edge JSON sidecar absent</td></tr>
+        <tr><td>orderRespectsDependencies</td><td>`topological_formula_order`, `evaluation_order`, graph edges</td><td>topological queue line proof not discharged</td></tr>
+        <tr><td>stableOrPriorReads</td><td>evaluation loop and graph/order artifacts</td><td>native per-read trace events absent</td></tr>
+        <tr><td>candidate/publication</td><td>`AcceptedCandidateResult`, `PublicationBundle`</td><td>selected publication traces</td></tr>
+        <tr><td>reject/no-publication</td><td>`RejectDetail`, no publication bundle</td><td>selected rejection traces</td></tr>
+        <tr><td>dynamicReject</td><td>DynamicPotential descriptors and reject detail</td><td>positive dynamic publication still future work</td></tr>
+      </table>
+    </section>
+
+    <section id="scale" class="panel">
+      <h2>14. Scale/performance through semantic signatures</h2>
+      <p>W046 did not treat speed as correctness. It bound scale runs to semantic-regression signatures: model shape, expected closed-form values, dependency/invalidation counts, dynamic/rebind facts, and phase timings.</p>
+      <table>
+        <tr><th>Profile</th><th>Shape</th><th>Semantic checks</th><th>Timing role</th></tr>
+        <tr><td>`million_grid_r2`</td><td>1000×1000 cross-sum grid</td><td>2M descriptors/edges, 0 diagnostics, 2,001 invalidation records, closed-form sum/delta</td><td>telemetry after validation</td></tr>
+        <tr><td>`million_fanout_f8_r1`</td><td>999,991 formulas SUM 8 anchors</td><td>7,999,928 descriptors/edges, 999,992 invalidation records, closed-form values</td><td>telemetry after validation</td></tr>
+        <tr><td>`million_relative_rebind_f8_r1`</td><td>relative parent-path formulas with root rename</td><td>999,991 rebind seeds; relative descriptor counts; closed-form values</td><td>telemetry after validation</td></tr>
+        <tr><td>`million_indirect_r1`</td><td>grid plus dynamic INDIRECT residual carrier</td><td>1M dynamic diagnostics, 2M static edges, closed-form values</td><td>telemetry after validation</td></tr>
+      </table>
+      <div class="callout honesty" style="margin-top:14px"><p><strong>Key discipline:</strong> a future optimization claim must preserve graph build, reverse edges, invalidation closure, order/read discipline, publication/reject behavior, and dynamic/rebind semantics. Fast is not correct unless semantic facts still check.</p></div>
+    </section>
+
+    <section id="limits" class="panel">
+      <h2>15. What remains unproved or intentionally unpromoted</h2>
+      <div class="grid2">
+        <div class="lane gap"><div class="tag"><span class="dot"></span>Deep proof gaps</div><ul><li>Rust Tarjan/cycle line proof not discharged</li><li>Rust topological queue line proof not discharged</li><li>arbitrary finite graph SCC/refinement not fully proved</li><li>native reverse-edge JSON sidecar absent</li><li>native per-read trace events absent</li><li>positive dynamic dependency publication refinement not discharged</li></ul></div>
+        <div class="lane gap"><div class="tag"><span class="dot"></span>Readiness not claimed</div><ul><li>release-grade verification</li><li>C5 readiness</li><li>Stage 2 production policy</li><li>pack-grade replay governance</li><li>operated service readiness</li><li>independent evaluator breadth</li><li>broad OxFml/OxFunc proof</li><li>continuous scale assurance</li></ul></div>
+      </div>
+      <p style="margin-top:14px">This honesty is part of the progress. The project now knows exactly which claims the W046 spine supports and which claims require new evidence.</p>
+    </section>
+
+    <section id="successors" class="panel">
+      <h2>16. Successor routing: W047 starts where W046 honestly stops</h2>
+      <table>
+        <tr><th>Successor bead</th><th>Why it exists</th><th>What would deepen understanding next</th></tr>
+        <tr><td>`calc-aylq.1`</td><td>Rust Tarjan and topological queue line proof</td><td>turn selected graph/order trace confidence into implementation proof obligations</td></tr>
+        <tr><td>`calc-aylq.2`</td><td>native proof-carrying trace sidecar enrichment</td><td>emit reverse-edge and per-read facts natively so checker relies less on projections</td></tr>
+        <tr><td>`calc-aylq.3`</td><td>dynamic dependency positive publication refinement</td><td>move beyond dynamic-potential reject evidence toward safe positive dynamic publication</td></tr>
+        <tr><td>`calc-aylq.4`</td><td>semantic pack and operated-service readiness gate</td><td>rerun pack/C5/operated/evaluator gates over W046 semantic facts before any promotion</td></tr>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>17. Final engineering read</h2>
+      <div class="callout">
+        <p class="lead"><strong>W046 made the calc engine intellectually tractable.</strong> We can now explain execution from multiple independent angles that agree with each other: a graph/dataflow system, an invalidation/rebind reachability system, a small-step recalc machine, a type/effect boundary with OxFml, a refinement relation to TraceCalc, a proof-carrying trace format, and a Rust artifact bridge.</p>
+      </div>
+      <div class="grid3" style="margin-top:16px">
+        <div class="metric"><strong><em>Know</em></strong><span>what the engine state objects are and which phase owns each fact</span></div>
+        <div class="metric"><strong><em>Check</em></strong><span>selected runs with Lean/TLA, Rust tests, JSON checkers, and replay roots</span></div>
+        <div class="metric"><strong><em>Route</em></strong><span>remaining proof/readiness claims to concrete successor beads instead of vague caveats</span></div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <p>Document: `docs/showcase/oxcalc_w046_engine_semantic_spine_showcase.html` · Generated from W046 closure state and artifacts as of 2026-05-09. This is an engineering review, not a release-readiness claim.</p>
+    </div>
+  </div>
+</body>
+</html>

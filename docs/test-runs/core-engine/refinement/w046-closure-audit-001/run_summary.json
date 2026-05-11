@@ -1,0 +1,19 @@
+{
+  "run_id": "w046-closure-audit-001",
+  "workset": "W046",
+  "bead": "calc-gucd.11",
+  "closure_audit": "docs/test-runs/core-engine/refinement/w046-closure-audit-001/closure_audit.json",
+  "result": "passed",
+  "w046_child_beads": 18,
+  "w046_child_beads_closed": 18,
+  "successor_epic": "calc-aylq",
+  "successor_beads": ["calc-aylq.1", "calc-aylq.2", "calc-aylq.3", "calc-aylq.4"],
+  "validation": {
+    "lean_w046_all_passed": true,
+    "tla_w046_smoke_all_passed": true,
+    "cargo_local_treecalc_engine_passed": true,
+    "proof_trace_checker_passed": true,
+    "json_reference_validation_passed": true,
+    "promotion_rows": 0
+  }
+}

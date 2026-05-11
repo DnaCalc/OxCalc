@@ -251,6 +251,25 @@ If iterative behavior is enabled, it must remain:
 2. deterministic under the declared profile,
 3. suitable for replay and evidence capture.
 
+### 11.4 W048 Cycle Execution Packet
+Circular dependency calculation processing is owned by W048 as an execution workset, not only as a planning packet.
+
+The active W048 packet root is:
+
+1. `docs/spec/core-engine/w048-cycles/`
+
+W048 refines this section by requiring:
+
+1. explicit graph-layer classification over `G_struct`, `G_eff`, and `G_eff_candidate`,
+2. materialized forward and reverse graph artifacts,
+3. cycle-region records with source, members, root/order, boundary edges, and terminal policy,
+4. Excel probe packets before Excel-match claims,
+5. TraceCalc reference behavior and TreeCalc optimized/core behavior for declared cycle cases,
+6. a deterministic circular-reference test corpus,
+7. W048-owned formal definitions/models/checker targets for cycle semantics,
+8. a declared iterative profile before any iterative cycle behavior is admitted,
+9. profile-gated innovation opportunities that remain separate from default Excel-match behavior.
+
 ## 12. Runtime Work Selection and Scheduling
 
 ### 12.1 Deterministic Ordering Rule

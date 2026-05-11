@@ -1,0 +1,11 @@
+[
+  {
+    "calc_state": "DirtyPending",
+    "node_id": 3,
+    "reasons": [
+      "DependencyRemoved",
+      "DependencyReclassified"
+    ],
+    "requires_rebind": true
+  }
+]

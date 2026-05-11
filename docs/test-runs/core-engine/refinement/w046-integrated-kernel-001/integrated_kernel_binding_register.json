@@ -1,0 +1,96 @@
+{
+  "run_id": "w046-integrated-kernel-001",
+  "workset": "W046",
+  "bead": "calc-gucd.15",
+  "purpose": "Bind W046 phase-local semantic packets and evidence roots into one cross-phase engine state-machine kernel.",
+  "phase_packets": [
+    {
+      "phase": "graph",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046DependencyGraph.lean",
+      "tla": "formal/tla/CoreEngineW046DependencyGraph.tla",
+      "evidence_root": "docs/test-runs/core-engine/tla/w046-dependency-graph-001/",
+      "consumed_facts": ["graphBuilt", "reverseConverse", "diagnosticsPreserved"]
+    },
+    {
+      "phase": "invalidation_rebind",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean",
+      "tla": "formal/tla/CoreEngineW046InvalidationRebind.tla",
+      "evidence_root": "docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/",
+      "consumed_facts": ["invalidationClosed", "noUnderInvalidation", "rebindRequired", "rebindNoPublish"]
+    },
+    {
+      "phase": "recalc_tracker",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean",
+      "tla": "formal/tla/CoreEngineW046RecalcTracker.tla",
+      "evidence_root": "docs/test-runs/core-engine/tla/w046-recalc-tracker-001/",
+      "consumed_facts": ["dirtyNeeded", "candidateProduced", "rejectNoPublish", "verifiedCleanNoPublish"]
+    },
+    {
+      "phase": "evaluation_order",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046EvaluationOrderReadDiscipline.lean",
+      "tla": "formal/tla/CoreEngineW046EvaluationOrder.tla",
+      "evidence_root": "docs/test-runs/core-engine/tla/w046-evaluation-order-001/",
+      "consumed_facts": ["orderSelected", "stablePriorReads"]
+    },
+    {
+      "phase": "tracecalc_refinement",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046TraceCalcRefinement.lean",
+      "tla": "formal/tla/CoreEngineW046TraceCalcRefinement.tla",
+      "evidence_root": "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/",
+      "consumed_facts": ["traceCalcObservableRefinement"]
+    },
+    {
+      "phase": "oxfml_effect_boundary",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046OxfmlEffectBoundary.lean",
+      "tla": "formal/tla/CoreEngineW046OxfmlEffectBoundary.tla",
+      "evidence_root": "docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/",
+      "consumed_facts": ["prepared", "descriptorsLowered", "oxfmlNoDirectPublish"]
+    },
+    {
+      "phase": "integrated_kernel",
+      "packet": "docs/spec/core-engine/w046-formalization/W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md",
+      "lean": "formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean",
+      "tla": "formal/tla/CoreEngineW046IntegratedKernel.tla",
+      "evidence_root": "docs/test-runs/core-engine/tla/w046-integrated-kernel-001/",
+      "consumed_facts": ["publishedRequiresIntegratedSpine", "traceAfterTerminal", "rebindNoPublish"]
+    }
+  ],
+  "integrated_invariants": [
+    "published requires prepared formula, descriptor lowering, graph facts, invalidation closure, order/read discipline, candidate production, OxFml no-direct-publication, and TraceCalc observable refinement",
+    "rebind-required state cannot publish",
+    "reject and verified-clean states cannot publish",
+    "trace emission occurs only after a terminal decision"
+  ],
+  "exact_blockers": [
+    {
+      "blocker_id": "phase_local_models_not_line_by_line_rust_proofs",
+      "meaning": "The integrated kernel composes W046 phase-local semantic models; it does not prove each Rust function line-by-line."
+    },
+    {
+      "blocker_id": "dynamic_dependency_projection_gap_inherited_from_calc_gucd_6",
+      "meaning": "Full dynamic dependency projection remains blocked where TraceCalc-to-TreeCalc comparable facts are missing."
+    },
+    {
+      "blocker_id": "format_display_positive_projection_missing_inherited_from_calc_gucd_7",
+      "meaning": "The integrated kernel carries format/display separation and current absences, not positive format/display publication projection."
+    },
+    {
+      "blocker_id": "unbounded_finite_graph_proof_strengthening_deferred_to_calc_gucd_16",
+      "meaning": "The integrated model is bounded and phase-compositional; stronger finite graph/dataflow/order facts route to calc-gucd.16."
+    },
+    {
+      "blocker_id": "proof_carrying_trace_validation_deferred_to_calc_gucd_17",
+      "meaning": "The integrated kernel names trace facts; an artifact checker over emitted traces routes to calc-gucd.17."
+    },
+    {
+      "blocker_id": "rust_refinement_bridge_deferred_to_calc_gucd_18",
+      "meaning": "Real Rust artifact mapping into the integrated kernel routes to calc-gucd.18."
+    }
+  ]
+}

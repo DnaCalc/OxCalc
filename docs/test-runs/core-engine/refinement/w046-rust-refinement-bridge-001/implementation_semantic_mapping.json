@@ -1,0 +1,85 @@
+{
+  "schema_version": "oxcalc.w046.rust_refinement_bridge.mapping.v1",
+  "run_id": "w046-rust-refinement-bridge-001",
+  "workset": "W046",
+  "bead": "calc-gucd.18",
+  "mapping_rows": [
+    {
+      "semantic_fact": "graphBuilt",
+      "rust_authority": ["src/oxcalc-core/src/dependency.rs::DependencyGraph::build", "src/oxcalc-core/src/treecalc.rs::LocalTreeCalcRunArtifacts.dependency_graph"],
+      "artifact_authority": ["dependency_graph.json", "result.json.dependency_graph_path"],
+      "checker_fact": "graph_artifact_parseable"
+    },
+    {
+      "semantic_fact": "reverseConverse",
+      "rust_authority": ["src/oxcalc-core/src/dependency.rs::DependencyGraph.reverse_edges"],
+      "artifact_authority": ["dependency_graph.json.edges", "checker-derived reverse index"],
+      "checker_fact": "derived_reverse_index_converse",
+      "residual": "Native JSON currently carries forward edges; checker derives reverse converse. Rust unit test checks native in-memory reverse_edges."
+    },
+    {
+      "semantic_fact": "invalidationClosureCoversOrder",
+      "rust_authority": ["src/oxcalc-core/src/dependency.rs::derive_invalidation_closure", "src/oxcalc-core/src/treecalc.rs::LocalTreeCalcRunArtifacts.invalidation_closure"],
+      "artifact_authority": ["invalidation_closure.json", "result.json.evaluation_order"],
+      "checker_fact": "evaluation_order_covered_by_invalidation_closure_or_reject"
+    },
+    {
+      "semantic_fact": "orderRespectsDependencies",
+      "rust_authority": ["src/oxcalc-core/src/treecalc.rs::topological_formula_order", "src/oxcalc-core/src/treecalc.rs::LocalTreeCalcRunArtifacts.evaluation_order"],
+      "artifact_authority": ["dependency_graph.json.edges", "result.json.evaluation_order"],
+      "checker_fact": "formula_edges_respect_evaluation_order",
+      "residual": "Line-by-line proof of topological queue remains outside this bead; unit test and checker validate selected emitted traces."
+    },
+    {
+      "semantic_fact": "stableOrPriorReads",
+      "rust_authority": ["src/oxcalc-core/src/treecalc.rs formula evaluation loop"],
+      "artifact_authority": ["dependency_graph.json.edges", "result.json.evaluation_order"],
+      "checker_fact": ["stable_input_read_observed", "prior_formula_read_observed"],
+      "residual": "Per-read native event emission is not present; checker classifies reads from graph/order artifacts."
+    },
+    {
+      "semantic_fact": "candidateBuilt/publicationBuilt",
+      "rust_authority": ["src/oxcalc-core/src/coordinator.rs::AcceptedCandidateResult", "src/oxcalc-core/src/coordinator.rs::PublicationBundle", "src/oxcalc-core/src/treecalc.rs"],
+      "artifact_authority": ["result.json.candidate_result", "result.json.publication_bundle"],
+      "checker_fact": "candidate_publication_bundle_consistent"
+    },
+    {
+      "semantic_fact": "rejectBuilt/noPublicationBundle",
+      "rust_authority": ["src/oxcalc-core/src/coordinator.rs::RejectDetail", "src/oxcalc-core/src/treecalc.rs"],
+      "artifact_authority": ["result.json.reject_detail", "result.json.publication_bundle"],
+      "checker_fact": "reject_has_no_publication_bundle"
+    },
+    {
+      "semantic_fact": "dynamicReject",
+      "rust_authority": ["src/oxcalc-core/src/dependency.rs::DependencyDescriptorKind::DynamicPotential", "src/oxcalc-core/src/treecalc.rs::LocalTreeCalcError::DynamicReference"],
+      "artifact_authority": ["dependency_graph.json.descriptors", "result.json.reject_detail"],
+      "checker_fact": "dynamic_potential_descriptor_rejects",
+      "blocker_resolution": "The .6 dynamic-dependency projection gap is sharpened: dynamic-potential projection is checkable as reject/no-publication for selected TreeCalc artifacts, while positive dynamic dependency publication remains outside this bridge."
+    },
+    {
+      "semantic_fact": "cycleReject",
+      "rust_authority": ["src/oxcalc-core/src/dependency.rs cycle_groups", "src/oxcalc-tracecalc/src/planner.rs", "src/oxcalc-tracecalc/src/runner.rs"],
+      "artifact_authority": ["trace.json.events", "rejects.json", "published_view.json"],
+      "checker_fact": "cycle_region_reject_no_publication"
+    },
+    {
+      "semantic_fact": "traceEmissionPresent",
+      "rust_authority": ["src/oxcalc-core/src/treecalc_runner.rs", "src/oxcalc-tracecalc/src/runner.rs"],
+      "artifact_authority": ["result.json", "trace.json", "checker_output.json"],
+      "checker_fact": ["tracecalc_sidecars_parseable", "normalized_event_families_present", "required_equality_surfaces_have_artifacts"]
+    }
+  ],
+  "selected_artifact_bridge": {
+    "checker_output": "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json",
+    "rust_test": "cargo test -p oxcalc-core local_treecalc_engine_exposes_w046_refinement_bridge_facts",
+    "lean_relation": "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean"
+  },
+  "exact_residuals": [
+    "rust_tarjan_line_proof_not_discharged",
+    "rust_topological_queue_line_proof_not_discharged",
+    "native_reverse_edge_json_sidecar_absent",
+    "native_per_read_trace_events_absent",
+    "positive_dynamic_dependency_publication_refinement_not_discharged",
+    "arbitrary_finite_graph_refinement_not_discharged"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "run_id": "w046-integrated-kernel-001",
+  "workset": "W046",
+  "bead": "calc-gucd.15",
+  "spec": "formal/tla/CoreEngineW046IntegratedKernel.tla",
+  "config": "formal/tla/CoreEngineW046IntegratedKernel.smoke.cfg",
+  "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/run-tlc.ps1 formal/tla/CoreEngineW046IntegratedKernel.tla formal/tla/CoreEngineW046IntegratedKernel.smoke.cfg",
+  "result": "passed",
+  "tlc_version": "2.19 of 08 August 2024",
+  "states_generated": 23,
+  "distinct_states": 19,
+  "queue_left": 0,
+  "complete_state_depth": 11,
+  "checked_invariants": [
+    "TypeInvariant",
+    "GraphFactsBeforeInvalidation",
+    "DirtyNeededAfterInvalidation",
+    "OrderAfterDirtyNoRebind",
+    "EvaluationReadsAfterOrder",
+    "CandidateAfterEvaluation",
+    "PublishedRequiresIntegratedSpine",
+    "RejectNoPublish",
+    "VerifiedCleanNoPublish",
+    "RebindNoPublish",
+    "TraceAfterTerminal",
+    "NoPrematureTrace"
+  ],
+  "log": "docs/test-runs/core-engine/tla/w046-integrated-kernel-001/tlc.log"
+}

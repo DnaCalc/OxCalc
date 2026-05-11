@@ -4,7 +4,6 @@
 
 use std::collections::BTreeMap;
 
-use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::{BindContext, NameKind};
 use oxfml_core::consumer::replay::{
     ReplayProjectionRequest, ReplayProjectionResult, ReplayProjectionService,
@@ -22,6 +21,7 @@ use oxfml_core::semantics::LibraryContextSnapshot;
 use oxfml_core::source::{
     FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
 };
+use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::locale_format::LocaleFormatContext;
@@ -86,7 +86,7 @@ pub enum MinimalRtdMode {
     NoValueYet,
     ConnectionFailed,
     ProviderError { code: WorksheetErrorCode },
-    Value(EvalValue),
+    Value(Box<EvalValue>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -216,6 +216,14 @@ impl MinimalUpstreamHostPacket {
     }
 
     pub fn recalc(&self, backend: EvaluationBackend) -> Result<RuntimeFormulaResult, String> {
+        self.recalc_with_trace_mode(backend, EvaluationTraceMode::default())
+    }
+
+    pub fn recalc_with_trace_mode(
+        &self,
+        backend: EvaluationBackend,
+        trace_mode: EvaluationTraceMode,
+    ) -> Result<RuntimeFormulaResult, String> {
         let host_info_provider = PacketHostInfoProvider {
             mode: self.typed_query_facts.host_info_mode.clone(),
         };
@@ -238,7 +246,8 @@ impl MinimalUpstreamHostPacket {
 
         let mut request =
             RuntimeFormulaRequest::new(self.build_formula_source_record(), query_bundle)
-                .with_backend(backend);
+                .with_backend(backend)
+                .with_trace_mode(trace_mode);
         if let Some(publication_context) = &self.publication_context {
             request = request.with_verification_publication_context(publication_context.clone());
         }
@@ -250,7 +259,15 @@ impl MinimalUpstreamHostPacket {
         &self,
         backend: EvaluationBackend,
     ) -> Result<(RuntimeFormulaResult, ReplayProjectionResult), String> {
-        let output = self.recalc(backend)?;
+        self.recalc_with_replay_projection_with_trace_mode(backend, EvaluationTraceMode::default())
+    }
+
+    pub fn recalc_with_replay_projection_with_trace_mode(
+        &self,
+        backend: EvaluationBackend,
+        trace_mode: EvaluationTraceMode,
+    ) -> Result<(RuntimeFormulaResult, ReplayProjectionResult), String> {
+        let output = self.recalc_with_trace_mode(backend, trace_mode)?;
         let projection =
             ReplayProjectionService::project(ReplayProjectionRequest::runtime_result(&output));
         Ok((output, projection))
@@ -322,7 +339,7 @@ impl RtdProvider for PacketRtdProvider {
             MinimalRtdMode::NoValueYet => RtdProviderResult::NoValueYet,
             MinimalRtdMode::ConnectionFailed => RtdProviderResult::ConnectionFailed,
             MinimalRtdMode::ProviderError { code } => RtdProviderResult::ProviderError(*code),
-            MinimalRtdMode::Value(value) => RtdProviderResult::Value(value.clone()),
+            MinimalRtdMode::Value(value) => RtdProviderResult::Value(value.as_ref().clone()),
         }
     }
 }

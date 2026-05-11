@@ -1,0 +1,81 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_w034_let_lambda_higher_order_replay_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "trace_labels",
+    "counters",
+    "dependency_shape_updates",
+    "callable_carrier_identity",
+    "runtime_effects"
+  ],
+  "run_id": "w046-indirect-explorer-tracecalc-001",
+  "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_w034_let_lambda_higher_order_replay_001/scenario",
+      "closure_unit_ids": [
+        "phase:higher-order-carrier-publish",
+        "events:higher-order-carrier-identity",
+        "view:published/current"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "higher-order-carrier-publish",
+      "closure_unit_ids": [
+        "events:higher-order-carrier-identity"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3",
+        "st4"
+      ],
+      "unit_id": "phase:higher-order-carrier-publish",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "higher-order-carrier-identity",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "events:higher-order-carrier-identity",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "published/current",
+      "closure_unit_ids": [],
+      "reject_id": null,
+      "step_ids": [
+        "st4"
+      ],
+      "unit_id": "view:published/current",
+      "unit_kind": "view_slice",
+      "view_id": null,
+      "view_kind": "published_view"
+    }
+  ],
+  "witness_id": "tc_w034_let_lambda_higher_order_replay_001--witness-seed"
+}

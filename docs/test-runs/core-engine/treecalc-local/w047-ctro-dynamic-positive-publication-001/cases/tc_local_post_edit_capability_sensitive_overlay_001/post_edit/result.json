@@ -1,0 +1,89 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+  "counters": [
+    {
+      "counter": "abandoned_candidates",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "fallback_affected_work_volume",
+      "value": 1
+    },
+    {
+      "counter": "fallback_by_reason.host_injected_failure",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "rejects_by_class.host_injected_failure",
+      "value": 1
+    }
+  ],
+  "evaluation_order": [
+    3
+  ],
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/invalidation_closure.json",
+  "invalidation_seeds": [
+    {
+      "node_id": 3,
+      "reason": "StructuralRecalcOnly"
+    }
+  ],
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/phase_timings.json",
+  "publication_bundle": null,
+  "published_values": {},
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit",
+    "detail": "reference owned by node:3 is capability-sensitive and cannot be locally evaluated: host_function_availability",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays": [
+    {
+      "compatibility_basis": "snapshot:23",
+      "detail": "runtime_effect.capability_sensitive_reference|owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "is_eviction_eligible": false,
+      "is_protected": true,
+      "overlay_kind": "ExecutionRestriction",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit:runtime_effect:0",
+      "structural_snapshot_id": 23
+    }
+  ],
+  "runtime_effects": [
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "CapabilitySensitive",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.capability_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection"
+    }
+  ]
+}

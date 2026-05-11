@@ -1,0 +1,11 @@
+{
+  "run_id": "w046-finite-graph-dataflow-order-001",
+  "workset": "W046",
+  "bead": "calc-gucd.16",
+  "binding_register": "docs/test-runs/core-engine/refinement/w046-finite-graph-dataflow-order-001/finite_graph_binding_register.json",
+  "tla_evidence_root": "docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/",
+  "checked_shapes": 5,
+  "exact_blockers": 4,
+  "unexpected_mismatches": 0,
+  "missing_referenced_artifacts": 0
+}

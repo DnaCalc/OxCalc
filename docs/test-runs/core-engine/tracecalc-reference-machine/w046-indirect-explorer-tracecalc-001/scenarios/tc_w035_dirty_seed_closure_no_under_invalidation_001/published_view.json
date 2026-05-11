@@ -1,0 +1,18 @@
+{
+  "node_values": [
+    {
+      "node_id": "A",
+      "value": "2"
+    },
+    {
+      "node_id": "Final",
+      "value": "6"
+    },
+    {
+      "node_id": "Mid",
+      "value": "4"
+    }
+  ],
+  "scenario_id": "tc_w035_dirty_seed_closure_no_under_invalidation_001",
+  "snapshot_id": "s0"
+}

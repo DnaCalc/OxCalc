@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OxCalc W046 Phase Explorer: Static Edit vs Dynamic INDIRECT Rebind</title>
+  <style>
+    :root {
+      --bg:#07111d; --panel:#0d1b2b; --panel2:#10263b; --ink:#eef6ff; --muted:#9fb2c7;
+      --line:rgba(219,239,255,.17); --blue:#62b0ff; --teal:#35d7c5; --green:#70e493;
+      --amber:#ffc861; --red:#ff7777; --purple:#c997ff; --code:#06101c;
+      font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--ink); color-scheme:dark;
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:radial-gradient(circle at 10% -5%,rgba(53,215,197,.18),transparent 28%),radial-gradient(circle at 88% 0%,rgba(255,200,97,.12),transparent 25%),linear-gradient(135deg,#07111d,#0b1b2b 52%,#07111d);}
+    .shell{max-width:1520px;margin:0 auto;padding:26px 26px 80px}.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:stretch}.card,.panel{background:linear-gradient(180deg,rgba(16,38,59,.95),rgba(8,19,32,.95));border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.35)}.card{padding:30px}.kicker{color:var(--teal);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}h1{font-size:clamp(40px,5vw,76px);line-height:.94;margin:12px 0 16px;letter-spacing:-.04em}h2{font-size:clamp(26px,3vw,44px);line-height:1.03;margin:0 0 12px;letter-spacing:-.025em}h3{font-size:19px;margin:0 0 8px}p{color:#c9d8e8;line-height:1.48;margin:0 0 12px}.lead{font-size:20px;color:#f4fbff}.micro{font-size:12px;color:var(--muted);line-height:1.35}.panel{padding:20px;margin:24px 0}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{padding:15px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.045)}.metric strong{display:block;font-size:34px;line-height:1;color:#fff;margin-bottom:7px}.metric span{display:block;font-size:12px;color:var(--muted);line-height:1.3}.pillrow{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}.pill{border-radius:999px;padding:5px 9px;border:1px solid var(--line);background:rgba(255,255,255,.055);font-size:12px;color:#dcecff;font-weight:700}.pill.blue{border-color:rgba(98,176,255,.45);color:#cce6ff}.pill.green{border-color:rgba(112,228,147,.45);color:#d0f9dd}.pill.amber{border-color:rgba(255,200,97,.45);color:#ffe2a8}.pill.red{border-color:rgba(255,119,119,.45);color:#ffd1d1}.pill.purple{border-color:rgba(201,151,255,.45);color:#ead8ff}.callout{border-left:4px solid var(--teal);background:rgba(53,215,197,.08);border-radius:10px;padding:14px 16px}.warnbox{border-left-color:var(--amber);background:rgba(255,200,97,.09)}.badbox{border-left-color:var(--red);background:rgba(255,119,119,.09)}nav{position:sticky;top:0;z-index:5;margin:18px 0;padding:10px;border:1px solid var(--line);border-radius:14px;background:rgba(7,17,29,.88);backdrop-filter:blur(16px);display:flex;flex-wrap:wrap;gap:7px}nav a{color:#bdd7ef;text-decoration:none;font-size:12px;padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08)}nav a:hover{color:white;border-color:var(--teal)}button,.selectish{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);border-radius:10px;padding:8px 10px;cursor:pointer}button.active{background:rgba(53,215,197,.18);border-color:var(--teal)}button:hover{border-color:var(--teal)}input[type=number],select{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:8px 10px}label{font-size:12px;color:#c9d8e8;display:grid;gap:5px}.explorer{display:grid;grid-template-columns:310px minmax(0,1fr);gap:16px}.sidebar{display:grid;gap:10px;align-content:start}.phase-list{display:grid;gap:6px}.phase-btn{text-align:left}.phase-btn small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.stage{display:grid;gap:14px}.phase-title{display:flex;align-items:center;justify-content:space-between;gap:10px}.phase-title b{font-size:26px}.badge{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#06101c;background:var(--green);border-radius:999px;padding:4px 8px;font-weight:900}.badge.warn{background:var(--amber)}.badge.bad{background:var(--red)}.viz{display:grid;grid-template-columns:1fr 1fr;gap:14px}.nodes{display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:10px}.node{border:1px solid rgba(98,176,255,.32);background:rgba(98,176,255,.10);border-radius:14px;padding:12px;min-height:92px}.node.changed{border-color:var(--amber);background:rgba(255,200,97,.13)}.node.calc{border-color:rgba(112,228,147,.35);background:rgba(112,228,147,.10)}.node.dynamic{border-color:rgba(201,151,255,.38);background:rgba(201,151,255,.11)}.node.rejected{border-color:rgba(255,119,119,.42);background:rgba(255,119,119,.10)}.node b{display:block;font-size:16px}.node code{display:block;margin-top:5px;color:#dcecff;font-size:12px;white-space:pre-wrap}.edgebox{border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);padding:12px}.edge{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;color:#dbeaff;margin:4px 0}.edge.add{color:#cff9db}.edge.release{color:#ffd2d2;text-decoration:line-through}.edge.dynamic{color:#ead8ff}.edge.seed{color:#ffe2a8}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border-bottom:1px solid rgba(255,255,255,.10);padding:8px 9px;text-align:left;vertical-align:top;color:#cbd9e8}th{background:rgba(255,255,255,.07);color:#f5fbff;text-transform:uppercase;letter-spacing:.05em;font-size:11px}code{color:#b9dcff;background:rgba(98,176,255,.10);padding:1px 4px;border-radius:4px;font-family:"Cascadia Code",Consolas,monospace;font-size:.92em}.code{background:var(--code);border:1px solid rgba(98,176,255,.22);border-radius:13px;padding:14px;overflow:auto}pre{margin:0;white-space:pre-wrap;color:#dcecff;font:12px/1.35 "Cascadia Code",Consolas,monospace}.lens{border-radius:14px;border:1px solid var(--line);padding:14px;background:rgba(255,255,255,.045)}.lens h3{display:flex;gap:8px;align-items:center}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}.blue{background:var(--blue)}.teal{background:var(--teal)}.green{background:var(--green)}.amber{background:var(--amber)}.red{background:var(--red)}.purple{background:var(--purple)}ul{margin:0;padding-left:18px}li{color:#cbd9e8;margin:5px 0;line-height:1.35}.ok{color:var(--green);font-weight:900}.warn{color:var(--amber);font-weight:900}.bad{color:var(--red);font-weight:900}.info{color:var(--blue);font-weight:900}.footer{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12px}
+    @media(max-width:1050px){.hero,.grid2,.grid3,.grid4,.explorer,.viz{grid-template-columns:1fr}.shell{padding:16px 12px 60px}nav{position:static}.nodes{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="hero">
+    <div class="card">
+      <div class="kicker">W046 scenario explorer · static edit vs dynamic INDIRECT rebind</div>
+      <h1>One tiny edit can mean “recompute a value” or “rewrite the dependency graph.”</h1>
+      <p class="lead">We explore two calculations through the W046 lenses: graph construction, reverse-edge invalidation, rebind, evaluation order, working values, OxFml effects, TraceCalc reference behavior, TreeCalc current behavior, proof-carrying traces, and future optimization.</p>
+      <div class="pillrow">
+        <span class="pill green">simple: A1+B1 then A1 changes</span>
+        <span class="pill purple">complex: INDIRECT target switches A1 → A2</span>
+        <span class="pill blue">TraceCalc run executed</span>
+        <span class="pill blue">TreeCalc run executed</span>
+        <span class="pill amber">grid syntax treated as pure names</span>
+        <span class="pill red">current TreeCalc does not parse “A” & B1</span>
+      </div>
+      <div class="callout warnbox"><p><strong>Important honesty boundary:</strong> the exact spreadsheet text <code>INDIRECT("A" & B1)</code> is not natively parsed as grid syntax today. This document therefore separates <em>reference semantics</em> from <em>current TreeCalc representation</em>: TraceCalc can express the dynamic dependency switch as an oracle-style scenario; TreeCalc can represent resolved/unresolved dynamic references and dependency shape updates, but not yet the string-to-name resolution pipeline from that formula text.</p></div>
+    </div>
+    <aside class="card">
+      <h2>Executed grounding runs</h2>
+      <p>To anchor the discussion, I ran the current engines over their existing relevant corpora:</p>
+      <div class="code"><pre>cargo run -p oxcalc-tracecalc-cli -- w046-indirect-explorer-tracecalc-001
+→ 31 TraceCalc scenarios
+
+cargo run -p oxcalc-tracecalc-cli -- treecalc w046-indirect-explorer-treecalc-001
+→ 28 TreeCalc local cases</pre></div>
+      <p class="micro" style="margin-top:10px">Most relevant existing outputs: TraceCalc <code>tc_dynamic_dep_switch_001</code>; TreeCalc <code>tc_local_publish_001</code>, <code>tc_local_dynamic_resolved_publish_001</code>, and <code>tc_local_dynamic_reject_001</code>.</p>
+      <div class="grid2" style="gap:10px;margin-top:12px"><div class="metric"><strong>31</strong><span>TraceCalc scenarios in new run</span></div><div class="metric"><strong>28</strong><span>TreeCalc cases in new run</span></div></div>
+    </aside>
+  </header>
+
+  <nav>
+    <a href="#interactive">Interactive phase explorer</a>
+    <a href="#reference">Reference semantics</a>
+    <a href="#engines">TraceCalc vs TreeCalc</a>
+    <a href="#lenses">W046 lenses</a>
+    <a href="#formal">Formal representation</a>
+    <a href="#optimization">Optimization future</a>
+    <a href="#artifacts">Artifact links</a>
+  </nav>
+
+  <section id="interactive" class="panel">
+    <h2>Interactive phase explorer</h2>
+    <p>Select a scenario, choose the current phase, and adjust the edit. The numbers update, but the deeper point is structural: the simple edit preserves graph shape; the complex edit changes dependency shape.</p>
+    <div class="explorer">
+      <aside class="sidebar">
+        <div class="grid2" style="gap:8px"><button id="simpleBtn" class="active">Simple</button><button id="complexBtn">Complex</button></div>
+        <div id="controls" class="grid2" style="gap:8px"></div>
+        <div class="phase-list" id="phaseList"></div>
+      </aside>
+      <main class="stage">
+        <div class="phase-title"><b id="phaseTitle">Phase</b><span id="phaseBadge" class="badge">ok</span></div>
+        <p id="phaseNarrative" class="lead"></p>
+        <div class="viz">
+          <div class="edgebox"><h3>Cells / named nodes</h3><div class="nodes" id="nodes"></div></div>
+          <div class="edgebox"><h3>Graph, invalidation, order</h3><div id="edges"></div></div>
+        </div>
+        <div class="grid3">
+          <div class="lens"><h3><span class="dot blue"></span>TraceCalc view</h3><p id="traceView"></p></div>
+          <div class="lens"><h3><span class="dot green"></span>TreeCalc view</h3><p id="treeView"></p></div>
+          <div class="lens"><h3><span class="dot amber"></span>Formal obligation</h3><p id="formalView"></p></div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <section id="reference" class="panel">
+    <h2>Reference semantics: same syntax class, different semantic event</h2>
+    <div class="grid2">
+      <div class="lens">
+        <h3><span class="dot green"></span>Simple calculation</h3>
+        <div class="code"><pre>A1 = 2
+B1 = 3
+C1 = A1 + B1
+
+edit: A1 := 5  (interactive default)
+result: C1 = 8</pre></div>
+        <p style="margin-top:10px">Only a value changes. The dependency graph remains <code>C1→A1</code> and <code>C1→B1</code>. Invalidation starts at A1 and reaches C1. Evaluation order is just C1. Publication changes C1.</p>
+      </div>
+      <div class="lens">
+        <h3><span class="dot purple"></span>Complex calculation</h3>
+        <div class="code"><pre>A1 = 3
+A2 = 4
+B1 = 1
+C1 = A1 + INDIRECT("A" & B1)
+D1 = INDIRECT("C1")
+
+edit: B1 := 2
+before: C1 = 3 + A1 = 6, D1 = 6
+after:  C1 = 3 + A2 = 7, D1 = 7</pre></div>
+        <p style="margin-top:10px">A value edit changes a dynamic address. That changes graph shape: C1 releases dynamic edge to A1 and activates dynamic edge to A2. Then C1's value changes, so D1 must recompute.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="engines" class="panel">
+    <h2>TraceCalc vs TreeCalc: how current engines see this</h2>
+    <table>
+      <tr><th>Aspect</th><th>TraceCalc reference</th><th>TreeCalc current local engine</th><th>Meaning for the example</th></tr>
+      <tr><td>Static A1+B1</td><td>Can model as ordinary accept/publish trace.</td><td>Can run direct node references and publish.</td><td>Fully aligned with current execution model.</td></tr>
+      <tr><td>Dynamic target switch</td><td>Existing <code>tc_dynamic_dep_switch_001</code> models dynamic dependency release/activation and publish.</td><td>Can represent <code>DynamicResolved</code> and <code>DynamicPotential</code>; can publish resolved dynamic refs or reject unresolved ones.</td><td>We can model the semantic phenomenon, but not the exact string formula parser.</td></tr>
+      <tr><td><code>INDIRECT("A" & B1)</code></td><td>Expressed abstractly as selector-based dynamic dependency.</td><td>No native grid/name-string parser for this syntax today.</td><td>Needs future name-resolution/effect handler lane.</td></tr>
+      <tr><td>D1 = INDIRECT("C1")</td><td>Dynamic reference to C1 is a stable dynamic binding unless C1’s name changes.</td><td>Can represent as resolved dynamic reference to C1.</td><td>D1 invalidates because C1's value changes, not because D1's dynamic target changes.</td></tr>
+    </table>
+    <div class="callout" style="margin-top:14px"><p><strong>Interpretation:</strong> TraceCalc gives the clean reference story for dynamic dependency switch. TreeCalc gives current implementation facts for resolved dynamic references, unresolved dynamic rejection, dependency shape updates, publication, and no-publish boundaries. W046’s Rust bridge tells us exactly which facts can be checked now and which are projections or future native sidecars.</p></div>
+  </section>
+
+  <section id="lenses" class="panel">
+    <h2>Through the W046 lenses</h2>
+    <div class="grid3">
+      <div class="lens"><h3><span class="dot blue"></span>1. Dependency graph</h3><p>Simple: graph shape stable. Complex: graph shape changes because C1's dynamic descriptor changes from A1 to A2. D1 keeps a dynamic edge to C1.</p></div>
+      <div class="lens"><h3><span class="dot teal"></span>2. Reverse invalidation</h3><p>Simple: A1 reverse edge reaches C1. Complex: B1 must reach C1 through the dynamic-address expression dependency; then C1 reaches D1 through value dependency.</p></div>
+      <div class="lens"><h3><span class="dot amber"></span>3. Rebind / soft refs</h3><p>Complex edit is not merely dirty-value recalc. It requires re-evaluating a name expression and updating dynamic dependency shape before publication.</p></div>
+      <div class="lens"><h3><span class="dot green"></span>4. Evaluation order</h3><p>Simple order is C1. Complex post-edit order is C1 then D1. C1 must compute before D1 because D1 reads C1.</p></div>
+      <div class="lens"><h3><span class="dot purple"></span>5. OxFml effects</h3><p><code>INDIRECT</code> is an effectful reference-resolution request. OxFml should not publish; it asks OxCalc to resolve/read/emit dependency effects.</p></div>
+      <div class="lens"><h3><span class="dot red"></span>6. Reject boundary</h3><p>If the dynamic name cannot be resolved, current TreeCalc should reject/no-publish. That is safer than publishing a value with an unknown graph shape.</p></div>
+      <div class="lens"><h3><span class="dot blue"></span>7. Trace evidence</h3><p>A proof-carrying trace should record old dynamic edge release, new dynamic edge activation, invalidation closure, order C1→D1, candidate values, and publication.</p></div>
+      <div class="lens"><h3><span class="dot green"></span>8. Refinement</h3><p>TreeCalc can refine TraceCalc if observable values, dependency shape updates, runtime effects, reject/publish decision, and trace labels match.</p></div>
+      <div class="lens"><h3><span class="dot amber"></span>9. Optimization</h3><p>An optimized engine can skip re-evaluating unaffected formulas, but cannot skip dynamic target resolution when selector B1 changes.</p></div>
+    </div>
+  </section>
+
+  <section id="formal" class="panel">
+    <h2>Formal representation touched by the complex case</h2>
+    <table>
+      <tr><th>Formal surface</th><th>What this scenario stresses</th><th>Relevant W046 artifact</th></tr>
+      <tr><td>Dependency graph reverse converse</td><td>Old/new dynamic edge must have reverse counterpart.</td><td><code>W046DependencyGraph.lean</code>, <code>W046FiniteGraphDataflowOrder.lean</code></td></tr>
+      <tr><td>Invalidation no-under-closure</td><td>B1 selector change must not fail to reach C1 and D1.</td><td><code>W046InvalidationRebind.lean</code></td></tr>
+      <tr><td>Rebind gate</td><td>If dynamic target cannot be resolved, reject/no-publish.</td><td><code>W046InvalidationRebind.lean</code>, <code>W046RustRefinementBridge.lean</code></td></tr>
+      <tr><td>Order/read discipline</td><td>D1 must read C1 after C1 recomputes.</td><td><code>W046EvaluationOrderReadDiscipline.lean</code></td></tr>
+      <tr><td>OxFml effect boundary</td><td><code>INDIRECT</code> requests dynamic resolution; OxCalc handles publication.</td><td><code>W046OxfmlEffectBoundary.lean</code></td></tr>
+      <tr><td>TraceCalc refinement</td><td>Dynamic dependency release/activation observable in reference trace.</td><td><code>W046TraceCalcRefinement.lean</code></td></tr>
+      <tr><td>Proof-carrying traces</td><td>Checker should validate graph/order/candidate/publication facts.</td><td><code>scripts/check-w046-proof-carrying-trace.py</code></td></tr>
+    </table>
+  </section>
+
+  <section id="optimization" class="panel">
+    <h2>Future optimization/remodeling ideas exposed by this case</h2>
+    <div class="grid2">
+      <div class="lens"><h3><span class="dot green"></span>Incremental dynamic dependency engine</h3><p>Represent <code>INDIRECT("A" & B1)</code> as two layers: address expression depends on B1; resolved edge points to A1/A2. On B1 edit, recompute the address expression first, then patch graph edges.</p></div>
+      <div class="lens"><h3><span class="dot blue"></span>Two-tier invalidation</h3><p>Separate value invalidation from shape invalidation. B1 edit causes C1 shape invalidation; C1 publication causes D1 value invalidation.</p></div>
+      <div class="lens"><h3><span class="dot purple"></span>Effect handlers</h3><p>Make <code>ResolveDynamic(owner, text, context)</code> explicit. Handler returns either target node + dependency update, or typed reject/no-publish.</p></div>
+      <div class="lens"><h3><span class="dot amber"></span>Proof-carrying dynamic sidecars</h3><p>Emit old target, new target, selector input, release/activate events, reverse-edge patches, and order proof. Then checker can validate dynamic rebinding without trusting the evaluator.</p></div>
+      <div class="lens"><h3><span class="dot red"></span>Optimization danger</h3><p>Caching C1 just because A1 did not change is wrong. B1 changed the address expression, so C1's dependency and value changed.</p></div>
+      <div class="lens"><h3><span class="dot teal"></span>Safe optimization target</h3><p>D1's dynamic target remains C1, so D1 does not need dynamic rebind; it only needs value recomputation after C1 publishes. That distinction is optimization gold.</p></div>
+    </div>
+  </section>
+
+  <section id="artifacts" class="panel">
+    <h2>Artifacts from this exploration</h2>
+    <table>
+      <tr><th>Artifact</th><th>Use</th></tr>
+      <tr><td><code>docs/test-runs/core-engine/tracecalc-reference-machine/w046-indirect-explorer-tracecalc-001/</code></td><td>Fresh TraceCalc corpus run; relevant dynamic-switch scenario passed with no assertion/conformance failures.</td></tr>
+      <tr><td><code>docs/test-runs/core-engine/treecalc-local/w046-indirect-explorer-treecalc-001/</code></td><td>Fresh TreeCalc local corpus run; relevant direct publish, dynamic resolved publish, and dynamic reject cases emitted artifacts.</td></tr>
+      <tr><td><code>docs/showcase/oxcalc_w046_indirect_recalc_phase_explorer.html</code></td><td>This interactive engineering review.</td></tr>
+    </table>
+    <p class="micro">This document is exploratory. It intentionally does not claim exact native support for grid references or string-built <code>INDIRECT</code> syntax.</p>
+  </section>
+
+  <div class="footer">Generated as a W046 scenario exploration. Current date context: 2026-05-09. The scenario treats A1/A2/B1/C1/D1 as pure names, not native grid coordinates.</div>
+</div>
+
+<script>
+const phases = [
+  {id:'snapshot', label:'1. Snapshot', sub:'values and formulas exist'},
+  {id:'prepare', label:'2. Prepare descriptors', sub:'formula refs become descriptors'},
+  {id:'graph', label:'3. Build graph', sub:'edges, reverse edges, diagnostics'},
+  {id:'edit', label:'4. Apply edit', sub:'value or selector changes'},
+  {id:'invalidate', label:'5. Invalidate/rebind', sub:'reverse closure and dynamic shape'},
+  {id:'order', label:'6. Select order', sub:'dependency-before-dependent'},
+  {id:'evaluate', label:'7. Evaluate', sub:'stable/prior reads'},
+  {id:'publish', label:'8. Candidate/publish', sub:'atomic commit or reject'},
+  {id:'trace', label:'9. Trace/check', sub:'proof-carrying facts'}
+];
+let scenario='simple'; let phase=0; let mode='reference';
+function val(id){return Number(document.getElementById(id)?.value ?? 0)}
+function data(){
+  if(scenario==='simple'){
+    const a0=2,b=3,a1=val('newA')||5; const before=a0+b, after=a1+b;
+    return {title:'Simple: A1+B1, then A1 changes', badge:'graph stable', badgeClass:'', cells:[['A1',a1,'constant changed from 2','changed'],['B1',b,'constant unchanged',''],['C1',after,'= A1 + B1','calc']], before:`Before C1=${before}; after C1=${after}.`, edges:['C1 → A1 (static)','C1 → B1 (static)'], released:[], added:[], seeds:['seed: A1 changed','reverse closure: A1 ⇒ C1'], order:['C1'], trace:'TraceCalc would emit stale/dirty C1, candidate for C1, and publication.', tree:'TreeCalc direct references are supported; this is the ordinary local publish/recalc shape.', formal:'Reverse closure must include C1; order C1 reads stable A1/B1; candidate target set is [C1].'};
+  }
+  const b0=1,b1=val('newB')||2; const a1=3,a2=4; const indirectBefore='A'+b0; const indirectAfter='A'+b1; const cBefore=a1+(b0===1?a1:a2); const cAfter=a1+(b1===1?a1:a2); const dAfter=cAfter;
+  const unresolved = mode==='current-unresolved';
+  return {title:'Complex: dynamic INDIRECT target changes', badge: unresolved?'current unresolved rejects':'shape changes', badgeClass: unresolved?'bad':'warn', cells:[['A1',a1,'constant',''],['A2',a2,'constant',''],['B1',b1,`selector changed from ${b0}`,'changed'],['C1',unresolved?'reject':cAfter,`= A1 + INDIRECT("A" & B1) → ${indirectAfter}`,'calc dynamic'],['D1',unresolved?'not published':dAfter,'= INDIRECT("C1")','dynamic']], before:`Before: C1=${cBefore}, D1=${cBefore}. After selector B1=${b1}, dynamic name is ${indirectAfter}, so ideal C1=${cAfter}, D1=${dAfter}.`, edges: unresolved?['C1 → A1 (static)','C1 → ? (dynamic potential unresolved)','D1 → C1 (dynamic resolved if C1 known)']:['C1 → A1 (static)','C1 → '+indirectAfter+' (dynamic resolved)','D1 → C1 (dynamic resolved)'], released:b1===2&&!unresolved?['release old dynamic edge C1 → A1']:[], added:b1===2&&!unresolved?['activate new dynamic edge C1 → A2']:[], seeds:['seed: B1 changed','address expression for C1 invalid','C1 publication invalidates D1'], order: unresolved?[]:['C1','D1'], trace: unresolved?'TraceCalc reference can model reject/no-publish if dynamic target cannot resolve.':'TraceCalc dynamic-switch pattern: release old dep, activate new dep, emit candidate, publish.', tree: unresolved?'Current TreeCalc has DynamicPotential reject evidence: unresolved dynamic refs reject/no-publish.':'Current TreeCalc can represent DynamicResolved refs and dynamic dependency effects, but not parse "A" & B1 itself yet.', formal:'Need descriptor reclassification, reverse-edge patch, no-under-invalidation, C1 before D1 order, stable/prior read discipline, candidate/publication or reject/no-publish.'};
+}
+function renderControls(){
+  const c=document.getElementById('controls');
+  if(scenario==='simple') c.innerHTML='<label>New A1 value<input id="newA" type="number" value="5" oninput="render()"></label><label>Engine view<select id="modeSel" onchange="mode=this.value;render()"><option value="reference">reference/current</option></select></label>';
+  else c.innerHTML='<label>New B1 selector<input id="newB" type="number" min="1" max="2" value="2" oninput="render()"></label><label>Engine view<select id="modeSel" onchange="mode=this.value;render()"><option value="reference">reference / resolved projection</option><option value="current-unresolved">current unresolved dynamic reject</option></select></label>';
+}
+function renderPhaseList(){
+  const list=document.getElementById('phaseList'); list.innerHTML='';
+  phases.forEach((p,i)=>{const b=document.createElement('button'); b.className='phase-btn'+(i===phase?' active':''); b.innerHTML=`${p.label}<small>${p.sub}</small>`; b.onclick=()=>{phase=i;render()}; list.appendChild(b);});
+}
+function narrative(d){
+  const id=phases[phase].id;
+  const map={snapshot:'We start from a structural snapshot: named cells, constants, and formulas. No edit has been admitted yet.',prepare:'Formula references lower into descriptors. Static references are target-known; dynamic references are either resolved to a target or remain potential/unresolved effects.',graph:'Descriptors become edges, reverse edges, diagnostics, and cycle groups. This phase decides whether later invalidation/order reasoning has a graph to stand on.',edit:'The edit arrives. In the simple case it changes a value. In the complex case it changes the selector used to construct a dynamic name.',invalidate:'Invalidation flows through reverse edges. Dynamic shape changes also release/activate dependencies or reject if unresolved.',order:'The engine selects an evaluation order. Formula dependencies must precede dependents; cycles or unresolved dynamic gates reject instead.',evaluate:'Formula evaluation reads stable inputs and prior computed values. This is where future-read bugs would appear if order were wrong.',publish:'Evaluation produces a candidate or typed rejection. Only the coordinator publishes; rejection preserves the published view.',trace:'A proof-carrying trace should expose enough facts to check graph, invalidation, order, candidate/reject, publication, and dynamic effects.'};
+  return map[id]+' '+d.before;
+}
+function render(){
+  renderPhaseList(); const d=data(); const ph=phases[phase];
+  document.getElementById('phaseTitle').textContent=ph.label+' · '+d.title; const badge=document.getElementById('phaseBadge'); badge.textContent=d.badge; badge.className='badge '+(d.badgeClass||'');
+  document.getElementById('phaseNarrative').textContent=narrative(d);
+  document.getElementById('nodes').innerHTML=d.cells.map(([n,v,desc,cls])=>`<div class="node ${cls}"><b>${n}</b><code>${v}</code><span class="micro">${desc}</span></div>`).join('');
+  const lines=[]; if(['prepare','graph','invalidate','order','evaluate','publish','trace'].includes(ph.id)){d.edges.forEach(e=>lines.push(`<div class="edge ${e.includes('dynamic')?'dynamic':''}">${e}</div>`));}
+  if(['invalidate','order','evaluate','publish','trace'].includes(ph.id)){d.released.forEach(e=>lines.push(`<div class="edge release">${e}</div>`));d.added.forEach(e=>lines.push(`<div class="edge add">${e}</div>`));d.seeds.forEach(e=>lines.push(`<div class="edge seed">${e}</div>`));}
+  if(['order','evaluate','publish','trace'].includes(ph.id)){lines.push(`<div class="edge">evaluation_order = [${d.order.join(' → ')}]</div>`);} if(!lines.length) lines.push('<div class="edge">graph facts not emitted yet in this phase</div>');
+  document.getElementById('edges').innerHTML=lines.join(''); document.getElementById('traceView').textContent=d.trace; document.getElementById('treeView').textContent=d.tree; document.getElementById('formalView').textContent=d.formal;
+}
+document.getElementById('simpleBtn').onclick=()=>{scenario='simple';phase=0;mode='reference';document.getElementById('simpleBtn').classList.add('active');document.getElementById('complexBtn').classList.remove('active');renderControls();render();};
+document.getElementById('complexBtn').onclick=()=>{scenario='complex';phase=0;mode='reference';document.getElementById('complexBtn').classList.add('active');document.getElementById('simpleBtn').classList.remove('active');renderControls();render();};
+renderControls(); render();
+</script>
+</body>
+</html>

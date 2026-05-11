@@ -1,0 +1,21 @@
+{
+  "run_id": "w046-finite-graph-dataflow-order-001",
+  "validated_artifacts": [
+    "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla",
+    "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.smoke.cfg",
+    "docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/tlc.log",
+    "docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/run_summary.json"
+  ],
+  "validation": {
+    "tlc_result": "passed",
+    "tlc_log_non_empty": true,
+    "json_summary_parseable": true
+  },
+  "semantic_scope": [
+    "reverse-edge converse across five finite graph shapes",
+    "closure coverage for chain, diamond, fanout-rebind, self-cycle, and two-node SCC shapes",
+    "topological order and stable/prior reads for chain and diamond acyclic publication shapes",
+    "cycle groups reject rather than selecting an evaluation order",
+    "rebind fanout rejects rather than publishing"
+  ]
+}

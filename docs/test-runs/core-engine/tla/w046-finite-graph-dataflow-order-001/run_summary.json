@@ -1,0 +1,32 @@
+{
+  "run_id": "w046-finite-graph-dataflow-order-001",
+  "workset": "W046",
+  "bead": "calc-gucd.16",
+  "spec": "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla",
+  "config": "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.smoke.cfg",
+  "command": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/run-tlc.ps1 formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla formal/tla/CoreEngineW046FiniteGraphDataflowOrder.smoke.cfg",
+  "result": "passed",
+  "tlc_version": "2.19 of 08 August 2024",
+  "states_generated": 11,
+  "distinct_states": 6,
+  "queue_left": 0,
+  "complete_state_depth": 2,
+  "checked_invariants": [
+    "TypeInvariant",
+    "ReverseConverse",
+    "ClosureCoversExpectedDependents",
+    "OrderRespectsKnownFiniteShapes",
+    "StablePriorReadShapes",
+    "CyclesRejectRatherThanOrder",
+    "RebindRejectsRatherThanPublishes",
+    "PublishedOnlyAcyclicNoRebind"
+  ],
+  "checked_shapes": [
+    "chain",
+    "diamond",
+    "fanout_rebind",
+    "self_cycle",
+    "two_node_scc"
+  ],
+  "log": "docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/tlc.log"
+}

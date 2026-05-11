@@ -1,0 +1,155 @@
+{
+  "schema_version": "oxcalc.w046.scale_semantic_regression_signatures.v1",
+  "run_id": "w046-scale-semantic-signatures-001",
+  "workset": "W046",
+  "bead": "calc-gucd.9",
+  "policy": {
+    "timing_is_not_correctness": true,
+    "correctness_requires_semantic_validation": true,
+    "optimization_claim": false,
+    "continuous_scale_assurance_claim": false
+  },
+  "semantic_sources": {
+    "integrated_kernel": "docs/spec/core-engine/w046-formalization/W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md",
+    "proof_trace_checker": "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json",
+    "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+    "coverage_ledger": "docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"
+  },
+  "profiles": [
+    {
+      "profile_id": "million_grid_r2",
+      "profile": "grid-cross-sum",
+      "model_shape": "1000x1000 grid, formula = left_row + top_col",
+      "source_summary": "docs/test-runs/core-engine/treecalc-scale/million_grid_r2/run_summary.json",
+      "expected_closed_form": {
+        "after_sum": "92299000",
+        "delta_sum": "18000",
+        "formula_evaluations": 1000000,
+        "reference_visits": 2000000
+      },
+      "semantic_facts_checked": {
+        "dependency_descriptor_count": 2000000,
+        "dependency_edge_count": 2000000,
+        "dependency_diagnostic_count": 0,
+        "cycle_group_count": 0,
+        "invalidation_impacted_count": 2001,
+        "dynamic_potential_descriptor_count": 0,
+        "soft_reference_update_rebind_seed_count": 0
+      },
+      "phase_timings_ms": {
+        "dependency_descriptor_lowering": 2948.0364,
+        "dependency_graph_build_and_cycle_scan": 23307.7078,
+        "invalidation_closure_derivation": 4.3513,
+        "model_build_structural_snapshot_and_formula_catalog": 7193.0098,
+        "synthetic_closed_form_recalc": 23.1493,
+        "validation_checks": 158.4186
+      },
+      "checker_result": "scale_validation_passed",
+      "correctness_limits": ["closed-form synthetic recalc, not full TreeCalc publication trace", "no dynamic/rebind stress in this profile"]
+    },
+    {
+      "profile_id": "million_fanout_f8_r1",
+      "profile": "fanout-bands",
+      "model_shape": "999991 formulas, each SUMs 8 anchors",
+      "source_summary": "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json",
+      "expected_closed_form": {
+        "after_sum": "42999613",
+        "delta_sum": "6999937",
+        "formula_evaluations": 999991,
+        "reference_visits": 7999928
+      },
+      "semantic_facts_checked": {
+        "dependency_descriptor_count": 7999928,
+        "dependency_edge_count": 7999928,
+        "dependency_diagnostic_count": 0,
+        "cycle_group_count": 0,
+        "invalidation_impacted_count": 999992,
+        "dynamic_potential_descriptor_count": 0,
+        "soft_reference_update_rebind_seed_count": 0
+      },
+      "phase_timings_ms": {
+        "dependency_descriptor_lowering": 4855.5145,
+        "dependency_graph_build_and_cycle_scan": 51561.1387,
+        "invalidation_closure_derivation": 3532.6274,
+        "model_build_structural_snapshot_and_formula_catalog": 7773.6513,
+        "synthetic_closed_form_recalc": 83.8809,
+        "validation_checks": 538.4864
+      },
+      "checker_result": "scale_validation_passed",
+      "correctness_limits": ["closed-form synthetic recalc, not full publication trace", "static direct fanout only"]
+    },
+    {
+      "profile_id": "million_relative_rebind_f8_r1",
+      "profile": "relative-rebind-churn",
+      "model_shape": "999991 relative formulas with parent-path anchors; root rename induces rebind seed derivation",
+      "source_summary": "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json",
+      "expected_closed_form": {
+        "after_sum": "42999613",
+        "delta_sum": "6999937",
+        "formula_evaluations": 999991,
+        "reference_visits": 7999928
+      },
+      "semantic_facts_checked": {
+        "dependency_descriptor_count": 7999928,
+        "dependency_edge_count": 7999928,
+        "dependency_diagnostic_count": 0,
+        "cycle_group_count": 0,
+        "invalidation_impacted_count": 999992,
+        "dynamic_potential_descriptor_count": 0,
+        "soft_reference_update_rebind_seed_count": 999991
+      },
+      "phase_timings_ms": {
+        "dependency_descriptor_lowering": 35472.8819,
+        "dependency_graph_build_and_cycle_scan": 58715.2191,
+        "invalidation_closure_derivation": 3011.7093,
+        "model_build_structural_snapshot_and_formula_catalog": 9239.4871,
+        "soft_reference_update_rebind_seed_derivation": 8900.2724,
+        "synthetic_closed_form_recalc": 68.919,
+        "validation_checks": 399.9153
+      },
+      "checker_result": "scale_validation_passed",
+      "correctness_limits": ["closed-form scale owner scan validates rebind seed count, not per-node replay sidecars", "positive dynamic dependency publication remains outside profile"]
+    },
+    {
+      "profile_id": "million_indirect_r1",
+      "profile": "dynamic-indirect-stripes",
+      "model_shape": "1000x1000 grid with static base references plus dynamic INDIRECT residual carrier per formula",
+      "source_summary": "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json",
+      "expected_closed_form": {
+        "after_sum": "92299000",
+        "delta_sum": "18000",
+        "formula_evaluations": 1000000,
+        "reference_visits": 3000000
+      },
+      "semantic_facts_checked": {
+        "dependency_descriptor_count": 3000000,
+        "dependency_edge_count": 2000000,
+        "dependency_diagnostic_count": 1000000,
+        "cycle_group_count": 0,
+        "invalidation_impacted_count": 2001,
+        "dynamic_potential_descriptor_count": 1000000,
+        "dynamic_potential_diagnostic_count": 1000000,
+        "soft_reference_update_rebind_seed_count": 0
+      },
+      "phase_timings_ms": {
+        "dependency_descriptor_lowering": 4414.3608,
+        "dependency_graph_build_and_cycle_scan": 21556.1033,
+        "invalidation_closure_derivation": 3.8609,
+        "model_build_structural_snapshot_and_formula_catalog": 8301.8695,
+        "synthetic_closed_form_recalc": 20.5269,
+        "validation_checks": 207.2479
+      },
+      "checker_result": "scale_validation_passed",
+      "correctness_limits": ["dynamic INDIRECT remains residual diagnostic lane", "closed-form synthetic recalc excludes positive dynamic dependency publication"]
+    }
+  ],
+  "signature_summary": {
+    "profile_count": 4,
+    "profiles_validation_passed": 4,
+    "profiles_with_phase_timings": 4,
+    "profiles_with_closed_form_values": 4,
+    "profiles_with_dynamic_residuals": 1,
+    "profiles_with_soft_rebind_churn": 1,
+    "timing_only_correctness_claims": 0
+  }
+}

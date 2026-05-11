@@ -1,0 +1,107 @@
+{
+  "schema_version": "oxcalc.w046.closure_audit.v1",
+  "run_id": "w046-closure-audit-001",
+  "workset": "W046",
+  "bead": "calc-gucd.11",
+  "objective": "Continue W046 along the calc-gucd bead set until the W046 workset is complete.",
+  "completion_criteria": [
+    "all calc-gucd child beads closed",
+    "semantic proof spine packets present for graph, invalidation, tracker, order/read, TraceCalc, OxFml seam, integrated kernel, finite proof strengthening, proof-carrying traces, Rust bridge, coverage, scale signatures, consequence reassessment, and closure audit",
+    "formal/model/checker/Rust validations pass at declared scope",
+    "open deep-proof residuals routed to successor beads rather than hidden as caveats",
+    "no release-grade, C5, Stage 2, pack, operated-service, or broad OxFml/OxFunc promotion claimed"
+  ],
+  "bead_status_at_audit": {
+    "calc-gucd.1": "closed",
+    "calc-gucd.2": "closed",
+    "calc-gucd.3": "closed",
+    "calc-gucd.4": "closed",
+    "calc-gucd.5": "closed",
+    "calc-gucd.6": "closed",
+    "calc-gucd.7": "closed",
+    "calc-gucd.8": "closed",
+    "calc-gucd.9": "closed",
+    "calc-gucd.10": "closed",
+    "calc-gucd.11": "closed",
+    "calc-gucd.12": "closed",
+    "calc-gucd.13": "closed",
+    "calc-gucd.14": "closed",
+    "calc-gucd.15": "closed",
+    "calc-gucd.16": "closed",
+    "calc-gucd.17": "closed",
+    "calc-gucd.18": "closed"
+  },
+  "prompt_to_artifact_checklist": [
+    {
+      "requirement": "dependency graph/reverse/SCC semantic model",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md", "formal/lean/OxCalc/CoreEngine/W046DependencyGraph.lean", "formal/tla/CoreEngineW046DependencyGraph.tla", "docs/test-runs/core-engine/tla/w046-dependency-graph-001/"]
+    },
+    {
+      "requirement": "invalidation/rebind semantic model",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md", "formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean", "formal/tla/CoreEngineW046InvalidationRebind.tla", "docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/"]
+    },
+    {
+      "requirement": "recalc tracker pre/post model",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md", "formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean", "formal/tla/CoreEngineW046RecalcTracker.tla", "docs/test-runs/core-engine/tla/w046-recalc-tracker-001/"]
+    },
+    {
+      "requirement": "evaluation order and working-value read discipline",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md", "formal/lean/OxCalc/CoreEngine/W046EvaluationOrderReadDiscipline.lean", "formal/tla/CoreEngineW046EvaluationOrder.tla", "docs/test-runs/core-engine/tla/w046-evaluation-order-001/"]
+    },
+    {
+      "requirement": "TraceCalc refinement and replay binding",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md", "formal/lean/OxCalc/CoreEngine/W046TraceCalcRefinement.lean", "formal/tla/CoreEngineW046TraceCalcRefinement.tla", "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/"]
+    },
+    {
+      "requirement": "OxFml seam LET/LAMBDA/effect boundary",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md", "formal/lean/OxCalc/CoreEngine/W046OxfmlEffectBoundary.lean", "formal/tla/CoreEngineW046OxfmlEffectBoundary.tla", "docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/"]
+    },
+    {
+      "requirement": "integrated semantic kernel and cross-phase state machine",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md", "formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean", "formal/tla/CoreEngineW046IntegratedKernel.tla", "docs/test-runs/core-engine/refinement/w046-integrated-kernel-001/"]
+    },
+    {
+      "requirement": "finite graph dataflow/order proof strengthening",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_FINITE_GRAPH_DATAFLOW_AND_ORDER_PROOF_STRENGTHENING.md", "formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean", "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla", "docs/test-runs/core-engine/refinement/w046-finite-graph-dataflow-order-001/"]
+    },
+    {
+      "requirement": "proof-carrying trace checker",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_PROOF_CARRYING_TRACE_AND_SEMANTIC_REPLAY_CHECKER.md", "scripts/check-w046-proof-carrying-trace.py", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"]
+    },
+    {
+      "requirement": "Rust refinement bridge",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_RUST_REFINEMENT_BRIDGE_AND_IMPLEMENTATION_TRACE_VALIDATION.md", "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean", "src/oxcalc-core/src/treecalc.rs", "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json"]
+    },
+    {
+      "requirement": "coverage ledger over semantic spine",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md", "docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json"]
+    },
+    {
+      "requirement": "scale semantic-regression signatures",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md", "docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/semantic_regression_signatures.json"]
+    },
+    {
+      "requirement": "downstream consequence reassessment",
+      "artifacts": ["docs/spec/core-engine/w046-formalization/W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md", "docs/test-runs/core-engine/refinement/w046-consequence-reassessment-001/consequence_matrix.json"]
+    }
+  ],
+  "validations_run": [
+    "lean formal/lean/OxCalc/CoreEngine/W046*.lean",
+    "pwsh scripts/run-tlc.ps1 formal/tla/CoreEngineW046*.tla corresponding smoke cfgs",
+    "cargo test -p oxcalc-core local_treecalc_engine_",
+    "python -m py_compile scripts/check-w046-proof-carrying-trace.py",
+    "python scripts/check-w046-proof-carrying-trace.py ...",
+    "JSON/reference validation for W046 closure roots"
+  ],
+  "successor_beads": [
+    "calc-aylq.1",
+    "calc-aylq.2",
+    "calc-aylq.3",
+    "calc-aylq.4"
+  ],
+  "completion_axes": {
+    "scope_completeness": "scope_complete",
+    "target_completeness": "target_complete",
+    "integration_completeness": "integrated"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "run_id": "w046-scale-semantic-signatures-001",
+  "workset": "W046",
+  "bead": "calc-gucd.9",
+  "signature_ledger": "docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/semantic_regression_signatures.json",
+  "result": "passed",
+  "profile_count": 4,
+  "profiles": [
+    "million_grid_r2",
+    "million_fanout_f8_r1",
+    "million_relative_rebind_f8_r1",
+    "million_indirect_r1"
+  ],
+  "source_summaries": [
+    "docs/test-runs/core-engine/treecalc-scale/million_grid_r2/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_fanout_f8_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json",
+    "docs/test-runs/core-engine/treecalc-scale/million_indirect_r1/run_summary.json"
+  ],
+  "validation": {
+    "json_parseable": true,
+    "source_summaries_passed": true,
+    "closed_form_checks_passed": true,
+    "phase_timings_present": true,
+    "timing_only_correctness_claims": 0
+  }
+}

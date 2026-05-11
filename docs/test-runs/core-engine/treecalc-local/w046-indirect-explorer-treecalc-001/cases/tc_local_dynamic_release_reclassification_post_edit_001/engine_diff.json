@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "published"
+}

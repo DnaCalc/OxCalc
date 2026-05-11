@@ -1,0 +1,13 @@
+{
+  "run_id": "w046-oxfml-effect-boundary-001",
+  "workset": "W046",
+  "bead": "calc-gucd.7",
+  "binding_register": "docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/effect_boundary_binding_register.json",
+  "tla_evidence_root": "docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/",
+  "rows": 8,
+  "checked_model_rows": 1,
+  "existing_evidence_rows": 7,
+  "exact_blockers": 3,
+  "unexpected_mismatches": 0,
+  "missing_referenced_artifacts": 0
+}

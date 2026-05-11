@@ -19,6 +19,8 @@ A Calc-Time Rebinding Overlay is the runtime-derived effective-graph layer used 
 
 The purpose of W047 is not to bolt this onto W046 after the fact. The purpose is to perform a careful design review sweep so the resulting engine design looks like the intended architecture would have looked if Calc-Time Rebinding Overlay had remained central from the beginning.
 
+**Scope reset (2026-05-10).** A fresh-eyes review of W046 surfaced that its formal artifacts are largely tautological projections: Lean theorems that reduce to record-field selection, TLA models with two-step `MaxTransitions` whose invariants restate the actions' own assignments, and a Python checker that silently downgrades missing inputs to empty graphs and then unconditionally records "fact" labels. W047 must not extend that pattern. W047 is therefore re-scoped to **implementation-first**: land the Calc-Time Rebinding Overlay phase in the engine core and the surrounding design, reference, and scenario surfaces — and stop there. W047 does not produce new Lean modules, TLA models, sidecar emitters, or proof-carrying-trace checker rules; it does not attempt to fix or formally prove anything that was not already proven before W047. Formal-evidence deepening, sidecar enrichment, native trace emission, and readiness-gate work transfer to **W049** as a follow-on formalization workset that uses the W046 punch list and the W047 implementation core as its starting points. The intent is to build a single correct implementation core first, then systematically formalize around it — not to grow a parallel layer of decorative formal artifacts.
+
 ## 2. Core Thesis
 
 The engine has three distinct change classes:
@@ -65,6 +67,11 @@ The sweep must consume these predecessor surfaces explicitly:
 | `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` | runtime-derived dependency, region, spill, and shape effects through the seam |
 | W046 semantic-spine packets | graph/invalidation/order/reject/publication/refinement proof vocabulary to extend |
 
+The active no-loss crosswalk packet is
+`docs/spec/core-engine/w047-ctro/W047_HISTORICAL_NO_LOSS_CTRO_CROSSWALK.md`.
+That packet is the input gate for subsequent W047 effective-graph,
+scenario-matrix, implementation-remodeling, and positive-publication work.
+
 No W047 design packet may claim closure until it shows where each predecessor idea lands: retained, revised, rejected with reason, or routed to successor.
 
 ## 5. Intended Engine Pipeline
@@ -80,13 +87,35 @@ W047 should converge on an explicit pipeline for calc-time rebinding:
 7. Evaluate needed formulas in deterministic order.
 8. If evaluation emits dependency-shape effects, stage them in candidate overlay `O_candidate`.
 9. Compare `O_candidate` against `O_published` for releases, activations, region/spill changes, and reclassifications.
-10. Repair the current frontier and order under `G_eff' = G_struct + O_candidate`.
-11. Continue evaluation or route to fallback/reject when repair is unsafe or unsupported.
-12. Candidate carries value deltas, dependency-shape deltas, runtime effects, diagnostics, and proof-carrying trace facts.
-13. Coordinator accepts and atomically publishes both values and overlay consequences, or rejects with no-publish/no-overlay-commit.
-14. Retention/eviction policy protects old overlay state while readers or replay witnesses require it.
+10. Compose provisional effective graph `G_eff' = G_struct + O_candidate`.
+11. Run the same SCC/cycle classification over `G_eff'` that the structural graph path uses over `G_struct` and `G_eff`.
+12. If `G_eff'` introduces or preserves a cycle region, route that region through the profile-governed cycle policy before any frontier repair or overlay publication.
+13. Repair the current frontier and order under `G_eff'` only for the acyclic remainder, or route to fallback/reject when repair is unsafe or unsupported.
+14. Continue evaluation only after cycle classification and frontier repair have produced a deterministic next frontier.
+15. Candidate carries value deltas, dependency-shape deltas, runtime effects, diagnostics, and proof-carrying trace obligations.
+16. Coordinator accepts and atomically publishes both values and overlay consequences, or rejects with no-publish/no-overlay-commit.
+17. Retention/eviction policy protects old overlay state while readers or replay witnesses require it.
 
-This is the pipeline W047 must prove, model, or explicitly scope down.
+This is the pipeline W047 must implement in the engine core and demonstrate via reference scenarios. Formal proof obligations against this pipeline are recorded as inputs to W049 and are explicitly out of scope for W047.
+
+The active effective-graph semantics packet is
+`docs/spec/core-engine/w047-ctro/W047_EFFECTIVE_GRAPH_OVERLAY_AND_FRONTIER_REPAIR_SEMANTICS.md`.
+
+### 5.1 Cycle Policy Alignment
+
+CTRO cycle handling must be semantically the same cycle policy as structural cycle handling, applied to a different graph layer.
+
+Rules:
+1. structural cycles are classified over `G_struct` plus any already-published overlay that participates in the current effective graph;
+2. CTRO-created cycles are classified over provisional `G_eff'` after candidate overlay composition and before publication;
+3. the cycle classifier returns SCC/cycle groups plus the affected nodes and edges, not an ad hoc CTRO-only failure code;
+4. for the current Stage 1 / non-iterative profile floor, any cycle group detected in `G_eff'` becomes `CycleBlocked` / `SyntheticCycleReject` with no value publication and no overlay commit;
+5. `O_published` remains the effective runtime overlay after a CTRO cycle reject; `O_candidate` is discarded or retained only as reject diagnostics;
+6. downstream dependents of a rejected cycle region remain stale/needed/blocked according to the same invalidation closure policy used for structural cycle regions;
+7. if a later profile enables iterative cycle semantics, both structural and CTRO-created cycle regions must enter the same deterministic SCC iteration lane with the same iteration bounds, convergence threshold, terminal diagnostics, and replay evidence;
+8. a CTRO cycle may not be hidden behind generic fallback if the effective graph already proves the cycle; fallback is allowed only when the implementation cannot safely classify or repair the graph, and that fallback must be replay-visible.
+
+This aligns with the current Rust floor: `DependencyGraph::build` records `cycle_groups`, invalidation can mark cycle members `CycleBlocked`, and local TreeCalc maps cycle detection to `SyntheticCycleReject` with no candidate publication. W047 should extend that policy to candidate overlay graph classification rather than inventing a parallel CTRO-specific cycle path.
 
 ## 6. Design Rules To Prevent A Bolt-On
 
@@ -97,8 +126,9 @@ This is the pipeline W047 must prove, model, or explicitly scope down.
 5. **Frontier repair is a first-class transition**: if order/invalidation changes mid-calculation, the engine records repair, fallback, or rejection.
 6. **Dynamic arrays are first-class stress cases**: spill/region resizing must be modeled beside `INDIRECT`, not postponed as unrelated future work.
 7. **Fallback is honest but measured**: conservative rebuild/reject is allowed, but must be replay-visible and instrumented.
-8. **Proof-carrying traces lead implementation**: design the facts the checker needs before optimizing the runtime path.
-9. **No readiness promotion by proxy**: W047 may improve engine design, but pack/C5/operated/release claims remain consequence lanes.
+8. **Cycle policy is shared**: structural and CTRO-created cycle regions differ in discovery timing, not in semantic policy; both flow through the same profile-governed cycle lane.
+9. **Proof obligations are recorded, not discharged under W047**: when the design implies a checkable fact about overlay deltas, frontier repair, cycle classification, or atomic publication, name the obligation and route it to W049; do not extend the W046 fact-list checker, sidecar emitter, Lean record-projection pattern, or smoke-TLA pattern as part of W047.
+10. **No readiness promotion by proxy**: W047 may improve engine design, but pack/C5/operated/release claims remain consequence lanes.
 
 ## 7. Required Scenario Matrix
 
@@ -112,69 +142,115 @@ At minimum, W047 must include scenarios for:
 | dynamic target switch with downstream dependent `D1 = INDIRECT("C1")` | downstream value invalidation after overlay change |
 | spill expansion | runtime region activation and new dependents |
 | spill contraction | runtime region release and stale published cells/consumers |
+| structural direct cycle | baseline structural/SCC cycle path and current Stage 1 reject/no-publication semantics |
+| CTRO self-cycle introduced by dynamic target switch | candidate overlay points a formula back to itself and must produce the same cycle policy outcome as a structural self-cycle |
+| CTRO multi-node cycle introduced by dynamic target switch | candidate overlay creates an SCC across two or more formulas and must block/reject consistently with structural SCC handling |
+| CTRO cycle release | previously-published overlay cycle candidate is replaced by an acyclic target and must define how the blocked region can re-enter calculation |
 | cycle introduced by calc-time overlay | cycle boundary discovered after runtime shape change |
 | conservative fallback/rebuild | safe path when dynamic repair cannot be proven |
 
-## 8. Formalization Targets
+### 7.1 Excel-Comparison Probing Examples
 
-W047 should produce formal or executable targets for:
+Microsoft's public Excel documentation establishes the comparison baseline:
+1. Excel detects direct and indirect circular references and warns the user when a formula depends on itself, directly or indirectly.
+2. Without intentional iterative calculation, Excel may display zero or retain the last successful calculated value after the circular-reference warning.
+3. If iterative calculation is enabled, Excel recalculates until the configured maximum iterations or maximum change threshold is reached; the documented defaults are 100 iterations or 0.001 maximum change.
+4. Excel's calculation chain is dynamic and may be reordered during recalculation when dependencies require it.
 
-1. effective graph composition,
-2. overlay delta classification: activate, release, reclassify, region/spill resize,
+Probing examples for W047/W048 investigation:
+
+| Probe id | Excel sheet sketch | Discovery class | Question |
+| --- | --- | --- | --- |
+| `excel_struct_self_001` | `A1 = A1 + 1` | structural self-cycle | Confirm warning, status-bar location, default displayed value, and iterative result under default iteration settings. |
+| `excel_struct_two_node_001` | `A1 = B1 + 1`; `B1 = A1 + 1` | structural SCC | Confirm which cell Excel reports first, whether both cells retain last values, and how iterative mode diverges. |
+| `excel_guarded_cycle_activation_001` | `A1 = IF(B1=0,0,A1+1)`; toggle `B1` from `0` to `1` | structural formula with runtime condition | Confirm the documented "last successful calculation" behavior when a condition activates self-reference. |
+| `excel_ctro_indirect_self_001` | `B1 = "A1"`; `C1 = INDIRECT(B1)`; then set `B1 = "C1"` | CTRO dynamic target self-cycle | Determine whether Excel reports this like a normal circular reference and what value survives without iteration. |
+| `excel_ctro_indirect_two_node_001` | `A1 = "D1"`; `B1 = "C1"`; `C1 = INDIRECT(A1)`; `D1 = INDIRECT(B1)` | CTRO dynamic target SCC | Determine warning/reporting order and whether calculation-chain reordering is observable. |
+| `excel_ctro_cycle_release_001` | Start from `C1 = INDIRECT(B1)` with `B1 = "C1"`, then change `B1 = "A1"` and `A1 = 10` | CTRO cycle release | Determine whether Excel exits the circular-reference state cleanly and what recalculation event is required. |
+| `excel_ctro_spill_cycle_001` | dynamic-array/spill formula whose output range becomes an input range to itself | CTRO region/spill cycle | Determine whether the public circular-reference behavior extends to spill-region membership and what exact error or warning is surfaced. |
+
+These are proposed probes, not claimed observed behavior. W047 uses them to shape implementation policy; W048 owns direct Excel observation packets and deterministic replay/trace expectations.
+
+The active W047 scenario matrix packet is
+`docs/spec/core-engine/w047-ctro/W047_CTRO_SCENARIO_MATRIX_AND_TRACE_FACTS.md`.
+
+The bounded dynamic dependency positive-publication evidence packet is
+`docs/spec/core-engine/w047-ctro/W047_DYNAMIC_DEPENDENCY_POSITIVE_PUBLICATION_EVIDENCE.md`.
+
+## 8. Formal Obligations Recorded For W049
+
+W047 does **not** produce new formal artifacts. The CTRO design surfaces the following obligations, recorded as inputs to the W049 follow-on formalization workset:
+
+1. effective graph composition law,
+2. overlay delta classification (activate, release, reclassify, region/spill resize),
 3. no-under-invalidation over effective graph,
 4. frontier repair soundness after overlay delta,
 5. order repair or deterministic fallback,
-6. no-publish/no-overlay-commit on reject,
-7. atomic publication of value plus overlay consequences,
-8. retained overlay safety for pinned readers/replay,
-9. proof-carrying trace schema for overlay facts.
+6. SCC/cycle classification equivalence between `G_struct`, `G_eff`, and candidate `G_eff'`,
+7. no-publish/no-overlay-commit on reject,
+8. atomic publication of value plus overlay consequences,
+9. retained overlay safety for pinned readers/replay,
+10. proof-carrying trace schema for overlay facts.
+
+Each is a future W049 obligation. W047 implementation work must not introduce stub Lean predicates, smoke TLA models, or fact-list checker rows that pretend to discharge these obligations. If an obligation surfaces during implementation in a way that demands an in-line check, prefer a Rust assertion or test that fails loudly under a real run over a Lean/TLA artifact that passes vacuously.
 
 ## 9. Evidence Policy
 
-W047 evidence should be staged:
+W047 evidence is implementation-first and staged narrowly:
 
-1. **Design evidence**: historical no-loss crosswalk, scenario matrix, revised pipeline, invariants.
-2. **Reference evidence**: TraceCalc oracle scenarios for dynamic target switch, spill/region changes, and fallback.
-3. **Implementation evidence**: TreeCalc fixtures for current supported subset, exact blockers for unsupported syntax or grid/spill features.
-4. **Formal evidence**: Lean/TLA or exact blockers for effective graph and frontier repair properties.
-5. **Checker evidence**: proof-carrying trace rows that validate overlay deltas and publication/reject boundaries.
-6. **Economics evidence**: counters for fallback rate, overlay repair rate, rebuild crossover, and retained overlay reuse.
+1. **Design evidence**: historical no-loss crosswalk, scenario matrix, revised pipeline, design invariants stated in prose.
+2. **Reference evidence**: TraceCalc oracle scenarios for static comparator, dynamic target switch, spill/region changes, structural cycle, CTRO-created cycle, cycle release, and fallback paths — at the granularity the existing reference machinery already supports.
+3. **Implementation evidence**: core engine and TreeCalc CTRO phase landing; current supported subset; exact blockers for unsupported syntax, cycles, or grid/spill features.
+4. **Hand-off evidence**: explicit list of formal, checker, sidecar, and economics obligations registered as W049 inputs; nothing more.
+
+W047 does **not** produce formal, checker, sidecar, or economics evidence. Broadening any of those layers under W046's pattern is an explicit anti-goal — adding a new shallow Lean module or smoke TLA model under W047 is worse than producing nothing on that axis under W047. W049 will design the evidence layer cleanly against the landed implementation core.
 
 ## 10. Bead Path
 
-The W047 bead path is intentionally front-loaded with design integration before implementation proof:
+The W047 bead path is implementation-first; formal-evidence and readiness-gate beads route to W049 instead.
+
+Active under W047:
 
 1. `calc-aylq.1` - historical no-loss design sweep and Calc-Time Rebinding Overlay doctrine.
-2. `calc-aylq.2` - effective graph, overlay delta, frontier repair, and publication semantics.
-3. `calc-aylq.3` - scenario matrix, TraceCalc/TreeCalc evidence plan, and proof-carrying trace schema.
-4. `calc-aylq.4` - implementation remodeling plan, fallback/economics policy, and readiness gates.
-5. `calc-aylq.5` - Rust Tarjan and topological queue line proof or revised obligation after overlay design.
-6. `calc-aylq.6` - native proof-carrying trace sidecar enrichment for reverse edges, per-read events, and overlay deltas.
-7. `calc-aylq.7` - dynamic dependency positive publication refinement under the CTRO model.
-8. `calc-aylq.8` - semantic pack and operated-service readiness gate after CTRO evidence exists.
+2. `calc-aylq.2` - effective graph, overlay delta, frontier repair, and publication semantics specified at design level (no Lean/TLA artifact under W047).
+3. `calc-aylq.3` - scenario matrix and TraceCalc/TreeCalc evidence plan; proof-carrying-trace schema notes are recorded as W049 inputs, not implemented under W047.
+4. `calc-aylq.4` - implementation/evidence roadmap, successor routing, fallback/economics counters, and no-promotion gates; no runtime behavior claim.
+5. `calc-aylq.7` - core engine and TreeCalc CTRO phase landing for dynamic dependency positive publication under the CTRO model.
+
+Deferred to W049 when W047 closes:
+
+- `calc-aylq.5` - Rust/formal graph algorithm proof obligations after CTRO design — re-scope under W049 against the landed implementation.
+- `calc-aylq.6` - native proof-carrying-trace sidecar enrichment — W049.
+- `calc-aylq.8` - semantic pack and operated-service readiness gate — W049; gates pass through W049's evidence layer.
+
+These three bead ids are retained as deferred placeholders. Their content will be re-issued under the W049 epic when the W049 plan is finalized; under W047 they are not worked.
 
 ## 11. Exit Gate
 
 W047 exits only when:
 
 1. historical no-loss crosswalk is complete,
-2. Calc-Time Rebinding Overlay is integrated into core recalc, graph, OxFml seam, TraceCalc, TreeCalc, proof-carrying trace, and formalization surfaces,
-3. scenario matrix covers static, dynamic switch, unresolved dynamic, downstream dependent, spill expansion/contraction, cycle, and fallback paths or records exact blockers,
-4. effective graph and frontier repair semantics are specified and at least bounded-model/checker validated or exact-blocked,
-5. implementation plan distinguishes immediate TreeCalc work, reference-machine work, checker work, and deferred grid/spill substrate work,
-6. fallback/economics policy is explicit and measurable,
-7. successor readiness gates prevent pack/C5/operated/release promotion before CTRO evidence exists,
-8. W046 residuals are reclassified under the CTRO model rather than simply carried forward unchanged.
+2. Calc-Time Rebinding Overlay is integrated into core recalc, graph, OxFml seam, TraceCalc, TreeCalc, and design surfaces — formal/checker/sidecar surfaces are explicitly **not** changed under W047,
+3. scenario matrix covers static, dynamic switch, unresolved dynamic, downstream dependent, spill expansion/contraction, structural cycle, CTRO-created cycle, cycle release, and fallback paths or records exact blockers,
+4. effective graph, frontier repair, and shared cycle-policy semantics are specified at design level; bounded-model/checker validation is **deferred to W049** and recorded as an obligation, not produced under W047,
+5. implementation plan distinguishes immediate TreeCalc/core-engine CTRO phase work, reference-machine work, and deferred grid/spill substrate work; checker, sidecar, and formal artifact work is explicitly handed to W049,
+6. fallback policy is explicit at design level; economics counters are deferred to W049 unless the W047 implementation surface needs one to remain honest,
+7. successor readiness gates (W049-administered) are recorded as preventing pack/C5/operated/release promotion before W049 evidence exists,
+8. W046 residuals are reclassified under the CTRO model rather than simply carried forward unchanged,
+9. no new formal/checker/sidecar artifacts are introduced under W047; obligations are recorded as W049 inputs.
 
 ## 12. Current Status
 
-- execution_state: `calc-aylq_activated_design_sweep`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - historical no-loss crosswalk
-  - effective graph and frontier repair semantics
-  - scenario matrix and proof-carrying overlay trace schema
-  - implementation remodeling and fallback/economics policy
-  - Rust/formal/checker proof deepening after design sweep
+- execution_state: `calc-aylq.7_dynamic_positive_publication_validated`
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
+- scope_mode: `implementation_first` (post 2026-05-10 reset; see §1 scope reset paragraph)
+- successor_lanes:
+  - W048 structural and CTRO-created cycle calculation processing
+  - W049 formal/checker/sidecar/readiness successor work
+- known_non_w047_validation_gap: none observed in current review
+- deferred_to_w049:
+  - Rust/formal graph algorithm proof obligations
+  - native proof-carrying-trace sidecar enrichment
+  - semantic pack / operated-service readiness gate evidence

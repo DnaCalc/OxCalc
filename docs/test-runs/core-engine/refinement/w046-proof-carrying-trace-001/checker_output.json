@@ -1,0 +1,105 @@
+{
+  "blocker_count": 0,
+  "blockers": [],
+  "checked_artifact_count": 5,
+  "checked_artifacts": [
+    {
+      "artifact_type": "treecalc_result",
+      "blockers": [],
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "facts": [
+        "candidate_publication_bundle_consistent",
+        "derived_reverse_index_converse",
+        "edge_descriptor_links_checked",
+        "evaluation_order_covered_by_invalidation_closure_or_reject",
+        "formula_edges_respect_evaluation_order",
+        "forward_edges_well_formed",
+        "graph_artifact_parseable",
+        "invalidation_closure_artifact_parseable",
+        "prior_formula_read_observed",
+        "stable_input_read_observed"
+      ],
+      "failures": [],
+      "path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+      "result_state": "published"
+    },
+    {
+      "artifact_type": "treecalc_result",
+      "blockers": [],
+      "case_id": "tc_local_let_lambda_capture_publish_001",
+      "facts": [
+        "candidate_publication_bundle_consistent",
+        "derived_reverse_index_converse",
+        "edge_descriptor_links_checked",
+        "evaluation_order_covered_by_invalidation_closure_or_reject",
+        "formula_edges_respect_evaluation_order",
+        "forward_edges_well_formed",
+        "graph_artifact_parseable",
+        "invalidation_closure_artifact_parseable",
+        "stable_input_read_observed"
+      ],
+      "failures": [],
+      "path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+      "result_state": "published"
+    },
+    {
+      "artifact_type": "treecalc_result",
+      "blockers": [],
+      "case_id": "tc_local_dynamic_reject_001",
+      "facts": [
+        "derived_reverse_index_converse",
+        "dynamic_potential_descriptor_rejects",
+        "edge_descriptor_links_checked",
+        "evaluation_order_covered_by_invalidation_closure_or_reject",
+        "formula_edges_respect_evaluation_order",
+        "forward_edges_well_formed",
+        "graph_artifact_parseable",
+        "invalidation_closure_artifact_parseable",
+        "reject_has_no_publication_bundle"
+      ],
+      "failures": [],
+      "path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+      "result_state": "rejected"
+    },
+    {
+      "artifact_type": "treecalc_result",
+      "blockers": [],
+      "case_id": "tc_local_rebind_after_rename_001",
+      "facts": [
+        "candidate_publication_bundle_consistent",
+        "derived_reverse_index_converse",
+        "edge_descriptor_links_checked",
+        "evaluation_order_covered_by_invalidation_closure_or_reject",
+        "formula_edges_respect_evaluation_order",
+        "forward_edges_well_formed",
+        "graph_artifact_parseable",
+        "invalidation_closure_artifact_parseable",
+        "stable_input_read_observed"
+      ],
+      "failures": [],
+      "path": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_rebind_after_rename_001/result.json",
+      "result_state": "published"
+    },
+    {
+      "artifact_type": "tracecalc_result",
+      "blockers": [],
+      "facts": [
+        "cycle_region_reject_no_publication",
+        "normalized_event_families_present",
+        "required_equality_surfaces_have_artifacts",
+        "tracecalc_assertions_and_conformance_clean",
+        "tracecalc_sidecars_parseable",
+        "tracecalc_validation_clean"
+      ],
+      "failures": [],
+      "path": "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_cycle_region_reject_001/result.json",
+      "result_state": "passed",
+      "scenario_id": "tc_cycle_region_reject_001"
+    }
+  ],
+  "checker": "scripts/check-w046-proof-carrying-trace.py",
+  "failure_count": 0,
+  "failures": [],
+  "result": "passed",
+  "schema_version": "oxcalc.w046.proof_carrying_trace.validation.v1"
+}

@@ -1,0 +1,80 @@
+{
+  "run_id": "w046-finite-graph-dataflow-order-001",
+  "workset": "W046",
+  "bead": "calc-gucd.16",
+  "purpose": "Bind finite graph/dataflow/order proof-strengthening shapes to W046 semantic packets and current TreeCalc evidence roots.",
+  "checked_shapes": [
+    {
+      "shape_id": "chain",
+      "semantic_facts": ["reverse_converse", "reverse_reachability_closure", "topological_order", "stable_prior_reads"],
+      "lean_witnesses": ["ChainModel", "chain_reachable_A_to_C", "chain_model_reaches_all_dependents", "chain_model_reads"],
+      "tla_shape": "chain",
+      "evidence_roots": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json"
+      ]
+    },
+    {
+      "shape_id": "diamond",
+      "semantic_facts": ["topological_order", "stable_prior_reads", "multi-predecessor fan-in"],
+      "lean_witnesses": ["diamond_topological", "diamond_stable_or_prior", "diamond_edges_ordered"],
+      "tla_shape": "diamond",
+      "evidence_roots": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_multinode_dag_publish_001/result.json",
+        "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/kernel_binding_register.json"
+      ]
+    },
+    {
+      "shape_id": "fanout_rebind",
+      "semantic_facts": ["reverse_reachability_closure", "rebind_no_publish", "fanout dependents"],
+      "lean_witnesses": ["model_no_under_invalidation inherited target"],
+      "tla_shape": "fanout_rebind",
+      "evidence_roots": [
+        "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_rebind_after_rename_001/post_edit/result.json",
+        "docs/test-runs/core-engine/treecalc-scale/million_relative_rebind_f8_r1/run_summary.json"
+      ]
+    },
+    {
+      "shape_id": "self_cycle",
+      "semantic_facts": ["self-loop cycle classification", "cycle rejects rather than order"],
+      "lean_witnesses": ["self_loop_group_supported"],
+      "tla_shape": "self_cycle",
+      "evidence_roots": [
+        "docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_cycle_region_reject_001/result.json"
+      ]
+    },
+    {
+      "shape_id": "two_node_scc",
+      "semantic_facts": ["nontrivial SCC classification", "cycle rejects rather than order"],
+      "lean_witnesses": ["two_node_scc_group_supported"],
+      "tla_shape": "two_node_scc",
+      "evidence_roots": [
+        "docs/test-corpus/core-engine/tracecalc/hand-auditable/tc_cycle_region_reject_001.json"
+      ]
+    }
+  ],
+  "new_artifacts": {
+    "lean": "formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean",
+    "tla": "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla",
+    "tla_config": "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.smoke.cfg",
+    "tla_root": "docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/"
+  },
+  "exact_blockers": [
+    {
+      "blocker_id": "rust_tarjan_line_proof_not_discharged",
+      "meaning": "The bead strengthens SCC/cycle shape obligations but does not prove the Rust Tarjan implementation line-by-line."
+    },
+    {
+      "blocker_id": "rust_topological_queue_line_proof_not_discharged",
+      "meaning": "The bead strengthens topological-order/read-discipline shapes but does not prove the Rust topological queue implementation line-by-line."
+    },
+    {
+      "blocker_id": "arbitrary_finite_graph_scc_completeness_not_discharged",
+      "meaning": "The Lean/TLA artifacts introduce reusable finite graph vocabulary and several checked graph shapes, not a full arbitrary finite graph SCC completeness proof."
+    },
+    {
+      "blocker_id": "normalized_dynamic_dependency_projection_gap_inherited",
+      "meaning": "Dynamic dependency projection and normalized invalidation comparison blockers from calc-gucd.6 remain for later checker/refinement work."
+    }
+  ]
+}

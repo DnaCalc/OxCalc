@@ -1,0 +1,26 @@
+{
+  "run_id": "w046-integrated-kernel-001",
+  "validated_artifacts": [
+    "formal/tla/CoreEngineW046IntegratedKernel.tla",
+    "formal/tla/CoreEngineW046IntegratedKernel.smoke.cfg",
+    "docs/test-runs/core-engine/tla/w046-integrated-kernel-001/tlc.log",
+    "docs/test-runs/core-engine/tla/w046-integrated-kernel-001/run_summary.json"
+  ],
+  "validation": {
+    "tlc_result": "passed",
+    "tlc_log_non_empty": true,
+    "json_summary_parseable": true
+  },
+  "semantic_scope": [
+    "BuildGraph before CloseInvalidation",
+    "reverse-edge converse and diagnostic preservation before invalidation",
+    "CloseInvalidation before MarkDirtyNeeded",
+    "no-under-invalidation before evaluation order",
+    "rebind-required states cannot publish",
+    "evaluation reads are after order selection and under OxFml no-direct-publication law",
+    "candidate production precedes publication",
+    "publication requires graph, invalidation, order, read discipline, candidate, OxFml, and TraceCalc refinement facts",
+    "reject and verified-clean paths do not publish",
+    "trace emission occurs only after terminal publication/rejection/verified-clean"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "mismatch_kinds": [],
+  "reduction_id": "tc_let_lambda_invocation_reject_001--reduction-seed",
+  "required_equality_surfaces": [
+    "published_view",
+    "reject_set",
+    "trace_labels",
+    "callable_carrier_identity",
+    "assertion_result_set"
+  ],
+  "run_id": "w046-indirect-explorer-tracecalc-001",
+  "scenario_id": "tc_let_lambda_invocation_reject_001",
+  "schema_version": "oxcalc.tracecalc.reduction_manifest.v1",
+  "source_semantics_authority": "oxcalc.tracecalc.reference_machine",
+  "status_id": "oxcalc.reduction.seeded_local",
+  "status_scope": "local_only_until_foundation_binding",
+  "units": [
+    {
+      "anchor_id": "tc_let_lambda_invocation_reject_001/scenario",
+      "closure_unit_ids": [
+        "phase:callable-invocation-reject",
+        "events:arity-contract",
+        "reject:reject/lambda-arity"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "scenario",
+      "unit_kind": "scenario",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "callable-invocation-reject",
+      "closure_unit_ids": [
+        "events:arity-contract"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st1",
+        "st2",
+        "st3"
+      ],
+      "unit_id": "phase:callable-invocation-reject",
+      "unit_kind": "phase_block",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "arity-contract",
+      "closure_unit_ids": [
+        "reject:reject/lambda-arity"
+      ],
+      "reject_id": null,
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "events:arity-contract",
+      "unit_kind": "event_group",
+      "view_id": null,
+      "view_kind": null
+    },
+    {
+      "anchor_id": "reject/lambda-arity",
+      "closure_unit_ids": [],
+      "reject_id": "rej-lambda-arity",
+      "step_ids": [
+        "st3"
+      ],
+      "unit_id": "reject:reject/lambda-arity",
+      "unit_kind": "reject_record",
+      "view_id": null,
+      "view_kind": null
+    }
+  ],
+  "witness_id": "tc_let_lambda_invocation_reject_001--witness-seed"
+}

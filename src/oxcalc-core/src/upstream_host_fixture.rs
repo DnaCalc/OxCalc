@@ -14,7 +14,6 @@ use crate::upstream_host::{
     MinimalRtdMode, MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
     UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
-use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::NameKind;
 use oxfml_core::interface::{
     HostProviderOutcomeKind, LibraryContextSnapshotRef, ReturnedValueSurfaceKind,
@@ -32,6 +31,7 @@ use oxfml_core::semantics::{
     RegistrationSourceKind,
 };
 use oxfml_core::source::FormulaChannelKind;
+use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
 use oxfunc_core::value::{ArrayCellValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode};
 
 const UPSTREAM_HOST_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_manifest.v1";
@@ -437,23 +437,26 @@ pub fn execute_fixture_case(
     let packet = build_packet(case)?;
     let bind_context = packet.build_bind_context();
     let backend = parse_backend(&case.evaluation_backend)?;
+    let trace_mode = if case.expected.trace_function_ids.is_empty() {
+        EvaluationTraceMode::default()
+    } else {
+        EvaluationTraceMode::PreparedCalls
+    };
     let (recalc_output, replay_projection) = if case.expected.capture_snapshot_ref.is_some() {
-        let (output, replay_projection) =
-            packet
-                .recalc_with_replay_projection(backend)
-                .map_err(|detail| UpstreamHostFixtureError::Runtime {
-                    case_id: case.case_id.clone(),
-                    detail,
-                })?;
+        let (output, replay_projection) = packet
+            .recalc_with_replay_projection_with_trace_mode(backend, trace_mode)
+            .map_err(|detail| UpstreamHostFixtureError::Runtime {
+                case_id: case.case_id.clone(),
+                detail,
+            })?;
         (output, Some(replay_projection))
     } else {
-        let output =
-            packet
-                .recalc(backend)
-                .map_err(|detail| UpstreamHostFixtureError::Runtime {
-                    case_id: case.case_id.clone(),
-                    detail,
-                })?;
+        let output = packet
+            .recalc_with_trace_mode(backend, trace_mode)
+            .map_err(|detail| UpstreamHostFixtureError::Runtime {
+                case_id: case.case_id.clone(),
+                detail,
+            })?;
         (output, None)
     };
 
@@ -1075,7 +1078,7 @@ fn parse_rtd_mode(
             }
         }
         UpstreamHostFixtureRtdMode::Value { number } => {
-            MinimalRtdMode::Value(EvalValue::Number(*number))
+            MinimalRtdMode::Value(Box::new(EvalValue::Number(*number)))
         }
     })
 }

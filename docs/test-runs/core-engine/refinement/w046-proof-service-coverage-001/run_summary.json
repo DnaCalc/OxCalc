@@ -1,0 +1,27 @@
+{
+  "run_id": "w046-proof-service-coverage-001",
+  "workset": "W046",
+  "bead": "calc-gucd.8",
+  "ledger": "docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/semantic_spine_coverage_ledger.json",
+  "result": "passed",
+  "coverage_summary": {
+    "row_count": 11,
+    "rows_with_formal_targets": 11,
+    "rows_with_replay_or_checker_artifacts": 11,
+    "rows_with_rust_bridge": 9,
+    "rows_with_exact_blockers": 8,
+    "promotion_rows": 0
+  },
+  "policy": {
+    "classifier_role": "coverage_accounting_only",
+    "release_grade_claim": false,
+    "stage2_claim": false,
+    "c5_claim": false,
+    "operated_service_claim": false
+  },
+  "validation": {
+    "json_parseable": true,
+    "referenced_artifacts_exist_or_are_declared_null": true,
+    "no_classifier_promotion_rows": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "{\"expected_profile\":\"profile:v1\",\"fence_member\":\"profile_version\",\"observed_profile\":\"profile:v2\"}",
+      "reject_id": "rej-profile-fence",
+      "reject_kind": "profile_version_mismatch"
+    }
+  ],
+  "scenario_id": "tc_w035_profile_fence_reject_001"
+}

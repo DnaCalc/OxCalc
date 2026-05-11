@@ -1,0 +1,14 @@
+{
+  "case_id": "tc_local_dynamic_resolved_publish_001",
+  "expected_evaluation_order": [
+    3
+  ],
+  "expected_published_values": {
+    "3": "7"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": [
+    "runtime_effect.dynamic_reference"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "run_id": "w046-integrated-kernel-001",
+  "workset": "W046",
+  "bead": "calc-gucd.15",
+  "binding_register": "docs/test-runs/core-engine/refinement/w046-integrated-kernel-001/integrated_kernel_binding_register.json",
+  "tla_evidence_root": "docs/test-runs/core-engine/tla/w046-integrated-kernel-001/",
+  "phase_packets": 7,
+  "integrated_invariants": 4,
+  "exact_blockers": 6,
+  "unexpected_mismatches": 0,
+  "missing_referenced_artifacts": 0
+}

@@ -1,0 +1,28 @@
+{
+  "run_id": "w046-rust-refinement-bridge-001",
+  "workset": "W046",
+  "bead": "calc-gucd.18",
+  "mapping_register": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+  "proof_carrying_trace_checker_output": "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json",
+  "lean_relation": "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean",
+  "commands": [
+    {
+      "command": "lean formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean",
+      "result": "passed"
+    },
+    {
+      "command": "cargo test -p oxcalc-core local_treecalc_engine_exposes_w046_refinement_bridge_facts",
+      "result": "passed",
+      "tests_passed": 1
+    },
+    {
+      "command": "python scripts/check-w046-proof-carrying-trace.py --treecalc-result docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json --treecalc-result docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/result.json --treecalc-result docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json --treecalc-result docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_rebind_after_rename_001/result.json --tracecalc-result docs/test-runs/core-engine/tracecalc-reference-machine/w037-tracecalc-observable-closure-001/scenarios/tc_cycle_region_reject_001/result.json --output docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json",
+      "result": "passed",
+      "checked_artifact_count": 5,
+      "failure_count": 0
+    }
+  ],
+  "mapping_rows": 10,
+  "exact_residuals": 6,
+  "unexpected_mismatches": 0
+}

@@ -1,0 +1,134 @@
+{
+  "schema_version": "oxcalc.w046.semantic_spine_coverage_ledger.v1",
+  "run_id": "w046-proof-service-coverage-001",
+  "workset": "W046",
+  "bead": "calc-gucd.8",
+  "policy": {
+    "classifier_role": "coverage_accounting_only",
+    "promotion_from_classifier_rows": false,
+    "release_grade_claim": false,
+    "stage2_claim": false,
+    "c5_claim": false,
+    "operated_service_claim": false
+  },
+  "rows": [
+    {
+      "semantic_object": "dependency_descriptors",
+      "transition": "descriptor_lowering",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046DependencyGraph.lean", "formal/tla/CoreEngineW046DependencyGraph.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-dependency-graph-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_rust_bridge",
+      "exact_blockers": []
+    },
+    {
+      "semantic_object": "forward_reverse_edges",
+      "transition": "graph_build_reverse_index",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_FINITE_GRAPH_DATAFLOW_AND_ORDER_PROOF_STRENGTHENING.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean", "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_rust_bridge_with_projection",
+      "exact_blockers": ["native_reverse_edge_json_sidecar_absent", "rust_tarjan_line_proof_not_discharged"]
+    },
+    {
+      "semantic_object": "scc_cycle_groups",
+      "transition": "cycle_classify_or_reject",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_DEPENDENCY_GRAPH_REVERSE_EDGE_AND_SCC_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046DependencyGraph.lean", "formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean", "formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-dependency-graph-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_trace_checker_bridge",
+      "exact_blockers": ["arbitrary_finite_graph_scc_completeness_not_discharged", "rust_tarjan_line_proof_not_discharged"]
+    },
+    {
+      "semantic_object": "invalidation_closure",
+      "transition": "seed_to_reverse_reachable_closure",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean", "formal/tla/CoreEngineW046InvalidationRebind.tla", "formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_trace_checker_bridge",
+      "exact_blockers": ["normalized_invalidation_comparator_full_cross_run_gap"]
+    },
+    {
+      "semantic_object": "rebind_gate",
+      "transition": "structural_rebind_reject_no_publish",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_INVALIDATION_SOFT_REFERENCE_DYNAMIC_REFERENCE_AND_REBIND_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046InvalidationRebind.lean", "formal/tla/CoreEngineW046InvalidationRebind.tla", "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-invalidation-rebind-001/", "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_bridge_with_residual",
+      "exact_blockers": ["positive_dynamic_dependency_publication_refinement_not_discharged"]
+    },
+    {
+      "semantic_object": "recalc_tracker_states",
+      "transition": "dirty_needed_evaluating_verified_clean_publish_reject",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean", "formal/tla/CoreEngineW046RecalcTracker.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-recalc-tracker-001/"],
+      "rust_bridge": null,
+      "coverage_class": "spec_model_only_for_tracker",
+      "exact_blockers": ["tracker_native_trace_bridge_not_independently_checked_in_calc_gucd_18"]
+    },
+    {
+      "semantic_object": "evaluation_order_and_reads",
+      "transition": "topological_order_and_working_value_reads",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046EvaluationOrderReadDiscipline.lean", "formal/tla/CoreEngineW046EvaluationOrder.tla", "formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-evaluation-order-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_rust_bridge_with_projection",
+      "exact_blockers": ["rust_topological_queue_line_proof_not_discharged", "native_per_read_trace_events_absent"]
+    },
+    {
+      "semantic_object": "candidate_reject_publication",
+      "transition": "candidate_then_publish_or_reject_no_publish",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_RECALC_TRACKER_TRANSITION_PRE_POST_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046RecalcTrackerTransitions.lean", "formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean", "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-recalc-tracker-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json", "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_checker_rust_bridge",
+      "exact_blockers": []
+    },
+    {
+      "semantic_object": "oxfml_effect_boundary",
+      "transition": "formula_candidate_reject_format_display_and_publication_authority",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046OxfmlEffectBoundary.lean", "formal/tla/CoreEngineW046OxfmlEffectBoundary.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/", "docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_replay_roots_selected_bridge",
+      "exact_blockers": ["broad_oxfml_evaluator_proof_not_claimed", "positive_format_display_projection_not_claimed", "registered_external_publication_consequence_not_closed"]
+    },
+    {
+      "semantic_object": "tracecalc_refinement",
+      "transition": "observable_tracecalc_to_treecalc_kernel_match",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_TRACECALC_REFINEMENT_KERNEL_AND_REPLAY_BINDING.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046TraceCalcRefinement.lean", "formal/tla/CoreEngineW046TraceCalcRefinement.tla"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-tracecalc-refinement-001/", "docs/test-runs/core-engine/refinement/w046-tracecalc-refinement-kernel-001/", "docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/checker_output.json"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "spec_model_refinement_checker_bridge",
+      "exact_blockers": ["full_tracecalc_treecalc_coreengine_refinement_not_claimed"]
+    },
+    {
+      "semantic_object": "integrated_kernel",
+      "transition": "graph_invalidation_order_candidate_publication_reject_trace",
+      "spec_packet": "docs/spec/core-engine/w046-formalization/W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md",
+      "formal_targets": ["formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean", "formal/tla/CoreEngineW046IntegratedKernel.tla", "formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean"],
+      "replay_or_checker_artifacts": ["docs/test-runs/core-engine/tla/w046-integrated-kernel-001/", "docs/test-runs/core-engine/refinement/w046-integrated-kernel-001/", "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/"],
+      "rust_bridge": "docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/implementation_semantic_mapping.json",
+      "coverage_class": "integrated_spec_model_checker_bridge",
+      "exact_blockers": ["unbounded_tla_not_claimed", "full_rust_refinement_not_claimed"]
+    }
+  ],
+  "coverage_summary": {
+    "row_count": 11,
+    "rows_with_formal_targets": 11,
+    "rows_with_replay_or_checker_artifacts": 11,
+    "rows_with_rust_bridge": 9,
+    "rows_with_exact_blockers": 8,
+    "promotion_rows": 0
+  }
+}

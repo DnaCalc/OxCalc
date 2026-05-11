@@ -1,0 +1,70 @@
+{
+  "run_id": "w046-oxfml-effect-boundary-001",
+  "workset": "W046",
+  "bead": "calc-gucd.7",
+  "purpose": "Map current OxFml/OxCalc seam evidence roots to W046 effect/handler laws without regenerating prior baselines.",
+  "rows": [
+    {
+      "row_id": "let_lambda_value_publish_tracecalc",
+      "law_family": ["LET/LAMBDA narrow carrier", "candidate/publication separation"],
+      "artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_carrier_publish_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "let_lambda_value_publish_treecalc",
+      "law_family": ["OxFml candidate adaptation", "OxCalc coordinator publication authority"],
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "let_lambda_invocation_reject_tracecalc",
+      "law_family": ["typed rejection", "reject no-publish"],
+      "artifact": "docs/test-runs/core-engine/tracecalc-reference-machine/w035-tracecalc-oracle-matrix-001/scenarios/tc_let_lambda_invocation_reject_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "lambda_host_sensitive_reject_treecalc",
+      "law_family": ["runtime effect", "execution restriction", "reject no-publish"],
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "dynamic_resolved_publish_treecalc",
+      "law_family": ["dynamic dependency effect", "dependency shape update", "candidate/publication separation"],
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "dynamic_unresolved_reject_treecalc",
+      "law_family": ["dynamic reference runtime effect", "reject no-publish"],
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_dynamic_reject_001/result.json",
+      "status": "evidence_root_existing"
+    },
+    {
+      "row_id": "format_display_boundary_current_absence",
+      "law_family": ["format/display separation", "no silent value_delta collapse"],
+      "artifact": "docs/test-runs/core-engine/treecalc-local/w037-optimized-core-conformance-treecalc-001/cases/tc_local_publish_001/result.json",
+      "status": "evidence_root_existing_with_explicit_current_absence"
+    },
+    {
+      "row_id": "effect_boundary_tla_smoke",
+      "law_family": ["phase authority", "no direct formula publication", "registered external watch blocker"],
+      "artifact": "docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/run_summary.json",
+      "status": "checked_model"
+    }
+  ],
+  "exact_blockers": [
+    {
+      "blocker_id": "format_display_delta_positive_projection_missing",
+      "meaning": "Current TreeCalc local evidence records format_delta and display_delta as explicit absences; W046.7 can model distinct authority but cannot prove positive format/display publication projection from current OxCalc artifacts."
+    },
+    {
+      "blocker_id": "registered_external_publication_consequence_breadth_not_frozen",
+      "meaning": "Registered-external packets are converged at note level and remain callable-boundary watch rows; publication and topology consequences are not promoted without concrete evidence."
+    },
+    {
+      "blocker_id": "broad_general_oxfunc_kernel_excluded",
+      "meaning": "LET/LAMBDA carrier facts are in scope only where they affect OxCalc state, trace, dependency, rejection, or publication semantics; general OxFunc function semantics remain external."
+    }
+  ]
+}

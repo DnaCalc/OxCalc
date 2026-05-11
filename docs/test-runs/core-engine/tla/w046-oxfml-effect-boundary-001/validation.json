@@ -1,0 +1,23 @@
+{
+  "run_id": "w046-oxfml-effect-boundary-001",
+  "validated_artifacts": [
+    "formal/tla/CoreEngineW046OxfmlEffectBoundary.tla",
+    "formal/tla/CoreEngineW046OxfmlEffectBoundary.smoke.cfg",
+    "docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/tlc.log",
+    "docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/run_summary.json"
+  ],
+  "validation": {
+    "tlc_result": "passed",
+    "tlc_log_non_empty": true,
+    "json_summary_parseable": true
+  },
+  "semantic_scope": [
+    "phase-authority for OxFml effect requests",
+    "no direct publication from formula evaluation",
+    "reject-is-no-publish",
+    "candidate-is-not-publication",
+    "LET/LAMBDA carrier remains narrow while general OxFunc kernels stay opaque",
+    "format_delta and display_delta remain distinct",
+    "registered-external callable boundary remains watch-only without publication consequence promotion"
+  ]
+}

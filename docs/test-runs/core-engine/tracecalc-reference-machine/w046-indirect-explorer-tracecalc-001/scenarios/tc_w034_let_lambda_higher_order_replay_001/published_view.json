@@ -1,0 +1,14 @@
+{
+  "node_values": [
+    {
+      "node_id": "Base",
+      "value": "12"
+    },
+    {
+      "node_id": "Out",
+      "value": "17"
+    }
+  ],
+  "scenario_id": "tc_w034_let_lambda_higher_order_replay_001",
+  "snapshot_id": "s0"
+}

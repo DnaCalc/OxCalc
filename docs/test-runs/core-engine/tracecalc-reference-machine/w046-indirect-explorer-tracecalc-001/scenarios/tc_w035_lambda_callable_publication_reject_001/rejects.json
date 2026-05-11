@@ -1,0 +1,10 @@
+{
+  "rejects": [
+    {
+      "reject_detail": "callable carrier carrier:lambda:publish_me cannot publish as ordinary cell value under current OxCalc/OxFml carrier fragment",
+      "reject_id": "rej-callable-publication",
+      "reject_kind": "lambda_callable_publication_not_supported"
+    }
+  ],
+  "scenario_id": "tc_w035_lambda_callable_publication_reject_001"
+}

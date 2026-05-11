@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001",
+  "case_count": 29,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "docs/test-runs/core-engine/treecalc-local/w047-ctro-dynamic-positive-publication-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 18,
+    "rejected": 10,
+    "verified_clean": 1
+  },
+  "run_id": "w047-ctro-dynamic-positive-publication-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

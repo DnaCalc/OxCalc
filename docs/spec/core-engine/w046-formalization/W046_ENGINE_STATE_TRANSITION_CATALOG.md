@@ -123,19 +123,59 @@ The result checks a Lean order/read decision vocabulary and model-checks a bound
 
 The result checks a Lean observable-packet refinement relation and model-checks a bounded TLA relation for accept/publish, verified-clean no-publication, reject no-publication, dynamic dependency, and invalidation-closure row shapes. The binding register ties the relation to 8 matched selected-kernel rows, 1 TraceCalc oracle self-check row, and 3 exact blockers. It does not claim full Rust implementation proof, full TraceCalc oracle promotion, full TreeCalc/CoreEngine refinement, full dynamic dependency projection, normalized invalidation comparator coverage, OxFml seam closure, or unbounded TLA verification.
 
-### 6.6 Remaining Deep-Proof Routing
+### 6.6 `calc-gucd.7` Result
 
-After the `calc-gucd.6` review, the remaining bead path is no longer allowed to jump directly from the OxFml seam to proof-service classification.
+`calc-gucd.7` adds `W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md`, `formal/lean/OxCalc/CoreEngine/W046OxfmlEffectBoundary.lean`, `formal/tla/CoreEngineW046OxfmlEffectBoundary.tla`, `formal/tla/CoreEngineW046OxfmlEffectBoundary.smoke.cfg`, the TLC evidence root `docs/test-runs/core-engine/tla/w046-oxfml-effect-boundary-001/`, and the binding root `docs/test-runs/core-engine/refinement/w046-oxfml-effect-boundary-001/`.
 
-The next deep-proof beads are:
+The result checks a Lean phase-authority/effect-boundary model and model-checks a bounded TLA seam model with LET/LAMBDA formula candidate, runtime-effect rejection, format/display boundary, dynamic rebind rejection, coordinator publication, and registered-external watch shapes. It records replay roots for LET/LAMBDA, dynamic, formula failure, format/display current-absence, and publication rows. It does not claim broad OxFml evaluator proof, broad OxFunc kernel semantics, positive format/display projection, registered-external publication consequence closure, callable-publication closure, or unbounded TLA verification.
 
-1. `calc-gucd.7`: complete the OxFml effect/handler boundary and narrow `LET`/`LAMBDA` carrier model.
-2. `calc-gucd.15`: integrate the phase-local models into one cross-phase semantic kernel over transitions `T01` through `T18`.
-3. `calc-gucd.16`: strengthen finite graph, dataflow, invalidation, and order proof targets beyond smoke examples.
-4. `calc-gucd.17`: define proof-carrying trace facts and a semantic replay checker over emitted artifacts.
-5. `calc-gucd.18`: map real Rust TreeCalc/CoreEngine and TraceCalc artifacts into the semantic kernel and validate refinement or record exact blockers.
+### 6.7 `calc-gucd.15` Result
 
-Only after those beads should `calc-gucd.8` recast proof-service/classifier coverage over the semantic spine.
+`calc-gucd.15` adds `W046_INTEGRATED_SEMANTIC_KERNEL_AND_CROSS_PHASE_STATE_MACHINE.md`, `formal/lean/OxCalc/CoreEngine/W046IntegratedSemanticKernel.lean`, `formal/tla/CoreEngineW046IntegratedKernel.tla`, `formal/tla/CoreEngineW046IntegratedKernel.smoke.cfg`, the TLC evidence root `docs/test-runs/core-engine/tla/w046-integrated-kernel-001/`, and the binding root `docs/test-runs/core-engine/refinement/w046-integrated-kernel-001/`.
+
+The result checks a Lean integrated kernel invariant and model-checks a bounded TLA state machine over graph build, invalidation closure, dirty/needed, rebind reject, order selection, evaluation/read discipline, candidate production, publication, rejection, verified-clean, and trace emission. Publication requires graph, invalidation, order/read, candidate, OxFml no-direct-publication, and TraceCalc refinement facts. It does not claim line-by-line Rust proof, arbitrary finite graph proof, proof-carrying trace validation, Rust refinement bridge, or unbounded TLA verification.
+
+### 6.8 `calc-gucd.16` Result
+
+`calc-gucd.16` adds `W046_FINITE_GRAPH_DATAFLOW_AND_ORDER_PROOF_STRENGTHENING.md`, `formal/lean/OxCalc/CoreEngine/W046FiniteGraphDataflowOrder.lean`, `formal/tla/CoreEngineW046FiniteGraphDataflowOrder.tla`, `formal/tla/CoreEngineW046FiniteGraphDataflowOrder.smoke.cfg`, the TLC evidence root `docs/test-runs/core-engine/tla/w046-finite-graph-dataflow-order-001/`, and the binding root `docs/test-runs/core-engine/refinement/w046-finite-graph-dataflow-order-001/`.
+
+The result checks reusable finite graph/dataflow/order vocabulary and five finite shapes: chain, diamond, fanout rebind, self-cycle, and two-node SCC. It strengthens reverse-edge converse, reverse-reachability closure, topological formula edge order, stable/prior reads, and cycle/rebind no-publish routing. It does not claim a line-by-line Rust Tarjan proof, a line-by-line Rust topological queue proof, arbitrary finite graph SCC completeness, normalized dynamic dependency projection closure, proof-carrying trace validation, Rust refinement bridge closure, or unbounded TLA verification.
+
+### 6.9 `calc-gucd.17` Result
+
+`calc-gucd.17` adds `W046_PROOF_CARRYING_TRACE_AND_SEMANTIC_REPLAY_CHECKER.md`, `scripts/check-w046-proof-carrying-trace.py`, and the validation root `docs/test-runs/core-engine/refinement/w046-proof-carrying-trace-001/`.
+
+The result defines the proof-carrying trace schema, native-artifact authority policy, replay-projection derivations, checker failure modes, and a deterministic checker over four TreeCalc results plus one TraceCalc result. The checker validates graph sidecar presence, derived reverse-index converse, edge/descriptor links, invalidation closure/order coverage, dependency-before-dependent order, stable/prior read observations, candidate/publication consistency, reject/no-publication behavior, dynamic-potential reject behavior, cycle-region reject/no-publication behavior, and TraceCalc equality-surface sidecar presence. It does not claim native reverse-edge sidecar emission, native per-read trace emission, full Rust implementation proof, Rust-to-semantic-kernel refinement bridge closure, or broad OxFml/OxFunc proof.
+
+### 6.10 `calc-gucd.18` Result
+
+`calc-gucd.18` adds `W046_RUST_REFINEMENT_BRIDGE_AND_IMPLEMENTATION_TRACE_VALIDATION.md`, `formal/lean/OxCalc/CoreEngine/W046RustRefinementBridge.lean`, a focused Rust test `local_treecalc_engine_exposes_w046_refinement_bridge_facts`, and the mapping root `docs/test-runs/core-engine/refinement/w046-rust-refinement-bridge-001/`.
+
+The result maps Rust/artifact authority to integrated semantic-kernel facts for graph build, reverse converse, invalidation closure/order coverage, order/read discipline, candidate/publication, reject/no-publication, dynamic reject, cycle reject, and trace emission. It reuses the `.17` checker output and checks an in-memory TreeCalc refinement test plus a Lean relation. It sharpens the `.6` dynamic/invalidation gaps but does not claim Rust Tarjan line proof, topological queue line proof, native reverse-edge JSON sidecar emission, native per-read trace emission, positive dynamic dependency publication refinement, arbitrary finite graph refinement, or broad release/readiness promotion.
+
+### 6.11 `calc-gucd.8` Result
+
+`calc-gucd.8` adds `W046_PROOF_SERVICE_AND_EVIDENCE_CLASSIFIER_COVERAGE_LEDGER.md` and the coverage root `docs/test-runs/core-engine/refinement/w046-proof-service-coverage-001/`.
+
+The result recasts proof-service/evidence-classifier material as coverage accounting over 11 semantic objects/transitions: descriptors, forward/reverse edges, SCC/cycles, invalidation closure, rebind gate, recalc tracker, evaluation order/reads, candidate/reject/publication, OxFml effect boundary, TraceCalc refinement, and integrated kernel. Every row maps to specs, formal targets, replay/checker artifacts, Rust bridge rows where applicable, and exact blockers. The ledger contains zero promotion rows and makes no release-grade, C5, Stage 2, operated-service, or pack-grade claim.
+
+### 6.12 `calc-gucd.9` Result
+
+`calc-gucd.9` adds `W046_SCALE_PERFORMANCE_SEMANTIC_REGRESSION_SIGNATURES.md` and the signature root `docs/test-runs/core-engine/semantic-regression/w046-scale-semantic-signatures-001/`.
+
+The result binds four existing scale runs to semantic-regression signatures: grid cross-sum, fanout bands, relative rebind churn, and dynamic indirect residual stripes. Each profile records model shape, closed-form expected and observed values, dependency/invalidation/dynamic/rebind fact counts, phase timings, validation result, and correctness limits. The packet explicitly treats timings as telemetry after semantic validation, not as correctness evidence or optimization promotion.
+
+### 6.13 `calc-gucd.10` Result
+
+`calc-gucd.10` adds `W046_STAGE2_PACK_C5_OPERATED_SERVICE_AND_RELEASE_CONSEQUENCE_REASSESSMENT.md` and the consequence root `docs/test-runs/core-engine/refinement/w046-consequence-reassessment-001/`.
+
+The result assesses nine downstream lanes: semantic spine, Stage 2, pack-grade replay, C5, operated assurance service, independent evaluator, OxFml callable/formatting, scale/performance, and release readiness. It records the highest honest capability per lane, direct semantic evidence, replay/checker evidence, operational or historical evidence, missing evidence, external ownership, and no-promotion decisions. The matrix has zero promotion rows.
+
+### 6.14 `calc-gucd.11` Result
+
+`calc-gucd.11` adds `W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` and the closure root `docs/test-runs/core-engine/refinement/w046-closure-audit-001/`.
+
+The result audits all W046 semantic-spine rows, validates formal/model/checker/Rust evidence at declared scope, records non-promotion boundaries, and routes unresolved deep-proof work to successor W047 bead graph entries `calc-aylq.1-.4`.
 
 ## 7. Current Status
 

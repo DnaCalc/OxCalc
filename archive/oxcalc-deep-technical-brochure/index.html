@@ -202,11 +202,12 @@
       and now need to understand OxCalc <em>internally</em>: its data shapes, its invariants, and its seams.
     </div>
     <div style="text-align:right">
-      <div><span class="pill">v1.0 · 2026-05-07</span></div>
+      <div><span class="pill">v1.1 · 2026-05-11</span></div>
+      <div class="small" style="margin-top:4px">+2pp on OxFml uptake ledger &amp; W046 carry-forward</div>
       <div class="small">docs/showcase/oxcalc-deep-technical-brochure/</div>
     </div>
   </div>
-  <div class="page-num">01 / 20</div>
+  <div class="page-num">01 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -305,13 +306,15 @@ members = [
       <li>Local TreeCalc engine end-to-end <small>p.14</small></li>
       <li>The OxFml seam <small>p.15</small></li>
       <li>Residuals &amp; runtime effects <small>p.16</small></li>
-      <li>TraceCalc reference machine <small>p.17</small></li>
-      <li>Formal assurance: TLA+ &amp; Lean <small>p.18</small></li>
-      <li>Staged realization &amp; consumer contract <small>p.19</small></li>
-      <li>Glossary &amp; forward look <small>p.20</small></li>
+      <li>OxFml capability surface uptake ledger <small>p.17 <span class="pill">v1.1</span></small></li>
+      <li>W046 redirect &amp; calc-aylq successors <small>p.18 <span class="pill">v1.1</span></small></li>
+      <li>TraceCalc reference machine <small>p.19</small></li>
+      <li>Formal assurance: TLA+ &amp; Lean <small>p.20</small></li>
+      <li>Staged realization &amp; consumer contract <small>p.21</small></li>
+      <li>Glossary &amp; forward look <small>p.22</small></li>
     </ol>
   </div>
-  <div class="page-num">02 / 20</div>
+  <div class="page-num">02 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -395,7 +398,7 @@ members = [
     </svg>
     <div class="caption">Two universes, one bridge: every overlay and publication record knows which snapshot it belongs to.</div>
   </div>
-  <div class="page-num">03 / 20</div>
+  <div class="page-num">03 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -504,7 +507,7 @@ members = [
       <p class="small">These five methods are the entire vocabulary the formula layer needs to resolve <em>any</em> reference shape.</p>
     </div>
   </div>
-  <div class="page-num">04 / 20</div>
+  <div class="page-num">04 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -616,7 +619,7 @@ members = [
 //             else            ⇒ StructuralRecalcOnly</span></pre>
     </div>
   </div>
-  <div class="page-num">05 / 20</div>
+  <div class="page-num">05 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -698,7 +701,7 @@ members = [
       </div>
     </div>
   </div>
-  <div class="page-num">06 / 20</div>
+  <div class="page-num">06 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -806,7 +809,7 @@ members = [
       </div>
     </div>
   </div>
-  <div class="page-num">07 / 20</div>
+  <div class="page-num">07 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -918,7 +921,7 @@ members = [
       the exact snapshot the run targets.</p>
     </div>
   </div>
-  <div class="page-num">08 / 20</div>
+  <div class="page-num">08 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1024,7 +1027,7 @@ members = [
       <code>StructuralRebindRequired</code> rather than producing a partial publication.</p>
     </div>
   </div>
-  <div class="page-num">09 / 20</div>
+  <div class="page-num">09 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1136,7 +1139,7 @@ members = [
       No silent advance.</p>
     </div>
   </div>
-  <div class="page-num">10 / 20</div>
+  <div class="page-num">10 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1236,7 +1239,7 @@ members = [
       “same key, different fence” possible.</p>
     </div>
   </div>
-  <div class="page-num">11 / 20</div>
+  <div class="page-num">11 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1348,7 +1351,7 @@ members = [
       </div>
     </div>
   </div>
-  <div class="page-num">12 / 20</div>
+  <div class="page-num">12 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1439,7 +1442,7 @@ members = [
       </div>
     </div>
   </div>
-  <div class="page-num">13 / 20</div>
+  <div class="page-num">13 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1532,7 +1535,7 @@ candidate_publication
 total_engine_execute</pre>
     </div>
   </div>
-  <div class="page-num">14 / 20</div>
+  <div class="page-num">14 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1642,7 +1645,7 @@ total_engine_execute</pre>
       <p class="small">A mismatch surfaces as <code>OxfmlCommitBundleIncompatible</code> and the run rejects.</p>
     </div>
   </div>
-  <div class="page-num">15 / 20</div>
+  <div class="page-num">15 / 22</div>
 </section>
 
 <!-- =================================================================
@@ -1742,15 +1745,329 @@ total_engine_execute</pre>
 }</pre>
     </div>
   </div>
-  <div class="page-num">16 / 20</div>
+  <div class="page-num">16 / 22</div>
 </section>
 
 <!-- =================================================================
-     PAGE 17 — TRACECALC REFERENCE MACHINE
+     PAGE 17 — OXFML CAPABILITY SURFACE UPTAKE LEDGER
+     ================================================================= -->
+<section class="page" id="p17u">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§16 · OxFml capability surface uptake</div>
+  <h2>How OxCalc tracks <em>which</em> OxFml capabilities it consumes</h2>
+  <p class="lede">The seam from page 15 says <em>how</em> OxCalc talks to OxFml. This page is about the parallel
+  question: <em>which</em> OxFml capabilities are actually behind direct OxCalc evidence, and how that set is
+  grown over time. The vocabulary that answers it — <strong>surface</strong>, <strong>uptake</strong>,
+  <strong>ledger</strong>, <strong>promotion decision</strong>, <strong>exact blocker</strong> — was the load-bearing
+  workflow for worksets W039 through W045.</p>
+
+  <div class="grid12">
+    <div>
+      <h3>The three terms of art</h3>
+      <p><strong>Capability surface.</strong> The set of OxFml-exposed capabilities (formula evaluation,
+      callable metadata, registered-external providers, publication/display payloads, runtime-facade types,
+      conditional-formatting typed rules, …) for which OxCalc has wired a consumer and exercised it under
+      fixtures. Anything OxFml offers that OxCalc has not exercised is <em>off-surface</em>, even if it is
+      implemented upstream.</p>
+
+      <p><strong>Uptake.</strong> The act of <em>promoting</em> a capability from "observed" to "consumed under
+      direct evidence." Uptake is gated by a strict evidence shape — not by the existence of the upstream
+      feature.</p>
+
+      <p><strong>Ledger.</strong> A schema-stamped JSON evidence packet that records the uptake decision for a
+      given workset. Two ledger families collaborate: a release-grade ledger maps residual lanes to successor
+      obligations, and an OxFml-seam ledger records surface registers and the per-workset promotion decision.</p>
+
+      <h3>The four disposition kinds</h3>
+      <p>Every row in a consumed-surface register carries one of these:</p>
+      <ul class="arrow-list">
+        <li><code>exercised_current_surface</code> — promoted under direct evidence for this run.</li>
+        <li><code>exercised_current_surface_promoted</code> — same as above, with broader closure claimed.</li>
+        <li><code>note_level_watch</code> — acknowledged from upstream notes, not yet exercised.</li>
+        <li><code>exact_remaining_blocker</code> — named, sourced, and carried forward as an obligation.</li>
+      </ul>
+      <p class="small">A row never silently disappears. A blocker is either resolved (and the row flips to
+      <code>exercised_current_surface_promoted</code>) or it carries forward to the next workset's register by
+      name.</p>
+
+      <div class="card callout" style="margin-top:8px">
+        <strong>The <code>handoff_watch</code> rule.</strong> An OxFml handoff packet may be filed only when an
+        exercised OxCalc fixture exposes a <em>concrete</em> mismatch with OxFml. Speculation does not generate a
+        handoff. This is what keeps the seam quiet under normal operation and noisy only on real drift.
+      </div>
+    </div>
+
+    <div>
+      <h3>The schema-constant rolling pattern</h3>
+      <p>Each workset's runner declares its own schema constants and artifact paths. <code>src/oxcalc-tracecalc/src/oxfml_seam.rs</code>
+      shows the pattern, one constant family per workset:</p>
+      <pre class="code"><span class="k">const</span> W045_RUN_SUMMARY_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.run_summary.v1"</span>;
+<span class="k">const</span> W045_SOURCE_INDEX_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.source_evidence_index.v1"</span>;
+<span class="k">const</span> W045_CONSUMED_SURFACE_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.consumed_surface_register.v1"</span>;
+<span class="k">const</span> W045_PUBLICATION_DISPLAY_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.publication_display_boundary_register.v1"</span>;
+<span class="k">const</span> W045_CALLABLE_METADATA_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.callable_carrier_and_metadata_register.v1"</span>;
+<span class="k">const</span> W045_REGISTERED_EXTERNAL_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.registered_external_provider_register.v1"</span>;
+<span class="k">const</span> W045_BLOCKER_REGISTER_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.exact_blocker_register.v1"</span>;
+<span class="k">const</span> W045_PROMOTION_DECISION_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.promotion_decision.v1"</span>;
+<span class="k">const</span> W045_VALIDATION_SCHEMA_V1: &amp;<span class="k">str</span> =
+    <span class="s">"oxcalc.oxfml_seam.w045.validation.v1"</span>;</pre>
+      <p class="small">Each workset appends its own block. Schemas are versioned by workset, never edited in
+      place — old artifacts remain readable under their own schema.</p>
+
+      <h3>The 9-artifact run</h3>
+      <p>A seam run emits one directory per workset, with this set:</p>
+      <table>
+        <thead><tr><th>Artifact</th><th>Records</th></tr></thead>
+        <tbody>
+          <tr><td><code>run_summary.json</code></td><td>counts, decision state, intake claims</td></tr>
+          <tr><td><code>source_evidence_index.json</code></td><td>upstream sources reviewed</td></tr>
+          <tr><td><code>*_consumed_surface_register.json</code></td><td>per-row disposition</td></tr>
+          <tr><td><code>*_publication_display_boundary_register.json</code></td><td>format/display deltas</td></tr>
+          <tr><td><code>*_callable_*_metadata_register.json</code></td><td>LET/LAMBDA carrier rows</td></tr>
+          <tr><td><code>*_registered_external_provider_register.json</code></td><td>provider rows</td></tr>
+          <tr><td><code>*_exact_*_blocker_register.json</code></td><td>blockers carried forward</td></tr>
+          <tr><td><code>promotion_decision.json</code></td><td>the workset's verdict</td></tr>
+          <tr><td><code>validation.json</code></td><td>schema/diff/cycle checks</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>W045 was the last workset to run this pattern at full ceremony</h3>
+  <div class="grid12">
+    <div>
+      <p>The last seam ledger run under the W039–W045 vocabulary was
+      <code>w045-oxfml-public-surface-w073-downstream-typed-formatting-callable-registered-external-uptake-001</code>.
+      It closed with <strong>13 exact blockers</strong> and a non-promotion decision:</p>
+      <pre class="code"><span class="c">// promotion_decision.json (excerpt)</span>
+{
+  <span class="s">"decision_state"</span>: <span class="s">"…bound_without_broad_promotion"</span>,
+  <span class="s">"broad_oxfml_seam_promoted"</span>: <span class="k">false</span>,
+  <span class="s">"callable_metadata_projection_promoted"</span>: <span class="k">false</span>,
+  <span class="s">"callable_carrier_sufficiency_proven"</span>: <span class="k">false</span>,
+  <span class="s">"public_consumer_surface_migration_verified"</span>: <span class="k">false</span>,
+  <span class="s">"w073_downstream_dnaonecalc_request_construction_verified"</span>: <span class="k">false</span>,
+  <span class="s">"registered_external_callable_projection_promoted"</span>: <span class="k">false</span>,
+  <span class="s">"provider_failure_callable_publication_promoted"</span>: <span class="k">false</span>,
+  <span class="s">"w073_oxcalc_fixture_request_construction_verified"</span>: <span class="k">true</span>,
+  <span class="s">"w073_typed_only_formatting_guard_retained"</span>: <span class="k">true</span>,
+  <span class="s">"exact_blocker_count"</span>: <span class="n">13</span>
+}</pre>
+      <p>The two <code>true</code> fields are what genuinely promoted: the OxCalc fixture's typed-rule
+      construction and the typed-only guard. Everything else is carried forward as a typed obligation.</p>
+    </div>
+    <div>
+      <h4>Promotion decision flow</h4>
+      <div class="svg-frame">
+        <svg viewBox="0 0 400 240" width="400" height="240" role="img" aria-label="Promotion decision flow">
+          <defs><marker id="arrU" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+          <g font-family="Inter" font-size="11">
+            <rect x="20" y="20" width="360" height="32" fill="#dceaff" stroke="#7eaaff" rx="5"/>
+            <text x="200" y="40" text-anchor="middle" font-weight="700">surface row from OxFml note / spec</text>
+            <line x1="200" y1="52" x2="200" y2="70" stroke="#1f6feb" marker-end="url(#arrU)"/>
+            <rect x="20" y="72" width="360" height="32" fill="#fff" stroke="#cdd2dc" rx="5"/>
+            <text x="200" y="92" text-anchor="middle">OxCalc fixture exercises the surface?</text>
+            <line x1="80" y1="104" x2="80" y2="122" stroke="#1f6feb" marker-end="url(#arrU)"/>
+            <line x1="200" y1="104" x2="200" y2="122" stroke="#1f6feb" marker-end="url(#arrU)"/>
+            <line x1="320" y1="104" x2="320" y2="122" stroke="#1f6feb" marker-end="url(#arrU)"/>
+            <text x="60" y="118" font-size="10" fill="#b91c1c">no, &amp; needed</text>
+            <text x="170" y="118" font-size="10" fill="#b45309">observed only</text>
+            <text x="305" y="118" font-size="10" fill="#15803d">yes</text>
+            <rect x="20" y="124" width="120" height="48" fill="#fee2e2" stroke="#b91c1c" rx="5"/>
+            <text x="80" y="144" text-anchor="middle" font-size="11" font-weight="700">exact_remaining</text>
+            <text x="80" y="160" text-anchor="middle" font-size="11" font-weight="700">_blocker</text>
+            <rect x="150" y="124" width="100" height="48" fill="#fff7d6" stroke="#b45309" rx="5"/>
+            <text x="200" y="144" text-anchor="middle" font-size="11" font-weight="700">note_level</text>
+            <text x="200" y="160" text-anchor="middle" font-size="11" font-weight="700">_watch</text>
+            <rect x="260" y="124" width="120" height="48" fill="#dcfce7" stroke="#15803d" rx="5"/>
+            <text x="320" y="144" text-anchor="middle" font-size="11" font-weight="700">exercised_current</text>
+            <text x="320" y="160" text-anchor="middle" font-size="11" font-weight="700">_surface</text>
+            <line x1="200" y1="172" x2="200" y2="190" stroke="#1f6feb" marker-end="url(#arrU)"/>
+            <rect x="20" y="192" width="360" height="38" fill="#f4ecff" stroke="#9e80e0" rx="5"/>
+            <text x="200" y="212" text-anchor="middle" font-weight="700">promotion_decision.json</text>
+            <text x="200" y="226" text-anchor="middle" font-size="10">flags · row counts · carried blockers</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="card warn" style="margin-top:6px">
+        <strong>"Broader uptake" was always pinned to direct evidence.</strong> The W045 register names
+        <code>broad_display_publication_breadth_unexercised</code>,
+        <code>public_consumer_surface_migration_not_verified</code>, and
+        <code>callable_metadata_projection_absent</code> as exact blockers. They mark OxFml capabilities that
+        exist upstream but have no exercising OxCalc fixture — the gap the forward-look line on page&nbsp;22 was pointing
+        at.
+      </div>
+    </div>
+  </div>
+  <div class="page-num">17 / 22</div>
+</section>
+
+<!-- =================================================================
+     PAGE 18 — W046 REDIRECT AND CARRY-FORWARD
+     ================================================================= -->
+<section class="page" id="p18u">
+  <div class="page-rail"></div>
+  <div class="eyebrow">§17 · W046 redirect &amp; calc-aylq successors</div>
+  <h2>From ledger uptake to handler-law model — and what carried forward</h2>
+  <p class="lede">After W045's non-promotion close, the planned W046 was originally another tranche of the same
+  ledger-driven promotion workflow. A showcase review then redirected W046 entirely. The workflow that named
+  blockers row by row gave way to a workflow that <em>models the seam as engine effects</em> with handler-law
+  constraints. The remaining "broader uptake" work did not vanish — it was reclassified as carry-forward residual
+  and routed to a successor epic.</p>
+
+  <div class="grid12">
+    <div>
+      <h3>The W046 redirect</h3>
+      <p>The active workset is <code>W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md</code>
+      (the earlier <code>…_PROOF_SERVICE_CONSOLIDATION_AND_RELEASE_GRADE_PROMOTION_READINESS</code> draft is
+      archived). The governing shift is stated bluntly:</p>
+      <ol class="arrow-list">
+        <li>Start with engine semantics, not promotion classification.</li>
+        <li>Convert the showcase engine catalog into OxCalc-owned spec objects.</li>
+        <li>Build formal targets for execution phases before claiming service or release readiness.</li>
+        <li>Use TraceCalc as the correctness oracle; replay TreeCalc/CoreEngine against it.</li>
+        <li>Keep closure artifacts as coverage accounting, not a substitute for semantic models.</li>
+      </ol>
+
+      <h3>The OxFml seam under the redirect</h3>
+      <p>Bead <code>calc-gucd.7</code> produced
+      <code>W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md</code>: an
+      effect-signature spec with handler-law obligations rather than a per-row uptake register.</p>
+      <pre class="code"><span class="c">// effect signature (spec handles, not Rust API)</span>
+<span class="f">ReadValue</span>(reference, context)
+<span class="f">ResolveStatic</span>(reference, context)
+<span class="f">ResolveDynamic</span>(owner, text, context)
+<span class="f">EmitDependency</span>(owner, target, descriptor_kind)
+<span class="f">EmitDiagnostic</span>(owner, diagnostic_kind)
+<span class="f">CallFunction</span>(function_id, args)
+<span class="f">BindLocal</span>(name, value)              <span class="c">// narrow LET</span>
+<span class="f">EnterLambda</span>(params, body, env)        <span class="c">// narrow LAMBDA</span>
+<span class="f">ProduceCandidate</span>(owner, value, …)
+<span class="f">RejectCandidate</span>(owner, reason)
+<span class="f">Publish</span>(bundle)                       <span class="c">// coordinator-only</span>
+<span class="f">EmitFormatDelta</span>(owner, detail)
+<span class="f">EmitDisplayDelta</span>(owner, detail)
+<span class="f">SurfaceRuntimeFact</span>(owner, family)</pre>
+
+      <p>Each effect is bound to <em>one</em> phase in a phase-authority table; cross-phase smuggling is what
+      the handler laws forbid. This replaces the row-by-row promotion vocabulary with a structural argument:
+      whatever OxFml exposes, OxCalc consumes it under a fixed list of effects, and each effect has a known
+      handler that owns its consequences.</p>
+    </div>
+
+    <div>
+      <h3>What "W046+ ledgers" resolves to today</h3>
+      <p>W046 closed with <code>execution_state: calc-gucd.11_closure_audit_validated</code>,
+      <code>scope_complete</code>, <code>target_complete</code>, <code>integrated</code>,
+      <code>open_lanes: []</code>. The successor routes are filed under a new epic
+      <strong><code>calc-aylq</code></strong>:</p>
+      <table>
+        <thead><tr><th>Successor</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td><code>calc-aylq.1</code></td><td>Rust Tarjan and topological-queue line proof</td></tr>
+          <tr><td><code>calc-aylq.2</code></td><td>Native proof-carrying trace sidecar enrichment</td></tr>
+          <tr><td><code>calc-aylq.3</code></td><td>Dynamic dependency positive publication refinement</td></tr>
+          <tr><td><code>calc-aylq.4</code></td><td>Semantic pack and operated-service readiness gate</td></tr>
+        </tbody>
+      </table>
+
+      <h3>The carry-forward residual list</h3>
+      <p>W046's three-axis report names what remained unpromoted at close. The OxFml-uptake fraction is the
+      same set of names that the W045 ledger left as blockers:</p>
+      <ul class="arrow-list">
+        <li>release-grade verification</li>
+        <li>pack-grade replay equivalence</li>
+        <li><code>cap.C5.pack_valid</code></li>
+        <li>Stage 2 production policy</li>
+        <li>operated assurance / retained services</li>
+        <li>independent evaluator breadth</li>
+        <li><strong>broad OxFml / public migration</strong></li>
+        <li><strong>W073 downstream uptake (DNA OneCalc request construction)</strong></li>
+        <li>continuous scale assurance</li>
+        <li>arbitrary finite-graph SCC completeness</li>
+        <li>native reverse-edge sidecar emission</li>
+        <li>native per-read trace emission</li>
+        <li>general OxFunc kernels (external by design)</li>
+      </ul>
+
+      <div class="card theory" style="margin-top:6px">
+        <strong>So what is "broader OxFml capability surface uptake (W046+ ledgers)" today?</strong>
+        It is shorthand for two things at once:
+        <ul class="arrow-list" style="margin-top:6px">
+          <li>The <em>historical</em> W039–W045 OxFml-seam ledger workflow (archived under
+              <code>archive/test-runs-core-engine-w038-w045/oxfml-seam/</code>), which is the system that gave
+              the words "surface", "uptake", and "ledger" their precise meaning in this repo.</li>
+          <li>The <em>active</em> carry-forward residuals — <code>broad OxFml/public migration</code> and
+              <code>W073 downstream uptake</code> — now successor-routed to <code>calc-aylq.3</code> and the
+              broader successor epic, with the W046 effect-signature model as the structural anchor.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>One picture of the transition</h3>
+  <div class="svg-frame">
+    <svg viewBox="0 0 880 200" width="880" height="200" role="img" aria-label="Ledger uptake to handler-law model and successor routes">
+      <defs><marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#1f6feb"/></marker></defs>
+      <g font-family="Inter" font-size="11">
+        <rect x="15" y="30" width="260" height="140" rx="8" fill="#fff7e6" stroke="#dd9555"/>
+        <text x="145" y="54" text-anchor="middle" font-weight="700" font-size="14" fill="#7a3210">W039 → W045</text>
+        <text x="145" y="74" text-anchor="middle" font-size="11" fill="#7a3210">ledger-driven uptake</text>
+        <text x="30" y="98" font-size="11">• schema-versioned constants</text>
+        <text x="30" y="114" font-size="11">• 9-artifact run set per workset</text>
+        <text x="30" y="130" font-size="11">• exact-blocker registers</text>
+        <text x="30" y="146" font-size="11">• W045 closed with 13 blockers</text>
+        <text x="30" y="162" font-size="11" font-style="italic" fill="#7a3210">archived 2026-05-07</text>
+
+        <rect x="305" y="30" width="260" height="140" rx="8" fill="#f4ecff" stroke="#9e80e0"/>
+        <text x="435" y="54" text-anchor="middle" font-weight="700" font-size="14" fill="#3b1473">W046</text>
+        <text x="435" y="74" text-anchor="middle" font-size="11" fill="#3b1473">handler-law model</text>
+        <text x="320" y="98" font-size="11">• 18 spec packets</text>
+        <text x="320" y="114" font-size="11">• 13-effect signature</text>
+        <text x="320" y="130" font-size="11">• phase-authority table</text>
+        <text x="320" y="146" font-size="11">• integrated semantic kernel</text>
+        <text x="320" y="162" font-size="11" font-style="italic" fill="#3b1473">closed · validated · scope_complete</text>
+
+        <rect x="595" y="30" width="270" height="140" rx="8" fill="#dceaff" stroke="#7eaaff"/>
+        <text x="730" y="54" text-anchor="middle" font-weight="700" font-size="14" fill="#0a3d91">calc-aylq successors</text>
+        <text x="730" y="74" text-anchor="middle" font-size="11" fill="#0a3d91">structural carry-forward</text>
+        <text x="610" y="98" font-size="11">• .1 Rust Tarjan/topo proof</text>
+        <text x="610" y="114" font-size="11">• .2 native trace sidecar</text>
+        <text x="610" y="130" font-size="11">• .3 dynamic dep positive publish</text>
+        <text x="610" y="146" font-size="11">• .4 semantic pack / service gate</text>
+        <text x="610" y="162" font-size="11" font-style="italic" fill="#0a3d91">open · routed · non-promotion residuals</text>
+
+        <line x1="275" y1="100" x2="305" y2="100" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrR)"/>
+        <line x1="565" y1="100" x2="595" y2="100" stroke="#1f6feb" stroke-width="2" marker-end="url(#arrR)"/>
+        <text x="290" y="92" font-size="10" fill="#1f6feb" text-anchor="middle">redirect</text>
+        <text x="580" y="92" font-size="10" fill="#1f6feb" text-anchor="middle">route</text>
+      </g>
+    </svg>
+    <div class="caption">The "broader uptake" question moved from a row-by-row register to a phase-bound effect model. The unfinished business survives as named successor beads.</div>
+  </div>
+
+  <p class="footnote">Original brochure v1.0 used "W046+ ledgers" as forward-look shorthand. Under v1.1, that
+  phrase resolves to: (i) the archived W039–W045 OxFml-seam ledger family as historical vocabulary,
+  (ii) the W046 effect-signature model as the structural anchor, and (iii) the <code>calc-aylq</code> successor
+  epic as the active forward route for the carry-forward residuals.</p>
+  <div class="page-num">18 / 22</div>
+</section>
+
+<!-- =================================================================
+     PAGE 19 — TRACECALC REFERENCE MACHINE (was 17)
      ================================================================= -->
 <section class="page" id="p17">
   <div class="page-rail"></div>
-  <div class="eyebrow">§16 · TraceCalc</div>
+  <div class="eyebrow">§18 · TraceCalc</div>
   <h2>The reference machine that watches the engine</h2>
   <p class="lede">TraceCalc is OxCalc’s <em>second</em> implementation of the same coordinator-and-overlay
   semantics, driven by JSON scenarios. It is how we prove the engine and reference agree, step by step,
@@ -1838,15 +2155,15 @@ total_engine_execute</pre>
       </div>
     </div>
   </div>
-  <div class="page-num">17 / 20</div>
+  <div class="page-num">19 / 22</div>
 </section>
 
 <!-- =================================================================
-     PAGE 18 — FORMAL ASSURANCE
+     PAGE 20 — FORMAL ASSURANCE (was 18)
      ================================================================= -->
 <section class="page" id="p18">
   <div class="page-rail"></div>
-  <div class="eyebrow">§17 · Formal assurance</div>
+  <div class="eyebrow">§19 · Formal assurance</div>
   <h2>TLA+ and Lean: the engine’s second pair of eyes</h2>
   <p class="lede">OxCalc maintains formal models alongside the implementation. They are not decorative —
   they fail when the engine drifts, and they unblock when promotion ledgers say so.</p>
@@ -1914,15 +2231,15 @@ total_engine_execute</pre>
     until conformance, diversity, and seam evidence agree. The W045 ledger is the most recent example;
     W046 owns the next round.
   </div>
-  <div class="page-num">18 / 20</div>
+  <div class="page-num">20 / 22</div>
 </section>
 
 <!-- =================================================================
-     PAGE 19 — STAGED REALIZATION & CONSUMER CONTRACT
+     PAGE 21 — STAGED REALIZATION & CONSUMER CONTRACT (was 19)
      ================================================================= -->
 <section class="page" id="p19">
   <div class="page-rail"></div>
-  <div class="eyebrow">§18 · Staged realization &amp; consumer contract</div>
+  <div class="eyebrow">§20 · Staged realization &amp; consumer contract</div>
   <h2>Today, tomorrow, and the contract you sign</h2>
 
   <h3>Three stages, same artifacts</h3>
@@ -2016,15 +2333,15 @@ total_engine_execute</pre>
       way for a host to invalidate everything cleanly.</p>
     </div>
   </div>
-  <div class="page-num">19 / 20</div>
+  <div class="page-num">21 / 22</div>
 </section>
 
 <!-- =================================================================
-     PAGE 20 — GLOSSARY & FORWARD LOOK
+     PAGE 22 — GLOSSARY & FORWARD LOOK (was 20)
      ================================================================= -->
 <section class="page" id="p20">
   <div class="page-rail"></div>
-  <div class="eyebrow">§19 · Glossary &amp; forward look</div>
+  <div class="eyebrow">§21 · Glossary &amp; forward look</div>
   <h2>What to remember when you walk away</h2>
 
   <div class="grid2">
@@ -2070,7 +2387,7 @@ total_engine_execute</pre>
       <h3>Open frontiers</h3>
       <ul class="arrow-list">
         <li>Stage 2 partitioned realization and replay shape</li>
-        <li>Broader OxFml capability surface uptake (W046+ ledgers)</li>
+        <li>Broader OxFml capability surface uptake — see <a href="#p17u">p.17</a> &amp; <a href="#p18u">p.18</a> for the W039–W045 ledger family, the W046 redirect, and the <code>calc-aylq</code> carry-forward routes</li>
         <li>Lean obligation expansion across coordinator and overlay invariants</li>
         <li>OxCalcTree consumer contract v2 — host-driven eviction policies</li>
         <li>Dynamic-dependency hot path lanes inside Stage 3</li>
@@ -2095,16 +2412,16 @@ total_engine_execute</pre>
 
   <div class="doc-meta" style="margin-top:30px">
     <div>
-      <strong>OxCalc · Deep Technical Brochure</strong> · v1.0 · 2026-05-07<br>
+      <strong>OxCalc · Deep Technical Brochure</strong> · v1.1 · 2026-05-11<br>
       <span class="small">Authored from the live Rust source under <code>src/oxcalc-core</code> and
       <code>src/oxcalc-tracecalc</code>; cross-referenced to the active core-engine spec set.</span>
     </div>
     <div style="text-align:right" class="small">
       End of document<br>
-      <span class="pill muted">20 / 20</span>
+      <span class="pill muted">22 / 22</span>
     </div>
   </div>
-  <div class="page-num">20 / 20</div>
+  <div class="page-num">22 / 22</div>
 </section>
 
 </div>

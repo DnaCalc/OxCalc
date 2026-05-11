@@ -59,13 +59,15 @@ Proof-service, release-grade, C5, operated-service, pack-governance, independent
 
 ## Current Status
 
-- execution_state: `calc-gucd.7_oxfml_seam_ready`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - `calc-gucd.5` evaluation-order and working-value read-discipline formal model is validated for its bounded declared scope
-  - `calc-gucd.6` TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding is validated for its selected-kernel declared scope
-  - OxFml seam, `LET`/`LAMBDA` carrier, and formatting/publication model remains open
-  - integrated semantic kernel, finite proof strengthening, proof-carrying trace checker, and Rust refinement bridge remain open
-  - release-grade verification, C5, pack-grade replay, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, and general OxFunc kernels remain unpromoted or external as classified
+- execution_state: `calc-gucd.11_closure_audit_validated`
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
+- open_lanes: []
+- successor_routes:
+  - `calc-aylq.1` Rust Tarjan and topological queue line proof
+  - `calc-aylq.2` native proof-carrying trace sidecar enrichment
+  - `calc-aylq.3` dynamic dependency positive publication refinement
+  - `calc-aylq.4` semantic pack and operated-service readiness gate
+- non_promotion_residuals:
+  - release-grade verification, pack-grade replay, C5, Stage 2 production policy, operated services, independent evaluator breadth, broad OxFml/public migration, W073 downstream uptake, continuous scale assurance, arbitrary finite graph SCC completeness, Rust Tarjan/topological queue line proof, native reverse-edge sidecar emission, native per-read trace emission, and general OxFunc kernels remain unpromoted, blocked, external, or successor-routed

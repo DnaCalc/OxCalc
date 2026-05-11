@@ -248,6 +248,7 @@ impl OxCalcTreeRuntimeFacade {
             structural_snapshot: document.structural_snapshot,
             formula_catalog: document.formula_catalog,
             seeded_published_values: document.seeded_published_values,
+            seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: Vec::new(),
             candidate_result_id: request.candidate_result_id,
             publication_id: request.publication_id,

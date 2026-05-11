@@ -1,0 +1,35 @@
+{
+  "case_id": "tc_local_rebind_after_rename_001",
+  "events": [
+    {
+      "case_id": "tc_local_rebind_after_rename_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
+      "detail": "formula node node:3 requires rebind before reevaluation",
+      "kind": "HostInjectedFailure",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 3
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 4
+    }
+  ],
+  "phase": "post_edit",
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

@@ -1,0 +1,59 @@
+{
+  "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+  "events": [
+    {
+      "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 4,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 2
+    },
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:dynamic:mixed-right;detail:unresolved_before_mixed_addition|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 3
+    },
+    {
+      "label": "runtime_effect_overlay_emitted",
+      "overlay_kind": "DynamicDependency",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate:runtime_effect:0",
+      "step_id": 4
+    },
+    {
+      "affected_node_ids": [
+        2,
+        3
+      ],
+      "kind": "activate_dynamic_dep",
+      "label": "dependency_shape_update_observed",
+      "step_id": 5
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate",
+      "detail": "reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_mixed_addition",
+      "kind": "DynamicDependencyFailure",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 6
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 7
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

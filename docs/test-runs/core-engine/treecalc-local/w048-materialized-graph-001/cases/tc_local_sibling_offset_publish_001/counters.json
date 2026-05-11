@@ -1,0 +1,27 @@
+{
+  "case_id": "tc_local_sibling_offset_publish_001",
+  "counter_scope": "treecalc_local_case",
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "candidate_admissions",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 2
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 2
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    }
+  ],
+  "schema_ref": "formal/measurement/stage1_counter_schema.json"
+}

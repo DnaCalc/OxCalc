@@ -1,0 +1,50 @@
+{
+  "case_id": "tc_local_lambda_host_sensitive_reject_001",
+  "events": [
+    {
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 2,
+      "step_id": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 2,
+      "step_id": 2
+    },
+    {
+      "detail": "owner_node:node:2;carrier_id:carrier:lambda.host;detail:call_argument_host_query|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "ExecutionRestriction",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.host_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 3
+    },
+    {
+      "label": "runtime_effect_overlay_emitted",
+      "overlay_kind": "ExecutionRestriction",
+      "owner_node_id": 2,
+      "payload_identity": "fixture:tc_local_lambda_host_sensitive_reject_001:candidate:runtime_effect:0",
+      "step_id": 4
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_local_lambda_host_sensitive_reject_001:candidate",
+      "detail": "reference owned by node:2 is host-sensitive and cannot be locally evaluated: call_argument_host_query",
+      "kind": "HostInjectedFailure",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 5
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 6
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

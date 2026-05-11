@@ -1,0 +1,9 @@
+[
+  {
+    "detail": "owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+    "family": "CapabilitySensitive",
+    "family_owner": "oxcalc_local_projection",
+    "kind": "runtime_effect.capability_sensitive_reference",
+    "kind_owner": "oxcalc_local_projection"
+  }
+]

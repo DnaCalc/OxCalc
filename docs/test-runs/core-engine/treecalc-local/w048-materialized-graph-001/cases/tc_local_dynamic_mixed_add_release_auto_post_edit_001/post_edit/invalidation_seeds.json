@@ -1,0 +1,14 @@
+[
+  {
+    "node_id": 3,
+    "reason": "DynamicDependencyActivated"
+  },
+  {
+    "node_id": 3,
+    "reason": "DynamicDependencyReleased"
+  },
+  {
+    "node_id": 3,
+    "reason": "DynamicDependencyReclassified"
+  }
+]

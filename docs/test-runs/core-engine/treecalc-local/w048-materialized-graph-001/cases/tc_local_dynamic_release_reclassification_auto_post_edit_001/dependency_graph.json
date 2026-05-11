@@ -1,0 +1,23 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "dynamic_resolved:node:2:carrier:dynamic:auto-release-reclass:resolved_before_automatic_release",
+      "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    }
+  ]
+}

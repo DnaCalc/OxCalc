@@ -1,0 +1,143 @@
+{
+  "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+  "description": "A mixed dynamic formula owner releases one resolved dynamic dependency and adds another in the successor formula catalog, proving automatic mixed CTRO dependency-activation, dependency-release, and dependency-reclassification seeds for soft-reference updates.",
+  "expected": {
+    "evaluation_order": [
+      3
+    ],
+    "published_values": null,
+    "reject_kind": "DynamicDependencyFailure",
+    "result_state": "rejected",
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ],
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:dynamic:mixed-add-release",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DynamicResolved": {
+                "carrier_id": "carrier:dynamic:mixed-left",
+                "detail": "resolved_before_mixed_release",
+                "target_node_id": 2
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Reference": {
+              "DynamicPotential": {
+                "carrier_id": "carrier:dynamic:mixed-right",
+                "detail": "unresolved_before_mixed_addition"
+              }
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:dynamic:mixed-add-release",
+      "owner_node_id": 3
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        4,
+        3
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "17",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "InitialSource"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "23",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 4,
+      "parent_id": 1,
+      "symbol": "SuccessorSource"
+    },
+    {
+      "bind_artifact_id": "bind:dynamic:mixed-add-release",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:dynamic:mixed-add-release",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "MixedDynamicConsumer"
+    }
+  ],
+  "post_edit": {
+    "edits": [],
+    "expected": {
+      "evaluation_order": [
+        3
+      ],
+      "published_values": null,
+      "reject_kind": "DynamicDependencyFailure",
+      "result_state": "rejected",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ],
+      "runtime_effect_overlay_kinds": null
+    },
+    "expected_affected_node_ids": [],
+    "expected_impacts": [],
+    "formulas": [
+      {
+        "bind_artifact_id": "bind:dynamic:mixed-add-release",
+        "expression": {
+          "Binary": {
+            "left": {
+              "Reference": {
+                "DynamicPotential": {
+                  "carrier_id": "carrier:dynamic:mixed-left",
+                  "detail": "released_to_runtime_resolution"
+                }
+              }
+            },
+            "op": "Add",
+            "right": {
+              "Reference": {
+                "DynamicResolved": {
+                  "carrier_id": "carrier:dynamic:mixed-right",
+                  "detail": "resolved_after_mixed_addition",
+                  "target_node_id": 4
+                }
+              }
+            }
+          }
+        },
+        "formula_artifact_id": "formula:dynamic:mixed-add-release",
+        "owner_node_id": 3
+      }
+    ],
+    "invalidation_seeds": [],
+    "successor_snapshot_start_id": 47
+  },
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 46
+}

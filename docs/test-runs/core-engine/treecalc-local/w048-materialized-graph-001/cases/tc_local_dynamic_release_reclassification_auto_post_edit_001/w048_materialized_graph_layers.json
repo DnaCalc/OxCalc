@@ -1,0 +1,238 @@
+{
+  "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+  "check_errors": [],
+  "layers": [
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": null,
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "published_dynamic_activation",
+          "stability_class": "structural"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "published_dynamic_activation",
+          "kind": "DynamicPotential",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "structural",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": null
+        }
+      ],
+      "graph_hash": "sha256:32e5975132e6c77a1625dc57e3c4aa204d87e35e77e0c29977cf746587732001",
+      "graph_id": "structural:tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "graph_layer": "structural",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:f326bd84707ed76597becb832280595d1a5aaceb0905dc40e3553ebb861bde80",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "kind": "DynamicPotential",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": null,
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "published_dynamic_activation",
+          "stability_class": "published_overlay"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "published_dynamic_activation",
+          "kind": "DynamicPotential",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "published_overlay",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": null
+        }
+      ],
+      "graph_hash": "sha256:36749ec67d7d7219ef568bcef418a87dbe5a94f3d5b3c86df79ddedf7060cb01",
+      "graph_id": "published_effective:tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "graph_layer": "published_effective",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:f326bd84707ed76597becb832280595d1a5aaceb0905dc40e3553ebb861bde80",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "kind": "DynamicPotential",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    },
+    {
+      "basis": {
+        "candidate_wave_id": "treecalc-local-run",
+        "profile_id": "stage1.non_iterative",
+        "published_overlay_epoch": "treecalc-local-seeded",
+        "snapshot_id": null
+      },
+      "blocked_reason": null,
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "cycle_regions": [],
+      "edge_provenance": [
+        {
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "candidate_dynamic_activation",
+          "stability_class": "candidate_overlay"
+        }
+      ],
+      "forward_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "dynamic_carrier_detail": null,
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_origin": "candidate_dynamic_activation",
+          "kind": "DynamicPotential",
+          "overlay_epoch": null,
+          "owner_node_id": 3,
+          "stability_class": "candidate_overlay",
+          "target_node_id": 2,
+          "value_read_eligible": true,
+          "wave_id": "treecalc-local-run"
+        }
+      ],
+      "graph_hash": "sha256:d64ef3333d5a1a9d4bc3ba1884c1b81c6f0e24ff7ba8e67f1048079e705d84f0",
+      "graph_id": "candidate_effective:tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "graph_layer": "candidate_effective",
+      "nodes": [
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": null,
+          "node_id": 2,
+          "node_kind": "formula_or_value",
+          "published_value_hash": null,
+          "stable_symbol": "node:2"
+        },
+        {
+          "calc_state": "published",
+          "demanded": true,
+          "formula_bind_artifact_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "node_id": 3,
+          "node_kind": "formula_or_value",
+          "published_value_hash": "sha256:f326bd84707ed76597becb832280595d1a5aaceb0905dc40e3553ebb861bde80",
+          "stable_symbol": "node:3"
+        }
+      ],
+      "overlay_deltas": [
+        {
+          "candidate_edge_id": null,
+          "carrier": {
+            "affected_node_ids": [
+              2,
+              3
+            ],
+            "kind": "activate_dynamic_dep"
+          },
+          "delta_kind": "activate_dynamic_dep",
+          "overlay_delta_id": "delta:treecalc-local:1",
+          "owner_node_id": null,
+          "previous_edge_id": null,
+          "provenance": "candidate_overlay",
+          "wave_id": "treecalc-local-run"
+        }
+      ],
+      "reverse_edges": [
+        {
+          "descriptor_id": "bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "edge_id": "dep:3:2:bind:formula:dynamic:auto-release-reclass:oxfml_ref:0",
+          "kind": "DynamicPotential",
+          "owner_node_id": 3,
+          "target_node_id": 2
+        }
+      ],
+      "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+      "topological_order": [
+        3
+      ]
+    }
+  ],
+  "schema_version": "oxcalc.w048.materialized_graph_layers.v1",
+  "source_artifacts": {
+    "dependency_graph": "docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/dependency_graph.json",
+    "result": "docs/test-runs/core-engine/treecalc-local/w048-materialized-graph-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/result.json"
+  }
+}

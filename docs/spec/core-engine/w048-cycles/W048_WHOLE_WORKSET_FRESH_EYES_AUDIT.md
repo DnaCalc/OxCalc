@@ -40,7 +40,7 @@ Concrete deliverables checked here:
 
 ## 3. Fresh-Eyes Findings
 
-1. **No proxy green overclaim**: `scripts/check-w048-conformance.ps1` now reports `passed_with_named_excel_blockers`, not final broad Excel closure.
+1. **No proxy green overclaim**: `scripts/check-w048-conformance.ps1` now reports `passed_with_named_excel_version_blocker`, not final broad Excel closure.
 2. **Status truth preserved**: parent `calc-zci1` remains open; W048 status axes remain partial while blockers exist.
 3. **Iterative evidence exists on both engines**: TraceCalc and TreeCalc both cover the same four falsification fixtures.
 4. **Observation caveats visible**: root/report-cell is now cleared for declared local probes by documented `Worksheet.CircularReference`; cross-version repeat remains an explicit blocker; numeric/nonnumeric prior-state and multithread variant behavior have targeted evidence.
@@ -95,4 +95,4 @@ Second-version unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`;
 
 ## 7. Audit Decision
 
-Do not mark the active user goal complete. All reopened child beads have been processed and reviewed, but the W048 parent and broad Excel-match closure remain blocked by exact, recorded blockers.
+Do not mark the active user goal complete. All reopened child beads have been processed and reviewed, but the W048 parent and broad Excel-match closure remain blocked by the exact recorded cross-version blocker.

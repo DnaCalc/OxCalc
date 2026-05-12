@@ -1,0 +1,198 @@
+{
+    "schema_version":  "oxcalc.showcase.w047_w048_examples.v1",
+    "generated_from":  [
+                           "w047-ctro-dynamic-positive-publication-001",
+                           "w048-treecalc-cycles-002",
+                           "w048-conformance-002"
+                       ],
+    "examples":  [
+                     {
+                         "id":  "ctro_target_switch_downstream_publish",
+                         "title":  "CTRO target switch publishes value + overlay atomically",
+                         "kind":  "W047_CTRO",
+                         "steps":  [
+                                       {
+                                           "label":  "Seed",
+                                           "detail":  "Published dynamic owner points at old target node 2."
+                                       },
+                                       {
+                                           "label":  "Edit/evaluate",
+                                           "detail":  "Current graph resolves owner node 3 to new target node 4."
+                                       },
+                                       {
+                                           "label":  "Diff overlay",
+                                           "detail":  "Emit release_dynamic_dep [2,3] and activate_dynamic_dep [3,4]."
+                                       },
+                                       {
+                                           "label":  "Publish",
+                                           "detail":  "Publish owner node 3 = 7 and downstream node 5 = 8 with runtime effect."
+                                       }
+                                   ],
+                         "observed":  {
+                                          "result_state":  "published",
+                                          "evaluation_order":  [
+                                                                   3,
+                                                                   5
+                                                               ],
+                                          "dependency_shape_updates":  [
+                                                                           {
+                                                                               "affected_node_ids":  [
+                                                                                                         3,
+                                                                                                         4
+                                                                                                     ],
+                                                                               "kind":  "activate_dynamic_dep"
+                                                                           },
+                                                                           {
+                                                                               "affected_node_ids":  [
+                                                                                                         2,
+                                                                                                         3
+                                                                                                     ],
+                                                                               "kind":  "release_dynamic_dep"
+                                                                           }
+                                                                       ],
+                                          "value_updates":  {
+                                                                "3":  "7",
+                                                                "5":  "8"
+                                                            },
+                                          "published_values":  {
+                                                                   "3":  "7",
+                                                                   "5":  "8"
+                                                               },
+                                          "trace_labels":  [
+                                                               "case_loaded",
+                                                               "evaluate_node",
+                                                               "evaluate_node",
+                                                               "runtime_effect_observed",
+                                                               "dependency_shape_update_observed",
+                                                               "dependency_shape_update_observed",
+                                                               "candidate_adapted",
+                                                               "publication_committed",
+                                                               "run_finished"
+                                                           ]
+                                      }
+                     },
+                     {
+                         "id":  "ctro_cycle_reject_then_release_reentry",
+                         "title":  "CTRO-created cycle rejects, later release re-enters and publishes",
+                         "kind":  "W048_CTRO_CYCLE",
+                         "steps":  [
+                                       {
+                                           "label":  "Candidate self-cycle",
+                                           "detail":  "Dynamic candidate creates a cycle; default profile rejects."
+                                       },
+                                       {
+                                           "label":  "No publication",
+                                           "detail":  "Rejected candidate has no publication bundle."
+                                       },
+                                       {
+                                           "label":  "Release to acyclic target",
+                                           "detail":  "Post-edit dynamic target points to acyclic node 3."
+                                       },
+                                       {
+                                           "label":  "Publish downstream",
+                                           "detail":  "Owner node 2 publishes 10 and downstream node 4 publishes 11."
+                                       }
+                                   ],
+                         "observed":  {
+                                          "initial_result_state":  "rejected",
+                                          "initial_reject_kind":  "SyntheticCycleReject",
+                                          "initial_publication_bundle_is_null":  true,
+                                          "post_edit_result_state":  "published",
+                                          "post_edit_evaluation_order":  [
+                                                                             2,
+                                                                             4
+                                                                         ],
+                                          "post_edit_value_updates":  {
+                                                                          "2":  "10",
+                                                                          "4":  "11"
+                                                                      },
+                                          "post_edit_published_values":  {
+                                                                             "2":  "10",
+                                                                             "3":  "10",
+                                                                             "4":  "11"
+                                                                         }
+                                      }
+                     },
+                     {
+                         "id":  "excel_iterative_chain_order",
+                         "title":  "Single-host Excel-match iterative chain order",
+                         "kind":  "W048_EXCEL_MATCH_ITERATIVE",
+                         "steps":  [
+                                       {
+                                           "label":  "Two-node order",
+                                           "detail":  "Probe-compatible basis selects B1,A1 order."
+                                       },
+                                       {
+                                           "label":  "Three-node order",
+                                           "detail":  "Probe-compatible basis selects C1,B1,A1 order."
+                                       },
+                                       {
+                                           "label":  "Fraction precision",
+                                           "detail":  "Fractional fixture preserves 0.33333333333333331."
+                                       }
+                                   ],
+                         "observed":  {
+                                          "two_node_evaluation_order":  [
+                                                                            3,
+                                                                            2
+                                                                        ],
+                                          "two_node_updates":  {
+                                                                   "2":  "11",
+                                                                   "3":  "22"
+                                                               },
+                                          "three_node_evaluation_order":  [
+                                                                              4,
+                                                                              3,
+                                                                              2
+                                                                          ],
+                                          "three_node_updates":  {
+                                                                     "2":  "102",
+                                                                     "3":  "101",
+                                                                     "4":  "103"
+                                                                 },
+                                          "fraction_updates":  {
+                                                                   "2":  "0.33333333333333331"
+                                                               },
+                                          "diagnostics":  [
+                                                              "cycle.excel_match_iterative",
+                                                              "cycle_iteration_trace",
+                                                              "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22"
+                                                          ]
+                                      }
+                     },
+                     {
+                         "id":  "w048_conformance_single_host_scope",
+                         "title":  "Final W048 status is complete for the accepted single-host scope",
+                         "kind":  "W048_CONFORMANCE",
+                         "observed":  {
+                                          "status":  "passed_single_host_scoped",
+                                          "scope_completeness":  "scope_complete_single_host",
+                                          "target_completeness":  "target_complete_single_host",
+                                          "integration_completeness":  "integrated_single_host",
+                                          "source_summaries":  {
+                                                                   "excel_core_observation_count":  12,
+                                                                   "excel_bitexact_observation_count":  19,
+                                                                   "tracecalc_scenario_count":  38,
+                                                                   "tracecalc_passed":  38,
+                                                                   "treecalc_case_count":  37,
+                                                                   "treecalc_expectation_mismatch_count":  0,
+                                                                   "graph_case_count":  37,
+                                                                   "graph_layer_count":  111,
+                                                                   "graph_cycle_region_count":  24,
+                                                                   "graph_check_error_count":  0,
+                                                                   "excel_root_report_probe_count":  5
+                                                               },
+                                          "accepted_scope":  {
+                                                                 "scope":  "single_observed_excel_host_version",
+                                                                 "excel_version":  "16.0",
+                                                                 "build":  "19929",
+                                                                 "product_version":  "16.0.19929.20136",
+                                                                 "inventory_run":  "docs/test-runs/excel-cycles/w048-excel-version-inventory-001/inventory.json"
+                                                             },
+                                          "documented_limitations":  [
+                                                                         "No broad cross-version Excel compatibility claim."
+                                                                     ]
+                                      }
+                     }
+                 ]
+}

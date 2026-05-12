@@ -1,0 +1,1365 @@
+{
+    "schema_version":  "oxcalc.w048.excel_root_report_probe.v2",
+    "run_id":  "w048-excel-root-report-002",
+    "status":  "observed_worksheet_circular_reference_reports",
+    "environment":  {
+                        "excel_version":  "16.0",
+                        "build":  "19929",
+                        "platform":  "Windows",
+                        "locale":  "en-ZA",
+                        "probe_runner":  "scripts/run-w048-excel-root-report-probes.ps1",
+                        "observation_time_utc":  "2026-05-12T05:23:38.5964990Z",
+                        "display_alerts":  false,
+                        "visible":  false,
+                        "note":  "Targets documented Worksheet.CircularReference and legacy Application.CircularReference report-cell/root behavior using COM without UI automation."
+                    },
+    "observation_count":  5,
+    "observations":  [
+                         {
+                             "probe_id":  "root_self_no_iteration",
+                             "iteration_enabled":  false,
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "",
+                                                               "value2":  null,
+                                                               "text":  ""
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_edit_1",
+                                                 "target":  "A1",
+                                                 "formula":  "=A1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  0,
+                                                               "text":  "0"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_worksheet_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  0,
+                                                               "text":  "0"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_application_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  0,
+                                                               "text":  "0"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  0,
+                                                               "text":  "0"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full_rebuild",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  0,
+                                                               "text":  "0"
+                                                           }
+                                             }
+                                         ],
+                             "reported_addresses":  [
+                                                        "Sheet1!A1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!A1"
+                                                    ],
+                             "application_reported_addresses":  [
+
+                                                                ],
+                             "worksheet_reported_addresses":  [
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!A1"
+                                                              ],
+                             "null_report_count":  1
+                         },
+                         {
+                             "probe_id":  "root_self_iteration",
+                             "iteration_enabled":  true,
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "",
+                                                               "value2":  null,
+                                                               "text":  ""
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_edit_1",
+                                                 "target":  "A1",
+                                                 "formula":  "=A1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  5,
+                                                               "text":  "5"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_worksheet_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  10,
+                                                               "text":  "10"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_application_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  15,
+                                                               "text":  "15"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  20,
+                                                               "text":  "20"
+                                                           }
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full_rebuild",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  {
+                                                               "cell":  "Sheet1!A1",
+                                                               "formula":  "=A1+1",
+                                                               "value2":  25,
+                                                               "text":  "25"
+                                                           }
+                                             }
+                                         ],
+                             "reported_addresses":  [
+
+                                                    ],
+                             "application_reported_addresses":  [
+
+                                                                ],
+                             "worksheet_reported_addresses":  [
+
+                                                              ],
+                             "null_report_count":  6
+                         },
+                         {
+                             "probe_id":  "root_two_node_ab",
+                             "iteration_enabled":  false,
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_1",
+                                                 "target":  "A1",
+                                                 "formula":  "=B1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_2",
+                                                 "target":  "B1",
+                                                 "formula":  "=A1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_worksheet_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_application_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full_rebuild",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             }
+                                         ],
+                             "reported_addresses":  [
+                                                        "Sheet1!B1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!B1",
+                                                        "Sheet1!A1"
+                                                    ],
+                             "application_reported_addresses":  [
+
+                                                                ],
+                             "worksheet_reported_addresses":  [
+                                                                  "Sheet1!B1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!B1",
+                                                                  "Sheet1!A1"
+                                                              ],
+                             "null_report_count":  2
+                         },
+                         {
+                             "probe_id":  "root_two_node_ba",
+                             "iteration_enabled":  false,
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_1",
+                                                 "target":  "B1",
+                                                 "formula":  "=A1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_2",
+                                                 "target":  "A1",
+                                                 "formula":  "=B1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_worksheet_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_application_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full_rebuild",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               }
+                                                           ]
+                                             }
+                                         ],
+                             "reported_addresses":  [
+                                                        "Sheet1!A1",
+                                                        "Sheet1!B1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!B1",
+                                                        "Sheet1!A1"
+                                                    ],
+                             "application_reported_addresses":  [
+
+                                                                ],
+                             "worksheet_reported_addresses":  [
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!B1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!B1",
+                                                                  "Sheet1!A1"
+                                                              ],
+                             "null_report_count":  2
+                         },
+                         {
+                             "probe_id":  "root_three_node",
+                             "iteration_enabled":  false,
+                             "status":  "observed",
+                             "records":  [
+                                             {
+                                                 "moment":  "initial",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_1",
+                                                 "target":  "A1",
+                                                 "formula":  "=B1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_2",
+                                                 "target":  "B1",
+                                                 "formula":  "=C1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "null",
+                                                                                                      "address":  null,
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "null",
+                                                                                                     "address":  null,
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "",
+                                                                   "value2":  null,
+                                                                   "text":  ""
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_edit_3",
+                                                 "target":  "C1",
+                                                 "formula":  "=A1+1",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!C1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!C1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_worksheet_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_application_calculate",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!A1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!A1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!C1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!C1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             },
+                                             {
+                                                 "moment":  "after_calculate_full_rebuild",
+                                                 "circular_reference_reports":  {
+                                                                                    "application":  {
+                                                                                                        "surface":  "application",
+                                                                                                        "status":  "null",
+                                                                                                        "address":  null,
+                                                                                                        "error":  null
+                                                                                                    },
+                                                                                    "worksheet":  {
+                                                                                                      "surface":  "worksheet",
+                                                                                                      "status":  "range",
+                                                                                                      "address":  "Sheet1!B1",
+                                                                                                      "error":  null
+                                                                                                  },
+                                                                                    "selected":  {
+                                                                                                     "surface":  "worksheet",
+                                                                                                     "status":  "range",
+                                                                                                     "address":  "Sheet1!B1",
+                                                                                                     "error":  null
+                                                                                                 }
+                                                                                },
+                                                 "cells":  [
+                                                               {
+                                                                   "cell":  "Sheet1!A1",
+                                                                   "formula":  "=B1+1",
+                                                                   "value2":  2,
+                                                                   "text":  "2"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!B1",
+                                                                   "formula":  "=C1+1",
+                                                                   "value2":  1,
+                                                                   "text":  "1"
+                                                               },
+                                                               {
+                                                                   "cell":  "Sheet1!C1",
+                                                                   "formula":  "=A1+1",
+                                                                   "value2":  0,
+                                                                   "text":  "0"
+                                                               }
+                                                           ]
+                                             }
+                                         ],
+                             "reported_addresses":  [
+                                                        "Sheet1!C1",
+                                                        "Sheet1!B1",
+                                                        "Sheet1!A1",
+                                                        "Sheet1!C1",
+                                                        "Sheet1!B1"
+                                                    ],
+                             "application_reported_addresses":  [
+
+                                                                ],
+                             "worksheet_reported_addresses":  [
+                                                                  "Sheet1!C1",
+                                                                  "Sheet1!B1",
+                                                                  "Sheet1!A1",
+                                                                  "Sheet1!C1",
+                                                                  "Sheet1!B1"
+                                                              ],
+                             "null_report_count":  3
+                         }
+                     ],
+    "blocker_disposition":  "BLK-W048-EXCEL-ROOT has documented Worksheet.CircularReference COM evidence for declared probes; fresh-eyes review and profile disposition required before closing blocker."
+}

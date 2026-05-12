@@ -22,12 +22,12 @@ Additional blocker packet:
 
 | Field | Value |
 | --- | --- |
-| run_id | `w048-excel-root-report-001` |
-| artifact root | `docs/test-runs/excel-cycles/w048-excel-root-report-001/` |
+| run_id | `w048-excel-root-report-002` |
+| artifact root | `docs/test-runs/excel-cycles/w048-excel-root-report-002/` |
 | runner | `scripts/run-w048-excel-root-report-probes.ps1` |
 | checker | `scripts/check-w048-excel-root-report-probes.ps1` |
 | probe count | 5 |
-| disposition | `Application.CircularReference` remained null across self/two-node/three-node and iterative/non-iterative variants; `BLK-W048-EXCEL-ROOT` remains open. |
+| disposition | documented `Worksheet.CircularReference` returned report-cell/root addresses for declared non-iterative circular-reference probes; `Application.CircularReference` remained null; `BLK-W048-EXCEL-ROOT` is cleared for declared local evidence. |
 | run_id | `w048-excel-initial-vector-001` |
 | artifact root | `docs/test-runs/excel-cycles/w048-excel-initial-vector-001/` |
 | runner | `scripts/run-w048-excel-initial-vector-probes.ps1` |
@@ -51,9 +51,9 @@ Clean-room basis: COM automation against Excel, saved workbook artifacts, and pu
 
 ## 3. Packet-Level Caveats
 
-1. The runs record single-host observation packets only; they do not cover multi-threaded variants, UI warning capture, or cross-version Excel behavior.
-2. `Application.CircularReference` returned no reported cell for the recorded probes in these automation runs, including targeted root/report packet `w048-excel-root-report-001`. W048 therefore treats reported-root evidence as inconclusive, while still retaining saved calculation-chain and cell-output evidence.
-3. The initial application-level calculation-mode set failed before workbook creation with `0x800A03EC`; the runner retried workbook-scoped setup inside each probe. The packets are valid for observed cell/chain artifacts but should be paired with a second runner variant before any strong Excel-match statement.
+1. The runs record single-host observation packets only; they do not cover cross-version Excel behavior.
+2. `Application.CircularReference` returned no reported cell for the recorded probes, but the repaired root/report packet `w048-excel-root-report-002` uses documented `Worksheet.CircularReference` and observes report-cell/root addresses for declared non-iterative probes. Iteration-enabled self-cycle did not surface a report cell.
+3. The initial application-level calculation-mode set failed before workbook creation with `0x800A03EC`; the runner retried workbook-scoped setup inside each probe. The packets are valid for observed cell/chain artifacts but should be paired with a second host/version before any strong broad Excel-match statement.
 4. Saved `xl/calcChain.xml` was present in most recorded workbooks and is treated as public workbook metadata, not as internal algorithm evidence.
 5. The non-numeric prior probe preserved a formula-like text surface in the cell snapshot; it is retained as evidence that this path needs targeted follow-up before deriving coercion policy.
 
@@ -85,8 +85,9 @@ Clean-room basis: COM automation against Excel, saved workbook artifacts, and pu
 
 1. **Non-iterative Stage 1**: this packet supports keeping OxCalc's Stage 1 policy conservative: detect SCCs in OxCalc-owned graph layers, reject cycle-region publication, and emit diagnostics rather than adopting Excel's automation-observed one-pass values as default semantics.
 2. **Root/order**: saved calculation-chain entries changed with edit order in the two-node pair (`B1,A1` versus `A1,B1`). Excel-compatible root/order remains a candidate profile field and is not reduced to canonical node id by this packet.
-3. **Initial value**: self/prior and iterative probes are insufficient for a strong initial-value claim because the COM-reported circular root was absent. W048 should preserve `published_prior_value`, `zero_or_blank_default`, and chain-ordered hypotheses until a second packet captures UI warning/root behavior or a more direct object-model surface.
-4. **Update model**: the one-iteration two-node probe produced `A1 = 11`, `B1 = 22`, matching the sequential A-then-B hypothesis for that workbook/edit sequence. The three-node iterative probe also tracks saved chain order (`C1,B1,A1`). This is evidence for `excel_chain_ordered` as a candidate, not a final algorithm decision.
+3. **Initial value**: targeted numeric and nonnumeric prior packets show self-cycle formula assignment starts from a zero/blank-derived base for the declared probes rather than retaining prior numeric, blank, text, or error values.
+4. **Root/report surface**: `w048-excel-root-report-002` clears the earlier object-model gap for declared non-iterative probes through `Worksheet.CircularReference`; multi-node reported addresses vary by moment/command and remain diagnostic evidence rather than a universal canonical root order.
+5. **Update model**: the one-iteration two-node probe produced `A1 = 11`, `B1 = 22`, matching the sequential A-then-B hypothesis for that workbook/edit sequence. The three-node iterative probe also tracks saved chain order (`C1,B1,A1`). This is evidence for `excel_chain_ordered` as a candidate, not a final algorithm decision.
 5. **Convergence and terminal policy**: the bit-exact packet contains decay, fractional convergence, oscillation, and max-iteration probes. The targeted initial-vector and nonnumeric-prior packets add prior-state evidence: self-cycle formula assignment starts from a zero/blank-derived base for the tested formulas rather than retaining numeric, blank, text, or error prior states.
 6. **CTRO analogs**: INDIRECT release/downstream probes provide concrete expected visible surfaces for W048 release/re-entry fixtures (`A1 = 11`, `D1 = 12` after selector moves from self to `C1`). They do not by themselves settle candidate-overlay commit policy inside OxCalc.
 
@@ -95,7 +96,7 @@ Clean-room basis: COM automation against Excel, saved workbook artifacts, and pu
 1. `calc-zci1.2`: consume this packet when designing graph sidecars so saved chain/order and OxCalc `cycle_root`/`member_order` can be compared without trusting traversal accidents.
 2. `calc-zci1.3` and `calc-zci1.6`: use the CTRO release/downstream visible surfaces as fixture targets while keeping OxCalc's default non-iterative cycle publication policy conservative.
 3. `calc-zci1.12`: consume observation packets when deriving the Excel iterative semantics profile. Root/warning behavior and non-numeric prior coercion remain weakly observed and must either receive targeted evidence or become explicit blockers.
-4. `calc-zci1.16`: targeted COM root/report packet was run and did not unblock report-cell/root behavior; UI warning capture or another public object-model route is still required.
+4. `calc-zci1.16`: repaired targeted COM root/report packet `w048-excel-root-report-002` uses documented `Worksheet.CircularReference` and clears the root/report blocker for declared local probes.
 5. `calc-zci1.17`: targeted numeric-prior initial-vector packet was run and unblocked numeric-prior behavior for declared self-cycle coverage.
 6. `calc-zci1.18`: targeted blank/text/error prior packet was run and unblocked nonnumeric prior behavior for declared self-cycle coverage.
 4. `calc-zci1.13` through `calc-zci1.15`: include `w048-excel-cycles-001` and `w048-excel-cycles-bitexact-001` in the circular-reference corpus/conformance surface and assert that packet caveats are visible to conformance summaries.

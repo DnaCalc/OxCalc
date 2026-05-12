@@ -6,19 +6,16 @@ Parent workset: `W048 Circular Dependency Calculation Processing`
 
 Related beads:
 
-- `calc-zci1.16` / `BLK-W048-EXCEL-ROOT`
-- `calc-zci1.19` / `BLK-W048-EXCEL-VERSION`
+- `calc-zci1.16` / `BLK-W048-EXCEL-ROOT` — cleared locally by `w048-excel-root-report-002`
+- `calc-zci1.19` / `BLK-W048-EXCEL-VERSION` — still blocked
 
 ## 1. Purpose
 
-This packet defines the exact external evidence needed to unblock the remaining W048 workset blockers. It is intended for a user or agent with access to either:
-
-1. an interactive Excel UI session capable of observing circular-reference warnings/status-bar report cells; or
-2. a second Excel host/version/channel different from the current local host.
+This packet defines the exact external evidence needed to unblock the remaining W048 workset blocker. It is intended for a user or agent with access to a second Excel host/version/channel different from the current local host.
 
 Current local blocker state:
 
-1. `BLK-W048-EXCEL-ROOT`: `Application.CircularReference` returned null across targeted COM variants in `w048-excel-root-report-001`; W048 still needs UI warning/report-cell evidence or another public object-model surface.
+1. `BLK-W048-EXCEL-ROOT`: cleared locally by `w048-excel-root-report-002`, which uses documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and is historical negative evidence only.
 2. `BLK-W048-EXCEL-VERSION`: all local Excel packets use the same observed host family (`16.0` / `19929`); W048 still needs a second host/version packet or explicit user acceptance of a single-host scope.
 
 ## 2. Files To Copy To The External Excel Host
@@ -37,6 +34,8 @@ scripts/check-w048-excel-initial-vector-probes.ps1
 scripts/check-w048-excel-nonnumeric-prior-probes.ps1
 scripts/check-w048-excel-multithread-variant-probes.ps1
 ```
+
+The root/report runner is retained in the bundle so a second host can repeat the now-cleared worksheet-scoped evidence, not because root/report remains a local blocker.
 
 Prepared handoff bundle in this repo:
 
@@ -78,18 +77,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-mul
 
 Return the full `docs/test-runs/excel-cycles/*SECONDHOST*` directories.
 
-## 4. Required Evidence For Root/Report-Cell Packet
+## 4. Optional Repeat Evidence For Root/Report-Cell Packet
 
-The COM packet is already runnable:
+The root/report blocker is already cleared locally by `w048-excel-root-report-002`. A second host may optionally repeat the COM packet:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-root-report-probes.ps1 -RunId w048-excel-root-report-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-root-report-probes.ps1 docs/test-runs/excel-cycles/w048-excel-root-report-SECONDHOST-001
 ```
 
-However, the local COM result was null. If the external host also returns null, UI evidence is required.
-
-A UI evidence packet should include:
+The expected useful surface is `Worksheet.CircularReference`, not `Application.CircularReference`. If the external host's worksheet-scoped packet contradicts local results, a UI evidence packet should include:
 
 1. Excel version/build/channel and OS details;
 2. workbook/probe id;
@@ -115,14 +112,14 @@ If no UI warning/status-bar/report cell is available, the packet must state that
 
 W048 can proceed to parent disposition through either path:
 
-### Path A: Evidence Unblocks Both Blockers
+### Path A: Evidence Unblocks Remaining Version Blocker
 
 Required:
 
 1. second-host/version normalized packets are returned and pass checkers;
-2. root/report-cell UI or public object-model evidence is returned;
+2. optional root/report-cell repeat evidence is returned if available;
 3. `W048_ITERATIVE_PROFILE_DECISION.json`, `W048_EXCEL_OBSERVATION_LEDGER.md`, and conformance evidence are updated;
-4. blockers `calc-zci1.16` and `calc-zci1.19` close with fresh-eyes reviews;
+4. blocker `calc-zci1.19` closes with a fresh-eyes review;
 5. whole-workset audit is rerun.
 
 ### Path B: User Accepts Narrow Scope
@@ -130,10 +127,10 @@ Required:
 Required user acceptance statement:
 
 ```text
-I accept W048 closure scoped to the current single observed Excel host/version and without exact Excel UI report-cell/root matching. Keep root/report-cell and cross-version behavior as documented limitations rather than closure blockers.
+I accept W048 closure scoped to the current single observed Excel host/version. Keep cross-version behavior as a documented limitation rather than a closure blocker.
 ```
 
-If this is accepted, W048 must update the profile and audit to say the closure is single-host/single-thread/default-root-limited rather than broad Excel compatibility.
+If this is accepted, W048 must update the profile and audit to say the closure is single-host scoped rather than broad Excel compatibility.
 
 ## 6. Fresh-Eyes Review
 
@@ -153,6 +150,7 @@ Findings:
 3. Yes. Path A requires evidence; Path B requires explicit user acceptance of a narrower claim.
 4. Yes. Any narrower path must be recorded as a limitation in profile/conformance/audit surfaces.
 5. A copy-ready bundle and zip have been prepared under `docs/handoffs/` so no repo checkout is required on the external Excel host.
+6. Fresh-eyes update: the root/report lane is no longer an active blocker after the worksheet-scoped repair; this kit now primarily serves the second-version lane.
 
 ## 7. Three-Axis Status
 
@@ -160,5 +158,6 @@ Findings:
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `BLK-W048-EXCEL-ROOT`;
   - `BLK-W048-EXCEL-VERSION`.
+- cleared_lanes:
+  - `BLK-W048-EXCEL-ROOT` via `w048-excel-root-report-002`.

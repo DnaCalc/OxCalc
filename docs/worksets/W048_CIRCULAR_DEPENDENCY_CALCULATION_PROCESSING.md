@@ -164,7 +164,7 @@ Work proceeds through the W048 bead epic:
 | `calc-zci1.13` | TraceCalc bit-exact iterative cycle reference implementation |
 | `calc-zci1.14` | TreeCalc optimized iterative cycle implementation |
 | `calc-zci1.15` | full circular-reference conformance and closure audit |
-| `calc-zci1.16` | root/report-cell blocker packet; blocked on UI warning or alternate public object-model evidence |
+| `calc-zci1.16` | root/report-cell evidence packet; closed by documented `Worksheet.CircularReference` surface for declared probes |
 | `calc-zci1.17` | numeric-prior initial-vector packet; closed for declared self-cycle coverage |
 | `calc-zci1.18` | blank/text/error prior packet; closed for declared self-cycle coverage |
 | `calc-zci1.19` | second Excel host/version repeat; blocked on external host packet or user single-host scope acceptance |
@@ -235,6 +235,7 @@ Local W048 tooling must not use Python. New or replacement tooling must be Power
 - evidence_policy: public docs plus reproducible black-box Excel probes plus TraceCalc/TreeCalc artifacts plus W048 checkers, using PowerShell/Rust/C# tooling only
 - closure_audit: superseded predecessor `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json`
 - open_lanes:
-  - `BLK-W048-EXCEL-ROOT`: capture circular-reference report-cell/root behavior through UI warning evidence or a public object-model surface that does not return null;
   - `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version, or obtain explicit user acceptance of a single-host scoped claim;
   - parent `calc-zci1` final disposition after blocker resolution or user scope acceptance.
+- cleared_lanes:
+  - `BLK-W048-EXCEL-ROOT`: cleared for declared local probes by `w048-excel-root-report-002` using documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and iteration-enabled self-cycle has no report cell.

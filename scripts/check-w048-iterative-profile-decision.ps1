@@ -7,7 +7,7 @@ function Add-Err([string]$m) { $errors.Add($m) | Out-Null }
 function Read-Json([string]$p) { if (-not (Test-Path $p)) { throw "Missing JSON: $p" }; Get-Content $p -Raw | ConvertFrom-Json }
 $d = Read-Json $DecisionPath
 if ($d.schema_version -ne "oxcalc.w048.iterative_profile_decision.v2") { Add-Err "unexpected schema_version" }
-if ($d.status -ne "excel_match_profile_specified_with_named_open_blockers") { Add-Err "unexpected status" }
+if ($d.status -notin @("excel_match_profile_specified_with_named_open_blockers", "excel_match_profile_specified_with_named_open_version_blocker")) { Add-Err "unexpected status" }
 if ($d.default_profile.profile_id -ne "cycle.non_iterative_stage1") { Add-Err "missing default non-iterative profile" }
 if ($d.default_profile.cycle_terminal_state -ne "reject_candidate") { Add-Err "default terminal state must reject candidate" }
 if (($d.default_profile.publication_rule -as [string]) -notmatch "no_new_cycle_values") { Add-Err "default publication rule must prohibit new cycle values" }
@@ -16,12 +16,13 @@ $e = $d.excel_match_profile
 if ($e.profile_id -ne "cycle.excel_match_iterative") { Add-Err "missing Excel-match profile" }
 if ($e.admission -ne "implementation_target_for_reopened_w048") { Add-Err "Excel-match profile must be the reopened W048 implementation target" }
 $evidenceRuns = @($e.evidence_runs)
-foreach ($run in @("docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json", "docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/observation.json")) {
+foreach ($run in @("docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json", "docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/observation.json", "docs/test-runs/excel-cycles/w048-excel-root-report-002/observation.json")) {
   if ($evidenceRuns -notcontains $run) { Add-Err "missing evidence run $run" }
   if (-not (Test-Path $run)) { Add-Err "evidence run path not found: $run" }
 }
-if ($e.root_policy.status -ne "blocked_for_report_cell_exactness") { Add-Err "root policy must preserve report-cell blocker" }
-if (-not $e.root_policy.blocker) { Add-Err "root policy blocker missing" }
+if ($e.root_policy.status -notin @("blocked_for_report_cell_exactness", "observed_for_declared_non_iterative_report_cell_probes")) { Add-Err "root policy status unexpected" }
+if (-not $e.root_policy.blocker) { Add-Err "root policy disposition missing" }
+if ($e.root_policy.status -eq "observed_for_declared_non_iterative_report_cell_probes" -and (($e.root_policy.blocker -as [string]) -notmatch "w048-excel-root-report-002|Worksheet.CircularReference")) { Add-Err "root policy must cite worksheet-scoped repair evidence" }
 if ($e.initial_value_policy.status -ne "observed_for_declared_self_cycle_prior_states") { Add-Err "initial vector status must cover declared prior states" }
 if (($e.initial_value_policy.published_prior_numeric -as [string]) -notmatch "do not survive") { Add-Err "numeric-prior initial vector disposition missing" }
 if (($e.initial_value_policy.text_or_non_numeric_prior -as [string]) -notmatch "do_not_survive|do not survive") { Add-Err "nonnumeric-prior initial vector disposition missing" }
@@ -59,8 +60,8 @@ foreach ($id in @("excel_iter_two_node_order_001","excel_iter_three_node_order_0
   if (-not ($fixtures | Where-Object { $_.probe_id -eq $id })) { Add-Err "missing falsification fixture $id" }
 }
 $blockers = @($d.open_blockers_before_final_excel_match_claim)
-foreach ($id in @("BLK-W048-EXCEL-ROOT","BLK-W048-EXCEL-VERSION")) {
-  if (-not ($blockers | Where-Object { $_ -match $id })) { Add-Err "missing blocker $id" }
-}
+if (-not ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-VERSION" })) { Add-Err "missing blocker BLK-W048-EXCEL-VERSION" }
+if ($e.root_policy.status -eq "blocked_for_report_cell_exactness" -and -not ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-ROOT" })) { Add-Err "missing blocker BLK-W048-EXCEL-ROOT" }
+if ($e.root_policy.status -eq "observed_for_declared_non_iterative_report_cell_probes" -and ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-ROOT" })) { Add-Err "cleared root blocker should not remain in open blockers" }
 if ($errors.Count -gt 0) { Write-Host "w048 iterative profile decision FAILED"; $errors | ForEach-Object { Write-Host "ERROR: $_" }; exit 1 }
 Write-Host "w048 iterative profile decision ok"

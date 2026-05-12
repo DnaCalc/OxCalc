@@ -1,7 +1,7 @@
 {
     "schema_version":  "oxcalc.w048.iterative_profile_decision.v2",
     "decision_id":  "w048-iterative-profile-decision-002",
-    "status":  "excel_match_profile_specified_with_named_open_blockers",
+    "status":  "excel_match_profile_specified_with_named_open_version_blocker",
     "default_profile":  {
                             "profile_id":  "cycle.non_iterative_stage1",
                             "iteration_enabled":  false,
@@ -15,12 +15,13 @@
                                 "admission":  "implementation_target_for_reopened_w048",
                                 "evidence_runs":  [
                                                       "docs/test-runs/excel-cycles/w048-excel-cycles-001/observation.json",
-                                                      "docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/observation.json"
+                                                      "docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/observation.json",
+                                                      "docs/test-runs/excel-cycles/w048-excel-root-report-002/observation.json"
                                                   ],
                                 "root_policy":  {
-                                                    "status":  "blocked_for_report_cell_exactness",
-                                                    "implementation_policy_until_unblocked":  "saved_calc_chain_first_entry_for_member_order_diagnostics_only",
-                                                    "blocker":  "Application.CircularReference returned null in both COM packets; UI warning/report-cell capture or another public object-model surface is required before exact Excel report-cell claims."
+                                                    "status":  "observed_for_declared_non_iterative_report_cell_probes",
+                                                    "implementation_policy_until_unblocked":  "Worksheet.CircularReference report surface for diagnostics; saved calc-chain remains member-order evidence",
+                                                    "blocker":  "cleared for declared local probes by w048-excel-root-report-002 using documented Worksheet.CircularReference; Application.CircularReference remains null; iteration-enabled self-cycle surfaced no report cell."
                                                 },
                                 "member_order_policy":  {
                                                             "status":  "observed_candidate",
@@ -180,7 +181,6 @@
                                    }
                                ],
     "open_blockers_before_final_excel_match_claim":  [
-                                                         "BLK-W048-EXCEL-ROOT: capture report-cell/root behavior through UI warning or an object-model surface that does not return null for circular references in the current COM packets.",
                                                          "BLK-W048-EXCEL-VERSION: repeat at least the falsification fixture set on a second Excel host/version before broad Excel compatibility claims."
                                                      ]
 }

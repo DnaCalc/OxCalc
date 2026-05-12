@@ -23,9 +23,9 @@ W048 now owns the circular dependency calculation target end to end. The scope w
 
 Current next engineering move:
 
-1. blocked: `calc-zci1.16` / `BLK-W048-EXCEL-ROOT` needs UI warning capture or another public object-model report-cell/root surface;
+1. cleared: `calc-zci1.16` / `BLK-W048-EXCEL-ROOT` has declared local root/report evidence from documented `Worksheet.CircularReference` in `w048-excel-root-report-002`;
 2. blocked: `calc-zci1.19` / `BLK-W048-EXCEL-VERSION` needs a second Excel host/version packet, or explicit user acceptance of a single-host scoped claim;
-3. no W048 ready beads remain until one of those blockers is resolved or user-scoped.
+3. no W048 ready beads remain until the version blocker is resolved or user-scoped.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

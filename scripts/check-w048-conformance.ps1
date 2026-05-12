@@ -7,7 +7,7 @@ function Add-Err([string]$m) { $errors.Add($m) | Out-Null }
 function Read-Json([string]$p) { if (-not (Test-Path $p)) { throw "Missing JSON: $p" }; Get-Content $p -Raw | ConvertFrom-Json }
 $s = Read-Json $SummaryPath
 if ($s.schema_version -ne "oxcalc.w048.conformance_summary.v2") { Add-Err "unexpected schema_version" }
-if ($s.status -ne "passed_with_named_excel_blockers") { Add-Err "status expected passed_with_named_excel_blockers observed $($s.status)" }
+if ($s.status -notin @("passed_with_named_excel_blockers", "passed_with_named_excel_version_blocker")) { Add-Err "status expected passed_with_named_excel_version_blocker observed $($s.status)" }
 if (@($s.errors).Count -ne 0) { Add-Err "summary has errors: $($s.errors -join '; ')" }
 if ($s.scope_completeness -ne "scope_partial") { Add-Err "scope_completeness must remain scope_partial while blockers exist" }
 if ($s.target_completeness -ne "target_partial") { Add-Err "target_completeness must remain target_partial while blockers exist" }
@@ -27,8 +27,8 @@ foreach ($id in @("tc_w048_excel_iter_two_node_order_001","tc_w048_excel_iter_th
   if (@($s.treecalc_iterative_fixtures) -notcontains $id) { Add-Err "missing TreeCalc iterative fixture $id" }
 }
 if (-not (Test-Path $s.multithread_variant_run)) { Add-Err "missing multithread variant run" }
-foreach ($id in @("BLK-W048-EXCEL-ROOT","BLK-W048-EXCEL-VERSION")) {
-  if (@($s.blockers) -notcontains $id) { Add-Err "missing blocker $id" }
-}
+if (@($s.blockers) -notcontains "BLK-W048-EXCEL-VERSION") { Add-Err "missing blocker BLK-W048-EXCEL-VERSION" }
+if ($s.status -eq "passed_with_named_excel_version_blocker" -and (@($s.blockers) -contains "BLK-W048-EXCEL-ROOT")) { Add-Err "cleared root blocker should not remain in conformance blockers" }
+if ($s.status -eq "passed_with_named_excel_blockers" -and (@($s.blockers) -notcontains "BLK-W048-EXCEL-ROOT")) { Add-Err "legacy blocker status missing BLK-W048-EXCEL-ROOT" }
 if ($errors.Count -gt 0) { Write-Host "w048 conformance FAILED"; $errors | ForEach-Object { Write-Host "ERROR: $_" }; exit 1 }
-Write-Host "w048 conformance passed with named blockers: $SummaryPath"
+Write-Host "w048 conformance passed with named blocker disposition: $SummaryPath"

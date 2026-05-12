@@ -49,9 +49,9 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
 12. `W048_TOOLING_MIGRATION_OFF_PYTHON.md`
    - active tooling packet replacing W048 Python checkers with PowerShell entry points.
 13. `W048_WHOLE_WORKSET_FRESH_EYES_AUDIT.md`
-   - whole-workset audit after reopened child beads, preserving named blockers and partial status.
+   - whole-workset audit after reopened child beads, preserving the remaining version blocker and partial status.
 14. `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md`
-   - targeted root/report-cell blocker packet showing `Application.CircularReference` remained null across variants.
+   - targeted root/report-cell evidence packet showing repaired `Worksheet.CircularReference` evidence after `Application.CircularReference` remained null.
 15. `W048_EXCEL_INITIAL_VECTOR_PACKET.md`
    - targeted numeric-prior initial-vector packet showing prior numeric seeds do not survive self-cycle formula assignment in declared probes.
 16. `W048_EXCEL_NONNUMERIC_PRIOR_PACKET.md`
@@ -61,7 +61,7 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
 18. `W048_EXCEL_MULTITHREAD_VARIANT_PACKET.md`
    - multithread variant packet for declared falsification probes, preserving thread mode as a profile dimension.
 19. `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`
-   - exact external evidence/command packet for the remaining root/report-cell and second-version blockers.
+   - exact external evidence/command packet for the remaining second-version blocker, with optional root/report repeat.
 
 Active Excel observation packets:
 
@@ -69,6 +69,8 @@ Active Excel observation packets:
    - first 12-probe core black-box Excel packet.
 2. `docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001/`
    - expanded 19-probe bit-exact black-box Excel packet used by reopened W048.
+3. `docs/test-runs/excel-cycles/w048-excel-root-report-002/`
+   - repaired root/report-cell packet using documented `Worksheet.CircularReference`.
 
 ## Current Conclusions
 

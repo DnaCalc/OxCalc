@@ -12,13 +12,22 @@ function Write-Json($Value, [string]$Path, [int]$Depth = 30) {
     $encoding = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText((Resolve-Path -LiteralPath (Split-Path -Parent $Path)).Path + "\" + (Split-Path -Leaf $Path), ($Value | ConvertTo-Json -Depth $Depth), $encoding)
 }
-function Get-CircularAddress($Excel) {
+function Get-CircularAddressFromObject($Object, [string]$Surface) {
     try {
-        $cr = $Excel.CircularReference
-        if ($null -eq $cr) { return [ordered]@{ status = "null"; address = $null; error = $null } }
-        return [ordered]@{ status = "range"; address = ($cr.Worksheet.Name + "!" + $cr.Address($false, $false)); error = $null }
+        $cr = $Object.CircularReference
+        if ($null -eq $cr) { return [ordered]@{ surface = $Surface; status = "null"; address = $null; error = $null } }
+        return [ordered]@{ surface = $Surface; status = "range"; address = ($cr.Worksheet.Name + "!" + $cr.Address($false, $false)); error = $null }
     } catch {
-        return [ordered]@{ status = "error"; address = $null; error = $_.Exception.Message }
+        return [ordered]@{ surface = $Surface; status = "error"; address = $null; error = $_.Exception.Message }
+    }
+}
+function Get-CircularReports($Excel, $Sheet) {
+    $applicationReport = Get-CircularAddressFromObject $Excel "application"
+    $worksheetReport = Get-CircularAddressFromObject $Sheet "worksheet"
+    return [ordered]@{
+        application = $applicationReport
+        worksheet = $worksheetReport
+        selected = $worksheetReport
     }
 }
 function Get-CellSnapshot($Sheet, [string[]]$Cells) {
@@ -71,7 +80,7 @@ try {
         observation_time_utc = (Get-Date).ToUniversalTime().ToString("o")
         display_alerts = $false
         visible = $false
-        note = "Targets Application.CircularReference report-cell/root behavior using COM without UI automation."
+        note = "Targets documented Worksheet.CircularReference and legacy Application.CircularReference report-cell/root behavior using COM without UI automation."
     }
 
     foreach ($probe in $probes) {
@@ -86,12 +95,12 @@ try {
             try { $excel.MaxIterations = 5 } catch {}
             try { $excel.MaxChange = 0.001 } catch {}
             $records = @()
-            $records += [ordered]@{ moment="initial"; circular_reference=Get-CircularAddress $excel; cells=Get-CellSnapshot $ws $probe.cells }
+            $records += [ordered]@{ moment="initial"; circular_reference_reports=Get-CircularReports $excel $ws; cells=Get-CellSnapshot $ws $probe.cells }
             $editIndex = 0
             foreach ($edit in $probe.edits) {
                 $editIndex++
                 $ws.Range($edit.target).Formula = $edit.formula
-                $records += [ordered]@{ moment="after_edit_$editIndex"; target=$edit.target; formula=$edit.formula; circular_reference=Get-CircularAddress $excel; cells=Get-CellSnapshot $ws $probe.cells }
+                $records += [ordered]@{ moment="after_edit_$editIndex"; target=$edit.target; formula=$edit.formula; circular_reference_reports=Get-CircularReports $excel $ws; cells=Get-CellSnapshot $ws $probe.cells }
             }
             foreach ($command in @("worksheet_calculate", "application_calculate", "calculate_full", "calculate_full_rebuild")) {
                 try {
@@ -102,15 +111,17 @@ try {
                         "calculate_full_rebuild" { $excel.CalculateFullRebuild() }
                     }
                 } catch {}
-                $records += [ordered]@{ moment="after_$command"; circular_reference=Get-CircularAddress $excel; cells=Get-CellSnapshot $ws $probe.cells }
+                $records += [ordered]@{ moment="after_$command"; circular_reference_reports=Get-CircularReports $excel $ws; cells=Get-CellSnapshot $ws $probe.cells }
             }
             $obs = [ordered]@{
                 probe_id = $probe.id
                 iteration_enabled = [bool]$probe.iteration
                 status = "observed"
                 records = $records
-                reported_addresses = @($records | ForEach-Object { $_.circular_reference.address } | Where-Object { $_ })
-                null_report_count = @($records | Where-Object { $_.circular_reference.status -eq "null" }).Count
+                reported_addresses = @($records | ForEach-Object { $_.circular_reference_reports.selected.address } | Where-Object { $_ })
+                application_reported_addresses = @($records | ForEach-Object { $_.circular_reference_reports.application.address } | Where-Object { $_ })
+                worksheet_reported_addresses = @($records | ForEach-Object { $_.circular_reference_reports.worksheet.address } | Where-Object { $_ })
+                null_report_count = @($records | Where-Object { $_.circular_reference_reports.selected.status -eq "null" }).Count
             }
             Write-Json $obs (Join-Path $probeDir "observation.json")
             $observations += $obs
@@ -131,13 +142,13 @@ try {
 }
 
 $summary = [ordered]@{
-    schema_version = "oxcalc.w048.excel_root_report_probe.v1"
+    schema_version = "oxcalc.w048.excel_root_report_probe.v2"
     run_id = $RunId
-    status = "observed_object_model_null_for_all_variants"
+    status = if (@($observations | ForEach-Object { $_.worksheet_reported_addresses } | Where-Object { $_ }).Count -gt 0) { "observed_worksheet_circular_reference_reports" } else { "observed_object_model_null_for_all_variants" }
     environment = $environment
     observation_count = @($observations).Count
     observations = $observations
-    blocker_disposition = "BLK-W048-EXCEL-ROOT remains open: this COM packet did not produce a non-null Application.CircularReference range. UI warning capture or another public object-model route is still required for exact report-cell/root behavior."
+    blocker_disposition = if (@($observations | ForEach-Object { $_.worksheet_reported_addresses } | Where-Object { $_ }).Count -gt 0) { "BLK-W048-EXCEL-ROOT has documented Worksheet.CircularReference COM evidence for declared probes; fresh-eyes review and profile disposition required before closing blocker." } else { "BLK-W048-EXCEL-ROOT remains open: this COM packet did not produce a non-null Worksheet.CircularReference range. UI warning capture or another public object-model route is still required for exact report-cell/root behavior." }
 }
 Write-Json $environment (Join-Path $runRoot "environment.json")
 Write-Json $summary (Join-Path $runRoot "observation.json")

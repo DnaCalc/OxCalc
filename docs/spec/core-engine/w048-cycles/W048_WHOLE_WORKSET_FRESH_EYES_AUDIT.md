@@ -36,23 +36,23 @@ Concrete deliverables checked here:
 | Reopened iterative graph sidecars | `w048-treecalc-cycles-002/w048_materialized_graph_check_summary.json`; `scripts/write-w048-materialized-graphs.ps1`; `scripts/check-w048-materialized-graphs.ps1` | satisfied: 37 cases / 111 layers / 24 cycle-region records |
 | Conformance matrix | `w048-conformance-002`; `scripts/check-w048-conformance.ps1` | passed with named blockers |
 | Whole-workset audit | this file | satisfied; parent W048 remains open/partial |
-| External unblock instructions | `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` | prepared for remaining blocked evidence lanes |
+| External unblock instructions | `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` | prepared for remaining second-version evidence lane; root/report lane is now cleared by `w048-excel-root-report-002` |
 
 ## 3. Fresh-Eyes Findings
 
 1. **No proxy green overclaim**: `scripts/check-w048-conformance.ps1` now reports `passed_with_named_excel_blockers`, not final broad Excel closure.
 2. **Status truth preserved**: parent `calc-zci1` remains open; W048 status axes remain partial while blockers exist.
 3. **Iterative evidence exists on both engines**: TraceCalc and TreeCalc both cover the same four falsification fixtures.
-4. **Observation caveats visible**: root/report-cell and cross-version repeat are explicit blockers; numeric/nonnumeric prior-state and multithread variant behavior have targeted evidence.
+4. **Observation caveats visible**: root/report-cell is now cleared for declared local probes by documented `Worksheet.CircularReference`; cross-version repeat remains an explicit blocker; numeric/nonnumeric prior-state and multithread variant behavior have targeted evidence.
 5. **Rework performed after audit finding**: the initial whole-workset audit found that materialized graph sidecar validation was still bound to the predecessor `w048-treecalc-cycles-001` floor. This was reworked by adding `scripts/write-w048-materialized-graphs.ps1`, regenerating sidecars for `w048-treecalc-cycles-002`, and validating 37 cases / 111 layers / 24 cycle-region records / 0 checker errors.
 6. **Implementation scope caveat**: TreeCalc optimized support currently covers declared Excel falsification fixtures through an opt-in compatibility basis. It is not a universal parser/evaluator for arbitrary Excel circular-reference workbooks.
-7. **External unblock kit prepared**: `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` now gives exact PowerShell commands and UI evidence requirements for resolving the two remaining blockers.
+7. **External unblock kit prepared**: `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` gives exact PowerShell commands for resolving the remaining second-version blocker; its older root/report UI path is superseded by `w048-excel-root-report-002`.
 
 ## 4. Exact Open Blockers
 
-These active Excel blockers prevent marking parent W048 or the active user goal complete. The graph-sidecar item is retained below as a cleared audit-trail item:
+The active Excel blocker below prevents marking parent W048 or the active user goal complete. Cleared items are retained as audit-trail items:
 
-1. `BLK-W048-EXCEL-ROOT`: capture report-cell/root behavior through UI warning or a public object-model surface that does not return null for circular references in current COM packets.
+1. `BLK-W048-EXCEL-ROOT`: cleared for declared local probes by `w048-excel-root-report-002` using documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and iteration-enabled self-cycle surfaces no report cell.
 2. `BLK-W048-EXCEL-INITIAL`: cleared for numeric-prior self-cycle behavior by `w048-excel-initial-vector-001`; nonnumeric prior behavior remains under `BLK-W048-EXCEL-NONNUMERIC`.
 3. `BLK-W048-EXCEL-NONNUMERIC`: cleared for declared self-cycle prior-state behavior by `w048-excel-nonnumeric-prior-001`.
 4. `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version before broad compatibility claims.
@@ -87,11 +87,10 @@ br dep cycles --json
 - target_completeness: `target_partial`
 - integration_completeness: `partial`
 - open_lanes:
-  - `BLK-W048-EXCEL-ROOT`;
   - `BLK-W048-EXCEL-VERSION`;
   - parent `calc-zci1` final closure after blocker disposition or explicit user scope acceptance.
 
-Unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`.
+Second-version unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`. Root/report-cell evidence is now recorded in `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md` and `w048-excel-root-report-002`.
 
 ## 7. Audit Decision
 

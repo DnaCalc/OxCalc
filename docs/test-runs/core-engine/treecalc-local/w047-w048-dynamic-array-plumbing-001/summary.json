@@ -1,0 +1,37 @@
+{
+  "schema_version": "oxcalc.treecalc.dynamic_array_plumbing_summary.v1",
+  "run_id": "w047-w048-dynamic-array-plumbing-001",
+  "command": "cargo test -p oxcalc-core --test treecalc_dynamic_array_plumbing -- --nocapture",
+  "test_name": "randarray_spill_shape_is_explicit_treecalc_plumbing_boundary",
+  "status": "passed",
+  "formula_surface_requested": {
+    "A": "=RANDARRAY(5,5)",
+    "B": "=A+1",
+    "C": "=SUM(A,B)",
+    "D": "=INDEX(A,2,2)"
+  },
+  "treecalc_representation": {
+    "A": "ShapeTopology carrier: RANDARRAY(5,5) produces volatile 5x5 spill shape for A",
+    "B": "Binary Add(DirectNode(A), 1)",
+    "C": "FunctionCall SUM(DirectNode(A), DirectNode(B))",
+    "D": "FunctionCall INDEX(DirectNode(A), 2, 2)"
+  },
+  "observed_behavior": {
+    "result_state": "Rejected",
+    "reject_kind": "HostInjectedFailure",
+    "publication_bundle": null,
+    "cycle_groups": [],
+    "runtime_effect_kind": "runtime_effect.shape_topology_reference",
+    "runtime_effect_family": "ShapeTopology",
+    "runtime_effect_overlay_kind": "ShapeTopology"
+  },
+  "graph_expectations_checked": {
+    "B_depends_on_A": true,
+    "C_depends_on_A": true,
+    "C_depends_on_B": true,
+    "D_depends_on_A": true,
+    "A_emits_shape_topology_diagnostic": true,
+    "A_B_C_D_in_invalidation_closure": true
+  },
+  "meaning": "This is a TreeCalc plumbing boundary test. It does not claim native RANDARRAY spill evaluation. It proves the current engine lowers the dependency graph for dependent formulas, treats the spill producer as a shape/topology runtime fact, rejects safely without publishing, and keeps shape-topology evidence replay-visible."
+}

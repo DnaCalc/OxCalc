@@ -1,7 +1,7 @@
 {
     "schema_version":  "oxcalc.w048.iterative_profile_decision.v2",
     "decision_id":  "w048-iterative-profile-decision-002",
-    "status":  "excel_match_profile_specified_with_named_open_version_blocker",
+    "status":  "excel_match_profile_specified_single_host_scope_accepted",
     "default_profile":  {
                             "profile_id":  "cycle.non_iterative_stage1",
                             "iteration_enabled":  false,
@@ -181,6 +181,20 @@
                                    }
                                ],
     "open_blockers_before_final_excel_match_claim":  [
-                                                         "BLK-W048-EXCEL-VERSION: repeat at least the falsification fixture set on a second Excel host/version before broad Excel compatibility claims."
-                                                     ]
+
+                                                     ],
+    "accepted_scope":  {
+                           "scope":  "single_observed_excel_host_version",
+                           "user_acceptance":  "Let us record the single host scope and accept and close like that.",
+                           "accepted_at":  "2026-05-12",
+                           "excel_version":  "16.0",
+                           "excel_build":  "19929",
+                           "product_version":  "16.0.19929.20136",
+                           "inventory_run":  "docs/test-runs/excel-cycles/w048-excel-version-inventory-001/inventory.json",
+                           "limitation":  "No broad cross-version Excel compatibility claim."
+                       },
+    "documented_limitations":  [
+                                   "Cross-version Excel behavior not claimed; W048 evidence is scoped to the single observed Excel host/version.",
+                                   "Multithread Excel variants remain observed profile dimension, not implemented default fixture profile."
+                               ]
 }

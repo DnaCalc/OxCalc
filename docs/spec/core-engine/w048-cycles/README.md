@@ -1,6 +1,6 @@
 # W048 Cycles Packet Root
 
-Status: `reopened_in_progress`
+Status: `closed_single_host_scope`
 
 Parent workset: `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
 
@@ -49,19 +49,21 @@ W048 treats cycle behavior as calculation semantics, not as an incidental schedu
 12. `W048_TOOLING_MIGRATION_OFF_PYTHON.md`
    - active tooling packet replacing W048 Python checkers with PowerShell entry points.
 13. `W048_WHOLE_WORKSET_FRESH_EYES_AUDIT.md`
-   - whole-workset audit after reopened child beads, preserving the remaining version blocker and partial status.
-14. `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md`
+   - whole-workset audit after reopened child beads; superseded by final single-host accepted-scope audit.
+14. `W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md`
+   - final audit recording explicit user acceptance of single-host Excel scope and cross-version limitation.
+15. `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md`
    - targeted root/report-cell evidence packet showing repaired `Worksheet.CircularReference` evidence after `Application.CircularReference` remained null.
-15. `W048_EXCEL_INITIAL_VECTOR_PACKET.md`
+16. `W048_EXCEL_INITIAL_VECTOR_PACKET.md`
    - targeted numeric-prior initial-vector packet showing prior numeric seeds do not survive self-cycle formula assignment in declared probes.
-16. `W048_EXCEL_NONNUMERIC_PRIOR_PACKET.md`
+17. `W048_EXCEL_NONNUMERIC_PRIOR_PACKET.md`
    - targeted blank/text/error prior packet replacing the ambiguous predecessor text-prior observation.
-17. `W048_EXCEL_VERSION_REPEAT_BLOCKER_PACKET.md`
-   - cross-version repeat blocker packet explaining that only one Excel host/version is available locally.
-18. `W048_EXCEL_MULTITHREAD_VARIANT_PACKET.md`
+18. `W048_EXCEL_VERSION_REPEAT_BLOCKER_PACKET.md`
+   - cross-version repeat packet closed by user-accepted single-host scope, with cross-version behavior documented as a limitation.
+19. `W048_EXCEL_MULTITHREAD_VARIANT_PACKET.md`
    - multithread variant packet for declared falsification probes, preserving thread mode as a profile dimension.
-19. `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`
-   - exact external evidence/command packet for the remaining second-version blocker, with optional root/report repeat.
+20. `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`
+   - retained external evidence/command packet for future second-version repeats, with optional root/report repeat.
 
 Active Excel observation packets:
 
@@ -85,15 +87,13 @@ Active Excel observation packets:
 
 ## Status Surface
 
-- execution_state: `in_progress`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- closure_audit: superseded predecessor `W048_CLOSURE_AUDIT_AND_SUCCESSOR_ROUTING.md`
+- execution_state: `closed_single_host_scope`
+- scope_completeness: `scope_complete_single_host`
+- target_completeness: `target_complete_single_host`
+- integration_completeness: `integrated_single_host`
+- closure_audit: `W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md`
 - active_reopen_packet: `W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`
-- open_lanes:
-  - keep W048 tooling on PowerShell/Rust/C#;
-  - derive Excel bit-exact iterative profile from recorded observation packets and any targeted follow-up;
-  - Excel-match iterative profile specification;
-  - TraceCalc and TreeCalc iterative implementations;
-  - final parent closure after named blocker disposition and, if required, regenerated iterative graph sidecars.
+- open_lanes: []
+- documented_limitations:
+  - no broad cross-version Excel compatibility claim;
+  - W048 Excel evidence is scoped to the single observed host/version `16.0` / `19929` / product version `16.0.19929.20136`.

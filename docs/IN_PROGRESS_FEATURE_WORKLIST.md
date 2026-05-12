@@ -3,10 +3,10 @@
 This file is a compact orientation surface. It is not live execution state; `.beads/` owns that. Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
-1. `W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
-2. Current route: reopened W048 scope repair and full Excel-match circular-reference implementation before successor formalization/deepening
+1. `W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md` is closed under user-accepted single-host Excel scope.
+2. Current route: W048 no longer hides Excel-match circular-reference semantics as successor scope; W049 may resume with the W048 cross-version limitation visible.
 3. Predecessor: W047 CTRO implementation-first work through `calc-aylq`
-4. W049 route: deferred until W048 no longer hides Excel-match circular-reference semantics as successor scope
+4. W049 route: available for successor formalization/deepening after W048 single-host closure.
 
 ## Active Aim
 W048 now owns the circular dependency calculation target end to end. The scope was reopened because the prior run closed on a conservative non-iterative slice and deferred Excel-match iterative behavior. Corrected active aim:
@@ -23,9 +23,9 @@ W048 now owns the circular dependency calculation target end to end. The scope w
 
 Current next engineering move:
 
-1. cleared: `calc-zci1.16` / `BLK-W048-EXCEL-ROOT` has declared local root/report evidence from documented `Worksheet.CircularReference` in `w048-excel-root-report-002`;
-2. blocked: `calc-zci1.19` / `BLK-W048-EXCEL-VERSION` needs a second Excel host/version packet, or explicit user acceptance of a single-host scoped claim;
-3. no W048 ready beads remain until the version blocker is resolved or user-scoped.
+1. W048 is closed under accepted single-host scope.
+2. `BLK-W048-EXCEL-VERSION` is a documented limitation, not an active blocker: no broad cross-version Excel compatibility claim is made.
+3. Successor work may proceed with that limitation visible.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

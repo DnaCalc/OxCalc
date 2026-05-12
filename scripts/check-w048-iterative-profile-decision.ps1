@@ -7,7 +7,7 @@ function Add-Err([string]$m) { $errors.Add($m) | Out-Null }
 function Read-Json([string]$p) { if (-not (Test-Path $p)) { throw "Missing JSON: $p" }; Get-Content $p -Raw | ConvertFrom-Json }
 $d = Read-Json $DecisionPath
 if ($d.schema_version -ne "oxcalc.w048.iterative_profile_decision.v2") { Add-Err "unexpected schema_version" }
-if ($d.status -notin @("excel_match_profile_specified_with_named_open_blockers", "excel_match_profile_specified_with_named_open_version_blocker")) { Add-Err "unexpected status" }
+if ($d.status -notin @("excel_match_profile_specified_with_named_open_blockers", "excel_match_profile_specified_with_named_open_version_blocker", "excel_match_profile_specified_single_host_scope_accepted")) { Add-Err "unexpected status" }
 if ($d.default_profile.profile_id -ne "cycle.non_iterative_stage1") { Add-Err "missing default non-iterative profile" }
 if ($d.default_profile.cycle_terminal_state -ne "reject_candidate") { Add-Err "default terminal state must reject candidate" }
 if (($d.default_profile.publication_rule -as [string]) -notmatch "no_new_cycle_values") { Add-Err "default publication rule must prohibit new cycle values" }
@@ -60,7 +60,13 @@ foreach ($id in @("excel_iter_two_node_order_001","excel_iter_three_node_order_0
   if (-not ($fixtures | Where-Object { $_.probe_id -eq $id })) { Add-Err "missing falsification fixture $id" }
 }
 $blockers = @($d.open_blockers_before_final_excel_match_claim)
-if (-not ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-VERSION" })) { Add-Err "missing blocker BLK-W048-EXCEL-VERSION" }
+if ($d.status -eq "excel_match_profile_specified_single_host_scope_accepted") {
+  if (@($blockers).Count -ne 0) { Add-Err "accepted single-host profile should not list open blockers" }
+  if (-not $d.accepted_scope) { Add-Err "accepted single-host profile must include accepted_scope" }
+  if (($d.accepted_scope.limitation -as [string]) -notmatch "cross-version") { Add-Err "accepted scope must document cross-version limitation" }
+} else {
+  if (-not ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-VERSION" })) { Add-Err "missing blocker BLK-W048-EXCEL-VERSION" }
+}
 if ($e.root_policy.status -eq "blocked_for_report_cell_exactness" -and -not ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-ROOT" })) { Add-Err "missing blocker BLK-W048-EXCEL-ROOT" }
 if ($e.root_policy.status -eq "observed_for_declared_non_iterative_report_cell_probes" -and ($blockers | Where-Object { $_ -match "BLK-W048-EXCEL-ROOT" })) { Add-Err "cleared root blocker should not remain in open blockers" }
 if ($errors.Count -gt 0) { Write-Host "w048 iterative profile decision FAILED"; $errors | ForEach-Object { Write-Host "ERROR: $_" }; exit 1 }

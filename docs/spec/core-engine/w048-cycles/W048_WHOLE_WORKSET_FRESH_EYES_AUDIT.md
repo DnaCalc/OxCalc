@@ -1,6 +1,6 @@
 # W048 Whole-Workset Fresh-Eyes Audit
 
-Status: `whole_workset_audited_with_named_blockers`
+Status: `superseded_by_single_host_final_audit`
 
 Audit date: 2026-05-11
 
@@ -95,4 +95,4 @@ Second-version unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`;
 
 ## 7. Audit Decision
 
-Do not mark the active user goal complete. All reopened child beads have been processed and reviewed, but the W048 parent and broad Excel-match closure remain blocked by the exact recorded cross-version blocker.
+Superseded by `W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md` after explicit user acceptance of single-host Excel scope. The former cross-version blocker is now a documented limitation rather than an active blocker.

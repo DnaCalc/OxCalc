@@ -1,6 +1,6 @@
 # W048 Circular Dependency Calculation Processing
 
-Status: `reopened_in_progress`
+Status: `closed_single_host_scope`
 
 Parent predecessor: `W047` (Calc-Time Rebinding Overlay implementation core)
 
@@ -16,7 +16,7 @@ W048 owns circular dependency calculation processing end to end. It covers cycle
 
 The workset includes design, planning, Excel exploration, reference and optimized/core implementations, formal definitions and proof/model/checker artifacts, a deterministic testing corpus, and a profile-gated innovation ledger.
 
-Corrected scope after reopen: W048 owns the comprehensive circular-reference solution, including Excel-behavior matching and bit-exact iterative calculation for the declared probe/profile coverage. The prior conservative Stage 1 closure is superseded because it deferred Excel-match iterative behavior instead of implementing or exactly blocking it with user acceptance.
+Corrected scope after reopen: W048 owns the comprehensive circular-reference solution, including Excel-behavior matching and bit-exact iterative calculation for the declared probe/profile coverage. The prior conservative Stage 1 closure is superseded because it deferred Excel-match iterative behavior. Final W048 closure is under explicit user-accepted single-host Excel scope; cross-version Excel behavior remains a documented limitation rather than an active blocker.
 
 ## 2. Why W048 Comes Before W049
 
@@ -223,10 +223,10 @@ Local W048 tooling must not use Python. New or replacement tooling must be Power
 
 ## 14. Status Surface
 
-- execution_state: `in_progress`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
+- execution_state: `closed_single_host_scope`
+- scope_completeness: `scope_complete_single_host`
+- target_completeness: `target_complete_single_host`
+- integration_completeness: `integrated_single_host`
 - prerequisites:
   - W047 CTRO design and bounded implementation-core progress sufficient to run structural and CTRO-created cycle probes
   - Excel host availability for black-box observation packets
@@ -234,8 +234,11 @@ Local W048 tooling must not use Python. New or replacement tooling must be Power
 - exit_gate: reopened; the prior audit is superseded by `docs/spec/core-engine/w048-cycles/W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`
 - evidence_policy: public docs plus reproducible black-box Excel probes plus TraceCalc/TreeCalc artifacts plus W048 checkers, using PowerShell/Rust/C# tooling only
 - closure_audit: superseded predecessor `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json`
-- open_lanes:
-  - `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version, or obtain explicit user acceptance of a single-host scoped claim;
-  - parent `calc-zci1` final disposition after blocker resolution or user scope acceptance.
+- open_lanes: []
+- accepted_scope:
+  - single-host Excel scope accepted by user on 2026-05-12.
+  - observed host: Excel `16.0` / build `19929` / product version `16.0.19929.20136`.
+- documented_limitations:
+  - `BLK-W048-EXCEL-VERSION`: cross-version Excel behavior is not claimed by W048 evidence.
 - cleared_lanes:
   - `BLK-W048-EXCEL-ROOT`: cleared for declared local probes by `w048-excel-root-report-002` using documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and iteration-enabled self-cycle has no report cell.

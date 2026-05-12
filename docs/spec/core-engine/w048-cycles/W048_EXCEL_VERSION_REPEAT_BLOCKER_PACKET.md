@@ -1,14 +1,14 @@
 # W048 Excel Version Repeat Blocker Packet
 
-Status: `blocked_waiting_for_second_excel_host`
+Status: `closed_by_user_accepted_single_host_scope`
 
 Parent bead: `calc-zci1.19`
 
-Blocker: `BLK-W048-EXCEL-VERSION`
+Former blocker: `BLK-W048-EXCEL-VERSION`
 
 ## 1. Purpose
 
-This packet records the status of the cross-version Excel repeat requirement. W048 has multiple black-box Excel packets, but they were all captured on the same available Excel host/version in this environment.
+This packet records the status and final disposition of the cross-version Excel repeat requirement. W048 has multiple black-box Excel packets, but they were all captured on the same available Excel host/version in this environment. The user explicitly accepted single-host scoped closure on 2026-05-12; cross-version behavior is retained as a documented limitation rather than an active blocker.
 
 ## 2. Evidence Inventory
 
@@ -68,13 +68,13 @@ Findings:
 3. No. Closing this as resolved would overclaim broad Excel compatibility.
 4. Required unblock: run the falsification fixture set on another Excel version/channel/host and commit the normalized packet, or receive explicit user acceptance that W048's Excel-match claim is scoped to the single observed host/version.
 
-Fresh-eyes result: `calc-zci1.19` remains blocked. The blocker is external/environmental, not an implementation failure.
+Fresh-eyes result: `calc-zci1.19` is closed by explicit user acceptance of single-host scoped W048 closure. The underlying cross-version gap is external/environmental and remains a documented limitation, not a broad compatibility claim.
 
 ## 5. Three-Axis Status
 
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - second Excel host/version packet;
-  - or explicit user acceptance of single-host scope.
+- scope_completeness: `scope_complete_single_host`
+- target_completeness: `target_complete_single_host`
+- integration_completeness: `integrated_single_host`
+- open_lanes: []
+- documented_limitations:
+  - no broad cross-version Excel compatibility claim.

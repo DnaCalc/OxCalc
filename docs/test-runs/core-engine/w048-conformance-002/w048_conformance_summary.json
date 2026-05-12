@@ -1,10 +1,10 @@
 {
     "schema_version":  "oxcalc.w048.conformance_summary.v2",
-    "status":  "passed_with_named_excel_version_blocker",
+    "status":  "passed_single_host_scoped",
     "run_id":  "w048-conformance-002",
-    "scope_completeness":  "scope_partial",
-    "target_completeness":  "target_partial",
-    "integration_completeness":  "partial",
+    "scope_completeness":  "scope_complete_single_host",
+    "target_completeness":  "target_complete_single_host",
+    "integration_completeness":  "integrated_single_host",
     "source_summaries":  {
                              "excel_core_observation_count":  12,
                              "excel_bitexact_observation_count":  19,
@@ -31,11 +31,21 @@
                                         "tc_w048_excel_ctro_indirect_iterative_self_001"
                                     ],
     "blockers":  [
-                     "BLK-W048-EXCEL-VERSION"
+
                  ],
     "errors":  [
 
                ],
     "multithread_variant_run":  "docs/test-runs/excel-cycles/w048-excel-multithread-variant-001/observation.json",
-    "root_report_run":  "docs/test-runs/excel-cycles/w048-excel-root-report-002/observation.json"
+    "root_report_run":  "docs/test-runs/excel-cycles/w048-excel-root-report-002/observation.json",
+    "accepted_scope":  {
+                           "scope":  "single_observed_excel_host_version",
+                           "excel_version":  "16.0",
+                           "build":  "19929",
+                           "product_version":  "16.0.19929.20136",
+                           "inventory_run":  "docs/test-runs/excel-cycles/w048-excel-version-inventory-001/inventory.json"
+                       },
+    "documented_limitations":  [
+                                   "No broad cross-version Excel compatibility claim."
+                               ]
 }

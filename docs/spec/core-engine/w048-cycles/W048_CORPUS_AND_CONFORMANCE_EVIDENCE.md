@@ -6,7 +6,7 @@ Status: `active_execution_evidence`
 
 This packet binds the W048 circular-reference corpus and conformance run surface across Excel observations, TraceCalc reference fixtures, TreeCalc optimized/core fixtures, materialized graph/checker projections, and formal/checker artifacts.
 
-This is a reopened W048 conformance packet. It records passed declared coverage plus named blockers; it is not a broad final Excel-compatibility closure claim.
+This is a reopened W048 conformance packet. It records passed declared coverage under the user-accepted single-host Excel scope; it is not a broad cross-version Excel-compatibility closure claim.
 
 ## 2. Evidence Roots
 
@@ -18,7 +18,7 @@ This is a reopened W048 conformance packet. It records passed declared coverage 
 | TreeCalc optimized/core behavior | `docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/` | 37 cases, 0 expectation mismatches |
 | Materialized graph checker | `docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/w048_materialized_graph_check_summary.json` | reopened iterative sidecar floor: 37 cases, 111 graph layers, 24 cycle-region records, 0 checker errors |
 | Excel root/report-cell observations | `docs/test-runs/excel-cycles/w048-excel-root-report-002/observation.json` | 5 worksheet-scoped root/report probes |
-| Cross-corpus conformance summary | `docs/test-runs/core-engine/w048-conformance-002/w048_conformance_summary.json` | `status=passed_with_named_excel_version_blocker` |
+| Cross-corpus conformance summary | `docs/test-runs/core-engine/w048-conformance-002/w048_conformance_summary.json` | `status=passed_single_host_scoped` |
 
 ## 3. Corpus Coverage Matrix
 
@@ -37,7 +37,7 @@ This is a reopened W048 conformance packet. It records passed declared coverage 
 | fractional precision iterative case | covered for declared fixture | Excel `0.33333333333333331`; TraceCalc/TreeCalc matching fixtures |
 | root/report-cell behavior | covered for declared local non-iterative probes | `w048-excel-root-report-002`; `BLK-W048-EXCEL-ROOT` cleared |
 | blank/text/error prior values | covered for declared self-cycle probes | `w048-excel-nonnumeric-prior-001`; `BLK-W048-EXCEL-NONNUMERIC` cleared |
-| cross-version and multithread variants | version blocked; multithread observed variant | `BLK-W048-EXCEL-VERSION`; `w048-excel-multithread-variant-001` |
+| cross-version and multithread variants | cross-version accepted as limitation; multithread observed variant | `W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md`; `w048-excel-multithread-variant-001` |
 | graph materialization reverse-edge converse case | covered by reopened iterative sidecar floor | `scripts/check-w048-materialized-graphs.ps1` over `w048-treecalc-cycles-002` |
 | formal definitions/checker artifacts | covered for current formal floor | `scripts/check-w048-formal-cycle-artifacts.ps1` |
 | innovation profile examples | covered as profile-gated ledger | `scripts/check-w048-innovation-ledger.ps1` |
@@ -61,7 +61,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-innovatio
 Observed conformance result:
 
 ```text
-w048 conformance passed with named blocker disposition: docs/test-runs/core-engine/w048-conformance-002/w048_conformance_summary.json
+w048 conformance ok: status=passed_single_host_scoped path=docs/test-runs/core-engine/w048-conformance-002/w048_conformance_summary.json
 ```
 
 The checker fails if any of these floors are not met:
@@ -72,8 +72,8 @@ The checker fails if any of these floors are not met:
 4. TreeCalc W048 run is not 37 cases with 0 expectation mismatches.
 5. Required TraceCalc and TreeCalc iterative fixtures are missing.
 6. W048 graph checker reopened floor is not 37 cases / 111 layers / at least 24 cycle-region records / 0 checker errors.
-7. The remaining named Excel version blocker is missing or a cleared root blocker is still listed as open.
-8. Any status axis incorrectly claims final full closure while the version blocker remains.
+7. Single-host accepted scope is missing when the summary status is `passed_single_host_scoped`.
+8. Any status axis claims broad cross-version closure instead of single-host scoped closure.
 
 ## 5. Fresh-Eyes Review For `calc-zci1.15`
 
@@ -89,20 +89,20 @@ Review questions:
 Findings:
 
 1. `scripts/check-w048-conformance.ps1` now targets `w048-conformance-002` and requires the bit-exact Excel packet, TraceCalc 38-scenario run, TreeCalc 37-case run, and iterative fixture IDs on both engines.
-2. The conformance status is `passed_with_named_excel_version_blocker`, with all three status axes partial while the version blocker remains.
+2. The conformance status is now `passed_single_host_scoped`, with cross-version behavior documented as a limitation rather than an active blocker.
 3. Both engines cover the same four falsification fixtures from `W048_ITERATIVE_PROFILE_DECISION.json`.
 4. Graph sidecars are regenerated for the reopened iterative TreeCalc run; formal and innovation checker commands remain part of the audit surface.
 
-Fresh-eyes result: `calc-zci1.15` satisfies the reopened conformance audit gate for declared coverage. A later fresh-eyes repair cleared `BLK-W048-EXCEL-ROOT` via `w048-excel-root-report-002`; W048 parent closure remains blocked by the second-host/version lane and whole-workset final disposition.
+Fresh-eyes result: `calc-zci1.15` satisfies the reopened conformance audit gate for declared coverage. Later fresh-eyes repairs cleared `BLK-W048-EXCEL-ROOT` via `w048-excel-root-report-002` and closed the version lane by explicit user-accepted single-host scope.
 
 ## 6. Three-Axis Status
 
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - `BLK-W048-EXCEL-VERSION`;
-  - whole-workset fresh-eyes audit and user disposition for the version blocker before parent closure.
+- scope_completeness: `scope_complete_single_host`
+- target_completeness: `target_complete_single_host`
+- integration_completeness: `integrated_single_host`
+- open_lanes: []
+- documented_limitations:
+  - no broad cross-version Excel compatibility claim.
 - cleared_lanes:
   - `BLK-W048-EXCEL-ROOT` by `w048-excel-root-report-002`;
   - `BLK-W048-EXCEL-INITIAL` by `w048-excel-initial-vector-001`;

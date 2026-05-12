@@ -479,7 +479,7 @@ It does mean:
 
 ### W050 OxCalc/OxFml Formula Authority Rework
 1. purpose:
-   re-establish the formula authority boundary after W047/W048 made TreeCalc examples more prominent: OxFml owns formula semantics, function/operator evaluation, array/spill values, coercion, and returned value surfaces; OxCalc owns structural graph state, dependency descriptors, invalidation, CTRO overlays, cycle policy, candidate/publication state, replay evidence, and evaluator-fact plumbing. TreeCalc should not expose a local formula AST for spreadsheet expressions; formula bindings should be empty/no-formula or OxFml-deferred source plus dependency/evaluator-fact carriers.
+   re-establish the formula authority boundary after W047/W048 made TreeCalc examples more prominent: OxFml owns every formula concern, including parsing, text-literal understanding, programmatic construction, binding, function/operator evaluation, array/spill values, coercion, volatile behavior, and returned value surfaces; OxCalc owns structural graph state, dependency descriptors, invalidation, CTRO overlays, cycle policy, candidate/publication state, replay evidence, and evaluator-fact plumbing. TreeCalc should not expose a local formula AST or formula source-construction helpers for spreadsheet expressions; formula-bearing inputs should be absent/empty or opaque OxFml-owned formula artifacts/source handles plus dependency/evaluator-fact carriers.
 2. depends_on:
    `W048`, `OxFml formula/evaluator seam`
 3. parent_doctrine_and_spec_surfaces:
@@ -487,9 +487,9 @@ It does mean:
 4. upstream_dependencies:
    OxFml returned value/effect/dependency surfaces for opaque formula results, especially dynamic arrays/spills and volatile functions.
 5. closure_condition:
-   W050 closes only after the OxCalc/OxFml formula authority boundary is documented, local formula AST variants for literals/operators/functions are removed or quarantined behind explicitly non-product fixture adapters, all formula-looking OxCalc code is classified as empty/no-formula, OxFml-deferred source, dependency/evaluator-fact projection, or removed/routed to OxFml, tests prove TreeCalc delegates formula evaluation to OxFml for representative formulas, dynamic-array examples are represented as OxFml result surfaces or explicit future work rather than OxCalc-local array plumbing, and W047/W048 showcase wording is repaired if needed.
+   W050 closes only after the OxCalc/OxFml formula authority boundary is documented, local formula AST variants and formula source-construction helpers for literals/operators/functions are removed or quarantined behind explicitly non-product migration adapters, all formula-looking OxCalc code is classified as empty/no-formula, opaque OxFml-owned artifact/source handle, dependency/evaluator-fact projection, or removed/routed to OxFml, tests prove TreeCalc delegates formula evaluation to OxFml for representative formulas without OxCalc parsing or constructing formula text, dynamic-array examples are represented as OxFml result surfaces or explicit future work rather than OxCalc-local array plumbing, and W047/W048 showcase wording is repaired if needed.
 6. initial_epic_lanes:
-   parent epic `calc-cwpl`; child beads: `calc-cwpl.1` code inventory, `calc-cwpl.2` fixture policy, `calc-cwpl.3` OxFml opaque-result tests, `calc-cwpl.4` docs/showcase repair, `calc-cwpl.5` removal/quarantine of the local formula AST surface.
+   parent epic `calc-cwpl`; child beads: `calc-cwpl.1` code inventory, `calc-cwpl.2` fixture policy moving formula construction/parsing to OxFml, `calc-cwpl.3` OxFml opaque-result tests, `calc-cwpl.4` docs/showcase repair, `calc-cwpl.5` removal/quarantine of the local formula AST and source-construction surface.
 7. rollout_mode:
    `open_planning`.
 

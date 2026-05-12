@@ -3,10 +3,10 @@
 This file is a compact orientation surface. It is not live execution state; `.beads/` owns that. Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
-1. `W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md` is closed under user-accepted single-host Excel scope.
-2. Current route: W048 no longer hides Excel-match circular-reference semantics as successor scope; W049 may resume with the W048 cross-version limitation visible.
-3. Predecessor: W047 CTRO implementation-first work through `calc-aylq`
-4. W049 route: available for successor formalization/deepening after W048 single-host closure.
+1. `W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`
+2. Current route: re-establish the OxCalc/OxFml formula authority boundary before further TreeCalc showcase or formula-surface expansion.
+3. Predecessors: W047 CTRO implementation-first work through `calc-aylq`; W048 circular-reference closure under single-host Excel scope.
+4. W049 route remains available for successor formalization/deepening, but W050 should clarify formula authority first where formula semantics are in question.
 
 ## Active Aim
 W048 now owns the circular dependency calculation target end to end. The scope was reopened because the prior run closed on a conservative non-iterative slice and deferred Excel-match iterative behavior. Corrected active aim:
@@ -23,22 +23,23 @@ W048 now owns the circular dependency calculation target end to end. The scope w
 
 Current next engineering move:
 
-1. W048 is closed under accepted single-host scope.
-2. `BLK-W048-EXCEL-VERSION` is a documented limitation, not an active blocker: no broad cross-version Excel compatibility claim is made.
-3. Successor work may proceed with that limitation visible.
+1. Activate W050 child beads for code inventory and docs/showcase wording repair.
+2. Audit `TreeFormula`, `TreeReference`, and `evaluate_via_oxfml` to distinguish source carriage from formula semantics.
+3. Remove or quarantine tests/docs that imply OxCalc locally computes dynamic arrays or spreadsheet functions.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`
 2. `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
-3. `docs/spec/core-engine/w048-cycles/`
-4. `docs/spec/core-engine/w047-ctro/`
-5. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
-6. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
-7. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
-8. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-9. `formal/tla/` for current engine-state models
-10. `formal/lean/` for active proof/model files
-11. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
+3. `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`
+4. `docs/spec/core-engine/w048-cycles/`
+5. `docs/spec/core-engine/w047-ctro/`
+6. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+7. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
+8. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
+9. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+10. `formal/tla/` for current engine-state models
+11. `formal/lean/` for active proof/model files
+12. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
 
 ## Archived Predecessor Material
 W038-W045 packet docs, workset docs, late row-classifier Lean files, generated evidence roots, and superseded showcase material now live under top-level `archive/`.

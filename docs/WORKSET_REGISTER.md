@@ -477,6 +477,22 @@ It does mean:
 7. rollout_mode:
    `closed_single_host_scope` (child beads `calc-zci1.1` through `calc-zci1.20` are closed; prior closure audit at `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json` is superseded by `docs/spec/core-engine/w048-cycles/W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`; final accepted-scope audit is `docs/spec/core-engine/w048-cycles/W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md`; `calc-zci1.16` is cleared by `w048-excel-root-report-002`; `calc-zci1.19` is closed by explicit user acceptance of single-host Excel scope, with cross-version behavior documented as a limitation).
 
+### W050 OxCalc/OxFml Formula Authority Rework
+1. purpose:
+   re-establish the formula authority boundary after W047/W048 made TreeCalc examples more prominent: OxFml owns formula semantics, function/operator evaluation, array/spill values, coercion, and returned value surfaces; OxCalc owns structural graph state, dependency descriptors, invalidation, CTRO overlays, cycle policy, candidate/publication state, replay evidence, and evaluator-fact plumbing. TreeFormula/TreeReference surfaces must be audited as source-carriage and dependency-carrier scaffolding, not as an independent spreadsheet evaluator.
+2. depends_on:
+   `W048`, `OxFml formula/evaluator seam`
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `src/oxcalc-core/src/treecalc.rs`, `src/oxcalc-core/src/formula.rs`, OxFml seam specs in `../OxFml/docs/spec/`
+4. upstream_dependencies:
+   OxFml returned value/effect/dependency surfaces for opaque formula results, especially dynamic arrays/spills and volatile functions.
+5. closure_condition:
+   W050 closes only after the OxCalc/OxFml formula authority boundary is documented, all formula-looking OxCalc code is classified as source carriage, dependency projection, or removed/routed to OxFml, tests prove TreeCalc delegates formula evaluation to OxFml for representative formulas, dynamic-array examples are represented as OxFml result surfaces or explicit future work rather than OxCalc-local array plumbing, and W047/W048 showcase wording is repaired if needed.
+6. initial_epic_lanes:
+   parent epic `calc-cwpl`; child beads to be allocated during W050 activation for code inventory, fixture policy, docs/showcase repair, OxFml opaque-result tests, and removal/quarantine of misleading dynamic-array plumbing tests.
+7. rollout_mode:
+   `open_planning`.
+
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:
    resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer.

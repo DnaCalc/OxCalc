@@ -62,7 +62,8 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 22. `W046` core formalization engine semantic proof spine,
 23. `W047` Calc-Time Rebinding Overlay design sweep,
 24. `W048` circular dependency calculation processing,
-25. `W049` core engine formalization restart after CTRO and cycles.
+25. `W049` core engine formalization restart after CTRO and cycles,
+26. `W050` OxCalc/OxFml formula authority rework.
 
 ## Historical Note
 

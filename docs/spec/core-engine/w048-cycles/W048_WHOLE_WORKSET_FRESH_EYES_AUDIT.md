@@ -47,6 +47,7 @@ Concrete deliverables checked here:
 5. **Rework performed after audit finding**: the initial whole-workset audit found that materialized graph sidecar validation was still bound to the predecessor `w048-treecalc-cycles-001` floor. This was reworked by adding `scripts/write-w048-materialized-graphs.ps1`, regenerating sidecars for `w048-treecalc-cycles-002`, and validating 37 cases / 111 layers / 24 cycle-region records / 0 checker errors.
 6. **Implementation scope caveat**: TreeCalc optimized support currently covers declared Excel falsification fixtures through an opt-in compatibility basis. It is not a universal parser/evaluator for arbitrary Excel circular-reference workbooks.
 7. **External unblock kit prepared**: `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md` gives exact PowerShell commands for resolving the remaining second-version blocker; its older root/report UI path is superseded by `w048-excel-root-report-002`.
+8. **Second-host inventory checked**: `w048-excel-version-inventory-001` records one distinct local Excel product version and confirms no second local host/version is available through the current environment.
 
 ## 4. Exact Open Blockers
 
@@ -55,7 +56,7 @@ The active Excel blocker below prevents marking parent W048 or the active user g
 1. `BLK-W048-EXCEL-ROOT`: cleared for declared local probes by `w048-excel-root-report-002` using documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and iteration-enabled self-cycle surfaces no report cell.
 2. `BLK-W048-EXCEL-INITIAL`: cleared for numeric-prior self-cycle behavior by `w048-excel-initial-vector-001`; nonnumeric prior behavior remains under `BLK-W048-EXCEL-NONNUMERIC`.
 3. `BLK-W048-EXCEL-NONNUMERIC`: cleared for declared self-cycle prior-state behavior by `w048-excel-nonnumeric-prior-001`.
-4. `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version before broad compatibility claims.
+4. `BLK-W048-EXCEL-VERSION`: repeat the falsification fixture set on a second Excel host/version before broad compatibility claims; local inventory `w048-excel-version-inventory-001` found no second local host/version.
 5. `BLK-W048-EXCEL-MT`: cleared as a run requirement by `w048-excel-multithread-variant-001`; thread mode remains a profile dimension because multithread values differ from single-thread fixtures.
 6. `BLK-W048-GRAPH-ITER-SIDECARS`: cleared during post-audit rework by regenerating/checking `w048-treecalc-cycles-002` sidecars. Retained here as an audit trail item, not an active blocker.
 
@@ -90,7 +91,7 @@ br dep cycles --json
   - `BLK-W048-EXCEL-VERSION`;
   - parent `calc-zci1` final closure after blocker disposition or explicit user scope acceptance.
 
-Second-version unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`. Root/report-cell evidence is now recorded in `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md` and `w048-excel-root-report-002`.
+Second-version unblock instructions are in `W048_EXTERNAL_EXCEL_UNBLOCK_KIT.md`; local inventory evidence is in `w048-excel-version-inventory-001`. Root/report-cell evidence is recorded in `W048_EXCEL_ROOT_REPORT_BLOCKER_PACKET.md` and `w048-excel-root-report-002`.
 
 ## 7. Audit Decision
 

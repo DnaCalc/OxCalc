@@ -71,6 +71,8 @@ Active Excel observation packets:
    - expanded 19-probe bit-exact black-box Excel packet used by reopened W048.
 3. `docs/test-runs/excel-cycles/w048-excel-root-report-002/`
    - repaired root/report-cell packet using documented `Worksheet.CircularReference`.
+4. `docs/test-runs/excel-cycles/w048-excel-version-inventory-001/`
+   - local Excel installation/version inventory confirming no second local host/version.
 
 ## Current Conclusions
 

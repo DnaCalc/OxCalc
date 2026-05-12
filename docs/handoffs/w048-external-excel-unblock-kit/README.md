@@ -16,7 +16,7 @@ This packet defines the exact external evidence needed to unblock the remaining 
 Current local blocker state:
 
 1. `BLK-W048-EXCEL-ROOT`: cleared locally by `w048-excel-root-report-002`, which uses documented `Worksheet.CircularReference`; `Application.CircularReference` remains null and is historical negative evidence only.
-2. `BLK-W048-EXCEL-VERSION`: all local Excel packets use the same observed host family (`16.0` / `19929`); W048 still needs a second host/version packet or explicit user acceptance of a single-host scope.
+2. `BLK-W048-EXCEL-VERSION`: all local Excel packets use the same observed host family (`16.0` / `19929`), and `w048-excel-version-inventory-001` found one distinct local product version; W048 still needs a second host/version packet or explicit user acceptance of a single-host scope.
 
 ## 2. Files To Copy To The External Excel Host
 
@@ -28,11 +28,13 @@ scripts/run-w048-excel-root-report-probes.ps1
 scripts/run-w048-excel-initial-vector-probes.ps1
 scripts/run-w048-excel-nonnumeric-prior-probes.ps1
 scripts/run-w048-excel-multithread-variant-probes.ps1
+scripts/run-w048-excel-version-inventory.ps1
 scripts/check-w048-excel-observation-packet.ps1
 scripts/check-w048-excel-root-report-probes.ps1
 scripts/check-w048-excel-initial-vector-probes.ps1
 scripts/check-w048-excel-nonnumeric-prior-probes.ps1
 scripts/check-w048-excel-multithread-variant-probes.ps1
+scripts/check-w048-excel-version-inventory.ps1
 ```
 
 The root/report runner is retained in the bundle so a second host can repeat the now-cleared worksheet-scoped evidence, not because root/report remains a local blocker.
@@ -60,6 +62,7 @@ Run PowerShell from the `OxCalc-w048-excel-unblock/` root.
 Run these commands on a second Excel host/version/channel:
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-version-inventory.ps1 -RunId w048-excel-version-inventory-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-cycle-probes.ps1 -RunId w048-excel-cycles-bitexact-SECONDHOST-001 -ProbeSet bitexact
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-initial-vector-probes.ps1 -RunId w048-excel-initial-vector-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-nonnumeric-prior-probes.ps1 -RunId w048-excel-nonnumeric-prior-SECONDHOST-001
@@ -69,13 +72,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-w048-excel-multi
 Then validate locally on that host:
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-version-inventory.ps1 docs/test-runs/excel-cycles/w048-excel-version-inventory-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-observation-packet.ps1 docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-SECONDHOST-001 -MinimumProbeCount 19
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-initial-vector-probes.ps1 docs/test-runs/excel-cycles/w048-excel-initial-vector-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-nonnumeric-prior-probes.ps1 docs/test-runs/excel-cycles/w048-excel-nonnumeric-prior-SECONDHOST-001
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-w048-excel-multithread-variant-probes.ps1 docs/test-runs/excel-cycles/w048-excel-multithread-variant-SECONDHOST-001
 ```
 
-Return the full `docs/test-runs/excel-cycles/*SECONDHOST*` directories.
+Return the full `docs/test-runs/excel-cycles/*SECONDHOST*` directories, including the version-inventory directory.
 
 ## 4. Optional Repeat Evidence For Root/Report-Cell Packet
 
@@ -151,6 +155,7 @@ Findings:
 4. Yes. Any narrower path must be recorded as a limitation in profile/conformance/audit surfaces.
 5. A copy-ready bundle and zip have been prepared under `docs/handoffs/` so no repo checkout is required on the external Excel host.
 6. Fresh-eyes update: the root/report lane is no longer an active blocker after the worksheet-scoped repair; this kit now primarily serves the second-version lane.
+7. Local inventory update: `w048-excel-version-inventory-001` found no second local Excel product version, so the second-version lane remains external unless the user explicitly accepts single-host scope.
 
 ## 7. Three-Axis Status
 

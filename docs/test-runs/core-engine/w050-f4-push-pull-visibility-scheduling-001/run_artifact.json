@@ -1,0 +1,49 @@
+{
+  "run_id": "w050-f4-push-pull-visibility-scheduling-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core push_pull_scheduling -- --nocapture",
+  "semantic_equivalence_statement": "For the declared visible observer set, PushVisibilityBounded evaluates the same dependency graph and prepared-callable identities as PullFullClosure and publishes the same visible observer value; non-observer dirty formulas may be deferred until visible, aged in, or swept by a full-closure pass.",
+  "fairness_notes": [
+    "PullFullClosure sweeps every formula owner in deterministic topological order.",
+    "PushVisibilityBounded must be paired with periodic full-closure sweeps or observer aging to prevent indefinite deferral of non-visible dirty formulas.",
+    "Deferred formulas stay dirty and replay-visible through scheduling_deferred diagnostics."
+  ],
+  "cases": [
+    {
+      "case_id": "initial_pull_full_closure",
+      "result_state": "published",
+      "evaluation_order": [
+        3,
+        4
+      ],
+      "published_b": "5",
+      "published_c": "20",
+      "policy_diagnostic": true
+    },
+    {
+      "case_id": "push_visibility_bounded_visible_b",
+      "result_state": "published",
+      "evaluation_order": [
+        3
+      ],
+      "published_b": "7",
+      "published_c": "20",
+      "visible_observer_updated": true,
+      "hidden_observer_deferred": true,
+      "fairness_note_recorded": true
+    },
+    {
+      "case_id": "pull_full_closure_after_same_seed",
+      "result_state": "published",
+      "evaluation_order": [
+        3,
+        4
+      ],
+      "published_b": "7",
+      "published_c": "40",
+      "same_visible_value_as_push": true,
+      "same_dependency_graph_as_push": true,
+      "same_prepared_identities_as_push": true
+    }
+  ]
+}

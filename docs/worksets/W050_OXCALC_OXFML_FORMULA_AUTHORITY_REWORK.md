@@ -557,6 +557,15 @@ owned by `.beads/`, not this document.
     kernel-returned values, and OxFml seam trace events. The checked evidence
     root is
     `docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001`.
+34. F4 live uptake: TreeCalc now exposes selectable
+    `LocalTreeCalcSchedulingPolicy` values for pull-flavoured full closure and
+    push-flavoured visibility-bounded scheduling. Both policies run over the
+    same dependency graph and prepared-callable identity surface. The checked
+    fixture updates one visible observer under `PushVisibilityBounded`, proves
+    the visible value matches `PullFullClosure`, records deferred hidden work,
+    and pins the fairness note that push mode requires periodic full-closure
+    sweeps or observer aging. The checked evidence root is
+    `docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001`.
 
 ## 7. Required Work
 
@@ -715,6 +724,12 @@ The W050 work, organised by lane.
     binds the opt-in LET/LAMBDA fixture output to the runtime validation
     tests.
 36. Implement push/pull duality: a wave's scheduling policy (push-flavoured visibility-bounded vs pull-flavoured full-closure) is selectable on top of the same dependency graph and the same `PreparedCallable` cache.
+    F4 adds `LocalTreeCalcSchedulingPolicy::{PullFullClosure,
+    PushVisibilityBounded}` through TreeCalc runtime policy. The visibility
+    fixture selects node 3 as the only visible observer after a shared upstream
+    input changes; node 3 publishes the same value as full closure, node 4
+    remains at its seeded published value and is left dirty/deferred. Evidence:
+    `docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001/run_artifact.json`.
 
 **Lane G — Forward Scaffolding.**
 

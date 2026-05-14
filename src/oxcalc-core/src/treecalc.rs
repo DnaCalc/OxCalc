@@ -85,6 +85,7 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub runtime_policy_id: String,
     pub project_runtime_effect_overlays: bool,
     pub derivation_trace_enabled: bool,
+    pub scheduling_policy: LocalTreeCalcSchedulingPolicy,
 }
 
 impl Default for LocalTreeCalcEnvironmentContext {
@@ -101,6 +102,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             runtime_policy_id: "runtime-policy:default".to_string(),
             project_runtime_effect_overlays: true,
             derivation_trace_enabled: false,
+            scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
         }
     }
 }
@@ -116,6 +118,31 @@ impl LocalTreeCalcEnvironmentContext {
     pub fn with_derivation_trace_enabled(mut self, enabled: bool) -> Self {
         self.derivation_trace_enabled = enabled;
         self
+    }
+
+    #[must_use]
+    pub fn with_scheduling_policy(mut self, policy: LocalTreeCalcSchedulingPolicy) -> Self {
+        self.scheduling_policy = policy;
+        self
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum LocalTreeCalcSchedulingPolicy {
+    #[default]
+    PullFullClosure,
+    PushVisibilityBounded {
+        visible_observer_node_ids: Vec<TreeNodeId>,
+    },
+}
+
+impl LocalTreeCalcSchedulingPolicy {
+    #[must_use]
+    pub fn diagnostic_name(&self) -> &'static str {
+        match self {
+            Self::PullFullClosure => "pull_full_closure",
+            Self::PushVisibilityBounded { .. } => "push_visibility_bounded",
+        }
     }
 }
 
@@ -388,8 +415,6 @@ impl LocalTreeCalcEngine {
             DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
         let published_dynamic_dependencies =
             dynamic_dependency_facts_from_runtime_effects(&input.seeded_published_runtime_effects);
-        let dynamic_dependency_shape_updates =
-            dynamic_dependency_shape_updates(&published_dynamic_dependencies, &dependency_graph);
         let dynamic_dependency_delta_owner_ids =
             dynamic_dependency_delta_owner_ids(&published_dynamic_dependencies, &dependency_graph);
         phase_timer.record_duration(
@@ -453,6 +478,27 @@ impl LocalTreeCalcEngine {
             &prepared_formula_identities,
         ));
         let mut derivation_traces = Vec::new();
+        let scheduling_plan = plan_treecalc_schedule(
+            &input.environment_context.scheduling_policy,
+            &dependency_graph,
+            &invalidation_closure,
+            &formula_owner_ids,
+        );
+        diagnostics.extend(scheduling_plan.diagnostics.clone());
+        let scheduled_formula_owner_ids = scheduling_plan.scheduled_formula_owner_ids.clone();
+        let scheduled_formula_owner_set = scheduled_formula_owner_ids
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let scheduled_dynamic_dependency_delta_owner_ids = dynamic_dependency_delta_owner_ids
+            .intersection(&scheduled_formula_owner_set)
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let dynamic_dependency_shape_updates = dynamic_dependency_shape_updates_for_owners(
+            &published_dynamic_dependencies,
+            &dependency_graph,
+            Some(&scheduled_formula_owner_set),
+        );
         let mut edge_value_cache = build_seeded_edge_value_cache(
             &prepared_formulas,
             &input.seeded_published_values,
@@ -462,15 +508,20 @@ impl LocalTreeCalcEngine {
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
         let phase_start = Instant::now();
-        for node_id in &formula_owner_ids {
+        for node_id in &scheduling_plan.dirty_formula_owner_ids {
             recalc_tracker.mark_dirty(*node_id);
+        }
+        for node_id in &scheduled_formula_owner_ids {
+            if recalc_tracker.get_state(*node_id) == NodeCalcState::Clean {
+                recalc_tracker.mark_dirty(*node_id);
+            }
             recalc_tracker.mark_needed(*node_id)?;
         }
         phase_timer.record_duration("recalc_tracker_mark_dirty_needed", phase_start.elapsed());
 
         let phase_start = Instant::now();
         let evaluation_order_result =
-            topological_formula_order(&dependency_graph, &formula_owner_ids);
+            topological_formula_order(&dependency_graph, &scheduled_formula_owner_ids);
         phase_timer.record_duration("topological_formula_order", phase_start.elapsed());
         let evaluation_order = match evaluation_order_result {
             Ok(order) => order,
@@ -489,7 +540,7 @@ impl LocalTreeCalcEngine {
                             invalidation_closure,
                             diagnostics,
                             phase_timer,
-                            formula_owner_ids: &formula_owner_ids,
+                            formula_owner_ids: &scheduled_formula_owner_ids,
                             prepared_formula_identities: prepared_formula_identities.clone(),
                         },
                     );
@@ -505,7 +556,7 @@ impl LocalTreeCalcEngine {
                     Vec::new(),
                     diagnostics,
                     phase_timer,
-                    &formula_owner_ids,
+                    &scheduled_formula_owner_ids,
                     prepared_formula_identities.clone(),
                     None,
                     error,
@@ -533,7 +584,7 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 diagnostics,
                 phase_timer,
-                &formula_owner_ids,
+                &scheduled_formula_owner_ids,
                 prepared_formula_identities.clone(),
                 None,
                 LocalTreeCalcError::StructuralRebindRequired { node_id },
@@ -551,6 +602,9 @@ impl LocalTreeCalcEngine {
                         dependency_descriptor_owners
                             .get(&diagnostic.descriptor_id)
                             .copied()
+                            .filter(|owner_node_id| {
+                                scheduled_formula_owner_set.contains(owner_node_id)
+                            })
                             .map(|owner_node_id| {
                                 (
                                     owner_node_id,
@@ -573,7 +627,7 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 diagnostics,
                 phase_timer,
-                &formula_owner_ids,
+                &scheduled_formula_owner_ids,
                 prepared_formula_identities.clone(),
                 None,
                 LocalTreeCalcError::DependencyGraphIncompatible { node_id, detail },
@@ -586,7 +640,8 @@ impl LocalTreeCalcEngine {
             let prepared = prepared_formulas
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
-            let has_dynamic_dependency_delta = dynamic_dependency_delta_owner_ids.contains(node_id);
+            let has_dynamic_dependency_delta =
+                scheduled_dynamic_dependency_delta_owner_ids.contains(node_id);
             let phase_start = Instant::now();
             let cached_value = edge_value_cache.as_ref().and_then(|cache| {
                 lookup_edge_value_cache(
@@ -648,11 +703,11 @@ impl LocalTreeCalcEngine {
                             runtime_effect_overlays,
                             diagnostics,
                             phase_timer,
-                            &formula_owner_ids,
+                            &scheduled_formula_owner_ids,
                             prepared_formula_identities.clone(),
                             Some(LocalEvaluatorCandidate {
                                 candidate_result_id: input.candidate_result_id.clone(),
-                                target_set: formula_owner_ids.clone(),
+                                target_set: scheduled_formula_owner_ids.clone(),
                                 value_updates,
                                 dependency_shape_updates: dynamic_dependency_shape_updates.clone(),
                                 runtime_effects: failure_runtime_effects,
@@ -759,7 +814,7 @@ impl LocalTreeCalcEngine {
             .value_updates
             .keys()
             .copied()
-            .chain(dynamic_dependency_delta_owner_ids.iter().copied())
+            .chain(scheduled_dynamic_dependency_delta_owner_ids.iter().copied())
             .collect::<BTreeSet<_>>();
         for node_id in publish_ready_node_ids {
             recalc_tracker.publish_and_clear(node_id)?;
@@ -1347,9 +1402,10 @@ struct DynamicDependencyFact {
     identity: String,
 }
 
-fn dynamic_dependency_shape_updates(
+fn dynamic_dependency_shape_updates_for_owners(
     published_dynamic_dependencies: &[DynamicDependencyFact],
     dependency_graph: &DependencyGraph,
+    owner_filter: Option<&BTreeSet<TreeNodeId>>,
 ) -> Vec<DependencyShapeUpdate> {
     let current_dynamic_dependencies = dynamic_dependency_facts_from_graph(dependency_graph);
     let published_set = published_dynamic_dependencies
@@ -1363,12 +1419,18 @@ fn dynamic_dependency_shape_updates(
 
     let mut updates = Vec::new();
     for released in published_set.difference(&current_set) {
+        if owner_filter.is_some_and(|owners| !owners.contains(&released.owner_node_id)) {
+            continue;
+        }
         updates.push(DependencyShapeUpdate {
             kind: "release_dynamic_dep".to_string(),
             affected_node_ids: sorted_node_pair(released.owner_node_id, released.target_node_id),
         });
     }
     for activated in current_set.difference(&published_set) {
+        if owner_filter.is_some_and(|owners| !owners.contains(&activated.owner_node_id)) {
+            continue;
+        }
         updates.push(DependencyShapeUpdate {
             kind: "activate_dynamic_dep".to_string(),
             affected_node_ids: sorted_node_pair(activated.owner_node_id, activated.target_node_id),
@@ -1682,6 +1744,10 @@ fn runtime_effect_context_diagnostics(context: &LocalTreeCalcEnvironmentContext)
             "runtime_effect_environment_derivation_trace_enabled:{}",
             context.derivation_trace_enabled
         ),
+        format!(
+            "runtime_effect_environment_scheduling_policy:{}",
+            context.scheduling_policy.diagnostic_name()
+        ),
     ]
 }
 
@@ -1692,6 +1758,137 @@ fn runtime_effect_overlay_kind(runtime_effect: &RuntimeEffect) -> OverlayKind {
             OverlayKind::ExecutionRestriction
         }
         RuntimeEffectFamily::ShapeTopology => OverlayKind::ShapeTopology,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LocalTreeCalcSchedulingPlan {
+    scheduled_formula_owner_ids: Vec<TreeNodeId>,
+    dirty_formula_owner_ids: Vec<TreeNodeId>,
+    diagnostics: Vec<String>,
+}
+
+fn plan_treecalc_schedule(
+    policy: &LocalTreeCalcSchedulingPolicy,
+    dependency_graph: &DependencyGraph,
+    invalidation_closure: &InvalidationClosure,
+    formula_owner_ids: &[TreeNodeId],
+) -> LocalTreeCalcSchedulingPlan {
+    let formula_owner_set = formula_owner_ids.iter().copied().collect::<BTreeSet<_>>();
+    let dirty_formula_owner_set = invalidation_closure
+        .records
+        .keys()
+        .copied()
+        .filter(|node_id| formula_owner_set.contains(node_id))
+        .collect::<BTreeSet<_>>();
+
+    let scheduled_formula_owner_set = match policy {
+        LocalTreeCalcSchedulingPolicy::PullFullClosure => formula_owner_set.clone(),
+        LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
+            visible_observer_node_ids,
+        } => {
+            let mut scheduled = BTreeSet::new();
+            for observer_node_id in visible_observer_node_ids {
+                if formula_owner_set.contains(observer_node_id) {
+                    collect_upstream_formula_dependencies(
+                        *observer_node_id,
+                        dependency_graph,
+                        &formula_owner_set,
+                        &mut scheduled,
+                    );
+                }
+            }
+            scheduled
+        }
+    };
+
+    let scheduled_formula_owner_ids = formula_owner_ids
+        .iter()
+        .copied()
+        .filter(|node_id| scheduled_formula_owner_set.contains(node_id))
+        .collect::<Vec<_>>();
+    let dirty_formula_owner_ids = formula_owner_ids
+        .iter()
+        .copied()
+        .filter(|node_id| dirty_formula_owner_set.contains(node_id))
+        .collect::<Vec<_>>();
+    let deferred_formula_owner_ids = dirty_formula_owner_ids
+        .iter()
+        .copied()
+        .filter(|node_id| !scheduled_formula_owner_set.contains(node_id))
+        .collect::<Vec<_>>();
+
+    let mut diagnostics = vec![
+        format!("scheduling_policy:{}", policy.diagnostic_name()),
+        format!("scheduling_formula_owner_count:{}", formula_owner_ids.len()),
+        format!(
+            "scheduling_selected_formula_count:{}",
+            scheduled_formula_owner_ids.len()
+        ),
+        format!(
+            "scheduling_deferred_formula_count:{}",
+            deferred_formula_owner_ids.len()
+        ),
+    ];
+
+    match policy {
+        LocalTreeCalcSchedulingPolicy::PullFullClosure => {
+            diagnostics.push("scheduling_semantic_equivalence_scope:full_closure".to_string());
+            diagnostics.push(
+                "scheduling_starvation_fairness_note:pull_full_closure_sweeps_all_formula_owners"
+                    .to_string(),
+            );
+        }
+        LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
+            visible_observer_node_ids,
+        } => {
+            for observer_node_id in visible_observer_node_ids {
+                diagnostics.push(format!("scheduling_visible_observer:{observer_node_id}"));
+                if scheduled_formula_owner_set.contains(observer_node_id) {
+                    diagnostics.push(format!(
+                        "scheduling_visible_observer_update:{observer_node_id}"
+                    ));
+                }
+            }
+            for node_id in &deferred_formula_owner_ids {
+                diagnostics.push(format!("scheduling_deferred:{node_id}"));
+            }
+            diagnostics.push("scheduling_semantic_equivalence_scope:visible_observers".to_string());
+            diagnostics.push(
+                "scheduling_starvation_fairness_note:push_visibility_bounded_requires_periodic_full_closure_or_observer_aging"
+                    .to_string(),
+            );
+        }
+    }
+
+    LocalTreeCalcSchedulingPlan {
+        scheduled_formula_owner_ids,
+        dirty_formula_owner_ids,
+        diagnostics,
+    }
+}
+
+fn collect_upstream_formula_dependencies(
+    node_id: TreeNodeId,
+    dependency_graph: &DependencyGraph,
+    formula_owner_set: &BTreeSet<TreeNodeId>,
+    scheduled: &mut BTreeSet<TreeNodeId>,
+) {
+    if !formula_owner_set.contains(&node_id) || !scheduled.insert(node_id) {
+        return;
+    }
+
+    if let Some(edges) = dependency_graph.edges_by_owner.get(&node_id) {
+        for edge in edges {
+            if formula_owner_set.contains(&edge.target_node_id) {
+                collect_upstream_formula_dependencies(
+                    edge.target_node_id,
+                    dependency_graph,
+                    formula_owner_set,
+                    scheduled,
+                );
+            }
+        }
     }
 }
 
@@ -3265,6 +3462,11 @@ mod tests {
             .join("../../docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001")
     }
 
+    fn f4_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001")
+    }
+
     fn derivation_trace_input(trace_enabled: bool, run_suffix: &str) -> LocalTreeCalcInput {
         let mut input = formula_input(
             TreeNodeId(3),
@@ -3473,6 +3675,169 @@ mod tests {
         })
     }
 
+    fn push_pull_scheduling_catalog() -> TreeFormulaCatalog {
+        TreeFormulaCatalog::new([
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:f4:b".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:f4:b".to_string())),
+                expression: fixture_formula(
+                    TreeNodeId(3),
+                    FixtureFormulaAst::Binary {
+                        op: FixtureFormulaBinaryOp::Add,
+                        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        })),
+                        right: Box::new(FixtureFormulaAst::Literal {
+                            value: "3".to_string(),
+                        }),
+                    },
+                ),
+            },
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(4),
+                formula_artifact_id: FormulaArtifactId("formula:f4:c".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:f4:c".to_string())),
+                expression: fixture_formula(
+                    TreeNodeId(4),
+                    FixtureFormulaAst::Binary {
+                        op: FixtureFormulaBinaryOp::Multiply,
+                        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        })),
+                        right: Box::new(FixtureFormulaAst::Literal {
+                            value: "10".to_string(),
+                        }),
+                    },
+                ),
+            },
+        ])
+    }
+
+    fn push_pull_scheduling_input(
+        structural_snapshot: StructuralSnapshot,
+        seeded_published_values: BTreeMap<TreeNodeId, String>,
+        invalidation_seeds: Vec<InvalidationSeed>,
+        scheduling_policy: LocalTreeCalcSchedulingPolicy,
+        run_suffix: &str,
+    ) -> LocalTreeCalcInput {
+        LocalTreeCalcInput {
+            structural_snapshot,
+            formula_catalog: push_pull_scheduling_catalog(),
+            seeded_published_values,
+            seeded_published_runtime_effects: Vec::new(),
+            invalidation_seeds,
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("cand:f4:{run_suffix}"),
+            publication_id: format!("pub:f4:{run_suffix}"),
+            compatibility_basis: format!("snapshot:f4:{run_suffix}"),
+            artifact_token_basis: format!("snapshot:f4:{run_suffix}"),
+            environment_context: LocalTreeCalcEnvironmentContext::default()
+                .with_scheduling_policy(scheduling_policy),
+        }
+    }
+
+    fn run_push_pull_scheduling_scenarios() -> (
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+    ) {
+        let engine = LocalTreeCalcEngine;
+        let initial = engine
+            .execute(push_pull_scheduling_input(
+                snapshot(),
+                BTreeMap::new(),
+                Vec::new(),
+                LocalTreeCalcSchedulingPolicy::PullFullClosure,
+                "initial",
+            ))
+            .expect("F4 initial pull run should publish both formulas");
+
+        let edited_snapshot = snapshot()
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetConstantValue {
+                    node_id: TreeNodeId(2),
+                    constant_value: Some("4".to_string()),
+                },
+            )
+            .expect("constant edit should be valid")
+            .snapshot;
+        let upstream_seed = vec![InvalidationSeed {
+            node_id: TreeNodeId(2),
+            reason: InvalidationReasonKind::UpstreamPublication,
+        }];
+
+        let push_visible = engine
+            .execute(push_pull_scheduling_input(
+                edited_snapshot.clone(),
+                initial.published_values.clone(),
+                upstream_seed.clone(),
+                LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
+                    visible_observer_node_ids: vec![TreeNodeId(3)],
+                },
+                "push-visible-b",
+            ))
+            .expect("F4 push visibility-bounded run should publish visible observer");
+
+        let pull_full = engine
+            .execute(push_pull_scheduling_input(
+                edited_snapshot,
+                initial.published_values.clone(),
+                upstream_seed,
+                LocalTreeCalcSchedulingPolicy::PullFullClosure,
+                "pull-full",
+            ))
+            .expect("F4 pull full-closure run should publish all affected formulas");
+
+        (initial, push_visible, pull_full)
+    }
+
+    fn push_pull_scheduling_artifact_json() -> serde_json::Value {
+        let (initial, push_visible, pull_full) = run_push_pull_scheduling_scenarios();
+        json!({
+            "run_id": "w050-f4-push-pull-visibility-scheduling-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core push_pull_scheduling -- --nocapture",
+            "semantic_equivalence_statement": "For the declared visible observer set, PushVisibilityBounded evaluates the same dependency graph and prepared-callable identities as PullFullClosure and publishes the same visible observer value; non-observer dirty formulas may be deferred until visible, aged in, or swept by a full-closure pass.",
+            "fairness_notes": [
+                "PullFullClosure sweeps every formula owner in deterministic topological order.",
+                "PushVisibilityBounded must be paired with periodic full-closure sweeps or observer aging to prevent indefinite deferral of non-visible dirty formulas.",
+                "Deferred formulas stay dirty and replay-visible through scheduling_deferred diagnostics."
+            ],
+            "cases": [
+                {
+                    "case_id": "initial_pull_full_closure",
+                    "result_state": treecalc_state_key(&initial.result_state),
+                    "evaluation_order": initial.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
+                    "published_b": initial.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "published_c": initial.published_values.get(&TreeNodeId(4)).cloned().unwrap_or_default(),
+                    "policy_diagnostic": has_diagnostic_prefix(&initial, "scheduling_policy:pull_full_closure")
+                },
+                {
+                    "case_id": "push_visibility_bounded_visible_b",
+                    "result_state": treecalc_state_key(&push_visible.result_state),
+                    "evaluation_order": push_visible.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
+                    "published_b": push_visible.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "published_c": push_visible.published_values.get(&TreeNodeId(4)).cloned().unwrap_or_default(),
+                    "visible_observer_updated": has_diagnostic_prefix(&push_visible, "scheduling_visible_observer_update:node:3"),
+                    "hidden_observer_deferred": has_diagnostic_prefix(&push_visible, "scheduling_deferred:node:4"),
+                    "fairness_note_recorded": has_diagnostic_prefix(&push_visible, "scheduling_starvation_fairness_note:push_visibility_bounded")
+                },
+                {
+                    "case_id": "pull_full_closure_after_same_seed",
+                    "result_state": treecalc_state_key(&pull_full.result_state),
+                    "evaluation_order": pull_full.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
+                    "published_b": pull_full.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "published_c": pull_full.published_values.get(&TreeNodeId(4)).cloned().unwrap_or_default(),
+                    "same_visible_value_as_push": pull_full.published_values.get(&TreeNodeId(3)) == push_visible.published_values.get(&TreeNodeId(3)),
+                    "same_dependency_graph_as_push": pull_full.dependency_graph == push_visible.dependency_graph,
+                    "same_prepared_identities_as_push": pull_full.prepared_formula_identities == push_visible.prepared_formula_identities
+                }
+            ]
+        })
+    }
+
     #[test]
     fn differential_evaluation_gate_reuses_cached_value_without_publication_change() {
         let (initial, reuse, _) = run_differential_evaluation_gate_scenarios();
@@ -3580,6 +3945,68 @@ mod tests {
         .expect("F3 run artifact should be valid JSON");
 
         assert_eq!(artifact, derivation_trace_invoke_outcome_artifact_json());
+    }
+
+    #[test]
+    fn push_pull_scheduling_updates_visible_observer_without_hidden_publication() {
+        let (initial, push_visible, _) = run_push_pull_scheduling_scenarios();
+
+        assert_eq!(initial.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(initial.evaluation_order, vec![TreeNodeId(3), TreeNodeId(4)]);
+        assert_eq!(initial.published_values[&TreeNodeId(3)], "5");
+        assert_eq!(initial.published_values[&TreeNodeId(4)], "20");
+        assert_has_diagnostic(&initial, "scheduling_policy:pull_full_closure");
+
+        assert_eq!(push_visible.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(push_visible.evaluation_order, vec![TreeNodeId(3)]);
+        assert_eq!(push_visible.published_values[&TreeNodeId(3)], "7");
+        assert_eq!(push_visible.published_values[&TreeNodeId(4)], "20");
+        assert_eq!(
+            push_visible.node_states.get(&TreeNodeId(4)),
+            Some(&NodeCalcState::DirtyPending)
+        );
+        assert_has_diagnostic(&push_visible, "scheduling_policy:push_visibility_bounded");
+        assert_has_diagnostic(&push_visible, "scheduling_visible_observer_update:node:3");
+        assert_has_diagnostic(&push_visible, "scheduling_deferred:node:4");
+        assert_has_diagnostic(
+            &push_visible,
+            "scheduling_starvation_fairness_note:push_visibility_bounded_requires_periodic_full_closure_or_observer_aging",
+        );
+    }
+
+    #[test]
+    fn push_pull_scheduling_visible_observer_matches_full_closure() {
+        let (_, push_visible, pull_full) = run_push_pull_scheduling_scenarios();
+
+        assert_eq!(pull_full.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(
+            pull_full.evaluation_order,
+            vec![TreeNodeId(3), TreeNodeId(4)]
+        );
+        assert_eq!(pull_full.published_values[&TreeNodeId(3)], "7");
+        assert_eq!(pull_full.published_values[&TreeNodeId(4)], "40");
+        assert_has_diagnostic(&pull_full, "scheduling_policy:pull_full_closure");
+
+        assert_eq!(
+            push_visible.published_values.get(&TreeNodeId(3)),
+            pull_full.published_values.get(&TreeNodeId(3))
+        );
+        assert_eq!(push_visible.dependency_graph, pull_full.dependency_graph);
+        assert_eq!(
+            push_visible.prepared_formula_identities,
+            pull_full.prepared_formula_identities
+        );
+    }
+
+    #[test]
+    fn push_pull_scheduling_checked_artifact_matches_runtime_validation() {
+        let artifact_path = f4_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("F4 run artifact should be checked in"),
+        )
+        .expect("F4 run artifact should be valid JSON");
+
+        assert_eq!(artifact, push_pull_scheduling_artifact_json());
     }
 
     #[test]

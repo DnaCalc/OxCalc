@@ -14,6 +14,7 @@ use crate::structural::{StructuralSnapshot, TreeNodeId};
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
+    LocalTreeCalcSchedulingPolicy,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +104,7 @@ pub struct OxCalcTreeRuntimePolicy {
     pub emit_environment_diagnostics: bool,
     pub project_runtime_effect_overlays: bool,
     pub derivation_trace_enabled: bool,
+    pub scheduling_policy: LocalTreeCalcSchedulingPolicy,
 }
 
 impl Default for OxCalcTreeRuntimePolicy {
@@ -112,6 +114,7 @@ impl Default for OxCalcTreeRuntimePolicy {
             emit_environment_diagnostics: true,
             project_runtime_effect_overlays: true,
             derivation_trace_enabled: false,
+            scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
         }
     }
 }
@@ -176,6 +179,7 @@ impl OxCalcTreeEnvironment {
             runtime_policy_id: self.runtime_policy.policy_id.clone(),
             project_runtime_effect_overlays: self.runtime_policy.project_runtime_effect_overlays,
             derivation_trace_enabled: self.runtime_policy.derivation_trace_enabled,
+            scheduling_policy: self.runtime_policy.scheduling_policy.clone(),
         }
     }
 
@@ -223,6 +227,10 @@ impl OxCalcTreeEnvironment {
             format!(
                 "oxcalc_tree_environment_derivation_trace_enabled:{}",
                 self.runtime_policy.derivation_trace_enabled
+            ),
+            format!(
+                "oxcalc_tree_environment_scheduling_policy:{}",
+                self.runtime_policy.scheduling_policy.diagnostic_name()
             ),
         ]
     }
@@ -376,6 +384,7 @@ mod tests {
                 emit_environment_diagnostics: true,
                 project_runtime_effect_overlays: true,
                 derivation_trace_enabled: false,
+                scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
             });
         let facade = OxCalcTreeRuntimeFacade::new(environment.clone());
 
@@ -427,6 +436,7 @@ mod tests {
                     emit_environment_diagnostics: true,
                     project_runtime_effect_overlays: true,
                     derivation_trace_enabled: false,
+                    scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
                 }),
         );
 
@@ -494,6 +504,7 @@ mod tests {
                     emit_environment_diagnostics: true,
                     project_runtime_effect_overlays: false,
                     derivation_trace_enabled: false,
+                    scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
                 }),
         );
 

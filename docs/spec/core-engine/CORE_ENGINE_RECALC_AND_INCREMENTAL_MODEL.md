@@ -368,7 +368,28 @@ The trace record is replay evidence for what the invocation observed. It is
 not an alternate evaluator and does not change cache eligibility, candidate
 adaptation, coordinator admission, or publication.
 
-### 13.5 Why These Lanes Remain Explicit
+### 13.5 Push/Pull Visibility-Bounded Scheduling
+Scheduling policy is selectable above the dependency graph and
+`PreparedCallable` cache:
+1. `PullFullClosure` sweeps every formula owner in deterministic topological
+   order.
+2. `PushVisibilityBounded` selects the declared visible observer formulas and
+   their upstream formula dependencies over the same dependency graph and
+   prepared-callable identities.
+
+Semantic-equivalence statement: for a declared visible observer set,
+`PushVisibilityBounded` and `PullFullClosure` must produce the same values for
+the visible observers when run against the same structural snapshot,
+dependency graph, prepared-callable identities, seeded published values, and
+invalidation seeds. Non-visible dirty formulas may remain deferred; that is a
+scheduling boundary, not a different semantic truth.
+
+Fairness/starvation rule: visibility-bounded push scheduling requires either
+periodic full-closure sweeps or observer aging so non-visible dirty formulas
+cannot be deferred indefinitely. Deferred work must remain replay-visible
+through diagnostics or equivalent run artifacts.
+
+### 13.6 Why These Lanes Remain Explicit
 They remain explicit so that:
 1. the architecture does not forget them,
 2. later promotions have a named target,

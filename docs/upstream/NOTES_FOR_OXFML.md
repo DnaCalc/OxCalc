@@ -1355,3 +1355,31 @@ Current non-assumptions:
    affected formulas,
 3. OxCalc is not claiming targeted invalidation for profile changes; the
    current V1 path is intentionally conservative.
+
+## 76. W050 C5 Plan-Template Reuse Trace-Count Uptake
+OxCalc has added deterministic current V1 trace-count evidence for
+plan-template reuse across multiple call sites.
+
+Current OxCalc code shape is:
+1. TreeCalc groups `PreparedFormulaIdentityTrace` records by
+   `plan_template_key`,
+2. diagnostics emit
+   `oxfml_plan_template_reuse_count:{plan_template_key}:call_sites=N;prepared_callables=M;hole_bindings=K`,
+3. the C5 test exercises two `SUM` call sites that share one
+   `plan_template_key` while retaining two `prepared_callable_key` values,
+   two `hole_binding_fingerprint` values, and distinct published values.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. the grouping is over OxCalc compatibility identity fields,
+2. OxFml still owns canonical prepared-callable and plan-template cache
+   semantics,
+3. OxFml should eventually expose canonical reuse/cache counters or stable
+   trace fields if this evidence becomes part of the shared seam.
+
+Current non-assumptions:
+1. OxCalc is not claiming canonical OxFml cache reuse,
+2. OxCalc is not claiming a shared object lifetime or skipped OxFml
+   semantic work,
+3. OxCalc is using this as trace-count evidence that the identity split can
+   observe one template across multiple call sites without semantic
+   shortcutting.

@@ -307,6 +307,13 @@ owned by `.beads/`, not this document.
     versions differ. Current V1 behavior conservatively marks all formula
     owners for rebind because targeted affected-callable metadata is
     sibling-owned by OxFml/OxFunc.
+14. C5 live uptake: TreeCalc diagnostics now emit
+    `oxfml_plan_template_reuse_count` records grouped by
+    `plan_template_key`. The deterministic C5 test proves two `SUM` call
+    sites share one template key while retaining two prepared-callable
+    identities, two hole-binding fingerprints, and distinct published
+    values. This is current V1 trace-count evidence, not a canonical OxFml
+    cache claim.
 
 ## 7. Required Work
 
@@ -343,7 +350,8 @@ The W050 work, organised by lane.
     canonical OxFml fields remain open for C2/CALC-002.
 20. Move `PreparedCallable` to `(PlanTemplate, HoleBindings)` shape; verify reuse across cells sharing `plan_template_key` via a microbenchmark or trace-counting test.
     C2 now covers the artifact shape and deterministic separation tests;
-    reuse evidence remains open in C5.
+    C5 now covers current V1 trace-count evidence for shared
+    `plan_template_key` with distinct per-call-site bindings and values.
 21. Implement the default hole-type taxonomy: `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`.
     C3 now covers current V1 taxonomy representation, stable keying, and
     wide-by-default production mapping. Lane G capability vocabulary and

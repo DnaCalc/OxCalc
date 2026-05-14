@@ -1028,7 +1028,34 @@ profile version is unchanged, observable formula results are invariant.
 When it changes, the conservative rebind gate prevents stale prepared
 callables from publishing.
 
-### 22.15 CALC-002 Handoff Inputs
+### 22.15 Current V1 Plan-Template Reuse Trace-Count Evidence
+The current OxCalc C5 uptake adds deterministic trace-count evidence for
+the plan-template identity split.
+
+Current mapping:
+1. TreeCalc diagnostics now include
+   `oxfml_plan_template_reuse_count:{plan_template_key}:call_sites=N;prepared_callables=M;hole_bindings=K`.
+2. The counter groups current `PreparedFormulaIdentityTrace` records by
+   `plan_template_key` and counts call sites, distinct
+   `prepared_callable_key` values, and distinct `hole_binding_fingerprint`
+   values.
+3. The deterministic C5 test runs two `SUM` call sites with the same
+   template shape and different hole bindings. It observes one
+   `plan_template_key`, two prepared-callable identities, two
+   hole-binding fingerprints, and two distinct published values.
+4. The evidence is trace-counting evidence over current V1 compatibility
+   artifacts. It does not claim a canonical OxFml cache, shared object
+   lifetime, or skipped semantic work inside OxFml.
+
+Semantic equivalence statement: C5 adds reuse-count diagnostics and tests
+only. It does not change source parsing, binding, semantic-plan
+compilation, runtime invocation, candidate adaptation, rejection policy,
+scheduling strategy, or OxCalc coordinator publication authority for any
+currently exercised Stage 1 profile. Observable formula results are
+invariant; the C5 evidence specifically checks distinct published values
+for call sites sharing one template key.
+
+### 22.16 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1078,6 +1105,10 @@ callables from publishing.
     version and, if narrower invalidation is required, an affected-callable
     or affected-function surface that lets OxCalc avoid conservative
     all-formula rebind when that version changes.
+15. the C5-observed reuse-count bridge: OxFml should eventually expose
+    canonical plan-template reuse/cache counters or stable trace fields so
+    OxCalc does not need compatibility-only grouping over locally derived
+    `PreparedFormulaIdentityTrace` records.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

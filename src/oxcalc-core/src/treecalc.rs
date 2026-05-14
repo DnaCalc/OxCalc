@@ -354,6 +354,9 @@ impl LocalTreeCalcEngine {
                 .values()
                 .flat_map(prepared_formula_identity_diagnostics),
         );
+        diagnostics.extend(prepared_formula_reuse_diagnostics(
+            &prepared_formula_identities,
+        ));
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -1817,6 +1820,42 @@ fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec
     ]
 }
 
+fn prepared_formula_reuse_diagnostics(identities: &[PreparedFormulaIdentityTrace]) -> Vec<String> {
+    #[derive(Default)]
+    struct ReuseCounters {
+        call_site_count: usize,
+        prepared_callable_keys: BTreeSet<String>,
+        hole_binding_fingerprints: BTreeSet<String>,
+    }
+
+    let mut by_template = BTreeMap::<String, ReuseCounters>::new();
+    for identity in identities {
+        let counters = by_template
+            .entry(identity.plan_template_key.clone())
+            .or_default();
+        counters.call_site_count += 1;
+        counters
+            .prepared_callable_keys
+            .insert(identity.prepared_callable_key.clone());
+        counters
+            .hole_binding_fingerprints
+            .insert(identity.hole_binding_fingerprint.clone());
+    }
+
+    by_template
+        .into_iter()
+        .map(|(plan_template_key, counters)| {
+            format!(
+                "oxfml_plan_template_reuse_count:{}:call_sites={};prepared_callables={};hole_bindings={}",
+                plan_template_key,
+                counters.call_site_count,
+                counters.prepared_callable_keys.len(),
+                counters.hole_binding_fingerprints.len()
+            )
+        })
+        .collect()
+}
+
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
     let reference_bindings_by_token = prepared
         .translated
@@ -2848,6 +2887,98 @@ mod tests {
                 .iter()
                 .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
         );
+    }
+
+    #[test]
+    fn local_treecalc_engine_traces_plan_template_reuse_without_shortcutting() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: TreeFormulaCatalog::new([
+                    TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(3),
+                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::FunctionCall {
+                                function_name: "SUM".to_string(),
+                                arguments: vec![
+                                    FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(2),
+                                    }),
+                                    FixtureFormulaAst::Literal {
+                                        value: "2".to_string(),
+                                    },
+                                ],
+                                may_introduce_dynamic_dependencies: false,
+                            },
+                        ),
+                    },
+                    TreeFormulaBinding {
+                        owner_node_id: TreeNodeId(4),
+                        formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
+                        bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
+                        expression: fixture_formula(
+                            TreeNodeId(4),
+                            FixtureFormulaAst::FunctionCall {
+                                function_name: "SUM".to_string(),
+                                arguments: vec![
+                                    FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(2),
+                                    }),
+                                    FixtureFormulaAst::Literal {
+                                        value: "3".to_string(),
+                                    },
+                                ],
+                                may_introduce_dynamic_dependencies: false,
+                            },
+                        ),
+                    },
+                ]),
+                seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: "cand:reuse".to_string(),
+                publication_id: "pub:reuse".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(run.published_values[&TreeNodeId(3)], "4");
+        assert_eq!(run.published_values[&TreeNodeId(4)], "5");
+        assert_eq!(run.prepared_formula_identities.len(), 2);
+
+        let template_keys = run
+            .prepared_formula_identities
+            .iter()
+            .map(|identity| identity.plan_template_key.as_str())
+            .collect::<BTreeSet<_>>();
+        let prepared_callable_keys = run
+            .prepared_formula_identities
+            .iter()
+            .map(|identity| identity.prepared_callable_key.as_str())
+            .collect::<BTreeSet<_>>();
+        let hole_binding_fingerprints = run
+            .prepared_formula_identities
+            .iter()
+            .map(|identity| identity.hole_binding_fingerprint.as_str())
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(template_keys.len(), 1);
+        assert_eq!(prepared_callable_keys.len(), 2);
+        assert_eq!(hole_binding_fingerprints.len(), 2);
+        assert!(run.diagnostics.iter().any(|diagnostic| {
+            diagnostic.starts_with("oxfml_plan_template_reuse_count:plan_template:v1:")
+                && diagnostic.contains(":call_sites=2;")
+                && diagnostic.contains(";prepared_callables=2;")
+                && diagnostic.contains(";hole_bindings=2")
+        }));
     }
 
     fn assert_w046_refinement_bridge_facts(run: &LocalTreeCalcRunArtifacts) {

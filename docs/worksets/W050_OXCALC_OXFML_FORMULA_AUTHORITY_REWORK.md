@@ -115,6 +115,101 @@ W050 is the umbrella for the following changes. Each is detailed in §10 (design
 | `PlanTemplate` / `shape_key` / `dispatch_skeleton_key` / `plan_template_key` | (do not exist) | Lane C — new identity layer |
 | Capability-set vocabulary for `RichValueHole` | (does not exist) | Lane G — new (identity only at W050 commit) |
 
+### 4.1 A1 Active Inventory Snapshot
+
+A1 search scope covers active source, active fixture inputs, scale/demo
+generators, active showcase/slides docs, and upstream-host scaffolding.
+Generated replay/test-run archives under `docs/test-runs/**` are retained
+artifact outputs rather than active input surfaces; A6 should record them
+only as allowed archive hits if the final search gate sees them.
+
+| Exact path | Surface found | Classification | Follow-on bead |
+| --- | --- | --- | --- |
+| `src/oxcalc-core/src/formula.rs` | `TreeFormula`, `TreeFormulaReferenceCarrier`, `TreeReference`, `FixtureFormulaAst`, `FixtureFormulaBinaryOp`, `TreeFormulaCatalog` | `TreeFormula` is opaque source carriage plus explicit carriers; `TreeReference` is dependency/evaluator-fact projection; `FixtureFormulaAst` is fixture/test scaffolding. | `calc-cwpl.2`, `calc-cwpl.8.1`, `calc-cwpl.8.2`, `calc-cwpl.9.7` / CALC-002 |
+| `src/oxcalc-core/src/treecalc.rs` | `prepare_oxfml_formula`, `project_opaque_formula`, `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `synthetic_cell_row`, `synthetic_cell_target` | Production OxFml session bridge. Source text is passed through opaquely; carriers are projected to current V1 compatibility bindings. Synthetic A1 helpers are architectural residue pending CALC-002 reference/input transport. | `calc-cwpl.8.2`, `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `src/oxcalc-core/src/treecalc_fixture.rs` | `TreeCalcFixtureFormulaBinding.expression: FixtureFormulaAst` and fixture-to-catalog lowering | Fixture loader scaffolding for active TreeCalc fixture JSON. | `calc-cwpl.2`, `calc-cwpl.8.2` |
+| `src/oxcalc-core/src/treecalc_scale.rs` | Procedural `FixtureFormulaAst` builders for scale/demo corpora | Scale/demo generator scaffolding; not production formula semantics. | `calc-cwpl.2`, `calc-cwpl.8.2` |
+| `src/oxcalc-core/src/consumer.rs` | Unit-test `FixtureFormulaAst` / `TreeReference` constructions | Test scaffolding around the consumer facade. | `calc-cwpl.2`, `calc-cwpl.8.2` |
+| `src/oxcalc-core/src/upstream_host.rs` | `MinimalUpstreamHostPacket` and `Minimal*` facts | Upstream-host fixture/scaffolding packet surface; no longer the TreeCalc production invocation path. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `src/oxcalc-core/src/upstream_host_fixture.rs` | Fixture loader for `MinimalUpstreamHostPacket` JSON | Upstream-host fixture scaffolding. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `src/oxcalc-core/tests/upstream_host_scaffolding.rs` | Test-local `MinimalUpstreamHostPacket` construction | Upstream-host scaffolding tests. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `docs/test-fixtures/core-engine/treecalc/MANIFEST.json` | Active TreeCalc fixture manifest | Fixture inventory surface. | `calc-cwpl.2`, `calc-cwpl.8.2` |
+| `docs/test-fixtures/core-engine/upstream-host/README.md` and `docs/test-fixtures/core-engine/upstream-host/MANIFEST.json` | Active upstream-host fixture docs/manifest | Fixture/scaffolding inventory surface. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `docs/slides/oxcalc_xyz_call_trace.html` | Stale `evaluate_via_oxfml` / minimal-packet call-trace wording | Active slide/doc wording leak; should be restated as historical or session-shaped. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w047_w048_core_engine_showcase.html` | `TreeFormulaCatalog` showcase wording | Active W047/W048 showcase wording; preserve graph/publication claims only. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_formalization_showcase.html` | `TreeReference`, `evaluate_via_oxfml`, `build_upstream_host_packet`, `formula_allows_lazy_residual_publication` wording | Active showcase wording leak around retired names and formula-boundary shape. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_engine_formalization_storyboard.md` | `evaluate_via_oxfml` wording | Active showcase/storyboard wording leak. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_engine_formalization_review_catalog.md` | `TreeFormulaCatalog`, `TreeReference`, `evaluate_via_oxfml` wording | Active review-catalog wording leak. | `calc-cwpl.4` |
+| `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`, `docs/upstream/NOTES_FOR_OXFML.md`, `docs/IN_PROGRESS_FEATURE_WORKLIST.md` | Current W050/status references to the TreeCalc/OxFml seam | Active status/spec surfaces; keep boundary-accurate as successor beads land. | `calc-cwpl.16.4`, `calc-cwpl.8.2` |
+| `docs/worksets/W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md`, `docs/spec/core-engine/w033-formalization/W033_LET_LAMBDA_CARRIER_WITNESS_WIDENING.md`, `docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md`, `docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md`, `docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md`, `docs/spec/core-engine/w046-formalization/W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md`, `docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md`, `docs/spec/core-engine/w046-formalization/W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md`, `docs/spec/core-engine/w047-ctro/W047_IMPLEMENTATION_ROADMAP_AND_SUCCESSOR_GATES.md` | Historical spec references to the pre-W050 TreeCalc/OxFml seam | Historical evidence/spec archive. A6 should list allowed historical hits rather than treating them as active production claims. | `calc-cwpl.8.2` |
+
+Active TreeCalc fixture input files with structured `FixtureFormulaAst`
+variants (`Binary`, `FunctionCall`, `RawOxfml`, `Reference`, or
+`Literal`) are:
+
+```text
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_capability_sensitive_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_addition_auto_post_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_release_reclassification_post_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_resolved_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_dynamic_target_switch_downstream_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_host_sensitive_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_lambda_host_sensitive_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_let_lambda_capture_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_mixed_publish_then_post_edit_overlay_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_move_direct_target_rebind_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_post_edit_capability_sensitive_overlay_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_post_edit_host_sensitive_overlay_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_post_edit_shape_topology_overlay_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_rebind_after_rename_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_recalc_after_constant_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_recalc_chain_after_constant_edit_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_relative_sum_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_remove_direct_target_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_shape_topology_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_sibling_offset_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_tracecalc_accept_publish_equiv_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_tracecalc_multinode_dag_equiv_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_verified_clean_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_w034_higher_order_let_lambda_publish_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_local_w034_independent_order_equiv_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_ctro_dynamic_self_cycle_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_excel_ctro_indirect_iterative_self_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_excel_iter_fraction_precision_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_excel_iter_three_node_order_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_excel_iter_two_node_order_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_structural_self_cycle_reject_001.json
+docs/test-fixtures/core-engine/treecalc/cases/tc_w048_structural_two_node_cycle_reject_001.json
+```
+
+Active upstream-host fixture input files carrying `formula_text`,
+`formula_channel_kind`, `cell_fixture`, or `defined_name_bindings` through
+the `MinimalUpstreamHostPacket` scaffolding surface are:
+
+```text
+docs/test-fixtures/core-engine/upstream-host/cases/uh_info_directory_capture_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_info_unsupported_query_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_let_lambda_lexical_capture_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_returned_lambda_invocation_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_rtd_provider_error_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_structured_column_sum_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_structured_data_multicol_sum_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_structured_headers_section_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_structured_reference_eval_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_sum_defined_name_bind_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_table_context_bind_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_average_guard_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_color_scale_guard_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_data_bar_guard_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_icon_set_guard_001.json
+docs/test-fixtures/core-engine/upstream-host/cases/uh_typed_cf_top_rank_guard_001.json
+```
+
 ## 5. Execution Lanes and Phasing
 
 W050 decomposes into seven lanes. Lanes are independent enough to run partly in parallel; the dependency relations are explicit.

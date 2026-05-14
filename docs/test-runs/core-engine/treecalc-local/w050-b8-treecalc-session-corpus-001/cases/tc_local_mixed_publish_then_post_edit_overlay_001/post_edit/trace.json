@@ -1,0 +1,77 @@
+{
+  "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+  "events": [
+    {
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "formula_count": 2,
+      "label": "case_loaded",
+      "node_count": 5,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:b",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:b",
+      "formula_stable_id": "formula:b",
+      "hole_binding_fingerprint": "hole_bindings:v1:deaf72175eb81f56",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 4,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:f99bb21fd92f18bd",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "bind_artifact_id": "bind:c",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:5766e69a415fc640",
+      "formula_artifact_id": "formula:c",
+      "formula_stable_id": "formula:c",
+      "hole_binding_fingerprint": "hole_bindings:v1:9baff5a354517ce4",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 5,
+      "plan_template_key": "plan_template:v1:843bb215156923ec",
+      "prepared_callable_key": "prepared_callable:v1:96c6f8f7a005dfcf",
+      "shape_key": "shape:v1:e234c2c6bdb693db",
+      "step_id": 3,
+      "template_hole_count": 3
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 4,
+      "step_id": 4
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 5,
+      "step_id": 5
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 6,
+      "target_set": [
+        4,
+        5
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:publication:post_edit",
+      "step_id": 7
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 8
+    }
+  ],
+  "phase": "post_edit",
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

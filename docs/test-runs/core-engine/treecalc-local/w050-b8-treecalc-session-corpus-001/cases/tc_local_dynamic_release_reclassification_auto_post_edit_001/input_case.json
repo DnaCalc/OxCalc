@@ -1,0 +1,108 @@
+{
+  "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+  "compatibility_basis": null,
+  "description": "A published resolved dynamic dependency is rerun with a successor formula catalog that releases the binding back to a dynamic potential reference, proving automatic CTRO dependency-release and dependency-reclassification invalidation seeds without manual overrides.",
+  "expected": {
+    "evaluation_order": [
+      3
+    ],
+    "published_values": {
+      "3": "11"
+    },
+    "reject_kind": null,
+    "result_state": "published",
+    "runtime_effect_kinds": [
+      "runtime_effect.dynamic_reference"
+    ],
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+      "expression": {
+        "Reference": {
+          "DynamicResolved": {
+            "carrier_id": "carrier:dynamic:auto-release-reclass",
+            "detail": "resolved_before_automatic_release",
+            "target_node_id": 2
+          }
+        }
+      },
+      "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+      "owner_node_id": 3
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "11",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "DynamicSource"
+    },
+    {
+      "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "DynamicConsumer"
+    }
+  ],
+  "post_edit": {
+    "edits": [],
+    "expected": {
+      "evaluation_order": [
+        3
+      ],
+      "published_values": null,
+      "reject_kind": "DynamicDependencyFailure",
+      "result_state": "rejected",
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ],
+      "runtime_effect_overlay_kinds": null
+    },
+    "expected_affected_node_ids": [],
+    "expected_impacts": [],
+    "formulas": [
+      {
+        "bind_artifact_id": "bind:dynamic:auto-release-reclass",
+        "expression": {
+          "Reference": {
+            "DynamicPotential": {
+              "carrier_id": "carrier:dynamic:auto-release-reclass",
+              "detail": "released_to_runtime_resolution"
+            }
+          }
+        },
+        "formula_artifact_id": "formula:dynamic:auto-release-reclass",
+        "owner_node_id": 3
+      }
+    ],
+    "invalidation_seeds": [],
+    "successor_snapshot_start_id": 43
+  },
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 42
+}

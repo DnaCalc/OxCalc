@@ -1,0 +1,138 @@
+{
+  "case_id": "tc_local_relative_sum_001",
+  "compatibility_basis": null,
+  "description": "Relative path plus direct reference evaluates in dependency order.",
+  "expected": {
+    "evaluation_order": [
+      3,
+      5
+    ],
+    "published_values": {
+      "3": "5",
+      "5": "7"
+    },
+    "reject_kind": null,
+    "result_state": "published",
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:b",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Literal": {
+              "value": "3"
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:b",
+      "owner_node_id": 3
+    },
+    {
+      "bind_artifact_id": "bind:leaf",
+      "expression": {
+        "FunctionCall": {
+          "arguments": [
+            {
+              "Reference": {
+                "RelativePath": {
+                  "base": {
+                    "Ancestor": 2
+                  },
+                  "path_segments": [
+                    "A"
+                  ]
+                }
+              }
+            },
+            {
+              "Reference": {
+                "DirectNode": {
+                  "target_node_id": 3
+                }
+              }
+            }
+          ],
+          "function_name": "SUM",
+          "may_introduce_dynamic_dependencies": false
+        }
+      },
+      "formula_artifact_id": "formula:leaf",
+      "owner_node_id": 5
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3,
+        4
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "2",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "A"
+    },
+    {
+      "bind_artifact_id": "bind:b",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:b",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "B"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        5
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "container",
+      "node_id": 4,
+      "parent_id": 1,
+      "symbol": "Branch"
+    },
+    {
+      "bind_artifact_id": "bind:leaf",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:leaf",
+      "kind": "calculation",
+      "node_id": 5,
+      "parent_id": 4,
+      "symbol": "Leaf"
+    }
+  ],
+  "post_edit": null,
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 2
+}

@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001",
+  "case_count": 37,
+  "expectation_mismatch_count": 0,
+  "phase_timing_summary_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/phase_timing_summary.json",
+  "result_counts": {
+    "published": 22,
+    "rejected": 14,
+    "verified_clean": 1
+  },
+  "run_id": "w050-b8-treecalc-session-corpus-001",
+  "schema_version": "oxcalc.treecalc.local_run_summary.v1"
+}

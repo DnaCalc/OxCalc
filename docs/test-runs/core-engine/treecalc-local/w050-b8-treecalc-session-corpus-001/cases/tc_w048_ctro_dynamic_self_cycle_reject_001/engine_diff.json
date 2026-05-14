@@ -1,0 +1,6 @@
+{
+  "case_id": "tc_w048_ctro_dynamic_self_cycle_reject_001",
+  "conformance_state": "matches_expected",
+  "mismatches": [],
+  "observed_result_state": "rejected"
+}

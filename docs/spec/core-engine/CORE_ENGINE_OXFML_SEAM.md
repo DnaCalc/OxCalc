@@ -1152,6 +1152,13 @@ results are invariant.
     diagnostics and scalar/array publication, but returned callable values
     are still converted to worksheet fallback `Calc`/`Error(Calc)` before
     OxCalc receives a stable callable payload.
+18. the B8-observed session-evidence bridge: current V1 lets OxCalc record
+    candidate, commit, reject, returned-value-surface, and replay-facing
+    correlation facts in deterministic run artifacts, but some facts still
+    arrive as diagnostic strings rather than stable structured facade
+    fields. OxFml should preserve canonical correlation columns for
+    `candidate_result_id`, `commit_attempt_id`, reject trace correlation,
+    returned-value surface classification, and replay diagnostics.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam
@@ -1212,13 +1219,58 @@ policy, scheduling strategy, or OxCalc coordinator publication authority
 for any currently exercised Stage 1 profile. Observable formula results
 are invariant under this diagnostic addition.
 
+### 22.19 Current V1 Session Corpus Evidence Packet
+The current OxCalc B8 uptake makes the TreeCalc local runner emit a
+deterministic session-path evidence packet for the full local corpus.
+
+Current mapping:
+1. `TreeCalcRunner` writes `session_path_evidence.json` at the TreeCalc
+   local run root.
+2. The packet schema is `oxcalc.treecalc.session_path_evidence.v1` and
+   records:
+   - declared artifact root,
+   - checked-in-or-explicit-ephemeral evidence policy,
+   - commands used to regenerate and validate the root,
+   - one entry per initial and post-edit case execution.
+3. Each entry records result/trace artifact paths, OxCalc candidate ids,
+   OxFml candidate diagnostics, commit candidate ids, commit attempt ids,
+   reject candidate ids, reject trace correlation ids, returned-value
+   surface diagnostics, replay-facing diagnostics, and non-mutation checks.
+4. The replay-appliance projection records
+   `source_session_path_evidence_path`, preserves
+   `session_correlation_keys` and `replay_facing_diagnostics`, and includes
+   the packet in `bundle_validation.json` checked paths.
+5. The checked-in B8 root is
+   `docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001`.
+   It is generated with
+   `cargo run -p oxcalc-tracecalc-cli -- treecalc w050-b8-treecalc-session-corpus-001`.
+
+Current B8 limits:
+1. `session_path_evidence.json` is an OxCalc deterministic evidence schema,
+   not a canonical shared OxFml seam schema.
+2. Some current V1 correlation facts are still recorded from diagnostics;
+   B9/CALC-002 owns the compatibility ledger for which facts need stable
+   structured facade fields.
+3. The packet proves replay-path preservation and no-publish validation for
+   the local TreeCalc corpus; it does not claim final replay-appliance pack
+   breadth for later external-invalidation, rich-value, or
+   correctness-floor lanes.
+
+Semantic equivalence statement: B8 adds runner artifacts, replay-bundle
+references, regression assertions, and documentation only. It does not
+change source parsing, binding, semantic-plan compilation, runtime
+invocation, candidate adaptation, reject policy, scheduling strategy, or
+OxCalc coordinator publication authority for any currently exercised Stage
+1 profile. Observable formula results are invariant under this artifact
+emission addition.
+
 ## 23. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - replay artifacts for broader candidate-result versus publication boundaries beyond the current minimal runtime-result projection are not yet attached,
+  - replay artifacts for broader candidate-result versus publication boundaries beyond the current B8 TreeCalc local corpus packet are not yet attached,
   - the Stage 1 local seam packet now consumes more of the already-canonical OxFml category split, but broader TreeCalc descriptor and transport questions remain open beyond the first consumed subset,
   - W026 now has a clear consume-now versus refine-in-notes split, but the topic-matrix pass is not yet converted into executed seam intake work,
   - a narrower follow-on handoff is not required yet, but remains an explicit later decision if W019 evidence creates stronger coordinator pressure

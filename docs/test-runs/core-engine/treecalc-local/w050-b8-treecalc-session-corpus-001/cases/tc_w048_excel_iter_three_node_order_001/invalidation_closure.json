@@ -1,0 +1,29 @@
+[
+  {
+    "calc_state": "CycleBlocked",
+    "node_id": 2,
+    "reasons": [
+      "StructuralRecalcOnly",
+      "UpstreamPublication"
+    ],
+    "requires_rebind": false
+  },
+  {
+    "calc_state": "CycleBlocked",
+    "node_id": 3,
+    "reasons": [
+      "StructuralRecalcOnly",
+      "UpstreamPublication"
+    ],
+    "requires_rebind": false
+  },
+  {
+    "calc_state": "CycleBlocked",
+    "node_id": 4,
+    "reasons": [
+      "StructuralRecalcOnly",
+      "UpstreamPublication"
+    ],
+    "requires_rebind": false
+  }
+]

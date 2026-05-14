@@ -1,0 +1,9 @@
+[
+  {
+    "detail": "owner_node:node:3;carrier_id:carrier:dynamic:auto-release-reclass;detail:released_to_runtime_resolution|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+    "family": "DynamicDependency",
+    "family_owner": "oxcalc_local_projection",
+    "kind": "runtime_effect.dynamic_reference",
+    "kind_owner": "oxcalc_local_projection"
+  }
+]

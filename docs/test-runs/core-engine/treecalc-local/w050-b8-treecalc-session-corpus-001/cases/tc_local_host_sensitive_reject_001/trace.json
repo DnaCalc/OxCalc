@@ -1,0 +1,64 @@
+{
+  "case_id": "tc_local_host_sensitive_reject_001",
+  "events": [
+    {
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 2,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:host",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2c5c0e7655f0662d",
+      "formula_artifact_id": "formula:host",
+      "formula_stable_id": "formula:host",
+      "hole_binding_fingerprint": "hole_bindings:v1:1c35d584d0f45bbe",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:2dab15d10076f98a",
+      "prepared_callable_key": "prepared_callable:v1:91076701243a86f9",
+      "shape_key": "shape:v1:ef31ba884540c8dd",
+      "step_id": 2,
+      "template_hole_count": 1
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 2,
+      "step_id": 3
+    },
+    {
+      "detail": "owner_node:node:2;carrier_id:carrier:host;detail:active_selection|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "ExecutionRestriction",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.host_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 4
+    },
+    {
+      "label": "runtime_effect_overlay_emitted",
+      "overlay_kind": "ExecutionRestriction",
+      "owner_node_id": 2,
+      "payload_identity": "fixture:tc_local_host_sensitive_reject_001:candidate:runtime_effect:0",
+      "step_id": 5
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_local_host_sensitive_reject_001:candidate",
+      "detail": "reference owned by node:2 is host-sensitive and cannot be locally evaluated: active_selection",
+      "kind": "HostInjectedFailure",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 6
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 7
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

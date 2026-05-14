@@ -1,0 +1,39 @@
+{
+  "case_id": "tc_local_move_direct_target_rebind_001",
+  "events": [
+    {
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 4,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:leaf",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:leaf",
+      "formula_stable_id": "formula:leaf",
+      "hole_binding_fingerprint": "hole_bindings:v1:d821ec1c924c8c99",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:ddf0a63f20e82a52",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 3
+    },
+    {
+      "label": "run_finished",
+      "result_state": "verified_clean",
+      "step_id": 4
+    }
+  ],
+  "phase": "post_edit",
+  "result_state": "verified_clean",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

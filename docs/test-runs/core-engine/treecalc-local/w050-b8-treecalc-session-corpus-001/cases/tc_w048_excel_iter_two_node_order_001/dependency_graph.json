@@ -1,0 +1,43 @@
+{
+  "cycle_groups": [
+    [
+      2,
+      3
+    ]
+  ],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:3",
+      "descriptor_id": "bind:formula:w048:excel:iter:A1:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 3
+    },
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:w048:excel:iter:B1:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:w048:excel:iter:A1:oxfml_ref:0",
+      "edge_id": "dep:2:3:bind:formula:w048:excel:iter:A1:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 2,
+      "target_node_id": 3
+    },
+    {
+      "descriptor_id": "bind:formula:w048:excel:iter:B1:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:w048:excel:iter:B1:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    }
+  ]
+}

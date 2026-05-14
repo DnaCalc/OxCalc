@@ -1,0 +1,56 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_w048_structural_self_cycle_reject_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/dependency_graph.json",
+  "diagnostics": [
+    "oxfml_prepared_shape_key:formula:w048:struct:self:shape:v1:82216ef72035cd3a",
+    "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:self:dispatch_skeleton:v1:2949e0bd7a652499",
+    "oxfml_prepared_plan_template_key:formula:w048:struct:self:plan_template:v1:adaffaa7615b38fc",
+    "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:self:hole_bindings:v1:545cd58aaa29e251",
+    "oxfml_prepared_callable_key:formula:w048:struct:self:prepared_callable:v1:175dc446c54d54c7",
+    "oxfml_prepared_template_hole_count:formula:w048:struct:self:1",
+    "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+    "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:0"
+  ],
+  "evaluation_order": [],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/phase_timings.json",
+  "prepared_formula_identities": [
+    {
+      "bind_artifact_id": "bind:w048:struct:self",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2949e0bd7a652499",
+      "formula_artifact_id": "formula:w048:struct:self",
+      "formula_stable_id": "formula:w048:struct:self",
+      "hole_binding_fingerprint": "hole_bindings:v1:545cd58aaa29e251",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:adaffaa7615b38fc",
+      "prepared_callable_key": "prepared_callable:v1:175dc446c54d54c7",
+      "shape_key": "shape:v1:82216ef72035cd3a",
+      "template_hole_count": 1
+    }
+  ],
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_w048_structural_self_cycle_reject_001:candidate",
+    "detail": "formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "kind": "SyntheticCycleReject",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/runtime_effects.json"
+}

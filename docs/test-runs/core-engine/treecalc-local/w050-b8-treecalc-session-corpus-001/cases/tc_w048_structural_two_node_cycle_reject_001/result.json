@@ -1,0 +1,74 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_w048_structural_two_node_cycle_reject_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/dependency_graph.json",
+  "diagnostics": [
+    "oxfml_prepared_shape_key:formula:w048:struct:a:shape:v1:ca06e5286c1a9025",
+    "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:a:dispatch_skeleton:v1:bc59307f509b0330",
+    "oxfml_prepared_plan_template_key:formula:w048:struct:a:plan_template:v1:a237bf6896772e24",
+    "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:a:hole_bindings:v1:04a68fc7c8e17b42",
+    "oxfml_prepared_callable_key:formula:w048:struct:a:prepared_callable:v1:a4cabc3c28badacd",
+    "oxfml_prepared_template_hole_count:formula:w048:struct:a:2",
+    "oxfml_prepared_shape_key:formula:w048:struct:b:shape:v1:ca06e5286c1a9025",
+    "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:b:dispatch_skeleton:v1:bc59307f509b0330",
+    "oxfml_prepared_plan_template_key:formula:w048:struct:b:plan_template:v1:a237bf6896772e24",
+    "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:b:hole_bindings:v1:d828f41c9252b8df",
+    "oxfml_prepared_callable_key:formula:w048:struct:b:prepared_callable:v1:45361ef65c5382ee",
+    "oxfml_prepared_template_hole_count:formula:w048:struct:b:2",
+    "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=2;prepared_callables=2;hole_bindings=2",
+    "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:0"
+  ],
+  "evaluation_order": [],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/phase_timings.json",
+  "prepared_formula_identities": [
+    {
+      "bind_artifact_id": "bind:w048:struct:a",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:w048:struct:a",
+      "formula_stable_id": "formula:w048:struct:a",
+      "hole_binding_fingerprint": "hole_bindings:v1:04a68fc7c8e17b42",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:a4cabc3c28badacd",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "template_hole_count": 2
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:b",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:w048:struct:b",
+      "formula_stable_id": "formula:w048:struct:b",
+      "hole_binding_fingerprint": "hole_bindings:v1:d828f41c9252b8df",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:45361ef65c5382ee",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "template_hole_count": 2
+    }
+  ],
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_w048_structural_two_node_cycle_reject_001:candidate",
+    "detail": "formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+    "kind": "SyntheticCycleReject",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/runtime_effects.json"
+}

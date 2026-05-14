@@ -1,0 +1,56 @@
+{
+  "case_id": "tc_local_recalc_after_constant_edit_001",
+  "events": [
+    {
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:leaf",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:leaf",
+      "formula_stable_id": "formula:leaf",
+      "hole_binding_fingerprint": "hole_bindings:v1:d821ec1c924c8c99",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:ddf0a63f20e82a52",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 3
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 4,
+      "target_set": [
+        3
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_recalc_after_constant_edit_001:publication",
+      "step_id": 5
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 6
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

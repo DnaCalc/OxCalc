@@ -1,0 +1,76 @@
+{
+  "case_id": "tc_w048_excel_iter_two_node_order_001",
+  "events": [
+    {
+      "case_id": "tc_w048_excel_iter_two_node_order_001",
+      "formula_count": 2,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:w048:excel:iter:A1",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:w048:excel:iter:A1",
+      "formula_stable_id": "formula:w048:excel:iter:A1",
+      "hole_binding_fingerprint": "hole_bindings:v1:04a68fc7c8e17b42",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:a4cabc3c28badacd",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "bind_artifact_id": "bind:w048:excel:iter:B1",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:5340d34c0b190d20",
+      "formula_artifact_id": "formula:w048:excel:iter:B1",
+      "formula_stable_id": "formula:w048:excel:iter:B1",
+      "hole_binding_fingerprint": "hole_bindings:v1:d8256c1c924f9bf0",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:9f979021835e5a3d",
+      "prepared_callable_key": "prepared_callable:v1:ed073dd612827970",
+      "shape_key": "shape:v1:0537f6a4d312bb0c",
+      "step_id": 3,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 4
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 2,
+      "step_id": 5
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_w048_excel_iter_two_node_order_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 6,
+      "target_set": [
+        3,
+        2
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_w048_excel_iter_two_node_order_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_w048_excel_iter_two_node_order_001:publication",
+      "step_id": 7
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 8
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

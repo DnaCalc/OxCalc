@@ -1,0 +1,105 @@
+{
+  "case_id": "tc_w048_structural_two_node_cycle_reject_001",
+  "compatibility_basis": null,
+  "description": "W048 TreeCalc optimized/core behavior: a two-node structural formula SCC is rejected and prior published values are retained.",
+  "expected": {
+    "evaluation_order": [],
+    "published_values": {
+      "2": "1",
+      "3": "2"
+    },
+    "reject_kind": "SyntheticCycleReject",
+    "result_state": "rejected",
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:w048:struct:a",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 3
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w048:struct:a",
+      "owner_node_id": 2
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:b",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w048:struct:b",
+      "owner_node_id": 3
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:a",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w048:struct:a",
+      "kind": "calculation",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "CycleA"
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:b",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w048:struct:b",
+      "kind": "calculation",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "CycleB"
+    }
+  ],
+  "post_edit": null,
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {
+    "2": "1",
+    "3": "2"
+  },
+  "snapshot_id": 4802
+}

@@ -1,0 +1,68 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_capability_sensitive_reject_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/dependency_graph.json",
+  "diagnostics": [
+    "dependency_diagnostic:residual:carrier:capability:host_function_availability",
+    "oxfml_prepared_shape_key:formula:cap:shape:v1:ef31ba884540c8dd",
+    "oxfml_prepared_dispatch_skeleton_key:formula:cap:dispatch_skeleton:v1:2c5c0e7655f0662d",
+    "oxfml_prepared_plan_template_key:formula:cap:plan_template:v1:2dab15d10076f98a",
+    "oxfml_prepared_hole_binding_fingerprint:formula:cap:hole_bindings:v1:1f346bc92ec3c40d",
+    "oxfml_prepared_callable_key:formula:cap:prepared_callable:v1:9dcad8fba2bca118",
+    "oxfml_prepared_template_hole_count:formula:cap:1",
+    "oxfml_plan_template_reuse_count:plan_template:v1:2dab15d10076f98a:call_sites=1;prepared_callables=1;hole_bindings=1",
+    "oxfml_returned_value_surface_kind:OrdinaryValue",
+    "oxfml_returned_value_surface_payload_summary:Error(Value)",
+    "oxfml_trace:AcceptedCandidateResultBuilt",
+    "oxfml_trace:CommitAccepted",
+    "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+    "runtime_effect_environment_session_id:none",
+    "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+    "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+    "runtime_effect_environment_project_overlays:true",
+    "candidate_rejected:reference owned by node:2 is capability-sensitive and cannot be locally evaluated: host_function_availability",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:1"
+  ],
+  "evaluation_order": [
+    2
+  ],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 0,
+    "execution_restriction_observed": false,
+    "publication_outcome": "none_observed",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/phase_timings.json",
+  "prepared_formula_identities": [
+    {
+      "bind_artifact_id": "bind:cap",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2c5c0e7655f0662d",
+      "formula_artifact_id": "formula:cap",
+      "formula_stable_id": "formula:cap",
+      "hole_binding_fingerprint": "hole_bindings:v1:1f346bc92ec3c40d",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:2dab15d10076f98a",
+      "prepared_callable_key": "prepared_callable:v1:9dcad8fba2bca118",
+      "shape_key": "shape:v1:ef31ba884540c8dd",
+      "template_hole_count": 1
+    }
+  ],
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_capability_sensitive_reject_001:candidate",
+    "detail": "reference owned by node:2 is capability-sensitive and cannot be locally evaluated: host_function_availability",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/runtime_effects.json"
+}

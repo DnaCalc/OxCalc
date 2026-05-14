@@ -1,0 +1,144 @@
+{
+  "case_id": "tc_local_w034_independent_order_equiv_001",
+  "compatibility_basis": null,
+  "description": "TreeCalc-local value counterpart for the W034 replay-equivalent independent-order TraceCalc oracle surface.",
+  "expected": {
+    "evaluation_order": [
+      4,
+      5,
+      6
+    ],
+    "published_values": {
+      "4": "4",
+      "5": "5",
+      "6": "9"
+    },
+    "reject_kind": null,
+    "result_state": "published",
+    "runtime_effect_kinds": null,
+    "runtime_effect_overlay_kinds": null
+  },
+  "formulas": [
+    {
+      "bind_artifact_id": "bind:w034-left",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 2
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w034-left",
+      "owner_node_id": 4
+    },
+    {
+      "bind_artifact_id": "bind:w034-top",
+      "expression": {
+        "Reference": {
+          "DirectNode": {
+            "target_node_id": 3
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w034-top",
+      "owner_node_id": 5
+    },
+    {
+      "bind_artifact_id": "bind:w034-check",
+      "expression": {
+        "Binary": {
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 4
+              }
+            }
+          },
+          "op": "Add",
+          "right": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 5
+              }
+            }
+          }
+        }
+      },
+      "formula_artifact_id": "formula:w034-check",
+      "owner_node_id": 6
+    }
+  ],
+  "nodes": [
+    {
+      "bind_artifact_id": null,
+      "child_ids": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "constant_value": null,
+      "formula_artifact_id": null,
+      "kind": "root",
+      "node_id": 1,
+      "parent_id": null,
+      "symbol": "Root"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "4",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 2,
+      "parent_id": 1,
+      "symbol": "LeftInput"
+    },
+    {
+      "bind_artifact_id": null,
+      "child_ids": [],
+      "constant_value": "5",
+      "formula_artifact_id": null,
+      "kind": "constant",
+      "node_id": 3,
+      "parent_id": 1,
+      "symbol": "TopInput"
+    },
+    {
+      "bind_artifact_id": "bind:w034-left",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w034-left",
+      "kind": "calculation",
+      "node_id": 4,
+      "parent_id": 1,
+      "symbol": "Left"
+    },
+    {
+      "bind_artifact_id": "bind:w034-top",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w034-top",
+      "kind": "calculation",
+      "node_id": 5,
+      "parent_id": 1,
+      "symbol": "Top"
+    },
+    {
+      "bind_artifact_id": "bind:w034-check",
+      "child_ids": [],
+      "constant_value": null,
+      "formula_artifact_id": "formula:w034-check",
+      "kind": "calculation",
+      "node_id": 6,
+      "parent_id": 1,
+      "symbol": "Check"
+    }
+  ],
+  "post_edit": null,
+  "root_node_id": 1,
+  "schema_version": "oxcalc.treecalc.fixture_case.v1",
+  "seeded_published_values": {},
+  "snapshot_id": 23
+}

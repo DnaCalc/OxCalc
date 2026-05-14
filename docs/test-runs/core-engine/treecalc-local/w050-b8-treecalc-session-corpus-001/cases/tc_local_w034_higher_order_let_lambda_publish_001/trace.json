@@ -1,0 +1,56 @@
+{
+  "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+  "events": [
+    {
+      "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:w034-higher-order-let-lambda",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:f4da83472cac2091",
+      "formula_artifact_id": "formula:w034-higher-order-let-lambda",
+      "formula_stable_id": "formula:w034-higher-order-let-lambda",
+      "hole_binding_fingerprint": "hole_bindings:v1:1f1ecb4d872e2f5b",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:9b2c7ed8a83f6ee6",
+      "prepared_callable_key": "prepared_callable:v1:51988b83a55caaa8",
+      "shape_key": "shape:v1:1973013a3bd1a48e",
+      "step_id": 2,
+      "template_hole_count": 7
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 3
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_w034_higher_order_let_lambda_publish_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 4,
+      "target_set": [
+        3
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_w034_higher_order_let_lambda_publish_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_w034_higher_order_let_lambda_publish_001:publication",
+      "step_id": 5
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 6
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

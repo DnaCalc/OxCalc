@@ -1,0 +1,157 @@
+{
+  "claims_exercised": [
+    "R4.pinned_reader_stability",
+    "R5.overlay_retention_release",
+    "C2.pinned_reader_and_retention",
+    "C4.overlay_economics_eviction"
+  ],
+  "counters": [
+    {
+      "counter": "accepted_candidate_results",
+      "value": 1
+    },
+    {
+      "counter": "eviction_eligibility_opened",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_dirty",
+      "value": 1
+    },
+    {
+      "counter": "nodes_marked_needed",
+      "value": 1
+    },
+    {
+      "counter": "overlay.retained",
+      "value": 1
+    },
+    {
+      "counter": "overlay_creations",
+      "value": 1
+    },
+    {
+      "counter": "overlay_evictions",
+      "value": 3
+    },
+    {
+      "counter": "overlay_lookups",
+      "value": 1
+    },
+    {
+      "counter": "overlay_misses",
+      "value": 1
+    },
+    {
+      "counter": "pinned_reader_count",
+      "value": 0
+    },
+    {
+      "counter": "publications_committed",
+      "value": 1
+    },
+    {
+      "counter": "reader.pinned",
+      "value": 1
+    },
+    {
+      "counter": "reader.unpinned",
+      "value": 1
+    },
+    {
+      "counter": "release_events",
+      "value": 1
+    },
+    {
+      "counter": "retention_blocked_cleanup",
+      "value": 1
+    }
+  ],
+  "description": "TreeCalc-local guardrail over pinned-reader stability, retained dynamic overlays, release, and eviction eligibility.",
+  "events": [
+    {
+      "label": "reader_pinned",
+      "publication_id": "treecalc_retention:publication:initial",
+      "reader_id": "reader:treecalc-retention"
+    },
+    {
+      "candidate_result_id": "treecalc_retention:candidate:updated-z",
+      "label": "publication_committed",
+      "publication_id": "treecalc_retention:publication:updated-z"
+    },
+    {
+      "label": "pinned_view_stability_checked",
+      "stable": true
+    },
+    {
+      "label": "retention_blocked_cleanup",
+      "protected_dynamic_overlay_count": 1
+    },
+    {
+      "label": "reader_unpinned",
+      "reader_id": "reader:treecalc-retention"
+    },
+    {
+      "label": "eviction_eligibility_opened",
+      "owner_node_id": 4
+    },
+    {
+      "evicted_count": 3,
+      "label": "overlay_released"
+    }
+  ],
+  "evidence_id": "tc_local_pinned_reader_retention_001",
+  "pinned_reader_stability": {
+    "pinned_values_after_publication": [
+      {
+        "node_id": 2,
+        "value": "2"
+      },
+      {
+        "node_id": 3,
+        "value": "40"
+      },
+      {
+        "node_id": 4,
+        "value": "42"
+      }
+    ],
+    "pinned_values_before_publication": [
+      {
+        "node_id": 2,
+        "value": "2"
+      },
+      {
+        "node_id": 3,
+        "value": "40"
+      },
+      {
+        "node_id": 4,
+        "value": "42"
+      }
+    ],
+    "published_values_after_publication": [
+      {
+        "node_id": 2,
+        "value": "2"
+      },
+      {
+        "node_id": 3,
+        "value": "40"
+      },
+      {
+        "node_id": 4,
+        "value": "63"
+      }
+    ],
+    "reader_id": "reader:treecalc-retention",
+    "stable": true
+  },
+  "retention": {
+    "cleanup_blocked_while_reader_pinned": true,
+    "evicted_overlay_count_after_release": 3,
+    "protected_dynamic_overlay_count_before_release": 1
+  },
+  "schema_version": "oxcalc.treecalc.retention_guardrail.v1",
+  "source_scope": "runner_generated_from_core_coordinator_and_recalc_apis"
+}

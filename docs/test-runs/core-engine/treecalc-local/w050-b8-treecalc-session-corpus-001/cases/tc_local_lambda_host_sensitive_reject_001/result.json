@@ -1,0 +1,70 @@
+{
+  "candidate_result": null,
+  "case_id": "tc_local_lambda_host_sensitive_reject_001",
+  "counters_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/counters.json",
+  "dependency_graph_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/dependency_graph.json",
+  "diagnostics": [
+    "dependency_diagnostic:residual:carrier:lambda.host:call_argument_host_query",
+    "dependency_diagnostic:oxfml_unmapped_name:x",
+    "dependency_diagnostic:oxfml_unmapped_name:f",
+    "oxfml_prepared_shape_key:formula:lambda-host-sensitive:shape:v1:c9a63c83dafeaf4c",
+    "oxfml_prepared_dispatch_skeleton_key:formula:lambda-host-sensitive:dispatch_skeleton:v1:78ae667c1a5594a3",
+    "oxfml_prepared_plan_template_key:formula:lambda-host-sensitive:plan_template:v1:1dbb3475014feedf",
+    "oxfml_prepared_hole_binding_fingerprint:formula:lambda-host-sensitive:hole_bindings:v1:3522a1eec262873c",
+    "oxfml_prepared_callable_key:formula:lambda-host-sensitive:prepared_callable:v1:c0c1ce6c72f600c6",
+    "oxfml_prepared_template_hole_count:formula:lambda-host-sensitive:5",
+    "oxfml_plan_template_reuse_count:plan_template:v1:1dbb3475014feedf:call_sites=1;prepared_callables=1;hole_bindings=1",
+    "oxfml_returned_value_surface_kind:OrdinaryValue",
+    "oxfml_returned_value_surface_payload_summary:Error(Value)",
+    "oxfml_trace:AcceptedCandidateResultBuilt",
+    "oxfml_trace:CommitAccepted",
+    "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+    "runtime_effect_environment_session_id:none",
+    "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+    "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+    "runtime_effect_environment_project_overlays:true",
+    "candidate_rejected:reference owned by node:2 is host-sensitive and cannot be locally evaluated: call_argument_host_query",
+    "runtime_effect_overlay_projection_enabled:true",
+    "runtime_effect_overlay_projection_count:1"
+  ],
+  "evaluation_order": [
+    2
+  ],
+  "execution_restriction_interaction": {
+    "execution_restriction_count": 1,
+    "execution_restriction_observed": true,
+    "publication_outcome": "rejected_no_publication",
+    "publication_sensitive_consequence": false,
+    "topology_sensitive_consequence": false
+  },
+  "invalidation_closure_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/invalidation_closure.json",
+  "node_states_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/node_states.json",
+  "phase_timings_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/phase_timings.json",
+  "prepared_formula_identities": [
+    {
+      "bind_artifact_id": "bind:lambda-host-sensitive",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:78ae667c1a5594a3",
+      "formula_artifact_id": "formula:lambda-host-sensitive",
+      "formula_stable_id": "formula:lambda-host-sensitive",
+      "hole_binding_fingerprint": "hole_bindings:v1:3522a1eec262873c",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:1dbb3475014feedf",
+      "prepared_callable_key": "prepared_callable:v1:c0c1ce6c72f600c6",
+      "shape_key": "shape:v1:c9a63c83dafeaf4c",
+      "template_hole_count": 5
+    }
+  ],
+  "publication_bundle": null,
+  "published_values_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/published_values.json",
+  "reject_detail": {
+    "aligned_canonical_family": "RejectRecord",
+    "candidate_result_id": "fixture:tc_local_lambda_host_sensitive_reject_001:candidate",
+    "detail": "reference owned by node:2 is host-sensitive and cannot be locally evaluated: call_argument_host_query",
+    "kind": "HostInjectedFailure",
+    "kind_owner": "oxcalc_local_projection",
+    "projection_owner": "oxcalc_local"
+  },
+  "result_state": "rejected",
+  "runtime_effect_overlays_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/runtime_effect_overlays.json",
+  "runtime_effects_path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/runtime_effects.json"
+}

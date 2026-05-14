@@ -1,0 +1,16 @@
+{
+  "case_id": "tc_w048_excel_iter_three_node_order_001",
+  "expected_evaluation_order": [
+    4,
+    3,
+    2
+  ],
+  "expected_published_values": {
+    "2": "102",
+    "3": "101",
+    "4": "103"
+  },
+  "expected_reject_kind": null,
+  "expected_result_state": "published",
+  "expected_runtime_effect_kinds": null
+}

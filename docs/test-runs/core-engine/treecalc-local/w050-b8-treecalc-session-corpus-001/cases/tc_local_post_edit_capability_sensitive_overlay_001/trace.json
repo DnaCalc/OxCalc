@@ -1,0 +1,64 @@
+{
+  "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+  "events": [
+    {
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "formula_count": 1,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:cap_leaf",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:434f8ff66444e3d1",
+      "formula_artifact_id": "formula:cap_leaf",
+      "formula_stable_id": "formula:cap_leaf",
+      "hole_binding_fingerprint": "hole_bindings:v1:36c40b75a1e6d466",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:8a2aef6d34bd7b99",
+      "prepared_callable_key": "prepared_callable:v1:936e67ee04afbc65",
+      "shape_key": "shape:v1:fa5459086f0876e2",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 3
+    },
+    {
+      "detail": "owner_node:node:3;carrier_id:carrier:capability;detail:host_function_availability|runtime_lane:local_sequential_treecalc|session_id:none|capability_profile_id:host-capabilities:default|runtime_policy_id:runtime-policy:default",
+      "family": "CapabilitySensitive",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.capability_sensitive_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 4
+    },
+    {
+      "label": "runtime_effect_overlay_emitted",
+      "overlay_kind": "ExecutionRestriction",
+      "owner_node_id": 3,
+      "payload_identity": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:runtime_effect:0",
+      "step_id": 5
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate",
+      "detail": "reference owned by node:3 is capability-sensitive and cannot be locally evaluated: host_function_availability",
+      "kind": "HostInjectedFailure",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 6
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 7
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

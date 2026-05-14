@@ -32,6 +32,7 @@ const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifes
 const TREECALC_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_summary.v1";
 const TREECALC_LOCAL_TRACE_SCHEMA_V1: &str = "oxcalc.treecalc.local_trace.v1";
 const TREECALC_LOCAL_EXPLAIN_SCHEMA_V1: &str = "oxcalc.treecalc.local_explain.v1";
+const TREECALC_SESSION_PATH_EVIDENCE_SCHEMA_V1: &str = "oxcalc.treecalc.session_path_evidence.v1";
 const TREECALC_REPLAY_ARTIFACT_MANIFEST_SCHEMA_V1: &str =
     "oxcalc.treecalc.replay_artifact_manifest.v1";
 const TREECALC_MEASUREMENT_COUNTER_SUMMARY_SCHEMA_V1: &str =
@@ -144,6 +145,7 @@ impl TreeCalcRunner {
         let mut explain_index = Vec::new();
         let mut case_counter_sets = Vec::new();
         let mut case_phase_timing_sets = Vec::new();
+        let mut session_path_evidence_entries = Vec::new();
 
         for entry in &manifest.cases {
             let case_path = repo_root
@@ -152,11 +154,27 @@ impl TreeCalcRunner {
             let case = load_case(&case_path)?;
             let execution = execute_fixture_case(&engine, &case)?;
             let artifacts = &execution.initial_artifacts;
+            session_path_evidence_entries.push(session_path_evidence_entry_json(
+                &case.case_id,
+                "initial",
+                artifacts,
+                &relative_artifact_root,
+                "result.json",
+                "trace.json",
+            ));
             case_phase_timing_sets.push((
                 format!("{}:initial", case.case_id),
                 artifacts.phase_timings_micros.clone(),
             ));
             if let Some(post_edit_execution) = &execution.post_edit {
+                session_path_evidence_entries.push(session_path_evidence_entry_json(
+                    &case.case_id,
+                    "post_edit",
+                    &post_edit_execution.rerun_artifacts,
+                    &relative_artifact_root,
+                    "post_edit/result.json",
+                    "post_edit/trace.json",
+                ));
                 case_phase_timing_sets.push((
                     format!("{}:post_edit", case.case_id),
                     post_edit_execution
@@ -287,6 +305,14 @@ impl TreeCalcRunner {
             &artifact_root.join("overlay_economics_summary.json"),
             &overlay_economics_summary_json(&case_counter_sets, &retention_counters),
         )?;
+        write_json(
+            &artifact_root.join("session_path_evidence.json"),
+            &session_path_evidence_json(
+                run_id,
+                &relative_artifact_root,
+                &session_path_evidence_entries,
+            ),
+        )?;
         write_replay_appliance_projection(
             repo_root,
             &artifact_root,
@@ -349,6 +375,7 @@ fn replay_artifact_manifest_json(
             "replay_artifact_manifest.json",
             "measurement_counter_summary.json",
             "phase_timing_summary.json",
+            "session_path_evidence.json",
             "retention_guardrail.json",
             "typed_reject_taxonomy.json",
             "host_context_watch.json",
@@ -393,6 +420,135 @@ fn replay_artifact_manifest_json(
             })
             .collect::<Vec<_>>(),
     })
+}
+
+fn session_path_evidence_json(
+    run_id: &str,
+    relative_artifact_root: &str,
+    entries: &[Value],
+) -> Value {
+    json!({
+        "schema_version": TREECALC_SESSION_PATH_EVIDENCE_SCHEMA_V1,
+        "run_id": run_id,
+        "artifact_root": relative_artifact_root,
+        "artifact_root_declaration": {
+            "declared_root": relative_artifact_root,
+            "runner": "oxcalc-tracecalc-cli treecalc <run-id>",
+            "root_policy": "checked_in_when_artifact_root_is_committed_else_ephemeral"
+        },
+        "evidence_policy": {
+            "retention": "checked_in_or_explicit_ephemeral",
+            "checked_in_root_required_for_b8": true,
+            "ephemeral_policy": "allowed only when the run command, run_id, and non-mutation validation are recorded in the governing workset/spec note"
+        },
+        "commands": [
+            format!("cargo run -p oxcalc-tracecalc-cli -- treecalc {run_id}"),
+            "cargo test -p oxcalc-core treecalc_runner_emits_local_run_artifacts",
+            "git diff --check"
+        ],
+        "entry_count": entries.len(),
+        "entries": entries,
+    })
+}
+
+fn session_path_evidence_entry_json(
+    case_id: &str,
+    phase: &str,
+    artifacts: &LocalTreeCalcRunArtifacts,
+    relative_artifact_root: &str,
+    result_artifact: &str,
+    trace_artifact: &str,
+) -> Value {
+    let diagnostics = &artifacts.diagnostics;
+    let oxcalc_candidate_result_id = artifacts
+        .candidate_result
+        .as_ref()
+        .map(|candidate| candidate.candidate_result_id.clone())
+        .or_else(|| {
+            artifacts
+                .local_candidate
+                .as_ref()
+                .map(|candidate| candidate.candidate_result_id.clone())
+        });
+    let publication_candidate_result_id = artifacts
+        .publication_bundle
+        .as_ref()
+        .map(|bundle| bundle.candidate_result_id.clone());
+    let reject_candidate_result_id = artifacts
+        .reject_detail
+        .as_ref()
+        .map(|reject| reject.candidate_result_id.clone());
+    let candidate_publication_id_match = match (
+        oxcalc_candidate_result_id.as_deref(),
+        publication_candidate_result_id.as_deref(),
+    ) {
+        (Some(candidate_id), Some(publication_candidate_id)) => {
+            Some(candidate_id == publication_candidate_id)
+        }
+        _ => None,
+    };
+
+    json!({
+        "case_id": case_id,
+        "phase": phase,
+        "result_state": result_state_name(&artifacts.result_state),
+        "artifact_paths": {
+            "result": relative_case_artifact_path(relative_artifact_root, case_id, result_artifact),
+            "trace": relative_case_artifact_path(relative_artifact_root, case_id, trace_artifact),
+        },
+        "candidate_result_keys": {
+            "oxcalc_candidate_result_id": oxcalc_candidate_result_id,
+            "oxfml_candidate_result_ids": diagnostic_values(diagnostics, "oxfml_candidate_result_id:"),
+            "oxfml_candidate_trace_correlation_ids": diagnostic_values(diagnostics, "oxfml_candidate_trace_correlation_id:"),
+            "oxfml_candidate_value_delta_candidate_result_ids": diagnostic_values(diagnostics, "oxfml_candidate_value_delta_candidate_result_id:"),
+        },
+        "commit_correlation_keys": {
+            "oxcalc_publication_candidate_result_id": publication_candidate_result_id,
+            "candidate_publication_id_match": candidate_publication_id_match,
+            "oxfml_commit_candidate_result_ids": diagnostic_values(diagnostics, "oxfml_commit_candidate_result_id:"),
+            "oxfml_commit_attempt_ids": diagnostic_values(diagnostics, "oxfml_commit_attempt_id:"),
+            "oxfml_commit_value_delta_candidate_result_ids": diagnostic_values(diagnostics, "oxfml_commit_value_delta_candidate_result_id:"),
+        },
+        "reject_correlation_keys": {
+            "oxcalc_reject_candidate_result_id": reject_candidate_result_id,
+            "oxfml_reject_commit_attempt_ids": diagnostic_values(diagnostics, "oxfml_reject_commit_attempt_id:"),
+            "oxfml_reject_trace_correlation_ids": diagnostic_values(diagnostics, "oxfml_reject_trace_correlation_id:"),
+        },
+        "returned_value_surface_diagnostics": diagnostics_with_prefix(diagnostics, "oxfml_returned_value_surface_"),
+        "replay_facing_diagnostics": replay_facing_diagnostics(diagnostics),
+        "non_mutation_validation": {
+            "published_has_publication_bundle": artifacts.publication_bundle.is_some(),
+            "rejected_has_no_publication_bundle": artifacts.reject_detail.is_some() && artifacts.publication_bundle.is_none(),
+            "verified_clean_has_no_publication_bundle": artifacts.result_state == LocalTreeCalcRunState::VerifiedClean && artifacts.publication_bundle.is_none(),
+        },
+    })
+}
+
+fn diagnostic_values(diagnostics: &[String], prefix: &str) -> Vec<String> {
+    diagnostics
+        .iter()
+        .filter_map(|diagnostic| diagnostic.strip_prefix(prefix).map(str::to_string))
+        .collect()
+}
+
+fn diagnostics_with_prefix(diagnostics: &[String], prefix: &str) -> Vec<String> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.starts_with(prefix))
+        .cloned()
+        .collect()
+}
+
+fn replay_facing_diagnostics(diagnostics: &[String]) -> Vec<String> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| {
+            diagnostic.starts_with("oxfml_")
+                || diagnostic.starts_with("candidate_rejected:")
+                || diagnostic.starts_with("runtime_effect_environment_")
+        })
+        .cloned()
+        .collect()
 }
 
 fn compare_expected(
@@ -1854,6 +2010,8 @@ fn write_replay_appliance_projection(
         "replay-appliance",
         "bundle_manifest.json",
     ]);
+    let session_path_evidence_path =
+        relative_artifact_path([relative_artifact_root, "session_path_evidence.json"]);
     let validation_path = relative_artifact_path([
         relative_artifact_root,
         "replay-appliance",
@@ -1926,6 +2084,7 @@ fn write_replay_appliance_projection(
             "source_replay_artifact_manifest_path": relative_artifact_path([relative_artifact_root, "replay_artifact_manifest.json"]),
             "source_measurement_counter_summary_path": relative_artifact_path([relative_artifact_root, "measurement_counter_summary.json"]),
             "source_retention_guardrail_path": relative_artifact_path([relative_artifact_root, "retention_guardrail.json"]),
+            "source_session_path_evidence_path": session_path_evidence_path.clone(),
             "cases": case_projection,
         }),
     )?;
@@ -1939,6 +2098,7 @@ fn write_replay_appliance_projection(
             "run_id": run_id,
             "source_artifact_root": relative_artifact_root,
             "run_manifest_path": run_manifest_path.clone(),
+            "session_path_evidence_path": session_path_evidence_path.clone(),
             "adapter_capabilities_path": adapter_path.clone(),
             "validation_path": validation_path,
             "preserved_view_families": [
@@ -1946,7 +2106,9 @@ fn write_replay_appliance_projection(
                 "reject_set",
                 "counter_set",
                 "runtime_effect_overlay_set",
-                "retention_guardrail"
+                "retention_guardrail",
+                "session_correlation_keys",
+                "replay_facing_diagnostics"
             ],
             "projection_status": "local_projection_validated",
         }),
@@ -1968,6 +2130,7 @@ fn write_replay_appliance_projection(
             adapter_path,
             run_manifest_path,
             bundle_manifest_path,
+            session_path_evidence_path,
             relative_artifact_path([relative_artifact_root, "measurement_counter_summary.json"]),
             relative_artifact_path([relative_artifact_root, "retention_guardrail.json"]),
             relative_artifact_path([relative_artifact_root, "typed_reject_taxonomy.json"]),
@@ -1990,6 +2153,11 @@ fn write_replay_appliance_projection(
             "status": if missing_paths.is_empty() { "bundle_valid" } else { "bundle_degraded" },
             "checked_paths": checked_paths,
             "missing_paths": missing_paths,
+            "non_mutation_validation": {
+                "session_path_evidence_checked": true,
+                "checked_artifacts_only": true,
+                "publication_mutation_source": "runner_source_artifacts",
+            },
         }),
     )
 }
@@ -2178,6 +2346,7 @@ mod tests {
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
         assert!(artifact_root.join("replay_artifact_manifest.json").exists());
+        assert!(artifact_root.join("session_path_evidence.json").exists());
         assert!(
             artifact_root
                 .join("measurement_counter_summary.json")
@@ -2329,6 +2498,13 @@ mod tests {
                     .any(|artifact| { artifact == "retention_guardrail.json" }))
         );
         assert!(
+            replay_manifest["required_root_artifacts"]
+                .as_array()
+                .is_some_and(|artifacts| artifacts
+                    .iter()
+                    .any(|artifact| { artifact == "session_path_evidence.json" }))
+        );
+        assert!(
             replay_manifest["case_artifact_families"]
                 .as_array()
                 .is_some_and(|families| families
@@ -2386,6 +2562,102 @@ mod tests {
         );
         assert_eq!(typed_reject_taxonomy["handoff_triggered"], false);
 
+        let session_path_evidence = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("session_path_evidence.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            session_path_evidence["schema_version"],
+            TREECALC_SESSION_PATH_EVIDENCE_SCHEMA_V1
+        );
+        assert_eq!(
+            session_path_evidence["artifact_root"],
+            "docs/test-runs/core-engine/treecalc-local/test-treecalc-local-run"
+        );
+        assert_eq!(
+            session_path_evidence["artifact_root_declaration"]["declared_root"],
+            session_path_evidence["artifact_root"]
+        );
+        assert!(
+            session_path_evidence["commands"]
+                .as_array()
+                .is_some_and(|commands| commands.iter().any(|command| {
+                    command
+                        == "cargo run -p oxcalc-tracecalc-cli -- treecalc test-treecalc-local-run"
+                }))
+        );
+        let session_entries = session_path_evidence["entries"]
+            .as_array()
+            .expect("session path evidence entries should be an array");
+        assert!(
+            session_path_evidence["entry_count"]
+                .as_u64()
+                .is_some_and(|count| count as usize == session_entries.len())
+        );
+        assert!(session_entries.len() >= 37);
+        let publish_session = session_entries
+            .iter()
+            .find(|entry| entry["case_id"] == "tc_local_publish_001" && entry["phase"] == "initial")
+            .expect("publish session evidence entry should exist");
+        assert!(
+            publish_session["candidate_result_keys"]["oxcalc_candidate_result_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert!(
+            publish_session["commit_correlation_keys"]["oxcalc_publication_candidate_result_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert_eq!(
+            publish_session["commit_correlation_keys"]["candidate_publication_id_match"],
+            true
+        );
+        assert!(
+            publish_session["replay_facing_diagnostics"]
+                .as_array()
+                .is_some_and(|diagnostics| diagnostics.iter().any(|diagnostic| diagnostic
+                    .as_str()
+                    .is_some_and(|value| value.starts_with("oxfml_commit_attempt_id:"))))
+        );
+        let local_reject_session = session_entries
+            .iter()
+            .find(|entry| {
+                entry["case_id"] == "tc_local_host_sensitive_reject_001"
+                    && entry["phase"] == "initial"
+            })
+            .expect("local host-sensitive reject session evidence entry should exist");
+        assert!(
+            local_reject_session["reject_correlation_keys"]["oxcalc_reject_candidate_result_id"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert_eq!(
+            local_reject_session["non_mutation_validation"]["rejected_has_no_publication_bundle"],
+            true
+        );
+        let oxfml_reject_session = session_entries
+            .iter()
+            .find(|entry| {
+                entry["case_id"] == "tc_local_lambda_host_sensitive_reject_001"
+                    && entry["phase"] == "initial"
+            })
+            .expect("OxFml host-sensitive reject session evidence entry should exist");
+        assert!(
+            oxfml_reject_session["returned_value_surface_diagnostics"]
+                .as_array()
+                .is_some_and(|diagnostics| diagnostics.iter().any(|diagnostic| diagnostic
+                    .as_str()
+                    .is_some_and(|value| value.starts_with("oxfml_returned_value_surface_"))))
+        );
+        assert!(
+            oxfml_reject_session["replay_facing_diagnostics"]
+                .as_array()
+                .is_some_and(|diagnostics| diagnostics.iter().any(|diagnostic| diagnostic
+                    .as_str()
+                    .is_some_and(|value| value.starts_with("oxfml_returned_value_surface_"))))
+        );
+
         let replay_bundle = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(artifact_root.join("replay-appliance/bundle_manifest.json"))
                 .unwrap(),
@@ -2394,6 +2666,13 @@ mod tests {
         assert_eq!(
             replay_bundle["schema_version"],
             TREECALC_REPLAY_APPLIANCE_BUNDLE_SCHEMA_V1
+        );
+        assert!(
+            replay_bundle["preserved_view_families"]
+                .as_array()
+                .is_some_and(|families| families
+                    .iter()
+                    .any(|family| { family == "session_correlation_keys" }))
         );
 
         let replay_validation = serde_json::from_str::<serde_json::Value>(
@@ -2404,6 +2683,16 @@ mod tests {
         )
         .unwrap();
         assert_eq!(replay_validation["status"], "bundle_valid");
+        assert!(
+            replay_validation["checked_paths"]
+                .as_array()
+                .is_some_and(|paths| paths.iter().any(|path| path
+                    == "docs/test-runs/core-engine/treecalc-local/test-treecalc-local-run/session_path_evidence.json"))
+        );
+        assert_eq!(
+            replay_validation["non_mutation_validation"]["session_path_evidence_checked"],
+            true
+        );
 
         let rename_post_edit_result = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(

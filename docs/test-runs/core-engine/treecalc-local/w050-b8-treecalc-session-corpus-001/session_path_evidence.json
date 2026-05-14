@@ -1,0 +1,3482 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001",
+  "artifact_root_declaration": {
+    "declared_root": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001",
+    "root_policy": "checked_in_when_artifact_root_is_committed_else_ephemeral",
+    "runner": "oxcalc-tracecalc-cli treecalc <run-id>"
+  },
+  "commands": [
+    "cargo run -p oxcalc-tracecalc-cli -- treecalc w050-b8-treecalc-session-corpus-001",
+    "cargo test -p oxcalc-core treecalc_runner_emits_local_run_artifacts",
+    "git diff --check"
+  ],
+  "entries": [
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_verified_clean_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_verified_clean_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_verified_clean_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": true
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "verified_clean",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_relative_sum_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_relative_sum_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_relative_sum_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_relative_sum_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_relative_sum_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:2dd51526f084b92d",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:f5c5219abcc22a19",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:2c920156c9b626ed",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:b7235d74abaed7f2",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:b7977cf6bb9edfc4",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:2c920156c9b626ed:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_sibling_offset_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_sibling_offset_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_sibling_offset_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:4"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "case_id": "tc_local_sibling_offset_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_sibling_offset_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:mid:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:mid:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:mid:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:mid:hole_bindings:v1:d828f41c9252b8df",
+        "oxfml_prepared_callable_key:formula:mid:prepared_callable:v1:45361ef65c5382ee",
+        "oxfml_prepared_template_hole_count:formula:mid:2",
+        "oxfml_prepared_shape_key:formula:right:shape:v1:2dd51526f084b92d",
+        "oxfml_prepared_dispatch_skeleton_key:formula:right:dispatch_skeleton:v1:f5c5219abcc22a19",
+        "oxfml_prepared_plan_template_key:formula:right:plan_template:v1:2c920156c9b626ed",
+        "oxfml_prepared_hole_binding_fingerprint:formula:right:hole_bindings:v1:12bc6df8f6e1b086",
+        "oxfml_prepared_callable_key:formula:right:prepared_callable:v1:a7e5d9af4a52bd58",
+        "oxfml_prepared_template_hole_count:formula:right:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:2c920156c9b626ed:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:mid",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:mid",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:mid",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:right",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:right",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:right",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_host_sensitive_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_host_sensitive_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_host_sensitive_reject_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_host_sensitive_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_host_sensitive_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:host:shape:v1:ef31ba884540c8dd",
+        "oxfml_prepared_dispatch_skeleton_key:formula:host:dispatch_skeleton:v1:2c5c0e7655f0662d",
+        "oxfml_prepared_plan_template_key:formula:host:plan_template:v1:2dab15d10076f98a",
+        "oxfml_prepared_hole_binding_fingerprint:formula:host:hole_bindings:v1:1c35d584d0f45bbe",
+        "oxfml_prepared_callable_key:formula:host:prepared_callable:v1:91076701243a86f9",
+        "oxfml_prepared_template_hole_count:formula:host:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:2dab15d10076f98a:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:ProviderFailure",
+        "oxfml_returned_value_surface_host_provider_outcome:ProviderFailure",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:2 is host-sensitive and cannot be locally evaluated: active_selection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:ProviderFailure",
+        "oxfml_returned_value_surface_host_provider_outcome:ProviderFailure"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_reject_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:shape:v1:6d105074c74c645b",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:dispatch_skeleton:v1:ebd2112a595d24b6",
+        "oxfml_prepared_plan_template_key:formula:dynamic:plan_template:v1:acb471388aade130",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:hole_bindings:v1:cdca8a5b4fa686d6",
+        "oxfml_prepared_callable_key:formula:dynamic:prepared_callable:v1:5fac540b0a5f68e3",
+        "oxfml_prepared_template_hole_count:formula:dynamic:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:acb471388aade130:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:2 is runtime-dynamic and not yet supported in the local sequential evaluator: late_bound_projection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_resolved_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_resolved_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_resolved_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_dynamic_resolved_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_resolved_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:resolved:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:resolved:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:resolved:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:resolved:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:resolved:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:resolved:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:resolved",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:resolved",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:resolved",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_post_edit_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_post_edit_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:release-reclass:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:release-reclass:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:release-reclass:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:release-reclass:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:release-reclass:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:release-reclass:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:release-reclass",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:release-reclass",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:release-reclass",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_post_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_post_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_release_reclassification_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_post_edit_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:release-reclass:shape:v1:6d105074c74c645b",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:release-reclass:dispatch_skeleton:v1:ebd2112a595d24b6",
+        "oxfml_prepared_plan_template_key:formula:dynamic:release-reclass:plan_template:v1:acb471388aade130",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:release-reclass:hole_bindings:v1:908fe975516e7ed7",
+        "oxfml_prepared_callable_key:formula:dynamic:release-reclass:prepared_callable:v1:c61d6bed1e5ea78c",
+        "oxfml_prepared_template_hole_count:formula:dynamic:release-reclass:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:acb471388aade130:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: released_to_runtime_resolution"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:auto-release-reclass:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:auto-release-reclass:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:auto-release-reclass:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:auto-release-reclass:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:auto-release-reclass:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:auto-release-reclass:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:auto-release-reclass",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:auto-release-reclass",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:auto-release-reclass",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_release_reclassification_auto_post_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_release_reclassification_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_release_reclassification_auto_post_edit_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:auto-release-reclass:shape:v1:6d105074c74c645b",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:auto-release-reclass:dispatch_skeleton:v1:ebd2112a595d24b6",
+        "oxfml_prepared_plan_template_key:formula:dynamic:auto-release-reclass:plan_template:v1:acb471388aade130",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:auto-release-reclass:hole_bindings:v1:c9874eddce66c0cb",
+        "oxfml_prepared_callable_key:formula:dynamic:auto-release-reclass:prepared_callable:v1:91b8f65c0d5eb0dd",
+        "oxfml_prepared_template_hole_count:formula:dynamic:auto-release-reclass:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:acb471388aade130:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: released_to_runtime_resolution"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_addition_auto_post_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_addition_auto_post_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:auto-addition:shape:v1:6d105074c74c645b",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:auto-addition:dispatch_skeleton:v1:ebd2112a595d24b6",
+        "oxfml_prepared_plan_template_key:formula:dynamic:auto-addition:plan_template:v1:acb471388aade130",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:auto-addition:hole_bindings:v1:515fc68b4999112e",
+        "oxfml_prepared_callable_key:formula:dynamic:auto-addition:prepared_callable:v1:db510673c5f600b9",
+        "oxfml_prepared_template_hole_count:formula:dynamic:auto-addition:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:acb471388aade130:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_automatic_addition"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_addition_auto_post_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_dynamic_addition_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_addition_auto_post_edit_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:auto-addition:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:auto-addition:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:auto-addition:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:auto-addition:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:auto-addition:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:auto-addition:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:auto-addition",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:auto-addition",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:auto-addition",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:mixed-add-release:shape:v1:4f0b6bcd0b1d34a3",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:mixed-add-release:dispatch_skeleton:v1:73f65f25792405b2",
+        "oxfml_prepared_plan_template_key:formula:dynamic:mixed-add-release:plan_template:v1:ffbbe7a93cb1181d",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:mixed-add-release:hole_bindings:v1:b6cac084004e68bf",
+        "oxfml_prepared_callable_key:formula:dynamic:mixed-add-release:prepared_callable:v1:8f494f336dfcb638",
+        "oxfml_prepared_template_hole_count:formula:dynamic:mixed-add-release:4",
+        "oxfml_plan_template_reuse_count:plan_template:v1:ffbbe7a93cb1181d:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Blocked)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: unresolved_before_mixed_addition"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Blocked)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_mixed_add_release_auto_post_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_dynamic_mixed_add_release_auto_post_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_dynamic_mixed_add_release_auto_post_edit_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:mixed-add-release:shape:v1:d0e2f99a9ccf6a9b",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:mixed-add-release:dispatch_skeleton:v1:4c5f3e1c1c749db2",
+        "oxfml_prepared_plan_template_key:formula:dynamic:mixed-add-release:plan_template:v1:100cc89fc8e82bbc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:mixed-add-release:hole_bindings:v1:8d786af1809a4bbc",
+        "oxfml_prepared_callable_key:formula:dynamic:mixed-add-release:prepared_callable:v1:14ebafaeccc88e86",
+        "oxfml_prepared_template_hole_count:formula:dynamic:mixed-add-release:4",
+        "oxfml_plan_template_reuse_count:plan_template:v1:100cc89fc8e82bbc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Blocked)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is runtime-dynamic and not yet supported in the local sequential evaluator: released_to_runtime_resolution"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Blocked)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_target_switch_downstream_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_target_switch_downstream_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_dynamic_target_switch_downstream_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:switch:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:switch:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:switch:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:switch:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:switch:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:switch:1",
+        "oxfml_prepared_shape_key:formula:dynamic:downstream:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:downstream:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:dynamic:downstream:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:downstream:hole_bindings:v1:1b750563722f247d",
+        "oxfml_prepared_callable_key:formula:dynamic:downstream:prepared_callable:v1:9edfbbcb9dce7433",
+        "oxfml_prepared_template_hole_count:formula:dynamic:downstream:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:switch",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:switch",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:switch",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_target_switch_downstream_publish_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_dynamic_target_switch_downstream_publish_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_dynamic_target_switch_downstream_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:dynamic:switch:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:switch:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:dynamic:switch:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:switch:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:dynamic:switch:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:dynamic:switch:1",
+        "oxfml_prepared_shape_key:formula:dynamic:downstream:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:dynamic:downstream:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:dynamic:downstream:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:dynamic:downstream:hole_bindings:v1:1b750563722f247d",
+        "oxfml_prepared_callable_key:formula:dynamic:downstream:prepared_callable:v1:9edfbbcb9dce7433",
+        "oxfml_prepared_template_hole_count:formula:dynamic:downstream:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:switch",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:switch",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:switch",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:dynamic:downstream",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_rebind_after_rename_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_rebind_after_rename_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_rebind_after_rename_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_rebind_after_rename_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_rebind_after_rename_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_rebind_after_rename_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_rebind_after_rename_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_bind_diagnostic:unresolved identifier 'TREE_REF_3_0'",
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:09a53ef46fefdc33",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:3700dbf114e2ff4c",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:6ab0da4e73160bc9",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d8de1d5271076640",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:37b3d8aa5c19fae7",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:6ab0da4e73160bc9:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "candidate_rejected:formula node node:3 requires rebind before reevaluation"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_after_constant_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_after_constant_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_after_constant_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_after_constant_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_recalc_after_constant_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_recalc_after_constant_edit_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_move_direct_target_rebind_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_move_direct_target_rebind_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_move_direct_target_rebind_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_move_direct_target_rebind_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_move_direct_target_rebind_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_move_direct_target_rebind_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": true
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "verified_clean",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_remove_direct_target_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_remove_direct_target_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_remove_direct_target_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:leaf",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:leaf",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:leaf",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_remove_direct_target_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_remove_direct_target_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_remove_direct_target_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_remove_direct_target_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "candidate_rejected:dependency graph for formula node node:3 is incompatible with reevaluation: MissingTarget: target node:2 is not present in snapshot"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_chain_after_constant_edit_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_chain_after_constant_edit_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_recalc_chain_after_constant_edit_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:4"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_recalc_chain_after_constant_edit_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_prepared_shape_key:formula:c:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:c:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:c:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:c:hole_bindings:v1:deabfa175eb51d97",
+        "oxfml_prepared_callable_key:formula:c:prepared_callable:v1:24349410dcb6ce27",
+        "oxfml_prepared_template_hole_count:formula:c:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=2;prepared_callables=2;hole_bindings=2",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:c",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:c",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:c",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_recalc_chain_after_constant_edit_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_recalc_chain_after_constant_edit_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:4"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "case_id": "tc_local_recalc_chain_after_constant_edit_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_recalc_chain_after_constant_edit_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:d821ec1c924c8c99",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:ddf0a63f20e82a52",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_prepared_shape_key:formula:c:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:c:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:c:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:c:hole_bindings:v1:deabfa175eb51d97",
+        "oxfml_prepared_callable_key:formula:c:prepared_callable:v1:24349410dcb6ce27",
+        "oxfml_prepared_template_hole_count:formula:c:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=2;prepared_callables=2;hole_bindings=2",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:c",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:c",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:c",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_host_sensitive_overlay_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_host_sensitive_overlay_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:fa5459086f0876e2",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:434f8ff66444e3d1",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:8a2aef6d34bd7b99",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:37bfacb629e654fb",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:444deb536cc5e1ed",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:8a2aef6d34bd7b99:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_host_sensitive_overlay_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_host_sensitive_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_host_sensitive_overlay_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:leaf:shape:v1:fa5459086f0876e2",
+        "oxfml_prepared_dispatch_skeleton_key:formula:leaf:dispatch_skeleton:v1:434f8ff66444e3d1",
+        "oxfml_prepared_plan_template_key:formula:leaf:plan_template:v1:8a2aef6d34bd7b99",
+        "oxfml_prepared_hole_binding_fingerprint:formula:leaf:hole_bindings:v1:37bfacb629e654fb",
+        "oxfml_prepared_callable_key:formula:leaf:prepared_callable:v1:444deb536cc5e1ed",
+        "oxfml_prepared_template_hole_count:formula:leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:8a2aef6d34bd7b99:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is host-sensitive and cannot be locally evaluated: active_selection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_capability_sensitive_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_capability_sensitive_reject_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_capability_sensitive_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_capability_sensitive_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:cap:shape:v1:ef31ba884540c8dd",
+        "oxfml_prepared_dispatch_skeleton_key:formula:cap:dispatch_skeleton:v1:2c5c0e7655f0662d",
+        "oxfml_prepared_plan_template_key:formula:cap:plan_template:v1:2dab15d10076f98a",
+        "oxfml_prepared_hole_binding_fingerprint:formula:cap:hole_bindings:v1:1f346bc92ec3c40d",
+        "oxfml_prepared_callable_key:formula:cap:prepared_callable:v1:9dcad8fba2bca118",
+        "oxfml_prepared_template_hole_count:formula:cap:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:2dab15d10076f98a:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:2 is capability-sensitive and cannot be locally evaluated: host_function_availability"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_shape_topology_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_shape_topology_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_shape_topology_reject_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_shape_topology_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_shape_topology_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:shape:shape:v1:7ef53f9946ac237a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:shape:dispatch_skeleton:v1:13a7b8327dfe379f",
+        "oxfml_prepared_plan_template_key:formula:shape:plan_template:v1:f3f6eecd30963d3f",
+        "oxfml_prepared_hole_binding_fingerprint:formula:shape:hole_bindings:v1:bd0ee87a14a119bb",
+        "oxfml_prepared_callable_key:formula:shape:prepared_callable:v1:be208aaf4c695de4",
+        "oxfml_prepared_template_hole_count:formula:shape:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:f3f6eecd30963d3f:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:2 is shape/topology-sensitive and cannot be locally evaluated: range_shape_projection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:cap_leaf:shape:v1:fa5459086f0876e2",
+        "oxfml_prepared_dispatch_skeleton_key:formula:cap_leaf:dispatch_skeleton:v1:434f8ff66444e3d1",
+        "oxfml_prepared_plan_template_key:formula:cap_leaf:plan_template:v1:8a2aef6d34bd7b99",
+        "oxfml_prepared_hole_binding_fingerprint:formula:cap_leaf:hole_bindings:v1:36c40b75a1e6d466",
+        "oxfml_prepared_callable_key:formula:cap_leaf:prepared_callable:v1:936e67ee04afbc65",
+        "oxfml_prepared_template_hole_count:formula:cap_leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:8a2aef6d34bd7b99:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is capability-sensitive and cannot be locally evaluated: host_function_availability"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_capability_sensitive_overlay_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_capability_sensitive_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_capability_sensitive_overlay_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:cap_leaf:shape:v1:fa5459086f0876e2",
+        "oxfml_prepared_dispatch_skeleton_key:formula:cap_leaf:dispatch_skeleton:v1:434f8ff66444e3d1",
+        "oxfml_prepared_plan_template_key:formula:cap_leaf:plan_template:v1:8a2aef6d34bd7b99",
+        "oxfml_prepared_hole_binding_fingerprint:formula:cap_leaf:hole_bindings:v1:36c40b75a1e6d466",
+        "oxfml_prepared_callable_key:formula:cap_leaf:prepared_callable:v1:936e67ee04afbc65",
+        "oxfml_prepared_template_hole_count:formula:cap_leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:8a2aef6d34bd7b99:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is capability-sensitive and cannot be locally evaluated: host_function_availability"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_shape_topology_overlay_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_shape_topology_overlay_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_shape_topology_overlay_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_shape_topology_overlay_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:shape_leaf:shape:v1:dc58d022e43da535",
+        "oxfml_prepared_dispatch_skeleton_key:formula:shape_leaf:dispatch_skeleton:v1:178aebef57431200",
+        "oxfml_prepared_plan_template_key:formula:shape_leaf:plan_template:v1:f42b44401f560b03",
+        "oxfml_prepared_hole_binding_fingerprint:formula:shape_leaf:hole_bindings:v1:7968fb6a5625f7da",
+        "oxfml_prepared_callable_key:formula:shape_leaf:prepared_callable:v1:390abd559504a655",
+        "oxfml_prepared_template_hole_count:formula:shape_leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:f42b44401f560b03:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is shape/topology-sensitive and cannot be locally evaluated: range_shape_projection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_post_edit_shape_topology_overlay_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_post_edit_shape_topology_overlay_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_post_edit_shape_topology_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_post_edit_shape_topology_overlay_001:candidate:post_edit",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:shape_leaf:shape:v1:dc58d022e43da535",
+        "oxfml_prepared_dispatch_skeleton_key:formula:shape_leaf:dispatch_skeleton:v1:178aebef57431200",
+        "oxfml_prepared_plan_template_key:formula:shape_leaf:plan_template:v1:f42b44401f560b03",
+        "oxfml_prepared_hole_binding_fingerprint:formula:shape_leaf:hole_bindings:v1:7968fb6a5625f7da",
+        "oxfml_prepared_callable_key:formula:shape_leaf:prepared_callable:v1:390abd559504a655",
+        "oxfml_prepared_template_hole_count:formula:shape_leaf:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:f42b44401f560b03:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:3 is shape/topology-sensitive and cannot be locally evaluated: range_shape_projection"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:4",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:deaf72175eb81f56",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:f99bb21fd92f18bd",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_prepared_shape_key:formula:c:shape:v1:e234c2c6bdb693db",
+        "oxfml_prepared_dispatch_skeleton_key:formula:c:dispatch_skeleton:v1:5766e69a415fc640",
+        "oxfml_prepared_plan_template_key:formula:c:plan_template:v1:843bb215156923ec",
+        "oxfml_prepared_hole_binding_fingerprint:formula:c:hole_bindings:v1:9baff5a354517ce4",
+        "oxfml_prepared_callable_key:formula:c:prepared_callable:v1:96c6f8f7a005dfcf",
+        "oxfml_prepared_template_hole_count:formula:c:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:843bb215156923ec:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:c",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:c",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:c",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_mixed_publish_then_post_edit_overlay_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:4",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_mixed_publish_then_post_edit_overlay_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_mixed_publish_then_post_edit_overlay_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:b:hole_bindings:v1:deaf72175eb81f56",
+        "oxfml_prepared_callable_key:formula:b:prepared_callable:v1:f99bb21fd92f18bd",
+        "oxfml_prepared_template_hole_count:formula:b:2",
+        "oxfml_prepared_shape_key:formula:c:shape:v1:e234c2c6bdb693db",
+        "oxfml_prepared_dispatch_skeleton_key:formula:c:dispatch_skeleton:v1:5766e69a415fc640",
+        "oxfml_prepared_plan_template_key:formula:c:plan_template:v1:843bb215156923ec",
+        "oxfml_prepared_hole_binding_fingerprint:formula:c:hole_bindings:v1:9baff5a354517ce4",
+        "oxfml_prepared_callable_key:formula:c:prepared_callable:v1:96c6f8f7a005dfcf",
+        "oxfml_prepared_template_hole_count:formula:c:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:843bb215156923ec:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:c",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:c",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:c",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_let_lambda_capture_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_let_lambda_capture_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_let_lambda_capture_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_let_lambda_capture_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_let_lambda_capture_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:let-lambda-capture:shape:v1:2ee038790fb18cbd",
+        "oxfml_prepared_dispatch_skeleton_key:formula:let-lambda-capture:dispatch_skeleton:v1:24aeb3d1e6bac922",
+        "oxfml_prepared_plan_template_key:formula:let-lambda-capture:plan_template:v1:3f2ab76271dad357",
+        "oxfml_prepared_hole_binding_fingerprint:formula:let-lambda-capture:hole_bindings:v1:8c6c436406456374",
+        "oxfml_prepared_callable_key:formula:let-lambda-capture:prepared_callable:v1:e500d6fae1ae2846",
+        "oxfml_prepared_template_hole_count:formula:let-lambda-capture:4",
+        "oxfml_plan_template_reuse_count:plan_template:v1:3f2ab76271dad357:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:let-lambda-capture",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:let-lambda-capture",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:let-lambda-capture",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_lambda_host_sensitive_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_lambda_host_sensitive_reject_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_local_lambda_host_sensitive_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_local_lambda_host_sensitive_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:lambda-host-sensitive:shape:v1:c9a63c83dafeaf4c",
+        "oxfml_prepared_dispatch_skeleton_key:formula:lambda-host-sensitive:dispatch_skeleton:v1:78ae667c1a5594a3",
+        "oxfml_prepared_plan_template_key:formula:lambda-host-sensitive:plan_template:v1:1dbb3475014feedf",
+        "oxfml_prepared_hole_binding_fingerprint:formula:lambda-host-sensitive:hole_bindings:v1:3522a1eec262873c",
+        "oxfml_prepared_callable_key:formula:lambda-host-sensitive:prepared_callable:v1:c0c1ce6c72f600c6",
+        "oxfml_prepared_template_hole_count:formula:lambda-host-sensitive:5",
+        "oxfml_plan_template_reuse_count:plan_template:v1:1dbb3475014feedf:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)",
+        "oxfml_trace:AcceptedCandidateResultBuilt",
+        "oxfml_trace:CommitAccepted",
+        "runtime_effect_environment_runtime_lane:local_sequential_treecalc",
+        "runtime_effect_environment_session_id:none",
+        "runtime_effect_environment_capability_profile_id:host-capabilities:default",
+        "runtime_effect_environment_runtime_policy_id:runtime-policy:default",
+        "runtime_effect_environment_project_overlays:true",
+        "candidate_rejected:reference owned by node:2 is host-sensitive and cannot be locally evaluated: call_argument_host_query"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Error(Value)"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_tracecalc_accept_publish_equiv_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_tracecalc_accept_publish_equiv_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_tracecalc_accept_publish_equiv_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_tracecalc_accept_publish_equiv_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_tracecalc_accept_publish_equiv_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:tracecalc-accept-b:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:tracecalc-accept-b:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:tracecalc-accept-b:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:tracecalc-accept-b:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:tracecalc-accept-b:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:tracecalc-accept-b:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:tracecalc-accept-b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:tracecalc-accept-b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:tracecalc-accept-b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_tracecalc_multinode_dag_equiv_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_tracecalc_multinode_dag_equiv_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3",
+          "trace:candidate:4",
+          "trace:candidate:5"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "case_id": "tc_local_tracecalc_multinode_dag_equiv_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_tracecalc_multinode_dag_equiv_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4",
+          "candidate:5"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3",
+          "candidate:4",
+          "candidate:5"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:tracecalc-dag-b:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:tracecalc-dag-b:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:tracecalc-dag-b:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:tracecalc-dag-b:hole_bindings:v1:533caa539ad42034",
+        "oxfml_prepared_callable_key:formula:tracecalc-dag-b:prepared_callable:v1:79ce0d85c06273cb",
+        "oxfml_prepared_template_hole_count:formula:tracecalc-dag-b:1",
+        "oxfml_prepared_shape_key:formula:tracecalc-dag-c:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:tracecalc-dag-c:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:tracecalc-dag-c:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:tracecalc-dag-c:hole_bindings:v1:bf93d744149af773",
+        "oxfml_prepared_callable_key:formula:tracecalc-dag-c:prepared_callable:v1:388df118213df3e7",
+        "oxfml_prepared_template_hole_count:formula:tracecalc-dag-c:1",
+        "oxfml_prepared_shape_key:formula:tracecalc-dag-d:shape:v1:38d20272a82e9272",
+        "oxfml_prepared_dispatch_skeleton_key:formula:tracecalc-dag-d:dispatch_skeleton:v1:c3ca30760fffdf29",
+        "oxfml_prepared_plan_template_key:formula:tracecalc-dag-d:plan_template:v1:31eae114bff768ae",
+        "oxfml_prepared_hole_binding_fingerprint:formula:tracecalc-dag-d:hole_bindings:v1:b7235d74abaed7f2",
+        "oxfml_prepared_callable_key:formula:tracecalc-dag-d:prepared_callable:v1:8a2bcbf9013b9847",
+        "oxfml_prepared_template_hole_count:formula:tracecalc-dag-d:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:31eae114bff768ae:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=2;prepared_callables=2;hole_bindings=2",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:tracecalc-dag-b",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:tracecalc-dag-b",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:tracecalc-dag-b",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:tracecalc-dag-c",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:tracecalc-dag-c",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:tracecalc-dag-c",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:tracecalc-dag-d",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:tracecalc-dag-d",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:tracecalc-dag-d",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_w034_higher_order_let_lambda_publish_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_w034_higher_order_let_lambda_publish_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:3"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "case_id": "tc_local_w034_higher_order_let_lambda_publish_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_w034_higher_order_let_lambda_publish_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:3"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:3"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w034-higher-order-let-lambda:shape:v1:1973013a3bd1a48e",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w034-higher-order-let-lambda:dispatch_skeleton:v1:f4da83472cac2091",
+        "oxfml_prepared_plan_template_key:formula:w034-higher-order-let-lambda:plan_template:v1:9b2c7ed8a83f6ee6",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w034-higher-order-let-lambda:hole_bindings:v1:1f1ecb4d872e2f5b",
+        "oxfml_prepared_callable_key:formula:w034-higher-order-let-lambda:prepared_callable:v1:51988b83a55caaa8",
+        "oxfml_prepared_template_hole_count:formula:w034-higher-order-let-lambda:7",
+        "oxfml_plan_template_reuse_count:plan_template:v1:9b2c7ed8a83f6ee6:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:3",
+        "oxfml_candidate_formula_stable_id:formula:w034-higher-order-let-lambda",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:3",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w034-higher-order-let-lambda",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:3",
+        "oxfml_commit_candidate_result_id:candidate:3",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w034-higher-order-let-lambda",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_w034_independent_order_equiv_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_local_w034_independent_order_equiv_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_local_w034_independent_order_equiv_001:candidate",
+        "oxfml_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5",
+          "candidate:6"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:4",
+          "trace:candidate:5",
+          "trace:candidate:6"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5",
+          "candidate:6"
+        ]
+      },
+      "case_id": "tc_local_w034_independent_order_equiv_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_local_w034_independent_order_equiv_001:candidate",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5",
+          "candidate:6"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:4",
+          "candidate:5",
+          "candidate:6"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w034-left:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w034-left:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w034-left:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w034-left:hole_bindings:v1:bf93d744149af773",
+        "oxfml_prepared_callable_key:formula:w034-left:prepared_callable:v1:388df118213df3e7",
+        "oxfml_prepared_template_hole_count:formula:w034-left:1",
+        "oxfml_prepared_shape_key:formula:w034-top:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w034-top:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w034-top:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w034-top:hole_bindings:v1:dd07a51e26597df6",
+        "oxfml_prepared_callable_key:formula:w034-top:prepared_callable:v1:917fb7cf04b609aa",
+        "oxfml_prepared_template_hole_count:formula:w034-top:1",
+        "oxfml_prepared_shape_key:formula:w034-check:shape:v1:38d20272a82e9272",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w034-check:dispatch_skeleton:v1:c3ca30760fffdf29",
+        "oxfml_prepared_plan_template_key:formula:w034-check:plan_template:v1:31eae114bff768ae",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w034-check:hole_bindings:v1:b0c943232565313a",
+        "oxfml_prepared_callable_key:formula:w034-check:prepared_callable:v1:4961e3a95c317429",
+        "oxfml_prepared_template_hole_count:formula:w034-check:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:31eae114bff768ae:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=2;prepared_callables=2;hole_bindings=2",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:w034-left",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w034-left",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w034-left",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:5",
+        "oxfml_candidate_formula_stable_id:formula:w034-top",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:5",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w034-top",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:5",
+        "oxfml_commit_candidate_result_id:candidate:5",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w034-top",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:5",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:6",
+        "oxfml_candidate_formula_stable_id:formula:w034-check",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:6",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w034-check",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:6",
+        "oxfml_commit_candidate_result_id:candidate:6",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w034-check",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:6"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_self_cycle_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_structural_self_cycle_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_w048_structural_self_cycle_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:struct:self:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:self:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w048:struct:self:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:self:hole_bindings:v1:545cd58aaa29e251",
+        "oxfml_prepared_callable_key:formula:w048:struct:self:prepared_callable:v1:175dc446c54d54c7",
+        "oxfml_prepared_template_hole_count:formula:w048:struct:self:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_structural_two_node_cycle_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_structural_two_node_cycle_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_w048_structural_two_node_cycle_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:struct:a:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:a:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:struct:a:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:a:hole_bindings:v1:04a68fc7c8e17b42",
+        "oxfml_prepared_callable_key:formula:w048:struct:a:prepared_callable:v1:a4cabc3c28badacd",
+        "oxfml_prepared_template_hole_count:formula:w048:struct:a:2",
+        "oxfml_prepared_shape_key:formula:w048:struct:b:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:struct:b:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:struct:b:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:struct:b:hole_bindings:v1:d828f41c9252b8df",
+        "oxfml_prepared_callable_key:formula:w048:struct:b:prepared_callable:v1:45361ef65c5382ee",
+        "oxfml_prepared_template_hole_count:formula:w048:struct:b:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=2;prepared_callables=2;hole_bindings=2",
+        "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_self_cycle_reject_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_self_cycle_reject_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_ctro_dynamic_self_cycle_reject_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_w048_ctro_dynamic_self_cycle_reject_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:ctro:self:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:ctro:self:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w048:ctro:self:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:ctro:self:hole_bindings:v1:545cd58aaa29e251",
+        "oxfml_prepared_callable_key:formula:w048:ctro:self:prepared_callable:v1:175dc446c54d54c7",
+        "oxfml_prepared_template_hole_count:formula:w048:ctro:self:1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": null,
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": null,
+        "oxcalc_publication_candidate_result_id": null,
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": false,
+        "rejected_has_no_publication_bundle": true,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": "fixture:tc_w048_ctro_dynamic_release_reentry_downstream_001:candidate",
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:ctro:release-owner:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:ctro:release-owner:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w048:ctro:release-owner:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:ctro:release-owner:hole_bindings:v1:545cd58aaa29e251",
+        "oxfml_prepared_callable_key:formula:w048:ctro:release-owner:prepared_callable:v1:175dc446c54d54c7",
+        "oxfml_prepared_template_hole_count:formula:w048:ctro:release-owner:1",
+        "oxfml_prepared_shape_key:formula:w048:ctro:downstream:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:ctro:downstream:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:ctro:downstream:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:ctro:downstream:hole_bindings:v1:dea8f2175eb2da28",
+        "oxfml_prepared_callable_key:formula:w048:ctro:downstream:prepared_callable:v1:a3ffd776c7596659",
+        "oxfml_prepared_template_hole_count:formula:w048:ctro:downstream:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "candidate_rejected:formula family contains a cycle; local sequential runtime cannot yet evaluate it"
+      ],
+      "result_state": "rejected",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/post_edit/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_ctro_dynamic_release_reentry_downstream_001/post_edit/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_w048_ctro_dynamic_release_reentry_downstream_001:candidate:post_edit",
+        "oxfml_candidate_result_ids": [
+          "candidate:2",
+          "candidate:4"
+        ],
+        "oxfml_candidate_trace_correlation_ids": [
+          "trace:candidate:2",
+          "trace:candidate:4"
+        ],
+        "oxfml_candidate_value_delta_candidate_result_ids": [
+          "candidate:2",
+          "candidate:4"
+        ]
+      },
+      "case_id": "tc_w048_ctro_dynamic_release_reentry_downstream_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_w048_ctro_dynamic_release_reentry_downstream_001:candidate:post_edit",
+        "oxfml_commit_attempt_ids": [
+          "commit:0001",
+          "commit:0001"
+        ],
+        "oxfml_commit_candidate_result_ids": [
+          "candidate:2",
+          "candidate:4"
+        ],
+        "oxfml_commit_value_delta_candidate_result_ids": [
+          "candidate:2",
+          "candidate:4"
+        ]
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "post_edit",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:ctro:release-owner:shape:v1:82216ef72035cd3a",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:ctro:release-owner:dispatch_skeleton:v1:2949e0bd7a652499",
+        "oxfml_prepared_plan_template_key:formula:w048:ctro:release-owner:plan_template:v1:adaffaa7615b38fc",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:ctro:release-owner:hole_bindings:v1:545cd58aaa29e251",
+        "oxfml_prepared_callable_key:formula:w048:ctro:release-owner:prepared_callable:v1:175dc446c54d54c7",
+        "oxfml_prepared_template_hole_count:formula:w048:ctro:release-owner:1",
+        "oxfml_prepared_shape_key:formula:w048:ctro:downstream:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:ctro:downstream:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:ctro:downstream:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:ctro:downstream:hole_bindings:v1:dea8f2175eb2da28",
+        "oxfml_prepared_callable_key:formula:w048:ctro:downstream:prepared_callable:v1:a3ffd776c7596659",
+        "oxfml_prepared_template_hole_count:formula:w048:ctro:downstream:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:adaffaa7615b38fc:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:2",
+        "oxfml_candidate_formula_stable_id:formula:w048:ctro:release-owner",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:2",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w048:ctro:release-owner",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:2",
+        "oxfml_commit_candidate_result_id:candidate:2",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w048:ctro:release-owner",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:2",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_candidate_result_id:candidate:4",
+        "oxfml_candidate_formula_stable_id:formula:w048:ctro:downstream",
+        "oxfml_candidate_trace_correlation_id:trace:candidate:4",
+        "oxfml_candidate_value_delta_formula_stable_id:formula:w048:ctro:downstream",
+        "oxfml_candidate_value_delta_candidate_result_id:candidate:4",
+        "oxfml_commit_candidate_result_id:candidate:4",
+        "oxfml_commit_attempt_id:commit:0001",
+        "oxfml_commit_formula_stable_id:formula:w048:ctro:downstream",
+        "oxfml_commit_value_delta_candidate_result_id:candidate:4"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": [
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number",
+        "oxfml_returned_value_surface_kind:OrdinaryValue",
+        "oxfml_returned_value_surface_payload_summary:Number"
+      ]
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_two_node_order_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_two_node_order_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_w048_excel_iter_two_node_order_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_excel_iter_two_node_order_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_w048_excel_iter_two_node_order_001:candidate",
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:excel:iter:A1:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:iter:A1:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:iter:A1:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:iter:A1:hole_bindings:v1:04a68fc7c8e17b42",
+        "oxfml_prepared_callable_key:formula:w048:excel:iter:A1:prepared_callable:v1:a4cabc3c28badacd",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:iter:A1:2",
+        "oxfml_prepared_shape_key:formula:w048:excel:iter:B1:shape:v1:0537f6a4d312bb0c",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:iter:B1:dispatch_skeleton:v1:5340d34c0b190d20",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:iter:B1:plan_template:v1:9f979021835e5a3d",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:iter:B1:hole_bindings:v1:d8256c1c924f9bf0",
+        "oxfml_prepared_callable_key:formula:w048:excel:iter:B1:prepared_callable:v1:ed073dd612827970",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:iter:B1:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:9f979021835e5a3d:call_sites=1;prepared_callables=1;hole_bindings=1",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_three_node_order_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_three_node_order_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_w048_excel_iter_three_node_order_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_excel_iter_three_node_order_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_w048_excel_iter_three_node_order_001:candidate",
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:excel:iter3:A1:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:iter3:A1:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:iter3:A1:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:iter3:A1:hole_bindings:v1:04a68fc7c8e17b42",
+        "oxfml_prepared_callable_key:formula:w048:excel:iter3:A1:prepared_callable:v1:a4cabc3c28badacd",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:iter3:A1:2",
+        "oxfml_prepared_shape_key:formula:w048:excel:iter3:B1:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:iter3:B1:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:iter3:B1:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:iter3:B1:hole_bindings:v1:d828f41c9252b8df",
+        "oxfml_prepared_callable_key:formula:w048:excel:iter3:B1:prepared_callable:v1:45361ef65c5382ee",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:iter3:B1:2",
+        "oxfml_prepared_shape_key:formula:w048:excel:iter3:C1:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:iter3:C1:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:iter3:C1:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:iter3:C1:hole_bindings:v1:dea8f2175eb2da28",
+        "oxfml_prepared_callable_key:formula:w048:excel:iter3:C1:prepared_callable:v1:a3ffd776c7596659",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:iter3:C1:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=3;prepared_callables=3;hole_bindings=3"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_fraction_precision_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_iter_fraction_precision_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_w048_excel_iter_fraction_precision_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_excel_iter_fraction_precision_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_w048_excel_iter_fraction_precision_001:candidate",
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:excel:fraction:A1:shape:v1:1b9289ef11a58ca9",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:fraction:A1:dispatch_skeleton:v1:a01580e9d7e3cf10",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:fraction:A1:plan_template:v1:5159ada01f27c7bf",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:fraction:A1:hole_bindings:v1:297857d2a07dbe0e",
+        "oxfml_prepared_callable_key:formula:w048:excel:fraction:A1:prepared_callable:v1:2cdb64d2d992a9b1",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:fraction:A1:3",
+        "oxfml_plan_template_reuse_count:plan_template:v1:5159ada01f27c7bf:call_sites=1;prepared_callables=1;hole_bindings=1"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": []
+    },
+    {
+      "artifact_paths": {
+        "result": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_ctro_indirect_iterative_self_001/result.json",
+        "trace": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001/cases/tc_w048_excel_ctro_indirect_iterative_self_001/trace.json"
+      },
+      "candidate_result_keys": {
+        "oxcalc_candidate_result_id": "fixture:tc_w048_excel_ctro_indirect_iterative_self_001:candidate",
+        "oxfml_candidate_result_ids": [],
+        "oxfml_candidate_trace_correlation_ids": [],
+        "oxfml_candidate_value_delta_candidate_result_ids": []
+      },
+      "case_id": "tc_w048_excel_ctro_indirect_iterative_self_001",
+      "commit_correlation_keys": {
+        "candidate_publication_id_match": true,
+        "oxcalc_publication_candidate_result_id": "fixture:tc_w048_excel_ctro_indirect_iterative_self_001:candidate",
+        "oxfml_commit_attempt_ids": [],
+        "oxfml_commit_candidate_result_ids": [],
+        "oxfml_commit_value_delta_candidate_result_ids": []
+      },
+      "non_mutation_validation": {
+        "published_has_publication_bundle": true,
+        "rejected_has_no_publication_bundle": false,
+        "verified_clean_has_no_publication_bundle": false
+      },
+      "phase": "initial",
+      "reject_correlation_keys": {
+        "oxcalc_reject_candidate_result_id": null,
+        "oxfml_reject_commit_attempt_ids": [],
+        "oxfml_reject_trace_correlation_ids": []
+      },
+      "replay_facing_diagnostics": [
+        "oxfml_prepared_shape_key:formula:w048:excel:ctro:A1:shape:v1:ca06e5286c1a9025",
+        "oxfml_prepared_dispatch_skeleton_key:formula:w048:excel:ctro:A1:dispatch_skeleton:v1:bc59307f509b0330",
+        "oxfml_prepared_plan_template_key:formula:w048:excel:ctro:A1:plan_template:v1:a237bf6896772e24",
+        "oxfml_prepared_hole_binding_fingerprint:formula:w048:excel:ctro:A1:hole_bindings:v1:04a68fc7c8e17b42",
+        "oxfml_prepared_callable_key:formula:w048:excel:ctro:A1:prepared_callable:v1:a4cabc3c28badacd",
+        "oxfml_prepared_template_hole_count:formula:w048:excel:ctro:A1:2",
+        "oxfml_plan_template_reuse_count:plan_template:v1:a237bf6896772e24:call_sites=1;prepared_callables=1;hole_bindings=1"
+      ],
+      "result_state": "published",
+      "returned_value_surface_diagnostics": []
+    }
+  ],
+  "entry_count": 52,
+  "evidence_policy": {
+    "checked_in_root_required_for_b8": true,
+    "ephemeral_policy": "allowed only when the run command, run_id, and non-mutation validation are recorded in the governing workset/spec note",
+    "retention": "checked_in_or_explicit_ephemeral"
+  },
+  "run_id": "w050-b8-treecalc-session-corpus-001",
+  "schema_version": "oxcalc.treecalc.session_path_evidence.v1"
+}

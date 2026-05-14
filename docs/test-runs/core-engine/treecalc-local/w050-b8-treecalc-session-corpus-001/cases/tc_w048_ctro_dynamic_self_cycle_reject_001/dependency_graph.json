@@ -1,0 +1,27 @@
+{
+  "cycle_groups": [
+    [
+      2
+    ]
+  ],
+  "descriptors": [
+    {
+      "carrier_detail": "dynamic_resolved:node:2:carrier:w048:ctro:self:candidate_overlay_self_cycle",
+      "descriptor_id": "bind:formula:w048:ctro:self:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 2,
+      "requires_rebind_on_structural_change": true,
+      "target_node_id": 2
+    }
+  ],
+  "diagnostics": [],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:w048:ctro:self:oxfml_ref:0",
+      "edge_id": "dep:2:2:bind:formula:w048:ctro:self:oxfml_ref:0",
+      "kind": "DynamicPotential",
+      "owner_node_id": 2,
+      "target_node_id": 2
+    }
+  ]
+}

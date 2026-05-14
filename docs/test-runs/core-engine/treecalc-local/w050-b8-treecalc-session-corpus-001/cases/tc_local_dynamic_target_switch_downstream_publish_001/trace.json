@@ -1,0 +1,94 @@
+{
+  "case_id": "tc_local_dynamic_target_switch_downstream_publish_001",
+  "events": [
+    {
+      "case_id": "tc_local_dynamic_target_switch_downstream_publish_001",
+      "formula_count": 2,
+      "label": "case_loaded",
+      "node_count": 5,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:dynamic:switch",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2949e0bd7a652499",
+      "formula_artifact_id": "formula:dynamic:switch",
+      "formula_stable_id": "formula:dynamic:switch",
+      "hole_binding_fingerprint": "hole_bindings:v1:533caa539ad42034",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:adaffaa7615b38fc",
+      "prepared_callable_key": "prepared_callable:v1:79ce0d85c06273cb",
+      "shape_key": "shape:v1:82216ef72035cd3a",
+      "step_id": 2,
+      "template_hole_count": 1
+    },
+    {
+      "bind_artifact_id": "bind:dynamic:downstream",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:dynamic:downstream",
+      "formula_stable_id": "formula:dynamic:downstream",
+      "hole_binding_fingerprint": "hole_bindings:v1:1b750563722f247d",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 5,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:9edfbbcb9dce7433",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 3,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 3,
+      "step_id": 4
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 5,
+      "step_id": 5
+    },
+    {
+      "detail": "owner_node:node:3;target_node:node:2;detail:dynamic:carrier:dynamic:switch:runtime_target",
+      "family": "DynamicDependency",
+      "family_owner": "oxcalc_local_projection",
+      "kind": "runtime_effect.dynamic_reference",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "runtime_effect_observed",
+      "step_id": 6
+    },
+    {
+      "affected_node_ids": [
+        2,
+        3
+      ],
+      "kind": "activate_dynamic_dep",
+      "label": "dependency_shape_update_observed",
+      "step_id": 7
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 8,
+      "target_set": [
+        3,
+        5
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_dynamic_target_switch_downstream_publish_001:publication",
+      "step_id": 9
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 10
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

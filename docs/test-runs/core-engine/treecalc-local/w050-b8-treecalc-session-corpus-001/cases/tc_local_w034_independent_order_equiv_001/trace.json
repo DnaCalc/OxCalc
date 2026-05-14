@@ -1,0 +1,96 @@
+{
+  "case_id": "tc_local_w034_independent_order_equiv_001",
+  "events": [
+    {
+      "case_id": "tc_local_w034_independent_order_equiv_001",
+      "formula_count": 3,
+      "label": "case_loaded",
+      "node_count": 6,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:w034-left",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2949e0bd7a652499",
+      "formula_artifact_id": "formula:w034-left",
+      "formula_stable_id": "formula:w034-left",
+      "hole_binding_fingerprint": "hole_bindings:v1:bf93d744149af773",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 4,
+      "plan_template_key": "plan_template:v1:adaffaa7615b38fc",
+      "prepared_callable_key": "prepared_callable:v1:388df118213df3e7",
+      "shape_key": "shape:v1:82216ef72035cd3a",
+      "step_id": 2,
+      "template_hole_count": 1
+    },
+    {
+      "bind_artifact_id": "bind:w034-top",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:2949e0bd7a652499",
+      "formula_artifact_id": "formula:w034-top",
+      "formula_stable_id": "formula:w034-top",
+      "hole_binding_fingerprint": "hole_bindings:v1:dd07a51e26597df6",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 5,
+      "plan_template_key": "plan_template:v1:adaffaa7615b38fc",
+      "prepared_callable_key": "prepared_callable:v1:917fb7cf04b609aa",
+      "shape_key": "shape:v1:82216ef72035cd3a",
+      "step_id": 3,
+      "template_hole_count": 1
+    },
+    {
+      "bind_artifact_id": "bind:w034-check",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:c3ca30760fffdf29",
+      "formula_artifact_id": "formula:w034-check",
+      "formula_stable_id": "formula:w034-check",
+      "hole_binding_fingerprint": "hole_bindings:v1:b0c943232565313a",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 6,
+      "plan_template_key": "plan_template:v1:31eae114bff768ae",
+      "prepared_callable_key": "prepared_callable:v1:4961e3a95c317429",
+      "shape_key": "shape:v1:38d20272a82e9272",
+      "step_id": 4,
+      "template_hole_count": 2
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 4,
+      "step_id": 5
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 5,
+      "step_id": 6
+    },
+    {
+      "label": "evaluate_node",
+      "node_id": 6,
+      "step_id": 7
+    },
+    {
+      "aligned_canonical_family": "AcceptedCandidateResult",
+      "candidate_result_id": "fixture:tc_local_w034_independent_order_equiv_001:candidate",
+      "label": "candidate_adapted",
+      "projection_owner": "oxcalc_local",
+      "step_id": 8,
+      "target_set": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "aligned_canonical_family": "CommitBundle",
+      "candidate_result_id": "fixture:tc_local_w034_independent_order_equiv_001:candidate",
+      "label": "publication_committed",
+      "projection_owner": "oxcalc_local",
+      "publication_id": "fixture:tc_local_w034_independent_order_equiv_001:publication",
+      "step_id": 9
+    },
+    {
+      "label": "run_finished",
+      "result_state": "published",
+      "step_id": 10
+    }
+  ],
+  "result_state": "published",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

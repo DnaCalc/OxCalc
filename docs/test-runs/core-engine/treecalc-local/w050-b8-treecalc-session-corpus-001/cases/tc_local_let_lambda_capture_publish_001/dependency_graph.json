@@ -1,0 +1,50 @@
+{
+  "cycle_groups": [],
+  "descriptors": [
+    {
+      "carrier_detail": "direct_node:node:2",
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": 2
+    },
+    {
+      "carrier_detail": "oxfml_unmapped_name:base",
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_unmapped_name:1",
+      "kind": "Unresolved",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": null
+    },
+    {
+      "carrier_detail": "oxfml_unmapped_name:delta",
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_unmapped_name:2",
+      "kind": "Unresolved",
+      "owner_node_id": 3,
+      "requires_rebind_on_structural_change": false,
+      "target_node_id": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_unmapped_name:1",
+      "detail": "oxfml_unmapped_name:base",
+      "kind": "UnresolvedReference"
+    },
+    {
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_unmapped_name:2",
+      "detail": "oxfml_unmapped_name:delta",
+      "kind": "UnresolvedReference"
+    }
+  ],
+  "edges": [
+    {
+      "descriptor_id": "bind:formula:let-lambda-capture:oxfml_ref:0",
+      "edge_id": "dep:3:2:bind:formula:let-lambda-capture:oxfml_ref:0",
+      "kind": "StaticDirect",
+      "owner_node_id": 3,
+      "target_node_id": 2
+    }
+  ]
+}

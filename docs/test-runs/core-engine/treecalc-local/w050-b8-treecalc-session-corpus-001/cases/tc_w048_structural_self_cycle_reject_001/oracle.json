@@ -1,0 +1,10 @@
+{
+  "case_id": "tc_w048_structural_self_cycle_reject_001",
+  "expected_evaluation_order": [],
+  "expected_published_values": {
+    "2": "7"
+  },
+  "expected_reject_kind": "SyntheticCycleReject",
+  "expected_result_state": "rejected",
+  "expected_runtime_effect_kinds": null
+}

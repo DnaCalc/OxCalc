@@ -1,0 +1,57 @@
+{
+  "case_id": "tc_w048_structural_two_node_cycle_reject_001",
+  "events": [
+    {
+      "case_id": "tc_w048_structural_two_node_cycle_reject_001",
+      "formula_count": 2,
+      "label": "case_loaded",
+      "node_count": 3,
+      "step_id": 1
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:a",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:w048:struct:a",
+      "formula_stable_id": "formula:w048:struct:a",
+      "hole_binding_fingerprint": "hole_bindings:v1:04a68fc7c8e17b42",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 2,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:a4cabc3c28badacd",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 2,
+      "template_hole_count": 2
+    },
+    {
+      "bind_artifact_id": "bind:w048:struct:b",
+      "dispatch_skeleton_key": "dispatch_skeleton:v1:bc59307f509b0330",
+      "formula_artifact_id": "formula:w048:struct:b",
+      "formula_stable_id": "formula:w048:struct:b",
+      "hole_binding_fingerprint": "hole_bindings:v1:d828f41c9252b8df",
+      "label": "prepared_formula_identity",
+      "owner_node_id": 3,
+      "plan_template_key": "plan_template:v1:a237bf6896772e24",
+      "prepared_callable_key": "prepared_callable:v1:45361ef65c5382ee",
+      "shape_key": "shape:v1:ca06e5286c1a9025",
+      "step_id": 3,
+      "template_hole_count": 2
+    },
+    {
+      "aligned_canonical_family": "RejectRecord",
+      "candidate_result_id": "fixture:tc_w048_structural_two_node_cycle_reject_001:candidate",
+      "detail": "formula family contains a cycle; local sequential runtime cannot yet evaluate it",
+      "kind": "SyntheticCycleReject",
+      "kind_owner": "oxcalc_local_projection",
+      "label": "candidate_rejected",
+      "projection_owner": "oxcalc_local",
+      "step_id": 4
+    },
+    {
+      "label": "run_finished",
+      "result_state": "rejected",
+      "step_id": 5
+    }
+  ],
+  "result_state": "rejected",
+  "schema_version": "oxcalc.treecalc.local_trace.v1"
+}

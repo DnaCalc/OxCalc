@@ -1130,3 +1130,32 @@ Current non-assumptions:
 1. OxCalc is not asking for private or flat-root OxFml access,
 2. OxCalc is not treating the local driver as a canonical shared seam,
 3. OxCalc is not moving coordinator publication authority into OxFml.
+
+## 69. W050 B5 Bind-Output Reference Handle Uptake
+OxCalc has now started deriving dependency descriptor source handles from
+current V1 bind output instead of treating the synthetic A1 fixture as the
+dependency evidence.
+
+Current OxCalc code shape is:
+1. `DependencyDescriptor` carries an optional `source_reference_handle`,
+2. direct and rebind-sensitive structural references consume
+   `BoundFormula.normalized_references` where current V1 exposes
+   `NormalizedReference::Name` for the migration carrier,
+3. unresolved references consume `BoundFormula.unresolved_references`,
+4. host-sensitive, dynamic-potential, capability-sensitive, and
+   shape/topology-sensitive carriers carry `runtime_fact:*` handles,
+5. the dependency graph preserves these handles alongside OxCalc-owned
+   structural target mapping.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. OxCalc still needs a canonical formal-reference set on the public
+   runtime/session surface,
+2. each formal reference should carry a stable prepared-callable reference
+   handle, reference family, caller/structure-context dependence, and a
+   host-mappable identity payload,
+3. once that exists, OxCalc can stop using migration name carriers to
+   connect current TreeCalc structural targets to OxFml bind output.
+
+Current non-assumption:
+1. the B5 source handles are evidence for current V1 uptake; they are not
+   a request for OxCalc to inspect private binder internals.

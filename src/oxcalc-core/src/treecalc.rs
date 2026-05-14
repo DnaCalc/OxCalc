@@ -6,7 +6,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
 use oxfml_core::EvaluationBackend;
-use oxfml_core::binding::{BindContext, BindRequest, NameKind, bind_formula};
+use oxfml_core::binding::{
+    BindContext, BindRequest, NameKind, NormalizedReference, UnresolvedReferenceRecord,
+    bind_formula,
+};
 use oxfml_core::consumer::runtime::RuntimeFormulaResult;
 use oxfml_core::interface::ReturnedValueSurfaceKind;
 use oxfml_core::red::project_red_view;
@@ -1635,23 +1638,136 @@ fn prepare_oxfml_formula(
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
-    let mut descriptors = prepared
+    let reference_bindings_by_token = prepared
         .translated
         .reference_bindings
         .iter()
+        .map(|reference| (reference.token.as_str(), reference))
+        .collect::<BTreeMap<_, _>>();
+    let unresolved_bindings_by_token = prepared
+        .translated
+        .unresolved_bindings
+        .iter()
+        .map(|unresolved| (unresolved.token.as_str(), unresolved))
+        .collect::<BTreeMap<_, _>>();
+    let mut consumed_reference_tokens = BTreeSet::new();
+    let mut consumed_unresolved_tokens = BTreeSet::new();
+    let mut descriptors = Vec::new();
+
+    for (index, normalized_reference) in prepared
+        .bound_formula
+        .normalized_references
+        .iter()
         .enumerate()
-        .map(|(index, reference)| DependencyDescriptor {
-            descriptor_id: format!(
-                "bind:{}:oxfml_ref:{index}",
-                prepared.binding.formula_artifact_id.0
-            ),
-            owner_node_id: prepared.binding.owner_node_id,
-            target_node_id: Some(reference.target_node_id),
-            kind: reference.kind,
-            carrier_detail: reference.carrier_detail.clone(),
-            requires_rebind_on_structural_change: reference.requires_rebind_on_structural_change,
-        })
-        .collect::<Vec<_>>();
+    {
+        let NormalizedReference::Name(name) = normalized_reference else {
+            continue;
+        };
+        let source_reference_handle = Some(oxfml_normalized_reference_handle(normalized_reference));
+        if let Some(reference) = reference_bindings_by_token.get(name.name.as_str()) {
+            consumed_reference_tokens.insert(name.name.clone());
+            descriptors.push(dependency_descriptor_from_bound_reference(
+                prepared,
+                format!(
+                    "bind:{}:oxfml_ref:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                reference,
+                source_reference_handle,
+            ));
+        } else if let Some(unresolved) = unresolved_bindings_by_token.get(name.name.as_str()) {
+            consumed_unresolved_tokens.insert(name.name.clone());
+            descriptors.push(dependency_descriptor_from_unresolved_binding(
+                prepared,
+                format!(
+                    "bind:{}:oxfml_ref_unresolved:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                unresolved,
+                source_reference_handle,
+            ));
+        } else {
+            descriptors.push(DependencyDescriptor {
+                descriptor_id: format!(
+                    "bind:{}:oxfml_unmapped_name:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                source_reference_handle,
+                owner_node_id: prepared.binding.owner_node_id,
+                target_node_id: None,
+                kind: DependencyDescriptorKind::Unresolved,
+                carrier_detail: format!("oxfml_unmapped_name:{}", name.name),
+                requires_rebind_on_structural_change: name.caller_context_dependent
+                    || matches!(
+                        name.kind,
+                        NameKind::ReferenceLike | NameKind::MixedOrDeferred
+                    ),
+            });
+        }
+    }
+
+    for (index, unresolved_record) in prepared
+        .bound_formula
+        .unresolved_references
+        .iter()
+        .enumerate()
+    {
+        if consumed_unresolved_tokens.contains(&unresolved_record.source_text) {
+            continue;
+        }
+
+        let source_reference_handle = Some(oxfml_unresolved_reference_handle(unresolved_record));
+        if let Some(unresolved) =
+            unresolved_bindings_by_token.get(unresolved_record.source_text.as_str())
+        {
+            consumed_unresolved_tokens.insert(unresolved_record.source_text.clone());
+            descriptors.push(dependency_descriptor_from_unresolved_binding(
+                prepared,
+                format!(
+                    "bind:{}:oxfml_unresolved:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                unresolved,
+                source_reference_handle,
+            ));
+        } else {
+            descriptors.push(DependencyDescriptor {
+                descriptor_id: format!(
+                    "bind:{}:oxfml_unmapped_unresolved:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                source_reference_handle,
+                owner_node_id: prepared.binding.owner_node_id,
+                target_node_id: None,
+                kind: DependencyDescriptorKind::Unresolved,
+                carrier_detail: format!(
+                    "oxfml_unresolved:{}:{}",
+                    unresolved_record.source_text, unresolved_record.reason
+                ),
+                requires_rebind_on_structural_change: true,
+            });
+        }
+    }
+
+    descriptors.extend(
+        prepared
+            .translated
+            .reference_bindings
+            .iter()
+            .enumerate()
+            .filter(|(_, reference)| !consumed_reference_tokens.contains(&reference.token))
+            .map(|(index, reference)| {
+                dependency_descriptor_from_bound_reference(
+                    prepared,
+                    format!(
+                        "bind:{}:oxfml_ref_fallback:{index}",
+                        prepared.binding.formula_artifact_id.0
+                    ),
+                    reference,
+                    None,
+                )
+            }),
+    );
 
     descriptors.extend(
         prepared
@@ -1659,17 +1775,17 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             .unresolved_bindings
             .iter()
             .enumerate()
-            .map(|(index, unresolved)| DependencyDescriptor {
-                descriptor_id: format!(
-                    "bind:{}:oxfml_unresolved:{index}",
-                    prepared.binding.formula_artifact_id.0
-                ),
-                owner_node_id: prepared.binding.owner_node_id,
-                target_node_id: None,
-                kind: unresolved.kind,
-                carrier_detail: unresolved.carrier_detail.clone(),
-                requires_rebind_on_structural_change: unresolved
-                    .requires_rebind_on_structural_change,
+            .filter(|(_, unresolved)| !consumed_unresolved_tokens.contains(&unresolved.token))
+            .map(|(index, unresolved)| {
+                dependency_descriptor_from_unresolved_binding(
+                    prepared,
+                    format!(
+                        "bind:{}:oxfml_unresolved_fallback:{index}",
+                        prepared.binding.formula_artifact_id.0
+                    ),
+                    unresolved,
+                    None,
+                )
             }),
     );
 
@@ -1679,6 +1795,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                 "bind:{}:oxfml_residual:{index}",
                 prepared.binding.formula_artifact_id.0
             ),
+            source_reference_handle: Some(runtime_fact_reference_handle(residual)),
             owner_node_id: prepared.binding.owner_node_id,
             target_node_id: None,
             kind: residual.kind.dependency_descriptor_kind(),
@@ -1690,6 +1807,55 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
 
     descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
     descriptors
+}
+
+fn dependency_descriptor_from_bound_reference(
+    prepared: &PreparedOxfmlFormula,
+    descriptor_id: String,
+    reference: &SyntheticReferenceBinding,
+    source_reference_handle: Option<String>,
+) -> DependencyDescriptor {
+    DependencyDescriptor {
+        descriptor_id,
+        source_reference_handle,
+        owner_node_id: prepared.binding.owner_node_id,
+        target_node_id: Some(reference.target_node_id),
+        kind: reference.kind,
+        carrier_detail: reference.carrier_detail.clone(),
+        requires_rebind_on_structural_change: reference.requires_rebind_on_structural_change,
+    }
+}
+
+fn dependency_descriptor_from_unresolved_binding(
+    prepared: &PreparedOxfmlFormula,
+    descriptor_id: String,
+    unresolved: &SyntheticUnresolvedBinding,
+    source_reference_handle: Option<String>,
+) -> DependencyDescriptor {
+    DependencyDescriptor {
+        descriptor_id,
+        source_reference_handle,
+        owner_node_id: prepared.binding.owner_node_id,
+        target_node_id: None,
+        kind: unresolved.kind,
+        carrier_detail: unresolved.carrier_detail.clone(),
+        requires_rebind_on_structural_change: unresolved.requires_rebind_on_structural_change,
+    }
+}
+
+fn oxfml_normalized_reference_handle(reference: &NormalizedReference) -> String {
+    format!("oxfml_normalized_ref:{reference}")
+}
+
+fn oxfml_unresolved_reference_handle(unresolved: &UnresolvedReferenceRecord) -> String {
+    format!(
+        "oxfml_unresolved_ref:{}:{}",
+        unresolved.source_text, unresolved.reason
+    )
+}
+
+fn runtime_fact_reference_handle(residual: &ResidualCarrier) -> String {
+    format!("runtime_fact:{:?}:{}", residual.kind, residual.carrier_id)
 }
 
 fn residual_evaluation_failure(
@@ -3053,6 +3219,17 @@ mod tests {
             .unwrap_or_else(|| panic!("missing direct_node:node:2 in {:?}", descriptor_keys));
         assert_eq!(direct.kind, DependencyDescriptorKind::StaticDirect);
         assert_eq!(direct.target_node_id, Some(TreeNodeId(2)));
+        assert_eq!(
+            direct.source_reference_handle.as_deref(),
+            Some("oxfml_normalized_ref:name:TREE_REF_4_0")
+        );
+        assert!(
+            !direct
+                .source_reference_handle
+                .as_deref()
+                .unwrap()
+                .contains("A2")
+        );
         assert!(!direct.requires_rebind_on_structural_change);
 
         let sibling = descriptors
@@ -3060,6 +3237,10 @@ mod tests {
             .unwrap_or_else(|| panic!("missing sibling_offset:-1: in {:?}", descriptor_keys));
         assert_eq!(sibling.kind, DependencyDescriptorKind::RelativeBound);
         assert_eq!(sibling.target_node_id, Some(TreeNodeId(3)));
+        assert_eq!(
+            sibling.source_reference_handle.as_deref(),
+            Some("oxfml_normalized_ref:name:TREE_REF_4_1")
+        );
         assert!(sibling.requires_rebind_on_structural_change);
 
         let unresolved_relative = descriptors
@@ -3075,6 +3256,14 @@ mod tests {
             DependencyDescriptorKind::RelativeBound
         );
         assert_eq!(unresolved_relative.target_node_id, None);
+        assert!(
+            unresolved_relative
+                .source_reference_handle
+                .as_deref()
+                .is_some_and(
+                    |handle| handle.starts_with("oxfml_unresolved_ref:TREE_UNRESOLVED_4_2:")
+                )
+        );
         assert!(unresolved_relative.requires_rebind_on_structural_change);
 
         let unresolved_token = descriptors
@@ -3082,6 +3271,14 @@ mod tests {
             .unwrap_or_else(|| panic!("missing unresolved:../Missing in {:?}", descriptor_keys));
         assert_eq!(unresolved_token.kind, DependencyDescriptorKind::Unresolved);
         assert_eq!(unresolved_token.target_node_id, None);
+        assert!(
+            unresolved_token
+                .source_reference_handle
+                .as_deref()
+                .is_some_and(
+                    |handle| handle.starts_with("oxfml_unresolved_ref:TREE_UNRESOLVED_4_3:")
+                )
+        );
         assert!(unresolved_token.requires_rebind_on_structural_change);
 
         let host_sensitive = descriptors
@@ -3094,6 +3291,10 @@ mod tests {
             });
         assert_eq!(host_sensitive.kind, DependencyDescriptorKind::HostSensitive);
         assert_eq!(host_sensitive.target_node_id, None);
+        assert_eq!(
+            host_sensitive.source_reference_handle.as_deref(),
+            Some("runtime_fact:HostSensitive:host.selection")
+        );
         assert!(host_sensitive.requires_rebind_on_structural_change);
 
         let dynamic = descriptors
@@ -3106,7 +3307,22 @@ mod tests {
             });
         assert_eq!(dynamic.kind, DependencyDescriptorKind::DynamicPotential);
         assert_eq!(dynamic.target_node_id, None);
+        assert_eq!(
+            dynamic.source_reference_handle.as_deref(),
+            Some("runtime_fact:DynamicPotential:runtime.topic")
+        );
         assert!(!dynamic.requires_rebind_on_structural_change);
+
+        let graph_descriptors = descriptors.values().cloned().collect::<Vec<_>>();
+        let graph = DependencyGraph::build(&structural_snapshot, &graph_descriptors);
+        let graph_direct = graph.descriptors_by_owner[&TreeNodeId(4)]
+            .iter()
+            .find(|descriptor| descriptor.carrier_detail == "direct_node:node:2")
+            .expect("direct descriptor should be retained in graph");
+        assert_eq!(
+            graph_direct.source_reference_handle.as_deref(),
+            Some("oxfml_normalized_ref:name:TREE_REF_4_0")
+        );
     }
 
     #[test]

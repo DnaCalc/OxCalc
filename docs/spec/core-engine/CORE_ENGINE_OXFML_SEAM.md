@@ -782,7 +782,32 @@ ordering and authority guard around the existing sequential strategy; it
 does not change formula results, candidate values, coordinator fences, or
 publication authority for any currently exercised profile.
 
-### 22.8 CALC-002 Handoff Inputs
+### 22.8 Current V1 Bind-Output Reference Mapping
+The current OxCalc B5 uptake adds a source-reference handle to every
+`DependencyDescriptor` that can be tied to OxFml bind output or runtime
+facts.
+
+Current mapping:
+1. Direct and rebind-sensitive structural references are derived from
+   `BoundFormula.normalized_references` where current V1 exposes a
+   `NormalizedReference::Name` corresponding to the current migration
+   carrier.
+2. Unresolved references are derived from
+   `BoundFormula.unresolved_references`.
+3. Host-sensitive, dynamic-potential, capability-sensitive, and
+   shape/topology-sensitive carriers remain runtime facts and carry
+   `runtime_fact:*` handles rather than pretending to be static
+   dependency edges.
+4. The dependency graph preserves the source-reference handle alongside
+   the OxCalc target mapping, so mapping evidence no longer depends on an
+   A1 address-string round trip.
+
+Current B5 limit: current V1 still requires a migration carrier for some
+TreeCalc structural targets. CALC-002 must still ask OxFml for the
+canonical formal-reference set and stable prepared-callable reference
+handles that make those carriers unnecessary.
+
+### 22.9 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,

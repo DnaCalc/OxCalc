@@ -249,6 +249,13 @@ owned by `.beads/`, not this document.
    OxCalc coordinator decision before close/replay capture. This is an
    ordering and authority guard; B5 still owns replacement of synthetic
    A1/name flattening with OxFml bind-output reference handles.
+7. B5 live uptake: `DependencyDescriptor` now carries an optional
+   `source_reference_handle`; `oxfml_dependency_descriptors` derives
+   handles from `BoundFormula.normalized_references`,
+   `BoundFormula.unresolved_references`, and runtime residual facts. The
+   graph preserves these handles while keeping OxCalc structural targets
+   as the dependency edge truth. CALC-002 still owns the fully canonical
+   formal-reference set that can retire migration carriers.
 
 ## 7. Required Work
 

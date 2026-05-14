@@ -198,6 +198,7 @@ fn lower_reference(
 
     DependencyDescriptor {
         descriptor_id,
+        source_reference_handle: None,
         owner_node_id: binding.owner_node_id,
         target_node_id,
         kind,

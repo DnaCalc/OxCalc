@@ -330,6 +330,7 @@ mod tests {
 
         repository.rebuild_dependency_graph(&[DependencyDescriptor {
             descriptor_id: "dep:a:b".to_string(),
+            source_reference_handle: None,
             owner_node_id: TreeNodeId(2),
             target_node_id: Some(TreeNodeId(3)),
             kind: DependencyDescriptorKind::StaticDirect,
@@ -366,6 +367,7 @@ mod tests {
         let mut repository = CalculationRepository::new(snapshot());
         repository.rebuild_dependency_graph(&[DependencyDescriptor {
             descriptor_id: "dep:a:b".to_string(),
+            source_reference_handle: None,
             owner_node_id: TreeNodeId(2),
             target_node_id: Some(TreeNodeId(3)),
             kind: DependencyDescriptorKind::StaticDirect,

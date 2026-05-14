@@ -21,6 +21,7 @@ pub enum DependencyDescriptorKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyDescriptor {
     pub descriptor_id: String,
+    pub source_reference_handle: Option<String>,
     pub owner_node_id: TreeNodeId,
     pub target_node_id: Option<TreeNodeId>,
     pub kind: DependencyDescriptorKind,
@@ -468,6 +469,7 @@ mod tests {
             &[
                 DependencyDescriptor {
                     descriptor_id: "dep-a-b".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(2),
                     target_node_id: Some(TreeNodeId(3)),
                     kind: DependencyDescriptorKind::StaticDirect,
@@ -476,6 +478,7 @@ mod tests {
                 },
                 DependencyDescriptor {
                     descriptor_id: "dep-b-a".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(3),
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::RelativeBound,
@@ -484,6 +487,7 @@ mod tests {
                 },
                 DependencyDescriptor {
                     descriptor_id: "dep-c-unresolved".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(4),
                     target_node_id: None,
                     kind: DependencyDescriptorKind::Unresolved,
@@ -515,6 +519,7 @@ mod tests {
             &[
                 DependencyDescriptor {
                     descriptor_id: "dep-a-b".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(2),
                     target_node_id: Some(TreeNodeId(3)),
                     kind: DependencyDescriptorKind::StaticDirect,
@@ -523,6 +528,7 @@ mod tests {
                 },
                 DependencyDescriptor {
                     descriptor_id: "dep-b-a".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(3),
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::RelativeBound,
@@ -531,6 +537,7 @@ mod tests {
                 },
                 DependencyDescriptor {
                     descriptor_id: "dep-c-a".to_string(),
+                    source_reference_handle: None,
                     owner_node_id: TreeNodeId(4),
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::StaticDirect,
@@ -563,6 +570,7 @@ mod tests {
             &snapshot(),
             &[DependencyDescriptor {
                 descriptor_id: "dep-c-a".to_string(),
+                source_reference_handle: None,
                 owner_node_id: TreeNodeId(4),
                 target_node_id: Some(TreeNodeId(2)),
                 kind: DependencyDescriptorKind::StaticDirect,

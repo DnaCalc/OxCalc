@@ -12,8 +12,8 @@ use crate::formula::TreeFormulaCatalog;
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 use crate::treecalc::{
-    LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext, LocalTreeCalcError, LocalTreeCalcInput,
-    LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
+    DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
+    LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +46,7 @@ pub struct OxCalcTreeRecalcResult {
     pub evaluation_order: Vec<TreeNodeId>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub runtime_effect_overlays: Vec<OverlayEntry>,
+    pub derivation_traces: Vec<DerivationTraceRecord>,
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
     pub reject_detail: Option<RejectDetail>,
@@ -101,6 +102,7 @@ pub struct OxCalcTreeRuntimePolicy {
     pub policy_id: String,
     pub emit_environment_diagnostics: bool,
     pub project_runtime_effect_overlays: bool,
+    pub derivation_trace_enabled: bool,
 }
 
 impl Default for OxCalcTreeRuntimePolicy {
@@ -109,6 +111,7 @@ impl Default for OxCalcTreeRuntimePolicy {
             policy_id: "runtime-policy:default".to_string(),
             emit_environment_diagnostics: true,
             project_runtime_effect_overlays: true,
+            derivation_trace_enabled: false,
         }
     }
 }
@@ -172,6 +175,7 @@ impl OxCalcTreeEnvironment {
             shape_topology_effects: self.host_capabilities.shape_topology_effects,
             runtime_policy_id: self.runtime_policy.policy_id.clone(),
             project_runtime_effect_overlays: self.runtime_policy.project_runtime_effect_overlays,
+            derivation_trace_enabled: self.runtime_policy.derivation_trace_enabled,
         }
     }
 
@@ -215,6 +219,10 @@ impl OxCalcTreeEnvironment {
             format!(
                 "oxcalc_tree_environment_project_runtime_effect_overlays:{}",
                 self.runtime_policy.project_runtime_effect_overlays
+            ),
+            format!(
+                "oxcalc_tree_environment_derivation_trace_enabled:{}",
+                self.runtime_policy.derivation_trace_enabled
             ),
         ]
     }
@@ -283,6 +291,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeRecalcResult {
             evaluation_order: value.evaluation_order,
             runtime_effects: value.runtime_effects,
             runtime_effect_overlays: value.runtime_effect_overlays,
+            derivation_traces: value.derivation_traces,
             candidate_result: value.candidate_result,
             publication_bundle: value.publication_bundle,
             reject_detail: value.reject_detail,
@@ -366,6 +375,7 @@ mod tests {
                 policy_id: "runtime-policy:tree-host".to_string(),
                 emit_environment_diagnostics: true,
                 project_runtime_effect_overlays: true,
+                derivation_trace_enabled: false,
             });
         let facade = OxCalcTreeRuntimeFacade::new(environment.clone());
 
@@ -416,6 +426,7 @@ mod tests {
                     policy_id: "runtime-policy:diagnostic".to_string(),
                     emit_environment_diagnostics: true,
                     project_runtime_effect_overlays: true,
+                    derivation_trace_enabled: false,
                 }),
         );
 
@@ -482,6 +493,7 @@ mod tests {
                     policy_id: "runtime-policy:no-overlays".to_string(),
                     emit_environment_diagnostics: true,
                     project_runtime_effect_overlays: false,
+                    derivation_trace_enabled: false,
                 }),
         );
 

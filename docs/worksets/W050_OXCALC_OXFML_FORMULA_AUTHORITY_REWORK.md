@@ -549,6 +549,14 @@ owned by `.beads/`, not this document.
     reuse cached values only when no upstream/external/dynamic dependency delta
     or caller-supplied invalidation seed is present; the checked evidence root
     is `docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001`.
+33. F3 live uptake: TreeCalc now exposes `DerivationTraceRecord` as an
+    opt-in invoke outcome when `derivation_trace_enabled` selects OxFml
+    `PreparedCalls` trace mode. Default value-only runs emit no derivation
+    trace. Trace-mode runs record template selection, hole bindings, a root
+    prepared-callable invocation with child OxFml prepared calls, per-call
+    kernel-returned values, and OxFml seam trace events. The checked evidence
+    root is
+    `docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001`.
 
 ## 7. Required Work
 
@@ -700,6 +708,12 @@ The W050 work, organised by lane.
     and to bypass reuse on upstream-publication invalidation. Evidence:
     `docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001/run_artifact.json`.
 35. Implement derivation trace as a first-class `invoke` outcome under trace-mode opt-in: template selection, hole bindings, sub-invocation tree, kernel-returned values.
+    F3 adds `DerivationTraceRecord` to TreeCalc run artifacts and consumer
+    results under the `derivation_trace_enabled` runtime policy flag. The
+    default path remains value-only. The checked artifact
+    `docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001/run_artifact.json`
+    binds the opt-in LET/LAMBDA fixture output to the runtime validation
+    tests.
 36. Implement push/pull duality: a wave's scheduling policy (push-flavoured visibility-bounded vs pull-flavoured full-closure) is selectable on top of the same dependency graph and the same `PreparedCallable` cache.
 
 **Lane G — Forward Scaffolding.**

@@ -1090,7 +1090,45 @@ rejection policy, scheduling strategy, or OxCalc coordinator publication
 authority for any currently exercised Stage 1 profile. Observable formula
 results are invariant.
 
-### 22.17 CALC-002 Handoff Inputs
+### 22.17 Current V1 Derivation Trace Invoke Outcome
+The current OxCalc F3 uptake exposes derivation traces as an opt-in TreeCalc
+invoke outcome over the public OxFml `PreparedCalls` trace mode.
+
+Current mapping:
+1. `LocalTreeCalcEnvironmentContext.derivation_trace_enabled` and
+   `OxCalcTreeRuntimePolicy.derivation_trace_enabled` default to `false`.
+2. When disabled, TreeCalc sends the default OxFml trace mode and emits no
+   `DerivationTraceRecord`.
+3. When enabled, TreeCalc sends `EvaluationTraceMode::PreparedCalls` through
+   `RuntimeFormulaRequest::with_trace_mode` and records
+   `DerivationTraceRecord` in `LocalTreeCalcRunArtifacts` and
+   `OxCalcTreeRecalcResult`.
+4. The record carries schema id
+   `oxcalc.derivation_trace.invoke_outcome.v1`, owner/formula identity,
+   template selection (`prepared_callable_key`, `shape_key`,
+   `dispatch_skeleton_key`, `plan_template_key`, template holes), hole
+   bindings, a root prepared-callable invocation, child OxFml prepared-call
+   entries, per-call `kernel_returned_value`, final returned value, and
+   OxFml seam trace event summaries.
+5. TreeCalc runner result/trace artifacts surface the same record when the
+   opt-in flag is enabled.
+6. Checked evidence is
+   `docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001/run_artifact.json`.
+
+Current F3 limit: the child invocation hierarchy reflects the current OxFml
+prepared-call trace granularity. OxCalc records a root formula invocation with
+ordered child prepared calls; deeper nesting remains an OxFml trace-schema
+extension candidate rather than an OxCalc-private reconstruction of formula
+semantics.
+
+Semantic equivalence statement: F3 adds an opt-in observation surface and
+does not change source parsing, binding, semantic-plan compilation,
+evaluation, candidate adaptation, rejection policy, scheduling strategy, or
+OxCalc coordinator publication authority. Observable formula results and
+publication behavior are invariant between value-only and trace-mode runs
+for the exercised Stage 1 profile.
+
+### 22.18 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1173,12 +1211,18 @@ results are invariant.
     replay/correlation columns, callable/rich/spill returned-value payloads,
     plan-reuse and folding trace fields, and targeted metadata-invalidation
     fields.
+20. the F3-observed derivation-trace bridge: current OxFml
+    `PreparedCalls` trace mode gives OxCalc ordered prepared-call entries and
+    returned values, but not a deeper nested invocation tree. OxFml should
+    confirm whether the canonical trace schema will expose parent/child
+    invocation structure, or whether the root-plus-ordered-children V1 shape
+    remains the intended public granularity.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam
 or adapter that assumes OxFml internals will remain accessible.
 
-### 22.18 Current V1 Opaque Result Family Coverage
+### 22.19 Current V1 Opaque Result Family Coverage
 The current OxCalc B6 uptake records which result families TreeCalc can
 consume through `OxfmlRecalcSessionDriver::invoke` without local formula
 parsing or reconstruction.
@@ -1233,7 +1277,7 @@ policy, scheduling strategy, or OxCalc coordinator publication authority
 for any currently exercised Stage 1 profile. Observable formula results
 are invariant under this diagnostic addition.
 
-### 22.19 Current V1 Session Corpus Evidence Packet
+### 22.20 Current V1 Session Corpus Evidence Packet
 The current OxCalc B8 uptake makes the TreeCalc local runner emit a
 deterministic session-path evidence packet for the full local corpus.
 
@@ -1278,7 +1322,7 @@ OxCalc coordinator publication authority for any currently exercised Stage
 1 profile. Observable formula results are invariant under this artifact
 emission addition.
 
-### 22.20 Current V1 Compatibility And Gap Ledger
+### 22.21 Current V1 Compatibility And Gap Ledger
 B9 records the current read-only compatibility position between W050 and
 OxFml's frozen V1 consumer runtime facade.
 

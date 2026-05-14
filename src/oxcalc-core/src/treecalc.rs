@@ -19,10 +19,13 @@ use oxfml_core::red::project_red_view;
 use oxfml_core::semantics::{FormulaDeterminismClass, FormulaVolatilityClass, SemanticPlan};
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
-use oxfml_core::{CompileSemanticPlanRequest, EvaluationBackend, compile_semantic_plan};
+use oxfml_core::{
+    CompileSemanticPlanRequest, EvaluationBackend, EvaluationTraceMode, compile_semantic_plan,
+};
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
+use serde::Serialize;
 use thiserror::Error;
 
 use crate::coordinator::{
@@ -81,6 +84,7 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub shape_topology_effects: bool,
     pub runtime_policy_id: String,
     pub project_runtime_effect_overlays: bool,
+    pub derivation_trace_enabled: bool,
 }
 
 impl Default for LocalTreeCalcEnvironmentContext {
@@ -96,6 +100,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             shape_topology_effects: false,
             runtime_policy_id: "runtime-policy:default".to_string(),
             project_runtime_effect_overlays: true,
+            derivation_trace_enabled: false,
         }
     }
 }
@@ -104,6 +109,12 @@ impl LocalTreeCalcEnvironmentContext {
     #[must_use]
     pub fn with_arg_preparation_profile_version(mut self, version: impl Into<String>) -> Self {
         self.arg_preparation_profile_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_derivation_trace_enabled(mut self, enabled: bool) -> Self {
+        self.derivation_trace_enabled = enabled;
         self
     }
 }
@@ -117,6 +128,7 @@ pub struct LocalTreeCalcRunArtifacts {
     pub runtime_effects: Vec<RuntimeEffect>,
     pub runtime_effect_overlays: Vec<OverlayEntry>,
     pub prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
+    pub derivation_traces: Vec<DerivationTraceRecord>,
     pub local_candidate: Option<LocalEvaluatorCandidate>,
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
@@ -139,6 +151,82 @@ pub struct PreparedFormulaIdentityTrace {
     pub plan_template_key: String,
     pub hole_binding_fingerprint: String,
     pub template_hole_count: usize,
+}
+
+pub const DERIVATION_TRACE_SCHEMA_ID: &str = "oxcalc.derivation_trace.invoke_outcome.v1";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationTraceRecord {
+    pub trace_schema_id: String,
+    pub owner_node_id: TreeNodeId,
+    pub formula_artifact_id: String,
+    pub bind_artifact_id: Option<String>,
+    pub formula_stable_id: String,
+    pub trace_mode: String,
+    pub template_selection: DerivationTemplateSelectionTrace,
+    pub hole_bindings: Vec<DerivationHoleBindingTrace>,
+    pub sub_invocation_tree: Vec<DerivationInvocationTraceNode>,
+    pub kernel_returned_value: String,
+    pub oxfml_trace_events: Vec<DerivationOxfmlTraceEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationTemplateSelectionTrace {
+    pub prepared_callable_key: String,
+    pub shape_key: String,
+    pub dispatch_skeleton_key: String,
+    pub plan_template_key: String,
+    pub template_holes: Vec<DerivationTemplateHoleTrace>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationTemplateHoleTrace {
+    pub hole_id: String,
+    pub ordinal: usize,
+    pub path: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationHoleBindingTrace {
+    pub hole_id: String,
+    pub payload: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationInvocationTraceNode {
+    pub invocation_ordinal: usize,
+    pub invocation_kind: String,
+    pub function_name: String,
+    pub function_id: String,
+    pub arg_preparation_profile: Option<String>,
+    pub prepared_arguments: Vec<DerivationPreparedArgumentTrace>,
+    pub kernel_returned_value: Option<String>,
+    pub children: Vec<DerivationInvocationTraceNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationPreparedArgumentTrace {
+    pub ordinal: usize,
+    pub structure_class: String,
+    pub source_class: String,
+    pub evaluation_mode: String,
+    pub blankness_class: String,
+    pub caller_context_sensitive: bool,
+    pub reference_target: Option<String>,
+    pub opaque_reason: Option<String>,
+    pub resolved_value: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DerivationOxfmlTraceEvent {
+    pub trace_schema_id: String,
+    pub event_kind: String,
+    pub formula_stable_id: String,
+    pub session_id: Option<String>,
+    pub candidate_result_id: Option<String>,
+    pub commit_attempt_id: Option<String>,
+    pub event_order_key: u64,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -234,6 +322,7 @@ pub struct LocalEvaluatorCandidate {
 struct LocalFormulaEvaluationSuccess {
     value: String,
     diagnostics: Vec<String>,
+    derivation_trace: Option<DerivationTraceRecord>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -363,6 +452,7 @@ impl LocalTreeCalcEngine {
         diagnostics.extend(prepared_formula_reuse_diagnostics(
             &prepared_formula_identities,
         ));
+        let mut derivation_traces = Vec::new();
         let mut edge_value_cache = build_seeded_edge_value_cache(
             &prepared_formulas,
             &input.seeded_published_values,
@@ -514,11 +604,18 @@ impl LocalTreeCalcEngine {
                 value
             } else {
                 let phase_start = Instant::now();
-                let evaluation_result = evaluate_with_oxfml_session(prepared, &working_values);
+                let evaluation_result = evaluate_with_oxfml_session(
+                    prepared,
+                    &working_values,
+                    input.environment_context.derivation_trace_enabled,
+                );
                 phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
                 let computed_value = match evaluation_result {
                     Ok(success) => {
                         diagnostics.extend(success.diagnostics);
+                        if let Some(derivation_trace) = success.derivation_trace {
+                            derivation_traces.push(derivation_trace);
+                        }
                         success.value
                     }
                     Err(failure) => {
@@ -626,6 +723,7 @@ impl LocalTreeCalcEngine {
                 runtime_effects,
                 runtime_effect_overlays: Vec::new(),
                 prepared_formula_identities: prepared_formula_identities.clone(),
+                derivation_traces,
                 local_candidate: None,
                 candidate_result: None,
                 publication_bundle: None,
@@ -681,6 +779,7 @@ impl LocalTreeCalcEngine {
             runtime_effects: local_candidate.runtime_effects.clone(),
             runtime_effect_overlays: Vec::new(),
             prepared_formula_identities,
+            derivation_traces,
             local_candidate: Some(local_candidate),
             candidate_result: Some(candidate_result),
             publication_bundle: Some(publication_bundle),
@@ -799,6 +898,7 @@ fn publish_excel_match_iterative_cycle(
         runtime_effects: local_candidate.runtime_effects.clone(),
         runtime_effect_overlays: Vec::new(),
         prepared_formula_identities,
+        derivation_traces: Vec::new(),
         local_candidate: Some(local_candidate),
         candidate_result: Some(candidate_result),
         publication_bundle: Some(publication_bundle),
@@ -1454,6 +1554,7 @@ fn reject_run(
         runtime_effects,
         runtime_effect_overlays,
         prepared_formula_identities,
+        derivation_traces: Vec::new(),
         local_candidate,
         candidate_result: None,
         publication_bundle: None,
@@ -1576,6 +1677,10 @@ fn runtime_effect_context_diagnostics(context: &LocalTreeCalcEnvironmentContext)
         format!(
             "runtime_effect_environment_project_overlays:{}",
             context.project_runtime_effect_overlays
+        ),
+        format!(
+            "runtime_effect_environment_derivation_trace_enabled:{}",
+            context.derivation_trace_enabled
         ),
     ]
 }
@@ -2341,6 +2446,7 @@ fn residual_evaluation_failure(
 fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    derivation_trace_enabled: bool,
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
     if let Some(unresolved) = prepared.bound_formula.unresolved_references.first() {
         return Err(LocalFormulaEvaluationFailure {
@@ -2353,7 +2459,12 @@ fn evaluate_with_oxfml_session(
         });
     }
 
-    let run = match invoke_prepared_formula_via_session(prepared, working_values) {
+    let trace_mode = if derivation_trace_enabled {
+        EvaluationTraceMode::PreparedCalls
+    } else {
+        EvaluationTraceMode::default()
+    };
+    let run = match invoke_prepared_formula_via_session(prepared, working_values, trace_mode) {
         Ok(run) => run,
         Err(detail) => {
             if let Some(failure) =
@@ -2397,12 +2508,13 @@ fn evaluate_with_oxfml_session(
         return Err(failure);
     }
 
-    adapt_oxfml_runtime_candidate(prepared, &run)
+    adapt_oxfml_runtime_candidate(prepared, &run, derivation_trace_enabled)
 }
 
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    trace_mode: EvaluationTraceMode,
 ) -> Result<RuntimeFormulaResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
     let rtd_provider = TreeCalcRtdProvider;
@@ -2424,7 +2536,8 @@ fn invoke_prepared_formula_via_session(
         None,
     );
     let request = RuntimeFormulaRequest::new(prepared.source.clone(), query_bundle)
-        .with_backend(EvaluationBackend::OxFuncBacked);
+        .with_backend(EvaluationBackend::OxFuncBacked)
+        .with_trace_mode(trace_mode);
     let mut session =
         OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(prepared, working_values));
 
@@ -2494,6 +2607,7 @@ impl RtdProvider for TreeCalcRtdProvider {
 fn adapt_oxfml_runtime_candidate(
     prepared: &PreparedOxfmlFormula,
     run: &RuntimeFormulaResult,
+    derivation_trace_enabled: bool,
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
     let candidate = &run.candidate_result;
     let candidate_value = value_payload_to_string(&candidate.value_delta.published_payload);
@@ -2504,9 +2618,27 @@ fn adapt_oxfml_runtime_candidate(
         oxfml_core::seam::AcceptDecision::Accepted(bundle) => {
             diagnostics.extend(oxfml_commit_bundle_diagnostics(bundle));
             validate_oxfml_commit_bundle(prepared, candidate, bundle, diagnostics.clone())?;
+            let derivation_trace = derivation_trace_enabled
+                .then(|| build_derivation_trace_record(prepared, run, &candidate_value));
+            if let Some(trace) = &derivation_trace {
+                diagnostics.push(format!(
+                    "derivation_trace_recorded:{}:schema={}",
+                    trace.owner_node_id, trace.trace_schema_id
+                ));
+                diagnostics.push(format!(
+                    "derivation_trace_prepared_call_count:{}:{}",
+                    trace.owner_node_id,
+                    trace
+                        .sub_invocation_tree
+                        .first()
+                        .map(|root| root.children.len())
+                        .unwrap_or_default()
+                ));
+            }
             Ok(LocalFormulaEvaluationSuccess {
                 value: candidate_value,
                 diagnostics,
+                derivation_trace,
             })
         }
         oxfml_core::seam::AcceptDecision::Rejected(reject) => {
@@ -2520,6 +2652,107 @@ fn adapt_oxfml_runtime_candidate(
                 diagnostics,
             })
         }
+    }
+}
+
+fn build_derivation_trace_record(
+    prepared: &PreparedOxfmlFormula,
+    run: &RuntimeFormulaResult,
+    candidate_value: &str,
+) -> DerivationTraceRecord {
+    let identity = prepared_formula_identity_trace(prepared);
+    let template = &prepared.prepared_callable.plan_template;
+    let hole_bindings = &prepared.prepared_callable.hole_bindings;
+    let child_invocations = run
+        .evaluation
+        .trace
+        .prepared_calls
+        .iter()
+        .enumerate()
+        .map(|(index, call)| DerivationInvocationTraceNode {
+            invocation_ordinal: index + 1,
+            invocation_kind: "oxfml_prepared_call".to_string(),
+            function_name: call.function_name.clone(),
+            function_id: call.function_id.to_string(),
+            arg_preparation_profile: Some(format!("{:?}", call.arg_preparation_profile)),
+            prepared_arguments: call
+                .prepared_arguments
+                .iter()
+                .map(|argument| DerivationPreparedArgumentTrace {
+                    ordinal: argument.ordinal,
+                    structure_class: format!("{:?}", argument.structure_class),
+                    source_class: format!("{:?}", argument.source_class),
+                    evaluation_mode: format!("{:?}", argument.evaluation_mode),
+                    blankness_class: format!("{:?}", argument.blankness_class),
+                    caller_context_sensitive: argument.caller_context_sensitive,
+                    reference_target: argument.reference_target.clone(),
+                    opaque_reason: argument.opaque_reason.clone(),
+                    resolved_value: argument
+                        .resolved_value
+                        .as_ref()
+                        .map(eval_value_trace_summary),
+                })
+                .collect(),
+            kernel_returned_value: call.returned_value.as_ref().map(eval_value_trace_summary),
+            children: Vec::new(),
+        })
+        .collect::<Vec<_>>();
+
+    DerivationTraceRecord {
+        trace_schema_id: DERIVATION_TRACE_SCHEMA_ID.to_string(),
+        owner_node_id: prepared.binding.owner_node_id,
+        formula_artifact_id: identity.formula_artifact_id,
+        bind_artifact_id: identity.bind_artifact_id,
+        formula_stable_id: identity.formula_stable_id,
+        trace_mode: "PreparedCalls".to_string(),
+        template_selection: DerivationTemplateSelectionTrace {
+            prepared_callable_key: identity.prepared_callable_key,
+            shape_key: identity.shape_key,
+            dispatch_skeleton_key: identity.dispatch_skeleton_key,
+            plan_template_key: identity.plan_template_key,
+            template_holes: template
+                .holes
+                .iter()
+                .map(|hole| DerivationTemplateHoleTrace {
+                    hole_id: hole.hole_id.clone(),
+                    ordinal: hole.ordinal,
+                    path: hole.path.clone(),
+                    kind: hole.kind.stable_key(),
+                })
+                .collect(),
+        },
+        hole_bindings: hole_bindings
+            .bindings
+            .iter()
+            .map(|binding| DerivationHoleBindingTrace {
+                hole_id: binding.hole_id.clone(),
+                payload: binding.payload.stable_key(),
+            })
+            .collect(),
+        sub_invocation_tree: vec![DerivationInvocationTraceNode {
+            invocation_ordinal: 0,
+            invocation_kind: "oxcalc_prepared_callable_invoke".to_string(),
+            function_name: format!("formula:{}", prepared.source.formula_stable_id.0),
+            function_id: "oxcalc.prepared_callable.invoke.v1".to_string(),
+            arg_preparation_profile: None,
+            prepared_arguments: Vec::new(),
+            kernel_returned_value: Some(candidate_value.to_string()),
+            children: child_invocations,
+        }],
+        kernel_returned_value: candidate_value.to_string(),
+        oxfml_trace_events: run
+            .trace_events
+            .iter()
+            .map(|event| DerivationOxfmlTraceEvent {
+                trace_schema_id: event.trace_schema_id.clone(),
+                event_kind: format!("{:?}", event.event_kind),
+                formula_stable_id: event.formula_stable_id.clone(),
+                session_id: event.session_id.clone(),
+                candidate_result_id: event.candidate_result_id.clone(),
+                commit_attempt_id: event.commit_attempt_id.clone(),
+                event_order_key: event.event_order_key,
+            })
+            .collect(),
     }
 }
 
@@ -2842,6 +3075,21 @@ fn string_to_eval_value(value: &str) -> EvalValue {
     }
 }
 
+fn eval_value_trace_summary(value: &EvalValue) -> String {
+    match value {
+        EvalValue::Number(value) => value.to_string(),
+        EvalValue::Text(value) => value.to_string_lossy(),
+        EvalValue::Logical(value) => value.to_string(),
+        EvalValue::Error(value) => format!("{value:?}"),
+        EvalValue::Array(value) => format!("{value:?}"),
+        EvalValue::Reference(value) => format!("{:?}:{}", value.kind, value.target),
+        EvalValue::Lambda(value) => format!(
+            "{}:{:?}:{:?}",
+            value.callable_token, value.origin_kind, value.arity_shape
+        ),
+    }
+}
+
 fn value_payload_to_string(payload: &oxfml_core::seam::ValuePayload) -> String {
     match payload {
         oxfml_core::seam::ValuePayload::Number(value)
@@ -3010,6 +3258,70 @@ mod tests {
     fn f2_artifact_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001")
+    }
+
+    fn f3_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001")
+    }
+
+    fn derivation_trace_input(trace_enabled: bool, run_suffix: &str) -> LocalTreeCalcInput {
+        let mut input = formula_input(
+            TreeNodeId(3),
+            TreeFormula::opaque_oxfml("=LET(base,2,LAMBDA(delta,base+delta)(5))", Vec::new()),
+        );
+        input.candidate_result_id = format!("cand:f3:{run_suffix}");
+        input.publication_id = format!("pub:f3:{run_suffix}");
+        input.compatibility_basis = format!("snapshot:f3:{run_suffix}");
+        input.artifact_token_basis = format!("snapshot:f3:{run_suffix}");
+        input.environment_context = input
+            .environment_context
+            .with_derivation_trace_enabled(trace_enabled);
+        input
+    }
+
+    fn run_derivation_trace_scenarios() -> (LocalTreeCalcRunArtifacts, LocalTreeCalcRunArtifacts) {
+        let engine = LocalTreeCalcEngine;
+        let default_run = engine
+            .execute(derivation_trace_input(false, "value-only"))
+            .expect("F3 default trace-mode run should publish");
+        let traced_run = engine
+            .execute(derivation_trace_input(true, "prepared-calls"))
+            .expect("F3 trace-mode run should publish");
+
+        (default_run, traced_run)
+    }
+
+    fn derivation_trace_invoke_outcome_artifact_json() -> serde_json::Value {
+        let (default_run, traced_run) = run_derivation_trace_scenarios();
+        let trace = traced_run
+            .derivation_traces
+            .first()
+            .expect("trace-mode run should produce a derivation trace");
+
+        json!({
+            "run_id": "w050-f3-derivation-trace-invoke-outcome-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core derivation_trace -- --nocapture",
+            "trace_schema_id": DERIVATION_TRACE_SCHEMA_ID,
+            "cases": [
+                {
+                    "case_id": "value_only_default_suppresses_derivation_trace",
+                    "result_state": treecalc_state_key(&default_run.result_state),
+                    "published_value": default_run.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "derivation_trace_count": default_run.derivation_traces.len(),
+                    "trace_diagnostic_emitted": has_diagnostic_prefix(&default_run, "derivation_trace_recorded:")
+                },
+                {
+                    "case_id": "prepared_calls_opt_in_records_invoke_outcome",
+                    "result_state": treecalc_state_key(&traced_run.result_state),
+                    "published_value": traced_run.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "derivation_trace_count": traced_run.derivation_traces.len(),
+                    "trace_diagnostic_emitted": has_diagnostic_prefix(&traced_run, "derivation_trace_recorded:"),
+                    "derivation_trace": serde_json::to_value(trace).expect("derivation trace should serialize")
+                }
+            ]
+        })
     }
 
     fn differential_evaluation_gate_catalog() -> TreeFormulaCatalog {
@@ -3207,6 +3519,67 @@ mod tests {
         .expect("F2 run artifact should be valid JSON");
 
         assert_eq!(artifact, differential_evaluation_gate_artifact_json());
+    }
+
+    #[test]
+    fn derivation_trace_default_value_only_run_suppresses_trace_output() {
+        let (default_run, _) = run_derivation_trace_scenarios();
+
+        assert_eq!(default_run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(default_run.published_values[&TreeNodeId(3)], "7");
+        assert!(default_run.derivation_traces.is_empty());
+        assert!(!has_diagnostic_prefix(
+            &default_run,
+            "derivation_trace_recorded:"
+        ));
+    }
+
+    #[test]
+    fn derivation_trace_opt_in_records_template_holes_and_invocation_tree() {
+        let (_, traced_run) = run_derivation_trace_scenarios();
+
+        assert_eq!(traced_run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(traced_run.published_values[&TreeNodeId(3)], "7");
+        assert_eq!(traced_run.derivation_traces.len(), 1);
+        assert!(has_diagnostic_prefix(
+            &traced_run,
+            "derivation_trace_prepared_call_count:node:3:",
+        ));
+
+        let trace = &traced_run.derivation_traces[0];
+        assert_eq!(trace.trace_schema_id, DERIVATION_TRACE_SCHEMA_ID);
+        assert_eq!(trace.owner_node_id, TreeNodeId(3));
+        assert_eq!(trace.trace_mode, "PreparedCalls");
+        assert_eq!(trace.kernel_returned_value, "7");
+        assert!(!trace.template_selection.template_holes.is_empty());
+        assert!(!trace.hole_bindings.is_empty());
+        assert_eq!(trace.sub_invocation_tree.len(), 1);
+        let root = &trace.sub_invocation_tree[0];
+        assert_eq!(root.invocation_kind, "oxcalc_prepared_callable_invoke");
+        assert_eq!(root.kernel_returned_value.as_deref(), Some("7"));
+        assert!(!root.children.is_empty());
+        assert!(
+            root.children
+                .iter()
+                .any(|child| child.kernel_returned_value.as_deref() == Some("7"))
+        );
+        assert!(
+            trace
+                .oxfml_trace_events
+                .iter()
+                .any(|event| event.event_kind == "CommitAccepted")
+        );
+    }
+
+    #[test]
+    fn derivation_trace_checked_artifact_matches_runtime_validation() {
+        let artifact_path = f3_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("F3 run artifact should be checked in"),
+        )
+        .expect("F3 run artifact should be valid JSON");
+
+        assert_eq!(artifact, derivation_trace_invoke_outcome_artifact_json());
     }
 
     #[test]

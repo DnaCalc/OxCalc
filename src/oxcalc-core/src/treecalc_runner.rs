@@ -741,6 +741,7 @@ fn write_case_artifacts(
             "evaluation_order": artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "diagnostics": artifacts.diagnostics,
             "prepared_formula_identities": artifacts.prepared_formula_identities.iter().map(prepared_formula_identity_json).collect::<Vec<_>>(),
+            "derivation_traces": &artifacts.derivation_traces,
             "published_values_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "published_values.json"),
             "runtime_effects_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effects.json"),
             "runtime_effect_overlays_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effect_overlays.json"),
@@ -1092,6 +1093,21 @@ fn build_trace_events(
             "step_id": step_id,
             "label": "evaluate_node",
             "node_id": node_id.0,
+        }));
+        step_id += 1;
+    }
+
+    for trace in &artifacts.derivation_traces {
+        events.push(json!({
+            "step_id": step_id,
+            "label": "derivation_trace_recorded",
+            "trace_schema_id": trace.trace_schema_id,
+            "owner_node_id": trace.owner_node_id.0,
+            "formula_stable_id": trace.formula_stable_id,
+            "plan_template_key": trace.template_selection.plan_template_key,
+            "hole_binding_count": trace.hole_bindings.len(),
+            "root_invocation_count": trace.sub_invocation_tree.len(),
+            "kernel_returned_value": trace.kernel_returned_value,
         }));
         step_id += 1;
     }

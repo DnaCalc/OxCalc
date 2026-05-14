@@ -354,7 +354,21 @@ On a hit, OxCalc uses the cached value as the invocation result and suppresses
 the OxFml invocation; publication semantics are unchanged because verified
 clean values still suppress publication bundles.
 
-### 13.4 Why These Lanes Remain Explicit
+### 13.4 Derivation Trace Invoke Outcome
+Derivation trace is an opt-in observation lane, not a scheduling or
+publication policy. A value-only run emits no derivation trace. A trace-mode
+run requests OxFml `PreparedCalls` and records:
+1. template selection identity,
+2. hole bindings,
+3. a root prepared-callable invocation with ordered child prepared calls,
+4. kernel-returned values for each observed prepared call,
+5. the final returned value and OxFml seam trace event summaries.
+
+The trace record is replay evidence for what the invocation observed. It is
+not an alternate evaluator and does not change cache eligibility, candidate
+adaptation, coordinator admission, or publication.
+
+### 13.5 Why These Lanes Remain Explicit
 They remain explicit so that:
 1. the architecture does not forget them,
 2. later promotions have a named target,

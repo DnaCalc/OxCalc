@@ -459,6 +459,14 @@ owned by `.beads/`, not this document.
     reference/input, full managed-result, replay-correlation, callable/rich
     value, folding/reuse trace, and metadata-invalidation fields remain
     CALC-002 pressure rather than OxCalc-private adapter work.
+20. A5 live uptake: `TreeReference::carrier_class()` now classifies
+    `HostSensitive`, `DynamicPotential`, `CapabilitySensitive`, and
+    `ShapeTopology` as `RuntimeFactProjection` rather than formula
+    references. Executable tests prove those carriers lower to diagnostics
+    without dependency edges or source-reference tokens in the fixture
+    catalog path. This keeps them as host/evaluator/runtime fact projections;
+    no new follow-on bead was needed beyond the existing Lane D/G/H
+    subscription, capability, and handoff lanes.
 
 ## 7. Required Work
 
@@ -476,6 +484,12 @@ The W050 work, organised by lane.
    `fixture-policy:legacy-structured-quarantine` and keeps broader fixture
    conversion/deletion in later Lane A cleanup.
 7. Audit `ShapeTopology`, `DynamicPotential`, `HostSensitive`, and `CapabilitySensitive` carriers; ensure they represent evaluator/host facts, not OxCalc formula implementations.
+   A5 records the carrier classification in code and tests. These four
+   carriers are `RuntimeFactProjection` values, not formula references; they
+   surface dependency diagnostics/runtime effects without graph edges in the
+   fixture catalog path. Existing Lane D/G/H beads own subscription,
+   capability, and cross-repo follow-up, so no new A5 follow-on bead was
+   created.
 8. Repair W047/W048 showcase wording where it implies OxCalc-local function semantics.
 9. Retain opaque OxFml source carriage only as boundary input; fixture migration adapters belong under `FixtureFormulaAst`, not `TreeFormula`.
 

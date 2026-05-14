@@ -58,6 +58,12 @@ pub enum TreeReference {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TreeReferenceCarrierClass {
+    FormulaReference,
+    RuntimeFactProjection,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeFormulaReferenceCarrier {
     pub source_token: Option<String>,
@@ -430,6 +436,24 @@ fn escape_excel_text(value: &str) -> String {
 }
 
 impl TreeReference {
+    #[must_use]
+    pub fn carrier_class(&self) -> TreeReferenceCarrierClass {
+        match self {
+            TreeReference::HostSensitive { .. }
+            | TreeReference::CapabilitySensitive { .. }
+            | TreeReference::ShapeTopology { .. }
+            | TreeReference::DynamicPotential { .. } => {
+                TreeReferenceCarrierClass::RuntimeFactProjection
+            }
+            TreeReference::DirectNode { .. }
+            | TreeReference::ProjectionPath { .. }
+            | TreeReference::RelativePath { .. }
+            | TreeReference::SiblingOffset { .. }
+            | TreeReference::DynamicResolved { .. }
+            | TreeReference::Unresolved { .. } => TreeReferenceCarrierClass::FormulaReference,
+        }
+    }
+
     pub fn resolve_target(
         &self,
         snapshot: &StructuralSnapshot,
@@ -755,6 +779,126 @@ mod tests {
         assert_eq!(
             descriptors[0].carrier_detail,
             "dynamic_resolved:node:3:carrier:dynamic:resolved_late_bound_projection"
+        );
+    }
+
+    #[test]
+    fn runtime_fact_carriers_are_not_formula_reference_carriers() {
+        let cases = [
+            (
+                TreeReference::HostSensitive {
+                    carrier_id: "host.selection".to_string(),
+                    detail: "active branch".to_string(),
+                },
+                DependencyDescriptorKind::HostSensitive,
+                "host_sensitive:host.selection:active branch",
+                true,
+            ),
+            (
+                TreeReference::DynamicPotential {
+                    carrier_id: "runtime.topic".to_string(),
+                    detail: "late bound".to_string(),
+                },
+                DependencyDescriptorKind::DynamicPotential,
+                "dynamic_potential:runtime.topic:late bound",
+                false,
+            ),
+            (
+                TreeReference::CapabilitySensitive {
+                    carrier_id: "capability.profile".to_string(),
+                    detail: "requires provider".to_string(),
+                },
+                DependencyDescriptorKind::CapabilitySensitive,
+                "capability_sensitive:capability.profile:requires provider",
+                true,
+            ),
+            (
+                TreeReference::ShapeTopology {
+                    carrier_id: "shape.range".to_string(),
+                    detail: "range extent".to_string(),
+                },
+                DependencyDescriptorKind::ShapeTopology,
+                "shape_topology:shape.range:range extent",
+                true,
+            ),
+        ];
+
+        for (reference, expected_kind, expected_detail, expected_rebind) in cases {
+            assert_eq!(
+                reference.carrier_class(),
+                TreeReferenceCarrierClass::RuntimeFactProjection
+            );
+            assert_eq!(reference.resolve_target(&snapshot(), TreeNodeId(4)), None);
+            assert_eq!(reference.descriptor_kind(), expected_kind);
+            assert_eq!(reference.carrier_detail(), expected_detail);
+            assert_eq!(
+                reference.requires_rebind_on_structural_change(),
+                expected_rebind
+            );
+
+            let carrier = TreeFormulaReferenceCarrier::fact(reference);
+            assert_eq!(carrier.source_token, None);
+        }
+    }
+
+    #[test]
+    fn runtime_fact_carriers_surface_diagnostics_without_dependency_edges() {
+        let snapshot = snapshot();
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:runtime-facts".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:runtime-facts".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(1,1)",
+                [
+                    TreeReference::HostSensitive {
+                        carrier_id: "host.selection".to_string(),
+                        detail: "active branch".to_string(),
+                    },
+                    TreeReference::DynamicPotential {
+                        carrier_id: "runtime.topic".to_string(),
+                        detail: "late bound".to_string(),
+                    },
+                    TreeReference::CapabilitySensitive {
+                        carrier_id: "capability.profile".to_string(),
+                        detail: "requires provider".to_string(),
+                    },
+                    TreeReference::ShapeTopology {
+                        carrier_id: "shape.range".to_string(),
+                        detail: "range extent".to_string(),
+                    },
+                ]
+                .map(TreeFormulaReferenceCarrier::fact),
+            ),
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+        assert_eq!(descriptors.len(), 4);
+        assert!(
+            descriptors
+                .iter()
+                .all(|descriptor| descriptor.target_node_id.is_none())
+        );
+        assert!(
+            descriptors
+                .iter()
+                .all(|descriptor| descriptor.source_reference_handle.is_none())
+        );
+
+        let graph = DependencyGraph::build(&snapshot, &descriptors);
+        assert!(graph.edges_by_owner.is_empty());
+        assert_eq!(
+            graph
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.kind)
+                .collect::<Vec<_>>(),
+            vec![
+                DependencyDiagnosticKind::HostSensitiveReference,
+                DependencyDiagnosticKind::DynamicPotentialReference,
+                DependencyDiagnosticKind::CapabilitySensitiveReference,
+                DependencyDiagnosticKind::ShapeTopologyReference,
+            ]
         );
     }
 

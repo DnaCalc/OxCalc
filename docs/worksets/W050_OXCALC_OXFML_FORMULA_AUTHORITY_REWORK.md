@@ -598,6 +598,15 @@ owned by `.beads/`, not this document.
     production paths emit empty/reserved values because no rich-value producer
     or rich kernel is active. The checked evidence root is
     `docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001`.
+39. G4 live uptake: `ArgPreparationProfile::RichArgAccepted(capability_set)`
+    is reserved as an OxFunc-owned argument-preparation vocabulary extension
+    and recorded in the OxCalc capability spec. Current read-only sibling
+    observation finds only `ValuesOnlyPreAdapter` and `RefsVisibleInAdapter`
+    in OxFunc, and no W050 kernel activation is claimed. The supporting
+    CALC-004 OxFunc note is
+    `docs/handoffs/HANDOFF_CALC_004_OXFUNC_RICH_ARG_ACCEPTED_NOTE.md`; the
+    checked evidence root is
+    `docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001`.
 
 ## 7. Required Work
 
@@ -784,6 +793,11 @@ The W050 work, organised by lane.
     plan-template key material. Evidence:
     `docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001/run_artifact.json`.
 39. Reserve `ArgPreparationProfile::RichArgAccepted(capability_set)` as a kernel-side variant; document that no OxFunc kernel currently consumes it, but the seam admits the variant additively.
+    G4 records the reserved OxFunc-owned profile shape, the read-only current
+    sibling observation, and the CALC-004 supporting note without editing
+    OxFunc/OxFml or activating any rich kernel. Evidence:
+    `docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001/reservation_artifact.json`
+    and `docs/handoffs/HANDOFF_CALC_004_OXFUNC_RICH_ARG_ACCEPTED_NOTE.md`.
 40. Add capability-set columns to trace/replay schemas so that future rich-value kernels emit identity-discipline-compliant evidence from day one.
     G3 adds the nested `rich_value_capability_columns` schema to prepared
     formula identity and derivation trace surfaces, with checked empty/reserved

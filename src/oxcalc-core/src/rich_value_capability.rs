@@ -299,6 +299,11 @@ mod tests {
             .join("../../docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001")
     }
 
+    fn g4_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001")
+    }
+
     fn vocabulary_artifact_json() -> serde_json::Value {
         let examples = w050_initial_capability_examples();
         let required_set = w050_initial_required_capability_set_example();
@@ -332,6 +337,48 @@ mod tests {
                 "order_insensitive_required_set": required_set.stable_key() == RichValueCapabilitySet::new(examples.iter().rev().cloned()).stable_key(),
                 "extended_producer_is_superset": extended_set.is_superset_of(&required_set),
                 "missing_materialisable_is_not_superset": !missing_set.is_superset_of(&required_set)
+            }
+        })
+    }
+
+    fn rich_argaccepted_reservation_artifact_json() -> serde_json::Value {
+        let required_set = w050_initial_required_capability_set_example();
+
+        json!({
+            "run_id": "w050-g4-richargaccepted-reservation-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core rich_argaccepted_reservation -- --nocapture",
+            "reserved_profile": {
+                "variant": "ArgPreparationProfile::RichArgAccepted(capability_set)",
+                "capability_set_type": "RichValueCapabilitySet",
+                "initial_required_capability_set_key": required_set.stable_key(),
+                "admission_rule": "A prepared rich argument must publish a capability set that is a stable-key superset of the required capability set.",
+                "template_identity_rule": "The required capability set, not the producer's concrete class or full producer set, is the RichValueHole template identity member."
+            },
+            "read_only_sibling_observation": {
+                "oxfunc_enum_source": "../OxFunc/crates/oxfunc_core/src/function.rs:33",
+                "current_oxfunc_arg_preparation_variants": [
+                    "ValuesOnlyPreAdapter",
+                    "RefsVisibleInAdapter"
+                ],
+                "current_v1_oxfunc_kernels_using_richargaccepted": [],
+                "oxfml_consumes_arg_preparation_profile_in": [
+                    "../OxFml/crates/oxfml_core/src/semantics/mod.rs",
+                    "../OxFml/crates/oxfml_core/src/binding/mod.rs",
+                    "../OxFml/crates/oxfml_core/src/eval/mod.rs",
+                    "../OxFml/crates/oxfml_core/src/scheduler/mod.rs"
+                ]
+            },
+            "handoff_note": {
+                "path": "docs/handoffs/HANDOFF_CALC_004_OXFUNC_RICH_ARG_ACCEPTED_NOTE.md",
+                "status": "supporting_note_for_CALC_004",
+                "receiving_repo_change_claim": false
+            },
+            "scope_boundary": {
+                "oxcalc_runtime_code_changed_for_profile_activation": false,
+                "oxfunc_code_changed": false,
+                "oxfml_code_changed": false,
+                "rich_kernel_activation_claim": false
             }
         })
     }
@@ -390,5 +437,17 @@ mod tests {
         .expect("G1 run artifact should be valid JSON");
 
         assert_eq!(artifact, vocabulary_artifact_json());
+    }
+
+    #[test]
+    fn rich_argaccepted_reservation_artifact_matches_runtime_vocabulary() {
+        let artifact_path = g4_artifact_root().join("reservation_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path)
+                .expect("G4 reservation artifact should be checked in"),
+        )
+        .expect("G4 reservation artifact should be valid JSON");
+
+        assert_eq!(artifact, rich_argaccepted_reservation_artifact_json());
     }
 }

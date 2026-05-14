@@ -74,6 +74,25 @@ capability sets. Their runtime columns are therefore empty/reserved, and
 ordinary serialized trace artifacts omit the nested field when all three
 columns are empty.
 
+### 3.3 `RichArgAccepted` Reservation
+The kernel-side argument-preparation profile reserved for this vocabulary is:
+
+`ArgPreparationProfile::RichArgAccepted(capability_set)`
+
+This profile is sibling-owned by OxFunc and threaded by OxFml when it exists.
+OxCalc does not define the enum variant locally and does not activate any rich
+kernel in W050.
+
+Reservation rules:
+1. `capability_set` uses the same typed stable-key vocabulary as
+   `RichValueHole(required_capability_set)`,
+2. a producer satisfies the profile only by publishing a capability-set
+   stable-key superset of the required set,
+3. switching any existing OxFunc function to this profile is bind-visible and
+   requires `ArgPreparationProfile` metadata versioning,
+4. W050 records the additive identity shape only; first rich-kernel activation
+   belongs to successor work.
+
 ## 4. Additive Extension Rule
 New capability selectors or new parameter values are additive only through new
 stable keys. Existing traces recorded with an older required-set key remain
@@ -124,6 +143,20 @@ cargo test -p oxcalc-core capability_set_trace_replay -- --nocapture
 The test proves that current V1 runtime trace columns are empty/reserved and
 that a reserved rich requirement projects the sorted required capability-set
 key into the same column schema.
+
+The checked `RichArgAccepted` reservation artifact is:
+
+`docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001/reservation_artifact.json`
+
+Validation command:
+
+```powershell
+cargo test -p oxcalc-core rich_argaccepted_reservation -- --nocapture
+```
+
+The test binds the reserved profile name to the OxCalc capability vocabulary,
+records the read-only sibling source observation, and proves the checked note
+does not claim OxFunc/OxFml code movement or rich-kernel activation.
 
 ## 6. Scope Boundary
 This document does not claim:

@@ -566,6 +566,14 @@ owned by `.beads/`, not this document.
     and pins the fairness note that push mode requires periodic full-closure
     sweeps or observer aging. The checked evidence root is
     `docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001`.
+35. F5 live uptake: the O(k) differential evidence fixture now records a
+    hundred-formula model where one changed input has fan-out `k = 8`. The
+    pull full-closure rerun visits all formula owners but invokes OxFml only
+    eight times and reuses ninety-two cached edge values; the push
+    visibility-bounded rerun schedules only the eight visible dirty observers
+    over the same dependency graph and prepared-callable identities. The
+    checked evidence root is
+    `docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001`.
 
 ## 7. Required Work
 
@@ -716,6 +724,13 @@ The W050 work, organised by lane.
     cache-hit default verification rerun while preserving publication behavior,
     and to bypass reuse on upstream-publication invalidation. Evidence:
     `docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001/run_artifact.json`.
+    F5 adds the hundred-formula trace-count fixture required by the Lane F exit
+    gate: a single changed input with fan-out `k = 8` produces eight value
+    updates and eight OxFml invocations after initial publication, while
+    ninety-two unaffected formulas reuse cached edge values under pull
+    full-closure and are not scheduled under push visibility-bounded mode.
+    Evidence:
+    `docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001/run_artifact.json`.
 35. Implement derivation trace as a first-class `invoke` outcome under trace-mode opt-in: template selection, hole bindings, sub-invocation tree, kernel-returned values.
     F3 adds `DerivationTraceRecord` to TreeCalc run artifacts and consumer
     results under the `derivation_trace_enabled` runtime policy flag. The
@@ -786,6 +801,8 @@ W050 may close only when **all** of the following hold. The gate is comprehensiv
 **Lane F — Performance / Observability.**
 
 20. Per-edge value cache and differential-evaluation gates are implemented; a microbenchmark demonstrates O(k) recalc on a single-input change against a hundred-formula model where k is the changed-input fan-out.
+    F5 records this as deterministic trace-count evidence in
+    `docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001/run_artifact.json`.
 21. Derivation trace is a first-class `invoke` outcome under trace-mode opt-in; a fixture exercises it for a representative call-template family.
 22. Push/pull scheduling policies are selectable; the visibility-bounded mode is exercised by a fixture that updates only one observer.
 

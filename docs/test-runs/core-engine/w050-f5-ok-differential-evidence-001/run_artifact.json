@@ -1,0 +1,71 @@
+{
+  "run_id": "w050-f5-ok-differential-evidence-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core o_k_differential_evidence -- --nocapture",
+  "model": {
+    "formula_count": 100,
+    "changed_input_node_id": 2,
+    "stable_input_node_id": 3,
+    "changed_input_fanout_k": 8,
+    "unchanged_formula_count": 92,
+    "changed_formula_node_ids": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ]
+  },
+  "semantic_claim": "A single changed input with fan-out k=8 causes exactly 8 value updates and 8 OxFml invocations after the initial hundred-formula publication; pull full-closure visits all formulas but reuses 92 cached edge values, while push visibility-bounded schedules only the k visible dirty observers over the same dependency graph and prepared-callable identities.",
+  "command_record": [
+    "cargo test -p oxcalc-core o_k_differential_evidence -- --nocapture",
+    "cargo test -p oxcalc-core treecalc -- --nocapture"
+  ],
+  "cases": [
+    {
+      "case_id": "initial_hundred_formula_publication",
+      "result_state": "published",
+      "formula_count": 100,
+      "evaluation_order_count": 100,
+      "oxfml_invocation_count": 100,
+      "value_update_count": 100,
+      "sample_changed_first": "2",
+      "sample_changed_last": "9",
+      "sample_stable_first": "108",
+      "sample_stable_last": "199"
+    },
+    {
+      "case_id": "pull_full_closure_single_input_change",
+      "result_state": "published",
+      "evaluation_order_count": 100,
+      "changed_input_fanout_k": 8,
+      "value_update_count": 8,
+      "oxfml_invocation_count": 8,
+      "cache_hit_count": 92,
+      "cache_bypass_count": 8,
+      "invalidation_record_count": 9,
+      "same_published_values_as_push": true,
+      "sample_changed_first": "5",
+      "sample_changed_last": "12",
+      "sample_stable_first": "108",
+      "sample_stable_last": "199"
+    },
+    {
+      "case_id": "push_visibility_bounded_changed_fanout",
+      "result_state": "published",
+      "evaluation_order_count": 8,
+      "changed_input_fanout_k": 8,
+      "value_update_count": 8,
+      "oxfml_invocation_count": 8,
+      "cache_hit_count": 0,
+      "cache_bypass_count": 8,
+      "selected_formula_count_matches_k": true,
+      "same_dependency_graph_as_pull": true,
+      "same_prepared_identities_as_pull": true,
+      "same_published_values_as_pull": true
+    }
+  ]
+}

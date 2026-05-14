@@ -3452,6 +3452,13 @@ mod tests {
             .any(|diagnostic| diagnostic.starts_with(prefix))
     }
 
+    fn diagnostic_prefix_count(run: &LocalTreeCalcRunArtifacts, prefix: &str) -> usize {
+        run.diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.starts_with(prefix))
+            .count()
+    }
+
     fn f2_artifact_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001")
@@ -3465,6 +3472,11 @@ mod tests {
     fn f4_artifact_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001")
+    }
+
+    fn f5_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001")
     }
 
     fn derivation_trace_input(trace_enabled: bool, run_suffix: &str) -> LocalTreeCalcInput {
@@ -3838,6 +3850,246 @@ mod tests {
         })
     }
 
+    const F5_FORMULA_COUNT: usize = 100;
+    const F5_CHANGED_INPUT_FANOUT: usize = 8;
+    const F5_FIRST_FORMULA_NODE_ID: u64 = 10;
+
+    fn f5_formula_node_id(index: usize) -> TreeNodeId {
+        TreeNodeId(F5_FIRST_FORMULA_NODE_ID + index as u64)
+    }
+
+    fn f5_visible_observer_node_ids() -> Vec<TreeNodeId> {
+        (0..F5_CHANGED_INPUT_FANOUT)
+            .map(f5_formula_node_id)
+            .collect()
+    }
+
+    fn f5_snapshot(changed_input_value: &str) -> StructuralSnapshot {
+        let formula_node_ids = (0..F5_FORMULA_COUNT)
+            .map(f5_formula_node_id)
+            .collect::<Vec<_>>();
+        let mut nodes = vec![
+            StructuralNode {
+                node_id: TreeNodeId(1),
+                kind: StructuralNodeKind::Root,
+                symbol: "Root".to_string(),
+                parent_id: None,
+                child_ids: std::iter::once(TreeNodeId(2))
+                    .chain(std::iter::once(TreeNodeId(3)))
+                    .chain(formula_node_ids.iter().copied())
+                    .collect(),
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+            StructuralNode {
+                node_id: TreeNodeId(2),
+                kind: StructuralNodeKind::Constant,
+                symbol: "ChangedInput".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some(changed_input_value.to_string()),
+            },
+            StructuralNode {
+                node_id: TreeNodeId(3),
+                kind: StructuralNodeKind::Constant,
+                symbol: "StableInput".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some("100".to_string()),
+            },
+        ];
+
+        for index in 0..F5_FORMULA_COUNT {
+            let node_id = f5_formula_node_id(index);
+            nodes.push(StructuralNode {
+                node_id,
+                kind: StructuralNodeKind::Calculation,
+                symbol: format!("F{index}"),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: Some(FormulaArtifactId(format!("formula:f5:{index}"))),
+                bind_artifact_id: Some(BindArtifactId(format!("bind:f5:{index}"))),
+                constant_value: None,
+            });
+        }
+
+        StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), nodes).unwrap()
+    }
+
+    fn f5_hundred_formula_catalog() -> TreeFormulaCatalog {
+        TreeFormulaCatalog::new((0..F5_FORMULA_COUNT).map(|index| {
+            let owner_node_id = f5_formula_node_id(index);
+            let target_node_id = if index < F5_CHANGED_INPUT_FANOUT {
+                TreeNodeId(2)
+            } else {
+                TreeNodeId(3)
+            };
+            TreeFormulaBinding {
+                owner_node_id,
+                formula_artifact_id: FormulaArtifactId(format!("formula:f5:{index}")),
+                bind_artifact_id: Some(BindArtifactId(format!("bind:f5:{index}"))),
+                expression: fixture_formula(
+                    owner_node_id,
+                    FixtureFormulaAst::Binary {
+                        op: FixtureFormulaBinaryOp::Add,
+                        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id,
+                        })),
+                        right: Box::new(FixtureFormulaAst::Literal {
+                            value: index.to_string(),
+                        }),
+                    },
+                ),
+            }
+        }))
+    }
+
+    fn f5_hundred_formula_input(
+        structural_snapshot: StructuralSnapshot,
+        seeded_published_values: BTreeMap<TreeNodeId, String>,
+        scheduling_policy: LocalTreeCalcSchedulingPolicy,
+        run_suffix: &str,
+    ) -> LocalTreeCalcInput {
+        LocalTreeCalcInput {
+            structural_snapshot,
+            formula_catalog: f5_hundred_formula_catalog(),
+            seeded_published_values,
+            seeded_published_runtime_effects: Vec::new(),
+            invalidation_seeds: if run_suffix == "initial" {
+                Vec::new()
+            } else {
+                vec![InvalidationSeed {
+                    node_id: TreeNodeId(2),
+                    reason: InvalidationReasonKind::UpstreamPublication,
+                }]
+            },
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("cand:f5:{run_suffix}"),
+            publication_id: format!("pub:f5:{run_suffix}"),
+            compatibility_basis: format!("snapshot:f5:{run_suffix}"),
+            artifact_token_basis: format!("snapshot:f5:{run_suffix}"),
+            environment_context: LocalTreeCalcEnvironmentContext::default()
+                .with_scheduling_policy(scheduling_policy),
+        }
+    }
+
+    fn run_o_k_differential_evidence_scenarios() -> (
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+    ) {
+        let engine = LocalTreeCalcEngine;
+        let initial = engine
+            .execute(f5_hundred_formula_input(
+                f5_snapshot("2"),
+                BTreeMap::new(),
+                LocalTreeCalcSchedulingPolicy::PullFullClosure,
+                "initial",
+            ))
+            .expect("F5 initial hundred-formula run should publish all formulas");
+
+        let edited_snapshot = f5_snapshot("5");
+        let pull_full = engine
+            .execute(f5_hundred_formula_input(
+                edited_snapshot.clone(),
+                initial.published_values.clone(),
+                LocalTreeCalcSchedulingPolicy::PullFullClosure,
+                "pull-full",
+            ))
+            .expect("F5 pull full-closure rerun should publish changed fanout");
+
+        let push_visible = engine
+            .execute(f5_hundred_formula_input(
+                edited_snapshot,
+                initial.published_values.clone(),
+                LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
+                    visible_observer_node_ids: f5_visible_observer_node_ids(),
+                },
+                "push-visible-fanout",
+            ))
+            .expect("F5 push visibility-bounded rerun should publish changed fanout");
+
+        (initial, pull_full, push_visible)
+    }
+
+    fn changed_value_update_count(run: &LocalTreeCalcRunArtifacts) -> usize {
+        run.local_candidate
+            .as_ref()
+            .map(|candidate| candidate.value_updates.len())
+            .unwrap_or_default()
+    }
+
+    fn o_k_differential_evidence_artifact_json() -> serde_json::Value {
+        let (initial, pull_full, push_visible) = run_o_k_differential_evidence_scenarios();
+        json!({
+            "run_id": "w050-f5-ok-differential-evidence-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core o_k_differential_evidence -- --nocapture",
+            "model": {
+                "formula_count": F5_FORMULA_COUNT,
+                "changed_input_node_id": TreeNodeId(2).0,
+                "stable_input_node_id": TreeNodeId(3).0,
+                "changed_input_fanout_k": F5_CHANGED_INPUT_FANOUT,
+                "unchanged_formula_count": F5_FORMULA_COUNT - F5_CHANGED_INPUT_FANOUT,
+                "changed_formula_node_ids": f5_visible_observer_node_ids().iter().map(|node_id| node_id.0).collect::<Vec<_>>()
+            },
+            "semantic_claim": "A single changed input with fan-out k=8 causes exactly 8 value updates and 8 OxFml invocations after the initial hundred-formula publication; pull full-closure visits all formulas but reuses 92 cached edge values, while push visibility-bounded schedules only the k visible dirty observers over the same dependency graph and prepared-callable identities.",
+            "command_record": [
+                "cargo test -p oxcalc-core o_k_differential_evidence -- --nocapture",
+                "cargo test -p oxcalc-core treecalc -- --nocapture"
+            ],
+            "cases": [
+                {
+                    "case_id": "initial_hundred_formula_publication",
+                    "result_state": treecalc_state_key(&initial.result_state),
+                    "formula_count": F5_FORMULA_COUNT,
+                    "evaluation_order_count": initial.evaluation_order.len(),
+                    "oxfml_invocation_count": diagnostic_prefix_count(&initial, "oxfml_candidate_result_id:"),
+                    "value_update_count": changed_value_update_count(&initial),
+                    "sample_changed_first": initial.published_values.get(&f5_formula_node_id(0)).cloned().unwrap_or_default(),
+                    "sample_changed_last": initial.published_values.get(&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT - 1)).cloned().unwrap_or_default(),
+                    "sample_stable_first": initial.published_values.get(&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT)).cloned().unwrap_or_default(),
+                    "sample_stable_last": initial.published_values.get(&f5_formula_node_id(F5_FORMULA_COUNT - 1)).cloned().unwrap_or_default()
+                },
+                {
+                    "case_id": "pull_full_closure_single_input_change",
+                    "result_state": treecalc_state_key(&pull_full.result_state),
+                    "evaluation_order_count": pull_full.evaluation_order.len(),
+                    "changed_input_fanout_k": F5_CHANGED_INPUT_FANOUT,
+                    "value_update_count": changed_value_update_count(&pull_full),
+                    "oxfml_invocation_count": diagnostic_prefix_count(&pull_full, "oxfml_candidate_result_id:"),
+                    "cache_hit_count": diagnostic_prefix_count(&pull_full, "edge_value_cache_hit:"),
+                    "cache_bypass_count": diagnostic_prefix_count(&pull_full, "edge_value_cache_bypass:"),
+                    "invalidation_record_count": pull_full.invalidation_closure.records.len(),
+                    "same_published_values_as_push": pull_full.published_values == push_visible.published_values,
+                    "sample_changed_first": pull_full.published_values.get(&f5_formula_node_id(0)).cloned().unwrap_or_default(),
+                    "sample_changed_last": pull_full.published_values.get(&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT - 1)).cloned().unwrap_or_default(),
+                    "sample_stable_first": pull_full.published_values.get(&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT)).cloned().unwrap_or_default(),
+                    "sample_stable_last": pull_full.published_values.get(&f5_formula_node_id(F5_FORMULA_COUNT - 1)).cloned().unwrap_or_default()
+                },
+                {
+                    "case_id": "push_visibility_bounded_changed_fanout",
+                    "result_state": treecalc_state_key(&push_visible.result_state),
+                    "evaluation_order_count": push_visible.evaluation_order.len(),
+                    "changed_input_fanout_k": F5_CHANGED_INPUT_FANOUT,
+                    "value_update_count": changed_value_update_count(&push_visible),
+                    "oxfml_invocation_count": diagnostic_prefix_count(&push_visible, "oxfml_candidate_result_id:"),
+                    "cache_hit_count": diagnostic_prefix_count(&push_visible, "edge_value_cache_hit:"),
+                    "cache_bypass_count": diagnostic_prefix_count(&push_visible, "edge_value_cache_bypass:"),
+                    "selected_formula_count_matches_k": has_diagnostic_prefix(&push_visible, "scheduling_selected_formula_count:8"),
+                    "same_dependency_graph_as_pull": push_visible.dependency_graph == pull_full.dependency_graph,
+                    "same_prepared_identities_as_pull": push_visible.prepared_formula_identities == pull_full.prepared_formula_identities,
+                    "same_published_values_as_pull": push_visible.published_values == pull_full.published_values
+                }
+            ]
+        })
+    }
+
     #[test]
     fn differential_evaluation_gate_reuses_cached_value_without_publication_change() {
         let (initial, reuse, _) = run_differential_evaluation_gate_scenarios();
@@ -4007,6 +4259,97 @@ mod tests {
         .expect("F4 run artifact should be valid JSON");
 
         assert_eq!(artifact, push_pull_scheduling_artifact_json());
+    }
+
+    #[test]
+    fn o_k_differential_evidence_pull_full_closure_invokes_only_changed_fanout() {
+        let (initial, pull_full, _) = run_o_k_differential_evidence_scenarios();
+
+        assert_eq!(initial.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(initial.evaluation_order.len(), F5_FORMULA_COUNT);
+        assert_eq!(
+            diagnostic_prefix_count(&initial, "oxfml_candidate_result_id:"),
+            F5_FORMULA_COUNT
+        );
+        assert_eq!(changed_value_update_count(&initial), F5_FORMULA_COUNT);
+
+        assert_eq!(pull_full.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(pull_full.evaluation_order.len(), F5_FORMULA_COUNT);
+        assert_eq!(
+            pull_full.invalidation_closure.records.len(),
+            F5_CHANGED_INPUT_FANOUT + 1
+        );
+        assert_eq!(
+            changed_value_update_count(&pull_full),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&pull_full, "oxfml_candidate_result_id:"),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&pull_full, "edge_value_cache_hit:"),
+            F5_FORMULA_COUNT - F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&pull_full, "edge_value_cache_bypass:"),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(pull_full.published_values[&f5_formula_node_id(0)], "5");
+        assert_eq!(
+            pull_full.published_values[&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT - 1)],
+            "12"
+        );
+        assert_eq!(
+            pull_full.published_values[&f5_formula_node_id(F5_CHANGED_INPUT_FANOUT)],
+            "108"
+        );
+        assert_eq!(
+            pull_full.published_values[&f5_formula_node_id(F5_FORMULA_COUNT - 1)],
+            "199"
+        );
+    }
+
+    #[test]
+    fn o_k_differential_evidence_push_visibility_schedules_only_changed_fanout() {
+        let (_, pull_full, push_visible) = run_o_k_differential_evidence_scenarios();
+
+        assert_eq!(push_visible.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(push_visible.evaluation_order.len(), F5_CHANGED_INPUT_FANOUT);
+        assert_eq!(
+            changed_value_update_count(&push_visible),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&push_visible, "oxfml_candidate_result_id:"),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&push_visible, "edge_value_cache_bypass:"),
+            F5_CHANGED_INPUT_FANOUT
+        );
+        assert_eq!(
+            diagnostic_prefix_count(&push_visible, "edge_value_cache_hit:"),
+            0
+        );
+        assert_has_diagnostic(&push_visible, "scheduling_selected_formula_count:8");
+        assert_eq!(push_visible.published_values, pull_full.published_values);
+        assert_eq!(push_visible.dependency_graph, pull_full.dependency_graph);
+        assert_eq!(
+            push_visible.prepared_formula_identities,
+            pull_full.prepared_formula_identities
+        );
+    }
+
+    #[test]
+    fn o_k_differential_evidence_checked_artifact_matches_runtime_validation() {
+        let artifact_path = f5_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("F5 run artifact should be checked in"),
+        )
+        .expect("F5 run artifact should be valid JSON");
+
+        assert_eq!(artifact, o_k_differential_evidence_artifact_json());
     }
 
     #[test]

@@ -354,6 +354,14 @@ On a hit, OxCalc uses the cached value as the invocation result and suppresses
 the OxFml invocation; publication semantics are unchanged because verified
 clean values still suppress publication bundles.
 
+The current checked O(k) evidence is trace-count based rather than
+wall-clock-based. In the hundred-formula fixture, a single changed input with
+fan-out `k = 8` causes exactly eight value updates and eight OxFml invocations
+after the initial publication. A pull full-closure run still visits all
+formula owners but reuses cached edge values for the ninety-two unaffected
+owners. A push visibility-bounded run schedules only the eight visible dirty
+observers, using the same dependency graph and prepared-callable identities.
+
 ### 13.4 Derivation Trace Invoke Outcome
 Derivation trace is an opt-in observation lane, not a scheduling or
 publication policy. A value-only run emits no derivation trace. A trace-mode

@@ -635,13 +635,21 @@ W050 may close only when **all** of the following hold. The gate is comprehensiv
 - integration_completeness: `partial`
 - open_lanes:
   - Lane A — removal of wrong-shape OxCalc code (per §3.B and §7 items 1–9);
-  - Lane B — new seam implementation (per §3.A and §7 items 10–16);
   - Lane C — plan-template identity layer (per §3.C, §3.D and §7 items 17–23);
   - Lane D — external invalidation discipline (per §3.E and §7 items 24–28);
   - Lane E — correctness floor (per §3.G and §7 items 29–32);
   - Lane F — performance / observability layer (per §3.H and §7 items 33–36);
   - Lane G — forward-direction rich-value scaffolding (per §3.F and §7 items 37–40);
   - cross-cutting documentation, handoffs, fixtures (per §7 items 41–44).
+
+Lane B status note: the local OxCalc seam bead set through B9 now has
+evidence for the first-call protocol, Calculation Repository, public OxFml
+session driver, six-phase wave lifecycle, bind-output reference handles,
+TreeCalc session invocation, opaque result coverage, session corpus packet,
+and OxFml V1 compatibility ledger. Remaining canonical reference/input,
+managed-result, plan-template, and structured replay/correlation fields are
+carried by the cross-cutting `HANDOFF_CALC_002` lane rather than by private
+OxFml adapters in OxCalc.
 
 W050 is `open_planning` at lane level; individual lanes may advance independently under the bead structure in §6. The aggregate workset remains `open_planning` until all lanes meet their share of the exit gate in §8.
 

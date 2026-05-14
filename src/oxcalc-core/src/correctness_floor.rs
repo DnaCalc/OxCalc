@@ -55,6 +55,7 @@ impl CorrectnessFloorProfile {
             profile_version: self.profile_version.clone(),
             numerical_reduction_policy: self.numerical_reduction_policy.selector_key().to_string(),
             error_algebra: self.error_algebra.selector_key().to_string(),
+            semantic_kernel_metadata_version: None,
         }
     }
 
@@ -63,13 +64,20 @@ impl CorrectnessFloorProfile {
         active: &Self,
     ) -> Result<(), CorrectnessFloorReplayValidationError> {
         let expected = active.replay_record();
-        if recorded == &expected {
+        Self::validate_replay_record_against_active_record(recorded, &expected)
+    }
+
+    pub fn validate_replay_record_against_active_record(
+        recorded: &CorrectnessFloorReplayRecord,
+        active: &CorrectnessFloorReplayRecord,
+    ) -> Result<(), CorrectnessFloorReplayValidationError> {
+        if recorded == active {
             return Ok(());
         }
 
         Err(CorrectnessFloorReplayValidationError::SelectorMismatch {
             recorded: Box::new(recorded.clone()),
-            active: Box::new(expected),
+            active: Box::new(active.clone()),
         })
     }
 }
@@ -79,6 +87,16 @@ pub struct CorrectnessFloorReplayRecord {
     pub profile_version: String,
     pub numerical_reduction_policy: String,
     pub error_algebra: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_kernel_metadata_version: Option<String>,
+}
+
+impl CorrectnessFloorReplayRecord {
+    #[must_use]
+    pub fn with_semantic_kernel_metadata_version(mut self, version: impl Into<String>) -> Self {
+        self.semantic_kernel_metadata_version = Some(version.into());
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,6 +145,9 @@ fn correctness_floor_mismatched_fields(
     }
     if recorded.error_algebra != active.error_algebra {
         fields.push("error_algebra".to_string());
+    }
+    if recorded.semantic_kernel_metadata_version != active.semantic_kernel_metadata_version {
+        fields.push("semantic_kernel_metadata_version".to_string());
     }
     fields
 }
@@ -225,6 +246,7 @@ mod tests {
                 profile_version: "profile:correctness-floor:v1".to_string(),
                 numerical_reduction_policy: "SequentialLeftFold".to_string(),
                 error_algebra: "CanonicalExcelLegacy".to_string(),
+                semantic_kernel_metadata_version: None,
             }
         );
 
@@ -282,6 +304,35 @@ mod tests {
         );
         assert_eq!(error_algebra.recorded.error_algebra, "ProfileDeclaredTest");
         assert_eq!(error_algebra.active.error_algebra, "CanonicalExcelLegacy");
+    }
+
+    #[test]
+    fn correctness_floor_replay_rejects_semantic_kernel_metadata_version_mismatch() {
+        let active = default_profile()
+            .replay_record()
+            .with_semantic_kernel_metadata_version("semantic-kernel:v2");
+        let recorded = default_profile()
+            .replay_record()
+            .with_semantic_kernel_metadata_version("semantic-kernel:v1");
+
+        let diagnostic = CorrectnessFloorProfile::validate_replay_record_against_active_record(
+            &recorded, &active,
+        )
+        .expect_err("metadata version mismatch should reject replay")
+        .diagnostic();
+        assert_eq!(
+            diagnostic.mismatched_fields,
+            vec!["semantic_kernel_metadata_version"]
+        );
+
+        let matching_record = CorrectnessFloorProfile::default()
+            .replay_record()
+            .with_semantic_kernel_metadata_version("semantic-kernel:v2");
+        CorrectnessFloorProfile::validate_replay_record_against_active_record(
+            &matching_record,
+            &active,
+        )
+        .expect("matching metadata version should replay");
     }
 
     #[test]

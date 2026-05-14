@@ -1078,6 +1078,13 @@ formula reuse across sibling metadata version changes. It does not claim
 selector enforcement, rich-argument admission, producer capability emission, or
 sparse reader behavior.
 
+Current capability uptake: TreeCalc consumes OxFml returned-value
+`producer_capability_set_keys` for the first `IMAGE` / `_webimage` rich carrier
+and records those keys in diagnostics and derivation trace capability columns.
+This is producer-capability evidence only. It does not claim rich-argument
+admission, exercised capability-key emission, broad rich producer protocol, or
+sparse reader behavior.
+
 Semantic equivalence statement: C4 changes bind-visible invalidation and
 structure-context identity only. It does not change source parsing,
 binding semantics, semantic-plan compilation, runtime invocation, candidate

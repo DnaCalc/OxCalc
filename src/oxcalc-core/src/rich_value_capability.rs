@@ -252,6 +252,57 @@ impl RichValueCapabilityTraceReplayColumns {
     }
 
     #[must_use]
+    pub fn from_runtime_capability_keys(
+        producer_capability_set_keys: impl IntoIterator<Item = String>,
+        exercised_capability_keys: impl IntoIterator<Item = String>,
+    ) -> Self {
+        let mut producer_capability_set_keys =
+            producer_capability_set_keys.into_iter().collect::<Vec<_>>();
+        producer_capability_set_keys.sort();
+        producer_capability_set_keys.dedup();
+
+        let mut exercised_capability_keys =
+            exercised_capability_keys.into_iter().collect::<Vec<_>>();
+        exercised_capability_keys.sort();
+        exercised_capability_keys.dedup();
+
+        Self {
+            required_capability_set_keys: Vec::new(),
+            producer_capability_set_keys,
+            exercised_capability_keys,
+        }
+    }
+
+    #[must_use]
+    pub fn union(&self, other: &Self) -> Self {
+        fn sorted_union(left: &[String], right: &[String]) -> Vec<String> {
+            let mut values = left
+                .iter()
+                .cloned()
+                .chain(right.iter().cloned())
+                .collect::<Vec<_>>();
+            values.sort();
+            values.dedup();
+            values
+        }
+
+        Self {
+            required_capability_set_keys: sorted_union(
+                &self.required_capability_set_keys,
+                &other.required_capability_set_keys,
+            ),
+            producer_capability_set_keys: sorted_union(
+                &self.producer_capability_set_keys,
+                &other.producer_capability_set_keys,
+            ),
+            exercised_capability_keys: sorted_union(
+                &self.exercised_capability_keys,
+                &other.exercised_capability_keys,
+            ),
+        }
+    }
+
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.required_capability_set_keys.is_empty()
             && self.producer_capability_set_keys.is_empty()

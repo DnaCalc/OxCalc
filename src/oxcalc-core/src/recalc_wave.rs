@@ -684,6 +684,7 @@ mod tests {
                 profile_version: "profile:correctness-floor:test".to_string(),
                 numerical_reduction_policy: "KahanCompensated".to_string(),
                 error_algebra: "CanonicalExcelLegacy".to_string(),
+                semantic_kernel_metadata_version: None,
             }
         );
         assert_eq!(trace.validate_replay_selectors(&profile), Ok(()));

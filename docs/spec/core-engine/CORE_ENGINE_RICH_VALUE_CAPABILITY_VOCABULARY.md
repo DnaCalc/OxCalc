@@ -109,6 +109,12 @@ The preferred first rich producer activation lane is `IMAGE` / `_webimage`
 producer capability publication. Sparse range readers remain deferred until a
 concrete sparse reader API and replay-visible sparse iteration semantics exist.
 
+OxCalc TreeCalc now consumes the first `IMAGE` / `_webimage` producer
+capability publication path. Returned rich-value surfaces carrying
+`producer_capability_set_keys` are surfaced as diagnostics and merged into the
+derivation trace `rich_value_capability_columns`. `exercised_capability_keys`
+remain reserved until OxFunc/OxFml emit per-operation usage facts.
+
 ## 4. Additive Extension Rule
 New capability selectors or new parameter values are additive only through new
 stable keys. Existing traces recorded with an older required-set key remain
@@ -156,9 +162,11 @@ Validation command:
 cargo test -p oxcalc-core capability_set_trace_replay -- --nocapture
 ```
 
-The test proves that current V1 runtime trace columns are empty/reserved and
-that a reserved rich requirement projects the sorted required capability-set
-key into the same column schema.
+The tests prove that ordinary current V1 runtime trace columns remain
+empty/reserved, that a reserved rich requirement projects the sorted required
+capability-set key into the same column schema, and that the first
+`IMAGE` / `_webimage` returned rich-value surface projects producer capability
+keys into TreeCalc diagnostics and derivation trace columns.
 
 The checked `RichArgAccepted` reservation artifact is:
 
@@ -179,6 +187,6 @@ This document does not claim:
 1. rich-value kernel support,
 2. sparse range reader production,
 3. `ArgPreparationProfile::RichArgAccepted` activation,
-4. producer capability-set emission by current OxCalc runtime artifacts.
+4. exercised capability-key emission.
 
 Those are owned by later Lane G beads and successor worksets.

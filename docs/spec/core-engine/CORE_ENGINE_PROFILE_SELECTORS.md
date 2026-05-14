@@ -25,6 +25,10 @@ environment, and prepared identity diagnostics/artifacts. This prevents local
 prepared-formula reuse across selector/kernel metadata version changes without
 claiming kernel enforcement.
 
+The OxCalc replay record also admits `semantic_kernel_metadata_version` as an
+optional replay field. When present, replay validation rejects traces recorded
+under a different selector/kernel metadata version.
+
 ## 2. Profile Record Rule
 Every replay-visible correctness-floor evaluation profile must carry:
 
@@ -152,4 +156,5 @@ surface.
   - OxFml acknowledged `CorrectnessFloorContext` carriage through H2/CALC-003,
   - OxFunc acknowledged `semantic_kernel_metadata_version` as the selector/kernel metadata invalidation bridge,
   - OxCalc consumes the bridge in TreeCalc prepared identity and runtime environment paths,
+  - OxCalc replay validation rejects semantic-kernel metadata version drift when the version is recorded,
   - OxFunc kernel-side enforcement and broader OxFml `CorrectnessFloorContext` replay projection remain outside this OxCalc-local replay hook

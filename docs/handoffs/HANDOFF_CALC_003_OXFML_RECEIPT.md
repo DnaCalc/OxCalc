@@ -62,6 +62,9 @@ hooks and compatibility evidence until OxFml/OxFunc expose full canonical
 code-level `semantic_kernel_metadata_version` bridge in TreeCalc environment
 context, local compatibility prepared-callable identity, OxFml runtime
 environment input, and diagnostics/artifacts.
+OxCalc replay validation also rejects a recorded
+`semantic_kernel_metadata_version` when it differs from the active replay
+context.
 
 OxCalc should not claim that pairwise or compensated numerical policies, error
 algebra precedence, or affected-function invalidation are enforced by current
@@ -69,12 +72,12 @@ kernels. Current OxCalc selector diagnostics prove selection and replay
 mismatch detection only.
 
 ## Remaining Open Lanes
-1. OxFunc Rust metadata fields and registry/export publication,
+1. selector enforcement evidence in OxFunc kernels,
 2. concrete replay fields for non-left-fold policies,
 3. broader OxFml runtime/replay projection of `CorrectnessFloorContext`
    selector fields,
-4. OxCalc migration from local `CorrectnessFloorReplayRecord` compatibility
-   fields to canonical OxFml replay fields.
+4. migration from local `CorrectnessFloorReplayRecord` compatibility fields to
+   canonical OxFml replay fields when those fields exist.
 
 ## Status
 - execution_state: in_progress
@@ -82,7 +85,7 @@ mismatch detection only.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFunc Rust metadata/export publication
+  - OxFunc selector enforcement evidence
   - canonical replay field names for non-left-fold policies
   - broader OxFml runtime/replay emission of selector context fields
-  - OxCalc migration from local selector replay artifacts
+  - migration from local selector replay artifacts to canonical OxFml replay fields

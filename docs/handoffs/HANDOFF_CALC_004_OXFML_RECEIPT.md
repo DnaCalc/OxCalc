@@ -60,25 +60,25 @@ capability publication as the preferred first rich producer activation lane,
 with sparse range readers deferred.
 
 ## OxCalc Integration Consequences
-OxCalc should keep W050 sparse/rich hole vocabulary and capability columns as
-identity reservation and compatibility evidence. It should not report sparse
-reader support, rich-value producer support, or rich-kernel execution as
-implemented behavior.
+OxCalc should keep W050 sparse/rich hole vocabulary as identity reservation
+and compatibility evidence. It should not report sparse reader support,
+rich-argument admission, or rich-kernel execution as implemented behavior.
 
 OxCalc now consumes the code-level `arg_admission_metadata_version` bridge in
 TreeCalc environment context, local compatibility prepared-callable identity,
 OxFml runtime environment input, and diagnostics/artifacts.
 
-The next useful migration point is an OxFml/OxFunc successor that emits
-producer capability facts and exercised capability facts through canonical
-runtime/replay fields.
+OxCalc now consumes OxFml returned-value producer capability facts for
+`IMAGE` / `_webimage` through TreeCalc diagnostics and derivation trace
+capability columns. Exercised capability facts remain reserved.
 
 ## Remaining Open Lanes
-1. OxFunc Rust metadata model for rich/sparse admission,
-2. sparse/rich producer activation successor work,
-3. OxFml returned-value/runtime emission of producer and exercised capability
-   facts,
-4. migration of OxCalc reserved local columns to canonical emitted fields.
+1. sparse-reader activation successor work,
+2. `RichArgAccepted(required_capability_set)` runtime admission,
+3. exercised capability-key emission once kernels consume rich/sparse
+   operations,
+4. broader rich producer protocol beyond the first `IMAGE` / `_webimage`
+   carrier.
 
 ## Status
 - execution_state: in_progress
@@ -86,7 +86,7 @@ runtime/replay fields.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFunc Rust metadata model for rich/sparse admission
-  - sparse/rich producer activation successor work
-  - OxFml runtime/replay emission of producer and exercised capability facts
-  - OxCalc migration from reserved capability columns
+  - sparse-reader activation successor work
+  - RichArgAccepted runtime admission
+  - exercised capability-key emission
+  - broader rich producer protocol beyond IMAGE/_webimage

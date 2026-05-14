@@ -23,7 +23,10 @@ use oxfml_core::{
     CompileSemanticPlanRequest, EvaluationBackend, EvaluationTraceMode, compile_semantic_plan,
 };
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
-use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
+use oxfunc_core::host_info::{
+    CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
+    ResolvedWebImage,
+};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use serde::Serialize;
 use thiserror::Error;
@@ -2076,6 +2079,8 @@ struct PreparedOxfmlFormula {
     bound_formula: oxfml_core::binding::BoundFormula,
     prepared_callable: PreparedCallable,
     oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
+    requires_host_query: bool,
+    requires_image_provider: bool,
     edge_value_cache_path_facts: EdgeValueCachePathFacts,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
@@ -2147,6 +2152,11 @@ fn prepare_oxfml_formula(
         bound_formula,
         prepared_callable,
         oxfunc_bridge_metadata: environment_context.oxfunc_bridge_metadata.clone(),
+        requires_host_query: semantic_plan.execution_profile.requires_host_query,
+        requires_image_provider: semantic_plan
+            .function_bindings
+            .iter()
+            .any(|binding| binding.function_id == "FUNC.IMAGE"),
         edge_value_cache_path_facts,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
@@ -2947,7 +2957,9 @@ fn invoke_prepared_formula_via_session(
         .translated
         .residuals
         .iter()
-        .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive));
+        .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive))
+        || prepared.requires_host_query
+        || prepared.requires_image_provider;
     let rtd_required = prepared
         .translated
         .residuals
@@ -3030,6 +3042,17 @@ impl HostInfoProvider for TreeCalcHostInfoProvider {
         Err(HostInfoError::ProviderFailure {
             detail: "treecalc.host_sensitive_reference".to_string(),
         })
+    }
+
+    fn query_image(&self, request: &ImageRequest) -> Result<ImageProviderResult, HostInfoError> {
+        let fallback = request
+            .alt_text
+            .clone()
+            .unwrap_or_else(|| ExcelText::from_interop_assignment("-2146826273"));
+        Ok(ImageProviderResult::Image(ResolvedWebImage {
+            web_image_identifier: format!("treecalc.image:{}", request.source.to_string_lossy()),
+            published_fallback: fallback,
+        }))
     }
 }
 
@@ -3124,6 +3147,11 @@ fn build_derivation_trace_record(
     candidate_value: &str,
 ) -> DerivationTraceRecord {
     let identity = prepared_formula_identity_trace(prepared);
+    let returned_value_capability_columns =
+        rich_value_capability_columns_for_returned_surface(&run.returned_value_surface);
+    let trace_capability_columns = identity
+        .rich_value_capability_columns
+        .union(&returned_value_capability_columns);
     let template = &prepared.prepared_callable.plan_template;
     let hole_bindings = &prepared.prepared_callable.hole_bindings;
     let child_invocations = run
@@ -3168,7 +3196,7 @@ fn build_derivation_trace_record(
         bind_artifact_id: identity.bind_artifact_id,
         formula_stable_id: identity.formula_stable_id,
         trace_mode: "PreparedCalls".to_string(),
-        rich_value_capability_columns: identity.rich_value_capability_columns.clone(),
+        rich_value_capability_columns: trace_capability_columns,
         template_selection: DerivationTemplateSelectionTrace {
             prepared_callable_key: identity.prepared_callable_key,
             shape_key: identity.shape_key,
@@ -3238,6 +3266,18 @@ fn oxfml_returned_value_surface_diagnostics(surface: &ReturnedValueSurface) -> V
             "oxfml_returned_value_surface_rich_value_type:{type_name}"
         ));
     }
+    diagnostics.extend(
+        surface
+            .producer_capability_set_keys
+            .iter()
+            .map(|key| format!("oxfml_returned_value_surface_producer_capability_set_key:{key}")),
+    );
+    diagnostics.extend(
+        surface
+            .exercised_capability_keys
+            .iter()
+            .map(|key| format!("oxfml_returned_value_surface_exercised_capability_key:{key}")),
+    );
     if let Some(outcome) = &surface.host_provider_outcome {
         diagnostics.push(format!(
             "oxfml_returned_value_surface_host_provider_outcome:{:?}",
@@ -3251,6 +3291,15 @@ fn oxfml_returned_value_surface_diagnostics(surface: &ReturnedValueSurface) -> V
         }
     }
     diagnostics
+}
+
+fn rich_value_capability_columns_for_returned_surface(
+    surface: &ReturnedValueSurface,
+) -> RichValueCapabilityTraceReplayColumns {
+    RichValueCapabilityTraceReplayColumns::from_runtime_capability_keys(
+        surface.producer_capability_set_keys.clone(),
+        surface.exercised_capability_keys.clone(),
+    )
 }
 
 fn oxfml_candidate_diagnostics(
@@ -4581,6 +4630,63 @@ mod tests {
         );
         assert!(required_columns.producer_capability_set_keys.is_empty());
         assert!(required_columns.exercised_capability_keys.is_empty());
+    }
+
+    #[test]
+    fn image_rich_value_surface_carries_producer_capability_metadata() {
+        let engine = LocalTreeCalcEngine;
+        let mut input = formula_input(
+            TreeNodeId(3),
+            TreeFormula::opaque_oxfml(
+                "=IMAGE(\"https://example.com/sphere.png\",\"Sphere\",3,100,200)",
+                Vec::new(),
+            ),
+        );
+        input.environment_context =
+            LocalTreeCalcEnvironmentContext::default().with_derivation_trace_enabled(true);
+
+        let run = engine.execute(input).unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:RichValue");
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_payload_summary:RichValue(_webimage)",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_rich_value_type:_webimage",
+        );
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with(
+                    "oxfml_returned_value_surface_producer_capability_set_key:Materialisable("
+                )),
+            "IMAGE/_webimage should expose producer capability keys in diagnostics: {:?}",
+            run.diagnostics
+        );
+
+        let trace = run
+            .derivation_traces
+            .first()
+            .expect("derivation trace should be recorded");
+        assert!(
+            trace
+                .rich_value_capability_columns
+                .producer_capability_set_keys
+                .iter()
+                .any(|key| key.starts_with("Materialisable(")),
+            "derivation trace should carry returned-surface producer capability keys: {:?}",
+            trace.rich_value_capability_columns
+        );
+        assert!(
+            trace
+                .rich_value_capability_columns
+                .exercised_capability_keys
+                .is_empty(),
+            "exercised capability keys remain reserved until OxFunc emits them"
+        );
     }
 
     #[test]

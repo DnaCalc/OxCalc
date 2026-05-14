@@ -68,6 +68,7 @@ requires an OxFml/OxFunc-owned affected-function or affected-callable surface.
 OxCalc-local evidence for this reservation:
 
 - `docs/spec/core-engine/CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`
+- `docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md`
 - `docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001/reservation_artifact.json`
 - `src/oxcalc-core/src/rich_value_capability.rs`
 
@@ -83,7 +84,7 @@ cargo test -p oxcalc-core rich_argaccepted_reservation -- --nocapture
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - `HANDOFF-CALC-004` main packet filing and receiving-repo acknowledgment
+  - `HANDOFF-CALC-004` receiving-repo acknowledgment
   - OxFunc-owned enum/metadata change
   - OxFml-owned semantic-plan, prepared-argument, and trace/replay threading
   - successor-work activation of the first rich-value-aware kernel

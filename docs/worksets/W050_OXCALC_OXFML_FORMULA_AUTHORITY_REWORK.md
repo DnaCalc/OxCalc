@@ -614,6 +614,13 @@ owned by `.beads/`, not this document.
     `docs/handoffs/HANDOFF_CALC_003_OXFUNC_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA_NOTE.md`.
     Receiving-repo acknowledgment remains an open watch dependency; no
     OxFml/OxFunc kernel enforcement or OxCalc adapter workaround is claimed.
+41. H3 live uptake: `HANDOFF-CALC-004` is filed in
+    `docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md`
+    and registered in `docs/handoffs/HANDOFF_REGISTER.csv` with status
+    `filed`. The packet joins the G1-G4 evidence for capability vocabulary,
+    `RichValueHole`, trace/replay columns, `SparseRangeHole` identity, and the
+    existing RichArgAccepted OxFunc note. Receiving-repo acknowledgment remains
+    an open watch dependency; no sparse/rich kernel activation is claimed.
 
 ## 7. Required Work
 

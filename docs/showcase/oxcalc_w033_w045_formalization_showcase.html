@@ -402,7 +402,7 @@ invalidation_seeds</pre></div></div>
   </section>
 
   <section class="slide">
-    <div class="top"><div><div class="kicker">REF-01</div><h2>Reference lowering currently has a rich concrete taxonomy</h2></div><div class="num">11 / 50</div></div>
+    <div class="top"><div><div class="kicker">REF-01</div><h2>Dependency and runtime-fact carriers have an explicit taxonomy</h2></div><div class="num">11 / 50</div></div>
     <div class="body grid2">
       <div class="code">
         <div class="path">src/oxcalc-core/src/formula.rs</div>
@@ -423,7 +423,7 @@ pub fn descriptor_kind(&amp;self) -&gt; DependencyDescriptorKind { ... }</pre>
       </div>
       <div class="panel">
         <table>
-          <tr><th>Reference family</th><th>Target resolution</th><th>Descriptor kind</th><th>Formal target</th></tr>
+          <tr><th>Carrier family</th><th>Target resolution</th><th>Descriptor kind</th><th>Formal target</th></tr>
           <tr><td>direct/projection</td><td>static</td><td>`StaticDirect`</td><td>edge exists iff target valid</td></tr>
           <tr><td>relative/sibling</td><td>snapshot context</td><td>`RelativeBound`</td><td>rebind sensitivity proof</td></tr>
           <tr><td>dynamic resolved</td><td>runtime target</td><td>`DynamicPotential`</td><td>shape update/effect visible</td></tr>
@@ -435,7 +435,7 @@ pub fn descriptor_kind(&amp;self) -&gt; DependencyDescriptorKind { ... }</pre>
   </section>
 
   <section class="slide">
-    <div class="top"><div><div class="kicker">DEP-01</div><h2>Dependency descriptors are the bridge from formula semantics to graph semantics</h2></div><div class="num">12 / 50</div></div>
+    <div class="top"><div><div class="kicker">DEP-01</div><h2>Dependency descriptors bridge OxFml bind facts to graph semantics</h2></div><div class="num">12 / 50</div></div>
     <div class="body quad">
       <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><div class="code"><pre>DependencyDescriptor {
   descriptor_id,
@@ -445,9 +445,9 @@ pub fn descriptor_kind(&amp;self) -&gt; DependencyDescriptorKind { ... }</pre>
   carrier_detail,
   requires_rebind_on_structural_change,
 }</pre></div></div>
-      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Descriptor family preservation: lowering preserves owner, target option, semantic family, and structural rebind sensitivity. Dynamic resolved references remain dynamic-family evidence.</p></div>
-      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Formula and TreeCalc tests assert descriptor kinds; TreeCalc artifacts serialize graph descriptors; W045 optimized/core packet carries dynamic/counterpart/callable metadata rows.</p></div>
-      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No dependent-type model yet tying every `TreeReference` constructor to descriptor postconditions and diagnostic/reject consequences.</p></div>
+      <div class="lane formal"><h3><span class="dot"></span>Formal Target</h3><p>Descriptor family preservation: lowering preserves owner, target option, carrier family, and structural rebind sensitivity. Dynamic resolved references remain dynamic-family evidence.</p></div>
+      <div class="lane artifact"><h3><span class="dot"></span>Artifacts Today</h3><p>Carrier and TreeCalc tests assert descriptor kinds; TreeCalc artifacts serialize graph descriptors; W045 optimized/core packet carries dynamic/counterpart/callable metadata rows.</p></div>
+      <div class="lane gap"><h3><span class="dot"></span>Gap</h3><p>No dependent-type model yet tying every `TreeReference` carrier constructor to descriptor postconditions and diagnostic/reject consequences.</p></div>
     </div>
     <div class="foot"><span>Catalog IDs: `REF-01`, `DEP-01`, `INV-03`.</span><span>Best next proof surface: descriptor-kind preservation and target resolution soundness.</span></div>
   </section>
@@ -673,7 +673,7 @@ publish_and_clear: PublishReady -&gt; Clean</pre>
 <pre>for node_id in &amp;evaluation_order {
   recalc_tracker.begin_evaluate(*node_id, &amp;input.compatibility_basis)?;
   let prepared = prepared_formulas.get(node_id).ok_or(...)?;
-  let evaluation_result = evaluate_via_oxfml(prepared, &amp;working_values);
+  let evaluation_result = evaluate_with_oxfml_session(prepared, &amp;working_values);
   let computed_value = match evaluation_result {
     Ok(success) =&gt; success.value,
     Err(failure) =&gt; return reject_run(...),
@@ -697,8 +697,8 @@ publish_and_clear: PublishReady -&gt; Clean</pre>
   <section class="slide">
     <div class="top"><div><div class="kicker">EVAL-02</div><h2>OxFml/OxFunc-backed results are adapted through an explicit accept/reject seam</h2></div><div class="num">23 / 50</div></div>
     <div class="body quad">
-      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><div class="code"><pre>build_upstream_host_packet(prepared, working_values)
-  .recalc(EvaluationBackend::OxFuncBacked)
+      <div class="lane engine"><h3><span class="dot"></span>Engine Design</h3><div class="code"><pre>invoke_prepared_formula_via_session(prepared, working_values)
+  .uses(OxfmlRecalcSessionDriver::invoke)
 
 match run.commit_decision {
   Accepted(bundle) =&gt; validate_oxfml_commit_bundle(...)
@@ -720,7 +720,7 @@ match run.commit_decision {
   run.returned_value_surface.kind,
   ReturnedValueSurfaceKind::TypedHostProviderOutcome
 ) || (!prepared.translated.residuals.is_empty()
-  &amp;&amp; !formula_allows_lazy_residual_publication(&amp;prepared.binding.expression));
+  &amp;&amp; !prepared.lazy_residual_publication);
 
 if should_reject_residual {
   return Err(residual_evaluation_failure(...));
@@ -732,7 +732,7 @@ if should_reject_residual {
           <tr><td>unresolved binding</td><td>`OxfmlBindUnresolved` reject</td><td>TreeCalc/OxFml fixtures</td></tr>
           <tr><td>typed host provider outcome</td><td>runtime residual failure</td><td>upstream-host cases</td></tr>
           <tr><td>dynamic potential</td><td>dynamic dependency failure or shape update</td><td>W044/W045 dynamic evidence</td></tr>
-          <tr><td>lazy residual allowed</td><td>may publish under explicit formula policy</td><td>seam docs; needs proof</td></tr>
+          <tr><td>lazy residual allowed</td><td>may publish only when OxFml-prepared state marks the lazy-control-form path</td><td>seam docs; needs proof</td></tr>
         </table>
       </div>
     </div>

@@ -135,11 +135,11 @@ only as allowed archive hits if the final search gate sees them.
 | `src/oxcalc-core/tests/upstream_host_scaffolding.rs` | Test-local `MinimalUpstreamHostPacket` construction | Upstream-host scaffolding tests. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `docs/test-fixtures/core-engine/treecalc/README.md` and `docs/test-fixtures/core-engine/treecalc/MANIFEST.json` | Active TreeCalc fixture policy and manifest | Fixture inventory surface. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `docs/test-fixtures/core-engine/upstream-host/README.md` and `docs/test-fixtures/core-engine/upstream-host/MANIFEST.json` | Active upstream-host fixture docs/manifest | Fixture/scaffolding inventory surface. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
-| `docs/slides/oxcalc_xyz_call_trace.html` | Stale `evaluate_via_oxfml` / minimal-packet call-trace wording | Active slide/doc wording leak; should be restated as historical or session-shaped. | `calc-cwpl.4` |
-| `docs/showcase/oxcalc_w047_w048_core_engine_showcase.html` | `TreeFormulaCatalog` showcase wording | Active W047/W048 showcase wording; preserve graph/publication claims only. | `calc-cwpl.4` |
-| `docs/showcase/oxcalc_w033_w045_formalization_showcase.html` | `TreeReference`, `evaluate_via_oxfml`, `build_upstream_host_packet`, `formula_allows_lazy_residual_publication` wording | Active showcase wording leak around retired names and formula-boundary shape. | `calc-cwpl.4` |
-| `docs/showcase/oxcalc_w033_w045_engine_formalization_storyboard.md` | `evaluate_via_oxfml` wording | Active showcase/storyboard wording leak. | `calc-cwpl.4` |
-| `docs/showcase/oxcalc_w033_w045_engine_formalization_review_catalog.md` | `TreeFormulaCatalog`, `TreeReference`, `evaluate_via_oxfml` wording | Active review-catalog wording leak. | `calc-cwpl.4` |
+| `docs/slides/oxcalc_xyz_call_trace.html` | A4-repaired session-path wording | Active slide/doc wording now uses the session path and treats the minimal packet as fixture scaffolding. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w047_w048_core_engine_showcase.html` | A4-repaired `TreeFormulaCatalog` wording | Active W047/W048 showcase wording preserves graph/publication claims only. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_formalization_showcase.html` | A4-repaired `TreeReference` and evaluator-seam wording | Active showcase wording now presents carrier projection and the session path rather than retired production names. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_engine_formalization_storyboard.md` | A4-repaired evaluator-seam wording | Active storyboard wording now names the current session helper and residual gate. | `calc-cwpl.4` |
+| `docs/showcase/oxcalc_w033_w045_engine_formalization_review_catalog.md` | A4-repaired carrier/catalog/session wording | Active review-catalog wording now separates opaque source carriage, carrier lowering, and evaluator-session adaptation. | `calc-cwpl.4` |
 | `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`, `docs/upstream/NOTES_FOR_OXFML.md`, `docs/IN_PROGRESS_FEATURE_WORKLIST.md` | Current W050/status references to the TreeCalc/OxFml seam | Active status/spec surfaces; keep boundary-accurate as successor beads land. | `calc-cwpl.16.4`, `calc-cwpl.8.2` |
 | `docs/worksets/W026_TREECALC_OXFML_BIND_REFERENCE_AND_SEAM_INTAKE.md`, `docs/spec/core-engine/w033-formalization/W033_LET_LAMBDA_CARRIER_WITNESS_WIDENING.md`, `docs/spec/core-engine/w034-formalization/W034_RESIDUAL_OBLIGATION_AND_AUTHORITY_LEDGER.md`, `docs/spec/core-engine/w037-formalization/W037_DIRECT_OXFML_EVALUATOR_AND_LET_LAMBDA_SEAM_EVIDENCE.md`, `docs/spec/core-engine/w037-formalization/W037_OPTIMIZED_CORE_ENGINE_CONFORMANCE_IMPLEMENTATION_CLOSURE.md`, `docs/spec/core-engine/w046-formalization/W046_EVALUATION_ORDER_AND_WORKING_VALUE_READ_DISCIPLINE_MODEL.md`, `docs/spec/core-engine/w046-formalization/W046_OXFML_SEAM_LET_LAMBDA_FORMATTING_PUBLICATION_AND_CALLABLE_BOUNDARY_MODEL.md`, `docs/spec/core-engine/w046-formalization/W046_SEMANTIC_FRAGMENT_REVIEW_LEDGER.md`, `docs/spec/core-engine/w047-ctro/W047_IMPLEMENTATION_ROADMAP_AND_SUCCESSOR_GATES.md` | Historical spec references to the pre-W050 TreeCalc/OxFml seam | Historical evidence/spec archive. A6 should list allowed historical hits rather than treating them as active production claims. | `calc-cwpl.8.2` |
 
@@ -467,6 +467,13 @@ owned by `.beads/`, not this document.
     catalog path. This keeps them as host/evaluator/runtime fact projections;
     no new follow-on bead was needed beyond the existing Lane D/G/H
     subscription, capability, and handoff lanes.
+21. A4 live uptake: active showcase and slide wording now presents
+    `TreeFormulaCatalog` as opaque OxFml source/carrier carriage,
+    `TreeReference` as dependency/evaluator-fact carrier projection, and
+    runtime calculation as the current `evaluate_with_oxfml_session` /
+    `OxfmlRecalcSessionDriver::invoke` path. The repaired surfaces no longer
+    present `evaluate_via_oxfml`, `build_upstream_host_packet`, or
+    `formula_allows_lazy_residual_publication` as current production names.
 
 ## 7. Required Work
 
@@ -491,6 +498,9 @@ The W050 work, organised by lane.
    capability, and cross-repo follow-up, so no new A5 follow-on bead was
    created.
 8. Repair W047/W048 showcase wording where it implies OxCalc-local function semantics.
+   A4 repairs the active showcase/slide/storyboard/catalog wording. The
+   remaining Lane A search gate must keep historical/pre-W050 hits separate
+   from active production claims.
 9. Retain opaque OxFml source carriage only as boundary input; fixture migration adapters belong under `FixtureFormulaAst`, not `TreeFormula`.
 
 **Lane B — Seam.**

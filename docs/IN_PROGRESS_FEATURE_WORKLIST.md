@@ -24,7 +24,7 @@ W048 now owns the circular dependency calculation target end to end. The scope w
 Current next engineering move:
 
 1. Activate W050 child beads for code inventory and docs/showcase wording repair.
-2. Audit `TreeFormula`, `TreeReference`, and `evaluate_via_oxfml` to distinguish source carriage from formula semantics.
+2. Audit `TreeFormula`, `TreeReference`, and the retired pre-W050 `evaluate_via_oxfml` bridge to distinguish source carriage from formula semantics.
 3. Remove or quarantine tests/docs that imply OxCalc locally computes dynamic arrays or spreadsheet functions.
 
 ## Active Truth Surfaces

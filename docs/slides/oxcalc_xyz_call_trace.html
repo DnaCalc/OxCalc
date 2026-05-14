@@ -424,19 +424,19 @@
         <div class="flow">
           <div class="step">
             <b>1. Load tree substrate</b>
-            <p><code>StructuralSnapshot</code> carries nodes X, Y, Z. <code>TreeFormulaCatalog</code> carries formulas for Y and Z.</p>
+            <p><code>StructuralSnapshot</code> carries nodes X, Y, Z. <code>TreeFormulaCatalog</code> carries opaque OxFml source and dependency/evaluator-fact carriers for Y and Z.</p>
           </div>
           <div class="step">
-            <b>2. Prepare formulas</b>
-            <p><code>prepare_oxfml_formula</code> translates TreeCalc formulas into OxFml formula text and synthetic reference names.</p>
+            <b>2. Prepare OxFml inputs</b>
+            <p><code>prepare_oxfml_formula</code> prepares OxFml-owned source/carriers for dependency facts; OxCalc does not implement spreadsheet function semantics.</p>
           </div>
           <div class="step">
             <b>3. Build graph</b>
             <p><code>DependencyGraph::build</code> lowers bind facts into descriptors, forward edges, reverse edges, and diagnostics.</p>
           </div>
           <div class="step">
-            <b>4. Evaluate locally</b>
-            <p><code>evaluate_via_oxfml</code> builds a minimal upstream host packet and calls OxFml with <code>OxFuncBacked</code>.</p>
+            <b>4. Invoke evaluator seam</b>
+            <p><code>evaluate_with_oxfml_session</code> calls <code>OxfmlRecalcSessionDriver::invoke</code> over <code>RuntimeSessionFacade</code>; the minimal upstream-host packet is fixture scaffolding only.</p>
           </div>
           <div class="step">
             <b>5. Publish</b>
@@ -473,13 +473,13 @@
           <div class="trace-box">
             <h3>Initial run</h3>
             <pre>LocalTreeCalcEngine::execute
-  prepare_oxfml_formula(Y)
-  prepare_oxfml_formula(Z)
+  prepare OxFml source/carriers for Y
+  prepare OxFml source/carriers for Z
   DependencyGraph::build
     edges: 3->2, 4->2, 4->3
   topological_formula_order: [3, 4]
-  evaluate_via_oxfml(Y) => 40
-  evaluate_via_oxfml(Z) => 42
+  OxfmlRecalcSessionDriver::invoke(Y) => 40
+  OxfmlRecalcSessionDriver::invoke(Z) => 42
   coordinator.accept_and_publish
     trace: publication_committed</pre>
           </div>
@@ -491,8 +491,8 @@ LocalTreeCalcEngine::execute
   invalidation seed: X upstream publication
   invalidation closure: [2, 3, 4]
   topological_formula_order: [3, 4]
-  evaluate_via_oxfml(Y) => 60
-  evaluate_via_oxfml(Z) => 63
+  OxfmlRecalcSessionDriver::invoke(Y) => 60
+  OxfmlRecalcSessionDriver::invoke(Z) => 63
   coordinator.accept_and_publish
     trace: publication_committed</pre>
           </div>

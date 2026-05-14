@@ -58,7 +58,7 @@ cycle_policy(G_eff_next)    =&gt;  reject/no-publish OR atomic publish</pre>
 <section class="page"><div class="rail"></div><div class="eyebrow">CTRO implementation</div><h2>TreeCalc optimized/core path</h2>
   <div class="grid12"><div><pre class="code"><span class="k">pub struct</span> LocalTreeCalcInput {
   structural_snapshot: StructuralSnapshot,
-  formula_catalog: TreeFormulaCatalog,
+  formula_catalog: TreeFormulaCatalog, // opaque OxFml source/carriers
   seeded_published_values: BTreeMap&lt;TreeNodeId,String&gt;,
   <span class="h">seeded_published_runtime_effects: Vec&lt;RuntimeEffect&gt;</span>,
   invalidation_seeds: Vec&lt;InvalidationSeed&gt;,
@@ -71,7 +71,7 @@ cycle_policy(G_eff_next)    =&gt;  reject/no-publish OR atomic publish</pre>
   value_updates: BTreeMap&lt;TreeNodeId,String&gt;,
   <span class="h">dependency_shape_updates: Vec&lt;DependencyShapeUpdate&gt;</span>,
   runtime_effects: Vec&lt;RuntimeEffect&gt;,
-}</pre></div><div><p>W047's key TreeCalc change is not a new graph type; it is a new publication input/output shape. Previously accepted runtime effects seed the current run. The current dependency graph yields current dynamic facts. A deterministic set difference produces release and activation shape updates.</p><div class="card good"><b>Optimization boundary.</b> TreeCalc emits compact deltas and uses ordinary coordinator publication. TraceCalc records a more explicit reference trace, but both must agree on published surfaces for declared cases.</div></div></div>
+}</pre></div><div><p>W047's key TreeCalc change is not a new graph type; it is a new publication input/output shape. Formula inputs in this showcase are opaque OxFml source/carrier entries; the claim here is about graph and publication consequences, not local spreadsheet-function evaluation. Previously accepted runtime effects seed the current run. The current dependency graph yields current dynamic facts. A deterministic set difference produces release and activation shape updates.</p><div class="card good"><b>Optimization boundary.</b> TreeCalc emits compact deltas and uses ordinary coordinator publication. TraceCalc records a more explicit reference trace, but both must agree on published surfaces for declared cases.</div></div></div>
   <pre class="code"><span class="k">fn</span> dynamic_dependency_shape_updates(published, graph) -&gt; Vec&lt;DependencyShapeUpdate&gt; {
   current = dynamic_dependency_facts_from_graph(graph)
   for released in published - current:

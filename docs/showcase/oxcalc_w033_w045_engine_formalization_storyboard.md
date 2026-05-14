@@ -144,19 +144,19 @@ Visual assets generated for the HTML deck:
 
 19. Evaluation Loop
    - Point: each node enters evaluate, delegates to OxFml/OxFunc-backed backend, and updates working values.
-   - Implementation: `begin_evaluate`, `evaluate_via_oxfml`, `value_updates`.
+   - Implementation: `begin_evaluate`, `evaluate_with_oxfml_session`, `value_updates`.
    - Evidence: TraceCalc run steps and TreeCalc local witness bundles.
    - Visual: per-node mini-pipeline repeated over ordered nodes.
 
 20. OxFml Runtime Candidate Adaptation
    - Point: accepted/rejected OxFml results are adapted into TreeCalc success/failure.
-   - Implementation: `evaluate_via_oxfml`, `adapt_oxfml_runtime_candidate`.
+   - Implementation: `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `adapt_oxfml_runtime_candidate`.
    - OxFunc peek: LET/LAMBDA carriers cross OxFml/OxFunc interaction boundary.
    - Visual: OxFml result surface into accept/reject.
 
 21. Residual And Host Outcomes
    - Point: unresolved residuals and typed host-provider outcomes reject unless lazy residual publication is allowed.
-   - Implementation: residual check in `evaluate_via_oxfml`.
+   - Implementation: residual check in `evaluate_with_oxfml_session` using `prepared.lazy_residual_publication`.
    - Evidence: host/dynamic/capability/shape reject fixtures.
    - Visual: residual gate with diagnostics.
 

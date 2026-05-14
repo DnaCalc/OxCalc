@@ -490,6 +490,12 @@ owned by `.beads/`, not this document.
     with a `SubscriptionHandle` and topic descriptor. Registry entries persist
     across ordinary wave operations and release when the owning callable is
     invalidated by formula-slot replacement or removal.
+24. D2 live uptake: `CalculationRepository` now carries replay-visible
+    `TopicEnvelope` state keyed by `SubscriptionTopicId`, with
+    `topic_sequence`, `last_observed_payload_ref`, `ordering_key`, and
+    `dedupe_identity`. `TopicEnvelopeUpdate` batches are sorted before
+    mutation and deduped by event identity, with schema and deterministic
+    ordering tests pinning the current V1 repository behavior.
 
 ## 7. Required Work
 
@@ -584,6 +590,9 @@ The W050 work, organised by lane.
     D1 adds the repository-owned registry plus persistence and callable
     invalidation release tests.
 25. Implement Topic Envelopes: `(topic_id, topic_sequence, last_observed_payload_ref)`. Replay-visible.
+    D2 adds repository-owned `TopicEnvelope` / `TopicEnvelopeUpdate` state
+    with `ordering_key` and `dedupe_identity`, JSON schema round-trip tests,
+    and deterministic ordering/dedupe tests for replay-facing batches.
 26. Wire `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2` as a profile-governed selector with the three behaviours specified in Foundation.
 27. Implement the typed dirty-seed pathway: external signal → topic envelope update → all subscribing formula_stable_ids marked dirty for the next wave.
 28. RTD-driven recalc replay-determinism corpus: a fixture suite that verifies a recorded sequence of topic updates reproduces identical published values under each `StreamSemanticsVersion`.
@@ -850,7 +859,7 @@ OxFml retains canonical authority over body parse, bind, semantic plan, and eval
 **External invalidation.** Foundation distinguishes three invalidation classes — `Standard` (upstream value change), `Volatile` (host recalc cycle), `ExternallyInvalidated` (explicit external signal). The third class is the one the per-formula model handles least cleanly today and must be wired explicitly under §10 design:
 
 - The Repository carries a persistent **Subscription Registry** mapping `(topic_id, formula_stable_id) → SubscriptionHandle`. Subscriptions are created at bind time when a `PreparedCallable`'s `runtime_effect_classification` declares `ExternallyInvalidated(topic_descriptor)` (RTD calls, registered-external streams, host-watcher hooks). Subscriptions release when the callable is invalidated by a text or name-world change.
-- The Repository carries a **Topic Envelope** per subscribed topic: `(topic_id, topic_sequence, last_observed_payload_ref)`. The envelope is the replay-visible identity of "the most recent state of this topic"; ordering and dedupe semantics are profile-governed by `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2`.
+- The Repository carries a **Topic Envelope** per subscribed topic: `(topic_id, topic_sequence, last_observed_payload_ref, ordering_key, dedupe_identity)`. The envelope is the replay-visible identity of "the most recent state of this topic"; ordering and dedupe semantics are profile-governed by `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2`.
 - An external invalidation signal updates the topic envelope and stamps every subscribing `formula_stable_id` as a dirty seed with reason `ExternallyInvalidated(topic_id, topic_sequence)`. The next wave's dirty closure includes them. The wave evaluates subscribed callables by ordinary `invoke`; the `RtdProvider` / registered-external provider consults the topic envelope to materialise the current value. **The push is invalidation only; evaluation remains pull.**
 - Topic envelopes are recorded as wave inputs alongside formula text and structural edits. Replay reconstructs them by replaying topic-update events in the recorded order under the active `StreamSemanticsVersion`. RTD-driven recalc therefore reproduces deterministically — the engine reads the same envelope, the provider returns the same payload, the invoke produces the same result.
 

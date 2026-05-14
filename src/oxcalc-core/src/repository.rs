@@ -2,8 +2,9 @@
 
 //! Calculation Repository substrate for W050 session-shaped recalc.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::dependency::{DependencyDescriptor, DependencyGraph, InvalidationClosure};
@@ -57,18 +58,48 @@ pub struct RepositoryPinnedReaderView {
     pub published_values: BTreeMap<TreeNodeId, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct SubscriptionTopicId(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct SubscriptionHandle(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubscriptionRegistryEntry {
     pub topic_id: SubscriptionTopicId,
     pub formula_stable_id: String,
     pub subscription_handle: SubscriptionHandle,
     pub topic_descriptor: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TopicEnvelope {
+    pub topic_id: SubscriptionTopicId,
+    pub topic_sequence: u64,
+    pub last_observed_payload_ref: String,
+    pub ordering_key: String,
+    pub dedupe_identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TopicEnvelopeUpdate {
+    pub topic_id: SubscriptionTopicId,
+    pub topic_sequence: u64,
+    pub payload_ref: String,
+    pub ordering_key: String,
+    pub dedupe_identity: String,
+}
+
+impl TopicEnvelope {
+    fn from_update(update: TopicEnvelopeUpdate) -> Self {
+        Self {
+            topic_id: update.topic_id,
+            topic_sequence: update.topic_sequence,
+            last_observed_payload_ref: update.payload_ref,
+            ordering_key: update.ordering_key,
+            dedupe_identity: update.dedupe_identity,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
@@ -102,6 +133,8 @@ pub struct CalculationRepository {
     oxfml_artifact_handles: BTreeMap<(FormulaArtifactId, OxfmlArtifactKind), OxfmlArtifactHandle>,
     published_values: BTreeMap<TreeNodeId, String>,
     subscription_registry: BTreeMap<(SubscriptionTopicId, String), SubscriptionRegistryEntry>,
+    topic_envelopes: BTreeMap<SubscriptionTopicId, TopicEnvelope>,
+    topic_envelope_dedupe_identities: BTreeSet<String>,
 }
 
 impl CalculationRepository {
@@ -124,6 +157,8 @@ impl CalculationRepository {
             oxfml_artifact_handles: BTreeMap::new(),
             published_values: BTreeMap::new(),
             subscription_registry: BTreeMap::new(),
+            topic_envelopes: BTreeMap::new(),
+            topic_envelope_dedupe_identities: BTreeSet::new(),
         }
     }
 
@@ -174,6 +209,21 @@ impl CalculationRepository {
         &self,
     ) -> &BTreeMap<(SubscriptionTopicId, String), SubscriptionRegistryEntry> {
         &self.subscription_registry
+    }
+
+    #[must_use]
+    pub fn topic_envelopes(&self) -> &BTreeMap<SubscriptionTopicId, TopicEnvelope> {
+        &self.topic_envelopes
+    }
+
+    #[must_use]
+    pub fn topic_envelope(&self, topic_id: &SubscriptionTopicId) -> Option<&TopicEnvelope> {
+        self.topic_envelopes.get(topic_id)
+    }
+
+    #[must_use]
+    pub fn topic_envelope_dedupe_identities(&self) -> &BTreeSet<String> {
+        &self.topic_envelope_dedupe_identities
     }
 
     #[must_use]
@@ -327,6 +377,53 @@ impl CalculationRepository {
             .collect()
     }
 
+    pub fn apply_topic_envelope_update(
+        &mut self,
+        update: TopicEnvelopeUpdate,
+    ) -> Option<TopicEnvelope> {
+        if self
+            .topic_envelope_dedupe_identities
+            .contains(&update.dedupe_identity)
+        {
+            return None;
+        }
+        self.topic_envelope_dedupe_identities
+            .insert(update.dedupe_identity.clone());
+
+        let should_update = self
+            .topic_envelopes
+            .get(&update.topic_id)
+            .is_none_or(|existing| update.topic_sequence >= existing.topic_sequence);
+        if !should_update {
+            return None;
+        }
+
+        let envelope = TopicEnvelope::from_update(update);
+        self.topic_envelopes
+            .insert(envelope.topic_id.clone(), envelope.clone());
+        Some(envelope)
+    }
+
+    pub fn apply_topic_envelope_updates(
+        &mut self,
+        updates: impl IntoIterator<Item = TopicEnvelopeUpdate>,
+    ) -> Vec<TopicEnvelope> {
+        let mut updates = updates.into_iter().collect::<Vec<_>>();
+        updates.sort_by(|left, right| {
+            left.ordering_key
+                .cmp(&right.ordering_key)
+                .then_with(|| left.topic_id.cmp(&right.topic_id))
+                .then_with(|| left.topic_sequence.cmp(&right.topic_sequence))
+                .then_with(|| left.dedupe_identity.cmp(&right.dedupe_identity))
+                .then_with(|| left.payload_ref.cmp(&right.payload_ref))
+        });
+
+        updates
+            .into_iter()
+            .filter_map(|update| self.apply_topic_envelope_update(update))
+            .collect()
+    }
+
     pub fn seed_published_value(
         &mut self,
         node_id: TreeNodeId,
@@ -433,6 +530,22 @@ mod tests {
             formula_stable_id: stable_id.to_string(),
             subscription_handle: SubscriptionHandle(handle.to_string()),
             topic_descriptor: format!("rtd:{topic}"),
+        }
+    }
+
+    fn topic_update(
+        topic: &str,
+        sequence: u64,
+        payload_ref: &str,
+        ordering_key: &str,
+        dedupe_identity: &str,
+    ) -> TopicEnvelopeUpdate {
+        TopicEnvelopeUpdate {
+            topic_id: SubscriptionTopicId(topic.to_string()),
+            topic_sequence: sequence,
+            payload_ref: payload_ref.to_string(),
+            ordering_key: ordering_key.to_string(),
+            dedupe_identity: dedupe_identity.to_string(),
         }
     }
 
@@ -617,5 +730,133 @@ mod tests {
 
         assert!(removed.is_some());
         assert!(repository.subscriptions_for_formula("slot:2").is_empty());
+    }
+
+    #[test]
+    fn repository_topic_envelope_serializes_replay_schema() {
+        let envelope = TopicEnvelope {
+            topic_id: SubscriptionTopicId("topic:rtd:price".to_string()),
+            topic_sequence: 42,
+            last_observed_payload_ref: "payload:rtd:price:42".to_string(),
+            ordering_key: "wave:7/topic:price/sequence:42".to_string(),
+            dedupe_identity: "event:rtd:price:42".to_string(),
+        };
+
+        let json = serde_json::to_value(&envelope).unwrap();
+        let object = json.as_object().expect("envelope serializes as object");
+        assert_eq!(object.len(), 5);
+        assert_eq!(json["topic_id"], "topic:rtd:price");
+        assert_eq!(json["topic_sequence"], 42);
+        assert_eq!(json["last_observed_payload_ref"], "payload:rtd:price:42");
+        assert_eq!(json["ordering_key"], "wave:7/topic:price/sequence:42");
+        assert_eq!(json["dedupe_identity"], "event:rtd:price:42");
+
+        let round_trip: TopicEnvelope = serde_json::from_value(json).unwrap();
+        assert_eq!(round_trip, envelope);
+
+        let update = topic_update(
+            "topic:rtd:price",
+            43,
+            "payload:rtd:price:43",
+            "wave:7/topic:price/sequence:43",
+            "event:rtd:price:43",
+        );
+        let update_json = serde_json::to_value(&update).unwrap();
+        assert_eq!(update_json["topic_id"], "topic:rtd:price");
+        assert_eq!(update_json["payload_ref"], "payload:rtd:price:43");
+        let update_round_trip: TopicEnvelopeUpdate = serde_json::from_value(update_json).unwrap();
+        assert_eq!(update_round_trip, update);
+    }
+
+    #[test]
+    fn repository_topic_envelope_updates_are_deterministically_ordered_and_deduped() {
+        let updates = vec![
+            topic_update(
+                "topic:rtd:status",
+                1,
+                "payload:rtd:status:1",
+                "002",
+                "event:rtd:status:1",
+            ),
+            topic_update(
+                "topic:rtd:price",
+                2,
+                "payload:rtd:price:2",
+                "003",
+                "event:rtd:price:2",
+            ),
+            topic_update(
+                "topic:rtd:price",
+                1,
+                "payload:rtd:price:1",
+                "001",
+                "event:rtd:price:1",
+            ),
+            topic_update(
+                "topic:rtd:price",
+                2,
+                "payload:rtd:price:duplicate",
+                "004",
+                "event:rtd:price:2",
+            ),
+            topic_update(
+                "topic:rtd:status",
+                0,
+                "payload:rtd:status:0",
+                "005",
+                "event:rtd:status:0-late",
+            ),
+        ];
+
+        let mut forward_repository = CalculationRepository::new(snapshot());
+        let mut reverse_repository = CalculationRepository::new(snapshot());
+
+        let forward_applied = forward_repository.apply_topic_envelope_updates(updates.clone());
+        let reverse_applied =
+            reverse_repository.apply_topic_envelope_updates(updates.into_iter().rev());
+
+        assert_eq!(forward_applied, reverse_applied);
+        assert_eq!(
+            forward_repository.topic_envelopes(),
+            reverse_repository.topic_envelopes()
+        );
+        assert_eq!(forward_applied.len(), 3);
+        assert_eq!(
+            forward_applied
+                .iter()
+                .map(|envelope| envelope.dedupe_identity.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "event:rtd:price:1",
+                "event:rtd:status:1",
+                "event:rtd:price:2",
+            ]
+        );
+
+        let price_topic = SubscriptionTopicId("topic:rtd:price".to_string());
+        let price_envelope = forward_repository
+            .topic_envelope(&price_topic)
+            .expect("price envelope exists");
+        assert_eq!(price_envelope.topic_sequence, 2);
+        assert_eq!(
+            price_envelope.last_observed_payload_ref,
+            "payload:rtd:price:2"
+        );
+        assert_eq!(price_envelope.dedupe_identity, "event:rtd:price:2");
+
+        let status_topic = SubscriptionTopicId("topic:rtd:status".to_string());
+        let status_envelope = forward_repository
+            .topic_envelope(&status_topic)
+            .expect("status envelope exists");
+        assert_eq!(status_envelope.topic_sequence, 1);
+        assert_eq!(
+            status_envelope.last_observed_payload_ref,
+            "payload:rtd:status:1"
+        );
+        assert!(
+            forward_repository
+                .topic_envelope_dedupe_identities()
+                .contains("event:rtd:status:0-late")
+        );
     }
 }

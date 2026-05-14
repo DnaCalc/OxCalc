@@ -606,7 +606,149 @@ The latest OxFml residual reply further sharpens this local narrowing:
 3. no new narrower handoff is justified from this residual pass alone,
 4. the remaining pressure is broader closure beyond the first carried subset rather than a missing first-slice seam clause.
 
-## 22. Status
+## 22. W050 Session-Shaped First-Call Protocol
+
+### 22.1 Scope And Status
+W050 replaces the old per-formula upstream-host packet shape with a
+wave/session protocol over OxFml's public consumer runtime facade.
+
+This section is an OxCalc-local protocol requirement for W050. It does
+not freeze OxFml canonical names, and it does not authorize an OxCalc
+adapter around OxFml internals. Canonical shared text changes route
+through `HANDOFF_CALC_002_OXFML_RECALC_SESSION_AND_PLAN_TEMPLATES.md`.
+
+Reviewed inbound observations:
+1. `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` currently says ordinary
+   downstream use targets `consumer::runtime`, `consumer::editor`, and
+   `consumer::replay`.
+2. Current OxFml V1 runtime contract exposes `RuntimeEnvironment`,
+   `RuntimeFormulaRequest`, `RuntimeFormulaResult`, and
+   `RuntimeSessionFacade`.
+3. Public `substrate::...` access is no longer an ordinary downstream
+   contract.
+
+### 22.2 First-Call Inputs
+For a formula-bearing OxCalc node, the first call into OxFml is not a
+synthetic workbook fixture. It is a request to prepare one opaque formula
+slot in a pinned recalc session.
+
+The minimum input families are:
+1. Formula slot identity:
+   - `formula_stable_id`
+   - `formula_text_version`
+   - formula source text as an opaque string owned semantically by OxFml
+   - `formula_token` or the OxFml-derived equivalent when available
+2. Caller and structure context:
+   - `caller_anchor`
+   - formula channel and address-mode context
+   - `structure_context_version`
+   - table/name/library context identities supplied by host/OxCalc-owned
+     structural truth
+3. Session-wide runtime context:
+   - pinned `LibraryContextSnapshotRef` or inline snapshot through the
+     OxFml runtime facade
+   - typed query bundle/provider availability
+   - profile selectors relevant to evaluation and replay
+4. Reference/value environment:
+   - current published or working values for already-derived structural
+     targets at invocation time
+   - no synthetic A1 address generation as the dependency identity layer
+   - no OxCalc-authored formula AST lowered into Excel source
+
+### 22.3 Prepare And Bind Contract
+W050 names the preparation operation `ensure_prepared`.
+
+Conceptually:
+
+```text
+ensure_prepared(formula_stable_id, formula_text_version, source, caller_context)
+  -> PreparedCallable | BindResult
+```
+
+Required semantics:
+1. OxFml parses, projects, binds, and compiles semantic plan artifacts.
+2. OxFml owns diagnostics, unresolved-reference classification, formula
+   grammar, operator/function meaning, callable meaning, and returned
+   value surfaces.
+3. OxFml returns or exposes a prepared callable identity with:
+   - parse/red/bind/semantic-plan identity handles already present in the
+     current V1 vocabulary where available,
+   - W050 plan-template identities when CALC-002 support lands:
+     `shape_key`, `dispatch_skeleton_key`, `plan_template_key`,
+   - a normalized formal reference set,
+   - capability requirements,
+   - runtime-effect classification.
+4. OxCalc maps returned normalized reference facts to structural targets
+   for dependency graph construction. It does not pre-resolve references
+   into synthetic defined names as the semantic truth.
+
+Unresolved, host-sensitive, dynamic, capability-sensitive, and
+shape/topology-sensitive facts are typed OxFml/evaluator facts consumed by
+OxCalc. They are not failures of the protocol and they are not permission
+for OxCalc to interpret formula text.
+
+### 22.4 Invocation Contract
+W050 names the evaluation operation `invoke`.
+
+Conceptually:
+
+```text
+invoke(call_site, reference_bindings) -> InvocationOutcome
+```
+
+Required semantics:
+1. A call site binds a prepared callable handle to the current caller
+   context and current reference/value inputs.
+2. OxFml evaluates through its runtime facade and returns a typed outcome:
+   accepted candidate, rejected/no-publish detail, dependency/topology
+   update, callable value, returned value surface, and trace/replay facts
+   where available.
+3. OxCalc remains the single publication authority. An accepted candidate
+   is not a published value until the coordinator accepts the candidate
+   against current fences and publishes one atomic derived bundle.
+4. Reject is no-publish. Reject detail must remain typed and replay-visible.
+5. Dynamic dependency updates and external/runtime effects enter the
+   dependency and invalidation machinery as typed facts, not as inferred
+   formula semantics.
+
+### 22.5 Six-Phase Wave Shape
+The session-shaped first-call protocol is exercised inside a recalc wave:
+1. wave preparation: open/pin the OxFml runtime session and compute dirty
+   closure,
+2. ensure prepared: prepare dirty formula slots and cache prepared callable
+   identity,
+3. dependency derivation: map OxFml normalized references and runtime facts
+   to OxCalc dependency graph state,
+4. schedule and invoke: execute call sites in deterministic Stage 1 order,
+5. coordinator commit: accept or reject candidates under OxCalc publication
+   fences,
+6. close and capture: emit replay/trace/evidence inputs without mutating
+   tracked baselines during validation.
+
+### 22.6 CALC-002 Handoff Inputs
+`HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
+1. prepared-callable identity surfaced through the public consumer runtime
+   path,
+2. plan-template identity fields:
+   - `shape_key`
+   - `dispatch_skeleton_key`
+   - `plan_template_key`
+3. a formal reference set suitable for OxCalc structural mapping,
+4. capability requirement and runtime-effect classification surfaces,
+5. stable invocation outcome categories for accepted candidate, reject,
+   topology/dependency update, callable value, returned-value surface, and
+   trace/replay correlation,
+6. trace/replay columns for template identity and hole/capability identity,
+7. an explicit migration table from current `RuntimeEnvironment` /
+   `RuntimeFormulaRequest` / `RuntimeFormulaResult` /
+   `RuntimeSessionFacade` fields to the W050 prepared-callable/session
+   categories.
+
+Until that handoff is acknowledged, OxCalc may prototype only against the
+current public V1 runtime facade. It must not add a long-lived private seam
+or adapter that assumes OxFml internals will remain accessible.
+
+## 23. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial

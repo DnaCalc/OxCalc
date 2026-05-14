@@ -55,6 +55,25 @@ Two otherwise identical templates with different required capability sets must
 therefore have different plan-template key material. This is an identity rule
 only; it does not imply that any current production path emits rich holes.
 
+### 3.2 Trace/Replay Columns
+Trace and replay surfaces reserve the nested
+`rich_value_capability_columns` field for prepared formula identities,
+derivation trace records, derivation template selections, and derivation
+template holes.
+
+The column schema is:
+1. `required_capability_set_keys` — sorted, deduplicated capability-set keys
+   required by rich-value holes in the template surface,
+2. `producer_capability_set_keys` — reserved for published rich-value producer
+   capability sets once rich producers exist,
+3. `exercised_capability_keys` — reserved for replay-visible capability
+   operations once rich kernels exercise them.
+
+Current V1 production paths emit no `RichValueHole` and no rich producer
+capability sets. Their runtime columns are therefore empty/reserved, and
+ordinary serialized trace artifacts omit the nested field when all three
+columns are empty.
+
 ## 4. Additive Extension Rule
 New capability selectors or new parameter values are additive only through new
 stable keys. Existing traces recorded with an older required-set key remain
@@ -92,11 +111,25 @@ The test proves that changing the required capability set changes
 plan-template key material while current V1 production paths still emit no
 rich-value holes.
 
+The checked trace/replay column artifact is:
+
+`docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001/run_artifact.json`
+
+Validation command:
+
+```powershell
+cargo test -p oxcalc-core capability_set_trace_replay -- --nocapture
+```
+
+The test proves that current V1 runtime trace columns are empty/reserved and
+that a reserved rich requirement projects the sorted required capability-set
+key into the same column schema.
+
 ## 6. Scope Boundary
 This document does not claim:
 1. rich-value kernel support,
 2. sparse range reader production,
 3. `ArgPreparationProfile::RichArgAccepted` activation,
-4. trace/replay columns beyond the typed vocabulary artifact.
+4. producer capability-set emission by current V1 kernels.
 
 Those are owned by later Lane G beads and successor worksets.

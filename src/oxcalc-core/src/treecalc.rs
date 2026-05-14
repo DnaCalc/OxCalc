@@ -37,11 +37,14 @@ use crate::dependency::{
     InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
-use crate::formula_identity::{PreparedCallable, derive_prepared_callable};
+use crate::formula_identity::{
+    PlanTemplateHole, PlanTemplateHoleKind, PreparedCallable, derive_prepared_callable,
+};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
 };
+use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
@@ -178,6 +181,7 @@ pub struct PreparedFormulaIdentityTrace {
     pub plan_template_key: String,
     pub hole_binding_fingerprint: String,
     pub template_hole_count: usize,
+    pub rich_value_capability_columns: RichValueCapabilityTraceReplayColumns,
 }
 
 pub const DERIVATION_TRACE_SCHEMA_ID: &str = "oxcalc.derivation_trace.invoke_outcome.v1";
@@ -190,6 +194,8 @@ pub struct DerivationTraceRecord {
     pub bind_artifact_id: Option<String>,
     pub formula_stable_id: String,
     pub trace_mode: String,
+    #[serde(skip_serializing_if = "RichValueCapabilityTraceReplayColumns::is_empty")]
+    pub rich_value_capability_columns: RichValueCapabilityTraceReplayColumns,
     pub template_selection: DerivationTemplateSelectionTrace,
     pub hole_bindings: Vec<DerivationHoleBindingTrace>,
     pub sub_invocation_tree: Vec<DerivationInvocationTraceNode>,
@@ -203,6 +209,8 @@ pub struct DerivationTemplateSelectionTrace {
     pub shape_key: String,
     pub dispatch_skeleton_key: String,
     pub plan_template_key: String,
+    #[serde(skip_serializing_if = "RichValueCapabilityTraceReplayColumns::is_empty")]
+    pub rich_value_capability_columns: RichValueCapabilityTraceReplayColumns,
     pub template_holes: Vec<DerivationTemplateHoleTrace>,
 }
 
@@ -212,6 +220,8 @@ pub struct DerivationTemplateHoleTrace {
     pub ordinal: usize,
     pub path: String,
     pub kind: String,
+    #[serde(skip_serializing_if = "RichValueCapabilityTraceReplayColumns::is_empty")]
+    pub rich_value_capability_columns: RichValueCapabilityTraceReplayColumns,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -2138,6 +2148,8 @@ fn prepared_formula_identity_trace(
 ) -> PreparedFormulaIdentityTrace {
     let plan_template = &prepared.prepared_callable.plan_template;
     let hole_bindings = &prepared.prepared_callable.hole_bindings;
+    let rich_value_capability_columns =
+        rich_value_capability_columns_for_template_holes(&plan_template.holes);
     PreparedFormulaIdentityTrace {
         owner_node_id: prepared.binding.owner_node_id,
         formula_artifact_id: prepared.binding.formula_artifact_id.to_string(),
@@ -2153,6 +2165,31 @@ fn prepared_formula_identity_trace(
         plan_template_key: plan_template.plan_template_key.to_string(),
         hole_binding_fingerprint: hole_bindings.binding_fingerprint.clone(),
         template_hole_count: plan_template.holes.len(),
+        rich_value_capability_columns,
+    }
+}
+
+fn rich_value_capability_columns_for_template_holes(
+    holes: &[PlanTemplateHole],
+) -> RichValueCapabilityTraceReplayColumns {
+    RichValueCapabilityTraceReplayColumns::from_required_sets(holes.iter().filter_map(|hole| {
+        match &hole.kind {
+            PlanTemplateHoleKind::RichValueHole {
+                required_capability_set,
+            } => Some(required_capability_set),
+            _ => None,
+        }
+    }))
+}
+
+fn rich_value_capability_columns_for_template_hole_kind(
+    kind: &PlanTemplateHoleKind,
+) -> RichValueCapabilityTraceReplayColumns {
+    match kind {
+        PlanTemplateHoleKind::RichValueHole {
+            required_capability_set,
+        } => RichValueCapabilityTraceReplayColumns::from_required_sets([required_capability_set]),
+        _ => RichValueCapabilityTraceReplayColumns::empty_v1(),
     }
 }
 
@@ -2902,11 +2939,15 @@ fn build_derivation_trace_record(
         bind_artifact_id: identity.bind_artifact_id,
         formula_stable_id: identity.formula_stable_id,
         trace_mode: "PreparedCalls".to_string(),
+        rich_value_capability_columns: identity.rich_value_capability_columns.clone(),
         template_selection: DerivationTemplateSelectionTrace {
             prepared_callable_key: identity.prepared_callable_key,
             shape_key: identity.shape_key,
             dispatch_skeleton_key: identity.dispatch_skeleton_key,
             plan_template_key: identity.plan_template_key,
+            rich_value_capability_columns: rich_value_capability_columns_for_template_holes(
+                &template.holes,
+            ),
             template_holes: template
                 .holes
                 .iter()
@@ -2915,6 +2956,8 @@ fn build_derivation_trace_record(
                     ordinal: hole.ordinal,
                     path: hole.path.clone(),
                     kind: hole.kind.stable_key(),
+                    rich_value_capability_columns:
+                        rich_value_capability_columns_for_template_hole_kind(&hole.kind),
                 })
                 .collect(),
         },
@@ -3337,6 +3380,10 @@ mod tests {
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
         TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
     };
+    use crate::rich_value_capability::{
+        RICH_VALUE_CAPABILITY_TRACE_REPLAY_SCHEMA_ID, RichValueCapabilityTraceReplayColumns,
+        w050_initial_required_capability_set_example,
+    };
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
         StructuralSnapshotId,
@@ -3479,6 +3526,11 @@ mod tests {
             .join("../../docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001")
     }
 
+    fn g3_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001")
+    }
+
     fn derivation_trace_input(trace_enabled: bool, run_suffix: &str) -> LocalTreeCalcInput {
         let mut input = formula_input(
             TreeNodeId(3),
@@ -3535,6 +3587,57 @@ mod tests {
                     "derivation_trace": serde_json::to_value(trace).expect("derivation trace should serialize")
                 }
             ]
+        })
+    }
+
+    fn capability_trace_replay_columns_artifact_json() -> serde_json::Value {
+        let (_, traced_run) = run_derivation_trace_scenarios();
+        let identity = traced_run
+            .prepared_formula_identities
+            .first()
+            .expect("trace fixture should prepare one formula");
+        let trace = traced_run
+            .derivation_traces
+            .first()
+            .expect("trace-mode run should produce a derivation trace");
+        let required_set = w050_initial_required_capability_set_example();
+        let required_columns =
+            RichValueCapabilityTraceReplayColumns::from_required_sets([&required_set]);
+        let empty_columns = RichValueCapabilityTraceReplayColumns::empty_v1();
+
+        json!({
+            "run_id": "w050-g3-capability-trace-replay-columns-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core capability_set_trace_replay -- --nocapture",
+            "trace_replay_schema": {
+                "schema_id": RICH_VALUE_CAPABILITY_TRACE_REPLAY_SCHEMA_ID,
+                "prepared_formula_identity_field": "rich_value_capability_columns",
+                "derivation_trace_field": "rich_value_capability_columns",
+                "derivation_template_selection_field": "rich_value_capability_columns",
+                "derivation_template_hole_field": "rich_value_capability_columns",
+                "columns": [
+                    "required_capability_set_keys",
+                    "producer_capability_set_keys",
+                    "exercised_capability_keys"
+                ]
+            },
+            "current_v1_reserved_output": {
+                "current_v1_production_paths_emit_rich_holes": false,
+                "prepared_formula_identity_columns": serde_json::to_value(&identity.rich_value_capability_columns).expect("columns should serialize"),
+                "derivation_trace_columns": serde_json::to_value(&trace.rich_value_capability_columns).expect("columns should serialize"),
+                "derivation_template_selection_columns": serde_json::to_value(&trace.template_selection.rich_value_capability_columns).expect("columns should serialize"),
+                "derivation_template_hole_columns_empty": trace.template_selection.template_holes.iter().all(|hole| hole.rich_value_capability_columns.is_empty())
+            },
+            "reserved_rich_requirement_example": {
+                "required_capability_set_key": required_set.stable_key(),
+                "columns": serde_json::to_value(&required_columns).expect("columns should serialize"),
+                "reserved_empty_columns": serde_json::to_value(&empty_columns).expect("columns should serialize")
+            },
+            "scope_boundary": {
+                "rich_value_kernel_claim": false,
+                "producer_capability_sets_emitted_by_current_v1": false,
+                "rich_arg_accepted_activation_claim": false
+            }
         })
     }
 
@@ -4186,6 +4289,62 @@ mod tests {
                 .iter()
                 .any(|event| event.event_kind == "CommitAccepted")
         );
+    }
+
+    #[test]
+    fn capability_set_trace_replay_columns_reserve_empty_current_v1_output() {
+        let (_, traced_run) = run_derivation_trace_scenarios();
+        let identity = traced_run
+            .prepared_formula_identities
+            .first()
+            .expect("trace fixture should prepare one formula");
+        let trace = &traced_run.derivation_traces[0];
+
+        assert!(identity.rich_value_capability_columns.is_empty());
+        assert!(trace.rich_value_capability_columns.is_empty());
+        assert!(
+            trace
+                .template_selection
+                .rich_value_capability_columns
+                .is_empty()
+        );
+        assert!(
+            trace
+                .template_selection
+                .template_holes
+                .iter()
+                .all(|hole| hole.rich_value_capability_columns.is_empty())
+        );
+
+        let serialized_trace =
+            serde_json::to_value(trace).expect("derivation trace should serialize");
+        assert!(
+            serialized_trace
+                .get("rich_value_capability_columns")
+                .is_none()
+        );
+
+        let required_set = w050_initial_required_capability_set_example();
+        let required_columns =
+            RichValueCapabilityTraceReplayColumns::from_required_sets([&required_set]);
+
+        assert_eq!(
+            required_columns.required_capability_set_keys,
+            vec![required_set.stable_key()]
+        );
+        assert!(required_columns.producer_capability_set_keys.is_empty());
+        assert!(required_columns.exercised_capability_keys.is_empty());
+    }
+
+    #[test]
+    fn capability_set_trace_replay_checked_artifact_matches_runtime_schema() {
+        let artifact_path = g3_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("G3 run artifact should be checked in"),
+        )
+        .expect("G3 run artifact should be valid JSON");
+
+        assert_eq!(artifact, capability_trace_replay_columns_artifact_json());
     }
 
     #[test]

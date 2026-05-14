@@ -1,0 +1,56 @@
+{
+  "run_id": "w050-g3-capability-trace-replay-columns-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core capability_set_trace_replay -- --nocapture",
+  "trace_replay_schema": {
+    "schema_id": "oxcalc.rich_value_capability.trace_replay_columns.v1",
+    "prepared_formula_identity_field": "rich_value_capability_columns",
+    "derivation_trace_field": "rich_value_capability_columns",
+    "derivation_template_selection_field": "rich_value_capability_columns",
+    "derivation_template_hole_field": "rich_value_capability_columns",
+    "columns": [
+      "required_capability_set_keys",
+      "producer_capability_set_keys",
+      "exercised_capability_keys"
+    ]
+  },
+  "current_v1_reserved_output": {
+    "current_v1_production_paths_emit_rich_holes": false,
+    "prepared_formula_identity_columns": {
+      "required_capability_set_keys": [],
+      "producer_capability_set_keys": [],
+      "exercised_capability_keys": []
+    },
+    "derivation_trace_columns": {
+      "required_capability_set_keys": [],
+      "producer_capability_set_keys": [],
+      "exercised_capability_keys": []
+    },
+    "derivation_template_selection_columns": {
+      "required_capability_set_keys": [],
+      "producer_capability_set_keys": [],
+      "exercised_capability_keys": []
+    },
+    "derivation_template_hole_columns_empty": true
+  },
+  "reserved_rich_requirement_example": {
+    "required_capability_set_key": "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)+Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)+Materialisable(target_class=EvalValueOrArray)+Shaped(extent_class=RectangularGrid)",
+    "columns": {
+      "required_capability_set_keys": [
+        "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)+Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)+Materialisable(target_class=EvalValueOrArray)+Shaped(extent_class=RectangularGrid)"
+      ],
+      "producer_capability_set_keys": [],
+      "exercised_capability_keys": []
+    },
+    "reserved_empty_columns": {
+      "required_capability_set_keys": [],
+      "producer_capability_set_keys": [],
+      "exercised_capability_keys": []
+    }
+  },
+  "scope_boundary": {
+    "rich_value_kernel_claim": false,
+    "producer_capability_sets_emitted_by_current_v1": false,
+    "rich_arg_accepted_activation_claim": false
+  }
+}

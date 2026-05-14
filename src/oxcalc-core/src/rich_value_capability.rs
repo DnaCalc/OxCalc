@@ -4,6 +4,11 @@
 
 use std::collections::BTreeSet;
 
+use serde::Serialize;
+
+pub const RICH_VALUE_CAPABILITY_TRACE_REPLAY_SCHEMA_ID: &str =
+    "oxcalc.rich_value_capability.trace_replay_columns.v1";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RichValueRank {
     AnyRank,
@@ -187,6 +192,11 @@ impl RichValueCapabilitySet {
     }
 
     #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.capabilities.is_empty()
+    }
+
+    #[must_use]
     pub fn stable_keys(&self) -> Vec<String> {
         self.capabilities
             .iter()
@@ -206,6 +216,46 @@ impl RichValueCapabilitySet {
             .stable_keys()
             .into_iter()
             .all(|required_key| available.contains(&required_key))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct RichValueCapabilityTraceReplayColumns {
+    pub required_capability_set_keys: Vec<String>,
+    pub producer_capability_set_keys: Vec<String>,
+    pub exercised_capability_keys: Vec<String>,
+}
+
+impl RichValueCapabilityTraceReplayColumns {
+    #[must_use]
+    pub fn empty_v1() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn from_required_sets<'a>(
+        required_sets: impl IntoIterator<Item = &'a RichValueCapabilitySet>,
+    ) -> Self {
+        let mut required_capability_set_keys = required_sets
+            .into_iter()
+            .filter(|capability_set| !capability_set.is_empty())
+            .map(RichValueCapabilitySet::stable_key)
+            .collect::<Vec<_>>();
+        required_capability_set_keys.sort();
+        required_capability_set_keys.dedup();
+
+        Self {
+            required_capability_set_keys,
+            producer_capability_set_keys: Vec::new(),
+            exercised_capability_keys: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.required_capability_set_keys.is_empty()
+            && self.producer_capability_set_keys.is_empty()
+            && self.exercised_capability_keys.is_empty()
     }
 }
 

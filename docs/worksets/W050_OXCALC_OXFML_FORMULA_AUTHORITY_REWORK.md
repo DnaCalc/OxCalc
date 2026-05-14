@@ -590,6 +590,14 @@ owned by `.beads/`, not this document.
     current V1 production path emits rich-value holes and no rich kernel is
     claimed. The checked evidence root is
     `docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001`.
+38. G3 live uptake: trace/replay surfaces now reserve
+    `rich_value_capability_columns` on prepared formula identities, derivation
+    trace records, derivation template selections, and derivation template
+    holes. The column set is `required_capability_set_keys`,
+    `producer_capability_set_keys`, and `exercised_capability_keys`; current V1
+    production paths emit empty/reserved values because no rich-value producer
+    or rich kernel is active. The checked evidence root is
+    `docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001`.
 
 ## 7. Required Work
 
@@ -777,6 +785,10 @@ The W050 work, organised by lane.
     `docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001/run_artifact.json`.
 39. Reserve `ArgPreparationProfile::RichArgAccepted(capability_set)` as a kernel-side variant; document that no OxFunc kernel currently consumes it, but the seam admits the variant additively.
 40. Add capability-set columns to trace/replay schemas so that future rich-value kernels emit identity-discipline-compliant evidence from day one.
+    G3 adds the nested `rich_value_capability_columns` schema to prepared
+    formula identity and derivation trace surfaces, with checked empty/reserved
+    current V1 output and a reserved rich-requirement example. Evidence:
+    `docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001/run_artifact.json`.
 
 **Cross-cutting.**
 

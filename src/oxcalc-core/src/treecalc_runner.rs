@@ -17,6 +17,7 @@ use crate::dependency::{
     DependencyDiagnostic, DependencyEdge, InvalidationClosure, InvalidationSeed,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry, OverlayKind, Stage1RecalcTracker};
+use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
 use crate::structural::{
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
 };
@@ -1071,7 +1072,7 @@ fn build_trace_events(
     step_id += 1;
 
     for identity in &artifacts.prepared_formula_identities {
-        events.push(json!({
+        let mut event = json!({
             "step_id": step_id,
             "label": "prepared_formula_identity",
             "owner_node_id": identity.owner_node_id.0,
@@ -1084,7 +1085,9 @@ fn build_trace_events(
             "plan_template_key": identity.plan_template_key,
             "hole_binding_fingerprint": identity.hole_binding_fingerprint,
             "template_hole_count": identity.template_hole_count,
-        }));
+        });
+        add_rich_value_capability_columns(&mut event, &identity.rich_value_capability_columns);
+        events.push(event);
         step_id += 1;
     }
 
@@ -1098,7 +1101,7 @@ fn build_trace_events(
     }
 
     for trace in &artifacts.derivation_traces {
-        events.push(json!({
+        let mut event = json!({
             "step_id": step_id,
             "label": "derivation_trace_recorded",
             "trace_schema_id": trace.trace_schema_id,
@@ -1108,7 +1111,9 @@ fn build_trace_events(
             "hole_binding_count": trace.hole_bindings.len(),
             "root_invocation_count": trace.sub_invocation_tree.len(),
             "kernel_returned_value": trace.kernel_returned_value,
-        }));
+        });
+        add_rich_value_capability_columns(&mut event, &trace.rich_value_capability_columns);
+        events.push(event);
         step_id += 1;
     }
 
@@ -1244,7 +1249,7 @@ fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
 }
 
 fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> serde_json::Value {
-    json!({
+    let mut identity_json = json!({
         "owner_node_id": identity.owner_node_id.0,
         "formula_artifact_id": identity.formula_artifact_id,
         "bind_artifact_id": identity.bind_artifact_id,
@@ -1255,7 +1260,21 @@ fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> se
         "plan_template_key": identity.plan_template_key,
         "hole_binding_fingerprint": identity.hole_binding_fingerprint,
         "template_hole_count": identity.template_hole_count,
-    })
+    });
+    add_rich_value_capability_columns(&mut identity_json, &identity.rich_value_capability_columns);
+    identity_json
+}
+
+fn add_rich_value_capability_columns(
+    value: &mut serde_json::Value,
+    columns: &RichValueCapabilityTraceReplayColumns,
+) {
+    if columns.is_empty() {
+        return;
+    }
+
+    value["rich_value_capability_columns"] =
+        serde_json::to_value(columns).expect("capability columns should serialize");
 }
 
 fn dependency_shape_update_json(update: &DependencyShapeUpdate) -> serde_json::Value {

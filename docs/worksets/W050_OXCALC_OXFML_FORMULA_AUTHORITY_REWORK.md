@@ -485,6 +485,11 @@ owned by `.beads/`, not this document.
     projection, `#[cfg(test)]` scaffolding, fixture/scale quarantine,
     synthetic A1 compatibility residue, upstream-host fixture scaffolding, or
     historical/status text.
+23. D1 live uptake: `CalculationRepository` now carries a persistent
+    subscription registry keyed by `(SubscriptionTopicId, formula_stable_id)`
+    with a `SubscriptionHandle` and topic descriptor. Registry entries persist
+    across ordinary wave operations and release when the owning callable is
+    invalidated by formula-slot replacement or removal.
 
 ## 7. Required Work
 
@@ -576,6 +581,8 @@ The W050 work, organised by lane.
 **Lane D — External Invalidation.**
 
 24. Implement Subscription Registry on the Repository: `(topic_id, formula_stable_id) → SubscriptionHandle`, persistent across waves.
+    D1 adds the repository-owned registry plus persistence and callable
+    invalidation release tests.
 25. Implement Topic Envelopes: `(topic_id, topic_sequence, last_observed_payload_ref)`. Replay-visible.
 26. Wire `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2` as a profile-governed selector with the three behaviours specified in Foundation.
 27. Implement the typed dirty-seed pathway: external signal → topic envelope update → all subscribing formula_stable_ids marked dirty for the next wave.

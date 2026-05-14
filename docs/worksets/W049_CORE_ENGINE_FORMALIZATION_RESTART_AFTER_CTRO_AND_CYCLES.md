@@ -101,6 +101,28 @@ These are deferred until W047 closes and we plan W049 in detail:
 - What gates does W049 administer for pack / C5 / operated-service / release promotion, and how do those gates interact with the W047 implementation core?
 - Does W049 retire any of the W046 Lean/TLA artifacts outright (dead-code state machine, vacuous handler-law model, two-node-SCC-by-list-length lemma, etc.) rather than carrying them forward?
 
+### 2.8 Inherited W046 Successor Obligations (intended W049 scope)
+
+W046 routed four deep-proof obligations forward as successor beads `calc-aylq.1`–`.4`. The W046 closure-audit packet (`docs/spec/core-engine/w046-formalization/W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` §5) labels the `calc-aylq` epic as a W047 successor; under the post-2026-05-10 W047 scope reset these obligations transfer to W049. To keep the carry-forward from dangling between worksets, the four obligations are recorded here as **intended W049 scope** rather than as a label-re-pointing footnote. This section is the authoritative record that the obligations belong to W049.
+
+Authoritative obligation set (from the W046 closure audit §5):
+
+| W046 successor bead | Obligation | What it actually requires |
+| --- | --- | --- |
+| `calc-aylq.1` | Rust Tarjan and topological queue line proof | a real proof — not a record-projection tautology (see §2.1 item 5) — that the implementation's Tarjan SCC decomposition and topological evaluation queue in `treecalc.rs` produce a correct, deterministic order; must constrain the landed Rust per §2.6 principle 4 |
+| `calc-aylq.2` | native proof-carrying trace sidecar enrichment | enrich the proof-carrying trace sidecar so it carries the facts a checker needs, and exercise it on the rebind-required-and-rejected path that W046's checker missed entirely (§2.1 item 3) — not the vacuous pre-edit publish run |
+| `calc-aylq.3` | dynamic dependency positive publication refinement | a non-vacuous refinement statement for dynamic-dependency positive publication (the CTRO positive-publication path landed under W047); must be a technical refinement (forward simulation / observation refinement), not material implication (§2.4 items 19, §2.6 principle 1) |
+| `calc-aylq.4` | semantic pack and operated-service readiness gate | the readiness-gate assessment for pack-grade replay and operated-service promotion — explicitly **not** a promotion claim; W049 administers this gate and states exact evidence consequence rather than asserting readiness |
+
+Intended-scope rule for W049 planning:
+
+1. W049's eventual bead path **must** account for all four obligations — either by taking them on (re-numbered under the W049 epic when its id is allocated), or by explicitly dropping/deferring one with recorded rationale under the §2.6 admit/correct/drop discipline. None may be silently lost.
+2. The §2.7 open question "which subset of the W047 formal obligations does W049 take on" governs *depth and sequencing* of these four, not whether they are tracked at all.
+3. When W049 is activated and its epic id is allocated, the W046 closure docs (`W046_CLOSURE_AUDIT_SEMANTIC_SPINE_COVERAGE_AND_SUCCESSOR_ROUTING.md` §5, the W046 packet README, `closure_audit.json`, and the spine showcase HTML) are re-pointed from the mislabelled `calc-aylq` → W047 successor to the W049 epic. Until then, this section holds the truth.
+4. `calc-aylq.1`–`.3` are formalization obligations and compose with the §2.6 working theory (no record-projection proofs, no smoke models, no silent-degrade checkers, treat the W047 implementation core as authoritative). `calc-aylq.4` is a gate-administration obligation and composes with the §2.7 open question on how W049 gates pack / C5 / operated-service / release promotion.
+
+This section discharges the cross-workset carry-forward: the "remaining W046 bead" set is now contained in W049 as recorded intended scope. It does not change W049's `pre_planning` status, does not allocate an epic id, and does not commit a bead path — scope, beads, exit gates, and evidence policy remain deferred per §1 and §2.7.
+
 ## 3. Relationship To W048 Cycle Work
 
 W049 deliberately depends on W048 rather than absorbing it. W048 owns circular dependency calculation processing: Excel probes, structural-cycle behavior, CTRO-created cycle behavior, cycle release/re-entry, downstream invalidation, no-publication policy, and trace facts for cycle provenance.
@@ -117,5 +139,5 @@ W049 should formalize cycle behavior only after W048 has produced an implementat
 - bead_path: not yet specified - W049 epic id and bead structure to be allocated when W049 is activated
 - exit_gate: not yet specified
 - evidence_policy: not yet specified
-- predecessor_obligation_inheritance: see §2.6 working theory for the rules under which W046 punch-list items will be admitted, corrected, or dropped at planning time
+- predecessor_obligation_inheritance: see §2.6 working theory for the rules under which W046 punch-list items will be admitted, corrected, or dropped at planning time; see §2.8 for the four inherited W046 successor obligations (`calc-aylq.1`–`.4`) recorded as intended W049 scope
 - w048_dependency: circular dependency calculation processing remains W048-owned input material

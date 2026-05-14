@@ -1,7 +1,7 @@
 # OxCalc Workset Register
 
 Status: `active_register`
-Date: 2026-05-06
+Date: 2026-05-14
 
 ## 1. Purpose
 This is the live ordered workset register for current OxCalc execution.
@@ -58,6 +58,36 @@ It does mean:
 1. doctrine reset and workset-register adoption come before new broad execution under the bead model,
 2. reached-gate predecessor packets remain authoritative provenance anchors,
 3. active TreeCalc widening should now flow through explicit successor worksets and beads rather than through prose-only continuation.
+
+### 5.1 Current Go-Forward Sequence (2026-05-14)
+The active go-forward execution sequence over the calculation-model rework and its successors is:
+
+`W050 -> W051 -> W054 -> W049 -> W052 -> W053`
+
+Rationale:
+1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
+2. **W051** lands sparse range readers as the first concrete rich-value class, so the artefact set is complete before memory discipline is specified over it.
+3. **W054** specifies bounded-memory and pinned-epoch GC over the now-complete artefact set while the engine is still Stage-1 sequential — the simpler setting in which to pin deterministic eviction order as a replay-conformance obligation.
+4. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
+5. **W052** adds the sensitivity / derivative capability lane on top of the formalized core.
+6. **W053** lands Stage 2 partitioned concurrency last, against a formalized and memory-disciplined Stage-1 baseline, and revisits the W054 retention model for partitioned and speculative evaluators.
+
+This sequence supersedes the numeric-order reading of §6 for the W049–W054 frontier. The W027–W047 TreeCalc-substrate and core-formalization-chain worksets are retired to provenance status — see §5.2; this go-forward sequence is the complete forward-execution set.
+
+### 5.2 Retired-To-Provenance Worksets (2026-05-14)
+The worksets below are retired to `tracking_anchor` provenance status. They are no longer pending or forward-execution work; they remain authoritative provenance packets for the work they recorded and may be reopened only on an explicit concrete mismatch.
+
+Retired in this pass:
+1. **W027–W031 — TreeCalc structural/runtime substrate.** Dependency graph + invalidation closure, evaluator-backed candidate integration, runtime-derived effects + overlay closure, corpus oracle + first sequential baseline, assurance refresh. The substrate they produced (`StructuralSnapshot`, `TreeNodeId`, `Stage1RecalcTracker`, `TreeCalcCoordinator`, overlay lifecycle, `DependencyGraph`, `InvalidationClosure`, replay/witness families) is explicitly absorbed and preserved by the W050 rework (W050 §10.10 "what survives") — nothing is dropped, it is recomposed in new plumbing.
+2. **W033–W046 — core formalization chain.** The W033→W046 release-grade verification tranche is superseded by **W049's formalization restart**. W049's purpose is precisely to restart formalization against a single authoritative implementation after CTRO and cycles landed; it explicitly inherits the W046 failure-mode punch list. The chain's residual obligations are not carried as separate pending worksets — they are subsumed by W049's restart scope.
+3. **W047 — Calc-Time Rebinding Overlay design sweep.** CTRO is landed in the implementation core. W047's own scope reset already routed its formal/checker/sidecar/readiness-gate residue to W049 and its circular-dependency processing to W048. There is no forward W047 work.
+4. **W048 — Circular Dependency Calculation Processing.** Already closed (`closed_single_host_scope`); listed here for completeness. W048 was the trigger for the W050 design rework, which now subsumes the forward calculation-model work.
+
+Carry-forward items (NOT lost — already wired into W049's register entry, repeated here so they are not forgotten):
+- The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into the W049 epic at activation; the W046 closure docs are re-pointed at that time. This is the one concrete bead-level carry-forward from the retired set — it is now recorded as intended W049 scope in **W049 §2.8** (with the authoritative obligation table and the no-silent-loss rule), and is also referenced in the W049 register entry (`depends_on` / `closure_condition`). It must survive W049 activation.
+- The W046 failure-mode punch list (avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, terminology drift) is inherited by W049 per W049's purpose.
+
+After this pass the only `execution_target` workset is **W050**; the forward-pending set is the §5.1 go-forward sequence (`W050 -> W051 -> W054 -> W049 -> W052 -> W053`). The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
 
 ## 6. Active Workset Sequence
 
@@ -155,7 +185,7 @@ It does mean:
 6. initial_epic_lanes:
    dependency graph realization, invalidation closure, replay-visible diagnostics
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W028 TreeCalc Evaluator-Backed Candidate Result Integration
 1. purpose:
@@ -171,7 +201,7 @@ It does mean:
 6. initial_epic_lanes:
    candidate integration, publication/reject mapping, replay/evidence
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W029 TreeCalc Runtime-Derived Effects And Overlay Closure
 1. purpose:
@@ -187,7 +217,7 @@ It does mean:
 6. initial_epic_lanes:
    runtime-derived realization, overlay closure, replay/explain widening
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W030 TreeCalc Corpus Oracle And First Sequential Baseline
 1. purpose:
@@ -203,7 +233,7 @@ It does mean:
 6. initial_epic_lanes:
    corpus widening, oracle/baseline execution, emitted evidence
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W031 TreeCalc Assurance Refresh And Residual Packetization
 1. purpose:
@@ -219,7 +249,7 @@ It does mean:
 6. initial_epic_lanes:
    assurance refresh, residual narrowing, closure evidence
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W033 OxCalc + OxFml Core Formalization Pass
 1. purpose:
@@ -235,7 +265,7 @@ It does mean:
 6. initial_epic_lanes:
    core spec review and correction ledger, spec-evolution decision ledger, historical no-loss crosswalk, authority inventory, vocabulary alignment, formal leverage mapping, observable-surface/refinement packet, Lean model widening, TLA+ model widening, replay and witness bridge, pack and capability binding, OxFml handoff/watch lane, closure audit
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W034 Core Formalization Deepening And Implementation Verification
 1. purpose:
@@ -251,7 +281,7 @@ It does mean:
 6. initial_epic_lanes:
    residual obligation and authority ledger, TraceCalc oracle deepening, optimized/core-engine conformance widening, Lean proof-family deepening, TLA model-family and contention preconditions, pack/capability and continuous scale gate binding, closure audit and successor packetization
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W035 Core Formalization Proof And Assurance Hardening
 1. purpose:
@@ -267,7 +297,7 @@ It does mean:
 6. initial_epic_lanes:
    residual proof-obligation ledger, TraceCalc oracle matrix expansion, implementation conformance hardening, Lean assumption discharge, TLA non-routine exploration, continuous assurance and cross-engine differential gate, pack/Stage 2 readiness reassessment, closure audit
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W036 Core Formalization Verification Closure Expansion
 1. purpose:
@@ -283,7 +313,7 @@ It does mean:
 6. initial_epic_lanes:
    residual coverage and promotion-blocker ledger, TraceCalc coverage closure criteria and matrix expansion, optimized/core-engine conformance closure plan and first fixes, Lean theorem coverage expansion, TLA Stage 2 partition and scheduler equivalence model, independent evaluator diversity and cross-engine differential harness, continuous assurance operation and history window, pack-grade replay and capability promotion gate reassessment, closure audit and successor/full-verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W037 Core Formalization Full-Verification Promotion Gates
 1. purpose:
@@ -299,7 +329,7 @@ It does mean:
 6. initial_epic_lanes:
    residual full-verification and promotion-gate ledger, TraceCalc observable closure and multi-reader replay, optimized/core-engine conformance implementation closure, direct OxFml evaluator and `LET`/`LAMBDA` seam evidence, Lean/TLA proof and model closure inventory, Stage 2 deterministic replay and partition promotion criteria, operated continuous assurance and cross-engine service pilot, pack-grade replay governance and C5 candidate decision, closure audit and full-verification release decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W038 Core Formalization Release-Grade Closure Hardening
 1. purpose:
@@ -315,7 +345,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade obligation ledger and objective map, TraceCalc oracle authority and authority-exclusion discharge, optimized core-engine conformance blocker closure and fixes, proof-model assumption discharge and totality boundary hardening, Stage 2 partition replay and semantic-equivalence execution, operated assurance alert-quarantine and cross-engine service, independent evaluator diversity and OxFml seam watch closure, pack-grade replay governance and C5 release decision, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W039 Core Formalization Release-Grade Successor Closure
 1. purpose:
@@ -331,7 +361,7 @@ It does mean:
 6. initial_epic_lanes:
    residual successor obligation ledger and promotion-readiness map, optimized core exact blocker implementation closure, Lean/TLA totality and proof-model closure tranche, Stage 2 production partition policy and replay governance, operated assurance service and retained history substrate, independent evaluator row set and cross-engine diversity, OxFml seam breadth and callable metadata closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W040 Core Formalization Release-Grade Direct Verification
 1. purpose:
@@ -347,7 +377,7 @@ It does mean:
 6. initial_epic_lanes:
    residual direct-verification obligation map, optimized core exact blocker fixes and differentials, Rust totality and refinement proof tranche, Lean/TLA full-verification discharge tranche, Stage 2 production policy and equivalence implementation, operated assurance and retained-history service implementation, independent evaluator implementation and operated differential, OxFml seam breadth and callable metadata implementation, pack-grade replay governance and C5 promotion decision, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W041 Core Formalization Release-Grade Successor Verification
 1. purpose:
@@ -363,7 +393,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade successor obligation map, optimized core residual blocker implementation and differential closure, Rust totality refinement and panic-boundary discharge, Lean/TLA full-verification and fairness discharge, Stage 2 production analyzer and pack-equivalence proof tranche, operated assurance retained-history and alert-dispatch service tranche, independent evaluator breadth and operated differential service tranche, OxFml broad display/publication and callable-carrier closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W042 Core Formalization Release-Grade Evidence Closure Expansion
 1. purpose:
@@ -379,7 +409,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade closure obligation ledger, optimized core counterpart conformance and callable metadata projection, Rust totality refinement and core panic-boundary closure, Lean/TLA fairness and full-verification expansion, Stage 2 production analyzer and pack-grade equivalence closure, operated assurance retained-history retained-witness and alert service closure, independent evaluator breadth mismatch quarantine and operated differential service, OxFml public migration callable carrier and registered-external closure, pack-grade replay governance and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W043 Core Formalization Release-Grade Proof And Operated-Service Integration
 1. purpose:
@@ -395,7 +425,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade proof-service obligation map, optimized core broad conformance and callable metadata closure, Rust totality refinement and panic-free core proof frontier, Lean/TLA full-verification and unbounded fairness discharge, Stage 2 production partition analyzer and scheduler equivalence, operated assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service, OxFml public migration formatting callable and registered-external seam, pack-grade replay governance and C5 release reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W044 Core Formalization Release-Grade Blocker Burn-Down And Service Proof Closure
 1. purpose:
@@ -411,7 +441,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade blocker reclassification and promotion-contract map, optimized core dynamic transition and callable metadata implementation tranche, Rust totality refinement and panic-surface proof expansion, Lean/TLA unbounded fairness and full-verification proof expansion, Stage 2 production partition analyzer and scheduler equivalence implementation, operated continuous assurance retained-history witness SLO and alert service, independent evaluator breadth mismatch quarantine and differential service implementation, OxFml public migration typed formatting callable and registered-external uptake, release-scale replay performance and scaling evidence under semantic guards, pack-grade replay governance service and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W045 Core Formalization Release-Grade Service And Cross-Repo Uptake Verification
 1. purpose:
@@ -427,7 +457,7 @@ It does mean:
 6. initial_epic_lanes:
    residual release-grade successor obligation and current OxFml intake map, optimized core counterpart coverage and callable metadata projection closure, Rust totality refinement and panic-surface hardening, Lean/TLA verification fairness and totality discharge, Stage 2 production partition and pack-grade equivalence service evidence, operated assurance retained-history retained-witness SLO service implementation, independent evaluator breadth mismatch quarantine and operated differential service, OxFml public surface W073 downstream typed formatting callable and registered-external uptake, continuous release-scale assurance and semantic regression service, pack-grade replay governance service and C5 reassessment, closure audit and release-grade verification decision
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W046 Core Formalization Engine Semantic Proof Spine
 1. purpose:
@@ -443,7 +473,7 @@ It does mean:
 6. initial_epic_lanes:
    redirect showcase finding uptake engine semantic catalog and effect-signature plan, dependency graph reverse-edge and SCC model, invalidation soft-reference dynamic-reference and rebind model, recalc tracker transition pre/post model, evaluation-order and working-value read-discipline model, TraceCalc refinement kernel and TreeCalc/CoreEngine replay binding, OxFml seam LET/LAMBDA formatting/publication and callable-boundary model, proof-service and evidence-classifier coverage ledger recast over the semantic spine, scale/performance semantic-regression signatures, Stage 2 pack-governance C5 operated-service independent-evaluator and release-readiness consequence reassessment, closure audit semantic-spine coverage decision and successor routing
 7. rollout_mode:
-   `execution_target`
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2)
 
 ### W047 Calc-Time Rebinding Overlay Design Sweep
 1. purpose:
@@ -459,7 +489,7 @@ It does mean:
 6. initial_epic_lanes:
    historical no-loss design sweep and CTRO doctrine, effective graph frontier repair and shared cycle-policy semantics (design-level), scenario matrix and TraceCalc/TreeCalc evidence plan, implementation/evidence roadmap and successor gates, dynamic dependency positive publication implementation refinement and CTRO phase landing.
 7. rollout_mode:
-   `execution_target` (implementation-first; circular dependency calculation processing routes to W048; formal/checker/sidecar/readiness-gate work transfers to W049 — see W047 §1 scope reset and §10 deferred bead path).
+   `tracking_anchor` (retired to provenance 2026-05-14 — see §5.2; CTRO landed in the implementation core; formal/checker/sidecar/readiness-gate residue already routed to W049, circular-dependency processing already routed to W048 — see W047 §1 scope reset and §10 deferred bead path).
 
 ### W048 Circular Dependency Calculation Processing
 1. purpose:
@@ -477,34 +507,98 @@ It does mean:
 7. rollout_mode:
    `closed_single_host_scope` (child beads `calc-zci1.1` through `calc-zci1.20` are closed; prior closure audit at `docs/test-runs/core-engine/w048-closure-audit-001/w048_closure_audit_summary.json` is superseded by `docs/spec/core-engine/w048-cycles/W048_REOPEN_SCOPE_AUDIT_AND_REPAIR_PLAN.md`; final accepted-scope audit is `docs/spec/core-engine/w048-cycles/W048_SINGLE_HOST_SCOPE_ACCEPTANCE_AND_FINAL_AUDIT.md`; `calc-zci1.16` is cleared by `w048-excel-root-report-002`; `calc-zci1.19` is closed by explicit user acceptance of single-host Excel scope, with cross-version behavior documented as a limitation).
 
-### W050 OxCalc/OxFml Formula Authority And Call Model Design Refactor
+### W050 Calculation Model Rework — Unified Recalc Session, Plan Templates, And Engine Improvement Moves
 1. purpose:
-   design/refactor the formula authority boundary and first-call model after W047/W048 made TreeCalc examples more prominent: OxFml owns every formula concern, including parsing, text-literal understanding, programmatic construction, binding/name/reference semantics, function/operator evaluation, array/spill values, coercion, volatile behavior, and returned value surfaces; OxCalc owns structural graph state, dependency descriptors, invalidation, CTRO overlays, cycle policy, candidate/publication state, replay evidence, and evaluator-fact plumbing. TreeCalc should not expose a local formula AST or formula source-construction helpers for spreadsheet expressions; formula-bearing inputs should be absent/empty or opaque OxFml-owned formula artifacts/source handles plus dependency/evaluator-fact carriers. W050 must decide the first OxCalc->OxFml call protocol, including what context is passed, how names/references are resolved, whether callbacks/providers are used, how unresolved identifiers are surfaced, and what single-node result shape OxCalc consumes.
+   the umbrella workset for bringing the OxCalc + OxFml + LET/LAMBDA calculation model into alignment with current best thinking. It is intentionally large and disruptive, planned and executed in seven lanes (A–G). It (a) removes the OxCalc-local formula AST and source-construction surfaces, so OxFml is the first and only parser; (b) replaces the per-formula host-packet seam with a session-shaped OxCalc/OxFml protocol built on prepared callables (`ensure_prepared`/`invoke`, a six-phase wave lifecycle, Calculation Repository + Recalc Session + Coordinator); (c) introduces layered identity (`shape_key`/`dispatch_skeleton_key`/`plan_template_key`) so structurally equivalent formulas share compiled plan templates; (d) admits the hole-type taxonomy (`ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`) under a wide-by-default widening policy so sparse and rich values land additively without retrofit; (e) wires external/RTD invalidation as a first-class Subscription Registry + Topic Envelope discipline governed by `StreamSemanticsVersion`; (f) ships the correctness-floor decisions — `NumericalReductionPolicy` and `ErrorAlgebra` — as profile-governed semantic state; (g) lays identity scaffolding for differential evaluation, derivation trace, and push/pull duality. LET/LAMBDA become the general case rather than a special form: every cell formula is a prepared callable, and the recalc engine is the same machinery lambda invocation already uses.
 2. depends_on:
    `W048`, `OxFml formula/evaluator seam`
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `src/oxcalc-core/src/treecalc.rs`, `src/oxcalc-core/src/formula.rs`, OxFml seam specs in `../OxFml/docs/spec/`
+   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`, `docs/spec/core-engine/CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALC_OXFML_FORMALIZATION_PASS_PLAN.md`, `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `src/oxcalc-core/src/treecalc.rs`, `src/oxcalc-core/src/formula.rs`, `src/oxcalc-core/src/upstream_host.rs`, OxFml seam specs in `../OxFml/docs/spec/`
 4. upstream_dependencies:
-   OxFml returned value/effect/dependency surfaces for opaque formula results, especially dynamic arrays/spills and volatile functions.
+   `OxFml` — the session-shaped consumer surface expressed over `oxfml_core::consumer::runtime` without reopening the frozen `OxFml_V1` consumer-facade contract; plan-template identity surfacing (`shape_key`/`dispatch_skeleton_key`/`plan_template_key`); `NumericalReductionPolicy`/`ErrorAlgebra` threading through semantic plan and evaluation context (OxFunc cooperation required for kernel-side reduction discipline); capability-set hole admission. Three cross-repo handoff packets drive these: `HANDOFF_CALC_002` (recalc session + plan templates), `HANDOFF_CALC_003` (numerical reduction + error algebra), `HANDOFF_CALC_004` (capability-set hole admission). Returned value/effect/dependency surfaces remain opaque to OxCalc, especially dynamic arrays/spills and volatile functions.
 5. closure_condition:
-   W050 closes only after the OxCalc/OxFml formula authority boundary and first-call protocol are documented, local formula AST variants and formula source-construction helpers for literals/operators/functions are removed or quarantined behind explicitly non-product migration adapters, all formula-looking OxCalc code is classified as empty/no-formula, opaque OxFml-owned artifact/source handle, dependency/evaluator-fact projection, or removed/routed to OxFml, tests prove TreeCalc delegates formula evaluation to OxFml for representative formulas without OxCalc parsing or constructing formula text, name/reference resolution and unresolved-identifier behavior are specified, dynamic-array examples are represented as OxFml result surfaces or explicit future work rather than OxCalc-local array plumbing, and W047/W048 showcase wording is repaired if needed.
+   the comprehensive exit gate in `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §8 — 30 clauses across Lane A (removal of wrong-shape code), Lane B (new seam implementation), Lane C (plan-template identity layer), Lane D (external invalidation discipline), Lane E (correctness floor), Lane F (performance/observability layer), Lane G (forward-direction rich-value scaffolding), and cross-cutting documentation/handoffs/fixtures. The aggregate workset stays `open_planning` until every lane meets its share of the gate; individual lanes may advance independently under the bead structure.
 6. initial_epic_lanes:
-   parent epic `calc-cwpl`; child beads: `calc-cwpl.1` code inventory, `calc-cwpl.2` fixture policy moving formula construction/parsing to OxFml, `calc-cwpl.3` OxFml opaque-result tests, `calc-cwpl.4` docs/showcase repair, `calc-cwpl.5` removal/quarantine of the local formula AST and source-construction surface, `calc-cwpl.6` first-call name/reference binding protocol design.
+   parent epic `calc-cwpl`; seven lanes — Lane A removal (`calc-cwpl.A1`–`.A4`), Lane B new seam (`calc-cwpl.B1`–`.B6`), Lane C plan-template identity (`calc-cwpl.C1`–`.C4`), Lane D external invalidation (`calc-cwpl.D1`–`.D4`), Lane E correctness floor (`calc-cwpl.E1`–`.E3`), Lane F performance/observability (`calc-cwpl.F1`–`.F3`), Lane G forward scaffolding (`calc-cwpl.G1`–`.G3`); cross-repo handoff beads `calc-cwpl.H1`–`.H3`. Predecessor beads `calc-cwpl.1`–`.6` are mapped into the lane structure (W050 §6). Phasing: Wave 1 lands Lanes B + C concurrently with A following; Wave 2 lands Lanes D + E in parallel; Wave 3 lands Lane F; Lane G lands cheapest alongside Lane C.
 7. rollout_mode:
-   `open_planning`.
+   `execution_target` (`open_planning` at lane level; lanes roll into epics/beads under `calc-cwpl`).
 
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:
-   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer.
+   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, and W054 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-callable / plan-template model with sparse-reader and bounded-memory discipline — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 would be wasted work.
 2. depends_on:
-   `W047`, `W048`
+   `W047`, `W048`, `W050` (sequenced after `W051` and `W054` per §5.1)
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`, `docs/spec/core-engine/w046-formalization/`, `docs/spec/core-engine/w047-ctro/`
+   `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`, `docs/spec/core-engine/w046-formalization/`, `docs/spec/core-engine/w047-ctro/`
 4. upstream_dependencies:
-   none planned at activation; W049 is a follow-on workset over OxCalc's own engine core after W047 implementation and W048 cycle semantics. To be re-evaluated when the W049 plan is finalized.
+   `OxFml` — W049 formalizes the post-W050 engine, which consumes the session-shaped OxFml seam (`ensure_prepared` / `invoke`, plan-template identity, typed invocation outcomes); the formalization models those consumed surfaces as imported/assumed contracts rather than re-deriving them. To be re-evaluated when the W049 plan is finalized.
 5. closure_condition:
    not yet specified — pre-planning only. Will be specified after W047 and W048 clarify scope, beads, exit gate, and evidence policy. The W046 successor obligations currently mislabeled against W047 `calc-aylq.1`–`.4` (Rust Tarjan / sidecar enrichment / dynamic publication / readiness gate) transfer into the W049 epic at activation; the W046 closure docs will be re-pointed at that time.
 6. initial_epic_lanes:
    pre-planning background only — see W049 doc §2 for the W046 punch list inherited as inputs and §2.6 working theory; lanes to be specified after W047 and W048 unblock a stable implementation and cycle-semantics target.
+7. rollout_mode:
+   `pre_planning` (not yet `execution_target`).
+
+### W051 Sparse Range Readers And Defined-Entry Semantics
+1. purpose:
+   the first concrete rich-value class after W050 admits `SparseRangeHole` and the `RichValueHole` capability vocabulary. Implements `SparseRangeReader` — `declared_extent`, `defined_cardinality`, `defined_iter`, `read_at(coord) -> Defined(EvalValue) | Blank`, `contains(coord)` — and activates the kernel-side `SparseIteratorOk` argument-preparation profile so aggregation kernels (`SUM`, `COUNT`, `AVERAGE`, `MIN`, `MAX`, criteria family) consume whole-column references without dense materialisation. The cell-value model is two-state: `Defined` covers all assigned values including empty-string `""`; `Blank` covers both never-assigned and assigned-then-cleared cells, which Excel treats identically at the cell-value level (`ISBLANK`, `COUNTBLANK`, `COUNTA`, arithmetic coercion, equality all agree). Sheet-structural state that persists across clear operations — used range, cell formatting, conditional-format ranges, data-validation rules, comments — is owned by other Repository surfaces, not by the reader.
+2. depends_on:
+   `W050` (Lane C hole-type taxonomy, Lane G capability vocabulary)
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.7, §11.2
+4. upstream_dependencies:
+   `OxFunc` is the primary owner of the `SparseIteratorOk` argument-preparation profile and the aggregation-kernel updates; `OxFml` threads the sparse binding through semantic plan and evaluation context.
+5. closure_condition:
+   not yet specified — pre-planning only. Will be specified after W050 lands the hole-type taxonomy and capability vocabulary.
+6. initial_epic_lanes:
+   pre-planning background only.
+7. rollout_mode:
+   `pre_planning` (not yet `execution_target`).
+
+### W052 Sensitivity And Derivative Seam
+1. purpose:
+   layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.
+2. depends_on:
+   `W050` (Lane G capability vocabulary admission)
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.12, §11.2
+4. upstream_dependencies:
+   `OxFunc` is the primary owner of per-kernel derivative metadata; `OxFml` threads the `Differentiable` capability through semantic plan.
+5. closure_condition:
+   not yet specified — pre-planning only.
+6. initial_epic_lanes:
+   pre-planning background only.
+7. rollout_mode:
+   `pre_planning` (not yet `execution_target`).
+
+### W053 Staged Concurrency Stage 2
+1. purpose:
+   Stage 2 of the Foundation staged-realization contract: partitioned parallel evaluators behind the same single-publisher coordinator authority, with speculative evaluation (provisional reference bindings, fingerprint-checked at commit) as the conflict-resolution discipline. Targets wall-clock speedup on multi-core hardware without losing the Stage 1 single-publisher correctness invariant. The §10 design baseline in W050 is deliberately Stage-2-shaped — independent acyclic nodes carry no ordering constraint beyond the dependency graph — so W053 partitions the schedule while keeping the single Coordinator commit authority intact. W053 must demonstrate semantic equivalence against the formalized Stage-1 baseline produced by W049, and revisits the W054 bounded-memory retention model for partitioned and speculative evaluators (speculative candidates introduce a new retention class).
+2. depends_on:
+   `W050` (the Stage 1 sequential coordinator on the new session model must land first); `W049` (formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against); Foundation Wave B FEC/F3E concurrency-hardening gates
+3. parent_doctrine_and_spec_surfaces:
+   `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.8 staged-realization contract, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3, `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+4. upstream_dependencies:
+   none planned at activation; to be re-evaluated when the W053 plan is finalized.
+5. closure_condition:
+   not yet specified — pre-planning only. Stage 2 contention remains unpromoted unless deterministic parity/equivalence evidence gates are satisfied (Foundation semantic-equivalence-under-strategy-change doctrine applies).
+6. initial_epic_lanes:
+   pre-planning background only.
+7. rollout_mode:
+   `pre_planning` (not yet `execution_target`).
+
+### W054 Bounded-Memory And Pinned-Epoch GC
+1. purpose:
+   operational memory discipline for the artefact and overlay surfaces W050 introduces — the compiled-artefact / plan-template cache, runtime overlays, the per-edge differential-evaluation value cache, Subscription Registry topic envelopes, and pinned reader views. Each cache carries a profile-declared retention class (Required / Best-Effort / Discardable) and a pinned-epoch protection rule (active session, stabilisation window, observer-pinned). Eviction is deterministic — given the same operation history and the same retention claims, two engines evict in the same order — and the eviction trace is part of replay conformance. This is the difference between a `replay-friendly` engine and a `replay-deterministic` one: a spec that does not pin eviction order produces replay artefacts that drift across implementations even when results agree. W054 makes the bounded-memory contract part of the spec rather than an implementation detail.
+2. depends_on:
+   `W050` (the new artefact set must exist so retention costs are measurable); `W051` (sparse-reader artefacts are part of the artefact set W054's retention model must cover). Per §5.1, W054 precedes W053; W053 then revisits this retention model for partitioned and speculative evaluators.
+3. parent_doctrine_and_spec_surfaces:
+   `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.3 (overlay eviction is deterministic and epoch-safe) and §6.8 (overlay lifecycle baseline), `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3
+4. upstream_dependencies:
+   none planned at activation; to be re-evaluated when the W054 plan is finalized.
+5. closure_condition:
+   not yet specified — pre-planning only. Requires post-W050 measurement infrastructure (artefact retention costs, overlay residency, pin-epoch distance histograms) before the eviction policy can be specified honestly.
+6. initial_epic_lanes:
+   pre-planning background only.
 7. rollout_mode:
    `pre_planning` (not yet `execution_target`).

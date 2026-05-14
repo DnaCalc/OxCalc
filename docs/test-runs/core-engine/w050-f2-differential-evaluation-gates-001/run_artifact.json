@@ -1,0 +1,42 @@
+{
+  "run_id": "w050-f2-differential-evaluation-gates-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core differential_evaluation_gate -- --nocapture",
+  "gate": {
+    "cache_key_fields": [
+      "call_site_id",
+      "hole_binding_fingerprint"
+    ],
+    "cache_hit_reuse_condition": "matching per-edge key with no caller-supplied invalidation seed and no upstream/external/dynamic dependency delta",
+    "path_exclusions": [
+      "VolatileFunction",
+      "EffectfulPath"
+    ],
+    "semantic_bypasses": [
+      "UpstreamPublication",
+      "ExternallyInvalidated",
+      "DynamicDependencyDelta",
+      "ExplicitInvalidationSeed"
+    ]
+  },
+  "validation_cases": [
+    {
+      "case_id": "hit_reuses_seeded_value_without_publication_change",
+      "initial_result_state": "published",
+      "reuse_result_state": "verified_clean",
+      "initial_published_value": "5",
+      "reuse_published_value": "5",
+      "cache_hit_observed": true,
+      "oxfml_invocation_skipped": true,
+      "publication_bundle_emitted": false
+    },
+    {
+      "case_id": "upstream_publication_bypasses_cache_and_publishes_changed_value",
+      "result_state": "published",
+      "published_value": "7",
+      "cache_bypass_observed": true,
+      "oxfml_invocation_executed": true,
+      "publication_bundle_emitted": true
+    }
+  ]
+}

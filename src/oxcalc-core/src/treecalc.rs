@@ -16,6 +16,7 @@ use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::TypedContextQueryBundle;
 use oxfml_core::interface::{ReturnedValueSurface, ReturnedValueSurfaceKind};
 use oxfml_core::red::project_red_view;
+use oxfml_core::semantics::{FormulaDeterminismClass, FormulaVolatilityClass, SemanticPlan};
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
 use oxfml_core::{CompileSemanticPlanRequest, EvaluationBackend, compile_semantic_plan};
@@ -40,6 +41,10 @@ use crate::recalc::{
 };
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
+};
+use crate::value_cache::{
+    EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
+    EdgeValueCachePolicy, EdgeValueCacheStoreResult,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -305,6 +310,7 @@ impl LocalTreeCalcEngine {
 
         let phase_start = Instant::now();
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
+        let caller_supplied_invalidation_seeds = !input.invalidation_seeds.is_empty();
         let mut invalidation_seeds = if input.invalidation_seeds.is_empty() {
             default_invalidation_seeds(&formula_owner_ids)
         } else {
@@ -357,6 +363,12 @@ impl LocalTreeCalcEngine {
         diagnostics.extend(prepared_formula_reuse_diagnostics(
             &prepared_formula_identities,
         ));
+        let mut edge_value_cache = build_seeded_edge_value_cache(
+            &prepared_formulas,
+            &input.seeded_published_values,
+            formula_owner_ids.len(),
+            &mut diagnostics,
+        );
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -484,55 +496,90 @@ impl LocalTreeCalcEngine {
             let prepared = prepared_formulas
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
+            let has_dynamic_dependency_delta = dynamic_dependency_delta_owner_ids.contains(node_id);
             let phase_start = Instant::now();
-            let evaluation_result = evaluate_with_oxfml_session(prepared, &working_values);
-            phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
-            let computed_value = match evaluation_result {
-                Ok(success) => {
-                    diagnostics.extend(success.diagnostics);
-                    success.value
-                }
-                Err(failure) => {
-                    phase_timer
-                        .record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
-                    let failure_runtime_effects = annotate_runtime_effects_with_environment(
-                        &failure.runtime_effects,
-                        &input.environment_context,
+            let cached_value = edge_value_cache.as_ref().and_then(|cache| {
+                lookup_edge_value_cache(
+                    cache,
+                    prepared,
+                    *node_id,
+                    &invalidation_closure,
+                    has_dynamic_dependency_delta,
+                    caller_supplied_invalidation_seeds,
+                    &mut diagnostics,
+                )
+            });
+            phase_timer.add_duration("edge_value_cache_lookup", phase_start.elapsed());
+            let computed_value = if let Some(value) = cached_value {
+                value
+            } else {
+                let phase_start = Instant::now();
+                let evaluation_result = evaluate_with_oxfml_session(prepared, &working_values);
+                phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
+                let computed_value = match evaluation_result {
+                    Ok(success) => {
+                        diagnostics.extend(success.diagnostics);
+                        success.value
+                    }
+                    Err(failure) => {
+                        phase_timer.record_duration(
+                            "evaluation_loop_total",
+                            evaluation_loop_start.elapsed(),
+                        );
+                        let failure_runtime_effects = annotate_runtime_effects_with_environment(
+                            &failure.runtime_effects,
+                            &input.environment_context,
+                        );
+                        runtime_effects.extend(failure_runtime_effects.clone());
+                        diagnostics.extend(failure.diagnostics.clone());
+                        diagnostics.extend(runtime_effect_context_diagnostics(
+                            &input.environment_context,
+                        ));
+                        let runtime_effect_overlays = build_runtime_effect_overlays(
+                            &input,
+                            *node_id,
+                            &failure_runtime_effects,
+                        );
+                        return reject_run(
+                            &input,
+                            &mut coordinator,
+                            &mut recalc_tracker,
+                            dependency_graph,
+                            invalidation_closure,
+                            evaluation_order,
+                            runtime_effects,
+                            runtime_effect_overlays,
+                            diagnostics,
+                            phase_timer,
+                            &formula_owner_ids,
+                            prepared_formula_identities.clone(),
+                            Some(LocalEvaluatorCandidate {
+                                candidate_result_id: input.candidate_result_id.clone(),
+                                target_set: formula_owner_ids.clone(),
+                                value_updates,
+                                dependency_shape_updates: dynamic_dependency_shape_updates.clone(),
+                                runtime_effects: failure_runtime_effects,
+                                diagnostic_events: vec![failure.error.to_string()],
+                            }),
+                            failure.error,
+                        );
+                    }
+                };
+                if let Some(cache) = edge_value_cache.as_mut() {
+                    let phase_start = Instant::now();
+                    store_edge_value_cache(
+                        cache,
+                        prepared,
+                        *node_id,
+                        computed_value.clone(),
+                        input.structural_snapshot.snapshot_id().0,
+                        &mut diagnostics,
                     );
-                    runtime_effects.extend(failure_runtime_effects.clone());
-                    diagnostics.extend(failure.diagnostics.clone());
-                    diagnostics.extend(runtime_effect_context_diagnostics(
-                        &input.environment_context,
-                    ));
-                    let runtime_effect_overlays =
-                        build_runtime_effect_overlays(&input, *node_id, &failure_runtime_effects);
-                    return reject_run(
-                        &input,
-                        &mut coordinator,
-                        &mut recalc_tracker,
-                        dependency_graph,
-                        invalidation_closure,
-                        evaluation_order,
-                        runtime_effects,
-                        runtime_effect_overlays,
-                        diagnostics,
-                        phase_timer,
-                        &formula_owner_ids,
-                        prepared_formula_identities.clone(),
-                        Some(LocalEvaluatorCandidate {
-                            candidate_result_id: input.candidate_result_id.clone(),
-                            target_set: formula_owner_ids.clone(),
-                            value_updates,
-                            dependency_shape_updates: dynamic_dependency_shape_updates.clone(),
-                            runtime_effects: failure_runtime_effects,
-                            diagnostic_events: vec![failure.error.to_string()],
-                        }),
-                        failure.error,
-                    );
+                    phase_timer.add_duration("edge_value_cache_store", phase_start.elapsed());
                 }
+                computed_value
             };
             let published_value = input.seeded_published_values.get(node_id);
-            let has_dynamic_dependency_delta = dynamic_dependency_delta_owner_ids.contains(node_id);
 
             if published_value.is_some_and(|value| value == &computed_value)
                 && !has_dynamic_dependency_delta
@@ -1679,6 +1726,7 @@ struct PreparedOxfmlFormula {
     translated: TranslatedFormula,
     bound_formula: oxfml_core::binding::BoundFormula,
     prepared_callable: PreparedCallable,
+    edge_value_cache_path_facts: EdgeValueCachePathFacts,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
 }
@@ -1728,6 +1776,7 @@ fn prepare_oxfml_formula(
         library_context_snapshot: None,
     })
     .semantic_plan;
+    let edge_value_cache_path_facts = edge_value_cache_path_facts_for(&semantic_plan, &translated);
     let prepared_callable = derive_prepared_callable(&bound_formula, &semantic_plan);
 
     Ok(PreparedOxfmlFormula {
@@ -1741,8 +1790,25 @@ fn prepare_oxfml_formula(
             .collect(),
         bound_formula,
         prepared_callable,
+        edge_value_cache_path_facts,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
+}
+
+fn edge_value_cache_path_facts_for(
+    semantic_plan: &SemanticPlan,
+    translated: &TranslatedFormula,
+) -> EdgeValueCachePathFacts {
+    EdgeValueCachePathFacts {
+        volatile: semantic_plan.execution_profile.volatility != FormulaVolatilityClass::Stable
+            || semantic_plan.execution_profile.determinism
+                != FormulaDeterminismClass::Deterministic,
+        effectful: semantic_plan.execution_profile.requires_host_interaction
+            || semantic_plan
+                .execution_profile
+                .contains_external_event_dependence
+            || !translated.residuals.is_empty(),
+    }
 }
 
 fn bind_visible_structure_context_version(
@@ -1854,6 +1920,157 @@ fn prepared_formula_reuse_diagnostics(identities: &[PreparedFormulaIdentityTrace
             )
         })
         .collect()
+}
+
+fn build_seeded_edge_value_cache(
+    prepared_formulas: &BTreeMap<TreeNodeId, PreparedOxfmlFormula>,
+    seeded_published_values: &BTreeMap<TreeNodeId, String>,
+    formula_count: usize,
+    diagnostics: &mut Vec<String>,
+) -> Option<EdgeValueCache> {
+    if seeded_published_values.is_empty() {
+        return None;
+    }
+
+    let mut cache = EdgeValueCache::new(EdgeValueCachePolicy::w054_pending(formula_count.max(1)));
+    for (node_id, prepared) in prepared_formulas {
+        let Some(value) = seeded_published_values.get(node_id) else {
+            continue;
+        };
+        store_edge_value_cache(
+            &mut cache,
+            prepared,
+            *node_id,
+            value.clone(),
+            0,
+            diagnostics,
+        );
+    }
+    Some(cache)
+}
+
+fn lookup_edge_value_cache(
+    cache: &EdgeValueCache,
+    prepared: &PreparedOxfmlFormula,
+    node_id: TreeNodeId,
+    invalidation_closure: &InvalidationClosure,
+    has_dynamic_dependency_delta: bool,
+    caller_supplied_invalidation_seeds: bool,
+    diagnostics: &mut Vec<String>,
+) -> Option<String> {
+    if let Some(reason) = edge_value_cache_bypass_reason(
+        node_id,
+        invalidation_closure,
+        has_dynamic_dependency_delta,
+        caller_supplied_invalidation_seeds,
+    ) {
+        diagnostics.push(format!("edge_value_cache_bypass:{node_id}:{reason}"));
+        return None;
+    }
+
+    let key = edge_value_cache_key(prepared);
+    match cache.lookup(&key, prepared.edge_value_cache_path_facts.eligibility()) {
+        EdgeValueCacheLookup::Hit(entry) => {
+            diagnostics.push(format!(
+                "edge_value_cache_hit:{node_id}:call_site_id={};hole_binding_fingerprint={}",
+                (entry.key.call_site_id.0),
+                (entry.key.hole_binding_fingerprint.0)
+            ));
+            Some(entry.value_payload)
+        }
+        EdgeValueCacheLookup::Miss => {
+            diagnostics.push(format!(
+                "edge_value_cache_miss:{node_id}:call_site_id={};hole_binding_fingerprint={}",
+                key.call_site_id.0, key.hole_binding_fingerprint.0
+            ));
+            None
+        }
+        EdgeValueCacheLookup::Excluded(reason) => {
+            diagnostics.push(format!(
+                "edge_value_cache_excluded:{node_id}:{}",
+                reason.selector_key()
+            ));
+            None
+        }
+    }
+}
+
+fn edge_value_cache_bypass_reason(
+    node_id: TreeNodeId,
+    invalidation_closure: &InvalidationClosure,
+    has_dynamic_dependency_delta: bool,
+    caller_supplied_invalidation_seeds: bool,
+) -> Option<&'static str> {
+    if has_dynamic_dependency_delta {
+        return Some("DynamicDependencyDelta");
+    }
+
+    let record = invalidation_closure.records.get(&node_id)?;
+    if record
+        .reasons
+        .contains(&InvalidationReasonKind::UpstreamPublication)
+    {
+        return Some("UpstreamPublication");
+    }
+    if record
+        .reasons
+        .contains(&InvalidationReasonKind::ExternallyInvalidated)
+    {
+        return Some("ExternallyInvalidated");
+    }
+    if caller_supplied_invalidation_seeds {
+        return Some("ExplicitInvalidationSeed");
+    }
+    None
+}
+
+fn store_edge_value_cache(
+    cache: &mut EdgeValueCache,
+    prepared: &PreparedOxfmlFormula,
+    node_id: TreeNodeId,
+    value_payload: String,
+    derivation_epoch: u64,
+    diagnostics: &mut Vec<String>,
+) {
+    let key = edge_value_cache_key(prepared);
+    match cache.store(
+        key,
+        prepared.edge_value_cache_path_facts.eligibility(),
+        value_payload,
+        derivation_epoch,
+    ) {
+        EdgeValueCacheStoreResult::Stored { entry, evicted_key } => {
+            diagnostics.push(format!(
+                "edge_value_cache_store:{node_id}:call_site_id={};hole_binding_fingerprint={};evicted={}",
+                entry.key.call_site_id.0,
+                entry.key.hole_binding_fingerprint.0,
+                evicted_key
+                    .map(|key| key.call_site_id.0)
+                    .unwrap_or_else(|| "none".to_string())
+            ));
+        }
+        EdgeValueCacheStoreResult::Excluded(reason) => {
+            diagnostics.push(format!(
+                "edge_value_cache_store_excluded:{node_id}:{}",
+                reason.selector_key()
+            ));
+        }
+    }
+}
+
+fn edge_value_cache_key(prepared: &PreparedOxfmlFormula) -> EdgeValueCacheKey {
+    EdgeValueCacheKey::new(
+        format!(
+            "tree_node:{};plan_template:{}",
+            prepared.binding.owner_node_id,
+            prepared.prepared_callable.plan_template.plan_template_key
+        ),
+        prepared
+            .prepared_callable
+            .hole_bindings
+            .binding_fingerprint
+            .clone(),
+    )
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
@@ -2668,6 +2885,9 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
         TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
@@ -2676,6 +2896,7 @@ mod tests {
         BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
         StructuralSnapshotId,
     };
+    use serde_json::json;
 
     use super::*;
 
@@ -2778,6 +2999,214 @@ mod tests {
             "missing diagnostic {expected:?} in {:?}",
             run.diagnostics
         );
+    }
+
+    fn has_diagnostic_prefix(run: &LocalTreeCalcRunArtifacts, prefix: &str) -> bool {
+        run.diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.starts_with(prefix))
+    }
+
+    fn f2_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001")
+    }
+
+    fn differential_evaluation_gate_catalog() -> TreeFormulaCatalog {
+        TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:f2".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:f2".to_string())),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Binary {
+                    op: FixtureFormulaBinaryOp::Add,
+                    left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    })),
+                    right: Box::new(FixtureFormulaAst::Literal {
+                        value: "3".to_string(),
+                    }),
+                },
+            ),
+        }])
+    }
+
+    fn differential_evaluation_gate_input(
+        structural_snapshot: StructuralSnapshot,
+        formula_catalog: TreeFormulaCatalog,
+        seeded_published_values: BTreeMap<TreeNodeId, String>,
+        invalidation_seeds: Vec<InvalidationSeed>,
+        run_suffix: &str,
+    ) -> LocalTreeCalcInput {
+        LocalTreeCalcInput {
+            structural_snapshot,
+            formula_catalog,
+            seeded_published_values,
+            seeded_published_runtime_effects: Vec::new(),
+            invalidation_seeds,
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("cand:f2:{run_suffix}"),
+            publication_id: format!("pub:f2:{run_suffix}"),
+            compatibility_basis: format!("snapshot:f2:{run_suffix}"),
+            artifact_token_basis: format!("snapshot:f2:{run_suffix}"),
+            environment_context: LocalTreeCalcEnvironmentContext::default(),
+        }
+    }
+
+    fn run_differential_evaluation_gate_scenarios() -> (
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+        LocalTreeCalcRunArtifacts,
+    ) {
+        let engine = LocalTreeCalcEngine;
+        let formula_catalog = differential_evaluation_gate_catalog();
+        let initial = engine
+            .execute(differential_evaluation_gate_input(
+                snapshot(),
+                formula_catalog.clone(),
+                BTreeMap::new(),
+                Vec::new(),
+                "initial",
+            ))
+            .expect("initial F2 run should publish");
+
+        let reuse = engine
+            .execute(differential_evaluation_gate_input(
+                snapshot(),
+                formula_catalog.clone(),
+                initial.published_values.clone(),
+                Vec::new(),
+                "reuse",
+            ))
+            .expect("F2 reuse run should verify clean");
+
+        let edited_snapshot = snapshot()
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetConstantValue {
+                    node_id: TreeNodeId(2),
+                    constant_value: Some("4".to_string()),
+                },
+            )
+            .expect("constant edit should be valid")
+            .snapshot;
+        let upstream_bypass = engine
+            .execute(differential_evaluation_gate_input(
+                edited_snapshot,
+                formula_catalog,
+                initial.published_values.clone(),
+                vec![InvalidationSeed {
+                    node_id: TreeNodeId(2),
+                    reason: InvalidationReasonKind::UpstreamPublication,
+                }],
+                "upstream-bypass",
+            ))
+            .expect("upstream F2 run should publish changed value");
+
+        (initial, reuse, upstream_bypass)
+    }
+
+    fn treecalc_state_key(state: &LocalTreeCalcRunState) -> &'static str {
+        match state {
+            LocalTreeCalcRunState::Published => "published",
+            LocalTreeCalcRunState::VerifiedClean => "verified_clean",
+            LocalTreeCalcRunState::Rejected => "rejected",
+        }
+    }
+
+    fn differential_evaluation_gate_artifact_json() -> serde_json::Value {
+        let (initial, reuse, upstream_bypass) = run_differential_evaluation_gate_scenarios();
+        json!({
+            "run_id": "w050-f2-differential-evaluation-gates-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core differential_evaluation_gate -- --nocapture",
+            "gate": {
+                "cache_key_fields": [
+                    "call_site_id",
+                    "hole_binding_fingerprint"
+                ],
+                "cache_hit_reuse_condition": "matching per-edge key with no caller-supplied invalidation seed and no upstream/external/dynamic dependency delta",
+                "path_exclusions": [
+                    "VolatileFunction",
+                    "EffectfulPath"
+                ],
+                "semantic_bypasses": [
+                    "UpstreamPublication",
+                    "ExternallyInvalidated",
+                    "DynamicDependencyDelta",
+                    "ExplicitInvalidationSeed"
+                ]
+            },
+            "validation_cases": [
+                {
+                    "case_id": "hit_reuses_seeded_value_without_publication_change",
+                    "initial_result_state": treecalc_state_key(&initial.result_state),
+                    "reuse_result_state": treecalc_state_key(&reuse.result_state),
+                    "initial_published_value": initial.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "reuse_published_value": reuse.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "cache_hit_observed": has_diagnostic_prefix(&reuse, "edge_value_cache_hit:node:3:"),
+                    "oxfml_invocation_skipped": !has_diagnostic_prefix(&reuse, "oxfml_candidate_result_id:"),
+                    "publication_bundle_emitted": reuse.publication_bundle.is_some()
+                },
+                {
+                    "case_id": "upstream_publication_bypasses_cache_and_publishes_changed_value",
+                    "result_state": treecalc_state_key(&upstream_bypass.result_state),
+                    "published_value": upstream_bypass.published_values.get(&TreeNodeId(3)).cloned().unwrap_or_default(),
+                    "cache_bypass_observed": has_diagnostic_prefix(&upstream_bypass, "edge_value_cache_bypass:node:3:UpstreamPublication"),
+                    "oxfml_invocation_executed": has_diagnostic_prefix(&upstream_bypass, "oxfml_candidate_result_id:"),
+                    "publication_bundle_emitted": upstream_bypass.publication_bundle.is_some()
+                }
+            ]
+        })
+    }
+
+    #[test]
+    fn differential_evaluation_gate_reuses_cached_value_without_publication_change() {
+        let (initial, reuse, _) = run_differential_evaluation_gate_scenarios();
+
+        assert_eq!(initial.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(initial.published_values[&TreeNodeId(3)], "5");
+        assert_eq!(reuse.result_state, LocalTreeCalcRunState::VerifiedClean);
+        assert_eq!(reuse.published_values[&TreeNodeId(3)], "5");
+        assert!(has_diagnostic_prefix(
+            &reuse,
+            "edge_value_cache_hit:node:3:"
+        ));
+        assert!(!has_diagnostic_prefix(&reuse, "oxfml_candidate_result_id:"));
+        assert!(reuse.publication_bundle.is_none());
+        assert_has_diagnostic(&reuse, "verified_clean_publication_suppressed:node:3");
+    }
+
+    #[test]
+    fn differential_evaluation_gate_bypasses_cache_for_upstream_publication() {
+        let (_, _, upstream_bypass) = run_differential_evaluation_gate_scenarios();
+
+        assert_eq!(
+            upstream_bypass.result_state,
+            LocalTreeCalcRunState::Published
+        );
+        assert_eq!(upstream_bypass.published_values[&TreeNodeId(3)], "7");
+        assert!(has_diagnostic_prefix(
+            &upstream_bypass,
+            "edge_value_cache_bypass:node:3:UpstreamPublication"
+        ));
+        assert!(has_diagnostic_prefix(
+            &upstream_bypass,
+            "oxfml_candidate_result_id:"
+        ));
+        assert!(upstream_bypass.publication_bundle.is_some());
+    }
+
+    #[test]
+    fn differential_evaluation_gate_checked_artifact_matches_runtime_validation() {
+        let artifact_path = f2_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("F2 run artifact should be checked in"),
+        )
+        .expect("F2 run artifact should be valid JSON");
+
+        assert_eq!(artifact, differential_evaluation_gate_artifact_json());
     }
 
     #[test]
@@ -3487,10 +3916,15 @@ mod tests {
         assert!(
             run.diagnostics
                 .iter()
+                .any(|diagnostic| diagnostic.starts_with("edge_value_cache_hit:node:3:"))
+        );
+        assert!(
+            !run.diagnostics
+                .iter()
                 .any(|diagnostic| diagnostic.starts_with("oxfml_candidate_result_id:"))
         );
         assert!(
-            run.diagnostics
+            !run.diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.starts_with("oxfml_commit_attempt_id:"))
         );

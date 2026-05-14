@@ -544,6 +544,11 @@ owned by `.beads/`, not this document.
     exclusion, bounded oldest-first eviction, and retention class
     `W054PendingEphemeralPerEdgeValueCache`. The checked evidence root is
     `docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001`.
+32. F2 live uptake: TreeCalc invocation now gates OxFml evaluation through the
+    per-edge cache when prior published values seed the cache. Matching keys
+    reuse cached values only when no upstream/external/dynamic dependency delta
+    or caller-supplied invalidation seed is present; the checked evidence root
+    is `docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001`.
 
 ## 7. Required Work
 
@@ -690,6 +695,10 @@ The W050 work, organised by lane.
     hit/miss/exclusion tests, and checked artifact
     `docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001/run_artifact.json`.
 34. Implement differential-evaluation gates: at invocation time, check whether hole-binding fingerprints match cached subresults; on hit, skip subexpression re-evaluation.
+    F2 wires the TreeCalc invocation loop to skip OxFml evaluation on a
+    cache-hit default verification rerun while preserving publication behavior,
+    and to bypass reuse on upstream-publication invalidation. Evidence:
+    `docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001/run_artifact.json`.
 35. Implement derivation trace as a first-class `invoke` outcome under trace-mode opt-in: template selection, hole bindings, sub-invocation tree, kernel-returned values.
 36. Implement push/pull duality: a wave's scheduling policy (push-flavoured visibility-bounded vs pull-flavoured full-closure) is selectable on top of the same dependency graph and the same `PreparedCallable` cache.
 

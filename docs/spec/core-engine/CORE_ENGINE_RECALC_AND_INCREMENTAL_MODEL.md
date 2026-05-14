@@ -345,6 +345,15 @@ initial retention class is `W054PendingEphemeralPerEdgeValueCache`, with a
 bounded `MaxEntriesOldestFirst` eviction policy until W054 owns durable
 retention policy.
 
+The invocation-time differential gate may reuse a cached value only when the
+per-edge key matches and the invalidation context leaves the edge
+semantically stable. The current OxCalc gate therefore bypasses reuse for
+upstream publication, external invalidation, dynamic dependency deltas, and
+caller-supplied invalidation seeds until a stronger proof token is available.
+On a hit, OxCalc uses the cached value as the invocation result and suppresses
+the OxFml invocation; publication semantics are unchanged because verified
+clean values still suppress publication bundles.
+
 ### 13.4 Why These Lanes Remain Explicit
 They remain explicit so that:
 1. the architecture does not forget them,

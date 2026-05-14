@@ -807,7 +807,48 @@ TreeCalc structural targets. CALC-002 must still ask OxFml for the
 canonical formal-reference set and stable prepared-callable reference
 handles that make those carriers unnecessary.
 
-### 22.9 CALC-002 Handoff Inputs
+### 22.9 Current V1 TreeCalc Production Invocation Mapping
+The current OxCalc B7 uptake removes the TreeCalc production evaluation
+dependency on `MinimalUpstreamHostPacket`. `LocalTreeCalcEngine` now
+enters OxFml through `OxfmlRecalcSessionDriver::invoke` after assembling
+the public V1 runtime inputs directly from the prepared formula and the
+current in-wave value map.
+
+Current mapping:
+1. `RuntimeFormulaRequest` uses the existing `PreparedOxfmlFormula`
+   `FormulaSourceRecord` and `EvaluationBackend::OxFuncBacked`.
+2. `RuntimeEnvironment` uses the prepared bound formula's
+   `structure_context_version`, the TreeCalc owner node as caller
+   position, current in-wave values as `cell_values`, and translated
+   reference bindings as `DefinedNameBinding::Reference` entries.
+3. Host-sensitive residuals are represented by a TreeCalc-local
+   `HostInfoProvider` that preserves the current deterministic
+   `treecalc.host_sensitive_reference` provider-failure outcome for
+   `INFO` queries.
+4. Dynamic-potential residuals are represented by a TreeCalc-local
+   `RtdProvider` that returns `CapabilityDenied`, preserving the current
+   no-publish dynamic-dependency failure path.
+5. `MinimalUpstreamHostPacket` and its `Minimal*` facts remain only in
+   deterministic upstream-host fixture/scaffolding surfaces
+   (`upstream_host.rs`, `upstream_host_fixture.rs`, integration tests,
+   and runner evidence). They are no longer used by the TreeCalc
+   production recalc path.
+
+Current B7 limit: current V1 still uses synthetic A1 targets for
+`cell_values` and defined-name reference bindings while CALC-002 owns the
+canonical prepared-callable reference/input transport. This keeps B7
+scoped to replacing the production packet dependency rather than
+pretending the final reference model is already available.
+
+Semantic equivalence statement: B7 changes how TreeCalc constructs the
+current V1 OxFml call, not the observable recalc strategy. The same
+formula source, structure-context version, working values, reference
+targets, host-sensitive provider-failure outcome, dynamic-potential RTD
+denial, `RuntimeFormulaResult` adaptation, and OxCalc single-publisher
+coordinator authority are preserved for the currently exercised Stage 1
+profiles.
+
+### 22.10 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -828,6 +869,10 @@ handles that make those carriers unnecessary.
 8. the B3-observed managed-session output gap: current
    `RuntimeManagedCommitResult` does not carry all full
    `RuntimeFormulaResult` surfaces consumed by OxCalc's coordinator path.
+9. the B7-observed remaining compatibility bridge: current TreeCalc
+   production invocation still maps structural targets through synthetic
+   A1 `cell_values` and defined-name reference bindings until OxFml
+   exposes canonical prepared-callable reference/input transport.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

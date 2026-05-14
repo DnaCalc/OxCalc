@@ -10,11 +10,17 @@ use oxfml_core::binding::{
     BindContext, BindRequest, NameKind, NormalizedReference, UnresolvedReferenceRecord,
     bind_formula,
 };
-use oxfml_core::consumer::runtime::RuntimeFormulaResult;
+use oxfml_core::consumer::runtime::{
+    RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
+};
+use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::ReturnedValueSurfaceKind;
+use oxfml_core::interface::TypedContextQueryBundle;
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
+use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
+use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use thiserror::Error;
 
@@ -27,16 +33,12 @@ use crate::dependency::{
     InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaCatalog, TreeReference};
+use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
 };
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
-};
-use crate::upstream_host::{
-    MinimalAddressMode, MinimalBindingWorld, MinimalFormulaSlotFacts, MinimalHostInfoMode,
-    MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
-    UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -431,7 +433,7 @@ impl LocalTreeCalcEngine {
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
             let phase_start = Instant::now();
-            let evaluation_result = evaluate_via_oxfml(prepared, &working_values);
+            let evaluation_result = evaluate_with_oxfml_session(prepared, &working_values);
             phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
             let computed_value = match evaluation_result {
                 Ok(success) => {
@@ -1909,7 +1911,7 @@ fn formula_allows_lazy_residual_publication(formula: &TreeFormula) -> bool {
     )
 }
 
-fn evaluate_via_oxfml(
+fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
@@ -1924,9 +1926,7 @@ fn evaluate_via_oxfml(
         });
     }
 
-    let run = match build_upstream_host_packet(prepared, working_values)
-        .recalc(EvaluationBackend::OxFuncBacked)
-    {
+    let run = match invoke_prepared_formula_via_session(prepared, working_values) {
         Ok(run) => run,
         Err(detail) => {
             if let Some(failure) =
@@ -1964,6 +1964,97 @@ fn evaluate_via_oxfml(
     }
 
     adapt_oxfml_runtime_candidate(prepared, &run)
+}
+
+fn invoke_prepared_formula_via_session(
+    prepared: &PreparedOxfmlFormula,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Result<RuntimeFormulaResult, String> {
+    let host_info_provider = TreeCalcHostInfoProvider;
+    let rtd_provider = TreeCalcRtdProvider;
+    let host_info_required = prepared
+        .translated
+        .residuals
+        .iter()
+        .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive));
+    let rtd_required = prepared
+        .translated
+        .residuals
+        .iter()
+        .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential));
+    let query_bundle = TypedContextQueryBundle::new(
+        host_info_required.then_some(&host_info_provider as &dyn HostInfoProvider),
+        rtd_required.then_some(&rtd_provider as &dyn RtdProvider),
+        None,
+        None,
+        None,
+    );
+    let request = RuntimeFormulaRequest::new(prepared.source.clone(), query_bundle)
+        .with_backend(EvaluationBackend::OxFuncBacked);
+    let mut session =
+        OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(prepared, working_values));
+
+    session.invoke(request).map_err(|error| error.to_string())
+}
+
+fn build_treecalc_runtime_environment(
+    prepared: &PreparedOxfmlFormula,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> RuntimeEnvironment<'static> {
+    let defined_names = prepared
+        .translated
+        .reference_bindings
+        .iter()
+        .map(|reference| {
+            (
+                reference.token.clone(),
+                DefinedNameBinding::Reference(ReferenceLike {
+                    kind: ReferenceKind::A1,
+                    target: synthetic_cell_target(reference.target_node_id),
+                }),
+            )
+        })
+        .collect();
+    let cell_values = working_values
+        .iter()
+        .map(|(node_id, value)| (synthetic_cell_target(*node_id), string_to_eval_value(value)))
+        .collect();
+
+    RuntimeEnvironment::new()
+        .with_structure_context_version(StructureContextVersion(
+            prepared.bound_formula.structure_context_version.clone(),
+        ))
+        .with_caller_position(synthetic_cell_row(prepared.binding.owner_node_id), 1)
+        .with_defined_names(defined_names)
+        .with_cell_values(cell_values)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TreeCalcHostInfoProvider;
+
+impl HostInfoProvider for TreeCalcHostInfoProvider {
+    fn query_cell_info(
+        &self,
+        query: CellInfoQuery,
+        _reference: Option<&ReferenceLike>,
+    ) -> Result<EvalValue, HostInfoError> {
+        Err(HostInfoError::UnsupportedCellInfoQuery(query))
+    }
+
+    fn query_info(&self, _query: InfoQuery) -> Result<EvalValue, HostInfoError> {
+        Err(HostInfoError::ProviderFailure {
+            detail: "treecalc.host_sensitive_reference".to_string(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TreeCalcRtdProvider;
+
+impl RtdProvider for TreeCalcRtdProvider {
+    fn resolve_rtd(&self, _request: &RtdRequest) -> RtdProviderResult {
+        RtdProviderResult::CapabilityDenied
+    }
 }
 
 fn adapt_oxfml_runtime_candidate(
@@ -2110,89 +2201,6 @@ fn validate_oxfml_commit_bundle(
 
     Ok(())
 }
-
-fn build_upstream_host_packet(
-    prepared: &PreparedOxfmlFormula,
-    working_values: &BTreeMap<TreeNodeId, String>,
-) -> MinimalUpstreamHostPacket {
-    let mut defined_name_bindings = BTreeMap::new();
-    for reference in &prepared.translated.reference_bindings {
-        defined_name_bindings.insert(
-            reference.token.clone(),
-            UpstreamDefinedNameBinding::Reference(ReferenceLike {
-                kind: ReferenceKind::A1,
-                target: synthetic_cell_target(reference.target_node_id),
-            }),
-        );
-    }
-
-    let cell_fixture = working_values
-        .iter()
-        .map(|(node_id, value)| (synthetic_cell_target(*node_id), string_to_eval_value(value)))
-        .collect();
-
-    MinimalUpstreamHostPacket {
-        formula_slot: MinimalFormulaSlotFacts {
-            fixture_input_id: format!("fixture:{}", prepared.source.formula_stable_id.0),
-            formula_slot_id: Some(prepared.binding.owner_node_id.0.to_string()),
-            formula_stable_id: prepared.source.formula_stable_id.0.clone(),
-            formula_token: prepared.source.formula_token().0,
-            bind_artifact_id: prepared
-                .binding
-                .bind_artifact_id
-                .as_ref()
-                .map(|id| id.0.clone()),
-            formula_text: prepared.source.entered_formula_text.clone(),
-            formula_text_version: prepared.source.formula_text_version.0,
-            formula_channel_kind: prepared.source.formula_channel_kind,
-            address_mode: MinimalAddressMode::A1,
-            caller_anchor: UpstreamHostAnchor {
-                row: synthetic_cell_row(prepared.binding.owner_node_id),
-                col: 1,
-            },
-            active_selection_anchor: None,
-            structure_context_version: prepared.bound_formula.structure_context_version.clone(),
-        },
-        binding_world: MinimalBindingWorld {
-            cell_fixture,
-            defined_name_bindings,
-            table_catalog: Vec::new(),
-            enclosing_table_ref: None,
-            caller_table_region: None,
-        },
-        typed_query_facts: MinimalTypedQueryFacts {
-            host_info_mode: if prepared
-                .translated
-                .residuals
-                .iter()
-                .any(|residual| matches!(residual.kind, ResidualCarrierKind::HostSensitive))
-            {
-                MinimalHostInfoMode::ProviderFailure {
-                    detail: "treecalc.host_sensitive_reference".to_string(),
-                }
-            } else {
-                MinimalHostInfoMode::Disabled
-            },
-            rtd_mode: if prepared
-                .translated
-                .residuals
-                .iter()
-                .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential))
-            {
-                crate::upstream_host::MinimalRtdMode::CapabilityDenied
-            } else {
-                crate::upstream_host::MinimalRtdMode::Disabled
-            },
-            locale_context_kind: crate::upstream_host::MinimalLocaleContextKind::Disabled,
-            now_serial: None,
-            random_value: None,
-            registered_external_present: false,
-        },
-        runtime_catalog: MinimalRuntimeCatalogFacts::default(),
-        publication_context: None,
-    }
-}
-
 fn translate_formula(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,

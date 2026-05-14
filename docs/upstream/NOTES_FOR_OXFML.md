@@ -1159,3 +1159,37 @@ Current OxCalc gap routed to `HANDOFF-CALC-002`:
 Current non-assumption:
 1. the B5 source handles are evidence for current V1 uptake; they are not
    a request for OxCalc to inspect private binder internals.
+
+## 70. W050 B7 TreeCalc Production Session Invocation Uptake
+OxCalc has now routed the TreeCalc production recalc path through the
+OxCalc session driver rather than through the deterministic
+`MinimalUpstreamHostPacket` fixture packet.
+
+Current OxCalc code shape is:
+1. `LocalTreeCalcEngine` calls a TreeCalc-local session invocation helper,
+2. that helper builds `RuntimeFormulaRequest` from the prepared
+   `FormulaSourceRecord` and `EvaluationBackend::OxFuncBacked`,
+3. it builds `RuntimeEnvironment` from the prepared
+   `structure_context_version`, caller node position, current in-wave
+   values, and defined-name reference bindings,
+4. it invokes OxFml through `OxfmlRecalcSessionDriver::invoke`,
+5. host-sensitive and dynamic-potential residual outcomes are preserved
+   through TreeCalc-local deterministic provider shims,
+6. `MinimalUpstreamHostPacket` remains only in upstream-host
+   fixture/scaffolding code, integration tests, and runner evidence.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. current V1 TreeCalc production invocation still maps structural
+   targets through synthetic A1 `cell_values` and defined-name reference
+   bindings,
+2. OxCalc still needs canonical prepared-callable reference/input
+   transport that can retire those synthetic compatibility inputs,
+3. the packet surface is no longer a production dependency, but the final
+   reference/input model is still pending the same CALC-002 prepared
+   callable and formal-reference support.
+
+Current non-assumptions:
+1. OxCalc is not asking for private or flat-root OxFml access,
+2. OxCalc is not treating `MinimalUpstreamHostPacket` as a future
+   production seam,
+3. OxCalc is not moving coordinator publication authority into OxFml.

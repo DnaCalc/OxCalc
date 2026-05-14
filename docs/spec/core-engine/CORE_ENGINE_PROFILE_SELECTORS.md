@@ -9,24 +9,25 @@ Status:
 2. canonical local source for selectors introduced by W050 Lane E,
 3. handoff-preparation surface for shared OxFml/OxFunc evaluation context work.
 
-`ErrorAlgebra` is reserved for the next Lane E item. This document only locks
-the `NumericalReductionPolicy` selector.
+This document locks the `NumericalReductionPolicy` and `ErrorAlgebra`
+selectors.
 
 ## 2. Profile Record Rule
-Every replay-visible evaluation profile that can affect numerical reductions
-must carry:
+Every replay-visible correctness-floor evaluation profile must carry:
 
 1. `profile_version`
 2. `numerical_reduction_policy`
+3. `error_algebra`
 
-The replay key form is:
+The individual replay key forms are:
 
 ```text
 <profile_version>|numerical_reduction_policy:<selector_key>
+<profile_version>|error_algebra:<selector_key>
 ```
 
-The selector is semantic state. It is not an optimization hint and not a
-scheduler-local choice.
+Both selectors are semantic state. They are not optimization hints and not
+scheduler-local choices.
 
 ## 3. NumericalReductionPolicy
 `NumericalReductionPolicy` has the following initial selector values:
@@ -41,9 +42,29 @@ Profiles may later declare documented equivalents, but an equivalent must name
 which of these replay obligations it preserves and must not silently alias a
 different observable result policy.
 
-## 4. Handoff-Ready Exact Clauses
+## 4. ErrorAlgebra
+`ErrorAlgebra` has the following initial selector value:
+
+| selector value | precedence order | replay obligation |
+|---|---|---|
+| `CanonicalExcelLegacy` | `#NULL!`, `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A` | record the selector and validate the same precedence order on replay |
+
+The order is highest precedence first. When multiple worksheet-error candidates
+must collapse to one observable result, the earliest error in the active
+algebra wins.
+
+### 4.1 Extension Rule
+Profiles may declare a non-canonical `ErrorAlgebra`, but only by using a new
+selector key and `profile_version`. A non-canonical profile must list a total
+precedence order over every admitted worksheet-error code and must explicitly
+place any newly admitted code. Replay recorded under one error algebra is not
+valid under another unless an explicit migration proof is attached.
+
+## 5. Handoff-Ready Exact Clauses
 The following clause language is ready to be copied into
 `HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md`.
+
+### 5.1 NumericalReductionPolicy
 
 `CALC-003.NRP.SequentialLeftFold`:
 
@@ -57,7 +78,17 @@ When a profile declares NumericalReductionPolicy=PairwiseTree, OxFml/OxFunc redu
 
 When a profile declares NumericalReductionPolicy=KahanCompensated, OxFml/OxFunc reduction kernels MUST reduce numeric sequences in the recorded logical input order using Kahan-style compensation state that is part of the semantic algorithm; kernels MUST surface the selector in replay so a non-compensated result cannot satisfy this profile.
 
-## 5. Replay Validation Evidence
+### 5.2 ErrorAlgebra
+
+`CALC-003.ERR.CanonicalExcelLegacy`:
+
+When a profile declares ErrorAlgebra=CanonicalExcelLegacy, OxFml/OxFunc kernels that must collapse multiple worksheet-error candidates into one observable result MUST select the earliest error in the precedence order #NULL!, #DIV/0!, #VALUE!, #REF!, #NAME?, #NUM!, #N/A; kernels MUST record the active error algebra in replay and MUST NOT substitute function-local or runtime-dependent precedence unless the active profile declares a different ErrorAlgebra selector.
+
+`CALC-003.ERR.ExtensionRule`:
+
+Any non-canonical ErrorAlgebra profile MUST use a new selector key and profile_version, MUST list a total precedence order over every admitted worksheet-error code plus explicit placement for newly admitted codes, and MUST be replay-invalid against traces recorded under CanonicalExcelLegacy unless an explicit migration proof is attached.
+
+## 6. Replay Validation Evidence
 The first checked OxCalc-local selector artifact is:
 
 `docs/test-runs/core-engine/w050-e1-numerical-reduction-policy-selector-001`
@@ -67,12 +98,20 @@ exact CALC-003 clause text. The validation test
 `checked_in_numerical_reduction_policy_artifact_matches_runtime_clauses`
 compares the checked artifact against the Rust selector surface.
 
-## 6. Status
+The first checked OxCalc-local error-algebra selector artifact is:
+
+`docs/test-runs/core-engine/w050-e2-error-algebra-selector-001`
+
+It records the canonical Excel legacy precedence order, extension rule, and
+exact CALC-003 clause text. The validation test
+`checked_in_error_algebra_artifact_matches_runtime_clauses` compares the
+checked artifact against the Rust selector surface.
+
+## 7. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - `ErrorAlgebra` selector text is intentionally left to the next Lane E item,
   - OxFml/OxFunc threading and acknowledgement remain routed through H2/CALC-003,
   - wave trace replay hooks remain routed through the Lane E replay-validation item

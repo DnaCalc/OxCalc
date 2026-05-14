@@ -10,6 +10,7 @@
 pub mod consumer;
 pub mod coordinator;
 pub mod dependency;
+pub mod error_algebra;
 pub mod formula;
 pub mod formula_identity;
 pub mod numerical_reduction;

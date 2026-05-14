@@ -1,0 +1,59 @@
+{
+  "run_id": "w050-e2-error-algebra-selector-001",
+  "selector_name": "ErrorAlgebra",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core error_algebra -- --nocapture",
+  "handoff_target": "HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md",
+  "profile_record": {
+    "required_fields": [
+      "profile_version",
+      "error_algebra"
+    ],
+    "replay_key_format": "<profile_version>|error_algebra:<selector_key>"
+  },
+  "canonical_excel_legacy": {
+    "selector_value": "CanonicalExcelLegacy",
+    "precedence_order": [
+      {
+        "rank": 1,
+        "error": "#NULL!"
+      },
+      {
+        "rank": 2,
+        "error": "#DIV/0!"
+      },
+      {
+        "rank": 3,
+        "error": "#VALUE!"
+      },
+      {
+        "rank": 4,
+        "error": "#REF!"
+      },
+      {
+        "rank": 5,
+        "error": "#NAME?"
+      },
+      {
+        "rank": 6,
+        "error": "#NUM!"
+      },
+      {
+        "rank": 7,
+        "error": "#N/A"
+      }
+    ]
+  },
+  "handoff_clauses": [
+    {
+      "clause_id": "CALC-003.ERR.CanonicalExcelLegacy",
+      "selector_value": "CanonicalExcelLegacy",
+      "exact_clause": "When a profile declares ErrorAlgebra=CanonicalExcelLegacy, OxFml/OxFunc kernels that must collapse multiple worksheet-error candidates into one observable result MUST select the earliest error in the precedence order #NULL!, #DIV/0!, #VALUE!, #REF!, #NAME?, #NUM!, #N/A; kernels MUST record the active error algebra in replay and MUST NOT substitute function-local or runtime-dependent precedence unless the active profile declares a different ErrorAlgebra selector."
+    },
+    {
+      "clause_id": "CALC-003.ERR.ExtensionRule",
+      "selector_value": null,
+      "exact_clause": "Any non-canonical ErrorAlgebra profile MUST use a new selector key and profile_version, MUST list a total precedence order over every admitted worksheet-error code plus explicit placement for newly admitted codes, and MUST be replay-invalid against traces recorded under CanonicalExcelLegacy unless an explicit migration proof is attached."
+    }
+  ]
+}

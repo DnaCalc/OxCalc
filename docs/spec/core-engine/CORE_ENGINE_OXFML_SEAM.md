@@ -649,7 +649,9 @@ The minimum input families are:
      OxFml runtime facade
    - typed query bundle/provider availability
    - profile selectors relevant to evaluation and replay, including
-     `NumericalReductionPolicy` where numerical reductions are observable
+     `NumericalReductionPolicy` where numerical reductions are observable and
+     `ErrorAlgebra` where multiple worksheet-error candidates can collapse to
+     one observable result
 4. Reference/value environment:
    - current published or working values for already-derived structural
      targets at invocation time

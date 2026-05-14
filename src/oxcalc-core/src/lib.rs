@@ -16,6 +16,7 @@ pub mod oxfml_session;
 pub mod recalc;
 pub mod recalc_wave;
 pub mod repository;
+pub mod stream_semantics;
 pub mod structural;
 pub mod treecalc;
 pub mod treecalc_fixture;

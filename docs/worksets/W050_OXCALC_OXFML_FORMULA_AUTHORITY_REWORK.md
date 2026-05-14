@@ -496,6 +496,12 @@ owned by `.beads/`, not this document.
     `dedupe_identity`. `TopicEnvelopeUpdate` batches are sorted before
     mutation and deduped by event identity, with schema and deterministic
     ordering tests pinning the current V1 repository behavior.
+25. D3 live uptake: `StreamSemanticsVersion` is now an OxCalc profile
+    selector with `ExternalInvalidationV0`, `TopicEnvelopeV1`, and
+    `RtdLifecycleV2` variants. `StreamSemanticsProfile` carries
+    `profile_version` plus selector value, exposes replay profile keys and
+    behavior hooks, and dispatches topic updates through the selector. Tests
+    cover selector serialization plus V0, V1, and V2 dispatch behavior.
 
 ## 7. Required Work
 
@@ -594,6 +600,12 @@ The W050 work, organised by lane.
     with `ordering_key` and `dedupe_identity`, JSON schema round-trip tests,
     and deterministic ordering/dedupe tests for replay-facing batches.
 26. Wire `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2` as a profile-governed selector with the three behaviours specified in Foundation.
+    D3 adds `StreamSemanticsProfile`, selector serialization, behavior hooks,
+    and dispatch tests. `ExternalInvalidationV0` records the dirty-seed hook
+    without mutating topic envelopes; `TopicEnvelopeV1` dispatches through
+    deterministic envelope ordering/dedupe; `RtdLifecycleV2` dispatches
+    through the same envelope path and exposes an RTD lifecycle hook for the
+    later lifecycle/replay corpus beads.
 27. Implement the typed dirty-seed pathway: external signal → topic envelope update → all subscribing formula_stable_ids marked dirty for the next wave.
 28. RTD-driven recalc replay-determinism corpus: a fixture suite that verifies a recorded sequence of topic updates reproduces identical published values under each `StreamSemanticsVersion`.
 
@@ -860,8 +872,9 @@ OxFml retains canonical authority over body parse, bind, semantic plan, and eval
 
 - The Repository carries a persistent **Subscription Registry** mapping `(topic_id, formula_stable_id) → SubscriptionHandle`. Subscriptions are created at bind time when a `PreparedCallable`'s `runtime_effect_classification` declares `ExternallyInvalidated(topic_descriptor)` (RTD calls, registered-external streams, host-watcher hooks). Subscriptions release when the callable is invalidated by a text or name-world change.
 - The Repository carries a **Topic Envelope** per subscribed topic: `(topic_id, topic_sequence, last_observed_payload_ref, ordering_key, dedupe_identity)`. The envelope is the replay-visible identity of "the most recent state of this topic"; ordering and dedupe semantics are profile-governed by `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2`.
-- An external invalidation signal updates the topic envelope and stamps every subscribing `formula_stable_id` as a dirty seed with reason `ExternallyInvalidated(topic_id, topic_sequence)`. The next wave's dirty closure includes them. The wave evaluates subscribed callables by ordinary `invoke`; the `RtdProvider` / registered-external provider consults the topic envelope to materialise the current value. **The push is invalidation only; evaluation remains pull.**
-- Topic envelopes are recorded as wave inputs alongside formula text and structural edits. Replay reconstructs them by replaying topic-update events in the recorded order under the active `StreamSemanticsVersion`. RTD-driven recalc therefore reproduces deterministically — the engine reads the same envelope, the provider returns the same payload, the invoke produces the same result.
+- The active `StreamSemanticsProfile` is replay-visible as `(profile_version, stream_semantics_version)`. `ExternalInvalidationV0` is the pathfinder dirty-seed hook without envelope mutation; `TopicEnvelopeV1` records topic envelopes with deterministic ordering and event-identity dedupe; `RtdLifecycleV2` uses the same envelope path and additionally exposes RTD lifecycle tracking hooks for the later corpus/lifecycle lane.
+- An external invalidation signal routes through the selected behavior hook and stamps every subscribing `formula_stable_id` as a dirty seed with reason `ExternallyInvalidated(topic_id, topic_sequence)`. Under `TopicEnvelopeV1` and `RtdLifecycleV2`, the signal also updates the topic envelope. The next wave's dirty closure includes subscribing formulas. The wave evaluates subscribed callables by ordinary `invoke`; the `RtdProvider` / registered-external provider consults the topic envelope when the active selector records one. **The push is invalidation only; evaluation remains pull.**
+- When the active selector records topic envelopes, they are recorded as wave inputs alongside formula text and structural edits. Replay reconstructs them by replaying topic-update events in the recorded order under the active `StreamSemanticsVersion`. RTD-driven recalc therefore reproduces deterministically — the engine reads the same envelope, the provider returns the same payload, the invoke produces the same result.
 
 The same wiring applies to host-supplied invalidation hooks (custom UDFs that signal "my output changed") under the same envelope discipline. External invalidation is a first-class seed source, not a side channel.
 

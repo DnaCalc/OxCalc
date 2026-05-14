@@ -217,6 +217,26 @@ But fallback must be:
 3. instrumented,
 4. treated as a known optimization gap rather than as invisible baseline behavior.
 
+### 9.4 External Stream Semantics Selector
+External invalidation and RTD-like update handling are selected by
+`StreamSemanticsProfile = (profile_version, stream_semantics_version)`.
+
+The `stream_semantics_version` selector has three values:
+1. `ExternalInvalidationV0`: pathfinder dirty-seed behavior. Topic-update
+   events route to the external invalidation dirty-seed hook, but the
+   repository does not mutate replay-visible topic envelopes under this
+   selector.
+2. `TopicEnvelopeV1`: topic updates mutate replay-visible topic envelopes
+   through deterministic ordering and event-identity dedupe.
+3. `RtdLifecycleV2`: topic updates use the `TopicEnvelopeV1` envelope path
+   and additionally expose an RTD lifecycle tracking hook for later lifecycle
+   state and replay corpus evidence.
+
+Selector dispatch is semantic profile state, not a scheduler optimization.
+Replay artifacts that include topic-update events must identify the active
+`profile_version` and `stream_semantics_version`, and the update batch must be
+validated against the selected behavior.
+
 ## 10. Recalc Modes
 The engine architecture permits distinct recalc modes, provided they preserve semantic truth.
 

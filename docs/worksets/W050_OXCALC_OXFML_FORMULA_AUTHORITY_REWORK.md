@@ -510,6 +510,15 @@ owned by `.beads/`, not this document.
     `InvalidationReasonKind::ExternallyInvalidated`; tests prove topic fanout,
     no side-channel publication, ordinary session invocation, and coordinator
     commit authority.
+27. D4 live uptake: the deterministic RTD/external replay corpus root is
+    `docs/test-runs/core-engine/w050-d4-rtd-external-replay-corpus-001`.
+    The checked fixture records two `topic:rtd:price` updates and two
+    subscribers; the run artifact records identical normalized publications
+    under `ExternalInvalidationV0`, `TopicEnvelopeV1`, and `RtdLifecycleV2`.
+    `rtd_external_replay_corpus_publishes_identical_values_across_stream_versions`
+    proves the runtime behavior, and
+    `checked_in_rtd_external_replay_corpus_artifact_matches_runtime_validation`
+    binds the checked run artifact to the computed baseline.
 
 ## 7. Required Work
 
@@ -621,6 +630,11 @@ The W050 work, organised by lane.
     `OxfmlRecalcWave` session prepare/dependency/invoke plus
     `TreeCalcCoordinator` publication authority.
 28. RTD-driven recalc replay-determinism corpus: a fixture suite that verifies a recorded sequence of topic updates reproduces identical published values under each `StreamSemanticsVersion`.
+    D4 adds the checked corpus root
+    `docs/test-runs/core-engine/w050-d4-rtd-external-replay-corpus-001`
+    with `fixture.json`, `run_artifact.json`, validation commands, and tests
+    proving identical normalized coordinator publications for recorded topic
+    sequences 1 and 2 under all three stream semantics settings.
 
 **Lane E — Correctness Floor.**
 
@@ -889,6 +903,7 @@ OxFml retains canonical authority over body parse, bind, semantic plan, and eval
 - An external invalidation signal routes through the selected behavior hook and stamps every subscribing `formula_stable_id` as a dirty seed with reason `ExternallyInvalidated(topic_id, topic_sequence)`. Under `TopicEnvelopeV1` and `RtdLifecycleV2`, the signal also updates the topic envelope. The next wave's dirty closure includes subscribing formulas. The wave evaluates subscribed callables by ordinary `invoke`; the `RtdProvider` / registered-external provider consults the topic envelope when the active selector records one. **The push is invalidation only; evaluation remains pull.**
 - The dirty-seed record is replay-visible as `(topic_id, topic_sequence, formula_stable_id, node_id)` and enters the same dependency closure as structural or upstream-publication seeds. It does not publish values or runtime effects; only the coordinator can accept and publish a later candidate result.
 - When the active selector records topic envelopes, they are recorded as wave inputs alongside formula text and structural edits. Replay reconstructs them by replaying topic-update events in the recorded order under the active `StreamSemanticsVersion`. RTD-driven recalc therefore reproduces deterministically — the engine reads the same envelope, the provider returns the same payload, the invoke produces the same result.
+- The first checked replay corpus for this path is `w050-d4-rtd-external-replay-corpus-001`; it records the fixture, run artifact, and validation commands for the three stream selectors.
 
 The same wiring applies to host-supplied invalidation hooks (custom UDFs that signal "my output changed") under the same envelope discipline. External invalidation is a first-class seed source, not a side channel.
 

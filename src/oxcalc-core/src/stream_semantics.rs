@@ -205,12 +205,15 @@ pub struct ExternalInvalidationDispatch {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::PathBuf;
 
     use oxfml_core::EvaluationBackend;
     use oxfml_core::consumer::runtime::{RuntimeEnvironment, RuntimeFormulaRequest};
     use oxfml_core::interface::TypedContextQueryBundle;
     use oxfml_core::seam::ValuePayload;
     use oxfml_core::source::FormulaSourceRecord;
+    use serde_json::json;
 
     use crate::coordinator::{AcceptedCandidateResult, TreeCalcCoordinator};
     use crate::dependency::{
@@ -367,6 +370,24 @@ mod tests {
             compatibility_basis: "compat:external:price".to_string(),
             target_set: vec![TreeNodeId(2)],
             value_updates: BTreeMap::from([(TreeNodeId(2), "fresh".to_string())]),
+            dependency_shape_updates: Vec::new(),
+            runtime_effects: Vec::new(),
+            diagnostic_events: Vec::new(),
+        }
+    }
+
+    fn value_candidate(
+        snapshot: &StructuralSnapshot,
+        candidate_result_id: String,
+        value_updates: BTreeMap<TreeNodeId, String>,
+    ) -> AcceptedCandidateResult {
+        AcceptedCandidateResult {
+            candidate_result_id,
+            structural_snapshot_id: snapshot.snapshot_id(),
+            artifact_token_basis: "artifact:external:replay".to_string(),
+            compatibility_basis: "compat:external:replay".to_string(),
+            target_set: value_updates.keys().copied().collect(),
+            value_updates,
             dependency_shape_updates: Vec::new(),
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),
@@ -613,6 +634,162 @@ mod tests {
         assert_eq!(
             dispatch.invalidation_closure.records[&TreeNodeId(2)].reasons,
             vec![InvalidationReasonKind::ExternallyInvalidated]
+        );
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct ReplayPublication {
+        topic_sequence: u64,
+        published_values: Vec<(TreeNodeId, String)>,
+    }
+
+    fn replay_publications_for_profile(
+        stream_semantics_version: StreamSemanticsVersion,
+    ) -> Vec<ReplayPublication> {
+        let snapshot = snapshot();
+        let mut repository = external_repository(&snapshot);
+        let mut coordinator = TreeCalcCoordinator::new(snapshot.clone());
+        let profile = StreamSemanticsProfile::new(
+            format!("profile:{}", stream_semantics_version.selector_key()),
+            stream_semantics_version,
+        );
+
+        [
+            topic_update(
+                "topic:rtd:price",
+                1,
+                "payload:rtd:price:1",
+                "001",
+                "event:rtd:price:1",
+            ),
+            topic_update(
+                "topic:rtd:price",
+                2,
+                "payload:rtd:price:2",
+                "002",
+                "event:rtd:price:2",
+            ),
+        ]
+        .into_iter()
+        .filter_map(|update| {
+            let topic_sequence = update.topic_sequence;
+            let payload_ref = update.payload_ref.clone();
+            let dispatch =
+                profile.dispatch_external_invalidation_updates(&mut repository, [update]);
+            if dispatch.dirty_seeds.is_empty() {
+                return None;
+            }
+
+            repository.apply_invalidation_closure(&dispatch.invalidation_closure);
+            let value_updates = dispatch
+                .dirty_seeds
+                .iter()
+                .map(|seed| (seed.node_id, payload_ref.clone()))
+                .collect::<BTreeMap<_, _>>();
+            let candidate_result_id = format!(
+                "candidate:{}:sequence:{}",
+                stream_semantics_version.selector_key(),
+                topic_sequence
+            );
+            coordinator
+                .admit_candidate_work(value_candidate(
+                    &snapshot,
+                    candidate_result_id.clone(),
+                    value_updates.clone(),
+                ))
+                .expect("replay corpus candidate should be admitted");
+            coordinator
+                .record_accepted_candidate_result(&candidate_result_id)
+                .expect("replay corpus candidate should be accepted");
+            coordinator
+                .accept_and_publish(&format!(
+                    "publication:{}:sequence:{}",
+                    stream_semantics_version.selector_key(),
+                    topic_sequence
+                ))
+                .expect("replay corpus candidate should publish through coordinator");
+
+            Some(ReplayPublication {
+                topic_sequence,
+                published_values: value_updates.into_iter().collect(),
+            })
+        })
+        .collect()
+    }
+
+    fn d4_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-d4-rtd-external-replay-corpus-001")
+    }
+
+    #[test]
+    fn rtd_external_replay_corpus_publishes_identical_values_across_stream_versions() {
+        let baseline =
+            replay_publications_for_profile(StreamSemanticsVersion::ExternalInvalidationV0);
+        assert_eq!(
+            baseline,
+            vec![
+                ReplayPublication {
+                    topic_sequence: 1,
+                    published_values: vec![
+                        (TreeNodeId(2), "payload:rtd:price:1".to_string()),
+                        (TreeNodeId(3), "payload:rtd:price:1".to_string()),
+                    ],
+                },
+                ReplayPublication {
+                    topic_sequence: 2,
+                    published_values: vec![
+                        (TreeNodeId(2), "payload:rtd:price:2".to_string()),
+                        (TreeNodeId(3), "payload:rtd:price:2".to_string()),
+                    ],
+                },
+            ]
+        );
+
+        assert_eq!(
+            replay_publications_for_profile(StreamSemanticsVersion::TopicEnvelopeV1),
+            baseline
+        );
+        assert_eq!(
+            replay_publications_for_profile(StreamSemanticsVersion::RtdLifecycleV2),
+            baseline
+        );
+    }
+
+    #[test]
+    fn checked_in_rtd_external_replay_corpus_artifact_matches_runtime_validation() {
+        let run_artifact_path = d4_artifact_root().join("run_artifact.json");
+        let run_artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(run_artifact_path).expect("D4 run artifact should be checked in"),
+        )
+        .expect("D4 run artifact should be valid JSON");
+
+        let expected_from_runtime =
+            replay_publications_for_profile(StreamSemanticsVersion::ExternalInvalidationV0)
+                .into_iter()
+                .map(|publication| {
+                    json!({
+                        "topic_sequence": publication.topic_sequence,
+                        "published_values": publication
+                            .published_values
+                            .into_iter()
+                            .map(|(node_id, value)| json!({
+                                "node_id": node_id.0,
+                                "value": value,
+                            }))
+                            .collect::<Vec<_>>(),
+                    })
+                })
+                .collect::<Vec<_>>();
+
+        assert_eq!(run_artifact["validation_status"], "pass");
+        assert_eq!(
+            run_artifact["primary_validation_command"],
+            "cargo test -p oxcalc-core rtd_external_replay_corpus -- --nocapture"
+        );
+        assert_eq!(
+            run_artifact["expected_publications"],
+            json!(expected_from_runtime)
         );
     }
 }

@@ -1,0 +1,66 @@
+{
+  "run_id": "w050-d4-rtd-external-replay-corpus-001",
+  "corpus_id": "w050-d4-rtd-external-replay-corpus",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core rtd_external_replay_corpus -- --nocapture",
+  "supporting_validation_commands": [
+    "cargo test -p oxcalc-core stream_semantics -- --nocapture",
+    "cargo test -p oxcalc-core"
+  ],
+  "comparison_basis": "normalized coordinator publications by topic_sequence and node_id",
+  "expected_publications": [
+    {
+      "topic_sequence": 1,
+      "published_values": [
+        {
+          "node_id": 2,
+          "value": "payload:rtd:price:1"
+        },
+        {
+          "node_id": 3,
+          "value": "payload:rtd:price:1"
+        }
+      ]
+    },
+    {
+      "topic_sequence": 2,
+      "published_values": [
+        {
+          "node_id": 2,
+          "value": "payload:rtd:price:2"
+        },
+        {
+          "node_id": 3,
+          "value": "payload:rtd:price:2"
+        }
+      ]
+    }
+  ],
+  "profile_results": [
+    {
+      "profile_version": "profile:ExternalInvalidationV0",
+      "stream_semantics_version": "ExternalInvalidationV0",
+      "topic_envelope_mutation": false,
+      "dirty_seed_reason": "ExternallyInvalidated",
+      "publication_authority": "TreeCalcCoordinator",
+      "publications_match_expected": true
+    },
+    {
+      "profile_version": "profile:TopicEnvelopeV1",
+      "stream_semantics_version": "TopicEnvelopeV1",
+      "topic_envelope_mutation": true,
+      "dirty_seed_reason": "ExternallyInvalidated",
+      "publication_authority": "TreeCalcCoordinator",
+      "publications_match_expected": true
+    },
+    {
+      "profile_version": "profile:RtdLifecycleV2",
+      "stream_semantics_version": "RtdLifecycleV2",
+      "topic_envelope_mutation": true,
+      "rtd_lifecycle_hook": true,
+      "dirty_seed_reason": "ExternallyInvalidated",
+      "publication_authority": "TreeCalcCoordinator",
+      "publications_match_expected": true
+    }
+  ]
+}

@@ -243,6 +243,11 @@ ordinary dependency-closure path with reason `ExternallyInvalidated`; they do
 not publish values or runtime effects. Publication remains exclusively under
 the coordinator commit path after ordinary session invocation.
 
+The first checked OxCalc-local corpus for this path is
+`docs/test-runs/core-engine/w050-d4-rtd-external-replay-corpus-001`. It records
+the topic fixture, normalized per-profile publication artifact, and validation
+commands for all three stream selector values.
+
 ## 10. Recalc Modes
 The engine architecture permits distinct recalc modes, provided they preserve semantic truth.
 

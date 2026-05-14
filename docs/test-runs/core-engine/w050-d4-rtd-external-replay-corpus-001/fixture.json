@@ -1,0 +1,48 @@
+{
+  "run_id": "w050-d4-rtd-external-replay-corpus-001",
+  "corpus_id": "w050-d4-rtd-external-replay-corpus",
+  "fixture_kind": "rtd_external_topic_replay",
+  "stream_semantics_versions": [
+    "ExternalInvalidationV0",
+    "TopicEnvelopeV1",
+    "RtdLifecycleV2"
+  ],
+  "subscriptions": [
+    {
+      "topic_id": "topic:rtd:price",
+      "formula_stable_id": "slot:2",
+      "node_id": 2,
+      "subscription_handle": "sub:slot2:price"
+    },
+    {
+      "topic_id": "topic:rtd:price",
+      "formula_stable_id": "slot:3",
+      "node_id": 3,
+      "subscription_handle": "sub:slot3:price"
+    }
+  ],
+  "dependency_edges": [
+    {
+      "descriptor_id": "dep:report:price",
+      "owner_node_id": 4,
+      "target_node_id": 2,
+      "kind": "StaticDirect"
+    }
+  ],
+  "recorded_topic_updates": [
+    {
+      "topic_id": "topic:rtd:price",
+      "topic_sequence": 1,
+      "payload_ref": "payload:rtd:price:1",
+      "ordering_key": "001",
+      "dedupe_identity": "event:rtd:price:1"
+    },
+    {
+      "topic_id": "topic:rtd:price",
+      "topic_sequence": 2,
+      "payload_ref": "payload:rtd:price:2",
+      "ordering_key": "002",
+      "dedupe_identity": "event:rtd:price:2"
+    }
+  ]
+}

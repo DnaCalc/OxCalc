@@ -1,0 +1,139 @@
+{
+  "run_id": "w050-x5-evidence-roots-and-validation-manifest-001",
+  "validation_status": "pass",
+  "root_policy": {
+    "checked_roots": "W050 durable evidence roots live under docs/test-runs/core-engine and are validated read-only.",
+    "generated_or_ephemeral_runs": "Regeneration must use a new run id or an untracked temporary output path before any baseline replacement is reviewed.",
+    "baseline_mutation_rule": "Validation commands must not mutate checked baselines."
+  },
+  "checked_evidence_roots": [
+    {
+      "bead": "A6",
+      "path": "docs/test-runs/core-engine/w050-a6-lane-a-search-gate-001",
+      "summary": "Lane A removal/search gate summary."
+    },
+    {
+      "bead": "B8",
+      "path": "docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001",
+      "summary": "TreeCalc session corpus and replay evidence packet."
+    },
+    {
+      "bead": "D4",
+      "path": "docs/test-runs/core-engine/w050-d4-rtd-external-replay-corpus-001",
+      "summary": "RTD/external invalidation replay corpus."
+    },
+    {
+      "bead": "E1",
+      "path": "docs/test-runs/core-engine/w050-e1-numerical-reduction-policy-selector-001",
+      "summary": "NumericalReductionPolicy selector artifact."
+    },
+    {
+      "bead": "E2",
+      "path": "docs/test-runs/core-engine/w050-e2-error-algebra-selector-001",
+      "summary": "ErrorAlgebra selector artifact."
+    },
+    {
+      "bead": "E3",
+      "path": "docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001",
+      "summary": "Correctness-floor replay-hook artifact."
+    },
+    {
+      "bead": "E4",
+      "path": "docs/test-runs/core-engine/w050-e4-profile-selector-tests-001",
+      "summary": "Combined profile selector defaults, explicit selection, and mismatch diagnostics."
+    },
+    {
+      "bead": "F1",
+      "path": "docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001",
+      "summary": "Per-edge value-cache evidence."
+    },
+    {
+      "bead": "F2",
+      "path": "docs/test-runs/core-engine/w050-f2-differential-evaluation-gates-001",
+      "summary": "Differential evaluation gate evidence."
+    },
+    {
+      "bead": "F3",
+      "path": "docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001",
+      "summary": "Derivation trace invoke-outcome evidence."
+    },
+    {
+      "bead": "F4",
+      "path": "docs/test-runs/core-engine/w050-f4-push-pull-visibility-scheduling-001",
+      "summary": "Push/pull visibility-bounded scheduling evidence."
+    },
+    {
+      "bead": "F5",
+      "path": "docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001",
+      "summary": "O(k)-style differential evidence fixture."
+    },
+    {
+      "bead": "G1",
+      "path": "docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001",
+      "summary": "Rich-value capability vocabulary artifact."
+    },
+    {
+      "bead": "G2",
+      "path": "docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001",
+      "summary": "RichValueHole capability requirements artifact."
+    },
+    {
+      "bead": "G3",
+      "path": "docs/test-runs/core-engine/w050-g3-capability-trace-replay-columns-001",
+      "summary": "Capability trace/replay columns artifact."
+    },
+    {
+      "bead": "G4",
+      "path": "docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001",
+      "summary": "RichArgAccepted reservation artifact."
+    }
+  ],
+  "handoff_packets": [
+    {
+      "bead": "H1",
+      "path": "docs/handoffs/HANDOFF_CALC_002_OXFML_RECALC_SESSION_AND_PLAN_TEMPLATES.md",
+      "status": "filed_pending_receipt"
+    },
+    {
+      "bead": "H2",
+      "path": "docs/handoffs/HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md",
+      "status": "filed_pending_receipt"
+    },
+    {
+      "bead": "H3",
+      "path": "docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md",
+      "status": "filed_pending_receipt"
+    }
+  ],
+  "focused_validation_commands": [
+    {
+      "scope": "D6 subscription lifecycle",
+      "command": "cargo test -p oxcalc-core subscription -- --nocapture",
+      "observed_summary": "4 unit tests passed in the latest focused run."
+    },
+    {
+      "scope": "E4 profile selector tests",
+      "command": "cargo test -p oxcalc-core correctness_floor_profile_selector -- --nocapture",
+      "observed_summary": "4 unit tests passed in the latest focused run."
+    },
+    {
+      "scope": "E3 correctness-floor replay hooks",
+      "command": "cargo test -p oxcalc-core correctness_floor_replay -- --nocapture",
+      "observed_summary": "3 unit tests passed in the latest focused run."
+    },
+    {
+      "scope": "F6 recalc-wave compilation observability",
+      "command": "cargo test -p oxcalc-core recalc_wave -- --nocapture",
+      "observed_summary": "7 unit tests passed in the latest focused run."
+    }
+  ],
+  "validation_summary": {
+    "path_presence": "checked by X5 manifest validation command",
+    "tracked_baseline_mutation": "not permitted by manifest policy",
+    "open_receipts": [
+      "CALC-002",
+      "CALC-003",
+      "CALC-004"
+    ]
+  }
+}

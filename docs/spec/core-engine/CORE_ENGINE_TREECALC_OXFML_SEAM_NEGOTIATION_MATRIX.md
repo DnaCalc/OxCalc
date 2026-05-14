@@ -15,6 +15,19 @@ Status:
 4. explicitly pre-handoff unless a narrower trigger is reached,
 5. will be superseded or retired when the topics it tracks are consumed into executed seam intake work.
 
+W050 consolidation note:
+1. `CORE_ENGINE_OXFML_SEAM.md` Section 22 is now the canonical local seam
+   surface for the session-shaped first-call model.
+2. This matrix remains only a residual negotiation tracker. It must not be
+   used to preserve pre-W050 assumptions about per-formula upstream-host
+   packets, OxCalc-local formula parsing, or broad W026 uncertainty.
+3. W050-local surfaces that now have durable homes should be read there first:
+   topic envelopes and stream selectors in Lane D evidence/specs,
+   correctness-floor selectors in `CORE_ENGINE_PROFILE_SELECTORS.md`,
+   rich/sparse capability vocabulary in
+   `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`, and plan-template/session
+   identity in `CORE_ENGINE_OXFML_SEAM.md` plus CALC-002.
+
 This document exists so the next seam passes are structured around concrete consumed-carrier questions, not broad prose uncertainty.
 It is not the canonical local seam-reference source of truth for downstream hosts.
 Downstream hosts such as `DNA OneCalc` must read `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md` first (the single entry point), then `CORE_ENGINE_OXFML_SEAM.md`, and only then use this matrix for narrower open topics and explicit non-assumptions.
@@ -343,6 +356,31 @@ Current non-overclaim remains:
 1. Sequence 1, Sequence 2, and Sequence 3 all remain `canonical but narrower` beyond this executed first floor,
 2. this planning companion should now treat broader residual breadth as later evidence-driven widening rather than as ambiguity about the current consumed-now packet.
 
+### 6.4 W050 Consolidated Intake
+
+W050 changes the matrix role from "what must W026 discover?" to "what residual
+negotiation remains after W050 local implementation and handoffs?"
+
+Current W050 intake classification:
+
+| Topic | W050 disposition | Durable surface |
+|---|---|---|
+| Session-shaped first call | Locally specified and exercised through `OxfmlRecalcWave` / `OxfmlRecalcSessionDriver`; canonical names still handoff-bound. | `CORE_ENGINE_OXFML_SEAM.md` §22; CALC-002 |
+| Plan-template and prepared-callable identity | Current V1 compatibility keys are local and tested; canonical identity fields remain OxFml-owned. | `CORE_ENGINE_OXFML_SEAM.md` §§22.11-22.15; CALC-002 |
+| Bind-output reference/input mapping | Current TreeCalc path has direct mapping and explicit compatibility bridges; replacement formal-reference transport is handoff-bound. | `CORE_ENGINE_OXFML_SEAM.md` §§22.8-22.10; CALC-002 |
+| Topic envelopes and RTD/external invalidation | W050-internal repository discipline, no longer a W026 open question. | Lane D code/tests and W050 D4/D6 evidence roots |
+| Stream semantics selector | W050-internal profile selector with three tested variants. | `src/oxcalc-core/src/stream_semantics.rs`; W050 D3/D4 evidence |
+| Numerical reduction and error algebra selectors | W050-local profile selectors and replay hooks are in place; evaluator/kernel enforcement remains sibling-repo feedback. | `CORE_ENGINE_PROFILE_SELECTORS.md`; CALC-003 |
+| Capability-set hole vocabulary and rich/sparse admission | W050-local identity/scaffolding exists without kernel claims; canonical hole admission remains sibling-repo feedback. | `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`; CALC-004 |
+| Compilation observability and pure-kernel CSE | Compilation is trace-visible locally; pure-kernel CSE remains OxFml/OxFunc-owned and not inferred by OxCalc. | `CORE_ENGINE_OXFML_SEAM.md` §22.18 |
+
+Residual matrix use after W050:
+1. record receiving-repo feedback that changes or supersedes the CALC-002,
+   CALC-003, or CALC-004 asks,
+2. route any replacement surfaces into the canonical seam/spec docs,
+3. retire this matrix when no remaining implementation decision depends on a
+   temporary negotiation classification.
+
 ## 7. Exit Condition For The Planning Phase
 This planning companion has served its purpose when:
 1. W026 has a consumed-now topic ledger for all in-scope TreeCalc seam topics,
@@ -355,11 +393,9 @@ This planning companion has served its purpose when:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - relative-reference descriptor carriage remains canonical but narrower beyond the first explicitly consumed subset
-  - unresolved and host-sensitive reference carriers remain canonical but narrower beyond the first explicitly named families
-  - runtime-derived effect transport remains canonical but narrower beyond the current `DynamicDependency` / `ExecutionRestriction` emitted floor
-  - publication/topology breadth remains canonical but narrower beyond the current `value_delta`-only published floor and explicit current absences
-  - W026 has now consumed the ordinary runtime/replay entry surface plus the first executed three-sequence residual floor, but broader TreeCalc-specific bind/reference and transport-breadth widening still remains
-  - no narrower handoff has been justified yet
+  - CALC-002 feedback may replace local compatibility plan-template/session/reference fields with canonical OxFml fields
+  - CALC-003 feedback may replace local correctness-floor selector threading assumptions with canonical evaluator/kernel fields
+  - CALC-004 feedback may replace local capability-set hole scaffolding with canonical sparse/rich hole admission fields
+  - broader TreeCalc-specific bind/reference and transport-breadth widening remains evidence-driven successor work, not unresolved W050 architecture
 - claim_confidence: provisional
-- reviewed_inbound_observations: latest OxFml downstream note and returned classifications consumed as the starting baseline
+- reviewed_inbound_observations: latest OxFml downstream note plus W050 CALC-002/CALC-003/CALC-004 filed handoffs consumed as the starting baseline

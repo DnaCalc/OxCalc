@@ -627,6 +627,44 @@ Reviewed inbound observations:
 3. Public `substrate::...` access is no longer an ordinary downstream
    contract.
 
+### 22.1A W050 Consolidated Local Contract Snapshot
+
+This snapshot is the durable W050-local reading of the session model until
+CALC-002/CALC-003/CALC-004 receiving-repo feedback is recorded.
+
+| Surface | Current W050 local position | Canonicalization path |
+|---|---|---|
+| Formula source authority | OxCalc stores opaque formula text and identity; OxFml parses, projects red view, binds, compiles, evaluates, and reports returned-value surfaces. OxCalc must not parse formula language or reconstruct source as semantic input. | CALC-002 asks OxFml to expose the canonical prepared-callable/session fields needed by OxCalc without private adapters. |
+| Session model | A recalc wave is modeled as wave preparation, `ensure_prepared`, trace-visible compilation, dependency derivation, scheduled invoke, coordinator commit, and close/capture. | OxFml runtime facade remains the consumed surface; richer compile/cache trace fields belong in OxFml if exposed. |
+| Prepared callable identity | OxCalc derives current V1 compatibility `shape_key`, `dispatch_skeleton_key`, `plan_template_key`, `PlanTemplate`, `HoleBindings`, and `prepared_callable_key` from public bound-formula and semantic-plan artifacts. | CALC-002 owns canonical identity fields and cache/reuse counters; OxCalc compatibility keys remain local until then. |
+| Bind-output reference mapping | Current TreeCalc maps local residual/reference carriers to dependency descriptors and rebind seeds using OxFml parse/bind products plus OxCalc structural truth. | CALC-002 should replace synthetic A1/reference-input compatibility bridges with canonical formal-reference/input transport. |
+| Typed outcomes | OxCalc consumes value publication, verified-clean suppression, typed reject/no-publish, runtime effects, derivation trace, topic envelopes, and correctness-floor selector replay records as distinct surfaces. | CALC-002 covers returned-value/result/reject/correlation fields; CALC-003 covers selector threading; CALC-004 covers capability/hole admission surfaces. |
+| External invalidation | Subscription registry, topic envelopes, stream-semantics selectors, dirty seeds, and subscription lifecycle diagnostics are OxCalc-local repository behavior. Evaluation remains pull; external signals only seed invalidation. | Future OxFml/OxFunc feedback may refine RTD/registered-external topic descriptors but does not move publication authority. |
+| Optimization boundary | OxCalc may cache by public identity keys and recorded hole-binding fingerprints. It must not synthesize common-subexpression reuse by rewriting formulas, inferring algebraic equivalence, or inspecting OxFunc kernels. | Pure-kernel CSE, folded subplans, and internal expression ids are OxFml/OxFunc-owned trace/artifact surfaces if exposed later. |
+
+Inbound observation and handoff references for this snapshot:
+
+1. `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` identifies
+   `oxfml_core::consumer::{runtime, replay}` as the intended consumed runtime
+   and replay surface.
+2. `docs/handoffs/HANDOFF_CALC_002_OXFML_RECALC_SESSION_AND_PLAN_TEMPLATES.md`
+   carries the canonical prepared-callable/session and plan-template asks.
+3. `docs/handoffs/HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md`
+   and its OxFunc note carry correctness-floor selector threading and kernel
+   obligations.
+4. `docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md`
+   and its OxFunc note carry sparse/rich hole and capability-set trace asks.
+
+Replay and evidence obligations:
+
+1. Every W050 behavior claim must point either to checked runtime tests, a
+   checked evidence root under `docs/test-runs/core-engine`, or an explicit
+   handoff/watch dependency.
+2. Compatibility-only fields must be named as compatibility fields until the
+   receiving repo supplies canonical replacements.
+3. Spec text without replay, trace, or test evidence remains planning text; it
+   does not close a W050 behavior lane.
+
 ### 22.2 First-Call Inputs
 For a formula-bearing OxCalc node, the first call into OxFml is not a
 synthetic workbook fixture. It is a request to prepare one opaque formula
@@ -721,18 +759,20 @@ Required semantics:
    dependency and invalidation machinery as typed facts, not as inferred
    formula semantics.
 
-### 22.5 Six-Phase Wave Shape
+### 22.5 Seven-Phase Wave Shape
 The session-shaped first-call protocol is exercised inside a recalc wave:
 1. wave preparation: open/pin the OxFml runtime session and compute dirty
    closure,
 2. ensure prepared: prepare dirty formula slots and cache prepared callable
    identity,
-3. dependency derivation: map OxFml normalized references and runtime facts
+3. compilation: record the trace-visible compile/prepare result identity and
+   diagnostics that came back from the OxFml runtime session,
+4. dependency derivation: map OxFml normalized references and runtime facts
    to OxCalc dependency graph state,
-4. schedule and invoke: execute call sites in deterministic Stage 1 order,
-5. coordinator commit: accept or reject candidates under OxCalc publication
+5. schedule and invoke: execute call sites in deterministic Stage 1 order,
+6. coordinator commit: accept or reject candidates under OxCalc publication
    fences,
-6. close and capture: emit replay/trace/evidence inputs without mutating
+7. close and capture: emit replay/trace/evidence inputs without mutating
    tracked baselines during validation.
 
 ### 22.6 Current V1 OxCalc Driver Mapping
@@ -770,14 +810,16 @@ Current mapping:
    authority for the wave.
 2. `EnsurePrepared` invokes `OxfmlRecalcSessionDriver::ensure_prepared`
    and records OxFml runtime-session authority.
-3. `DependencyDerivation` records the OxCalc repository/dependency-graph
+3. `Compilation` records the OxFml runtime-session compile/prepare result
+   as a distinct trace phase.
+4. `DependencyDerivation` records the OxCalc repository/dependency-graph
    phase; canonical bind-output reference replacement remains Lane B5.
-4. `ScheduleInvoke` invokes `OxfmlRecalcSessionDriver::invoke` after the
+5. `ScheduleInvoke` invokes `OxfmlRecalcSessionDriver::invoke` after the
    dependency phase.
-5. `CoordinatorCommit` records exactly one OxCalc coordinator decision:
+6. `CoordinatorCommit` records exactly one OxCalc coordinator decision:
    either a `PublicationBundle` or no-publish reject detail. The wave
    runner does not create publications.
-6. `CloseCapture` emits the replay/capture trace and seals the wave.
+7. `CloseCapture` emits the replay/capture trace and seals the wave.
 
 The B4 trace enforces monotonic phase order and rejects skipped phases.
 Semantic equivalence statement: this Stage 1 lifecycle surface is an
@@ -1260,7 +1302,7 @@ Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam
 or adapter that assumes OxFml internals will remain accessible.
 
-### 22.19 Current V1 Opaque Result Family Coverage
+### 22.20 Current V1 Opaque Result Family Coverage
 The current OxCalc B6 uptake records which result families TreeCalc can
 consume through `OxfmlRecalcSessionDriver::invoke` without local formula
 parsing or reconstruction.
@@ -1315,7 +1357,7 @@ policy, scheduling strategy, or OxCalc coordinator publication authority
 for any currently exercised Stage 1 profile. Observable formula results
 are invariant under this diagnostic addition.
 
-### 22.20 Current V1 Session Corpus Evidence Packet
+### 22.21 Current V1 Session Corpus Evidence Packet
 The current OxCalc B8 uptake makes the TreeCalc local runner emit a
 deterministic session-path evidence packet for the full local corpus.
 
@@ -1360,7 +1402,7 @@ OxCalc coordinator publication authority for any currently exercised Stage
 1 profile. Observable formula results are invariant under this artifact
 emission addition.
 
-### 22.21 Current V1 Compatibility And Gap Ledger
+### 22.22 Current V1 Compatibility And Gap Ledger
 B9 records the current read-only compatibility position between W050 and
 OxFml's frozen V1 consumer runtime facade.
 

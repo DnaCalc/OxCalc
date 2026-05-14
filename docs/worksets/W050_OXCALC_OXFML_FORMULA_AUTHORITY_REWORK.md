@@ -607,20 +607,22 @@ owned by `.beads/`, not this document.
     `docs/handoffs/HANDOFF_CALC_004_OXFUNC_RICH_ARG_ACCEPTED_NOTE.md`; the
     checked evidence root is
     `docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001`.
-40. H2 live uptake: `HANDOFF-CALC-003` is filed in
+40. H2 live uptake: `HANDOFF-CALC-003` is acknowledged in
     `docs/handoffs/HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md`
     and registered in `docs/handoffs/HANDOFF_REGISTER.csv` with status
-    `filed`. The supporting OxFunc kernel/metadata note is
-    `docs/handoffs/HANDOFF_CALC_003_OXFUNC_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA_NOTE.md`.
-    Receiving-repo acknowledgment remains an open watch dependency; no
-    OxFml/OxFunc kernel enforcement or OxCalc adapter workaround is claimed.
-41. H3 live uptake: `HANDOFF-CALC-004` is filed in
+    `acknowledged`. The local receipt note
+    `docs/handoffs/HANDOFF_CALC_003_OXFML_RECEIPT.md` records OxFml decision
+    `adapt_and_split_by_owner` and OxFunc reservation of
+    `semantic_kernel_metadata_version`. No OxFml/OxFunc kernel enforcement or
+    OxCalc adapter workaround is claimed.
+41. H3 live uptake: `HANDOFF-CALC-004` is acknowledged in
     `docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md`
     and registered in `docs/handoffs/HANDOFF_REGISTER.csv` with status
-    `filed`. The packet joins the G1-G4 evidence for capability vocabulary,
-    `RichValueHole`, trace/replay columns, `SparseRangeHole` identity, and the
-    existing RichArgAccepted OxFunc note. Receiving-repo acknowledgment remains
-    an open watch dependency; no sparse/rich kernel activation is claimed.
+    `acknowledged`. The local receipt note
+    `docs/handoffs/HANDOFF_CALC_004_OXFML_RECEIPT.md` records OxFml decision
+    `accept_identity_reservation_defer_activation`, OxFunc reservation of
+    `arg_admission_metadata_version`, and successor routing for rich/sparse
+    producer activation. No sparse/rich kernel activation is claimed.
 
 ## 7. Required Work
 

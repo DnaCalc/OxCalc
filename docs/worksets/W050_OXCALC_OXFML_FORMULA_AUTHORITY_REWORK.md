@@ -243,6 +243,12 @@ owned by `.beads/`, not this document.
    commit is exercised as compatibility evidence but leaves a CALC-002
    gap because it does not carry every `RuntimeFormulaResult` surface
    consumed by the TreeCalc coordinator path.
+6. B4 live uptake: `src/oxcalc-core/src/recalc_wave.rs` now carries the
+   six-phase W050 lifecycle over the session driver. It enforces phase
+   order, records session prepare/invoke phases, and records exactly one
+   OxCalc coordinator decision before close/replay capture. This is an
+   ordering and authority guard; B5 still owns replacement of synthetic
+   A1/name flattening with OxFml bind-output reference handles.
 
 ## 7. Required Work
 

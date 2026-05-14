@@ -758,7 +758,31 @@ confirm that the managed-session result is intended to grow the missing
 full-result surfaces, or provide the canonical prepared-callable invocation
 surface that preserves them.
 
-### 22.7 CALC-002 Handoff Inputs
+### 22.7 Current V1 Wave Lifecycle Mapping
+The current OxCalc B4 uptake introduces `OxfmlRecalcWave`, an
+OxCalc-owned lifecycle runner over the B3 session driver.
+
+Current mapping:
+1. `WavePreparation` opens the OxCalc wave trace and pins the repository
+   authority for the wave.
+2. `EnsurePrepared` invokes `OxfmlRecalcSessionDriver::ensure_prepared`
+   and records OxFml runtime-session authority.
+3. `DependencyDerivation` records the OxCalc repository/dependency-graph
+   phase; canonical bind-output reference replacement remains Lane B5.
+4. `ScheduleInvoke` invokes `OxfmlRecalcSessionDriver::invoke` after the
+   dependency phase.
+5. `CoordinatorCommit` records exactly one OxCalc coordinator decision:
+   either a `PublicationBundle` or no-publish reject detail. The wave
+   runner does not create publications.
+6. `CloseCapture` emits the replay/capture trace and seals the wave.
+
+The B4 trace enforces monotonic phase order and rejects skipped phases.
+Semantic equivalence statement: this Stage 1 lifecycle surface is an
+ordering and authority guard around the existing sequential strategy; it
+does not change formula results, candidate values, coordinator fences, or
+publication authority for any currently exercised profile.
+
+### 22.8 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,

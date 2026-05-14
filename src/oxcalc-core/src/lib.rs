@@ -13,6 +13,7 @@ pub mod dependency;
 pub mod formula;
 pub mod oxfml_session;
 pub mod recalc;
+pub mod recalc_wave;
 pub mod repository;
 pub mod structural;
 pub mod treecalc;

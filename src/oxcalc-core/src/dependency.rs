@@ -79,7 +79,7 @@ pub enum InvalidationReasonKind {
     DynamicDependencyReclassified,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InvalidationSeed {
     pub node_id: TreeNodeId,
     pub reason: InvalidationReasonKind,

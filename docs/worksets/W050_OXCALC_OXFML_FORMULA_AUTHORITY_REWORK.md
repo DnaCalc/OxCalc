@@ -300,6 +300,13 @@ owned by `.beads/`, not this document.
     `SparseRangeHole` and `RichValueHole` are representable but not emitted
     by current production kernels; Lane G capability vocabulary,
     cache/reuse evidence, and canonical OxFml artifact fields remain open.
+13. C4 live uptake: TreeCalc now carries
+    `arg_preparation_profile_version` in `LocalTreeCalcEnvironmentContext`,
+    threads it into OxFml `StructureContextVersion`, and derives
+    `StructuralRebindRequired` seeds when the previous and next profile
+    versions differ. Current V1 behavior conservatively marks all formula
+    owners for rebind because targeted affected-callable metadata is
+    sibling-owned by OxFml/OxFunc.
 
 ## 7. Required Work
 
@@ -345,6 +352,10 @@ The W050 work, organised by lane.
     C3 documents and tests the current V1 wide-by-default mapping; narrower
     producers remain evidence-gated successor work.
 23. Treat changes to `ArgPreparationProfile` for any existing OxFunc function as bind-visible name-world events; verify the invalidation pathway in the test corpus.
+    C4 covers the current V1 conservative invalidation path with
+    structure-context-version and runtime rebind tests. Narrow
+    affected-callable targeting remains an OxFml/OxFunc surface gap routed
+    through the upstream notes.
 
 **Lane D — External Invalidation.**
 

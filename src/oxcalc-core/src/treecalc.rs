@@ -56,6 +56,7 @@ pub struct LocalTreeCalcInput {
     pub seeded_published_values: BTreeMap<TreeNodeId, String>,
     pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
     pub invalidation_seeds: Vec<InvalidationSeed>,
+    pub previous_arg_preparation_profile_version: Option<String>,
     pub candidate_result_id: String,
     pub publication_id: String,
     pub compatibility_basis: String,
@@ -68,6 +69,7 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub runtime_lane: String,
     pub session_id: Option<String>,
     pub capability_profile_id: String,
+    pub arg_preparation_profile_version: String,
     pub dynamic_dependency_effects: bool,
     pub execution_restriction_effects: bool,
     pub capability_sensitive_effects: bool,
@@ -82,6 +84,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             runtime_lane: "local_sequential_treecalc".to_string(),
             session_id: None,
             capability_profile_id: "host-capabilities:default".to_string(),
+            arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
             dynamic_dependency_effects: true,
             execution_restriction_effects: true,
             capability_sensitive_effects: false,
@@ -89,6 +92,14 @@ impl Default for LocalTreeCalcEnvironmentContext {
             runtime_policy_id: "runtime-policy:default".to_string(),
             project_runtime_effect_overlays: true,
         }
+    }
+}
+
+impl LocalTreeCalcEnvironmentContext {
+    #[must_use]
+    pub fn with_arg_preparation_profile_version(mut self, version: impl Into<String>) -> Self {
+        self.arg_preparation_profile_version = version.into();
+        self
     }
 }
 
@@ -253,8 +264,12 @@ impl LocalTreeCalcEngine {
             .bindings_by_owner()
             .values()
             .map(|binding| {
-                prepare_oxfml_formula(&input.structural_snapshot, binding)
-                    .map(|prepared| (binding.owner_node_id, prepared))
+                prepare_oxfml_formula(
+                    &input.structural_snapshot,
+                    binding,
+                    &input.environment_context,
+                )
+                .map(|prepared| (binding.owner_node_id, prepared))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         let prepared_formula_identities = prepared_formula_identity_traces(&prepared_formulas);
@@ -290,11 +305,19 @@ impl LocalTreeCalcEngine {
 
         let phase_start = Instant::now();
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
-        let invalidation_seeds = if input.invalidation_seeds.is_empty() {
+        let mut invalidation_seeds = if input.invalidation_seeds.is_empty() {
             default_invalidation_seeds(&formula_owner_ids)
         } else {
             input.invalidation_seeds.clone()
         };
+        if let Some(previous_version) = input.previous_arg_preparation_profile_version.as_deref() {
+            invalidation_seeds.extend(derive_arg_preparation_profile_invalidation_seeds(
+                &input.formula_catalog,
+                previous_version,
+                &input.environment_context.arg_preparation_profile_version,
+            ));
+            invalidation_seeds = dedupe_invalidation_seeds(invalidation_seeds);
+        }
         let invalidation_closure =
             dependency_graph.derive_invalidation_closure(&invalidation_seeds);
         phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
@@ -870,6 +893,33 @@ pub(crate) fn derive_structural_invalidation_seeds_for_catalogs(
         .filter(|seed| !transition_seed_owner_ids.contains(&seed.node_id)),
     );
     seeds
+}
+
+pub(crate) fn derive_arg_preparation_profile_invalidation_seeds(
+    formula_catalog: &TreeFormulaCatalog,
+    previous_version: &str,
+    next_version: &str,
+) -> Vec<InvalidationSeed> {
+    if previous_version == next_version {
+        return Vec::new();
+    }
+
+    formula_catalog
+        .owner_node_ids()
+        .into_iter()
+        .map(|node_id| InvalidationSeed {
+            node_id,
+            reason: InvalidationReasonKind::StructuralRebindRequired,
+        })
+        .collect()
+}
+
+fn dedupe_invalidation_seeds(seeds: Vec<InvalidationSeed>) -> Vec<InvalidationSeed> {
+    seeds
+        .into_iter()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 fn derive_structural_context_invalidation_seeds(
@@ -1633,6 +1683,7 @@ struct PreparedOxfmlFormula {
 fn prepare_oxfml_formula(
     snapshot: &StructuralSnapshot,
     binding: &crate::formula::TreeFormulaBinding,
+    environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
     let translated = project_opaque_formula(snapshot, binding.owner_node_id, &binding.expression);
     let source = FormulaSourceRecord::new(
@@ -1652,7 +1703,10 @@ fn prepare_oxfml_formula(
             caller_row: synthetic_cell_row(binding.owner_node_id),
             caller_col: 1,
             formula_token: source.formula_token(),
-            structure_context_version: StructureContextVersion(snapshot.snapshot_id().to_string()),
+            structure_context_version: bind_visible_structure_context_version(
+                snapshot,
+                environment_context,
+            ),
             names: translated
                 .reference_bindings
                 .iter()
@@ -1686,6 +1740,17 @@ fn prepare_oxfml_formula(
         prepared_callable,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
+}
+
+fn bind_visible_structure_context_version(
+    snapshot: &StructuralSnapshot,
+    environment_context: &LocalTreeCalcEnvironmentContext,
+) -> StructureContextVersion {
+    StructureContextVersion(format!(
+        "{}|arg_preparation_profile_version={}",
+        snapshot.snapshot_id(),
+        environment_context.arg_preparation_profile_version
+    ))
 }
 
 fn prepared_formula_identity_traces(
@@ -2594,6 +2659,80 @@ mod tests {
     }
 
     #[test]
+    fn arg_preparation_profile_version_enters_structure_context() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+        };
+        let first_context = LocalTreeCalcEnvironmentContext::default()
+            .with_arg_preparation_profile_version("oxfunc.arg-prep:v1");
+        let second_context = LocalTreeCalcEnvironmentContext::default()
+            .with_arg_preparation_profile_version("oxfunc.arg-prep:v2");
+
+        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
+        let second =
+            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+
+        assert_ne!(
+            first.bound_formula.structure_context_version,
+            second.bound_formula.structure_context_version
+        );
+        assert!(
+            second
+                .bound_formula
+                .structure_context_version
+                .contains("arg_preparation_profile_version=oxfunc.arg-prep:v2")
+        );
+    }
+
+    #[test]
+    fn arg_preparation_profile_change_derives_rebind_seeds() {
+        let catalog = TreeFormulaCatalog::new([
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+            },
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(4),
+                formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
+                expression: TreeFormula::opaque_oxfml("=ROWS(A1:A3)", Vec::new()),
+            },
+        ]);
+
+        assert!(
+            derive_arg_preparation_profile_invalidation_seeds(
+                &catalog,
+                "oxfunc.arg-prep:v1",
+                "oxfunc.arg-prep:v1"
+            )
+            .is_empty()
+        );
+        assert_eq!(
+            derive_arg_preparation_profile_invalidation_seeds(
+                &catalog,
+                "oxfunc.arg-prep:v1",
+                "oxfunc.arg-prep:v2"
+            ),
+            vec![
+                InvalidationSeed {
+                    node_id: TreeNodeId(3),
+                    reason: InvalidationReasonKind::StructuralRebindRequired,
+                },
+                InvalidationSeed {
+                    node_id: TreeNodeId(4),
+                    reason: InvalidationReasonKind::StructuralRebindRequired,
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn local_treecalc_engine_publishes_local_formula_results() {
         let engine = LocalTreeCalcEngine;
         let run = engine
@@ -2644,6 +2783,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:local".to_string(),
                 publication_id: "pub:local".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -2830,6 +2970,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:w046:bridge".to_string(),
                 publication_id: "pub:w046:bridge".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -2888,6 +3029,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:xyz:initial".to_string(),
                 publication_id: "pub:xyz:initial".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -2921,6 +3063,7 @@ mod tests {
                     node_id: TreeNodeId(2),
                     reason: InvalidationReasonKind::UpstreamPublication,
                 }],
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:xyz:rerun".to_string(),
                 publication_id: "pub:xyz:rerun".to_string(),
                 compatibility_basis: "snapshot:2".to_string(),
@@ -2970,6 +3113,7 @@ mod tests {
                 seeded_published_values: seeded,
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:verified".to_string(),
                 publication_id: "pub:verified".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3037,6 +3181,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:cycle".to_string(),
                 publication_id: "pub:cycle".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3077,6 +3222,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:host".to_string(),
                 publication_id: "pub:host".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3140,6 +3286,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:dynamic".to_string(),
                 publication_id: "pub:dynamic".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3199,6 +3346,7 @@ mod tests {
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:dynamic:resolved".to_string(),
                 publication_id: "pub:dynamic:resolved".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3254,6 +3402,7 @@ mod tests {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRebindRequired,
                 }],
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:rebind".to_string(),
                 publication_id: "pub:rebind".to_string(),
                 compatibility_basis: "snapshot:1".to_string(),
@@ -3272,6 +3421,45 @@ mod tests {
             run.diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.contains("requires rebind before reevaluation"))
+        );
+    }
+
+    #[test]
+    fn local_treecalc_engine_rejects_rerun_when_arg_preparation_profile_changes() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                    owner_node_id: TreeNodeId(3),
+                    formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                    expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+                }]),
+                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: Some("oxfunc.arg-prep:v1".to_string()),
+                candidate_result_id: "cand:argprep".to_string(),
+                publication_id: "pub:argprep".to_string(),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default()
+                    .with_arg_preparation_profile_version("oxfunc.arg-prep:v2"),
+            })
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
+        assert!(run.publication_bundle.is_none());
+        assert_eq!(
+            run.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::HostInjectedFailure)
+        );
+        assert!(run.invalidation_closure.records[&TreeNodeId(3)].requires_rebind);
+        assert!(
+            run.invalidation_closure.records[&TreeNodeId(3)]
+                .reasons
+                .contains(&InvalidationReasonKind::StructuralRebindRequired)
         );
     }
 
@@ -3307,6 +3495,7 @@ mod tests {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRecalcOnly,
                 }],
+                previous_arg_preparation_profile_version: None,
                 candidate_result_id: "cand:missing_target".to_string(),
                 publication_id: "pub:missing_target".to_string(),
                 compatibility_basis: "snapshot:2".to_string(),
@@ -3368,7 +3557,12 @@ mod tests {
             ),
         };
 
-        let prepared = prepare_oxfml_formula(&structural_snapshot, &binding).unwrap();
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .unwrap();
         let descriptors = oxfml_dependency_descriptors(&prepared)
             .into_iter()
             .map(|descriptor| (descriptor.carrier_detail.clone(), descriptor))

@@ -1325,3 +1325,33 @@ Current non-assumptions:
    by current production kernels,
 3. OxCalc is not treating capability-set vocabulary as settled; Lane G
    remains the owner for that vocabulary.
+
+## 75. W050 C4 ArgPreparationProfile Invalidation Uptake
+OxCalc has added a current V1 conservative invalidation path for
+bind-visible OxFunc `ArgPreparationProfile` metadata changes.
+
+Current OxCalc code shape is:
+1. `LocalTreeCalcEnvironmentContext` carries
+   `arg_preparation_profile_version`,
+2. TreeCalc formula preparation includes that version in the OxFml
+   `StructureContextVersion`,
+3. when the previous and next profile versions differ, OxCalc derives
+   `StructuralRebindRequired` seeds for TreeCalc formula owners,
+4. the runtime rebind gate rejects publication until the affected formulas
+   are re-prepared.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. OxFunc owns the real function metadata and any actual
+   `ArgPreparationProfile` changes,
+2. OxFml/OxFunc should expose a canonical bind-visible metadata version for
+   argument-preparation profiles,
+3. if narrower invalidation is required, OxFml/OxFunc should expose an
+   affected-callable or affected-function surface so OxCalc does not need
+   conservative all-formula rebind on a profile-version transition.
+
+Current non-assumptions:
+1. OxCalc is not mutating OxFunc metadata,
+2. OxCalc is not inspecting private OxFml semantic-plan internals to find
+   affected formulas,
+3. OxCalc is not claiming targeted invalidation for profile changes; the
+   current V1 path is intentionally conservative.

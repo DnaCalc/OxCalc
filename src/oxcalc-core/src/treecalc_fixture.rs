@@ -251,6 +251,7 @@ pub fn execute_fixture_case(
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: Vec::new(),
+            previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("fixture:{}:candidate", case.case_id),
             publication_id: format!("fixture:{}:publication", case.case_id),
             compatibility_basis: case
@@ -355,6 +356,7 @@ fn execute_post_edit_plan(
             seeded_published_values,
             seeded_published_runtime_effects,
             invalidation_seeds: invalidation_seeds.clone(),
+            previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("fixture:{}:candidate:post_edit", case.case_id),
             publication_id: format!("fixture:{}:publication:post_edit", case.case_id),
             compatibility_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),

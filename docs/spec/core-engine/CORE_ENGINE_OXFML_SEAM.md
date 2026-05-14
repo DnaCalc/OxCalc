@@ -992,7 +992,43 @@ authority for any currently exercised Stage 1 profile. Observable formula
 results are invariant under this identity-taxonomy change for those
 profiles.
 
-### 22.14 CALC-002 Handoff Inputs
+### 22.14 Current V1 ArgPreparationProfile Invalidation Mapping
+The current OxCalc C4 uptake treats OxFunc `ArgPreparationProfile` changes
+as bind-visible name-world changes without claiming ownership of OxFunc
+metadata.
+
+Current mapping:
+1. `LocalTreeCalcEnvironmentContext` carries an
+   `arg_preparation_profile_version` value representing the pinned
+   bind-visible OxFunc argument-preparation metadata snapshot.
+2. TreeCalc formula preparation threads that version into the OxFml
+   `StructureContextVersion`, together with the structural snapshot id.
+   A changed profile version therefore produces a distinct bind-visible
+   context.
+3. OxCalc derives `StructuralRebindRequired` invalidation seeds for formula
+   owners when the previous and next `arg_preparation_profile_version`
+   differ.
+4. Current V1 invalidation is conservative: without an OxFml/OxFunc public
+   affected-callable surface, the profile-version transition marks every
+   TreeCalc formula owner for rebind rather than attempting private
+   function-use inspection.
+5. Tests cover the structure-context-version change, the rebind-seed
+   derivation, and the runtime rebind rejection path.
+
+Current C4 limit: targeted invalidation for only formulas that call changed
+functions remains an OxFml/OxFunc surface gap. OxCalc records the
+version-change contract locally and avoids under-invalidation.
+
+Semantic equivalence statement: C4 changes bind-visible invalidation and
+structure-context identity only. It does not change source parsing,
+binding semantics, semantic-plan compilation, runtime invocation, candidate
+adaptation, rejection policy, scheduling strategy, or OxCalc coordinator
+publication authority for any currently exercised Stage 1 profile. When the
+profile version is unchanged, observable formula results are invariant.
+When it changes, the conservative rebind gate prevents stale prepared
+callables from publishing.
+
+### 22.15 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1037,6 +1073,11 @@ profiles.
     `SparseRangeHole`, and `RichValueHole`, including the wide-by-default
     `ArgPreparationProfile` mapping and the absence of sparse/rich kernel
     claims until OxFunc exposes such producers.
+14. the C4-observed metadata-invalidation bridge: OxFml/OxFunc should
+    expose a canonical bind-visible `ArgPreparationProfile` metadata
+    version and, if narrower invalidation is required, an affected-callable
+    or affected-function surface that lets OxCalc avoid conservative
+    all-formula rebind when that version changes.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

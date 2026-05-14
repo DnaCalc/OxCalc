@@ -89,6 +89,12 @@ OxFunc has accepted a metadata/profile shape equivalent to
 argument-preparation/admission metadata changes. OxFml accepts that bridge for
 future runtime/replay consumption.
 
+OxCalc TreeCalc now consumes `arg_admission_metadata_version` as a
+bind-visible bridge input. The value is threaded into the local structure
+context, the compatibility prepared-callable key, the OxFml runtime
+environment, and prepared identity diagnostics/artifacts. This is an
+invalidation bridge only; it does not activate rich-argument admission.
+
 Reservation rules:
 1. `capability_set` uses the same typed stable-key vocabulary as
    `RichValueHole(required_capability_set)`,
@@ -173,6 +179,6 @@ This document does not claim:
 1. rich-value kernel support,
 2. sparse range reader production,
 3. `ArgPreparationProfile::RichArgAccepted` activation,
-4. producer capability-set emission by current V1 kernels.
+4. producer capability-set emission by current OxCalc runtime artifacts.
 
 Those are owned by later Lane G beads and successor worksets.

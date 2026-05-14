@@ -1261,6 +1261,11 @@ fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> se
         "hole_binding_fingerprint": identity.hole_binding_fingerprint,
         "template_hole_count": identity.template_hole_count,
     });
+    if !identity.oxfunc_bridge_metadata.is_empty() {
+        identity_json["oxfunc_bridge_metadata"] =
+            serde_json::to_value(&identity.oxfunc_bridge_metadata)
+                .expect("OxFunc bridge metadata should serialize");
+    }
     add_rich_value_capability_columns(&mut identity_json, &identity.rich_value_capability_columns);
     identity_json
 }

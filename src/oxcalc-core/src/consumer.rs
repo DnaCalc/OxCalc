@@ -172,6 +172,7 @@ impl OxCalcTreeEnvironment {
             session_id: self.session_id.clone(),
             capability_profile_id: self.host_capabilities.capability_profile_id.clone(),
             arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
+            oxfunc_bridge_metadata: Default::default(),
             dynamic_dependency_effects: self.host_capabilities.dynamic_dependency_effects,
             execution_restriction_effects: self.host_capabilities.execution_restriction_effects,
             capability_sensitive_effects: self.host_capabilities.capability_sensitive_effects,

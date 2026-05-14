@@ -57,9 +57,11 @@ real metadata source.
 
 ## OxCalc Integration Consequences
 OxCalc should keep W050 correctness-floor selector artifacts as local replay
-hooks and compatibility evidence until OxFml/OxFunc expose canonical
-`CorrectnessFloorContext`, kernel metadata, and
-`semantic_kernel_metadata_version` surfaces.
+hooks and compatibility evidence until OxFml/OxFunc expose full canonical
+`CorrectnessFloorContext` and kernel metadata surfaces. OxCalc now consumes the
+code-level `semantic_kernel_metadata_version` bridge in TreeCalc environment
+context, local compatibility prepared-callable identity, OxFml runtime
+environment input, and diagnostics/artifacts.
 
 OxCalc should not claim that pairwise or compensated numerical policies, error
 algebra precedence, or affected-function invalidation are enforced by current
@@ -69,8 +71,8 @@ mismatch detection only.
 ## Remaining Open Lanes
 1. OxFunc Rust metadata fields and registry/export publication,
 2. concrete replay fields for non-left-fold policies,
-3. OxFml consumption of `semantic_kernel_metadata_version` in runtime/replay
-   artifacts,
+3. broader OxFml runtime/replay projection of `CorrectnessFloorContext`
+   selector fields,
 4. OxCalc migration from local `CorrectnessFloorReplayRecord` compatibility
    fields to canonical OxFml replay fields.
 
@@ -82,5 +84,5 @@ mismatch detection only.
 - open_lanes:
   - OxFunc Rust metadata/export publication
   - canonical replay field names for non-left-fold policies
-  - OxFml runtime/replay emission of `semantic_kernel_metadata_version`
+  - broader OxFml runtime/replay emission of selector context fields
   - OxCalc migration from local selector replay artifacts

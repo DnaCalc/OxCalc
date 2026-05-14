@@ -65,15 +65,19 @@ identity reservation and compatibility evidence. It should not report sparse
 reader support, rich-value producer support, or rich-kernel execution as
 implemented behavior.
 
+OxCalc now consumes the code-level `arg_admission_metadata_version` bridge in
+TreeCalc environment context, local compatibility prepared-callable identity,
+OxFml runtime environment input, and diagnostics/artifacts.
+
 The next useful migration point is an OxFml/OxFunc successor that emits
-`arg_admission_metadata_version`, producer capability facts, and exercised
-capability facts through canonical runtime/replay fields.
+producer capability facts and exercised capability facts through canonical
+runtime/replay fields.
 
 ## Remaining Open Lanes
 1. OxFunc Rust metadata model for rich/sparse admission,
 2. sparse/rich producer activation successor work,
-3. OxFml consumption of `arg_admission_metadata_version` in runtime/replay
-   artifacts,
+3. OxFml returned-value/runtime emission of producer and exercised capability
+   facts,
 4. migration of OxCalc reserved local columns to canonical emitted fields.
 
 ## Status
@@ -84,5 +88,5 @@ capability facts through canonical runtime/replay fields.
 - open_lanes:
   - OxFunc Rust metadata model for rich/sparse admission
   - sparse/rich producer activation successor work
-  - OxFml runtime/replay emission of `arg_admission_metadata_version`
+  - OxFml runtime/replay emission of producer and exercised capability facts
   - OxCalc migration from reserved capability columns

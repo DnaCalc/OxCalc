@@ -18,6 +18,13 @@ OxFunc owns affected-kernel metadata, exact selector semantics, kernel
 enforcement, and the prepared-package invalidation bridge
 `semantic_kernel_metadata_version`.
 
+OxCalc TreeCalc now consumes `semantic_kernel_metadata_version` as a
+bind-visible bridge input. The value is threaded into the local structure
+context, the compatibility prepared-callable key, the OxFml runtime
+environment, and prepared identity diagnostics/artifacts. This prevents local
+prepared-formula reuse across selector/kernel metadata version changes without
+claiming kernel enforcement.
+
 ## 2. Profile Record Rule
 Every replay-visible correctness-floor evaluation profile must carry:
 
@@ -144,5 +151,5 @@ surface.
 - open_lanes:
   - OxFml acknowledged `CorrectnessFloorContext` carriage through H2/CALC-003,
   - OxFunc acknowledged `semantic_kernel_metadata_version` as the selector/kernel metadata invalidation bridge,
-  - OxFunc Rust metadata publication and kernel-side enforcement remain outside this OxCalc-local replay hook,
-  - OxFml runtime/replay emission of the reserved bridge remains future work
+  - OxCalc consumes the bridge in TreeCalc prepared identity and runtime environment paths,
+  - OxFunc kernel-side enforcement and broader OxFml `CorrectnessFloorContext` replay projection remain outside this OxCalc-local replay hook

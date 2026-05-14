@@ -82,6 +82,7 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub session_id: Option<String>,
     pub capability_profile_id: String,
     pub arg_preparation_profile_version: String,
+    pub oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     pub dynamic_dependency_effects: bool,
     pub execution_restriction_effects: bool,
     pub capability_sensitive_effects: bool,
@@ -99,6 +100,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             session_id: None,
             capability_profile_id: "host-capabilities:default".to_string(),
             arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
+            oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata::default(),
             dynamic_dependency_effects: true,
             execution_restriction_effects: true,
             capability_sensitive_effects: false,
@@ -119,6 +121,18 @@ impl LocalTreeCalcEnvironmentContext {
     }
 
     #[must_use]
+    pub fn with_semantic_kernel_metadata_version(mut self, version: impl Into<String>) -> Self {
+        self.oxfunc_bridge_metadata.semantic_kernel_metadata_version = Some(version.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_arg_admission_metadata_version(mut self, version: impl Into<String>) -> Self {
+        self.oxfunc_bridge_metadata.arg_admission_metadata_version = Some(version.into());
+        self
+    }
+
+    #[must_use]
     pub fn with_derivation_trace_enabled(mut self, enabled: bool) -> Self {
         self.derivation_trace_enabled = enabled;
         self
@@ -128,6 +142,22 @@ impl LocalTreeCalcEnvironmentContext {
     pub fn with_scheduling_policy(mut self, policy: LocalTreeCalcSchedulingPolicy) -> Self {
         self.scheduling_policy = policy;
         self
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct LocalTreeCalcOxFuncBridgeMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_kernel_metadata_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arg_admission_metadata_version: Option<String>,
+}
+
+impl LocalTreeCalcOxFuncBridgeMetadata {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.semantic_kernel_metadata_version.is_none()
+            && self.arg_admission_metadata_version.is_none()
     }
 }
 
@@ -182,6 +212,7 @@ pub struct PreparedFormulaIdentityTrace {
     pub plan_template_key: String,
     pub hole_binding_fingerprint: String,
     pub template_hole_count: usize,
+    pub oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     pub rich_value_capability_columns: RichValueCapabilityTraceReplayColumns,
 }
 
@@ -2044,6 +2075,7 @@ struct PreparedOxfmlFormula {
     translated: TranslatedFormula,
     bound_formula: oxfml_core::binding::BoundFormula,
     prepared_callable: PreparedCallable,
+    oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     edge_value_cache_path_facts: EdgeValueCachePathFacts,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
@@ -2095,7 +2127,13 @@ fn prepare_oxfml_formula(
     })
     .semantic_plan;
     let edge_value_cache_path_facts = edge_value_cache_path_facts_for(&semantic_plan, &translated);
-    let prepared_callable = derive_prepared_callable(&bound_formula, &semantic_plan);
+    let mut prepared_callable = derive_prepared_callable(&bound_formula, &semantic_plan);
+    if !environment_context.oxfunc_bridge_metadata.is_empty() {
+        prepared_callable.prepared_callable_key = prepared_callable_key_with_oxfunc_bridge_metadata(
+            &prepared_callable.prepared_callable_key,
+            &environment_context.oxfunc_bridge_metadata,
+        );
+    }
 
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
@@ -2108,9 +2146,35 @@ fn prepare_oxfml_formula(
             .collect(),
         bound_formula,
         prepared_callable,
+        oxfunc_bridge_metadata: environment_context.oxfunc_bridge_metadata.clone(),
         edge_value_cache_path_facts,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
+}
+
+fn prepared_callable_key_with_oxfunc_bridge_metadata(
+    base_prepared_callable_key: &str,
+    metadata: &LocalTreeCalcOxFuncBridgeMetadata,
+) -> String {
+    let input = format!(
+        "base_prepared_callable_key={};semantic_kernel_metadata_version={:?};arg_admission_metadata_version={:?};",
+        base_prepared_callable_key,
+        metadata.semantic_kernel_metadata_version,
+        metadata.arg_admission_metadata_version
+    );
+    format!(
+        "prepared_callable:v1:{:016x}",
+        stable_fnv1a64(input.as_bytes())
+    )
+}
+
+fn stable_fnv1a64(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
 }
 
 fn edge_value_cache_path_facts_for(
@@ -2133,11 +2197,26 @@ fn bind_visible_structure_context_version(
     snapshot: &StructuralSnapshot,
     environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> StructureContextVersion {
-    StructureContextVersion(format!(
+    let mut version = format!(
         "{}|arg_preparation_profile_version={}",
         snapshot.snapshot_id(),
         environment_context.arg_preparation_profile_version
-    ))
+    );
+    if let Some(metadata_version) = &environment_context
+        .oxfunc_bridge_metadata
+        .semantic_kernel_metadata_version
+    {
+        version.push_str("|semantic_kernel_metadata_version=");
+        version.push_str(metadata_version);
+    }
+    if let Some(metadata_version) = &environment_context
+        .oxfunc_bridge_metadata
+        .arg_admission_metadata_version
+    {
+        version.push_str("|arg_admission_metadata_version=");
+        version.push_str(metadata_version);
+    }
+    StructureContextVersion(version)
 }
 
 fn prepared_formula_identity_traces(
@@ -2171,6 +2250,7 @@ fn prepared_formula_identity_trace(
         plan_template_key: plan_template.plan_template_key.to_string(),
         hole_binding_fingerprint: hole_bindings.binding_fingerprint.clone(),
         template_hole_count: plan_template.holes.len(),
+        oxfunc_bridge_metadata: prepared.oxfunc_bridge_metadata.clone(),
         rich_value_capability_columns,
     }
 }
@@ -2202,7 +2282,7 @@ fn rich_value_capability_columns_for_template_hole_kind(
 fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec<String> {
     let plan_template = &prepared.prepared_callable.plan_template;
     let hole_bindings = &prepared.prepared_callable.hole_bindings;
-    vec![
+    let mut diagnostics = vec![
         format!(
             "oxfml_prepared_shape_key:{}:{}",
             prepared.binding.formula_artifact_id, plan_template.shape_key
@@ -2228,7 +2308,26 @@ fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec
             prepared.binding.formula_artifact_id,
             plan_template.holes.len()
         ),
-    ]
+    ];
+    if let Some(version) = &prepared
+        .oxfunc_bridge_metadata
+        .semantic_kernel_metadata_version
+    {
+        diagnostics.push(format!(
+            "oxfml_prepared_semantic_kernel_metadata_version:{}:{}",
+            prepared.binding.formula_artifact_id, version
+        ));
+    }
+    if let Some(version) = &prepared
+        .oxfunc_bridge_metadata
+        .arg_admission_metadata_version
+    {
+        diagnostics.push(format!(
+            "oxfml_prepared_arg_admission_metadata_version:{}:{}",
+            prepared.binding.formula_artifact_id, version
+        ));
+    }
+    diagnostics
 }
 
 fn prepared_runtime_effect_subscription_diagnostics(
@@ -2893,13 +2992,26 @@ fn build_treecalc_runtime_environment(
         .map(|(node_id, value)| (synthetic_cell_target(*node_id), string_to_eval_value(value)))
         .collect();
 
-    RuntimeEnvironment::new()
+    let mut environment = RuntimeEnvironment::new()
         .with_structure_context_version(StructureContextVersion(
             prepared.bound_formula.structure_context_version.clone(),
         ))
         .with_caller_position(synthetic_cell_row(prepared.binding.owner_node_id), 1)
         .with_defined_names(defined_names)
-        .with_cell_values(cell_values)
+        .with_cell_values(cell_values);
+    if let Some(version) = &prepared
+        .oxfunc_bridge_metadata
+        .semantic_kernel_metadata_version
+    {
+        environment = environment.with_semantic_kernel_metadata_version(version.clone());
+    }
+    if let Some(version) = &prepared
+        .oxfunc_bridge_metadata
+        .arg_admission_metadata_version
+    {
+        environment = environment.with_arg_admission_metadata_version(version.clone());
+    }
+    environment
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2938,6 +3050,9 @@ fn adapt_oxfml_runtime_candidate(
     let candidate = &run.candidate_result;
     let candidate_value = value_payload_to_string(&candidate.value_delta.published_payload);
     let mut diagnostics = oxfml_returned_value_surface_diagnostics(&run.returned_value_surface);
+    diagnostics.extend(oxfml_runtime_prepared_identity_diagnostics(
+        &run.prepared_formula_identity,
+    ));
     diagnostics.extend(oxfml_candidate_diagnostics(candidate));
 
     match &run.commit_decision {
@@ -2979,6 +3094,28 @@ fn adapt_oxfml_runtime_candidate(
             })
         }
     }
+}
+
+fn oxfml_runtime_prepared_identity_diagnostics(
+    identity: &oxfml_core::consumer::runtime::RuntimePreparedFormulaIdentity,
+) -> Vec<String> {
+    let mut diagnostics = vec![format!(
+        "oxfml_runtime_prepared_formula_key:{}:{}",
+        identity.formula_stable_id, identity.prepared_formula_key
+    )];
+    if let Some(version) = &identity.semantic_kernel_metadata_version {
+        diagnostics.push(format!(
+            "oxfml_runtime_semantic_kernel_metadata_version:{}:{}",
+            identity.formula_stable_id, version
+        ));
+    }
+    if let Some(version) = &identity.arg_admission_metadata_version {
+        diagnostics.push(format!(
+            "oxfml_runtime_arg_admission_metadata_version:{}:{}",
+            identity.formula_stable_id, version
+        ));
+    }
+    diagnostics
 }
 
 fn build_derivation_trace_record(
@@ -4893,6 +5030,87 @@ mod tests {
                 .bound_formula
                 .structure_context_version
                 .contains("arg_preparation_profile_version=oxfunc.arg-prep:v2")
+        );
+    }
+
+    #[test]
+    fn oxfunc_bridge_versions_enter_structure_context_and_runtime_identity() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml("=SUM(1,2)", Vec::new()),
+        };
+        let first_context = LocalTreeCalcEnvironmentContext::default()
+            .with_semantic_kernel_metadata_version("oxfunc.semantic-kernel:v1")
+            .with_arg_admission_metadata_version("oxfunc.arg-admission:v1");
+        let second_context = LocalTreeCalcEnvironmentContext::default()
+            .with_semantic_kernel_metadata_version("oxfunc.semantic-kernel:v2")
+            .with_arg_admission_metadata_version("oxfunc.arg-admission:v1");
+
+        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
+        let second =
+            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+
+        assert_ne!(
+            first.bound_formula.structure_context_version,
+            second.bound_formula.structure_context_version
+        );
+        assert_ne!(
+            first.prepared_callable.prepared_callable_key,
+            second.prepared_callable.prepared_callable_key
+        );
+        assert!(
+            second
+                .bound_formula
+                .structure_context_version
+                .contains("semantic_kernel_metadata_version=oxfunc.semantic-kernel:v2")
+        );
+
+        let engine = LocalTreeCalcEngine;
+        let mut input = formula_input(
+            TreeNodeId(3),
+            TreeFormula::opaque_oxfml("=SUM(1,2)", Vec::new()),
+        );
+        input.environment_context = LocalTreeCalcEnvironmentContext::default()
+            .with_semantic_kernel_metadata_version("oxfunc.semantic-kernel:v2")
+            .with_arg_admission_metadata_version("oxfunc.arg-admission:v3");
+
+        let run = engine.execute(input).unwrap();
+        let identity = run
+            .prepared_formula_identities
+            .first()
+            .expect("run should prepare one formula");
+        assert_eq!(
+            identity
+                .oxfunc_bridge_metadata
+                .semantic_kernel_metadata_version
+                .as_deref(),
+            Some("oxfunc.semantic-kernel:v2")
+        );
+        assert_eq!(
+            identity
+                .oxfunc_bridge_metadata
+                .arg_admission_metadata_version
+                .as_deref(),
+            Some("oxfunc.arg-admission:v3")
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_prepared_semantic_kernel_metadata_version:formula:b:oxfunc.semantic-kernel:v2",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_prepared_arg_admission_metadata_version:formula:b:oxfunc.arg-admission:v3",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_runtime_semantic_kernel_metadata_version:formula:b:oxfunc.semantic-kernel:v2",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_runtime_arg_admission_metadata_version:formula:b:oxfunc.arg-admission:v3",
         );
     }
 

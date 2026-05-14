@@ -370,8 +370,8 @@ Current W050 intake classification:
 | Bind-output reference/input mapping | Current TreeCalc path has direct mapping and explicit compatibility bridges; CALC-002 receipt accepts replacement with `FormalReference` / `FormalReferenceSet` transport. | `CORE_ENGINE_OXFML_SEAM.md` §§22.8-22.10; `HANDOFF_CALC_002_OXFML_RECEIPT.md` |
 | Topic envelopes and RTD/external invalidation | W050-internal repository discipline, no longer a W026 open question. | Lane D code/tests and W050 D4/D6 evidence roots |
 | Stream semantics selector | W050-internal profile selector with three tested variants. | `src/oxcalc-core/src/stream_semantics.rs`; W050 D3/D4 evidence |
-| Numerical reduction and error algebra selectors | W050-local profile selectors and replay hooks are in place; CALC-003 receipts accept OxFml `CorrectnessFloorContext` carriage, OxFunc selector semantics, and `semantic_kernel_metadata_version` as the invalidation bridge. | `CORE_ENGINE_PROFILE_SELECTORS.md`; `HANDOFF_CALC_003_OXFML_RECEIPT.md` |
-| Capability-set hole vocabulary and rich/sparse admission | W050-local identity reservation exists without kernel claims; CALC-004 receipts accept hole taxonomy/capability identity reservation, `arg_admission_metadata_version`, and `IMAGE` / `_webimage` as preferred first rich producer lane. | `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`; `HANDOFF_CALC_004_OXFML_RECEIPT.md` |
+| Numerical reduction and error algebra selectors | W050-local profile selectors and replay hooks are in place; CALC-003 receipts accept OxFml `CorrectnessFloorContext` carriage, OxFunc selector semantics, and `semantic_kernel_metadata_version` as the invalidation bridge. OxCalc now consumes that bridge in TreeCalc prepared identity and OxFml runtime input. | `CORE_ENGINE_PROFILE_SELECTORS.md`; `HANDOFF_CALC_003_OXFML_RECEIPT.md` |
+| Capability-set hole vocabulary and rich/sparse admission | W050-local identity reservation exists without kernel claims; CALC-004 receipts accept hole taxonomy/capability identity reservation, `arg_admission_metadata_version`, and `IMAGE` / `_webimage` as preferred first rich producer lane. OxCalc now consumes the admission bridge without claiming producer capability emission. | `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`; `HANDOFF_CALC_004_OXFML_RECEIPT.md` |
 | Compilation observability and pure-kernel CSE | Compilation is trace-visible locally; pure-kernel CSE remains OxFml/OxFunc-owned and not inferred by OxCalc. | `CORE_ENGINE_OXFML_SEAM.md` §22.18 |
 
 Residual matrix use after W050:
@@ -395,8 +395,8 @@ This planning companion has served its purpose when:
 - integration_completeness: partial
 - open_lanes:
   - CALC-002 runtime/replay field implementation may replace local compatibility plan-template/session/reference projections
-  - CALC-003 still needs OxFunc Rust metadata publication, OxFml runtime/replay bridge emission, and selector enforcement tests before enforcement can be claimed
-  - CALC-004 still needs OxFunc rich/sparse metadata publication, OxFml runtime/replay bridge emission, and `IMAGE` / `_webimage` producer evidence before reserved capability columns can carry exercised facts
+  - CALC-003 still needs selector enforcement tests and broader canonical `CorrectnessFloorContext` replay fields before enforcement can be claimed
+  - CALC-004 still needs OxFml returned-value capability metadata emission and `IMAGE` / `_webimage` producer evidence before reserved capability columns can carry exercised facts
   - broader TreeCalc-specific bind/reference and transport-breadth widening remains evidence-driven successor work, not unresolved W050 architecture
 - claim_confidence: provisional
 - reviewed_inbound_observations: latest OxFml downstream note plus W050 CALC-002/CALC-003/CALC-004 filed handoffs and OxFml receipts consumed as the current baseline

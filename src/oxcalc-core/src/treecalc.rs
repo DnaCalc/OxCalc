@@ -5,7 +5,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
-use oxfml_core::EvaluationBackend;
 use oxfml_core::binding::{
     BindContext, BindRequest, NameKind, NormalizedReference, UnresolvedReferenceRecord,
     bind_formula,
@@ -19,6 +18,7 @@ use oxfml_core::interface::TypedContextQueryBundle;
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
+use oxfml_core::{CompileSemanticPlanRequest, EvaluationBackend, compile_semantic_plan};
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
@@ -33,6 +33,7 @@ use crate::dependency::{
     InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
+use crate::formula_identity::{PreparedFormulaIdentityKeys, derive_prepared_formula_identity_keys};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
@@ -99,6 +100,7 @@ pub struct LocalTreeCalcRunArtifacts {
     pub evaluation_order: Vec<TreeNodeId>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub runtime_effect_overlays: Vec<OverlayEntry>,
+    pub prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
     pub local_candidate: Option<LocalEvaluatorCandidate>,
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
@@ -107,6 +109,17 @@ pub struct LocalTreeCalcRunArtifacts {
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedFormulaIdentityTrace {
+    pub owner_node_id: TreeNodeId,
+    pub formula_artifact_id: String,
+    pub bind_artifact_id: Option<String>,
+    pub formula_stable_id: String,
+    pub shape_key: String,
+    pub dispatch_skeleton_key: String,
+    pub plan_template_key: String,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -241,6 +254,7 @@ impl LocalTreeCalcEngine {
                     .map(|prepared| (binding.owner_node_id, prepared))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
+        let prepared_formula_identities = prepared_formula_identity_traces(&prepared_formulas);
         phase_timer.record_duration("oxfml_prepare_formulas", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -309,6 +323,11 @@ impl LocalTreeCalcEngine {
                 .values()
                 .flat_map(|prepared| prepared.bind_diagnostics.iter().cloned()),
         );
+        diagnostics.extend(
+            prepared_formulas
+                .values()
+                .flat_map(prepared_formula_identity_diagnostics),
+        );
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -340,6 +359,7 @@ impl LocalTreeCalcEngine {
                             diagnostics,
                             phase_timer,
                             formula_owner_ids: &formula_owner_ids,
+                            prepared_formula_identities: prepared_formula_identities.clone(),
                         },
                     );
                 }
@@ -355,6 +375,7 @@ impl LocalTreeCalcEngine {
                     diagnostics,
                     phase_timer,
                     &formula_owner_ids,
+                    prepared_formula_identities.clone(),
                     None,
                     error,
                 );
@@ -382,6 +403,7 @@ impl LocalTreeCalcEngine {
                 diagnostics,
                 phase_timer,
                 &formula_owner_ids,
+                prepared_formula_identities.clone(),
                 None,
                 LocalTreeCalcError::StructuralRebindRequired { node_id },
             );
@@ -421,6 +443,7 @@ impl LocalTreeCalcEngine {
                 diagnostics,
                 phase_timer,
                 &formula_owner_ids,
+                prepared_formula_identities.clone(),
                 None,
                 LocalTreeCalcError::DependencyGraphIncompatible { node_id, detail },
             );
@@ -466,6 +489,7 @@ impl LocalTreeCalcEngine {
                         diagnostics,
                         phase_timer,
                         &formula_owner_ids,
+                        prepared_formula_identities.clone(),
                         Some(LocalEvaluatorCandidate {
                             candidate_result_id: input.candidate_result_id.clone(),
                             target_set: formula_owner_ids.clone(),
@@ -525,6 +549,7 @@ impl LocalTreeCalcEngine {
                 evaluation_order,
                 runtime_effects,
                 runtime_effect_overlays: Vec::new(),
+                prepared_formula_identities: prepared_formula_identities.clone(),
                 local_candidate: None,
                 candidate_result: None,
                 publication_bundle: None,
@@ -579,6 +604,7 @@ impl LocalTreeCalcEngine {
             evaluation_order,
             runtime_effects: local_candidate.runtime_effects.clone(),
             runtime_effect_overlays: Vec::new(),
+            prepared_formula_identities,
             local_candidate: Some(local_candidate),
             candidate_result: Some(candidate_result),
             publication_bundle: Some(publication_bundle),
@@ -635,6 +661,7 @@ fn publish_excel_match_iterative_cycle(
         mut diagnostics,
         phase_timer,
         formula_owner_ids,
+        prepared_formula_identities,
     } = context;
 
     let Some((evaluation_order, value_updates, trace_summary)) =
@@ -652,6 +679,7 @@ fn publish_excel_match_iterative_cycle(
             diagnostics,
             phase_timer,
             formula_owner_ids,
+            prepared_formula_identities,
             None,
             LocalTreeCalcError::CycleDetected,
         );
@@ -694,6 +722,7 @@ fn publish_excel_match_iterative_cycle(
         evaluation_order,
         runtime_effects: local_candidate.runtime_effects.clone(),
         runtime_effect_overlays: Vec::new(),
+        prepared_formula_identities,
         local_candidate: Some(local_candidate),
         candidate_result: Some(candidate_result),
         publication_bundle: Some(publication_bundle),
@@ -711,6 +740,7 @@ struct IterativeCyclePublishContext<'a> {
     diagnostics: Vec<String>,
     phase_timer: LocalTreeCalcPhaseTimer,
     formula_owner_ids: &'a [TreeNodeId],
+    prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
 }
 
 fn excel_match_iterative_fixture_surface(
@@ -1273,6 +1303,7 @@ fn reject_run(
     mut diagnostics: Vec<String>,
     mut phase_timer: LocalTreeCalcPhaseTimer,
     formula_owner_ids: &[TreeNodeId],
+    prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
     local_candidate: Option<LocalEvaluatorCandidate>,
     error: LocalTreeCalcError,
 ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
@@ -1319,6 +1350,7 @@ fn reject_run(
         evaluation_order,
         runtime_effects,
         runtime_effect_overlays,
+        prepared_formula_identities,
         local_candidate,
         candidate_result: None,
         publication_bundle: None,
@@ -1590,6 +1622,7 @@ struct PreparedOxfmlFormula {
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
     bound_formula: oxfml_core::binding::BoundFormula,
+    identity_keys: PreparedFormulaIdentityKeys,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
 }
@@ -1625,20 +1658,75 @@ fn prepare_oxfml_formula(
             ..BindContext::default()
         },
     });
+    let bound_formula = bind_result.bound_formula;
+    let semantic_plan = compile_semantic_plan(CompileSemanticPlanRequest {
+        bound_formula: bound_formula.clone(),
+        oxfunc_catalog_identity: "oxfunc:host".to_string(),
+        locale_profile: None,
+        date_system: None,
+        format_profile: None,
+        library_context_snapshot: None,
+    })
+    .semantic_plan;
+    let identity_keys = derive_prepared_formula_identity_keys(&bound_formula, &semantic_plan);
 
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
         source,
         translated,
-        bind_diagnostics: bind_result
-            .bound_formula
+        bind_diagnostics: bound_formula
             .diagnostics
             .iter()
             .map(|diagnostic| format!("oxfml_bind_diagnostic:{}", diagnostic.message))
             .collect(),
-        bound_formula: bind_result.bound_formula,
+        bound_formula,
+        identity_keys,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
+}
+
+fn prepared_formula_identity_traces(
+    prepared_formulas: &BTreeMap<TreeNodeId, PreparedOxfmlFormula>,
+) -> Vec<PreparedFormulaIdentityTrace> {
+    prepared_formulas
+        .values()
+        .map(prepared_formula_identity_trace)
+        .collect()
+}
+
+fn prepared_formula_identity_trace(
+    prepared: &PreparedOxfmlFormula,
+) -> PreparedFormulaIdentityTrace {
+    PreparedFormulaIdentityTrace {
+        owner_node_id: prepared.binding.owner_node_id,
+        formula_artifact_id: prepared.binding.formula_artifact_id.to_string(),
+        bind_artifact_id: prepared
+            .binding
+            .bind_artifact_id
+            .as_ref()
+            .map(ToString::to_string),
+        formula_stable_id: prepared.source.formula_stable_id.0.clone(),
+        shape_key: prepared.identity_keys.shape_key.to_string(),
+        dispatch_skeleton_key: prepared.identity_keys.dispatch_skeleton_key.to_string(),
+        plan_template_key: prepared.identity_keys.plan_template_key.to_string(),
+    }
+}
+
+fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec<String> {
+    vec![
+        format!(
+            "oxfml_prepared_shape_key:{}:{}",
+            prepared.binding.formula_artifact_id, prepared.identity_keys.shape_key
+        ),
+        format!(
+            "oxfml_prepared_dispatch_skeleton_key:{}:{}",
+            prepared.binding.formula_artifact_id, prepared.identity_keys.dispatch_skeleton_key
+        ),
+        format!(
+            "oxfml_prepared_plan_template_key:{}:{}",
+            prepared.binding.formula_artifact_id, prepared.identity_keys.plan_template_key
+        ),
+    ]
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
@@ -2547,9 +2635,29 @@ mod tests {
         assert!(run.candidate_result.is_some());
         assert!(run.runtime_effects.is_empty());
         assert!(run.runtime_effect_overlays.is_empty());
+        assert_eq!(run.prepared_formula_identities.len(), 2);
+        let formula_b_identity = run
+            .prepared_formula_identities
+            .iter()
+            .find(|identity| identity.formula_artifact_id == "formula:b")
+            .expect("formula:b identity should be surfaced");
+        assert!(formula_b_identity.shape_key.starts_with("shape:v1:"));
+        assert!(
+            formula_b_identity
+                .dispatch_skeleton_key
+                .starts_with("dispatch_skeleton:v1:")
+        );
+        assert!(
+            formula_b_identity
+                .plan_template_key
+                .starts_with("plan_template:v1:")
+        );
         assert_eq!(run.published_values[&TreeNodeId(3)], "5");
         assert_eq!(run.published_values[&TreeNodeId(4)], "7");
         assert!(run.publication_bundle.is_some());
+        assert!(run.diagnostics.iter().any(|diagnostic| {
+            diagnostic.starts_with("oxfml_prepared_plan_template_key:formula:b:")
+        }));
         assert!(
             run.diagnostics
                 .iter()

@@ -882,7 +882,48 @@ text, source tokens, dependency carriers, residual facts, session
 invocation path, and OxCalc coordinator publication authority to the
 currently exercised profiles.
 
-### 22.11 CALC-002 Handoff Inputs
+### 22.11 Current V1 Plan-Template Identity Mapping
+The current OxCalc C1 uptake derives W050 identity keys from public OxFml
+bound and semantic-plan artifacts during TreeCalc preparation.
+
+Current mapping:
+1. `shape_key` has prefix `shape:v1:` and fingerprints the public
+   `BoundFormula.root` shape with source leaves abstracted. Literal
+   values, concrete reference coordinates/targets, and function surface
+   names are holes; operator nesting, call arity, lazy-control posture,
+   helper/lambda parameter slots, root grouping, reference class, range
+   extent, address-mode posture, and caller-context dependence remain in
+   the key input.
+2. `dispatch_skeleton_key` has prefix `dispatch_skeleton:v1:` and
+   fingerprints `shape_key`, the OxFunc catalog identity, the library
+   context snapshot reference, public `FunctionPlanBinding` dispatch
+   records, and function availability summaries.
+3. `plan_template_key` has prefix `plan_template:v1:` and fingerprints
+   `dispatch_skeleton_key`, semantic-plan locale/date/format profiles,
+   evaluation requirements, execution profile, helper profile, capability
+   requirements, and semantic diagnostic categories.
+4. `PreparedOxfmlFormula` carries the derived keys. TreeCalc exposes them
+   through `LocalTreeCalcRunArtifacts.prepared_formula_identities`, the
+   runner `result.json` surface, diagnostics, and trace events labelled
+   `prepared_formula_identity`.
+5. The current V1 key inputs intentionally exclude `formula_stable_id`,
+   formula token, source text, literal values, concrete reference
+   coordinates/targets, `bind_hash`, and OxFml `semantic_plan_key`; those
+   remain formula-instance or current-artifact identities rather than
+   plan-template identities.
+
+Current C1 limit: these are OxCalc-side compatibility fingerprints over
+public V1 artifacts. Canonical OxFml `PreparedCallable` fields,
+`PlanTemplate`, `HoleBindings`, canonical formal-reference identities, and
+capability-set hole taxonomy remain C2/CALC-002 work.
+
+Semantic equivalence statement: C1 changes identity derivation and trace
+projection only. It does not change formula source, bind context, runtime
+environment, invocation path, candidate adaptation, rejection policy, or
+OxCalc coordinator publication authority for any currently exercised
+Stage 1 profile.
+
+### 22.12 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -911,6 +952,11 @@ currently exercised profiles.
     opaque formula input still needs source-token carriers until OxFml
     exposes canonical prepared-callable input bindings and formal
     reference identities.
+11. the C1-observed identity compatibility bridge: OxCalc can derive
+    current V1 `shape_key`, `dispatch_skeleton_key`, and
+    `plan_template_key` fingerprints from public bound/semantic-plan
+    artifacts, but OxFml still owns the canonical prepared-callable,
+    `PlanTemplate`, and hole-binding identity fields.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

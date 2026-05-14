@@ -11,6 +11,7 @@ pub mod consumer;
 pub mod coordinator;
 pub mod dependency;
 pub mod formula;
+pub mod formula_identity;
 pub mod oxfml_session;
 pub mod recalc;
 pub mod recalc_wave;

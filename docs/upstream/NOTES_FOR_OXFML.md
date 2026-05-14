@@ -1225,3 +1225,36 @@ Current non-assumptions:
 2. OxCalc is not treating `FixtureFormulaAst` as a production interface,
 3. OxCalc is not moving formula text construction or formula semantics
    into OxCalc.
+
+## 72. W050 C1 Plan-Template Identity Uptake
+OxCalc has added a current V1 compatibility identity layer for prepared
+TreeCalc formulas.
+
+Current OxCalc code shape is:
+1. `formula_identity.rs` derives `shape_key`, `dispatch_skeleton_key`, and
+   `plan_template_key` from public OxFml `BoundFormula` and `SemanticPlan`
+   artifacts,
+2. `shape_key` abstracts literal values, concrete reference targets, and
+   function surface names while preserving operator/call shape, lazy
+   posture, helper/lambda slots, reference class, and reference extent,
+3. `dispatch_skeleton_key` adds public function dispatch bindings and
+   availability summaries,
+4. `plan_template_key` adds semantic-plan structure, execution/helper
+   profiles, capability requirements, and semantic diagnostic categories,
+5. TreeCalc run artifacts and runner trace events now expose
+   `prepared_formula_identity` records.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. these keys are OxCalc-side compatibility fingerprints, not canonical
+   OxFml prepared-callable fields,
+2. OxCalc still needs OxFml-owned `PreparedCallable`, `PlanTemplate`, and
+   `HoleBindings` identity fields on the public consumer/runtime seam,
+3. current V1 still lacks canonical formal-reference identity and
+   prepared-callable input binding surfaces, so C1 does not retire the
+   B5/B7/A3 compatibility carriers.
+
+Current non-assumptions:
+1. OxCalc is not asking for private OxFml semantic-plan internals,
+2. OxCalc is not treating these fingerprints as a shared canonical seam,
+3. OxCalc is not claiming plan-template reuse until the C2
+   `PlanTemplate` artifact and reuse evidence exist.

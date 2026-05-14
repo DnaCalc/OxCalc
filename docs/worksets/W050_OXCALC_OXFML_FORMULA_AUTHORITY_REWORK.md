@@ -274,6 +274,15 @@ owned by `.beads/`, not this document.
    and the procedural scale runner. TreeCalc preparation now projects
    explicit carriers through `project_opaque_formula` and no longer lowers
    a local semantic AST.
+10. C1 live uptake: `src/oxcalc-core/src/formula_identity.rs` now derives
+    current V1 `shape_key`, `dispatch_skeleton_key`, and
+    `plan_template_key` fingerprints from public OxFml
+    `BoundFormula`/`SemanticPlan` artifacts. `PreparedOxfmlFormula` carries
+    those keys, and TreeCalc run artifacts plus runner traces surface
+    `prepared_formula_identity` records. This is a compatibility identity
+    layer; canonical OxFml `PreparedCallable`, `PlanTemplate`,
+    `HoleBindings`, and formal-reference identity fields remain C2 and
+    CALC-002 pressure.
 
 ## 7. Required Work
 
@@ -306,6 +315,8 @@ The W050 work, organised by lane.
 17. Implement `shape_key` derivation during parse and bind (content-fingerprint over the parse tree with leaves abstracted).
 18. Implement `dispatch_skeleton_key` (shape_key + bind-time function dispatch).
 19. Implement `plan_template_key` (dispatch_skeleton_key + semantic-plan structure).
+    C1 now covers current V1 compatibility fingerprints and trace fields;
+    canonical OxFml fields remain open for C2/CALC-002.
 20. Move `PreparedCallable` to `(PlanTemplate, HoleBindings)` shape; verify reuse across cells sharing `plan_template_key` via a microbenchmark or trace-counting test.
 21. Implement the default hole-type taxonomy: `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`.
 22. Document the wide-by-default policy and reserve narrowing producers (`ConstNumericHole`, etc.) for opt-in evidence-gated implementation.

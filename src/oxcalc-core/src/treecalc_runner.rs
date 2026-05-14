@@ -20,7 +20,9 @@ use crate::recalc::{NodeCalcState, OverlayEntry, OverlayKind, Stage1RecalcTracke
 use crate::structural::{
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
 };
-use crate::treecalc::{LocalTreeCalcRunArtifacts, LocalTreeCalcRunState};
+use crate::treecalc::{
+    LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, PreparedFormulaIdentityTrace,
+};
 use crate::treecalc_fixture::{
     TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
     TreeCalcFixturePostEditExecution, execute_fixture_case, load_case, load_manifest,
@@ -582,6 +584,7 @@ fn write_case_artifacts(
             "result_state": result_state_name(&artifacts.result_state),
             "evaluation_order": artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "diagnostics": artifacts.diagnostics,
+            "prepared_formula_identities": artifacts.prepared_formula_identities.iter().map(prepared_formula_identity_json).collect::<Vec<_>>(),
             "published_values_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "published_values.json"),
             "runtime_effects_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effects.json"),
             "runtime_effect_overlays_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effect_overlays.json"),
@@ -729,6 +732,7 @@ fn write_post_edit_artifacts(
             "result_state": result_state_name(&execution.rerun_artifacts.result_state),
             "evaluation_order": execution.rerun_artifacts.evaluation_order.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
             "reject_detail": execution.rerun_artifacts.reject_detail.as_ref().map(reject_detail_json),
+            "prepared_formula_identities": execution.rerun_artifacts.prepared_formula_identities.iter().map(prepared_formula_identity_json).collect::<Vec<_>>(),
             "invalidation_seeds": execution.invalidation_seeds.iter().map(invalidation_seed_json).collect::<Vec<_>>(),
             "invalidation_closure_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "post_edit/invalidation_closure.json"),
             "counters": counter_entries_json(&post_edit_counters),
@@ -909,6 +913,21 @@ fn build_trace_events(
     }));
     step_id += 1;
 
+    for identity in &artifacts.prepared_formula_identities {
+        events.push(json!({
+            "step_id": step_id,
+            "label": "prepared_formula_identity",
+            "owner_node_id": identity.owner_node_id.0,
+            "formula_artifact_id": identity.formula_artifact_id,
+            "bind_artifact_id": identity.bind_artifact_id,
+            "formula_stable_id": identity.formula_stable_id,
+            "shape_key": identity.shape_key,
+            "dispatch_skeleton_key": identity.dispatch_skeleton_key,
+            "plan_template_key": identity.plan_template_key,
+        }));
+        step_id += 1;
+    }
+
     for node_id in &artifacts.evaluation_order {
         events.push(json!({
             "step_id": step_id,
@@ -1046,6 +1065,18 @@ fn runtime_effect_json(runtime_effect: &RuntimeEffect) -> serde_json::Value {
         "family": format!("{:?}", runtime_effect.family),
         "family_owner": "oxcalc_local_projection",
         "detail": runtime_effect.detail,
+    })
+}
+
+fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> serde_json::Value {
+    json!({
+        "owner_node_id": identity.owner_node_id.0,
+        "formula_artifact_id": identity.formula_artifact_id,
+        "bind_artifact_id": identity.bind_artifact_id,
+        "formula_stable_id": identity.formula_stable_id,
+        "shape_key": identity.shape_key,
+        "dispatch_skeleton_key": identity.dispatch_skeleton_key,
+        "plan_template_key": identity.plan_template_key,
     })
 }
 
@@ -2475,6 +2506,36 @@ mod tests {
         assert_eq!(
             published_result["candidate_result"]["aligned_canonical_family"],
             "AcceptedCandidateResult"
+        );
+        assert!(
+            published_result["prepared_formula_identities"][0]["shape_key"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("shape:v1:"))
+        );
+        assert!(
+            published_result["prepared_formula_identities"][0]["dispatch_skeleton_key"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("dispatch_skeleton:v1:"))
+        );
+        assert!(
+            published_result["prepared_formula_identities"][0]["plan_template_key"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("plan_template:v1:"))
+        );
+        let published_trace = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("cases/tc_local_publish_001/trace.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            published_trace["events"]
+                .as_array()
+                .is_some_and(|events| events.iter().any(|event| {
+                    event["label"] == "prepared_formula_identity"
+                        && event["plan_template_key"]
+                            .as_str()
+                            .is_some_and(|value| value.starts_with("plan_template:v1:"))
+                }))
         );
         assert_eq!(
             published_result["candidate_result"]["projection_owner"],

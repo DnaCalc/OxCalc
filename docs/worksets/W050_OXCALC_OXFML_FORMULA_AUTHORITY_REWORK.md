@@ -474,6 +474,17 @@ owned by `.beads/`, not this document.
     `OxfmlRecalcSessionDriver::invoke` path. The repaired surfaces no longer
     present `evaluate_via_oxfml`, `build_upstream_host_packet`, or
     `formula_allows_lazy_residual_publication` as current production names.
+22. A6 live uptake: the Lane A search gate is recorded at
+    `docs/test-runs/core-engine/w050-a6-lane-a-search-gate-001/SEARCH_GATE_SUMMARY.md`.
+    The Rust no-hit proof covers `translate_formula`, `TranslationState`,
+    `evaluate_via_oxfml`, `build_upstream_host_packet`,
+    `formula_allows_lazy_residual_publication`,
+    `RuntimeEnvironment::new().execute`, and
+    `TreeFormula::{Literal,Binary,FunctionCall,Reference}`. Remaining hits
+    are classified as opaque source/carrier code, runtime-fact carrier
+    projection, `#[cfg(test)]` scaffolding, fixture/scale quarantine,
+    synthetic A1 compatibility residue, upstream-host fixture scaffolding, or
+    historical/status text.
 
 ## 7. Required Work
 
@@ -484,7 +495,11 @@ The W050 work, organised by lane.
 1. Delete the OxCalc-local `TreeFormula` AST variants (`Literal`, `Binary`, `FunctionCall`, `Reference`) and all helpers that construct them. A3 has moved the remaining legacy construction into `FixtureFormulaAst`; that quarantine must not re-enter production inputs.
 2. Delete `translate_formula`, `TranslationState`, and all production source-text rendering paths in OxCalc. A3 replaced the TreeCalc production preparation path with opaque source plus explicit carrier projection; fixture rendering remains quarantined.
 3. Delete `synthetic_cell_target`, `synthetic_cell_row`, and the synthetic A1 cell-fixture flattening.
+   A6 finds only the current V1 compatibility uses in `treecalc.rs`; deletion
+   remains blocked on CALC-002/H1 canonical reference/input transport.
 4. Delete `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, `MinimalBindingWorld`, `MinimalTypedQueryFacts`, `MinimalRuntimeCatalogFacts` once the session API covers the same intake surface.
+   A6 classifies these hits as upstream-host fixture/scaffolding residue, not
+   the TreeCalc production invocation path.
 5. Delete any remaining per-formula `RuntimeEnvironment::new().execute(...)` production pattern. B7 removed the `evaluate_via_oxfml` / packet-builder bridge from `treecalc.rs`; remaining packet surfaces must stay fixture-only until deleted or quarantined by later Lane A/B cleanup.
 6. Convert or quarantine W047/W048 CTRO and cycle fixtures that use `TreeFormula` structured carriers.
    A2 tags `tc_w048_excel_iter_two_node_order_001` as representative
@@ -674,6 +689,15 @@ and OxFml V1 compatibility ledger. Remaining canonical reference/input,
 managed-result, plan-template, and structured replay/correlation fields are
 carried by the cross-cutting `HANDOFF_CALC_002` lane rather than by private
 OxFml adapters in OxCalc.
+
+Lane A status note: A6 records the removal search gate in
+`docs/test-runs/core-engine/w050-a6-lane-a-search-gate-001/SEARCH_GATE_SUMMARY.md`.
+The retired production names are absent from Rust production/test search
+scope, and active showcase wording no longer carries the targeted local
+formula-semantics claims. Aggregate Lane A remains partial because current V1
+synthetic A1 compatibility helpers, Minimal* upstream-host fixture
+scaffolding, and legacy structured fixture/scale quarantine surfaces still
+exist until CALC-002 and fixture-migration work provide replacement evidence.
 
 W050 is `open_planning` at lane level; individual lanes may advance independently under the bead structure in §6. The aggregate workset remains `open_planning` until all lanes meet their share of the exit gate in §8.
 

@@ -17,6 +17,7 @@ use crate::oxfml_session::{OxfmlRecalcSessionDriver, OxfmlRecalcSessionError};
 pub enum RecalcWavePhase {
     WavePreparation,
     EnsurePrepared,
+    Compilation,
     DependencyDerivation,
     ScheduleInvoke,
     CoordinatorCommit,
@@ -29,6 +30,7 @@ impl RecalcWavePhase {
         match self {
             Self::WavePreparation => "wave_preparation",
             Self::EnsurePrepared => "ensure_prepared",
+            Self::Compilation => "compilation",
             Self::DependencyDerivation => "dependency_derivation",
             Self::ScheduleInvoke => "schedule_invoke",
             Self::CoordinatorCommit => "coordinator_commit",
@@ -40,17 +42,19 @@ impl RecalcWavePhase {
         match self {
             Self::WavePreparation => 0,
             Self::EnsurePrepared => 1,
-            Self::DependencyDerivation => 2,
-            Self::ScheduleInvoke => 3,
-            Self::CoordinatorCommit => 4,
-            Self::CloseCapture => 5,
+            Self::Compilation => 2,
+            Self::DependencyDerivation => 3,
+            Self::ScheduleInvoke => 4,
+            Self::CoordinatorCommit => 5,
+            Self::CloseCapture => 6,
         }
     }
 }
 
-const ORDERED_PHASES: [RecalcWavePhase; 6] = [
+const ORDERED_PHASES: [RecalcWavePhase; 7] = [
     RecalcWavePhase::WavePreparation,
     RecalcWavePhase::EnsurePrepared,
+    RecalcWavePhase::Compilation,
     RecalcWavePhase::DependencyDerivation,
     RecalcWavePhase::ScheduleInvoke,
     RecalcWavePhase::CoordinatorCommit,
@@ -225,7 +229,13 @@ impl<'a> OxfmlRecalcWave<'a> {
             RecalcWaveAuthority::OxFmlRuntimeSession,
             format!("formula:{}", request.source().formula_stable_id.0),
         )?;
-        self.driver.ensure_prepared(request).map_err(Into::into)
+        let prepared = self.driver.ensure_prepared(request)?;
+        self.record_phase(
+            RecalcWavePhase::Compilation,
+            RecalcWaveAuthority::OxFmlRuntimeSession,
+            compilation_trace_detail(request, &prepared),
+        )?;
+        Ok(prepared)
     }
 
     pub fn derive_dependencies(
@@ -328,9 +338,13 @@ impl<'a> OxfmlRecalcWave<'a> {
         }
 
         if let Some(last_phase) = self.last_phase {
+            let repeated_prepare_compile_pair = last_phase == RecalcWavePhase::Compilation
+                && phase == RecalcWavePhase::EnsurePrepared;
             let last_ordinal = last_phase.ordinal();
             let observed_ordinal = phase.ordinal();
-            if observed_ordinal < last_ordinal || observed_ordinal > last_ordinal + 1 {
+            if !repeated_prepare_compile_pair
+                && (observed_ordinal < last_ordinal || observed_ordinal > last_ordinal + 1)
+            {
                 let expected = ORDERED_PHASES
                     .get(last_ordinal + 1)
                     .copied()
@@ -353,6 +367,22 @@ impl<'a> OxfmlRecalcWave<'a> {
         self.trace.push(phase, authority, detail);
         Ok(())
     }
+}
+
+fn compilation_trace_detail<'q>(
+    request: &RuntimeFormulaRequest<'q>,
+    prepared: &RuntimeManagedOpenResult,
+) -> String {
+    format!(
+        "formula:{};session:{};library_context_snapshot_ref:{:?};syntax_diagnostics:{};bind_diagnostics:{};semantic_diagnostics:{};semantic_plan_function_bindings:{}",
+        request.source().formula_stable_id.0,
+        prepared.session_id,
+        prepared.library_context_snapshot_ref,
+        prepared.syntax_diagnostics.len(),
+        prepared.bind_diagnostics.len(),
+        prepared.semantic_plan.diagnostics.len(),
+        prepared.semantic_plan.function_bindings.len()
+    )
 }
 
 #[cfg(test)]
@@ -481,7 +511,7 @@ mod tests {
     }
 
     #[test]
-    fn recalc_wave_traces_six_phases_over_runtime_session() {
+    fn recalc_wave_traces_seven_phases_over_runtime_session() {
         let mut wave = OxfmlRecalcWave::new("wave:b4", RuntimeEnvironment::new());
         let request = request("formula:b4", "=SUM(1,2)");
 
@@ -531,6 +561,7 @@ mod tests {
             vec![
                 RecalcWavePhase::WavePreparation,
                 RecalcWavePhase::EnsurePrepared,
+                RecalcWavePhase::Compilation,
                 RecalcWavePhase::DependencyDerivation,
                 RecalcWavePhase::ScheduleInvoke,
                 RecalcWavePhase::CoordinatorCommit,
@@ -547,6 +578,67 @@ mod tests {
         assert_eq!(
             trace.correctness_floor_replay_record(),
             CorrectnessFloorProfile::default().replay_record()
+        );
+    }
+
+    #[test]
+    fn recalc_wave_records_compilation_as_observable_trace_phase() {
+        let mut wave = OxfmlRecalcWave::new("wave:f6:compilation", RuntimeEnvironment::new());
+        let request = request("formula:f6:compilation", "=SUM(1,2)");
+        let prepared = wave
+            .ensure_prepared(&request)
+            .expect("prepare should emit compilation phase");
+
+        let trace = wave.trace();
+        assert_eq!(
+            trace.phase_sequence(),
+            vec![
+                RecalcWavePhase::WavePreparation,
+                RecalcWavePhase::EnsurePrepared,
+                RecalcWavePhase::Compilation,
+            ]
+        );
+        let compilation = trace
+            .events()
+            .iter()
+            .find(|event| event.phase == RecalcWavePhase::Compilation)
+            .expect("compilation phase should be trace-visible");
+        assert_eq!(
+            compilation.authority,
+            RecalcWaveAuthority::OxFmlRuntimeSession
+        );
+        assert_eq!(
+            compilation.detail,
+            format!(
+                "formula:formula:f6:compilation;session:{};library_context_snapshot_ref:{:?};syntax_diagnostics:0;bind_diagnostics:0;semantic_diagnostics:{};semantic_plan_function_bindings:{}",
+                prepared.session_id,
+                prepared.library_context_snapshot_ref,
+                prepared.semantic_plan.diagnostics.len(),
+                prepared.semantic_plan.function_bindings.len()
+            )
+        );
+    }
+
+    #[test]
+    fn recalc_wave_allows_multiple_prepare_compile_pairs_before_dependency_derivation() {
+        let mut wave = OxfmlRecalcWave::new("wave:f6:multi-prepare", RuntimeEnvironment::new());
+        wave.ensure_prepared(&request("formula:f6:first", "=SUM(1,2)"))
+            .expect("first prepare should compile");
+        wave.ensure_prepared(&request("formula:f6:second", "=SUM(3,4)"))
+            .expect("second prepare should compile before dependency derivation");
+        wave.derive_dependencies(0, 2)
+            .expect("dependency derivation follows repeated prepare/compile pairs");
+
+        assert_eq!(
+            wave.trace().phase_sequence(),
+            vec![
+                RecalcWavePhase::WavePreparation,
+                RecalcWavePhase::EnsurePrepared,
+                RecalcWavePhase::Compilation,
+                RecalcWavePhase::EnsurePrepared,
+                RecalcWavePhase::Compilation,
+                RecalcWavePhase::DependencyDerivation,
+            ]
         );
     }
 

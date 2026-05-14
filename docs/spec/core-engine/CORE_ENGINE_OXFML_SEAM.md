@@ -1128,7 +1128,45 @@ OxCalc coordinator publication authority. Observable formula results and
 publication behavior are invariant between value-only and trace-mode runs
 for the exercised Stage 1 profile.
 
-### 22.18 CALC-002 Handoff Inputs
+### 22.18 Current V1 Compilation Trace and Pure-Kernel CSE Boundary
+The current OxCalc F6 uptake records compilation as an observable recalc-wave
+phase while preserving OxFml/OxFunc ownership of formula-language and
+pure-kernel optimization semantics.
+
+Current mapping:
+1. `OxfmlRecalcWave::ensure_prepared` emits `EnsurePrepared`, delegates to the
+   OxFml managed runtime session, then emits a trace-visible `Compilation`
+   phase for the prepared formula.
+2. The `Compilation` event is authoritative to `OxFmlRuntimeSession` and
+   records formula stable id, session id, library-context snapshot reference,
+   syntax/bind/semantic diagnostic counts, and semantic-plan function-binding
+   count.
+3. The recalc-wave phase order is now wave preparation -> ensure prepared ->
+   compilation -> dependency derivation -> scheduled invoke -> coordinator
+   commit -> close/capture. Multiple ensure/compilation pairs may occur before
+   dependency derivation.
+4. Pure-kernel common-subexpression reuse remains an OxFml/OxFunc-owned
+   optimization boundary. OxCalc may group or cache only replay-visible
+   artifacts it receives through public surfaces: prepared-callable identity,
+   plan-template identity, hole-binding fingerprints, and per-edge value-cache
+   keys. OxCalc must not rewrite formulas, infer algebraic equivalence, or
+   inspect OxFunc kernel internals to synthesize CSE.
+
+Successor / handoff note:
+1. CALC-002 should expose canonical compilation trace fields if OxFml wants to
+   publish richer compile/cache events than the current managed-session output.
+2. Any pure-kernel CSE counters, folded subplans, or reusable internal
+   expression ids must come from OxFml/OxFunc-owned trace or artifact surfaces;
+   OxCalc's current role is to record the boundary and consume public identity
+   keys.
+
+Semantic equivalence statement: F6 adds trace observability and boundary text
+only. It does not change source parsing, binding, semantic-plan compilation,
+runtime invocation, candidate adaptation, rejection policy, scheduling
+strategy, pure-kernel behavior, or OxCalc coordinator publication authority.
+Observable formula results are invariant for the exercised Stage 1 profile.
+
+### 22.19 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,

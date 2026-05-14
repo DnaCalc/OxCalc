@@ -129,6 +129,12 @@ pub enum FixtureFormulaBinaryOp {
     Divide,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FixtureFormulaPolicyClass {
+    OpaqueOxfmlSource,
+    LegacyStructuredQuarantine,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FixtureFormulaAst {
     Literal {
@@ -155,6 +161,19 @@ pub enum FixtureFormulaAst {
 }
 
 impl FixtureFormulaAst {
+    #[must_use]
+    pub fn policy_class(&self) -> FixtureFormulaPolicyClass {
+        match self {
+            FixtureFormulaAst::RawOxfml { .. } => FixtureFormulaPolicyClass::OpaqueOxfmlSource,
+            FixtureFormulaAst::Literal { .. }
+            | FixtureFormulaAst::Reference(_)
+            | FixtureFormulaAst::Binary { .. }
+            | FixtureFormulaAst::FunctionCall { .. } => {
+                FixtureFormulaPolicyClass::LegacyStructuredQuarantine
+            }
+        }
+    }
+
     #[must_use]
     pub fn to_tree_formula(&self, owner_node_id: TreeNodeId) -> TreeFormula {
         let mut state = FixtureFormulaRenderState {

@@ -133,7 +133,7 @@ only as allowed archive hits if the final search gate sees them.
 | `src/oxcalc-core/src/upstream_host.rs` | `MinimalUpstreamHostPacket` and `Minimal*` facts | Upstream-host fixture/scaffolding packet surface; no longer the TreeCalc production invocation path. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `src/oxcalc-core/src/upstream_host_fixture.rs` | Fixture loader for `MinimalUpstreamHostPacket` JSON | Upstream-host fixture scaffolding. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `src/oxcalc-core/tests/upstream_host_scaffolding.rs` | Test-local `MinimalUpstreamHostPacket` construction | Upstream-host scaffolding tests. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
-| `docs/test-fixtures/core-engine/treecalc/MANIFEST.json` | Active TreeCalc fixture manifest | Fixture inventory surface. | `calc-cwpl.2`, `calc-cwpl.8.2` |
+| `docs/test-fixtures/core-engine/treecalc/README.md` and `docs/test-fixtures/core-engine/treecalc/MANIFEST.json` | Active TreeCalc fixture policy and manifest | Fixture inventory surface. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `docs/test-fixtures/core-engine/upstream-host/README.md` and `docs/test-fixtures/core-engine/upstream-host/MANIFEST.json` | Active upstream-host fixture docs/manifest | Fixture/scaffolding inventory surface. | `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `docs/slides/oxcalc_xyz_call_trace.html` | Stale `evaluate_via_oxfml` / minimal-packet call-trace wording | Active slide/doc wording leak; should be restated as historical or session-shaped. | `calc-cwpl.4` |
 | `docs/showcase/oxcalc_w047_w048_core_engine_showcase.html` | `TreeFormulaCatalog` showcase wording | Active W047/W048 showcase wording; preserve graph/publication claims only. | `calc-cwpl.4` |
@@ -416,6 +416,16 @@ owned by `.beads/`, not this document.
     `plan_template_key`. Canonical folded-plan identity remains routed to
     CALC-002, and future evidence-gated narrowing producers remain routed
     through CALC-004.
+16. A2 live uptake: TreeCalc fixture policy is documented in
+    `docs/test-fixtures/core-engine/treecalc/README.md`. `RawOxfml` is the
+    preferred opaque OxFml source path; `Literal`, `Reference`, `Binary`,
+    and `FunctionCall` survive only as legacy structured quarantine.
+    Representative manifest tags now distinguish
+    `fixture-policy:opaque-oxfml-source` from
+    `fixture-policy:legacy-structured-quarantine`, and
+    `FixtureFormulaAst::policy_class()` plus
+    `treecalc_fixture_policy_tags_match_representative_cases` make that
+    distinction executable.
 
 ## 7. Required Work
 
@@ -429,6 +439,9 @@ The W050 work, organised by lane.
 4. Delete `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, `MinimalBindingWorld`, `MinimalTypedQueryFacts`, `MinimalRuntimeCatalogFacts` once the session API covers the same intake surface.
 5. Delete any remaining per-formula `RuntimeEnvironment::new().execute(...)` production pattern. B7 removed the `evaluate_via_oxfml` / packet-builder bridge from `treecalc.rs`; remaining packet surfaces must stay fixture-only until deleted or quarantined by later Lane A/B cleanup.
 6. Convert or quarantine W047/W048 CTRO and cycle fixtures that use `TreeFormula` structured carriers.
+   A2 tags `tc_w048_excel_iter_two_node_order_001` as representative
+   `fixture-policy:legacy-structured-quarantine` and keeps broader fixture
+   conversion/deletion in later Lane A cleanup.
 7. Audit `ShapeTopology`, `DynamicPotential`, `HostSensitive`, and `CapabilitySensitive` carriers; ensure they represent evaluator/host facts, not OxCalc formula implementations.
 8. Repair W047/W048 showcase wording where it implies OxCalc-local function semantics.
 9. Retain opaque OxFml source carriage only as boundary input; fixture migration adapters belong under `FixtureFormulaAst`, not `TreeFormula`.

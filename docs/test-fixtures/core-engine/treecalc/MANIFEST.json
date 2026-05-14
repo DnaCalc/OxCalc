@@ -264,7 +264,8 @@
                                    "let-lambda",
                                    "host-sensitive",
                                    "runtime-effect-overlay",
-                                   "rejected"
+                                   "rejected",
+                                   "fixture-policy:opaque-oxfml-source"
                                ]
                   },
                   {
@@ -295,7 +296,8 @@
                                    "let-lambda",
                                    "higher-order",
                                    "publish",
-                                   "W034"
+                                   "W034",
+                                   "fixture-policy:opaque-oxfml-source"
                                ]
                   },
                   {
@@ -365,7 +367,8 @@
                       "tags":  [
                                    "w048",
                                    "cycle",
-                                   "excel-match-iterative"
+                                   "excel-match-iterative",
+                                   "fixture-policy:legacy-structured-quarantine"
                                ]
                   },
                   {

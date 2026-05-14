@@ -511,18 +511,74 @@ fn parse_invalidation_reason(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
+    use crate::formula::FixtureFormulaPolicyClass;
     use crate::treecalc::LocalTreeCalcRunState;
 
     use super::*;
 
-    #[test]
-    fn checked_in_treecalc_fixtures_execute_against_local_runtime() {
-        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    fn repo_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../..")
             .canonicalize()
-            .unwrap();
+            .unwrap()
+    }
+
+    fn treecalc_fixture_path(repo_root: &Path, entry: &TreeCalcFixtureManifestCase) -> PathBuf {
+        repo_root
+            .join("docs/test-fixtures/core-engine/treecalc")
+            .join(entry.path.replace('/', "\\"))
+    }
+
+    #[test]
+    fn treecalc_fixture_policy_tags_match_representative_cases() {
+        let repo_root = repo_root();
+        let manifest_path = repo_root.join("docs/test-fixtures/core-engine/treecalc/MANIFEST.json");
+        let manifest = load_manifest(&manifest_path).unwrap();
+
+        let cases = [
+            (
+                "tc_local_lambda_host_sensitive_reject_001",
+                "fixture-policy:opaque-oxfml-source",
+                FixtureFormulaPolicyClass::OpaqueOxfmlSource,
+            ),
+            (
+                "tc_local_w034_higher_order_let_lambda_publish_001",
+                "fixture-policy:opaque-oxfml-source",
+                FixtureFormulaPolicyClass::OpaqueOxfmlSource,
+            ),
+            (
+                "tc_w048_excel_iter_two_node_order_001",
+                "fixture-policy:legacy-structured-quarantine",
+                FixtureFormulaPolicyClass::LegacyStructuredQuarantine,
+            ),
+        ];
+
+        for (case_id, expected_tag, expected_policy) in cases {
+            let entry = manifest
+                .cases
+                .iter()
+                .find(|entry| entry.case_id == case_id)
+                .unwrap_or_else(|| panic!("missing fixture manifest entry {case_id}"));
+            assert!(
+                entry.tags.iter().any(|tag| tag == expected_tag),
+                "fixture {case_id} must carry {expected_tag}"
+            );
+
+            let case = load_case(&treecalc_fixture_path(&repo_root, entry)).unwrap();
+            assert!(
+                case.formulas
+                    .iter()
+                    .any(|binding| binding.expression.policy_class() == expected_policy),
+                "fixture {case_id} must exercise {expected_policy:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn checked_in_treecalc_fixtures_execute_against_local_runtime() {
+        let repo_root = repo_root();
         let manifest_path = repo_root.join("docs/test-fixtures/core-engine/treecalc/MANIFEST.json");
         let manifest = load_manifest(&manifest_path).unwrap();
         let engine = LocalTreeCalcEngine;
@@ -530,10 +586,7 @@ mod tests {
         assert_eq!(manifest.cases.len(), 37);
 
         for entry in &manifest.cases {
-            let case_path = repo_root
-                .join("docs/test-fixtures/core-engine/treecalc")
-                .join(entry.path.replace('/', "\\"));
-            let case = load_case(&case_path).unwrap();
+            let case = load_case(&treecalc_fixture_path(&repo_root, entry)).unwrap();
             let execution = execute_fixture_case(&engine, &case).unwrap();
             let artifacts = &execution.initial_artifacts;
 

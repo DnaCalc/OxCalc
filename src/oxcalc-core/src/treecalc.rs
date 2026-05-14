@@ -33,7 +33,7 @@ use crate::dependency::{
     InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
-use crate::formula_identity::{PreparedFormulaIdentityKeys, derive_prepared_formula_identity_keys};
+use crate::formula_identity::{PreparedCallable, derive_prepared_callable};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
@@ -117,9 +117,12 @@ pub struct PreparedFormulaIdentityTrace {
     pub formula_artifact_id: String,
     pub bind_artifact_id: Option<String>,
     pub formula_stable_id: String,
+    pub prepared_callable_key: String,
     pub shape_key: String,
     pub dispatch_skeleton_key: String,
     pub plan_template_key: String,
+    pub hole_binding_fingerprint: String,
+    pub template_hole_count: usize,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -1622,7 +1625,7 @@ struct PreparedOxfmlFormula {
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
     bound_formula: oxfml_core::binding::BoundFormula,
-    identity_keys: PreparedFormulaIdentityKeys,
+    prepared_callable: PreparedCallable,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
 }
@@ -1668,7 +1671,7 @@ fn prepare_oxfml_formula(
         library_context_snapshot: None,
     })
     .semantic_plan;
-    let identity_keys = derive_prepared_formula_identity_keys(&bound_formula, &semantic_plan);
+    let prepared_callable = derive_prepared_callable(&bound_formula, &semantic_plan);
 
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
@@ -1680,7 +1683,7 @@ fn prepare_oxfml_formula(
             .map(|diagnostic| format!("oxfml_bind_diagnostic:{}", diagnostic.message))
             .collect(),
         bound_formula,
-        identity_keys,
+        prepared_callable,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
 }
@@ -1697,6 +1700,8 @@ fn prepared_formula_identity_traces(
 fn prepared_formula_identity_trace(
     prepared: &PreparedOxfmlFormula,
 ) -> PreparedFormulaIdentityTrace {
+    let plan_template = &prepared.prepared_callable.plan_template;
+    let hole_bindings = &prepared.prepared_callable.hole_bindings;
     PreparedFormulaIdentityTrace {
         owner_node_id: prepared.binding.owner_node_id,
         formula_artifact_id: prepared.binding.formula_artifact_id.to_string(),
@@ -1706,25 +1711,43 @@ fn prepared_formula_identity_trace(
             .as_ref()
             .map(ToString::to_string),
         formula_stable_id: prepared.source.formula_stable_id.0.clone(),
-        shape_key: prepared.identity_keys.shape_key.to_string(),
-        dispatch_skeleton_key: prepared.identity_keys.dispatch_skeleton_key.to_string(),
-        plan_template_key: prepared.identity_keys.plan_template_key.to_string(),
+        prepared_callable_key: prepared.prepared_callable.prepared_callable_key.clone(),
+        shape_key: plan_template.shape_key.to_string(),
+        dispatch_skeleton_key: plan_template.dispatch_skeleton_key.to_string(),
+        plan_template_key: plan_template.plan_template_key.to_string(),
+        hole_binding_fingerprint: hole_bindings.binding_fingerprint.clone(),
+        template_hole_count: plan_template.holes.len(),
     }
 }
 
 fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec<String> {
+    let plan_template = &prepared.prepared_callable.plan_template;
+    let hole_bindings = &prepared.prepared_callable.hole_bindings;
     vec![
         format!(
             "oxfml_prepared_shape_key:{}:{}",
-            prepared.binding.formula_artifact_id, prepared.identity_keys.shape_key
+            prepared.binding.formula_artifact_id, plan_template.shape_key
         ),
         format!(
             "oxfml_prepared_dispatch_skeleton_key:{}:{}",
-            prepared.binding.formula_artifact_id, prepared.identity_keys.dispatch_skeleton_key
+            prepared.binding.formula_artifact_id, plan_template.dispatch_skeleton_key
         ),
         format!(
             "oxfml_prepared_plan_template_key:{}:{}",
-            prepared.binding.formula_artifact_id, prepared.identity_keys.plan_template_key
+            prepared.binding.formula_artifact_id, plan_template.plan_template_key
+        ),
+        format!(
+            "oxfml_prepared_hole_binding_fingerprint:{}:{}",
+            prepared.binding.formula_artifact_id, hole_bindings.binding_fingerprint
+        ),
+        format!(
+            "oxfml_prepared_callable_key:{}:{}",
+            prepared.binding.formula_artifact_id, prepared.prepared_callable.prepared_callable_key
+        ),
+        format!(
+            "oxfml_prepared_template_hole_count:{}:{}",
+            prepared.binding.formula_artifact_id,
+            plan_template.holes.len()
         ),
     ]
 }
@@ -2652,11 +2675,28 @@ mod tests {
                 .plan_template_key
                 .starts_with("plan_template:v1:")
         );
+        assert!(
+            formula_b_identity
+                .prepared_callable_key
+                .starts_with("prepared_callable:v1:")
+        );
+        assert!(
+            formula_b_identity
+                .hole_binding_fingerprint
+                .starts_with("hole_bindings:v1:")
+        );
+        assert_eq!(formula_b_identity.template_hole_count, 2);
         assert_eq!(run.published_values[&TreeNodeId(3)], "5");
         assert_eq!(run.published_values[&TreeNodeId(4)], "7");
         assert!(run.publication_bundle.is_some());
         assert!(run.diagnostics.iter().any(|diagnostic| {
             diagnostic.starts_with("oxfml_prepared_plan_template_key:formula:b:")
+        }));
+        assert!(run.diagnostics.iter().any(|diagnostic| {
+            diagnostic.starts_with("oxfml_prepared_hole_binding_fingerprint:formula:b:")
+        }));
+        assert!(run.diagnostics.iter().any(|diagnostic| {
+            diagnostic.starts_with("oxfml_prepared_callable_key:formula:b:")
         }));
         assert!(
             run.diagnostics

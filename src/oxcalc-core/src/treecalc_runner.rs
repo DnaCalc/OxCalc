@@ -921,9 +921,12 @@ fn build_trace_events(
             "formula_artifact_id": identity.formula_artifact_id,
             "bind_artifact_id": identity.bind_artifact_id,
             "formula_stable_id": identity.formula_stable_id,
+            "prepared_callable_key": identity.prepared_callable_key,
             "shape_key": identity.shape_key,
             "dispatch_skeleton_key": identity.dispatch_skeleton_key,
             "plan_template_key": identity.plan_template_key,
+            "hole_binding_fingerprint": identity.hole_binding_fingerprint,
+            "template_hole_count": identity.template_hole_count,
         }));
         step_id += 1;
     }
@@ -1074,9 +1077,12 @@ fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> se
         "formula_artifact_id": identity.formula_artifact_id,
         "bind_artifact_id": identity.bind_artifact_id,
         "formula_stable_id": identity.formula_stable_id,
+        "prepared_callable_key": identity.prepared_callable_key,
         "shape_key": identity.shape_key,
         "dispatch_skeleton_key": identity.dispatch_skeleton_key,
         "plan_template_key": identity.plan_template_key,
+        "hole_binding_fingerprint": identity.hole_binding_fingerprint,
+        "template_hole_count": identity.template_hole_count,
     })
 }
 
@@ -2522,6 +2528,21 @@ mod tests {
                 .as_str()
                 .is_some_and(|value| value.starts_with("plan_template:v1:"))
         );
+        assert!(
+            published_result["prepared_formula_identities"][0]["prepared_callable_key"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("prepared_callable:v1:"))
+        );
+        assert!(
+            published_result["prepared_formula_identities"][0]["hole_binding_fingerprint"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("hole_bindings:v1:"))
+        );
+        assert!(
+            published_result["prepared_formula_identities"][0]["template_hole_count"]
+                .as_u64()
+                .is_some_and(|value| value > 0)
+        );
         let published_trace = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(artifact_root.join("cases/tc_local_publish_001/trace.json"))
                 .unwrap(),
@@ -2535,6 +2556,9 @@ mod tests {
                         && event["plan_template_key"]
                             .as_str()
                             .is_some_and(|value| value.starts_with("plan_template:v1:"))
+                        && event["hole_binding_fingerprint"]
+                            .as_str()
+                            .is_some_and(|value| value.starts_with("hole_bindings:v1:"))
                 }))
         );
         assert_eq!(

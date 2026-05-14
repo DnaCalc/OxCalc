@@ -912,10 +912,10 @@ Current mapping:
    remain formula-instance or current-artifact identities rather than
    plan-template identities.
 
-Current C1 limit: these are OxCalc-side compatibility fingerprints over
+Current C1/C2 limit: these are OxCalc-side compatibility fingerprints over
 public V1 artifacts. Canonical OxFml `PreparedCallable` fields,
 `PlanTemplate`, `HoleBindings`, canonical formal-reference identities, and
-capability-set hole taxonomy remain C2/CALC-002 work.
+capability-set hole taxonomy remain CALC-002/C3 work.
 
 Semantic equivalence statement: C1 changes identity derivation and trace
 projection only. It does not change formula source, bind context, runtime
@@ -923,7 +923,45 @@ environment, invocation path, candidate adaptation, rejection policy, or
 OxCalc coordinator publication authority for any currently exercised
 Stage 1 profile.
 
-### 22.12 CALC-002 Handoff Inputs
+### 22.12 Current V1 PreparedCallable And PlanTemplate Artifact Mapping
+The current OxCalc C2 uptake makes the plan-template split a first-class
+OxCalc compatibility artifact while still deriving it only from public
+OxFml V1 artifacts.
+
+Current mapping:
+1. `PlanTemplate` carries `shape_key`, `dispatch_skeleton_key`,
+   `plan_template_key`, and an ordered hole skeleton. The skeleton records
+   a stable hole id, ordinal, expression/reference path, and current V1
+   compatibility hole kind.
+2. `HoleBindings` carries `binding_fingerprint` plus the per-formula hole
+   payload vector. Literal values, concrete references, omitted arguments,
+   and helper/lambda parameter names are bound here rather than in the
+   template identity.
+3. `PreparedCallable` is modeled as
+   `{ prepared_callable_key, PlanTemplate, HoleBindings }`, where
+   `prepared_callable_key` fingerprints `plan_template_key` plus
+   `binding_fingerprint`.
+4. `PreparedOxfmlFormula` carries the `PreparedCallable`, not just loose
+   identity strings. TreeCalc trace records expose
+   `prepared_callable_key`, `plan_template_key`,
+   `hole_binding_fingerprint`, and `template_hole_count`.
+5. Deterministic tests prove that `=SUM(A1,2)` and `=SUM(B7,99)` share the
+   same `PlanTemplate` but have different `HoleBindings`, while `SUM` and
+   `MAX` with the same leaf payloads share hole bindings but diverge at
+   dispatch/template identity.
+
+Current C2 limit: the hole kinds are the narrow compatibility classes
+needed to separate template identity from payload binding. The full W050
+default hole taxonomy, plan-template cache/reuse evidence, and canonical
+OxFml prepared-callable fields remain C3/C5/CALC-002 work.
+
+Semantic equivalence statement: C2 changes artifact shape and trace
+projection only. It does not change source parsing, binding, semantic-plan
+compilation, runtime invocation, candidate adaptation, rejection policy, or
+OxCalc coordinator publication authority for any currently exercised
+Stage 1 profile.
+
+### 22.13 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -952,11 +990,16 @@ Stage 1 profile.
     opaque formula input still needs source-token carriers until OxFml
     exposes canonical prepared-callable input bindings and formal
     reference identities.
-11. the C1-observed identity compatibility bridge: OxCalc can derive
+11. the C1/C2-observed identity compatibility bridge: OxCalc can derive
     current V1 `shape_key`, `dispatch_skeleton_key`, and
-    `plan_template_key` fingerprints from public bound/semantic-plan
+    `plan_template_key` fingerprints and split `PreparedCallable` into
+    `PlanTemplate` plus `HoleBindings` from public bound/semantic-plan
     artifacts, but OxFml still owns the canonical prepared-callable,
     `PlanTemplate`, and hole-binding identity fields.
+12. the C2-observed artifact-shape bridge: OxFml should expose canonical
+    hole ids, hole kinds, hole-binding fingerprints, and prepared-callable
+    keys so OxCalc does not need to treat the compatibility artifact as a
+    shared seam.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

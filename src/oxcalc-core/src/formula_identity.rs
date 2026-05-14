@@ -63,6 +63,63 @@ pub struct PreparedFormulaIdentityKeys {
     pub plan_template_key: PlanTemplateKey,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanTemplate {
+    pub shape_key: ShapeKey,
+    pub dispatch_skeleton_key: DispatchSkeletonKey,
+    pub plan_template_key: PlanTemplateKey,
+    pub holes: Vec<PlanTemplateHole>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanTemplateHole {
+    pub hole_id: String,
+    pub ordinal: usize,
+    pub path: String,
+    pub kind: PlanTemplateHoleKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PlanTemplateHoleKind {
+    NumberLiteral,
+    TextLiteral,
+    LogicalLiteral,
+    OmittedArgument,
+    Reference,
+    HelperParameter,
+    HelperOptionalParameter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HoleBindings {
+    pub binding_fingerprint: String,
+    pub bindings: Vec<PlanTemplateHoleBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanTemplateHoleBinding {
+    pub hole_id: String,
+    pub payload: HoleBindingPayload,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HoleBindingPayload {
+    NumberLiteral(String),
+    TextLiteral(String),
+    LogicalLiteral(bool),
+    OmittedArgument,
+    Reference(String),
+    HelperParameterName(String),
+    HelperOptionalParameterName(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedCallable {
+    pub prepared_callable_key: String,
+    pub plan_template: PlanTemplate,
+    pub hole_bindings: HoleBindings,
+}
+
 #[must_use]
 pub fn derive_prepared_formula_identity_keys(
     bound_formula: &BoundFormula,
@@ -82,6 +139,47 @@ pub fn derive_prepared_formula_identity_keys(
         shape_key,
         dispatch_skeleton_key,
         plan_template_key,
+    }
+}
+
+#[must_use]
+pub fn derive_prepared_callable(
+    bound_formula: &BoundFormula,
+    semantic_plan: &SemanticPlan,
+) -> PreparedCallable {
+    let identity_keys = derive_prepared_formula_identity_keys(bound_formula, semantic_plan);
+    let collected_holes = collect_template_holes_and_bindings(&bound_formula.root);
+    let holes = collected_holes
+        .iter()
+        .map(|collected| collected.hole.clone())
+        .collect::<Vec<_>>();
+    let bindings = collected_holes
+        .into_iter()
+        .map(|collected| collected.binding)
+        .collect::<Vec<_>>();
+    let binding_fingerprint = fingerprint("hole_bindings", &format!("{bindings:?}"));
+    let hole_bindings = HoleBindings {
+        binding_fingerprint,
+        bindings,
+    };
+    let plan_template = PlanTemplate {
+        shape_key: identity_keys.shape_key,
+        dispatch_skeleton_key: identity_keys.dispatch_skeleton_key,
+        plan_template_key: identity_keys.plan_template_key,
+        holes,
+    };
+    let prepared_callable_key = fingerprint(
+        "prepared_callable",
+        &format!(
+            "plan_template_key={};hole_binding_fingerprint={};",
+            plan_template.plan_template_key, hole_bindings.binding_fingerprint
+        ),
+    );
+
+    PreparedCallable {
+        prepared_callable_key,
+        plan_template,
+        hole_bindings,
     }
 }
 
@@ -378,6 +476,128 @@ fn push_normalized_reference_shape(reference: &NormalizedReference, input: &mut 
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CollectedTemplateHole {
+    hole: PlanTemplateHole,
+    binding: PlanTemplateHoleBinding,
+}
+
+#[derive(Default)]
+struct HoleCollector {
+    collected: Vec<CollectedTemplateHole>,
+}
+
+impl HoleCollector {
+    fn push_hole(&mut self, path: String, kind: PlanTemplateHoleKind, payload: HoleBindingPayload) {
+        let ordinal = self.collected.len();
+        let hole_id = format!("hole:{ordinal}");
+        self.collected.push(CollectedTemplateHole {
+            hole: PlanTemplateHole {
+                hole_id: hole_id.clone(),
+                ordinal,
+                path,
+                kind,
+            },
+            binding: PlanTemplateHoleBinding { hole_id, payload },
+        });
+    }
+
+    fn collect_expr(&mut self, expr: &BoundExpr, path: String) {
+        match expr {
+            BoundExpr::NumberLiteral(value) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::NumberLiteral,
+                HoleBindingPayload::NumberLiteral(value.clone()),
+            ),
+            BoundExpr::StringLiteral(value) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::TextLiteral,
+                HoleBindingPayload::TextLiteral(value.clone()),
+            ),
+            BoundExpr::LogicalLiteral(value) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::LogicalLiteral,
+                HoleBindingPayload::LogicalLiteral(*value),
+            ),
+            BoundExpr::ArrayLiteral(rows) => {
+                for (row_index, row) in rows.iter().enumerate() {
+                    for (column_index, value) in row.iter().enumerate() {
+                        self.collect_expr(
+                            value,
+                            format!("{path}.row{row_index}.col{column_index}"),
+                        );
+                    }
+                }
+            }
+            BoundExpr::OmittedArgument => self.push_hole(
+                path,
+                PlanTemplateHoleKind::OmittedArgument,
+                HoleBindingPayload::OmittedArgument,
+            ),
+            BoundExpr::HelperParameterName(name) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::HelperParameter,
+                HoleBindingPayload::HelperParameterName(name.clone()),
+            ),
+            BoundExpr::HelperOptionalParameterName(name) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::HelperOptionalParameter,
+                HoleBindingPayload::HelperOptionalParameterName(name.clone()),
+            ),
+            BoundExpr::Binary { left, right, .. } => {
+                self.collect_expr(left, format!("{path}.left"));
+                self.collect_expr(right, format!("{path}.right"));
+            }
+            BoundExpr::Unary { expr, .. } | BoundExpr::ImplicitIntersection(expr) => {
+                self.collect_expr(expr, format!("{path}.expr"));
+            }
+            BoundExpr::FunctionCall { args, .. } => {
+                for (index, arg) in args.iter().enumerate() {
+                    self.collect_expr(arg, format!("{path}.arg{index}"));
+                }
+            }
+            BoundExpr::Invocation { callee, args } => {
+                self.collect_expr(callee, format!("{path}.callee"));
+                for (index, arg) in args.iter().enumerate() {
+                    self.collect_expr(arg, format!("{path}.arg{index}"));
+                }
+            }
+            BoundExpr::Reference(reference) => self.collect_reference(reference, path),
+        }
+    }
+
+    fn collect_reference(&mut self, reference: &ReferenceExpr, path: String) {
+        match reference {
+            ReferenceExpr::Atom(normalized) => self.push_hole(
+                path,
+                PlanTemplateHoleKind::Reference,
+                HoleBindingPayload::Reference(format!("{normalized:?}")),
+            ),
+            ReferenceExpr::Range { start, end } => {
+                self.collect_reference(start, format!("{path}.range_start"));
+                self.collect_reference(end, format!("{path}.range_end"));
+            }
+            ReferenceExpr::Union { left, right } => {
+                self.collect_reference(left, format!("{path}.union_left"));
+                self.collect_reference(right, format!("{path}.union_right"));
+            }
+            ReferenceExpr::Intersection { left, right } => {
+                self.collect_reference(left, format!("{path}.intersection_left"));
+                self.collect_reference(right, format!("{path}.intersection_right"));
+            }
+            ReferenceExpr::Spill { anchor } => {
+                self.collect_reference(anchor, format!("{path}.spill_anchor"));
+            }
+        }
+    }
+}
+
+fn collect_template_holes_and_bindings(root: &BoundExpr) -> Vec<CollectedTemplateHole> {
+    let mut collector = HoleCollector::default();
+    collector.collect_expr(root, "root".to_string());
+    collector.collected
+}
+
 fn fingerprint(namespace: &str, input: &str) -> String {
     format!("{namespace}:v1:{:016x}", stable_fnv1a64(input.as_bytes()))
 }
@@ -401,7 +621,7 @@ mod tests {
 
     use super::*;
 
-    fn identity_for(formula_stable_id: &str, source_text: &str) -> PreparedFormulaIdentityKeys {
+    fn prepared_callable_for(formula_stable_id: &str, source_text: &str) -> PreparedCallable {
         let source = FormulaSourceRecord::new(formula_stable_id, 1, source_text);
         let parse = parse_formula(ParseRequest {
             source: source.clone(),
@@ -428,7 +648,16 @@ mod tests {
         })
         .semantic_plan;
 
-        derive_prepared_formula_identity_keys(&bind_result.bound_formula, &semantic_plan)
+        derive_prepared_callable(&bind_result.bound_formula, &semantic_plan)
+    }
+
+    fn identity_for(formula_stable_id: &str, source_text: &str) -> PreparedFormulaIdentityKeys {
+        let prepared_callable = prepared_callable_for(formula_stable_id, source_text);
+        PreparedFormulaIdentityKeys {
+            shape_key: prepared_callable.plan_template.shape_key,
+            dispatch_skeleton_key: prepared_callable.plan_template.dispatch_skeleton_key,
+            plan_template_key: prepared_callable.plan_template.plan_template_key,
+        }
     }
 
     #[test]
@@ -457,5 +686,61 @@ mod tests {
         let branch_lazy = identity_for("formula:branch", "=IF(A1,2,3)");
 
         assert_ne!(eager.shape_key, branch_lazy.shape_key);
+    }
+
+    #[test]
+    fn prepared_callable_separates_template_from_hole_bindings() {
+        let left = prepared_callable_for("formula:left", "=SUM(A1,2)");
+        let right = prepared_callable_for("formula:right", "=SUM(B7,99)");
+
+        assert_eq!(
+            left.plan_template.plan_template_key,
+            right.plan_template.plan_template_key
+        );
+        assert_eq!(left.plan_template.holes, right.plan_template.holes);
+        assert_eq!(
+            left.plan_template
+                .holes
+                .iter()
+                .map(|hole| hole.kind)
+                .collect::<Vec<_>>(),
+            vec![
+                PlanTemplateHoleKind::Reference,
+                PlanTemplateHoleKind::NumberLiteral
+            ]
+        );
+        assert_ne!(
+            left.hole_bindings.binding_fingerprint,
+            right.hole_bindings.binding_fingerprint
+        );
+        assert_ne!(
+            left.hole_bindings.bindings[0].payload,
+            right.hole_bindings.bindings[0].payload
+        );
+        assert_ne!(
+            left.hole_bindings.bindings[1].payload,
+            right.hole_bindings.bindings[1].payload
+        );
+        assert_ne!(left.prepared_callable_key, right.prepared_callable_key);
+    }
+
+    #[test]
+    fn prepared_callable_template_changes_when_dispatch_changes() {
+        let sum = prepared_callable_for("formula:sum", "=SUM(A1,2)");
+        let max = prepared_callable_for("formula:max", "=MAX(A1,2)");
+
+        assert_eq!(sum.plan_template.shape_key, max.plan_template.shape_key);
+        assert_ne!(
+            sum.plan_template.dispatch_skeleton_key,
+            max.plan_template.dispatch_skeleton_key
+        );
+        assert_ne!(
+            sum.plan_template.plan_template_key,
+            max.plan_template.plan_template_key
+        );
+        assert_eq!(
+            sum.hole_bindings.binding_fingerprint,
+            max.hole_bindings.binding_fingerprint
+        );
     }
 }

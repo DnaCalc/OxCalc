@@ -281,8 +281,16 @@ owned by `.beads/`, not this document.
     those keys, and TreeCalc run artifacts plus runner traces surface
     `prepared_formula_identity` records. This is a compatibility identity
     layer; canonical OxFml `PreparedCallable`, `PlanTemplate`,
-    `HoleBindings`, and formal-reference identity fields remain C2 and
-    CALC-002 pressure.
+    `HoleBindings`, and formal-reference identity fields remain CALC-002
+    pressure.
+11. C2 live uptake: `formula_identity.rs` now models
+    `PreparedCallable = (PlanTemplate, HoleBindings)` for the current V1
+    compatibility path. `PlanTemplate` carries the C1 keys plus ordered
+    compatibility holes; `HoleBindings` carries the per-formula payload
+    vector and `binding_fingerprint`; TreeCalc and runner traces surface
+    `prepared_callable_key`, `hole_binding_fingerprint`, and
+    `template_hole_count`. The full hole taxonomy, reuse evidence, and
+    canonical OxFml artifact fields remain C3/C5/CALC-002 pressure.
 
 ## 7. Required Work
 
@@ -318,6 +326,8 @@ The W050 work, organised by lane.
     C1 now covers current V1 compatibility fingerprints and trace fields;
     canonical OxFml fields remain open for C2/CALC-002.
 20. Move `PreparedCallable` to `(PlanTemplate, HoleBindings)` shape; verify reuse across cells sharing `plan_template_key` via a microbenchmark or trace-counting test.
+    C2 now covers the artifact shape and deterministic separation tests;
+    reuse evidence remains open in C5.
 21. Implement the default hole-type taxonomy: `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`.
 22. Document the wide-by-default policy and reserve narrowing producers (`ConstNumericHole`, etc.) for opt-in evidence-gated implementation.
 23. Treat changes to `ArgPreparationProfile` for any existing OxFunc function as bind-visible name-world events; verify the invalidation pathway in the test corpus.

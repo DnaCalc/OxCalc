@@ -1256,5 +1256,39 @@ Current OxCalc gap routed to `HANDOFF-CALC-002`:
 Current non-assumptions:
 1. OxCalc is not asking for private OxFml semantic-plan internals,
 2. OxCalc is not treating these fingerprints as a shared canonical seam,
-3. OxCalc is not claiming plan-template reuse until the C2
-   `PlanTemplate` artifact and reuse evidence exist.
+3. OxCalc is not claiming plan-template reuse until the C5 trace-count
+   evidence exists.
+
+## 73. W050 C2 PreparedCallable And PlanTemplate Artifact Uptake
+OxCalc has added a current V1 compatibility `PreparedCallable` artifact
+shape for prepared TreeCalc formulas.
+
+Current OxCalc code shape is:
+1. `PlanTemplate` carries `shape_key`, `dispatch_skeleton_key`,
+   `plan_template_key`, and an ordered current V1 compatibility hole
+   skeleton,
+2. `HoleBindings` carries a per-formula payload vector and
+   `binding_fingerprint`,
+3. `PreparedCallable` is represented as
+   `{ prepared_callable_key, PlanTemplate, HoleBindings }`,
+4. `PreparedOxfmlFormula` now carries the `PreparedCallable`,
+5. TreeCalc run artifacts and runner trace events expose
+   `prepared_callable_key`, `hole_binding_fingerprint`, and
+   `template_hole_count`.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. the artifact shape is an OxCalc compatibility projection, not a
+   canonical OxFml seam,
+2. OxCalc still needs OxFml-owned `PreparedCallable`, `PlanTemplate`,
+   canonical hole ids, hole kinds, hole-binding fingerprints, and
+   prepared-callable keys on the public consumer/runtime surface,
+3. current V1 still lacks canonical formal-reference identity and
+   prepared-callable input binding surfaces, so C2 does not retire the
+   B5/B7/A3 compatibility carriers.
+
+Current non-assumptions:
+1. OxCalc is not asking for private OxFml plan internals,
+2. OxCalc is not treating the compatibility artifact as the future shared
+   seam,
+3. OxCalc is not claiming template cache reuse until separate C5 evidence
+   exists.

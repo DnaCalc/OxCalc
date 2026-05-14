@@ -12,6 +12,7 @@ pub mod coordinator;
 pub mod dependency;
 pub mod formula;
 pub mod recalc;
+pub mod repository;
 pub mod structural;
 pub mod treecalc;
 pub mod treecalc_fixture;

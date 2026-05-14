@@ -329,11 +329,13 @@ impl LocalTreeCalcEngine {
                         &input,
                         &mut coordinator,
                         &mut recalc_tracker,
-                        dependency_graph,
-                        invalidation_closure,
-                        diagnostics,
-                        phase_timer,
-                        &formula_owner_ids,
+                        IterativeCyclePublishContext {
+                            dependency_graph,
+                            invalidation_closure,
+                            diagnostics,
+                            phase_timer,
+                            formula_owner_ids: &formula_owner_ids,
+                        },
                     );
                 }
                 return reject_run(
@@ -620,12 +622,16 @@ fn publish_excel_match_iterative_cycle(
     input: &LocalTreeCalcInput,
     coordinator: &mut TreeCalcCoordinator,
     recalc_tracker: &mut Stage1RecalcTracker,
-    dependency_graph: DependencyGraph,
-    invalidation_closure: InvalidationClosure,
-    mut diagnostics: Vec<String>,
-    phase_timer: LocalTreeCalcPhaseTimer,
-    formula_owner_ids: &[TreeNodeId],
+    context: IterativeCyclePublishContext<'_>,
 ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+    let IterativeCyclePublishContext {
+        dependency_graph,
+        invalidation_closure,
+        mut diagnostics,
+        phase_timer,
+        formula_owner_ids,
+    } = context;
+
     let Some((evaluation_order, value_updates, trace_summary)) =
         excel_match_iterative_fixture_surface(input)
     else {
@@ -692,6 +698,14 @@ fn publish_excel_match_iterative_cycle(
         phase_timings_micros,
         diagnostics,
     })
+}
+
+struct IterativeCyclePublishContext<'a> {
+    dependency_graph: DependencyGraph,
+    invalidation_closure: InvalidationClosure,
+    diagnostics: Vec<String>,
+    phase_timer: LocalTreeCalcPhaseTimer,
+    formula_owner_ids: &'a [TreeNodeId],
 }
 
 fn excel_match_iterative_fixture_surface(

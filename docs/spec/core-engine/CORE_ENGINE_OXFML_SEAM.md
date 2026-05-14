@@ -655,6 +655,13 @@ The minimum input families are:
    - no synthetic A1 address generation as the dependency identity layer
    - no OxCalc-authored formula AST lowered into Excel source
 
+The OxCalc-owned Calculation Repository is the persistent home for these
+inputs between waves. It owns structural snapshot identity, formula slot
+identity, dependency graph state derived from OxFml bind outputs, per-node
+calculation state, runtime overlays, pinned reader views, published value
+view, and typed handles to OxFml artifacts. It does not own OxFml artifact
+meaning or formula-language semantics.
+
 ### 22.3 Prepare And Bind Contract
 W050 names the preparation operation `ensure_prepared`.
 

@@ -9,6 +9,7 @@
 
 pub mod consumer;
 pub mod coordinator;
+pub mod correctness_floor;
 pub mod dependency;
 pub mod error_algebra;
 pub mod formula;

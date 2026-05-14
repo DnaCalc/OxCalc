@@ -533,6 +533,11 @@ owned by `.beads/`, not this document.
     records `CanonicalExcelLegacy`, the canonical precedence order
     `#NULL!`, `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A`,
     the version/profile extension rule, and exact CALC-003 handoff clause text.
+30. E3 live uptake: `CorrectnessFloorProfile` now records
+    `profile_version`, `numerical_reduction_policy`, and `error_algebra` in
+    `OxfmlRecalcWave` trace/replay surfaces and rejects replay selector
+    mismatches. The checked replay-hook artifact root is
+    `docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001`.
 
 ## 7. Required Work
 
@@ -666,6 +671,11 @@ The W050 work, organised by lane.
     `docs/test-runs/core-engine/w050-e2-error-algebra-selector-001/selector_artifact.json`.
 31. File `HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md` to OxFml / OxFunc: kernels must honour the active reduction policy; OxFml semantic plan threads the policy and algebra into evaluation context.
 32. Add replay-validation hooks: every wave's trace records the active reduction policy and error algebra; replay verifies match.
+    E3 adds `CorrectnessFloorProfile` and
+    `CorrectnessFloorReplayRecord` in `src/oxcalc-core/src/correctness_floor.rs`,
+    wires the profile into `OxfmlRecalcWave`, updates the trace artifact schema
+    note, and checks accepted/mismatched replay records through
+    `docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001/run_artifact.json`.
 
 **Lane F — Performance / Observability.**
 

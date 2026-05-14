@@ -231,7 +231,14 @@ Each per-scenario result should contain:
 The first trace artifact should contain:
 1. `scenario_id`,
 2. `run_id`,
-3. `events`.
+3. `profile_selectors`,
+4. `events`.
+
+`profile_selectors` must include replay-visible semantic selectors that can
+affect evaluation results. For W050 correctness-floor traces this includes:
+1. `profile_version`,
+2. `numerical_reduction_policy`,
+3. `error_algebra`.
 
 Each event should contain at least:
 1. `event_id`,

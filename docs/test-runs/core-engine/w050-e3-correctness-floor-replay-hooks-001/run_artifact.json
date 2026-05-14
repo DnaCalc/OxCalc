@@ -1,0 +1,54 @@
+{
+  "run_id": "w050-e3-correctness-floor-replay-hooks-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core correctness_floor_replay -- --nocapture",
+  "active_profile_key": "profile:correctness-floor:v1|numerical_reduction_policy:SequentialLeftFold|error_algebra:CanonicalExcelLegacy",
+  "trace_replay_record": {
+    "profile_version": "profile:correctness-floor:v1",
+    "numerical_reduction_policy": "SequentialLeftFold",
+    "error_algebra": "CanonicalExcelLegacy"
+  },
+  "accepted_replay": {
+    "recorded": {
+      "profile_version": "profile:correctness-floor:v1",
+      "numerical_reduction_policy": "SequentialLeftFold",
+      "error_algebra": "CanonicalExcelLegacy"
+    },
+    "active": {
+      "profile_version": "profile:correctness-floor:v1",
+      "numerical_reduction_policy": "SequentialLeftFold",
+      "error_algebra": "CanonicalExcelLegacy"
+    },
+    "validation": "accepted"
+  },
+  "rejected_replays": [
+    {
+      "mismatch_kind": "numerical_reduction_policy",
+      "recorded": {
+        "profile_version": "profile:correctness-floor:v1",
+        "numerical_reduction_policy": "PairwiseTree",
+        "error_algebra": "CanonicalExcelLegacy"
+      },
+      "active": {
+        "profile_version": "profile:correctness-floor:v1",
+        "numerical_reduction_policy": "SequentialLeftFold",
+        "error_algebra": "CanonicalExcelLegacy"
+      },
+      "expected_error": "correctness_floor_selector_mismatch"
+    },
+    {
+      "mismatch_kind": "error_algebra",
+      "recorded": {
+        "profile_version": "profile:correctness-floor:v1",
+        "numerical_reduction_policy": "SequentialLeftFold",
+        "error_algebra": "ProfileDeclaredTest"
+      },
+      "active": {
+        "profile_version": "profile:correctness-floor:v1",
+        "numerical_reduction_policy": "SequentialLeftFold",
+        "error_algebra": "CanonicalExcelLegacy"
+      },
+      "expected_error": "correctness_floor_selector_mismatch"
+    }
+  ]
+}

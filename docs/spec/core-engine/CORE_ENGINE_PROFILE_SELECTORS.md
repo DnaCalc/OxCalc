@@ -107,6 +107,17 @@ exact CALC-003 clause text. The validation test
 `checked_in_error_algebra_artifact_matches_runtime_clauses` compares the
 checked artifact against the Rust selector surface.
 
+The first checked OxCalc-local replay-hook artifact for both correctness-floor
+selectors is:
+
+`docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001`
+
+It records the active `CorrectnessFloorProfile` replay key, the trace replay
+record, an accepted replay case, and rejected replay cases for
+`numerical_reduction_policy` and `error_algebra` mismatches. The validation
+test `checked_in_correctness_floor_replay_hook_artifact_matches_runtime_validation`
+compares the checked artifact against the Rust replay-validation surface.
+
 ## 7. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
@@ -114,4 +125,4 @@ checked artifact against the Rust selector surface.
 - integration_completeness: partial
 - open_lanes:
   - OxFml/OxFunc threading and acknowledgement remain routed through H2/CALC-003,
-  - wave trace replay hooks remain routed through the Lane E replay-validation item
+  - OxFml/OxFunc kernel-side enforcement remains outside this OxCalc-local replay hook

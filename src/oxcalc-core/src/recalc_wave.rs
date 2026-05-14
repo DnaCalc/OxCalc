@@ -8,6 +8,9 @@ use oxfml_core::consumer::runtime::{
 use thiserror::Error;
 
 use crate::coordinator::{PublicationBundle, RejectDetail};
+use crate::correctness_floor::{
+    CorrectnessFloorProfile, CorrectnessFloorReplayRecord, CorrectnessFloorReplayValidationError,
+};
 use crate::oxfml_session::{OxfmlRecalcSessionDriver, OxfmlRecalcSessionError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -73,6 +76,7 @@ pub struct RecalcWaveTraceEvent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecalcWaveTrace {
     wave_id: String,
+    correctness_floor_profile: CorrectnessFloorProfile,
     events: Vec<RecalcWaveTraceEvent>,
 }
 
@@ -85,6 +89,26 @@ impl RecalcWaveTrace {
     #[must_use]
     pub fn events(&self) -> &[RecalcWaveTraceEvent] {
         &self.events
+    }
+
+    #[must_use]
+    pub fn correctness_floor_profile(&self) -> &CorrectnessFloorProfile {
+        &self.correctness_floor_profile
+    }
+
+    #[must_use]
+    pub fn correctness_floor_replay_record(&self) -> CorrectnessFloorReplayRecord {
+        self.correctness_floor_profile.replay_record()
+    }
+
+    pub fn validate_replay_selectors(
+        &self,
+        active: &CorrectnessFloorProfile,
+    ) -> Result<(), CorrectnessFloorReplayValidationError> {
+        CorrectnessFloorProfile::validate_replay_record(
+            &self.correctness_floor_replay_record(),
+            active,
+        )
     }
 
     #[must_use]
@@ -144,11 +168,39 @@ impl<'a> OxfmlRecalcWave<'a> {
 
     #[must_use]
     pub fn from_driver(wave_id: impl Into<String>, driver: OxfmlRecalcSessionDriver<'a>) -> Self {
+        Self::from_driver_with_correctness_floor_profile(
+            wave_id,
+            driver,
+            CorrectnessFloorProfile::default(),
+        )
+    }
+
+    #[must_use]
+    pub fn new_with_correctness_floor_profile(
+        wave_id: impl Into<String>,
+        environment: RuntimeEnvironment<'a>,
+        correctness_floor_profile: CorrectnessFloorProfile,
+    ) -> Self {
+        Self::from_driver_with_correctness_floor_profile(
+            wave_id,
+            OxfmlRecalcSessionDriver::new(environment),
+            correctness_floor_profile,
+        )
+    }
+
+    #[must_use]
+    pub fn from_driver_with_correctness_floor_profile(
+        wave_id: impl Into<String>,
+        driver: OxfmlRecalcSessionDriver<'a>,
+        correctness_floor_profile: CorrectnessFloorProfile,
+    ) -> Self {
         let wave_id = wave_id.into();
+        let profile_key = correctness_floor_profile.replay_profile_key();
         let mut wave = Self {
             driver,
             trace: RecalcWaveTrace {
                 wave_id: wave_id.clone(),
+                correctness_floor_profile,
                 events: Vec::new(),
             },
             last_phase: None,
@@ -158,7 +210,7 @@ impl<'a> OxfmlRecalcWave<'a> {
         wave.record_phase(
             RecalcWavePhase::WavePreparation,
             RecalcWaveAuthority::OxCalcRepository,
-            format!("wave:{wave_id}:open"),
+            format!("wave:{wave_id}:open;correctness_floor_profile:{profile_key}"),
         )
         .expect("new wave starts at wave preparation");
         wave
@@ -306,14 +358,23 @@ impl<'a> OxfmlRecalcWave<'a> {
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
+    use std::fs;
+    use std::path::PathBuf;
 
     use oxfml_core::EvaluationBackend;
     use oxfml_core::consumer::runtime::{RuntimeEnvironment, RuntimeFormulaRequest};
     use oxfml_core::interface::TypedContextQueryBundle;
     use oxfml_core::seam::ValuePayload;
     use oxfml_core::source::FormulaSourceRecord;
+    use serde_json::json;
 
     use crate::coordinator::{AcceptedCandidateResult, TreeCalcCoordinator};
+    use crate::correctness_floor::{
+        CorrectnessFloorProfile, CorrectnessFloorReplayRecord,
+        CorrectnessFloorReplayValidationError,
+    };
+    use crate::error_algebra::ErrorAlgebra;
+    use crate::numerical_reduction::NumericalReductionPolicy;
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
     };
@@ -370,6 +431,53 @@ mod tests {
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),
         }
+    }
+
+    fn e3_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001")
+    }
+
+    fn correctness_floor_replay_artifact_json() -> serde_json::Value {
+        let active = CorrectnessFloorProfile::default();
+        let active_record = active.replay_record();
+        let numerical_policy_mismatch = CorrectnessFloorReplayRecord {
+            numerical_reduction_policy: NumericalReductionPolicy::PairwiseTree
+                .selector_key()
+                .to_string(),
+            ..active_record.clone()
+        };
+        let error_algebra_mismatch = CorrectnessFloorReplayRecord {
+            error_algebra: "ProfileDeclaredTest".to_string(),
+            ..active_record.clone()
+        };
+
+        json!({
+            "run_id": "w050-e3-correctness-floor-replay-hooks-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core correctness_floor_replay -- --nocapture",
+            "active_profile_key": active.replay_profile_key(),
+            "trace_replay_record": active_record,
+            "accepted_replay": {
+                "recorded": active.replay_record(),
+                "active": active.replay_record(),
+                "validation": "accepted"
+            },
+            "rejected_replays": [
+                {
+                    "mismatch_kind": "numerical_reduction_policy",
+                    "recorded": numerical_policy_mismatch,
+                    "active": active.replay_record(),
+                    "expected_error": "correctness_floor_selector_mismatch"
+                },
+                {
+                    "mismatch_kind": "error_algebra",
+                    "recorded": error_algebra_mismatch,
+                    "active": active.replay_record(),
+                    "expected_error": "correctness_floor_selector_mismatch"
+                }
+            ]
+        })
     }
 
     #[test]
@@ -436,6 +544,10 @@ mod tests {
             .expect("trace should contain coordinator commit phase");
         assert_eq!(commit.authority, RecalcWaveAuthority::OxCalcCoordinator);
         assert_eq!(coordinator.counters().publication_count, 1);
+        assert_eq!(
+            trace.correctness_floor_replay_record(),
+            CorrectnessFloorProfile::default().replay_record()
+        );
     }
 
     #[test]
@@ -457,5 +569,70 @@ mod tests {
                 observed: RecalcWavePhase::ScheduleInvoke,
             }
         );
+    }
+
+    #[test]
+    fn correctness_floor_replay_selectors_are_recorded_in_wave_trace() {
+        let profile = CorrectnessFloorProfile::new(
+            "profile:correctness-floor:test",
+            NumericalReductionPolicy::KahanCompensated,
+            ErrorAlgebra::CanonicalExcelLegacy,
+        );
+        let wave = OxfmlRecalcWave::new_with_correctness_floor_profile(
+            "wave:profile-selectors",
+            RuntimeEnvironment::new(),
+            profile.clone(),
+        );
+        let trace = wave.trace();
+
+        assert_eq!(trace.correctness_floor_profile(), &profile);
+        assert_eq!(
+            trace.correctness_floor_replay_record(),
+            CorrectnessFloorReplayRecord {
+                profile_version: "profile:correctness-floor:test".to_string(),
+                numerical_reduction_policy: "KahanCompensated".to_string(),
+                error_algebra: "CanonicalExcelLegacy".to_string(),
+            }
+        );
+        assert_eq!(trace.validate_replay_selectors(&profile), Ok(()));
+        assert!(
+            trace.events()[0]
+                .detail
+                .contains("correctness_floor_profile:profile:correctness-floor:test|numerical_reduction_policy:KahanCompensated|error_algebra:CanonicalExcelLegacy")
+        );
+    }
+
+    #[test]
+    fn correctness_floor_replay_rejects_selector_mismatch() {
+        let active = CorrectnessFloorProfile::default();
+        let mut recorded = active.replay_record();
+        recorded.numerical_reduction_policy = "PairwiseTree".to_string();
+
+        let error = CorrectnessFloorProfile::validate_replay_record(&recorded, &active)
+            .expect_err("recorded numerical policy mismatch should reject replay");
+        assert!(matches!(
+            error,
+            CorrectnessFloorReplayValidationError::SelectorMismatch { .. }
+        ));
+
+        let mut recorded = active.replay_record();
+        recorded.error_algebra = "ProfileDeclaredTest".to_string();
+        let error = CorrectnessFloorProfile::validate_replay_record(&recorded, &active)
+            .expect_err("recorded error algebra mismatch should reject replay");
+        assert!(matches!(
+            error,
+            CorrectnessFloorReplayValidationError::SelectorMismatch { .. }
+        ));
+    }
+
+    #[test]
+    fn checked_in_correctness_floor_replay_hook_artifact_matches_runtime_validation() {
+        let artifact_path = e3_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("E3 run artifact should be checked in"),
+        )
+        .expect("E3 run artifact should be valid JSON");
+
+        assert_eq!(artifact, correctness_floor_replay_artifact_json());
     }
 }

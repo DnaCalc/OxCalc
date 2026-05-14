@@ -1,0 +1,75 @@
+{
+  "run_id": "w050-e4-profile-selector-tests-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core correctness_floor_profile_selector -- --nocapture",
+  "default_profile": {
+    "profile": {
+      "profile_version": "profile:correctness-floor:v1",
+      "numerical_reduction_policy": "SequentialLeftFold",
+      "error_algebra": "CanonicalExcelLegacy"
+    },
+    "replay_profile_key": "profile:correctness-floor:v1|numerical_reduction_policy:SequentialLeftFold|error_algebra:CanonicalExcelLegacy",
+    "replay_record": {
+      "profile_version": "profile:correctness-floor:v1",
+      "numerical_reduction_policy": "SequentialLeftFold",
+      "error_algebra": "CanonicalExcelLegacy"
+    }
+  },
+  "explicit_profile": {
+    "profile": {
+      "profile_version": "profile:correctness-floor:pairwise-canonical",
+      "numerical_reduction_policy": "PairwiseTree",
+      "error_algebra": "CanonicalExcelLegacy"
+    },
+    "replay_profile_key": "profile:correctness-floor:pairwise-canonical|numerical_reduction_policy:PairwiseTree|error_algebra:CanonicalExcelLegacy",
+    "replay_record": {
+      "profile_version": "profile:correctness-floor:pairwise-canonical",
+      "numerical_reduction_policy": "PairwiseTree",
+      "error_algebra": "CanonicalExcelLegacy"
+    }
+  },
+  "mismatch_diagnostics": [
+    {
+      "case": "numerical_reduction_policy",
+      "diagnostic": {
+        "diagnostic_code": "correctness_floor_selector_mismatch",
+        "mismatched_fields": [
+          "numerical_reduction_policy"
+        ],
+        "recorded": {
+          "profile_version": "profile:correctness-floor:v1",
+          "numerical_reduction_policy": "PairwiseTree",
+          "error_algebra": "CanonicalExcelLegacy"
+        },
+        "active": {
+          "profile_version": "profile:correctness-floor:v1",
+          "numerical_reduction_policy": "SequentialLeftFold",
+          "error_algebra": "CanonicalExcelLegacy"
+        }
+      }
+    },
+    {
+      "case": "error_algebra",
+      "diagnostic": {
+        "diagnostic_code": "correctness_floor_selector_mismatch",
+        "mismatched_fields": [
+          "error_algebra"
+        ],
+        "recorded": {
+          "profile_version": "profile:correctness-floor:v1",
+          "numerical_reduction_policy": "SequentialLeftFold",
+          "error_algebra": "ProfileDeclaredTest"
+        },
+        "active": {
+          "profile_version": "profile:correctness-floor:v1",
+          "numerical_reduction_policy": "SequentialLeftFold",
+          "error_algebra": "CanonicalExcelLegacy"
+        }
+      }
+    }
+  ],
+  "spec_surfaces": [
+    "docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md",
+    "src/oxcalc-core/src/correctness_floor.rs"
+  ]
+}

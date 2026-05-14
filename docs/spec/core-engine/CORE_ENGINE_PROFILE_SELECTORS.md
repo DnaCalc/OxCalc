@@ -118,6 +118,18 @@ record, an accepted replay case, and rejected replay cases for
 test `checked_in_correctness_floor_replay_hook_artifact_matches_runtime_validation`
 compares the checked artifact against the Rust replay-validation surface.
 
+The combined OxCalc-local selector test manifest is:
+
+`docs/test-runs/core-engine/w050-e4-profile-selector-tests-001`
+
+It records the default `CorrectnessFloorProfile`, an explicit
+`PairwiseTree`/`CanonicalExcelLegacy` profile selection, and structured replay
+mismatch diagnostics for `numerical_reduction_policy` and `error_algebra`. The
+validation test
+`checked_in_correctness_floor_profile_selector_manifest_matches_runtime_diagnostics`
+compares the checked manifest against the Rust selector and replay-diagnostic
+surface.
+
 ## 7. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial

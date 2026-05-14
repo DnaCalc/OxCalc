@@ -81,6 +81,14 @@ pub struct CorrectnessFloorReplayRecord {
     pub error_algebra: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CorrectnessFloorSelectorMismatchDiagnostic {
+    pub diagnostic_code: String,
+    pub mismatched_fields: Vec<String>,
+    pub recorded: CorrectnessFloorReplayRecord,
+    pub active: CorrectnessFloorReplayRecord,
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum CorrectnessFloorReplayValidationError {
     #[error("correctness-floor selector mismatch: recorded {recorded:?}; active {active:?}")]
@@ -88,4 +96,202 @@ pub enum CorrectnessFloorReplayValidationError {
         recorded: Box<CorrectnessFloorReplayRecord>,
         active: Box<CorrectnessFloorReplayRecord>,
     },
+}
+
+impl CorrectnessFloorReplayValidationError {
+    #[must_use]
+    pub fn diagnostic(&self) -> CorrectnessFloorSelectorMismatchDiagnostic {
+        match self {
+            Self::SelectorMismatch { recorded, active } => {
+                CorrectnessFloorSelectorMismatchDiagnostic {
+                    diagnostic_code: "correctness_floor_selector_mismatch".to_string(),
+                    mismatched_fields: correctness_floor_mismatched_fields(recorded, active),
+                    recorded: (**recorded).clone(),
+                    active: (**active).clone(),
+                }
+            }
+        }
+    }
+}
+
+fn correctness_floor_mismatched_fields(
+    recorded: &CorrectnessFloorReplayRecord,
+    active: &CorrectnessFloorReplayRecord,
+) -> Vec<String> {
+    let mut fields = Vec::new();
+    if recorded.profile_version != active.profile_version {
+        fields.push("profile_version".to_string());
+    }
+    if recorded.numerical_reduction_policy != active.numerical_reduction_policy {
+        fields.push("numerical_reduction_policy".to_string());
+    }
+    if recorded.error_algebra != active.error_algebra {
+        fields.push("error_algebra".to_string());
+    }
+    fields
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use serde_json::json;
+
+    use super::*;
+
+    fn e4_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/test-runs/core-engine/w050-e4-profile-selector-tests-001")
+    }
+
+    fn default_profile() -> CorrectnessFloorProfile {
+        CorrectnessFloorProfile::default()
+    }
+
+    fn explicit_profile() -> CorrectnessFloorProfile {
+        CorrectnessFloorProfile::new(
+            "profile:correctness-floor:pairwise-canonical",
+            NumericalReductionPolicy::PairwiseTree,
+            ErrorAlgebra::CanonicalExcelLegacy,
+        )
+    }
+
+    fn numerical_policy_mismatch_diagnostic() -> CorrectnessFloorSelectorMismatchDiagnostic {
+        let active = default_profile();
+        let mut recorded = active.replay_record();
+        recorded.numerical_reduction_policy = NumericalReductionPolicy::PairwiseTree
+            .selector_key()
+            .to_string();
+        CorrectnessFloorProfile::validate_replay_record(&recorded, &active)
+            .expect_err("numerical policy mismatch should reject replay")
+            .diagnostic()
+    }
+
+    fn error_algebra_mismatch_diagnostic() -> CorrectnessFloorSelectorMismatchDiagnostic {
+        let active = default_profile();
+        let mut recorded = active.replay_record();
+        recorded.error_algebra = "ProfileDeclaredTest".to_string();
+        CorrectnessFloorProfile::validate_replay_record(&recorded, &active)
+            .expect_err("error algebra mismatch should reject replay")
+            .diagnostic()
+    }
+
+    fn selector_test_manifest_json() -> serde_json::Value {
+        let default = default_profile();
+        let explicit = explicit_profile();
+        json!({
+            "run_id": "w050-e4-profile-selector-tests-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core correctness_floor_profile_selector -- --nocapture",
+            "default_profile": {
+                "profile": default,
+                "replay_profile_key": default.replay_profile_key(),
+                "replay_record": default.replay_record()
+            },
+            "explicit_profile": {
+                "profile": explicit,
+                "replay_profile_key": explicit.replay_profile_key(),
+                "replay_record": explicit.replay_record()
+            },
+            "mismatch_diagnostics": [
+                {
+                    "case": "numerical_reduction_policy",
+                    "diagnostic": numerical_policy_mismatch_diagnostic()
+                },
+                {
+                    "case": "error_algebra",
+                    "diagnostic": error_algebra_mismatch_diagnostic()
+                }
+            ],
+            "spec_surfaces": [
+                "docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md",
+                "src/oxcalc-core/src/correctness_floor.rs"
+            ]
+        })
+    }
+
+    #[test]
+    fn correctness_floor_profile_selector_defaults_are_replay_visible() {
+        let profile = default_profile();
+
+        assert_eq!(
+            profile.replay_profile_key(),
+            "profile:correctness-floor:v1|numerical_reduction_policy:SequentialLeftFold|error_algebra:CanonicalExcelLegacy"
+        );
+        assert_eq!(
+            profile.replay_record(),
+            CorrectnessFloorReplayRecord {
+                profile_version: "profile:correctness-floor:v1".to_string(),
+                numerical_reduction_policy: "SequentialLeftFold".to_string(),
+                error_algebra: "CanonicalExcelLegacy".to_string(),
+            }
+        );
+
+        let json = serde_json::to_value(&profile).unwrap();
+        assert_eq!(json["numerical_reduction_policy"], "SequentialLeftFold");
+        assert_eq!(json["error_algebra"], "CanonicalExcelLegacy");
+    }
+
+    #[test]
+    fn correctness_floor_profile_selector_explicit_selection_round_trips() {
+        let profile = explicit_profile();
+
+        assert_eq!(
+            profile.replay_profile_key(),
+            "profile:correctness-floor:pairwise-canonical|numerical_reduction_policy:PairwiseTree|error_algebra:CanonicalExcelLegacy"
+        );
+        assert_eq!(
+            profile.replay_record().numerical_reduction_policy,
+            "PairwiseTree"
+        );
+        assert_eq!(
+            profile.replay_record().error_algebra,
+            "CanonicalExcelLegacy"
+        );
+
+        let round_trip: CorrectnessFloorProfile =
+            serde_json::from_value(serde_json::to_value(&profile).unwrap()).unwrap();
+        assert_eq!(round_trip, profile);
+    }
+
+    #[test]
+    fn correctness_floor_profile_selector_mismatch_diagnostics_name_changed_selector() {
+        let numerical_policy = numerical_policy_mismatch_diagnostic();
+        assert_eq!(
+            numerical_policy.diagnostic_code,
+            "correctness_floor_selector_mismatch"
+        );
+        assert_eq!(
+            numerical_policy.mismatched_fields,
+            vec!["numerical_reduction_policy".to_string()]
+        );
+        assert_eq!(
+            numerical_policy.recorded.numerical_reduction_policy,
+            "PairwiseTree"
+        );
+        assert_eq!(
+            numerical_policy.active.numerical_reduction_policy,
+            "SequentialLeftFold"
+        );
+
+        let error_algebra = error_algebra_mismatch_diagnostic();
+        assert_eq!(
+            error_algebra.mismatched_fields,
+            vec!["error_algebra".to_string()]
+        );
+        assert_eq!(error_algebra.recorded.error_algebra, "ProfileDeclaredTest");
+        assert_eq!(error_algebra.active.error_algebra, "CanonicalExcelLegacy");
+    }
+
+    #[test]
+    fn checked_in_correctness_floor_profile_selector_manifest_matches_runtime_diagnostics() {
+        let artifact_path = e4_artifact_root().join("selector_test_manifest.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("E4 selector manifest should be checked in"),
+        )
+        .expect("E4 selector manifest should be valid JSON");
+
+        assert_eq!(artifact, selector_test_manifest_json());
+    }
 }

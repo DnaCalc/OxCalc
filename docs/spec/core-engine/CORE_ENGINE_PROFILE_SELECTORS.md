@@ -136,5 +136,5 @@ surface.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFml/OxFunc threading and acknowledgement remain routed through H2/CALC-003,
-  - OxFml/OxFunc kernel-side enforcement remains outside this OxCalc-local replay hook
+  - OxFml acknowledged `CorrectnessFloorContext` carriage through H2/CALC-003,
+  - OxFunc metadata/versioning and kernel-side enforcement remain outside this OxCalc-local replay hook

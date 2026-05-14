@@ -365,19 +365,20 @@ Current W050 intake classification:
 
 | Topic | W050 disposition | Durable surface |
 |---|---|---|
-| Session-shaped first call | Locally specified and exercised through `OxfmlRecalcWave` / `OxfmlRecalcSessionDriver`; canonical names still handoff-bound. | `CORE_ENGINE_OXFML_SEAM.md` §22; CALC-002 |
-| Plan-template and prepared-callable identity | Current V1 compatibility keys are local and tested; canonical identity fields remain OxFml-owned. | `CORE_ENGINE_OXFML_SEAM.md` §§22.11-22.15; CALC-002 |
-| Bind-output reference/input mapping | Current TreeCalc path has direct mapping and explicit compatibility bridges; replacement formal-reference transport is handoff-bound. | `CORE_ENGINE_OXFML_SEAM.md` §§22.8-22.10; CALC-002 |
+| Session-shaped first call | Locally specified and exercised through `OxfmlRecalcWave` / `OxfmlRecalcSessionDriver`; CALC-002 receipt accepts a narrower OxFml successor contract for public runtime/session fields. | `CORE_ENGINE_OXFML_SEAM.md` §22; `HANDOFF_CALC_002_OXFML_RECEIPT.md` |
+| Plan-template and prepared-callable identity | Current V1 compatibility keys are local and tested; CALC-002 receipt adapts canonical naming toward `PreparedFormulaPackage`, `PlanTemplate`, and `HoleBindingSet`. | `CORE_ENGINE_OXFML_SEAM.md` §§22.11-22.15; `HANDOFF_CALC_002_OXFML_RECEIPT.md` |
+| Bind-output reference/input mapping | Current TreeCalc path has direct mapping and explicit compatibility bridges; CALC-002 receipt accepts replacement with `FormalReference` / `FormalReferenceSet` transport. | `CORE_ENGINE_OXFML_SEAM.md` §§22.8-22.10; `HANDOFF_CALC_002_OXFML_RECEIPT.md` |
 | Topic envelopes and RTD/external invalidation | W050-internal repository discipline, no longer a W026 open question. | Lane D code/tests and W050 D4/D6 evidence roots |
 | Stream semantics selector | W050-internal profile selector with three tested variants. | `src/oxcalc-core/src/stream_semantics.rs`; W050 D3/D4 evidence |
-| Numerical reduction and error algebra selectors | W050-local profile selectors and replay hooks are in place; evaluator/kernel enforcement remains sibling-repo feedback. | `CORE_ENGINE_PROFILE_SELECTORS.md`; CALC-003 |
-| Capability-set hole vocabulary and rich/sparse admission | W050-local identity/scaffolding exists without kernel claims; canonical hole admission remains sibling-repo feedback. | `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`; CALC-004 |
+| Numerical reduction and error algebra selectors | W050-local profile selectors and replay hooks are in place; CALC-003 receipt accepts OxFml `CorrectnessFloorContext` carriage and routes kernel semantics/versioning to OxFunc. | `CORE_ENGINE_PROFILE_SELECTORS.md`; `HANDOFF_CALC_003_OXFML_RECEIPT.md` |
+| Capability-set hole vocabulary and rich/sparse admission | W050-local identity reservation exists without kernel claims; CALC-004 receipt accepts hole taxonomy/capability identity reservation and defers sparse/rich producer activation. | `CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`; `HANDOFF_CALC_004_OXFML_RECEIPT.md` |
 | Compilation observability and pure-kernel CSE | Compilation is trace-visible locally; pure-kernel CSE remains OxFml/OxFunc-owned and not inferred by OxCalc. | `CORE_ENGINE_OXFML_SEAM.md` §22.18 |
 
 Residual matrix use after W050:
-1. record receiving-repo feedback that changes or supersedes the CALC-002,
-   CALC-003, or CALC-004 asks,
-2. route any replacement surfaces into the canonical seam/spec docs,
+1. consume OxFml receipt consequences when migrating W050 compatibility
+   projections to canonical runtime/replay fields,
+2. route OxFunc acknowledgments or replacement plans for selector and
+   sparse/rich producer obligations,
 3. retire this matrix when no remaining implementation decision depends on a
    temporary negotiation classification.
 
@@ -393,9 +394,9 @@ This planning companion has served its purpose when:
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - CALC-002 feedback may replace local compatibility plan-template/session/reference fields with canonical OxFml fields
-  - CALC-003 feedback may replace local correctness-floor selector threading assumptions with canonical evaluator/kernel fields
-  - CALC-004 feedback may replace local capability-set hole scaffolding with canonical sparse/rich hole admission fields
+  - CALC-002 runtime/replay field implementation may replace local compatibility plan-template/session/reference projections
+  - CALC-003 still needs OxFunc metadata and kernel acknowledgment before selector enforcement can be claimed
+  - CALC-004 still needs OxFunc sparse/rich producer activation before reserved capability columns can carry exercised facts
   - broader TreeCalc-specific bind/reference and transport-breadth widening remains evidence-driven successor work, not unresolved W050 architecture
 - claim_confidence: provisional
-- reviewed_inbound_observations: latest OxFml downstream note plus W050 CALC-002/CALC-003/CALC-004 filed handoffs consumed as the starting baseline
+- reviewed_inbound_observations: latest OxFml downstream note plus W050 CALC-002/CALC-003/CALC-004 filed handoffs and OxFml receipts consumed as the current baseline

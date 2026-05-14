@@ -629,16 +629,16 @@ Reviewed inbound observations:
 
 ### 22.1A W050 Consolidated Local Contract Snapshot
 
-This snapshot is the durable W050-local reading of the session model until
-CALC-002/CALC-003/CALC-004 receiving-repo feedback is recorded.
+This snapshot is the durable W050-local reading of the session model after
+CALC-002/CALC-003/CALC-004 receiving-repo feedback has been recorded.
 
 | Surface | Current W050 local position | Canonicalization path |
 |---|---|---|
-| Formula source authority | OxCalc stores opaque formula text and identity; OxFml parses, projects red view, binds, compiles, evaluates, and reports returned-value surfaces. OxCalc must not parse formula language or reconstruct source as semantic input. | CALC-002 asks OxFml to expose the canonical prepared-callable/session fields needed by OxCalc without private adapters. |
+| Formula source authority | OxCalc stores opaque formula text and identity; OxFml parses, projects red view, binds, compiles, evaluates, and reports returned-value surfaces. OxCalc must not parse formula language or reconstruct source as semantic input. | CALC-002 receipt accepts the public runtime/session facade as the ordinary surface and promotes a narrower successor plan for canonical prepared formula fields. |
 | Session model | A recalc wave is modeled as wave preparation, `ensure_prepared`, trace-visible compilation, dependency derivation, scheduled invoke, coordinator commit, and close/capture. | OxFml runtime facade remains the consumed surface; richer compile/cache trace fields belong in OxFml if exposed. |
-| Prepared callable identity | OxCalc derives current V1 compatibility `shape_key`, `dispatch_skeleton_key`, `plan_template_key`, `PlanTemplate`, `HoleBindings`, and `prepared_callable_key` from public bound-formula and semantic-plan artifacts. | CALC-002 owns canonical identity fields and cache/reuse counters; OxCalc compatibility keys remain local until then. |
-| Bind-output reference mapping | Current TreeCalc maps local residual/reference carriers to dependency descriptors and rebind seeds using OxFml parse/bind products plus OxCalc structural truth. | CALC-002 should replace synthetic A1/reference-input compatibility bridges with canonical formal-reference/input transport. |
-| Typed outcomes | OxCalc consumes value publication, verified-clean suppression, typed reject/no-publish, runtime effects, derivation trace, topic envelopes, and correctness-floor selector replay records as distinct surfaces. | CALC-002 covers returned-value/result/reject/correlation fields; CALC-003 covers selector threading; CALC-004 covers capability/hole admission surfaces. |
+| Prepared callable identity | OxCalc derives current V1 compatibility `shape_key`, `dispatch_skeleton_key`, `plan_template_key`, `PlanTemplate`, `HoleBindings`, and `prepared_callable_key` from public bound-formula and semantic-plan artifacts. | CALC-002 receipt adapts the canonical direction toward `PreparedFormulaPackage`, `PlanTemplate`, `HoleBindingSet`, and formal reference/input transport; OxCalc compatibility keys remain local until those fields are emitted. |
+| Bind-output reference mapping | Current TreeCalc maps local residual/reference carriers to dependency descriptors and rebind seeds using OxFml parse/bind products plus OxCalc structural truth. | CALC-002 receipt accepts replacement of synthetic A1/reference-input compatibility bridges with `FormalReference` / `FormalReferenceSet` transport. |
+| Typed outcomes | OxCalc consumes value publication, verified-clean suppression, typed reject/no-publish, runtime effects, derivation trace, topic envelopes, and correctness-floor selector replay records as distinct surfaces. | CALC-002 receipt covers structured result/reject/correlation fields; CALC-003 receipt accepts OxFml `CorrectnessFloorContext` carriage and leaves kernel semantics to OxFunc; CALC-004 receipt reserves capability/hole identity and defers producer activation. |
 | External invalidation | Subscription registry, topic envelopes, stream-semantics selectors, dirty seeds, and subscription lifecycle diagnostics are OxCalc-local repository behavior. Evaluation remains pull; external signals only seed invalidation. | Future OxFml/OxFunc feedback may refine RTD/registered-external topic descriptors but does not move publication authority. |
 | Optimization boundary | OxCalc may cache by public identity keys and recorded hole-binding fingerprints. It must not synthesize common-subexpression reuse by rewriting formulas, inferring algebraic equivalence, or inspecting OxFunc kernels. | Pure-kernel CSE, folded subplans, and internal expression ids are OxFml/OxFunc-owned trace/artifact surfaces if exposed later. |
 
@@ -648,12 +648,17 @@ Inbound observation and handoff references for this snapshot:
    `oxfml_core::consumer::{runtime, replay}` as the intended consumed runtime
    and replay surface.
 2. `docs/handoffs/HANDOFF_CALC_002_OXFML_RECALC_SESSION_AND_PLAN_TEMPLATES.md`
-   carries the canonical prepared-callable/session and plan-template asks.
+   carries the prepared-callable/session and plan-template asks;
+   `docs/handoffs/HANDOFF_CALC_002_OXFML_RECEIPT.md` records OxFml's
+   narrower successor contract response.
 3. `docs/handoffs/HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md`
    and its OxFunc note carry correctness-floor selector threading and kernel
-   obligations.
+   obligations; `docs/handoffs/HANDOFF_CALC_003_OXFML_RECEIPT.md` records the
+   OxFml/OxFunc ownership split.
 4. `docs/handoffs/HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md`
-   and its OxFunc note carry sparse/rich hole and capability-set trace asks.
+   and its OxFunc note carry sparse/rich hole and capability-set trace asks;
+   `docs/handoffs/HANDOFF_CALC_004_OXFML_RECEIPT.md` records OxFml's
+   identity-reservation response.
 
 Replay and evidence obligations:
 
@@ -1208,7 +1213,7 @@ runtime invocation, candidate adaptation, rejection policy, scheduling
 strategy, pure-kernel behavior, or OxCalc coordinator publication authority.
 Observable formula results are invariant for the exercised Stage 1 profile.
 
-### 22.19 CALC-002 Handoff Inputs
+### 22.19 CALC-002 Handoff Inputs And Receipt
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1298,9 +1303,13 @@ Observable formula results are invariant for the exercised Stage 1 profile.
     invocation structure, or whether the root-plus-ordered-children V1 shape
     remains the intended public granularity.
 
-Until that handoff is acknowledged, OxCalc may prototype only against the
-current public V1 runtime facade. It must not add a long-lived private seam
-or adapter that assumes OxFml internals will remain accessible.
+That handoff is now acknowledged by
+`docs/handoffs/HANDOFF_CALC_002_OXFML_RECEIPT.md`. OxCalc may continue to
+prototype only against the current public V1 runtime facade until OxFml emits
+canonical runtime/replay fields for `PreparedFormulaPackage`, `PlanTemplate`,
+`HoleBindingSet`, and `FormalReference` transport. It must not add a
+long-lived private seam or adapter that assumes OxFml internals will remain
+accessible.
 
 ### 22.20 Current V1 Opaque Result Family Coverage
 The current OxCalc B6 uptake records which result families TreeCalc can

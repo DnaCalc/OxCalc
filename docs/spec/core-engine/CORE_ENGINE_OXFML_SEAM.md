@@ -1145,10 +1145,72 @@ results are invariant.
     compile-time folding, canonical `PlanTemplate` and semantic-plan
     identity fields should expose the folded plan form or stable folding
     trace so OxCalc does not infer folding from source text.
+17. the B6-observed opaque-result bridge: canonical returned-value,
+    callable-value, spill/rich-value, dynamic-reference, and typed provider
+    outcome categories should remain structured through the consumer
+    runtime facade. Current V1 exposes enough surface for TreeCalc
+    diagnostics and scalar/array publication, but returned callable values
+    are still converted to worksheet fallback `Calc`/`Error(Calc)` before
+    OxCalc receives a stable callable payload.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam
 or adapter that assumes OxFml internals will remain accessible.
+
+### 22.18 Current V1 Opaque Result Family Coverage
+The current OxCalc B6 uptake records which result families TreeCalc can
+consume through `OxfmlRecalcSessionDriver::invoke` without local formula
+parsing or reconstruction.
+
+Current mapping:
+1. TreeCalc diagnostics now carry
+   `oxfml_returned_value_surface_kind:*`,
+   `oxfml_returned_value_surface_payload_summary:*`, and provider-outcome
+   fields when OxFml supplies them.
+2. Literal and function-call ordinary values are exercised by `=14` and
+   `=SUM(2,3)` and publish through the OxCalc coordinator as scalar
+   values.
+3. LET/LAMBDA invocation is exercised by
+   `=LET(base,2,LAMBDA(delta,base+delta)(5))` and publishes as an
+   ordinary scalar value.
+4. Dynamic-array/spill-like output is exercised by `=SEQUENCE(3)`; current
+   V1 publishes the TreeCalc node value as the opaque summary
+   `Array(3x1)` and records the returned surface payload summary as
+   `Array(3x1)`.
+5. Returned callable value is exercised by `=LAMBDA(x,x+1)`, but current
+   V1 host publication converts it to worksheet fallback `Calc` and
+   returned surface `Error(Calc)`. This is boundary evidence, not a
+   callable payload transport claim.
+6. Dynamic `INDIRECT` facts are exercised by
+   `=INDIRECT(RTD("TREECALC","","carrier:indirect"))` with an explicit
+   `DynamicPotential` carrier. TreeCalc rejects the run through the
+   dynamic-dependency effect path while preserving the OxFml returned
+   surface diagnostic `Error(Blocked)`.
+7. Direct RTD/external provider outcome is exercised by
+   `=RTD("TREECALC","","carrier:rtd")` with an explicit
+   `DynamicPotential` carrier. TreeCalc rejects the run through the
+   dynamic-dependency effect path while preserving the typed provider
+   diagnostics `TypedHostProviderOutcome`, `CapabilityDenied`, and
+   worksheet error `Blocked`.
+
+Current B6 gaps:
+1. Canonical callable value transport remains unavailable to TreeCalc
+   through current V1 publication; CALC-002 owns the stable callable
+   payload/result category.
+2. Current dynamic-array publication is an opaque single-node summary
+   (`Array(3x1)`), not a full spill-grid publication contract.
+3. Direct RTD coverage uses the deterministic current TreeCalc provider
+   shim (`CapabilityDenied`). Subscription registry and topic envelope
+   semantics remain Lane D work.
+4. Registered external providers beyond RTD are not exercised in B6 and
+   remain later Lane D/G seam pressure.
+
+Semantic equivalence statement: B6 adds diagnostics, tests, and boundary
+notes only. It does not change source parsing, binding, semantic-plan
+compilation, runtime invocation, candidate adaptation, residual rejection
+policy, scheduling strategy, or OxCalc coordinator publication authority
+for any currently exercised Stage 1 profile. Observable formula results
+are invariant under this diagnostic addition.
 
 ## 23. Status
 - execution_state: in_progress

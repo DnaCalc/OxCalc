@@ -1416,3 +1416,49 @@ Current non-assumptions:
 2. OxCalc is not implementing constant folding locally,
 3. OxCalc is not treating folded-equivalent source strings as sharing a
    template until OxFml exposes canonical folded-plan identity.
+
+## 78. W050 B6 Opaque Result Family Coverage
+OxCalc has recorded current V1 opaque-result coverage through the TreeCalc
+session path.
+
+Current OxCalc code shape is:
+1. `LocalTreeCalcEngine` now records OxFml `ReturnedValueSurface` kind,
+   payload summary, and typed provider outcome diagnostics at the
+   `RuntimeFormulaResult` adapter boundary.
+2. deterministic TreeCalc tests exercise ordinary scalar publication
+   (`=14`, `=SUM(2,3)`), LET/LAMBDA invocation publication, current
+   dynamic-array/spill-like summary publication (`=SEQUENCE(3)`),
+   returned-callable current V1 fallback (`=LAMBDA(x,x+1)`),
+   dynamic `INDIRECT(RTD(...))` rejection, and direct RTD typed-provider
+   rejection.
+3. dynamic and provider outcomes are still rejected by OxCalc publication
+   policy when they carry runtime-dynamic residuals; the B6 change records
+   the returned surface instead of treating the rejection as opaque
+   coordinator text only.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. returned callable values are not yet available to TreeCalc as a stable
+   callable payload through current V1 publication. The observed V1
+   behavior converts `=LAMBDA(x,x+1)` to worksheet fallback `Calc` and
+   returned surface `Error(Calc)`.
+2. OxCalc can observe `Array(3x1)` as an opaque dynamic-array summary, but
+   full spill/rich-value transport needs canonical result categories and
+   shape/value payload structure beyond the text summary.
+3. OxFml should keep typed provider outcomes structured through the public
+   consumer runtime facade so OxCalc does not parse provider diagnostics
+   from strings.
+
+Current OxCalc gaps routed to later W050 lanes:
+1. RTD coverage uses the deterministic TreeCalc provider shim returning
+   `CapabilityDenied`; subscription registry, topic envelopes, and dirty
+   seeds remain Lane D.
+2. registered external providers beyond RTD are not exercised by B6 and
+   remain broader external-provider seam work.
+
+Current non-assumptions:
+1. OxCalc is not claiming full spill-grid publication from `SEQUENCE(3)`;
+   it records current single-node opaque summary transport only.
+2. OxCalc is not claiming callable-result transport through current V1.
+3. OxCalc is not adding local formula interpretation for `INDIRECT`, RTD,
+   LET/LAMBDA, or array results; those remain OxFml/OxFunc-owned formula
+   semantics.

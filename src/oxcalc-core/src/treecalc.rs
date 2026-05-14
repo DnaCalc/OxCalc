@@ -13,8 +13,8 @@ use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
 };
 use oxfml_core::eval::DefinedNameBinding;
-use oxfml_core::interface::ReturnedValueSurfaceKind;
 use oxfml_core::interface::TypedContextQueryBundle;
+use oxfml_core::interface::{ReturnedValueSurface, ReturnedValueSurfaceKind};
 use oxfml_core::red::project_red_view;
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
@@ -2156,6 +2156,8 @@ fn evaluate_with_oxfml_session(
         }
     };
 
+    let returned_surface_diagnostics =
+        oxfml_returned_value_surface_diagnostics(&run.returned_value_surface);
     let should_reject_residual = matches!(
         run.returned_value_surface.kind,
         ReturnedValueSurfaceKind::TypedHostProviderOutcome
@@ -2164,9 +2166,14 @@ fn evaluate_with_oxfml_session(
     if should_reject_residual
         && let Some(failure) = residual_evaluation_failure(
             prepared,
-            run.trace_events
+            returned_surface_diagnostics
                 .iter()
-                .map(|event| format!("oxfml_trace:{:?}", event.event_kind))
+                .cloned()
+                .chain(
+                    run.trace_events
+                        .iter()
+                        .map(|event| format!("oxfml_trace:{:?}", event.event_kind)),
+                )
                 .collect(),
         )
     {
@@ -2273,7 +2280,8 @@ fn adapt_oxfml_runtime_candidate(
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
     let candidate = &run.candidate_result;
     let candidate_value = value_payload_to_string(&candidate.value_delta.published_payload);
-    let mut diagnostics = oxfml_candidate_diagnostics(candidate);
+    let mut diagnostics = oxfml_returned_value_surface_diagnostics(&run.returned_value_surface);
+    diagnostics.extend(oxfml_candidate_diagnostics(candidate));
 
     match &run.commit_decision {
         oxfml_core::seam::AcceptDecision::Accepted(bundle) => {
@@ -2296,6 +2304,34 @@ fn adapt_oxfml_runtime_candidate(
             })
         }
     }
+}
+
+fn oxfml_returned_value_surface_diagnostics(surface: &ReturnedValueSurface) -> Vec<String> {
+    let mut diagnostics = vec![
+        format!("oxfml_returned_value_surface_kind:{:?}", surface.kind),
+        format!(
+            "oxfml_returned_value_surface_payload_summary:{}",
+            surface.payload_summary
+        ),
+    ];
+    if let Some(type_name) = &surface.rich_value_type_name {
+        diagnostics.push(format!(
+            "oxfml_returned_value_surface_rich_value_type:{type_name}"
+        ));
+    }
+    if let Some(outcome) = &surface.host_provider_outcome {
+        diagnostics.push(format!(
+            "oxfml_returned_value_surface_host_provider_outcome:{:?}",
+            outcome.outcome_kind
+        ));
+        if let Some(error) = outcome.worksheet_error {
+            diagnostics.push(format!(
+                "oxfml_returned_value_surface_host_provider_worksheet_error:{:?}",
+                error
+            ));
+        }
+    }
+    diagnostics
 }
 
 fn oxfml_candidate_diagnostics(
@@ -2634,7 +2670,7 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
 mod tests {
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
-        TreeFormulaBinding, TreeReference,
+        TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
     };
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
@@ -2695,6 +2731,191 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn formula_input(owner_node_id: TreeNodeId, expression: TreeFormula) -> LocalTreeCalcInput {
+        LocalTreeCalcInput {
+            structural_snapshot: snapshot(),
+            formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+                owner_node_id,
+                formula_artifact_id: formula_artifact_id(owner_node_id),
+                bind_artifact_id: Some(bind_artifact_id(owner_node_id)),
+                expression,
+            }]),
+            seeded_published_values: BTreeMap::new(),
+            seeded_published_runtime_effects: Vec::new(),
+            invalidation_seeds: Vec::new(),
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("cand:b6:{}", owner_node_id.0),
+            publication_id: format!("pub:b6:{}", owner_node_id.0),
+            compatibility_basis: "snapshot:1".to_string(),
+            artifact_token_basis: "snapshot:1".to_string(),
+            environment_context: LocalTreeCalcEnvironmentContext::default(),
+        }
+    }
+
+    fn formula_artifact_id(node_id: TreeNodeId) -> FormulaArtifactId {
+        match node_id.0 {
+            3 => FormulaArtifactId("formula:b".to_string()),
+            4 => FormulaArtifactId("formula:c".to_string()),
+            _ => FormulaArtifactId(format!("formula:node:{}", node_id.0)),
+        }
+    }
+
+    fn bind_artifact_id(node_id: TreeNodeId) -> BindArtifactId {
+        match node_id.0 {
+            3 => BindArtifactId("bind:b".to_string()),
+            4 => BindArtifactId("bind:c".to_string()),
+            _ => BindArtifactId(format!("bind:node:{}", node_id.0)),
+        }
+    }
+
+    fn assert_has_diagnostic(run: &LocalTreeCalcRunArtifacts, expected: &str) {
+        assert!(
+            run.diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic == expected),
+            "missing diagnostic {expected:?} in {:?}",
+            run.diagnostics
+        );
+    }
+
+    #[test]
+    fn local_treecalc_delegates_scalar_and_lambda_invocation_sources_to_oxfml() {
+        let engine = LocalTreeCalcEngine;
+        for (source, expected_value, expected_surface) in [
+            ("=14", "14", "Number"),
+            ("=SUM(2,3)", "5", "Number"),
+            ("=LET(base,2,LAMBDA(delta,base+delta)(5))", "7", "Number"),
+        ] {
+            let run = engine
+                .execute(formula_input(
+                    TreeNodeId(3),
+                    TreeFormula::opaque_oxfml(source, Vec::new()),
+                ))
+                .unwrap();
+
+            assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+            assert_eq!(run.published_values[&TreeNodeId(3)], expected_value);
+            assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
+            assert_has_diagnostic(
+                &run,
+                &format!("oxfml_returned_value_surface_payload_summary:{expected_surface}"),
+            );
+        }
+    }
+
+    #[test]
+    fn local_treecalc_records_current_v1_returned_callable_publication_boundary() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(formula_input(
+                TreeNodeId(3),
+                TreeFormula::opaque_oxfml("=LAMBDA(x,x+1)", Vec::new()),
+            ))
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(run.published_values[&TreeNodeId(3)], "Calc");
+        assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_payload_summary:Error(Calc)",
+        );
+    }
+
+    #[test]
+    fn local_treecalc_surfaces_dynamic_array_payload_as_opaque_oxfml_value() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(formula_input(
+                TreeNodeId(3),
+                TreeFormula::opaque_oxfml("=SEQUENCE(3)", Vec::new()),
+            ))
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(run.published_values[&TreeNodeId(3)], "Array(3x1)");
+        assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_payload_summary:Array(3x1)",
+        );
+    }
+
+    #[test]
+    fn local_treecalc_rejects_indirect_dynamic_surface_as_opaque_effect() {
+        let engine = LocalTreeCalcEngine;
+        let expression = TreeFormula::opaque_oxfml(
+            "=INDIRECT(RTD(\"TREECALC\",\"\",\"carrier:indirect\"))",
+            [TreeFormulaReferenceCarrier::fact(
+                TreeReference::DynamicPotential {
+                    carrier_id: "carrier:indirect".to_string(),
+                    detail: "INDIRECT selector resolved at runtime".to_string(),
+                },
+            )],
+        );
+        let run = engine
+            .execute(formula_input(TreeNodeId(3), expression))
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
+        assert_eq!(
+            run.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::DynamicDependencyFailure)
+        );
+        assert_eq!(
+            run.runtime_effects[0].kind,
+            "runtime_effect.dynamic_reference"
+        );
+        assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_payload_summary:Error(Blocked)",
+        );
+    }
+
+    #[test]
+    fn local_treecalc_rejects_rtd_provider_surface_as_opaque_effect() {
+        let engine = LocalTreeCalcEngine;
+        let expression = TreeFormula::opaque_oxfml(
+            "=RTD(\"TREECALC\",\"\",\"carrier:rtd\")",
+            [TreeFormulaReferenceCarrier::fact(
+                TreeReference::DynamicPotential {
+                    carrier_id: "carrier:rtd".to_string(),
+                    detail: "RTD topic resolved at runtime".to_string(),
+                },
+            )],
+        );
+        let run = engine
+            .execute(formula_input(TreeNodeId(3), expression))
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
+        assert_eq!(
+            run.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::DynamicDependencyFailure)
+        );
+        assert_eq!(
+            run.runtime_effects[0].kind,
+            "runtime_effect.dynamic_reference"
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_payload_summary:CapabilityDenied",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_host_provider_outcome:CapabilityDenied",
+        );
+        assert_has_diagnostic(
+            &run,
+            "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
+        );
     }
 
     #[test]

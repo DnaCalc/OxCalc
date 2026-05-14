@@ -426,6 +426,15 @@ owned by `.beads/`, not this document.
     `FixtureFormulaAst::policy_class()` plus
     `treecalc_fixture_policy_tags_match_representative_cases` make that
     distinction executable.
+17. B6 live uptake: TreeCalc now records OxFml returned-value surface
+    diagnostics at the adapter boundary. Deterministic tests exercise
+    literal, function-call, LET/LAMBDA invocation, dynamic-array/spill-like
+    `SEQUENCE(3)`, returned-callable current V1 fallback,
+    `INDIRECT(RTD(...))` dynamic rejection, and direct RTD typed-provider
+    rejection. Current V1 callable return publication remains partial:
+    `=LAMBDA(x,x+1)` reaches TreeCalc as worksheet fallback `Calc` with
+    returned surface `Error(Calc)`, not as a stable callable payload.
+    Canonical callable value transport remains routed to CALC-002.
 
 ## 7. Required Work
 
@@ -455,6 +464,12 @@ The W050 work, organised by lane.
 14. Wire reference handles: OxFml bind returns a normalised reference set; OxCalc maps it to structural targets; the dependency graph is derived from that mapping. No address-string round-trips.
 15. Keep TreeCalc production invocation on the session-driven path. B7 routes `LocalTreeCalcEngine` through `OxfmlRecalcSessionDriver::invoke`; remaining work is broader opaque-result corpus coverage and final fixture quarantine/deletion.
 16. Add opaque-result tests proving OxCalc treats single-node outcomes without parsing or reconstruction.
+    B6 now covers current V1 scalar, function-call, LET/LAMBDA invocation,
+    dynamic-array/spill-like, dynamic `INDIRECT`, and RTD typed-provider
+    surfaces through the TreeCalc session path. Remaining exact gaps are
+    canonical callable-result publication, broader registered-external
+    lifecycle surfaces, and any richer spill/rich-value transport beyond
+    the current `ValueDelta` text summary.
 
 **Lane C — Identity Layer.**
 

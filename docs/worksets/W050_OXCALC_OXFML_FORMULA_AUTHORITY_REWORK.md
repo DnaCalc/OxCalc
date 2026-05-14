@@ -289,8 +289,17 @@ owned by `.beads/`, not this document.
     compatibility holes; `HoleBindings` carries the per-formula payload
     vector and `binding_fingerprint`; TreeCalc and runner traces surface
     `prepared_callable_key`, `hole_binding_fingerprint`, and
-    `template_hole_count`. The full hole taxonomy, reuse evidence, and
-    canonical OxFml artifact fields remain C3/C5/CALC-002 pressure.
+    `template_hole_count`. Reuse evidence and canonical OxFml artifact
+    fields remain C5/CALC-002 pressure.
+12. C3 live uptake: `formula_identity.rs` now maps the default W050 hole
+    taxonomy into current V1 prepared-call identity. `ValuesOnlyPreAdapter`
+    arguments emit `ValueHole(AnyValue)`, `RefsVisibleInAdapter` arguments
+    emit `RefOrValueHole(ReferenceIdentityVisible)`, invocation callees can
+    emit `CallableHole(AnyCallable)`, and stable serialization exists for
+    `ShapeSensitiveHole`, `SparseRangeHole`, and `RichValueHole`.
+    `SparseRangeHole` and `RichValueHole` are representable but not emitted
+    by current production kernels; Lane G capability vocabulary,
+    cache/reuse evidence, and canonical OxFml artifact fields remain open.
 
 ## 7. Required Work
 
@@ -329,7 +338,12 @@ The W050 work, organised by lane.
     C2 now covers the artifact shape and deterministic separation tests;
     reuse evidence remains open in C5.
 21. Implement the default hole-type taxonomy: `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`.
+    C3 now covers current V1 taxonomy representation, stable keying, and
+    wide-by-default production mapping. Lane G capability vocabulary and
+    OxFunc kernel activation for sparse/rich producers remain open.
 22. Document the wide-by-default policy and reserve narrowing producers (`ConstNumericHole`, etc.) for opt-in evidence-gated implementation.
+    C3 documents and tests the current V1 wide-by-default mapping; narrower
+    producers remain evidence-gated successor work.
 23. Treat changes to `ArgPreparationProfile` for any existing OxFunc function as bind-visible name-world events; verify the invalidation pathway in the test corpus.
 
 **Lane D — External Invalidation.**
@@ -524,7 +538,7 @@ The design introduces a layer of identity *below* `green_tree_key`:
 - `dispatch_skeleton_key` — `shape_key` extended with bind-time function-dispatch decisions (which OxFunc surface each call name resolved to, under the wave's library-context snapshot).
 - `plan_template_key` — `dispatch_skeleton_key` extended with the semantic-plan structure (coercion lifts, capability requirements, call-preparation profiles). Two formulas with the same `plan_template_key` can share the compiled plan in full; each instance just supplies its holes.
 
-A `PlanTemplate` is the natural artefact: it carries the compiled plan with explicit hole positions, each typed by what it accepts (`LiteralHole`, `ReferenceHole`, `CallableHole`, `ShapeSensitiveHole` — see §10.7). A concrete `PreparedCallable` is then `(PlanTemplate, HoleBindings)` — the template plus the leaf payloads. Two cells with the same template share the heavy artefact; their per-cell difference is a thin hole vector.
+A `PlanTemplate` is the natural artefact: it carries the compiled plan with explicit hole positions, each typed by what it accepts (`ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole` — see §10.7). A concrete `PreparedCallable` is then `(PlanTemplate, HoleBindings)` — the template plus the leaf payloads. Two cells with the same template share the heavy artefact; their per-cell difference is a thin hole vector.
 
 This is not coincidentally the structure of a `LAMBDA`. A lambda body with `n` parameters is exactly a plan template with `n` reference holes, and a lambda call site supplies the hole bindings. Every cell formula is a degenerate lambda whose hole vector is fixed in advance from the cell's literal-and-reference leaves.
 

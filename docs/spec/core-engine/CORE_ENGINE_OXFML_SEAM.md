@@ -912,10 +912,10 @@ Current mapping:
    remain formula-instance or current-artifact identities rather than
    plan-template identities.
 
-Current C1/C2 limit: these are OxCalc-side compatibility fingerprints over
+Current C1/C2/C3 limit: these are OxCalc-side compatibility fingerprints over
 public V1 artifacts. Canonical OxFml `PreparedCallable` fields,
 `PlanTemplate`, `HoleBindings`, canonical formal-reference identities, and
-capability-set hole taxonomy remain CALC-002/C3 work.
+capability-set vocabulary remain CALC-002/Lane G work.
 
 Semantic equivalence statement: C1 changes identity derivation and trace
 projection only. It does not change formula source, bind context, runtime
@@ -932,7 +932,7 @@ Current mapping:
 1. `PlanTemplate` carries `shape_key`, `dispatch_skeleton_key`,
    `plan_template_key`, and an ordered hole skeleton. The skeleton records
    a stable hole id, ordinal, expression/reference path, and current V1
-   compatibility hole kind.
+   default taxonomy hole kind.
 2. `HoleBindings` carries `binding_fingerprint` plus the per-formula hole
    payload vector. Literal values, concrete references, omitted arguments,
    and helper/lambda parameter names are bound here rather than in the
@@ -950,10 +950,10 @@ Current mapping:
    `MAX` with the same leaf payloads share hole bindings but diverge at
    dispatch/template identity.
 
-Current C2 limit: the hole kinds are the narrow compatibility classes
-needed to separate template identity from payload binding. The full W050
-default hole taxonomy, plan-template cache/reuse evidence, and canonical
-OxFml prepared-callable fields remain C3/C5/CALC-002 work.
+Current C2/C3 limit: the artifact shape and hole taxonomy are OxCalc-side
+compatibility projections over public V1 artifacts. Plan-template
+cache/reuse evidence and canonical OxFml prepared-callable fields remain
+C5/CALC-002 work.
 
 Semantic equivalence statement: C2 changes artifact shape and trace
 projection only. It does not change source parsing, binding, semantic-plan
@@ -961,7 +961,38 @@ compilation, runtime invocation, candidate adaptation, rejection policy, or
 OxCalc coordinator publication authority for any currently exercised
 Stage 1 profile.
 
-### 22.13 CALC-002 Handoff Inputs
+### 22.13 Current V1 Default Hole-Type Taxonomy Mapping
+The current OxCalc C3 uptake maps the W050 default hole taxonomy into the
+prepared-call identity model and keeps the policy wide by default.
+
+Current mapping:
+1. `PlanTemplateHoleKind` has stable-keyed variants `ValueHole`,
+   `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`,
+   `SparseRangeHole`, and `RichValueHole`.
+2. `ValueHole(AnyValue)` is emitted for arguments whose OxFunc
+   `ArgPreparationProfile` is `ValuesOnlyPreAdapter`.
+3. `RefOrValueHole(ReferenceIdentityVisible)` is emitted for arguments
+   whose OxFunc `ArgPreparationProfile` is `RefsVisibleInAdapter`.
+4. Invocation callees are represented as `CallableHole(AnyCallable)` in
+   the template skeleton; their concrete callee payload remains in
+   `HoleBindings`.
+5. Literal values, concrete references, omitted arguments, and helper names
+   remain binding payloads. They do not narrow the template hole kind unless
+   future evidence gates an explicit narrower producer.
+6. `SparseRangeHole` and `RichValueHole` are representable and stable-keyed
+   but are not emitted by the current V1 production path. No current kernel
+   claim is made for sparse range readers or rich-value capability
+   consumption.
+
+Semantic equivalence statement: C3 changes template-hole classification and
+fingerprint inputs only. It does not change source parsing, binding,
+semantic-plan compilation, runtime invocation, candidate adaptation,
+rejection policy, scheduling strategy, or OxCalc coordinator publication
+authority for any currently exercised Stage 1 profile. Observable formula
+results are invariant under this identity-taxonomy change for those
+profiles.
+
+### 22.14 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1000,6 +1031,12 @@ Stage 1 profile.
     hole ids, hole kinds, hole-binding fingerprints, and prepared-callable
     keys so OxCalc does not need to treat the compatibility artifact as a
     shared seam.
+13. the C3-observed hole-taxonomy bridge: OxFml should confirm the
+    canonical naming, stable serialization, and emission rules for
+    `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`,
+    `SparseRangeHole`, and `RichValueHole`, including the wide-by-default
+    `ArgPreparationProfile` mapping and the absence of sparse/rich kernel
+    claims until OxFunc exposes such producers.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

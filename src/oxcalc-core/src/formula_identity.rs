@@ -7,6 +7,7 @@ use std::fmt::{Display, Write};
 
 use oxfml_core::binding::{BoundExpr, BoundFormula, NormalizedReference, ReferenceExpr};
 use oxfml_core::semantics::{FunctionAvailabilitySummary, FunctionPlanBinding, SemanticPlan};
+use oxfunc_core::function::ArgPreparationProfile;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ShapeKey(String);
@@ -79,15 +80,146 @@ pub struct PlanTemplateHole {
     pub kind: PlanTemplateHoleKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+impl PlanTemplateHole {
+    #[must_use]
+    pub fn stable_key(&self) -> String {
+        format!(
+            "{}:{}:{}:{}",
+            self.ordinal,
+            self.hole_id,
+            self.path,
+            self.kind.stable_key()
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PlanTemplateHoleKind {
-    NumberLiteral,
-    TextLiteral,
-    LogicalLiteral,
-    OmittedArgument,
-    Reference,
-    HelperParameter,
-    HelperOptionalParameter,
+    ValueHole {
+        value_class_bound: ValueClassBound,
+    },
+    RefOrValueHole {
+        ref_observability: RefObservability,
+    },
+    CallableHole {
+        callable_signature: CallableSignature,
+    },
+    ShapeSensitiveHole {
+        extent_class: ExtentClass,
+    },
+    SparseRangeHole {
+        extent_class: ExtentClass,
+        cardinality_class: CardinalityClass,
+    },
+    RichValueHole {
+        required_capability_set: Vec<String>,
+    },
+}
+
+impl PlanTemplateHoleKind {
+    #[must_use]
+    pub fn stable_key(&self) -> String {
+        match self {
+            Self::ValueHole { value_class_bound } => {
+                format!("ValueHole({})", value_class_bound.stable_key())
+            }
+            Self::RefOrValueHole { ref_observability } => {
+                format!("RefOrValueHole({})", ref_observability.stable_key())
+            }
+            Self::CallableHole { callable_signature } => {
+                format!("CallableHole({})", callable_signature.stable_key())
+            }
+            Self::ShapeSensitiveHole { extent_class } => {
+                format!("ShapeSensitiveHole({})", extent_class.stable_key())
+            }
+            Self::SparseRangeHole {
+                extent_class,
+                cardinality_class,
+            } => format!(
+                "SparseRangeHole({},{})",
+                extent_class.stable_key(),
+                cardinality_class.stable_key()
+            ),
+            Self::RichValueHole {
+                required_capability_set,
+            } => {
+                let mut capabilities = required_capability_set.clone();
+                capabilities.sort();
+                capabilities.dedup();
+                format!("RichValueHole({})", capabilities.join("+"))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ValueClassBound {
+    Any,
+}
+
+impl ValueClassBound {
+    #[must_use]
+    pub fn stable_key(self) -> &'static str {
+        match self {
+            Self::Any => "AnyValue",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RefObservability {
+    ReferenceIdentityVisible,
+}
+
+impl RefObservability {
+    #[must_use]
+    pub fn stable_key(self) -> &'static str {
+        match self {
+            Self::ReferenceIdentityVisible => "ReferenceIdentityVisible",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CallableSignature {
+    AnyCallable,
+}
+
+impl CallableSignature {
+    #[must_use]
+    pub fn stable_key(self) -> &'static str {
+        match self {
+            Self::AnyCallable => "AnyCallable",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ExtentClass {
+    AnyExtent,
+}
+
+impl ExtentClass {
+    #[must_use]
+    pub fn stable_key(self) -> &'static str {
+        match self {
+            Self::AnyExtent => "AnyExtent",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CardinalityClass {
+    AnyCardinality,
+}
+
+impl CardinalityClass {
+    #[must_use]
+    pub fn stable_key(self) -> &'static str {
+        match self {
+            Self::AnyCardinality => "AnyCardinality",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +245,23 @@ pub enum HoleBindingPayload {
     HelperOptionalParameterName(String),
 }
 
+impl HoleBindingPayload {
+    #[must_use]
+    pub fn stable_key(&self) -> String {
+        match self {
+            Self::NumberLiteral(value) => format!("number:{value}"),
+            Self::TextLiteral(value) => format!("text:{value}"),
+            Self::LogicalLiteral(value) => format!("logical:{value}"),
+            Self::OmittedArgument => "omitted".to_string(),
+            Self::Reference(value) => format!("reference:{value}"),
+            Self::HelperParameterName(value) => format!("helper_parameter:{value}"),
+            Self::HelperOptionalParameterName(value) => {
+                format!("helper_optional_parameter:{value}")
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedCallable {
     pub prepared_callable_key: String,
@@ -132,7 +281,9 @@ pub fn derive_prepared_formula_identity_keys(
     let dispatch_skeleton_key =
         DispatchSkeletonKey(fingerprint("dispatch_skeleton", &dispatch_input));
 
-    let plan_input = plan_template_key_input(&dispatch_skeleton_key, semantic_plan);
+    let template_holes = collect_template_holes(bound_formula, semantic_plan);
+    let plan_input =
+        plan_template_key_input(&dispatch_skeleton_key, semantic_plan, &template_holes);
     let plan_template_key = PlanTemplateKey(fingerprint("plan_template", &plan_input));
 
     PreparedFormulaIdentityKeys {
@@ -148,7 +299,7 @@ pub fn derive_prepared_callable(
     semantic_plan: &SemanticPlan,
 ) -> PreparedCallable {
     let identity_keys = derive_prepared_formula_identity_keys(bound_formula, semantic_plan);
-    let collected_holes = collect_template_holes_and_bindings(&bound_formula.root);
+    let collected_holes = collect_template_holes_and_bindings(&bound_formula.root, semantic_plan);
     let holes = collected_holes
         .iter()
         .map(|collected| collected.hole.clone())
@@ -157,7 +308,7 @@ pub fn derive_prepared_callable(
         .into_iter()
         .map(|collected| collected.binding)
         .collect::<Vec<_>>();
-    let binding_fingerprint = fingerprint("hole_bindings", &format!("{bindings:?}"));
+    let binding_fingerprint = fingerprint("hole_bindings", &hole_binding_key_input(&bindings));
     let hole_bindings = HoleBindings {
         binding_fingerprint,
         bindings,
@@ -218,6 +369,7 @@ fn dispatch_skeleton_key_input(shape_key: &ShapeKey, semantic_plan: &SemanticPla
 fn plan_template_key_input(
     dispatch_skeleton_key: &DispatchSkeletonKey,
     semantic_plan: &SemanticPlan,
+    template_holes: &[PlanTemplateHole],
 ) -> String {
     let mut input = String::from("oxcalc.plan_template.v1;");
     write!(
@@ -245,6 +397,9 @@ fn plan_template_key_input(
             diagnostic.code, diagnostic.function_name, diagnostic.worksheet_error_class
         )
         .expect("write to string");
+    }
+    for hole in template_holes {
+        write!(input, "template_hole({});", hole.stable_key()).expect("write to string");
     }
     input
 }
@@ -482,12 +637,21 @@ struct CollectedTemplateHole {
     binding: PlanTemplateHoleBinding,
 }
 
-#[derive(Default)]
-struct HoleCollector {
+struct HoleCollector<'a> {
+    function_bindings: &'a [FunctionPlanBinding],
+    function_binding_cursor: usize,
     collected: Vec<CollectedTemplateHole>,
 }
 
-impl HoleCollector {
+impl<'a> HoleCollector<'a> {
+    fn new(function_bindings: &'a [FunctionPlanBinding]) -> Self {
+        Self {
+            function_bindings,
+            function_binding_cursor: 0,
+            collected: Vec::new(),
+        }
+    }
+
     fn push_hole(&mut self, path: String, kind: PlanTemplateHoleKind, payload: HoleBindingPayload) {
         let ordinal = self.collected.len();
         let hole_id = format!("hole:{ordinal}");
@@ -502,21 +666,21 @@ impl HoleCollector {
         });
     }
 
-    fn collect_expr(&mut self, expr: &BoundExpr, path: String) {
+    fn collect_expr(&mut self, expr: &BoundExpr, path: String, policy: HoleTemplatePolicy) {
         match expr {
             BoundExpr::NumberLiteral(value) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::NumberLiteral,
+                policy.default_hole_kind(),
                 HoleBindingPayload::NumberLiteral(value.clone()),
             ),
             BoundExpr::StringLiteral(value) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::TextLiteral,
+                policy.default_hole_kind(),
                 HoleBindingPayload::TextLiteral(value.clone()),
             ),
             BoundExpr::LogicalLiteral(value) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::LogicalLiteral,
+                policy.default_hole_kind(),
                 HoleBindingPayload::LogicalLiteral(*value),
             ),
             BoundExpr::ArrayLiteral(rows) => {
@@ -525,77 +689,171 @@ impl HoleCollector {
                         self.collect_expr(
                             value,
                             format!("{path}.row{row_index}.col{column_index}"),
+                            policy,
                         );
                     }
                 }
             }
             BoundExpr::OmittedArgument => self.push_hole(
                 path,
-                PlanTemplateHoleKind::OmittedArgument,
+                policy.default_hole_kind(),
                 HoleBindingPayload::OmittedArgument,
             ),
             BoundExpr::HelperParameterName(name) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::HelperParameter,
+                policy.default_hole_kind(),
                 HoleBindingPayload::HelperParameterName(name.clone()),
             ),
             BoundExpr::HelperOptionalParameterName(name) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::HelperOptionalParameter,
+                policy.default_hole_kind(),
                 HoleBindingPayload::HelperOptionalParameterName(name.clone()),
             ),
             BoundExpr::Binary { left, right, .. } => {
-                self.collect_expr(left, format!("{path}.left"));
-                self.collect_expr(right, format!("{path}.right"));
+                self.collect_expr(left, format!("{path}.left"), policy);
+                self.collect_expr(right, format!("{path}.right"), policy);
             }
             BoundExpr::Unary { expr, .. } | BoundExpr::ImplicitIntersection(expr) => {
-                self.collect_expr(expr, format!("{path}.expr"));
+                self.collect_expr(expr, format!("{path}.expr"), policy);
             }
-            BoundExpr::FunctionCall { args, .. } => {
+            BoundExpr::FunctionCall {
+                function_name,
+                args,
+            } => {
+                let arg_policy = self
+                    .function_argument_policy(function_name, args.len())
+                    .unwrap_or_default();
                 for (index, arg) in args.iter().enumerate() {
-                    self.collect_expr(arg, format!("{path}.arg{index}"));
+                    self.collect_expr(arg, format!("{path}.arg{index}"), arg_policy);
                 }
             }
             BoundExpr::Invocation { callee, args } => {
-                self.collect_expr(callee, format!("{path}.callee"));
+                self.push_hole(
+                    format!("{path}.callee"),
+                    PlanTemplateHoleKind::CallableHole {
+                        callable_signature: CallableSignature::AnyCallable,
+                    },
+                    HoleBindingPayload::Reference(format!("{callee:?}")),
+                );
                 for (index, arg) in args.iter().enumerate() {
-                    self.collect_expr(arg, format!("{path}.arg{index}"));
+                    self.collect_expr(arg, format!("{path}.arg{index}"), policy);
                 }
             }
-            BoundExpr::Reference(reference) => self.collect_reference(reference, path),
+            BoundExpr::Reference(reference) => self.collect_reference(reference, path, policy),
         }
     }
 
-    fn collect_reference(&mut self, reference: &ReferenceExpr, path: String) {
+    fn function_argument_policy(
+        &mut self,
+        function_name: &str,
+        arg_count: usize,
+    ) -> Option<HoleTemplatePolicy> {
+        let function_name = function_name.to_ascii_uppercase();
+        let mut skipped = 0;
+        for binding in self.function_bindings[self.function_binding_cursor..].iter() {
+            skipped += 1;
+            if binding.function_name.to_ascii_uppercase() == function_name
+                && binding.arg_count == arg_count
+            {
+                self.function_binding_cursor += skipped;
+                return Some(HoleTemplatePolicy::from(binding.arg_preparation_profile));
+            }
+        }
+
+        None
+    }
+
+    fn collect_reference(
+        &mut self,
+        reference: &ReferenceExpr,
+        path: String,
+        policy: HoleTemplatePolicy,
+    ) {
         match reference {
             ReferenceExpr::Atom(normalized) => self.push_hole(
                 path,
-                PlanTemplateHoleKind::Reference,
+                policy.default_hole_kind(),
                 HoleBindingPayload::Reference(format!("{normalized:?}")),
             ),
             ReferenceExpr::Range { start, end } => {
-                self.collect_reference(start, format!("{path}.range_start"));
-                self.collect_reference(end, format!("{path}.range_end"));
+                self.collect_reference(start, format!("{path}.range_start"), policy);
+                self.collect_reference(end, format!("{path}.range_end"), policy);
             }
             ReferenceExpr::Union { left, right } => {
-                self.collect_reference(left, format!("{path}.union_left"));
-                self.collect_reference(right, format!("{path}.union_right"));
+                self.collect_reference(left, format!("{path}.union_left"), policy);
+                self.collect_reference(right, format!("{path}.union_right"), policy);
             }
             ReferenceExpr::Intersection { left, right } => {
-                self.collect_reference(left, format!("{path}.intersection_left"));
-                self.collect_reference(right, format!("{path}.intersection_right"));
+                self.collect_reference(left, format!("{path}.intersection_left"), policy);
+                self.collect_reference(right, format!("{path}.intersection_right"), policy);
             }
             ReferenceExpr::Spill { anchor } => {
-                self.collect_reference(anchor, format!("{path}.spill_anchor"));
+                self.collect_reference(anchor, format!("{path}.spill_anchor"), policy);
             }
         }
     }
 }
 
-fn collect_template_holes_and_bindings(root: &BoundExpr) -> Vec<CollectedTemplateHole> {
-    let mut collector = HoleCollector::default();
-    collector.collect_expr(root, "root".to_string());
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum HoleTemplatePolicy {
+    #[default]
+    WideValue,
+    ReferenceVisible,
+}
+
+impl From<ArgPreparationProfile> for HoleTemplatePolicy {
+    fn from(profile: ArgPreparationProfile) -> Self {
+        match profile {
+            ArgPreparationProfile::ValuesOnlyPreAdapter => Self::WideValue,
+            ArgPreparationProfile::RefsVisibleInAdapter => Self::ReferenceVisible,
+        }
+    }
+}
+
+impl HoleTemplatePolicy {
+    fn default_hole_kind(self) -> PlanTemplateHoleKind {
+        match self {
+            Self::WideValue => PlanTemplateHoleKind::ValueHole {
+                value_class_bound: ValueClassBound::Any,
+            },
+            Self::ReferenceVisible => PlanTemplateHoleKind::RefOrValueHole {
+                ref_observability: RefObservability::ReferenceIdentityVisible,
+            },
+        }
+    }
+}
+
+fn collect_template_holes_and_bindings(
+    root: &BoundExpr,
+    semantic_plan: &SemanticPlan,
+) -> Vec<CollectedTemplateHole> {
+    let mut collector = HoleCollector::new(&semantic_plan.function_bindings);
+    collector.collect_expr(root, "root".to_string(), HoleTemplatePolicy::default());
     collector.collected
+}
+
+fn collect_template_holes(
+    bound_formula: &BoundFormula,
+    semantic_plan: &SemanticPlan,
+) -> Vec<PlanTemplateHole> {
+    collect_template_holes_and_bindings(&bound_formula.root, semantic_plan)
+        .into_iter()
+        .map(|collected| collected.hole)
+        .collect()
+}
+
+fn hole_binding_key_input(bindings: &[PlanTemplateHoleBinding]) -> String {
+    let mut input = String::from("oxcalc.hole_bindings.v1;");
+    for binding in bindings {
+        write!(
+            input,
+            "{}={};",
+            binding.hole_id,
+            binding.payload.stable_key()
+        )
+        .expect("write to string");
+    }
+    input
 }
 
 fn fingerprint(namespace: &str, input: &str) -> String {
@@ -689,6 +947,57 @@ mod tests {
     }
 
     #[test]
+    fn hole_taxonomy_stable_keys_are_deterministic() {
+        let cases = [
+            (
+                PlanTemplateHoleKind::ValueHole {
+                    value_class_bound: ValueClassBound::Any,
+                },
+                "ValueHole(AnyValue)",
+            ),
+            (
+                PlanTemplateHoleKind::RefOrValueHole {
+                    ref_observability: RefObservability::ReferenceIdentityVisible,
+                },
+                "RefOrValueHole(ReferenceIdentityVisible)",
+            ),
+            (
+                PlanTemplateHoleKind::CallableHole {
+                    callable_signature: CallableSignature::AnyCallable,
+                },
+                "CallableHole(AnyCallable)",
+            ),
+            (
+                PlanTemplateHoleKind::ShapeSensitiveHole {
+                    extent_class: ExtentClass::AnyExtent,
+                },
+                "ShapeSensitiveHole(AnyExtent)",
+            ),
+            (
+                PlanTemplateHoleKind::SparseRangeHole {
+                    extent_class: ExtentClass::AnyExtent,
+                    cardinality_class: CardinalityClass::AnyCardinality,
+                },
+                "SparseRangeHole(AnyExtent,AnyCardinality)",
+            ),
+            (
+                PlanTemplateHoleKind::RichValueHole {
+                    required_capability_set: vec![
+                        "Indexable".to_string(),
+                        "Enumerable".to_string(),
+                        "Indexable".to_string(),
+                    ],
+                },
+                "RichValueHole(Enumerable+Indexable)",
+            ),
+        ];
+
+        for (kind, stable_key) in cases {
+            assert_eq!(kind.stable_key(), stable_key);
+        }
+    }
+
+    #[test]
     fn prepared_callable_separates_template_from_hole_bindings() {
         let left = prepared_callable_for("formula:left", "=SUM(A1,2)");
         let right = prepared_callable_for("formula:right", "=SUM(B7,99)");
@@ -702,11 +1011,15 @@ mod tests {
             left.plan_template
                 .holes
                 .iter()
-                .map(|hole| hole.kind)
+                .map(|hole| hole.kind.clone())
                 .collect::<Vec<_>>(),
             vec![
-                PlanTemplateHoleKind::Reference,
-                PlanTemplateHoleKind::NumberLiteral
+                PlanTemplateHoleKind::ValueHole {
+                    value_class_bound: ValueClassBound::Any,
+                },
+                PlanTemplateHoleKind::ValueHole {
+                    value_class_bound: ValueClassBound::Any,
+                },
             ]
         );
         assert_ne!(
@@ -741,6 +1054,43 @@ mod tests {
         assert_eq!(
             sum.hole_bindings.binding_fingerprint,
             max.hole_bindings.binding_fingerprint
+        );
+    }
+
+    #[test]
+    fn refs_visible_function_uses_ref_or_value_template_holes() {
+        let prepared_callable = prepared_callable_for("formula:rows", "=ROWS(A1:A3)");
+
+        assert!(!prepared_callable.plan_template.holes.is_empty());
+        assert!(
+            prepared_callable
+                .plan_template
+                .holes
+                .iter()
+                .all(|hole| matches!(
+                    hole.kind,
+                    PlanTemplateHoleKind::RefOrValueHole {
+                        ref_observability: RefObservability::ReferenceIdentityVisible
+                    }
+                ))
+        );
+    }
+
+    #[test]
+    fn current_v1_paths_do_not_emit_sparse_or_rich_holes() {
+        let prepared_callable = prepared_callable_for("formula:sum_range", "=SUM(A1:A3)");
+
+        assert!(!prepared_callable.plan_template.holes.is_empty());
+        assert!(
+            prepared_callable
+                .plan_template
+                .holes
+                .iter()
+                .all(|hole| !matches!(
+                    hole.kind,
+                    PlanTemplateHoleKind::SparseRangeHole { .. }
+                        | PlanTemplateHoleKind::RichValueHole { .. }
+                ))
         );
     }
 }

@@ -1292,3 +1292,36 @@ Current non-assumptions:
    seam,
 3. OxCalc is not claiming template cache reuse until separate C5 evidence
    exists.
+
+## 74. W050 C3 Default Hole-Type Taxonomy Uptake
+OxCalc has mapped the W050 default hole taxonomy into the current V1
+prepared-call identity compatibility layer.
+
+Current OxCalc code shape is:
+1. `PlanTemplateHoleKind` now has stable-keyed `ValueHole`,
+   `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`,
+   `SparseRangeHole`, and `RichValueHole` variants,
+2. `ValuesOnlyPreAdapter` arguments emit `ValueHole(AnyValue)`,
+3. `RefsVisibleInAdapter` arguments emit
+   `RefOrValueHole(ReferenceIdentityVisible)`,
+4. invocation callees can emit `CallableHole(AnyCallable)` while the
+   concrete callee payload remains in `HoleBindings`,
+5. literal values, concrete references, omitted arguments, and helper names
+   remain per-formula hole-binding payloads rather than template narrowing
+   inputs.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. OxFml still owns the canonical prepared-callable and plan-template
+   identity surface,
+2. OxFml should confirm the canonical taxonomy names, stable
+   serialization, and emission rules for the six default hole variants,
+3. OxFunc/OxFml still need an explicit producer contract before
+   `SparseRangeHole` or `RichValueHole` can imply any kernel-side sparse or
+   rich-value behavior.
+
+Current non-assumptions:
+1. OxCalc is not asking for private OxFml plan internals,
+2. OxCalc is not claiming `SparseRangeHole` or `RichValueHole` is exercised
+   by current production kernels,
+3. OxCalc is not treating capability-set vocabulary as settled; Lane G
+   remains the owner for that vocabulary.

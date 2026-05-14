@@ -44,6 +44,7 @@ use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
 };
+use crate::repository::{SubscriptionHandle, SubscriptionRegistryEntry, SubscriptionTopicId};
 use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
@@ -483,6 +484,11 @@ impl LocalTreeCalcEngine {
             prepared_formulas
                 .values()
                 .flat_map(prepared_formula_identity_diagnostics),
+        );
+        diagnostics.extend(
+            prepared_formulas
+                .values()
+                .flat_map(prepared_runtime_effect_subscription_diagnostics),
         );
         diagnostics.extend(prepared_formula_reuse_diagnostics(
             &prepared_formula_identities,
@@ -2225,6 +2231,92 @@ fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec
     ]
 }
 
+fn prepared_runtime_effect_subscription_diagnostics(
+    prepared: &PreparedOxfmlFormula,
+) -> Vec<String> {
+    prepared_runtime_effect_subscription_entries(prepared)
+        .into_iter()
+        .map(|entry| {
+            format!(
+                "prepared_runtime_subscription:{}:{}:{}:{}",
+                entry.formula_stable_id,
+                entry.topic_id.0,
+                entry.subscription_handle.0,
+                entry.topic_descriptor
+            )
+        })
+        .collect()
+}
+
+fn prepared_runtime_effect_subscription_entries(
+    prepared: &PreparedOxfmlFormula,
+) -> Vec<SubscriptionRegistryEntry> {
+    let formula_stable_id = prepared.source.formula_stable_id.0.clone();
+    let mut entries = prepared
+        .translated
+        .residuals
+        .iter()
+        .filter_map(|residual| {
+            let runtime_effect = residual_runtime_effect(residual);
+            if !runtime_effect_projects_external_subscription(residual, &runtime_effect) {
+                return None;
+            }
+            let topic_component = subscription_component(
+                residual
+                    .carrier_id
+                    .strip_prefix("carrier:")
+                    .unwrap_or(&residual.carrier_id),
+            );
+            Some(SubscriptionRegistryEntry {
+                topic_id: SubscriptionTopicId(format!("topic:{topic_component}")),
+                formula_stable_id: formula_stable_id.clone(),
+                subscription_handle: SubscriptionHandle(format!(
+                    "subscription:{formula_stable_id}:{topic_component}"
+                )),
+                topic_descriptor: format!("{}:{}", runtime_effect.kind, runtime_effect.detail),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    entries.sort_by(|left, right| {
+        left.topic_id
+            .cmp(&right.topic_id)
+            .then_with(|| left.subscription_handle.cmp(&right.subscription_handle))
+            .then_with(|| left.topic_descriptor.cmp(&right.topic_descriptor))
+    });
+    entries.dedup_by(|left, right| {
+        left.topic_id == right.topic_id && left.formula_stable_id == right.formula_stable_id
+    });
+    entries
+}
+
+fn runtime_effect_projects_external_subscription(
+    residual: &ResidualCarrier,
+    runtime_effect: &RuntimeEffect,
+) -> bool {
+    if runtime_effect.kind != "runtime_effect.dynamic_reference"
+        || runtime_effect.family != RuntimeEffectFamily::DynamicDependency
+    {
+        return false;
+    }
+    let detail = residual.detail.to_ascii_lowercase();
+    let carrier_id = residual.carrier_id.to_ascii_lowercase();
+    detail.contains("rtd")
+        || detail.contains("external")
+        || detail.contains("topic")
+        || carrier_id.contains("rtd")
+}
+
+fn subscription_component(input: &str) -> String {
+    input
+        .chars()
+        .map(|character| match character {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | ':' | '-' | '_' | '.' => character,
+            _ => '_',
+        })
+        .collect()
+}
+
 fn prepared_formula_reuse_diagnostics(identities: &[PreparedFormulaIdentityTrace]) -> Vec<String> {
     #[derive(Default)]
     struct ReuseCounters {
@@ -3380,6 +3472,10 @@ mod tests {
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
         TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
     };
+    use crate::repository::{
+        CalculationRepository, FormulaSlotRecord, FormulaSourceIdentity,
+        SubscriptionLifecycleAction, SubscriptionLifecycleReason,
+    };
     use crate::rich_value_capability::{
         RICH_VALUE_CAPABILITY_TRACE_REPLAY_SCHEMA_ID, RichValueCapabilityTraceReplayColumns,
         w050_initial_required_capability_set_example,
@@ -3444,6 +3540,20 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn repository_slot_from_prepared(prepared: &PreparedOxfmlFormula) -> FormulaSlotRecord {
+        FormulaSlotRecord {
+            owner_node_id: prepared.binding.owner_node_id,
+            formula_artifact_id: prepared.binding.formula_artifact_id.clone(),
+            bind_artifact_id: prepared.binding.bind_artifact_id.clone(),
+            source_identity: FormulaSourceIdentity {
+                formula_stable_id: prepared.source.formula_stable_id.0.clone(),
+                formula_text_version: prepared.source.formula_text_version.0,
+                formula_token: Some(prepared.source.formula_token().0),
+            },
+            opaque_source_text: prepared.source.entered_formula_text.clone(),
+        }
     }
 
     fn formula_input(owner_node_id: TreeNodeId, expression: TreeFormula) -> LocalTreeCalcInput {
@@ -4599,6 +4709,10 @@ mod tests {
             run.runtime_effects[0].kind,
             "runtime_effect.dynamic_reference"
         );
+        assert!(!has_diagnostic_prefix(
+            &run,
+            "prepared_runtime_subscription:"
+        ));
         assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
         assert_has_diagnostic(
             &run,
@@ -4633,6 +4747,10 @@ mod tests {
         );
         assert_has_diagnostic(
             &run,
+            "prepared_runtime_subscription:formula:b:topic:rtd:subscription:formula:b:rtd:runtime_effect.dynamic_reference:owner_node:node:3;carrier_id:carrier:rtd;detail:RTD topic resolved at runtime",
+        );
+        assert_has_diagnostic(
+            &run,
             "oxfml_returned_value_surface_kind:TypedHostProviderOutcome",
         );
         assert_has_diagnostic(
@@ -4647,6 +4765,105 @@ mod tests {
             &run,
             "oxfml_returned_value_surface_host_provider_worksheet_error:Blocked",
         );
+    }
+
+    #[test]
+    fn prepared_runtime_effect_classification_drives_subscription_lifecycle() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=RTD(\"TREECALC\",\"\",\"carrier:rtd\")",
+                [TreeFormulaReferenceCarrier::fact(
+                    TreeReference::DynamicPotential {
+                        carrier_id: "carrier:rtd".to_string(),
+                        detail: "RTD topic resolved at runtime".to_string(),
+                    },
+                )],
+            ),
+        };
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .unwrap();
+
+        let entries = prepared_runtime_effect_subscription_entries(&prepared);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(
+            entries[0].topic_id,
+            SubscriptionTopicId("topic:rtd".to_string())
+        );
+        assert_eq!(entries[0].formula_stable_id, "formula:b");
+        assert_eq!(
+            entries[0].subscription_handle,
+            SubscriptionHandle("subscription:formula:b:rtd".to_string())
+        );
+
+        let mut repository = CalculationRepository::new(structural_snapshot.clone());
+        repository
+            .upsert_formula_slot(TreeNodeId(3), repository_slot_from_prepared(&prepared))
+            .unwrap();
+        let created = repository
+            .reconcile_subscriptions_for_formula(
+                "formula:b",
+                entries.clone(),
+                SubscriptionLifecycleReason::PreparedRuntimeEffect,
+            )
+            .unwrap();
+
+        assert_eq!(created.len(), 1);
+        assert_eq!(created[0].action, SubscriptionLifecycleAction::Created);
+        assert_eq!(
+            created[0].reason,
+            SubscriptionLifecycleReason::PreparedRuntimeEffect
+        );
+        assert_eq!(
+            repository.subscriptions_for_formula("formula:b")[0].topic_id,
+            SubscriptionTopicId("topic:rtd".to_string())
+        );
+
+        let indirect_binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=INDIRECT(RTD(\"TREECALC\",\"\",\"carrier:indirect\"))",
+                [TreeFormulaReferenceCarrier::fact(
+                    TreeReference::DynamicPotential {
+                        carrier_id: "carrier:indirect".to_string(),
+                        detail: "INDIRECT selector resolved at runtime".to_string(),
+                    },
+                )],
+            ),
+        };
+        let indirect_prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            &indirect_binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .unwrap();
+
+        assert!(prepared_runtime_effect_subscription_entries(&indirect_prepared).is_empty());
+
+        let released = repository
+            .reconcile_subscriptions_for_formula(
+                "formula:b",
+                Vec::<SubscriptionRegistryEntry>::new(),
+                SubscriptionLifecycleReason::FormulaTextChanged,
+            )
+            .unwrap();
+
+        assert_eq!(released.len(), 1);
+        assert_eq!(released[0].action, SubscriptionLifecycleAction::Released);
+        assert_eq!(
+            released[0].reason,
+            SubscriptionLifecycleReason::FormulaTextChanged
+        );
+        assert!(repository.subscriptions_for_formula("formula:b").is_empty());
     }
 
     #[test]

@@ -75,6 +75,48 @@ pub struct SubscriptionRegistryEntry {
     pub topic_descriptor: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum SubscriptionLifecycleAction {
+    Created,
+    Released,
+    Replaced,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum SubscriptionLifecycleReason {
+    PreparedRuntimeEffect,
+    FormulaTextChanged,
+    NameWorldChanged,
+    StructureContextChanged,
+    FormulaRemoved,
+    PreparedCallableReplaced,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubscriptionLifecycleDiagnostic {
+    pub action: SubscriptionLifecycleAction,
+    pub reason: SubscriptionLifecycleReason,
+    pub topic_id: SubscriptionTopicId,
+    pub formula_stable_id: String,
+    pub subscription_handle: SubscriptionHandle,
+    pub topic_descriptor: String,
+}
+
+impl SubscriptionLifecycleDiagnostic {
+    #[must_use]
+    pub fn replay_detail(&self) -> String {
+        format!(
+            "subscription_lifecycle:{:?}:{:?}:formula={}:topic={}:handle={}:descriptor={}",
+            self.action,
+            self.reason,
+            self.formula_stable_id,
+            self.topic_id.0,
+            self.subscription_handle.0,
+            self.topic_descriptor
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TopicEnvelope {
     pub topic_id: SubscriptionTopicId,
@@ -141,6 +183,13 @@ pub enum CalculationRepositoryError {
     },
     #[error("formula stable id {formula_stable_id} is not registered in the repository")]
     UnknownFormulaStableId { formula_stable_id: String },
+    #[error(
+        "subscription formula stable id {entry_formula_stable_id} does not match requested formula stable id {formula_stable_id}"
+    )]
+    SubscriptionFormulaStableIdMismatch {
+        formula_stable_id: String,
+        entry_formula_stable_id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -278,6 +327,15 @@ impl CalculationRepository {
         owner_node_id: TreeNodeId,
         record: FormulaSlotRecord,
     ) -> Result<(), CalculationRepositoryError> {
+        self.upsert_formula_slot_with_lifecycle_diagnostics(owner_node_id, record)
+            .map(|_| ())
+    }
+
+    pub fn upsert_formula_slot_with_lifecycle_diagnostics(
+        &mut self,
+        owner_node_id: TreeNodeId,
+        record: FormulaSlotRecord,
+    ) -> Result<Vec<SubscriptionLifecycleDiagnostic>, CalculationRepositoryError> {
         self.require_node(owner_node_id)?;
         if record.owner_node_id != owner_node_id {
             return Err(CalculationRepositoryError::FormulaSlotOwnerMismatch {
@@ -286,37 +344,54 @@ impl CalculationRepository {
             });
         }
 
-        let invalidated_formula_stable_id =
-            self.formula_slots.get(&owner_node_id).and_then(|existing| {
-                (existing.source_identity != record.source_identity
-                    || existing.formula_artifact_id != record.formula_artifact_id
-                    || existing.bind_artifact_id != record.bind_artifact_id)
-                    .then(|| existing.source_identity.formula_stable_id.clone())
-            });
-        if let Some(formula_stable_id) = invalidated_formula_stable_id {
-            self.release_subscriptions_for_formula_stable_id(&formula_stable_id);
-        }
+        let invalidated_formula = self.formula_slots.get(&owner_node_id).and_then(|existing| {
+            formula_slot_subscription_invalidation_reason(existing, &record)
+                .map(|reason| (existing.source_identity.formula_stable_id.clone(), reason))
+        });
+        let diagnostics = if let Some((formula_stable_id, reason)) = invalidated_formula {
+            self.release_subscriptions_for_formula_stable_id_with_reason(&formula_stable_id, reason)
+        } else {
+            Vec::new()
+        };
 
         self.formula_slots.insert(owner_node_id, record);
         self.node_states
             .insert(owner_node_id, NodeCalcState::DirtyPending);
-        Ok(())
+        Ok(diagnostics)
     }
 
     pub fn remove_formula_slot(
         &mut self,
         owner_node_id: TreeNodeId,
     ) -> Result<Option<FormulaSlotRecord>, CalculationRepositoryError> {
+        self.remove_formula_slot_with_lifecycle_diagnostics(owner_node_id)
+            .map(|(removed, _)| removed)
+    }
+
+    pub fn remove_formula_slot_with_lifecycle_diagnostics(
+        &mut self,
+        owner_node_id: TreeNodeId,
+    ) -> Result<
+        (
+            Option<FormulaSlotRecord>,
+            Vec<SubscriptionLifecycleDiagnostic>,
+        ),
+        CalculationRepositoryError,
+    > {
         self.require_node(owner_node_id)?;
         let removed = self.formula_slots.remove(&owner_node_id);
-        if let Some(record) = &removed {
-            self.release_subscriptions_for_formula_stable_id(
+        let diagnostics = if let Some(record) = &removed {
+            let diagnostics = self.release_subscriptions_for_formula_stable_id_with_reason(
                 &record.source_identity.formula_stable_id,
+                SubscriptionLifecycleReason::FormulaRemoved,
             );
             self.node_states
                 .insert(owner_node_id, NodeCalcState::DirtyPending);
-        }
-        Ok(removed)
+            diagnostics
+        } else {
+            Vec::new()
+        };
+        Ok((removed, diagnostics))
     }
 
     pub fn record_oxfml_artifact_handle(
@@ -371,6 +446,72 @@ impl CalculationRepository {
         Ok(())
     }
 
+    pub fn reconcile_subscriptions_for_formula(
+        &mut self,
+        formula_stable_id: &str,
+        entries: impl IntoIterator<Item = SubscriptionRegistryEntry>,
+        reason: SubscriptionLifecycleReason,
+    ) -> Result<Vec<SubscriptionLifecycleDiagnostic>, CalculationRepositoryError> {
+        if !self.has_formula_stable_id(formula_stable_id) {
+            return Err(CalculationRepositoryError::UnknownFormulaStableId {
+                formula_stable_id: formula_stable_id.to_string(),
+            });
+        }
+
+        let mut desired = BTreeMap::new();
+        for entry in entries {
+            if entry.formula_stable_id != formula_stable_id {
+                return Err(
+                    CalculationRepositoryError::SubscriptionFormulaStableIdMismatch {
+                        formula_stable_id: formula_stable_id.to_string(),
+                        entry_formula_stable_id: entry.formula_stable_id,
+                    },
+                );
+            }
+            desired.insert(
+                (entry.topic_id.clone(), entry.formula_stable_id.clone()),
+                entry,
+            );
+        }
+
+        let mut diagnostics = Vec::new();
+        for key in self.subscription_keys_for_formula(formula_stable_id) {
+            if !desired.contains_key(&key)
+                && let Some(entry) = self.subscription_registry.remove(&key)
+            {
+                diagnostics.push(subscription_lifecycle_diagnostic(
+                    SubscriptionLifecycleAction::Released,
+                    reason,
+                    &entry,
+                ));
+            }
+        }
+
+        for (key, entry) in desired {
+            match self.subscription_registry.get(&key).cloned() {
+                Some(existing) if existing == entry => {}
+                Some(_) => {
+                    self.subscription_registry.insert(key, entry.clone());
+                    diagnostics.push(subscription_lifecycle_diagnostic(
+                        SubscriptionLifecycleAction::Replaced,
+                        reason,
+                        &entry,
+                    ));
+                }
+                None => {
+                    self.subscription_registry.insert(key, entry.clone());
+                    diagnostics.push(subscription_lifecycle_diagnostic(
+                        SubscriptionLifecycleAction::Created,
+                        reason,
+                        &entry,
+                    ));
+                }
+            }
+        }
+
+        Ok(diagnostics)
+    }
+
     pub fn release_subscription(
         &mut self,
         topic_id: &SubscriptionTopicId,
@@ -384,17 +525,26 @@ impl CalculationRepository {
         &mut self,
         formula_stable_id: &str,
     ) -> Vec<SubscriptionRegistryEntry> {
-        let keys = self
-            .subscription_registry
-            .keys()
-            .filter(|(_, candidate_formula_stable_id)| {
-                candidate_formula_stable_id == formula_stable_id
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        keys.into_iter()
+        self.subscription_keys_for_formula(formula_stable_id)
+            .into_iter()
             .filter_map(|key| self.subscription_registry.remove(&key))
+            .collect()
+    }
+
+    pub fn release_subscriptions_for_formula_stable_id_with_reason(
+        &mut self,
+        formula_stable_id: &str,
+        reason: SubscriptionLifecycleReason,
+    ) -> Vec<SubscriptionLifecycleDiagnostic> {
+        self.release_subscriptions_for_formula_stable_id(formula_stable_id)
+            .into_iter()
+            .map(|entry| {
+                subscription_lifecycle_diagnostic(
+                    SubscriptionLifecycleAction::Released,
+                    reason,
+                    &entry,
+                )
+            })
             .collect()
     }
 
@@ -527,6 +677,56 @@ impl CalculationRepository {
         self.formula_slots.iter().find_map(|(node_id, slot)| {
             (slot.source_identity.formula_stable_id == formula_stable_id).then_some(*node_id)
         })
+    }
+
+    fn subscription_keys_for_formula(
+        &self,
+        formula_stable_id: &str,
+    ) -> Vec<(SubscriptionTopicId, String)> {
+        self.subscription_registry
+            .keys()
+            .filter(|(_, candidate_formula_stable_id)| {
+                candidate_formula_stable_id == formula_stable_id
+            })
+            .cloned()
+            .collect()
+    }
+}
+
+fn formula_slot_subscription_invalidation_reason(
+    existing: &FormulaSlotRecord,
+    next: &FormulaSlotRecord,
+) -> Option<SubscriptionLifecycleReason> {
+    if existing.source_identity.formula_stable_id != next.source_identity.formula_stable_id {
+        return Some(SubscriptionLifecycleReason::PreparedCallableReplaced);
+    }
+    if existing.source_identity.formula_text_version != next.source_identity.formula_text_version
+        || existing.source_identity.formula_token != next.source_identity.formula_token
+        || existing.opaque_source_text != next.opaque_source_text
+    {
+        return Some(SubscriptionLifecycleReason::FormulaTextChanged);
+    }
+    if existing.bind_artifact_id != next.bind_artifact_id {
+        return Some(SubscriptionLifecycleReason::NameWorldChanged);
+    }
+    if existing.formula_artifact_id != next.formula_artifact_id {
+        return Some(SubscriptionLifecycleReason::PreparedCallableReplaced);
+    }
+    None
+}
+
+fn subscription_lifecycle_diagnostic(
+    action: SubscriptionLifecycleAction,
+    reason: SubscriptionLifecycleReason,
+    entry: &SubscriptionRegistryEntry,
+) -> SubscriptionLifecycleDiagnostic {
+    SubscriptionLifecycleDiagnostic {
+        action,
+        reason,
+        topic_id: entry.topic_id.clone(),
+        formula_stable_id: entry.formula_stable_id.clone(),
+        subscription_handle: entry.subscription_handle.clone(),
+        topic_descriptor: entry.topic_descriptor.clone(),
     }
 }
 
@@ -765,6 +965,93 @@ mod tests {
     }
 
     #[test]
+    fn repository_reconciles_subscription_lifecycle_with_replay_diagnostics() {
+        let mut repository = CalculationRepository::new(snapshot());
+        repository
+            .upsert_formula_slot(TreeNodeId(2), formula_slot(2, "formula:a", "=RTD(...)"))
+            .unwrap();
+
+        let created = repository
+            .reconcile_subscriptions_for_formula(
+                "slot:2",
+                [subscription("topic:rtd:price", "slot:2", "sub:price:v1")],
+                SubscriptionLifecycleReason::PreparedRuntimeEffect,
+            )
+            .unwrap();
+
+        assert_eq!(created.len(), 1);
+        assert_eq!(created[0].action, SubscriptionLifecycleAction::Created);
+        assert_eq!(
+            created[0].reason,
+            SubscriptionLifecycleReason::PreparedRuntimeEffect
+        );
+        assert_eq!(
+            created[0].replay_detail(),
+            "subscription_lifecycle:Created:PreparedRuntimeEffect:formula=slot:2:topic=topic:rtd:price:handle=sub:price:v1:descriptor=rtd:topic:rtd:price"
+        );
+
+        let unchanged = repository
+            .reconcile_subscriptions_for_formula(
+                "slot:2",
+                [subscription("topic:rtd:price", "slot:2", "sub:price:v1")],
+                SubscriptionLifecycleReason::PreparedRuntimeEffect,
+            )
+            .unwrap();
+        assert!(unchanged.is_empty());
+
+        let updated = repository
+            .reconcile_subscriptions_for_formula(
+                "slot:2",
+                [
+                    subscription("topic:rtd:price", "slot:2", "sub:price:v2"),
+                    subscription("topic:rtd:status", "slot:2", "sub:status"),
+                ],
+                SubscriptionLifecycleReason::StructureContextChanged,
+            )
+            .unwrap();
+
+        assert_eq!(
+            updated
+                .iter()
+                .map(|diagnostic| diagnostic.action)
+                .collect::<Vec<_>>(),
+            vec![
+                SubscriptionLifecycleAction::Replaced,
+                SubscriptionLifecycleAction::Created,
+            ]
+        );
+        assert!(updated.iter().all(|diagnostic| {
+            diagnostic.reason == SubscriptionLifecycleReason::StructureContextChanged
+        }));
+
+        let serialized = serde_json::to_value(&updated[0]).unwrap();
+        assert_eq!(serialized["action"], "Replaced");
+        assert_eq!(serialized["reason"], "StructureContextChanged");
+        assert_eq!(serialized["topic_id"], "topic:rtd:price");
+        assert_eq!(serialized["formula_stable_id"], "slot:2");
+        assert_eq!(serialized["subscription_handle"], "sub:price:v2");
+
+        let released = repository
+            .reconcile_subscriptions_for_formula(
+                "slot:2",
+                [subscription("topic:rtd:status", "slot:2", "sub:status")],
+                SubscriptionLifecycleReason::FormulaTextChanged,
+            )
+            .unwrap();
+
+        assert_eq!(released.len(), 1);
+        assert_eq!(released[0].action, SubscriptionLifecycleAction::Released);
+        assert_eq!(
+            released[0].reason,
+            SubscriptionLifecycleReason::FormulaTextChanged
+        );
+        assert_eq!(
+            repository.subscriptions_for_formula("slot:2")[0].topic_id,
+            SubscriptionTopicId("topic:rtd:status".to_string())
+        );
+    }
+
+    #[test]
     fn repository_releases_subscriptions_on_callable_invalidation() {
         let mut repository = CalculationRepository::new(snapshot());
         repository
@@ -779,18 +1066,47 @@ mod tests {
 
         let mut updated = formula_slot(2, "formula:a", "=RTD(...)+1");
         updated.source_identity.formula_text_version = 2;
-        repository
-            .upsert_formula_slot(TreeNodeId(2), updated)
+        let text_release_diagnostics = repository
+            .upsert_formula_slot_with_lifecycle_diagnostics(TreeNodeId(2), updated)
             .unwrap();
 
+        assert_eq!(text_release_diagnostics.len(), 2);
+        assert!(text_release_diagnostics.iter().all(|diagnostic| {
+            diagnostic.action == SubscriptionLifecycleAction::Released
+                && diagnostic.reason == SubscriptionLifecycleReason::FormulaTextChanged
+        }));
         assert!(repository.subscriptions_for_formula("slot:2").is_empty());
 
         repository
             .register_subscription(subscription("topic:rtd:price", "slot:2", "sub:price:v2"))
             .unwrap();
-        let removed = repository.remove_formula_slot(TreeNodeId(2)).unwrap();
+        let mut rebound = formula_slot(2, "formula:a", "=RTD(...)+1");
+        rebound.source_identity.formula_text_version = 2;
+        rebound.bind_artifact_id = Some(BindArtifactId("bind:changed-name-world".to_string()));
+        let name_world_release_diagnostics = repository
+            .upsert_formula_slot_with_lifecycle_diagnostics(TreeNodeId(2), rebound)
+            .unwrap();
+
+        assert_eq!(name_world_release_diagnostics.len(), 1);
+        assert_eq!(
+            name_world_release_diagnostics[0].reason,
+            SubscriptionLifecycleReason::NameWorldChanged
+        );
+        assert!(repository.subscriptions_for_formula("slot:2").is_empty());
+
+        repository
+            .register_subscription(subscription("topic:rtd:price", "slot:2", "sub:price:v3"))
+            .unwrap();
+        let (removed, remove_diagnostics) = repository
+            .remove_formula_slot_with_lifecycle_diagnostics(TreeNodeId(2))
+            .unwrap();
 
         assert!(removed.is_some());
+        assert_eq!(remove_diagnostics.len(), 1);
+        assert_eq!(
+            remove_diagnostics[0].reason,
+            SubscriptionLifecycleReason::FormulaRemoved
+        );
         assert!(repository.subscriptions_for_formula("slot:2").is_empty());
     }
 

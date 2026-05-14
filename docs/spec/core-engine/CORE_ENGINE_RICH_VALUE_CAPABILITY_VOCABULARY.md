@@ -45,6 +45,16 @@ capabilities than required, but the `RichValueHole` identity remains the
 required set, not the producer's concrete rich-value class and not the
 producer's full capability set.
 
+### 3.1 RichValueHole Template-Key Rule
+`RichValueHole(required_capability_set)` is a first-class hole-taxonomy member.
+The required capability set is included in the hole stable key, and the hole
+stable key is included in `plan_template_key` material alongside the other
+template-hole facts.
+
+Two otherwise identical templates with different required capability sets must
+therefore have different plan-template key material. This is an identity rule
+only; it does not imply that any current production path emits rich holes.
+
 ## 4. Additive Extension Rule
 New capability selectors or new parameter values are additive only through new
 stable keys. Existing traces recorded with an older required-set key remain
@@ -67,6 +77,20 @@ cargo test -p oxcalc-core rich_value_capability -- --nocapture
 
 The test compares the checked artifact against the Rust vocabulary surface in
 `src/oxcalc-core/src/rich_value_capability.rs`.
+
+The checked `RichValueHole(required_capability_set)` identity artifact is:
+
+`docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001/run_artifact.json`
+
+Validation command:
+
+```powershell
+cargo test -p oxcalc-core rich_value_hole -- --nocapture
+```
+
+The test proves that changing the required capability set changes
+plan-template key material while current V1 production paths still emit no
+rich-value holes.
 
 ## 6. Scope Boundary
 This document does not claim:

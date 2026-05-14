@@ -9,6 +9,8 @@ use oxfml_core::binding::{BoundExpr, BoundFormula, NormalizedReference, Referenc
 use oxfml_core::semantics::{FunctionAvailabilitySummary, FunctionPlanBinding, SemanticPlan};
 use oxfunc_core::function::ArgPreparationProfile;
 
+use crate::rich_value_capability::RichValueCapabilitySet;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ShapeKey(String);
 
@@ -112,7 +114,7 @@ pub enum PlanTemplateHoleKind {
         cardinality_class: CardinalityClass,
     },
     RichValueHole {
-        required_capability_set: Vec<String>,
+        required_capability_set: RichValueCapabilitySet,
     },
 }
 
@@ -142,12 +144,7 @@ impl PlanTemplateHoleKind {
             ),
             Self::RichValueHole {
                 required_capability_set,
-            } => {
-                let mut capabilities = required_capability_set.clone();
-                capabilities.sort();
-                capabilities.dedup();
-                format!("RichValueHole({})", capabilities.join("+"))
-            }
+            } => format!("RichValueHole({})", required_capability_set.stable_key()),
         }
     }
 }
@@ -871,15 +868,27 @@ fn stable_fnv1a64(bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
     use oxfml_core::binding::{BindContext, BindRequest, bind_formula};
     use oxfml_core::red::project_red_view;
     use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
     use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
     use oxfml_core::{CompileSemanticPlanRequest, compile_semantic_plan};
+    use serde_json::json;
+
+    use crate::rich_value_capability::{
+        RichValueCapability, RichValueCapabilitySet, w050_initial_capability_examples,
+        w050_initial_required_capability_set_example,
+    };
 
     use super::*;
 
-    fn prepared_callable_for(formula_stable_id: &str, source_text: &str) -> PreparedCallable {
+    fn compile_formula_for(
+        formula_stable_id: &str,
+        source_text: &str,
+    ) -> (BoundFormula, SemanticPlan) {
         let source = FormulaSourceRecord::new(formula_stable_id, 1, source_text);
         let parse = parse_formula(ParseRequest {
             source: source.clone(),
@@ -906,7 +915,12 @@ mod tests {
         })
         .semantic_plan;
 
-        derive_prepared_callable(&bind_result.bound_formula, &semantic_plan)
+        (bind_result.bound_formula, semantic_plan)
+    }
+
+    fn prepared_callable_for(formula_stable_id: &str, source_text: &str) -> PreparedCallable {
+        let (bound_formula, semantic_plan) = compile_formula_for(formula_stable_id, source_text);
+        derive_prepared_callable(&bound_formula, &semantic_plan)
     }
 
     fn identity_for(formula_stable_id: &str, source_text: &str) -> PreparedFormulaIdentityKeys {
@@ -916,6 +930,75 @@ mod tests {
             dispatch_skeleton_key: prepared_callable.plan_template.dispatch_skeleton_key,
             plan_template_key: prepared_callable.plan_template.plan_template_key,
         }
+    }
+
+    fn g2_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+            "../../docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001",
+        )
+    }
+
+    fn indexable_only_capability_set() -> RichValueCapabilitySet {
+        let indexable = w050_initial_capability_examples()
+            .into_iter()
+            .find(|capability| matches!(capability, RichValueCapability::Indexable { .. }))
+            .expect("G1 vocabulary should include Indexable");
+        RichValueCapabilitySet::new([indexable])
+    }
+
+    fn rich_value_hole_for(required_capability_set: RichValueCapabilitySet) -> PlanTemplateHole {
+        PlanTemplateHole {
+            hole_id: "hole:rich".to_string(),
+            ordinal: 0,
+            path: "root.arg0".to_string(),
+            kind: PlanTemplateHoleKind::RichValueHole {
+                required_capability_set,
+            },
+        }
+    }
+
+    fn rich_value_plan_template_material(
+        required_capability_set: RichValueCapabilitySet,
+    ) -> String {
+        let (bound_formula, semantic_plan) = compile_formula_for("formula:rich-key", "=SUM(A1,2)");
+        let identity_keys = derive_prepared_formula_identity_keys(&bound_formula, &semantic_plan);
+        let rich_hole = rich_value_hole_for(required_capability_set);
+
+        plan_template_key_input(
+            &identity_keys.dispatch_skeleton_key,
+            &semantic_plan,
+            &[rich_hole],
+        )
+    }
+
+    fn rich_value_hole_artifact_json() -> serde_json::Value {
+        let full_required = w050_initial_required_capability_set_example();
+        let indexable_only = indexable_only_capability_set();
+        let full_material = rich_value_plan_template_material(full_required.clone());
+        let indexable_material = rich_value_plan_template_material(indexable_only.clone());
+
+        json!({
+            "run_id": "w050-g2-rich-value-hole-capability-requirements-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core rich_value_hole -- --nocapture",
+            "rich_value_hole": {
+                "variant": "RichValueHole(required_capability_set)",
+                "full_required_capability_set_key": full_required.stable_key(),
+                "indexable_only_capability_set_key": indexable_only.stable_key(),
+                "stable_key_includes_required_capability_set": PlanTemplateHoleKind::RichValueHole {
+                    required_capability_set: full_required.clone()
+                }.stable_key()
+            },
+            "plan_template_identity": {
+                "capability_set_participates_in_template_key_material": full_material != indexable_material,
+                "full_material_contains_full_required_set": full_material.contains(&full_required.stable_key()),
+                "indexable_material_contains_indexable_required_set": indexable_material.contains(&indexable_only.stable_key())
+            },
+            "scope_boundary": {
+                "current_v1_production_paths_emit_rich_holes": false,
+                "concrete_rich_kernel_claim": false
+            }
+        })
     }
 
     #[test]
@@ -992,21 +1075,33 @@ mod tests {
                 },
                 "SparseRangeHole(AnyExtent,AnyCardinality)",
             ),
-            (
-                PlanTemplateHoleKind::RichValueHole {
-                    required_capability_set: vec![
-                        "Indexable".to_string(),
-                        "Enumerable".to_string(),
-                        "Indexable".to_string(),
-                    ],
-                },
-                "RichValueHole(Enumerable+Indexable)",
-            ),
         ];
 
         for (kind, stable_key) in cases {
             assert_eq!(kind.stable_key(), stable_key);
         }
+
+        assert_eq!(
+            PlanTemplateHoleKind::RichValueHole {
+                required_capability_set: indexable_only_capability_set(),
+            }
+            .stable_key(),
+            "RichValueHole(Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue))"
+        );
+    }
+
+    #[test]
+    fn rich_value_hole_capability_set_participates_in_plan_template_key_material() {
+        let full_required = w050_initial_required_capability_set_example();
+        let indexable_only = indexable_only_capability_set();
+        let full_material = rich_value_plan_template_material(full_required.clone());
+        let indexable_material = rich_value_plan_template_material(indexable_only.clone());
+
+        assert_ne!(full_material, indexable_material);
+        assert!(full_material.contains(&full_required.stable_key()));
+        assert!(indexable_material.contains(&indexable_only.stable_key()));
+        assert!(full_material.contains("RichValueHole("));
+        assert!(indexable_material.contains("RichValueHole("));
     }
 
     #[test]
@@ -1104,5 +1199,16 @@ mod tests {
                         | PlanTemplateHoleKind::RichValueHole { .. }
                 ))
         );
+    }
+
+    #[test]
+    fn rich_value_hole_checked_artifact_matches_runtime_identity_surface() {
+        let artifact_path = g2_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path).expect("G2 run artifact should be checked in"),
+        )
+        .expect("G2 run artifact should be valid JSON");
+
+        assert_eq!(artifact, rich_value_hole_artifact_json());
     }
 }

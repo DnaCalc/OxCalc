@@ -1,0 +1,20 @@
+{
+  "run_id": "w050-g2-rich-value-hole-capability-requirements-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core rich_value_hole -- --nocapture",
+  "rich_value_hole": {
+    "variant": "RichValueHole(required_capability_set)",
+    "full_required_capability_set_key": "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)+Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)+Materialisable(target_class=EvalValueOrArray)+Shaped(extent_class=RectangularGrid)",
+    "indexable_only_capability_set_key": "Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)",
+    "stable_key_includes_required_capability_set": "RichValueHole(Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)+Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)+Materialisable(target_class=EvalValueOrArray)+Shaped(extent_class=RectangularGrid))"
+  },
+  "plan_template_identity": {
+    "capability_set_participates_in_template_key_material": true,
+    "full_material_contains_full_required_set": true,
+    "indexable_material_contains_indexable_required_set": true
+  },
+  "scope_boundary": {
+    "current_v1_production_paths_emit_rich_holes": false,
+    "concrete_rich_kernel_claim": false
+  }
+}

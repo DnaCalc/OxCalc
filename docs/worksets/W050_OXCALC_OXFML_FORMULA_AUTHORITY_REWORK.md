@@ -583,6 +583,13 @@ owned by `.beads/`, not this document.
     producer-superset admission, and additive extension rules. The checked
     evidence root is
     `docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001`.
+37. G2 live uptake: `RichValueHole(required_capability_set)` now carries the
+    typed `RichValueCapabilitySet` from G1 rather than raw strings. The hole's
+    stable key includes the sorted required capability-set key, and tests prove
+    that changing the required set changes `plan_template_key` material. No
+    current V1 production path emits rich-value holes and no rich kernel is
+    claimed. The checked evidence root is
+    `docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001`.
 
 ## 7. Required Work
 
@@ -764,6 +771,10 @@ The W050 work, organised by lane.
     or parameter keys for additive extensions. Evidence:
     `docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001/run_artifact.json`.
 38. Admit `RichValueHole(required_capability_set)` to the hole-type taxonomy with the initial vocabulary; verify capability-set composition is part of `plan_template_key`.
+    G2 wires the G1 typed `RichValueCapabilitySet` into the `RichValueHole`
+    variant and verifies that different required sets produce different
+    plan-template key material. Evidence:
+    `docs/test-runs/core-engine/w050-g2-rich-value-hole-capability-requirements-001/run_artifact.json`.
 39. Reserve `ArgPreparationProfile::RichArgAccepted(capability_set)` as a kernel-side variant; document that no OxFunc kernel currently consumes it, but the seam admits the variant additively.
 40. Add capability-set columns to trace/replay schemas so that future rich-value kernels emit identity-discipline-compliant evidence from day one.
 

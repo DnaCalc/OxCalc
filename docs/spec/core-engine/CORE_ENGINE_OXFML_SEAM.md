@@ -732,7 +732,33 @@ The session-shaped first-call protocol is exercised inside a recalc wave:
 6. close and capture: emit replay/trace/evidence inputs without mutating
    tracked baselines during validation.
 
-### 22.6 CALC-002 Handoff Inputs
+### 22.6 Current V1 OxCalc Driver Mapping
+The current OxCalc B3 uptake introduces
+`OxfmlRecalcSessionDriver` as an OxCalc-owned driver over public
+`oxfml_core::consumer::runtime` types only.
+
+Current mapping:
+1. `ensure_prepared` maps to
+   `RuntimeSessionFacade::open_managed_session`.
+2. `invoke` maps to `RuntimeSessionFacade::execute`, because the current
+   TreeCalc publication path still needs the full `RuntimeFormulaResult`
+   surface: returned-value classification, candidate result, commit
+   decision, trace events, replay capture, and artifact reuse report.
+3. `invoke_managed_commit` maps to
+   `RuntimeSessionFacade::execute_and_commit_managed` and is exercised as
+   V1 compatibility evidence, but it is not yet sufficient as the sole
+   TreeCalc invocation result because `RuntimeManagedCommitResult` does
+   not carry every full runtime-result surface OxCalc currently consumes.
+4. The deterministic upstream-host packet path now invokes through the
+   session driver rather than directly through
+   `RuntimeEnvironment::execute`.
+
+The remaining gap is routed to `HANDOFF_CALC_002`: OxFml should either
+confirm that the managed-session result is intended to grow the missing
+full-result surfaces, or provide the canonical prepared-callable invocation
+surface that preserves them.
+
+### 22.7 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -750,6 +776,9 @@ The session-shaped first-call protocol is exercised inside a recalc wave:
    `RuntimeFormulaRequest` / `RuntimeFormulaResult` /
    `RuntimeSessionFacade` fields to the W050 prepared-callable/session
    categories.
+8. the B3-observed managed-session output gap: current
+   `RuntimeManagedCommitResult` does not carry all full
+   `RuntimeFormulaResult` surfaces consumed by OxCalc's coordinator path.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

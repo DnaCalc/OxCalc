@@ -166,7 +166,8 @@ fn case_result_json(
         "tags": tags,
         "direct_oxfml_runtime_surface": {
             "crate": "oxfml_core",
-            "entry": "oxfml_core::consumer::runtime::RuntimeEnvironment::execute",
+            "entry": "oxcalc_core::oxfml_session::OxfmlRecalcSessionDriver::invoke",
+            "session": "oxfml_core::consumer::runtime::RuntimeSessionFacade",
             "request": "oxfml_core::consumer::runtime::RuntimeFormulaRequest",
             "backend": case.evaluation_backend
         },

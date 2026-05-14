@@ -235,6 +235,14 @@ owned by `.beads/`, not this document.
    hole taxonomy, stream discipline, correctness-floor selectors,
    observability, rich-value admission, handoff registration, evidence
    roots, and final audit.
+5. B3 live uptake: `src/oxcalc-core/src/oxfml_session.rs` now carries the
+   OxCalc-side session driver over public
+   `oxfml_core::consumer::runtime` types. `ensure_prepared` maps to
+   `RuntimeSessionFacade::open_managed_session`; current full-result
+   `invoke` maps to `RuntimeSessionFacade::execute`; current V1 managed
+   commit is exercised as compatibility evidence but leaves a CALC-002
+   gap because it does not carry every `RuntimeFormulaResult` surface
+   consumed by the TreeCalc coordinator path.
 
 ## 7. Required Work
 

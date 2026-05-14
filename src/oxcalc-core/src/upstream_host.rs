@@ -27,6 +27,8 @@ use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, Inf
 use oxfunc_core::locale_format::LocaleFormatContext;
 use oxfunc_core::value::{EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
 
+use crate::oxfml_session::OxfmlRecalcSessionDriver;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UpstreamHostAnchor {
     pub row: u32,
@@ -252,7 +254,8 @@ impl MinimalUpstreamHostPacket {
             request = request.with_verification_publication_context(publication_context.clone());
         }
 
-        self.build_runtime_environment().execute(request)
+        let mut session = OxfmlRecalcSessionDriver::new(self.build_runtime_environment());
+        session.invoke(request).map_err(|error| error.to_string())
     }
 
     pub fn recalc_with_replay_projection(

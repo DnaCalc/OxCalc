@@ -1093,3 +1093,40 @@ Current OxCalc consequence after the W026 handoff-decision pass is:
 1. OxCalc now treats the exercised W026 first packet as sufficient without filing `HANDOFF-CALC-002`,
 2. the remaining `canonical but narrower` topics are broader-breadth residuals beyond that exercised first packet rather than missing first-packet seam clauses,
 3. any future narrower handoff trigger must name the exact missing family or carried fact exposed by later live TreeCalc or coordinator-facing work.
+
+## 68. W050 B3 Runtime Session Uptake And CALC-002 Gap Queue
+OxCalc has now started the W050 session-shaped uptake against the current
+public V1 runtime surface.
+
+Current OxCalc code shape is:
+1. `OxfmlRecalcSessionDriver::ensure_prepared` maps to
+   `oxfml_core::consumer::runtime::RuntimeSessionFacade::open_managed_session`,
+2. `OxfmlRecalcSessionDriver::invoke` maps to
+   `RuntimeSessionFacade::execute` because the current TreeCalc
+   coordinator path consumes the full `RuntimeFormulaResult`,
+3. `OxfmlRecalcSessionDriver::invoke_managed_commit` maps to
+   `RuntimeSessionFacade::execute_and_commit_managed` and is exercised as
+   V1 compatibility evidence,
+4. the deterministic upstream-host packet path now enters OxFml through
+   the OxCalc session driver rather than directly through
+   `RuntimeEnvironment::execute`.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. the managed-session result shape has the right lifecycle direction, but
+   `RuntimeManagedCommitResult` does not yet carry every
+   `RuntimeFormulaResult` surface currently consumed by OxCalc:
+   - returned-value surface classification,
+   - full runtime result replay capture,
+   - artifact reuse report,
+   - full trace/runtime-effect projection used by current TreeCalc
+     diagnostics and no-publish handling,
+2. OxCalc therefore keeps full-result invocation on
+   `RuntimeSessionFacade::execute` for the current V1 compatibility slice,
+3. the CALC-002 packet should ask whether OxFml intends to grow the
+   managed-session result surface or expose a separate canonical
+   prepared-callable invocation result that preserves those surfaces.
+
+Current non-assumptions:
+1. OxCalc is not asking for private or flat-root OxFml access,
+2. OxCalc is not treating the local driver as a canonical shared seam,
+3. OxCalc is not moving coordinator publication authority into OxFml.

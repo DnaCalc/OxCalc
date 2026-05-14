@@ -17,6 +17,8 @@ metadata or concrete rich/sparse execution support.
 4. `../OxFml/docs/spec/OXFML_MINIMUM_SEAM_SCHEMAS.md`
 5. `../OxFml/docs/spec/OXFML_CONSUMER_INTERFACE_AND_FACADE_CONTRACT_V1.md`
 6. `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
+7. `../OxFunc/docs/handoffs/HANDOFF-CALC-004_OXFUNC_RECEIPT.md`
+8. `../OxFunc/docs/function-lane/OXFUNC_KERNEL_METADATA_AND_ADMISSION_PROFILE_CONTRACT.md`
 
 ## Verified OxFml Response Summary
 OxFml acknowledged the handoff with decision
@@ -45,6 +47,18 @@ Preferred OxFml field families:
 6. `exercised_capability_keys`,
 7. `CapabilitySetMismatchContext`.
 
+OxFunc has acknowledged its side of the split. OxFunc accepts a metadata shape
+equivalent to `RichArgAccepted(required_capability_set)`, accepts sparse-reader
+admission metadata as a successor lane, reserves
+`arg_admission_metadata_version`, and records producer capability publication
+as typed metadata on the producer or returned rich/sparse carrier.
+
+OxFml has consumed that OxFunc response and accepts
+`arg_admission_metadata_version` as the OxFunc-owned admission/profile
+invalidation bridge. OxFml also records `IMAGE` / `_webimage` producer
+capability publication as the preferred first rich producer activation lane,
+with sparse range readers deferred.
+
 ## OxCalc Integration Consequences
 OxCalc should keep W050 sparse/rich hole vocabulary and capability columns as
 identity reservation and compatibility evidence. It should not report sparse
@@ -52,13 +66,14 @@ reader support, rich-value producer support, or rich-kernel execution as
 implemented behavior.
 
 The next useful migration point is an OxFml/OxFunc successor that emits
-producer and exercised capability facts through canonical runtime/replay
-fields.
+`arg_admission_metadata_version`, producer capability facts, and exercised
+capability facts through canonical runtime/replay fields.
 
 ## Remaining Open Lanes
-1. OxFunc rich/sparse metadata acknowledgment,
+1. OxFunc Rust metadata model for rich/sparse admission,
 2. sparse/rich producer activation successor work,
-3. canonical runtime/replay field implementation,
+3. OxFml consumption of `arg_admission_metadata_version` in runtime/replay
+   artifacts,
 4. migration of OxCalc reserved local columns to canonical emitted fields.
 
 ## Status
@@ -67,7 +82,7 @@ fields.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFunc rich/sparse metadata acknowledgment
+  - OxFunc Rust metadata model for rich/sparse admission
   - sparse/rich producer activation successor work
-  - canonical OxFml runtime/replay field implementation
+  - OxFml runtime/replay emission of `arg_admission_metadata_version`
   - OxCalc migration from reserved capability columns

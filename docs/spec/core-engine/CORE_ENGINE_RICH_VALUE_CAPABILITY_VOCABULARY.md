@@ -83,15 +83,25 @@ This profile is sibling-owned by OxFunc and threaded by OxFml when it exists.
 OxCalc does not define the enum variant locally and does not activate any rich
 kernel in W050.
 
+OxFunc has accepted a metadata/profile shape equivalent to
+`RichArgAccepted(required_capability_set)` and reserves
+`arg_admission_metadata_version` as the bind-visible invalidation signal for
+argument-preparation/admission metadata changes. OxFml accepts that bridge for
+future runtime/replay consumption.
+
 Reservation rules:
 1. `capability_set` uses the same typed stable-key vocabulary as
    `RichValueHole(required_capability_set)`,
 2. a producer satisfies the profile only by publishing a capability-set
    stable-key superset of the required set,
 3. switching any existing OxFunc function to this profile is bind-visible and
-   requires `ArgPreparationProfile` metadata versioning,
+   requires `arg_admission_metadata_version` metadata versioning,
 4. W050 records the additive identity shape only; first rich-kernel activation
    belongs to successor work.
+
+The preferred first rich producer activation lane is `IMAGE` / `_webimage`
+producer capability publication. Sparse range readers remain deferred until a
+concrete sparse reader API and replay-visible sparse iteration semantics exist.
 
 ## 4. Additive Extension Rule
 New capability selectors or new parameter values are additive only through new

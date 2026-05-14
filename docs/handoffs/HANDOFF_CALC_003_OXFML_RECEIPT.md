@@ -17,6 +17,8 @@ selector semantics, or canonical invalidation/version surfaces.
 5. `../OxFml/docs/spec/OXFML_CONSUMER_INTERFACE_AND_FACADE_CONTRACT_V1.md`
 6. `../OxFml/docs/spec/formula-language/OXFML_OXFUNC_SEMANTIC_BOUNDARY.md`
 7. `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
+8. `../OxFunc/docs/handoffs/HANDOFF-CALC-003_OXFUNC_RECEIPT.md`
+9. `../OxFunc/docs/function-lane/OXFUNC_KERNEL_METADATA_AND_ADMISSION_PROFILE_CONTRACT.md`
 
 ## Verified OxFml Response Summary
 OxFml acknowledged the handoff with decision `adapt_and_split_by_owner`.
@@ -42,10 +44,22 @@ OxFml explicitly split the broader packet into a two-owner replacement plan:
 2. OxFunc owns kernel metadata, selector semantics, and invalidation
    versioning.
 
+OxFunc has acknowledged its side of the split. OxFunc accepts ownership of
+reduction-sensitive and error-collapse-sensitive kernel metadata, exact
+`NumericalReductionPolicy` semantics, exact `ErrorAlgebra` semantics, and the
+initial affected-function family review set. OxFunc reserves
+`semantic_kernel_metadata_version` as the prepared-package invalidation signal.
+
+OxFml has consumed that OxFunc response and accepts
+`semantic_kernel_metadata_version` as the OxFunc-owned invalidation bridge that
+OxFml runtime/replay artifacts should consume once the field is emitted from a
+real metadata source.
+
 ## OxCalc Integration Consequences
 OxCalc should keep W050 correctness-floor selector artifacts as local replay
 hooks and compatibility evidence until OxFml/OxFunc expose canonical
-`CorrectnessFloorContext` and kernel metadata/version surfaces.
+`CorrectnessFloorContext`, kernel metadata, and
+`semantic_kernel_metadata_version` surfaces.
 
 OxCalc should not claim that pairwise or compensated numerical policies, error
 algebra precedence, or affected-function invalidation are enforced by current
@@ -53,9 +67,10 @@ kernels. Current OxCalc selector diagnostics prove selection and replay
 mismatch detection only.
 
 ## Remaining Open Lanes
-1. OxFunc acknowledgment for metadata and kernel obligations,
+1. OxFunc Rust metadata fields and registry/export publication,
 2. concrete replay fields for non-left-fold policies,
-3. prepared-package invalidation signal for selector behavior changes,
+3. OxFml consumption of `semantic_kernel_metadata_version` in runtime/replay
+   artifacts,
 4. OxCalc migration from local `CorrectnessFloorReplayRecord` compatibility
    fields to canonical OxFml replay fields.
 
@@ -65,7 +80,7 @@ mismatch detection only.
 - target_completeness: target_partial
 - integration_completeness: partial
 - open_lanes:
-  - OxFunc metadata and kernel acknowledgment
+  - OxFunc Rust metadata/export publication
   - canonical replay field names for non-left-fold policies
-  - selector-behavior invalidation version signal
+  - OxFml runtime/replay emission of `semantic_kernel_metadata_version`
   - OxCalc migration from local selector replay artifacts

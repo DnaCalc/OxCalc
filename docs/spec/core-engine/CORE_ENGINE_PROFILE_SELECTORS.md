@@ -12,6 +12,12 @@ Status:
 This document locks the `NumericalReductionPolicy` and `ErrorAlgebra`
 selectors.
 
+OxFunc and OxFml have now accepted the ownership split for these selectors:
+OxFml owns `CorrectnessFloorContext` carriage and replay identity, while
+OxFunc owns affected-kernel metadata, exact selector semantics, kernel
+enforcement, and the prepared-package invalidation bridge
+`semantic_kernel_metadata_version`.
+
 ## 2. Profile Record Rule
 Every replay-visible correctness-floor evaluation profile must carry:
 
@@ -137,4 +143,6 @@ surface.
 - integration_completeness: partial
 - open_lanes:
   - OxFml acknowledged `CorrectnessFloorContext` carriage through H2/CALC-003,
-  - OxFunc metadata/versioning and kernel-side enforcement remain outside this OxCalc-local replay hook
+  - OxFunc acknowledged `semantic_kernel_metadata_version` as the selector/kernel metadata invalidation bridge,
+  - OxFunc Rust metadata publication and kernel-side enforcement remain outside this OxCalc-local replay hook,
+  - OxFml runtime/replay emission of the reserved bridge remains future work

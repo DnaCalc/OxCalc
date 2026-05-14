@@ -28,3 +28,4 @@ pub mod treecalc_scale;
 pub mod upstream_host;
 pub mod upstream_host_fixture;
 pub mod upstream_host_runner;
+pub mod value_cache;

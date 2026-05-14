@@ -329,7 +329,23 @@ SAC-inspired or more ambitious trace-repair styles are also retained as staged-l
 
 They are architecturally anticipated, but not baseline realization requirements.
 
-### 13.3 Why These Lanes Remain Explicit
+### 13.3 Per-Edge Value Cache
+The differential-evaluation value cache is keyed by
+`(call_site_id, hole_binding_fingerprint)`.
+
+The cache is per-edge because the reusable fact is not merely "this formula
+text had this result"; it is "this call site observed the same bound hole
+fingerprint for the same sub-invocation edge." A changed
+`hole_binding_fingerprint` is therefore a miss even when the call site is the
+same.
+
+The cache must deterministically exclude volatile or effectful invocation
+paths. When both facts are present, volatile exclusion is reported first. The
+initial retention class is `W054PendingEphemeralPerEdgeValueCache`, with a
+bounded `MaxEntriesOldestFirst` eviction policy until W054 owns durable
+retention policy.
+
+### 13.4 Why These Lanes Remain Explicit
 They remain explicit so that:
 1. the architecture does not forget them,
 2. later promotions have a named target,

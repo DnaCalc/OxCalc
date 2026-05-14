@@ -1,0 +1,33 @@
+{
+  "run_id": "w050-f1-per-edge-value-cache-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core per_edge_value_cache -- --nocapture",
+  "cache_key_fields": [
+    "call_site_id",
+    "hole_binding_fingerprint"
+  ],
+  "retention_class": "W054PendingEphemeralPerEdgeValueCache",
+  "eviction_policy": {
+    "policy": "MaxEntriesOldestFirst",
+    "max_entries": 2
+  },
+  "validation_cases": [
+    {
+      "case_id": "hit_same_call_site_and_hole_binding_fingerprint",
+      "lookup": "hit",
+      "value_payload": "value:row1:3"
+    },
+    {
+      "case_id": "miss_changed_hole_binding_fingerprint",
+      "lookup": "miss"
+    },
+    {
+      "case_id": "excluded_volatile_path",
+      "eligibility": "VolatileFunction"
+    },
+    {
+      "case_id": "excluded_effectful_path",
+      "eligibility": "EffectfulPath"
+    }
+  ]
+}

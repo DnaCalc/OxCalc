@@ -538,6 +538,12 @@ owned by `.beads/`, not this document.
     `OxfmlRecalcWave` trace/replay surfaces and rejects replay selector
     mismatches. The checked replay-hook artifact root is
     `docs/test-runs/core-engine/w050-e3-correctness-floor-replay-hooks-001`.
+31. F1 live uptake: `EdgeValueCache` now implements the per-edge cache keyed by
+    `(call_site_id, hole_binding_fingerprint)` in
+    `src/oxcalc-core/src/value_cache.rs`, with deterministic volatile/effectful
+    exclusion, bounded oldest-first eviction, and retention class
+    `W054PendingEphemeralPerEdgeValueCache`. The checked evidence root is
+    `docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001`.
 
 ## 7. Required Work
 
@@ -680,6 +686,9 @@ The W050 work, organised by lane.
 **Lane F — Performance / Observability.**
 
 33. Implement per-edge value cache keyed by `(call_site_id, hole_binding_fingerprint)`; bounded by an explicit eviction policy.
+    F1 adds `EdgeValueCache` with `MaxEntriesOldestFirst` bounded eviction,
+    hit/miss/exclusion tests, and checked artifact
+    `docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001/run_artifact.json`.
 34. Implement differential-evaluation gates: at invocation time, check whether hole-binding fingerprints match cached subresults; on hit, skip subexpression re-evaluation.
 35. Implement derivation trace as a first-class `invoke` outcome under trace-mode opt-in: template selection, hole bindings, sub-invocation tree, kernel-returned values.
 36. Implement push/pull duality: a wave's scheduling policy (push-flavoured visibility-bounded vs pull-flavoured full-closure) is selectable on top of the same dependency graph and the same `PreparedCallable` cache.

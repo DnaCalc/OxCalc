@@ -607,6 +607,13 @@ owned by `.beads/`, not this document.
     `docs/handoffs/HANDOFF_CALC_004_OXFUNC_RICH_ARG_ACCEPTED_NOTE.md`; the
     checked evidence root is
     `docs/test-runs/core-engine/w050-g4-richargaccepted-reservation-001`.
+40. H2 live uptake: `HANDOFF-CALC-003` is filed in
+    `docs/handoffs/HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md`
+    and registered in `docs/handoffs/HANDOFF_REGISTER.csv` with status
+    `filed`. The supporting OxFunc kernel/metadata note is
+    `docs/handoffs/HANDOFF_CALC_003_OXFUNC_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA_NOTE.md`.
+    Receiving-repo acknowledgment remains an open watch dependency; no
+    OxFml/OxFunc kernel enforcement or OxCalc adapter workaround is claimed.
 
 ## 7. Required Work
 
@@ -739,6 +746,10 @@ The W050 work, organised by lane.
     and checks the handoff-ready exact clause language through
     `docs/test-runs/core-engine/w050-e2-error-algebra-selector-001/selector_artifact.json`.
 31. File `HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md` to OxFml / OxFunc: kernels must honour the active reduction policy; OxFml semantic plan threads the policy and algebra into evaluation context.
+    H2 files the packet and `HANDOFF_REGISTER.csv` row, plus the supporting
+    OxFunc note
+    `docs/handoffs/HANDOFF_CALC_003_OXFUNC_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA_NOTE.md`.
+    Receipt/acknowledgment remains pending in the receiving repos.
 32. Add replay-validation hooks: every wave's trace records the active reduction policy and error algebra; replay verifies match.
     E3 adds `CorrectnessFloorProfile` and
     `CorrectnessFloorReplayRecord` in `src/oxcalc-core/src/correctness_floor.rs`,

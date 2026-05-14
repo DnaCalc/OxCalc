@@ -574,6 +574,15 @@ owned by `.beads/`, not this document.
     over the same dependency graph and prepared-callable identities. The
     checked evidence root is
     `docs/test-runs/core-engine/w050-f5-ok-differential-evidence-001`.
+36. G1 live uptake: the initial rich-value capability vocabulary is now an
+    OxCalc-local typed identity surface in
+    `src/oxcalc-core/src/rich_value_capability.rs` and
+    `docs/spec/core-engine/CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`.
+    It defines `Indexable`, `Enumerable`, `Shaped`, and `Materialisable`
+    capability members with typed parameters, byte-stable required-set keys,
+    producer-superset admission, and additive extension rules. The checked
+    evidence root is
+    `docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001`.
 
 ## 7. Required Work
 
@@ -749,6 +758,11 @@ The W050 work, organised by lane.
 **Lane G — Forward Scaffolding.**
 
 37. Specify the initial capability-set vocabulary: `Indexable(rank, index_type, element_value_class)`, `Enumerable(element_value_class, order_guarantee)`, `Shaped(extent_class)`, `Materialisable(target_class)`.
+    G1 adds the typed Rust vocabulary and canonical spec companion. The
+    replay identity rule sorts and deduplicates required capability stable
+    keys, admits producers by stable-key superset, and requires new selector
+    or parameter keys for additive extensions. Evidence:
+    `docs/test-runs/core-engine/w050-g1-rich-capability-vocabulary-001/run_artifact.json`.
 38. Admit `RichValueHole(required_capability_set)` to the hole-type taxonomy with the initial vocabulary; verify capability-set composition is part of `plan_template_key`.
 39. Reserve `ArgPreparationProfile::RichArgAccepted(capability_set)` as a kernel-side variant; document that no OxFunc kernel currently consumes it, but the seam admits the variant additively.
 40. Add capability-set columns to trace/replay schemas so that future rich-value kernels emit identity-discipline-compliant evidence from day one.

@@ -1,0 +1,49 @@
+{
+  "run_id": "w050-g1-rich-capability-vocabulary-001",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core rich_value_capability -- --nocapture",
+  "vocabulary": [
+    {
+      "selector_key": "Indexable",
+      "parameter_names": [
+        "rank",
+        "index_type",
+        "element_value_class"
+      ],
+      "stable_key_example": "Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)"
+    },
+    {
+      "selector_key": "Enumerable",
+      "parameter_names": [
+        "element_value_class",
+        "order_guarantee"
+      ],
+      "stable_key_example": "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)"
+    },
+    {
+      "selector_key": "Shaped",
+      "parameter_names": [
+        "extent_class"
+      ],
+      "stable_key_example": "Shaped(extent_class=RectangularGrid)"
+    },
+    {
+      "selector_key": "Materialisable",
+      "parameter_names": [
+        "target_class"
+      ],
+      "stable_key_example": "Materialisable(target_class=EvalValueOrArray)"
+    }
+  ],
+  "replay_identity": {
+    "required_capability_set_key": "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)+Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)+Materialisable(target_class=EvalValueOrArray)+Shaped(extent_class=RectangularGrid)",
+    "ordering_rule": "Capability-set replay identity is sorted by typed stable key and deduplicated.",
+    "additive_extension_rule": "New capability kinds or parameter values are additive only through new stable keys; older required-set keys remain byte-stable and do not silently alias new capabilities.",
+    "producer_superset_rule": "A producer capability set may satisfy a required set by stable-key superset, but the required set remains the template/replay identity."
+  },
+  "checks": {
+    "order_insensitive_required_set": true,
+    "extended_producer_is_superset": true,
+    "missing_materialisable_is_not_superset": true
+  }
+}

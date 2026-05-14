@@ -548,7 +548,7 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 2. depends_on:
    `W050` (Lane C hole-type taxonomy, Lane G capability vocabulary)
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.7, §11.2
+   `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.7, §11.2
 4. upstream_dependencies:
    `OxFunc` is the primary owner of the `SparseIteratorOk` argument-preparation profile and the aggregation-kernel updates; `OxFml` threads the sparse binding through semantic plan and evaluation context.
 5. closure_condition:
@@ -564,7 +564,7 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 2. depends_on:
    `W050` (Lane G capability vocabulary admission)
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.12, §11.2
+   `docs/worksets/W052_SENSITIVITY_AND_DERIVATIVE_SEAM.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.12, §11.2
 4. upstream_dependencies:
    `OxFunc` is the primary owner of per-kernel derivative metadata; `OxFml` threads the `Differentiable` capability through semantic plan.
 5. closure_condition:
@@ -580,7 +580,7 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 2. depends_on:
    `W050` (the Stage 1 sequential coordinator on the new session model must land first); `W049` (formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against); Foundation Wave B FEC/F3E concurrency-hardening gates
 3. parent_doctrine_and_spec_surfaces:
-   `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.8 staged-realization contract, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3, `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
+   `docs/worksets/W053_STAGED_CONCURRENCY_STAGE_2.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.8 staged-realization contract, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3, `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
 4. upstream_dependencies:
    none planned at activation; to be re-evaluated when the W053 plan is finalized.
 5. closure_condition:
@@ -596,7 +596,7 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 2. depends_on:
    `W050` (the new artefact set must exist so retention costs are measurable); `W051` (sparse-reader artefacts are part of the artefact set W054's retention model must cover). Per §5.1, W054 precedes W053; W053 then revisits this retention model for partitioned and speculative evaluators.
 3. parent_doctrine_and_spec_surfaces:
-   `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.3 (overlay eviction is deterministic and epoch-safe) and §6.8 (overlay lifecycle baseline), `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3
+   `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.3 (overlay eviction is deterministic and epoch-safe) and §6.8 (overlay lifecycle baseline), `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3
 4. upstream_dependencies:
    none planned at activation; to be re-evaluated when the W054 plan is finalized.
 5. closure_condition:

@@ -648,7 +648,8 @@ The minimum input families are:
    - pinned `LibraryContextSnapshotRef` or inline snapshot through the
      OxFml runtime facade
    - typed query bundle/provider availability
-   - profile selectors relevant to evaluation and replay
+   - profile selectors relevant to evaluation and replay, including
+     `NumericalReductionPolicy` where numerical reductions are observable
 4. Reference/value environment:
    - current published or working values for already-derived structural
      targets at invocation time

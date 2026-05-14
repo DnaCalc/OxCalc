@@ -519,6 +519,13 @@ owned by `.beads/`, not this document.
     proves the runtime behavior, and
     `checked_in_rtd_external_replay_corpus_artifact_matches_runtime_validation`
     binds the checked run artifact to the computed baseline.
+28. E1 live uptake: `NumericalReductionPolicy` is now an OxCalc-local
+    profile selector in `docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md`
+    and `src/oxcalc-core/src/numerical_reduction.rs`. The checked selector
+    artifact root is
+    `docs/test-runs/core-engine/w050-e1-numerical-reduction-policy-selector-001`;
+    it records the initial `SequentialLeftFold`, `PairwiseTree`, and
+    `KahanCompensated` variants plus exact CALC-003 handoff clause text.
 
 ## 7. Required Work
 
@@ -639,6 +646,11 @@ The W050 work, organised by lane.
 **Lane E — Correctness Floor.**
 
 29. Specify `NumericalReductionPolicy` (e.g., `SequentialLeftFold`, `PairwiseTree`, `KahanCompensated`) as a profile-governed selector.
+    E1 specifies the selector in
+    `docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md`, exposes the
+    Rust selector/profile surface in `src/oxcalc-core/src/numerical_reduction.rs`,
+    and checks the handoff-ready exact clause language through
+    `docs/test-runs/core-engine/w050-e1-numerical-reduction-policy-selector-001/selector_artifact.json`.
 30. Specify `ErrorAlgebra` as a profile-governed precedence specification (canonical Excel precedence: `#NULL!` > `#DIV/0!` > `#VALUE!` > `#REF!` > `#NAME?` > `#NUM!` > `#N/A`; profile may declare alternatives).
 31. File `HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md` to OxFml / OxFunc: kernels must honour the active reduction policy; OxFml semantic plan threads the policy and algebra into evaluation context.
 32. Add replay-validation hooks: every wave's trace records the active reduction policy and error algebra; replay verifies match.

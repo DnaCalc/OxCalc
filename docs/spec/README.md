@@ -7,6 +7,7 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_ARCHITECTURE.md`
 - `docs/spec/core-engine/CORE_ENGINE_STATE_AND_SNAPSHOTS.md`
 - `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+- `docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md`
 - `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`
 - `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
 - `docs/spec/core-engine/CORE_ENGINE_OPLOG_UNDO_REDO_AND_COLLAB_ARCHITECTURE_PLAN.md`

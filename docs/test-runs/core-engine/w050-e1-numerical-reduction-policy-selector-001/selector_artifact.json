@@ -1,0 +1,43 @@
+{
+  "run_id": "w050-e1-numerical-reduction-policy-selector-001",
+  "selector_name": "NumericalReductionPolicy",
+  "validation_status": "pass",
+  "primary_validation_command": "cargo test -p oxcalc-core numerical_reduction -- --nocapture",
+  "handoff_target": "HANDOFF_CALC_003_OXFML_NUMERICAL_REDUCTION_AND_ERROR_ALGEBRA.md",
+  "profile_record": {
+    "required_fields": [
+      "profile_version",
+      "numerical_reduction_policy"
+    ],
+    "replay_key_format": "<profile_version>|numerical_reduction_policy:<selector_key>"
+  },
+  "initial_variants": [
+    {
+      "selector_value": "SequentialLeftFold",
+      "order_basis": "RecordedLogicalLeftFold",
+      "requires_declared_input_order": true,
+      "requires_replay_visible_tree_shape": false,
+      "requires_compensation_state": false,
+      "handoff_clause_id": "CALC-003.NRP.SequentialLeftFold",
+      "exact_clause": "When a profile declares NumericalReductionPolicy=SequentialLeftFold, OxFml/OxFunc reduction kernels MUST reduce numeric sequences in the recorded logical input order, applying each operand to the accumulator exactly once from left to right; kernels MUST NOT rebalance, parallelize, or compensate the order unless the active profile changes."
+    },
+    {
+      "selector_value": "PairwiseTree",
+      "order_basis": "DeterministicPairwiseTree",
+      "requires_declared_input_order": true,
+      "requires_replay_visible_tree_shape": true,
+      "requires_compensation_state": false,
+      "handoff_clause_id": "CALC-003.NRP.PairwiseTree",
+      "exact_clause": "When a profile declares NumericalReductionPolicy=PairwiseTree, OxFml/OxFunc reduction kernels MUST reduce numeric sequences using a deterministic pairwise tree whose leaf order is the recorded logical input order and whose tree-shape identity is replay-visible; kernels MUST NOT choose runtime-dependent partitioning."
+    },
+    {
+      "selector_value": "KahanCompensated",
+      "order_basis": "RecordedLogicalKahan",
+      "requires_declared_input_order": true,
+      "requires_replay_visible_tree_shape": false,
+      "requires_compensation_state": true,
+      "handoff_clause_id": "CALC-003.NRP.KahanCompensated",
+      "exact_clause": "When a profile declares NumericalReductionPolicy=KahanCompensated, OxFml/OxFunc reduction kernels MUST reduce numeric sequences in the recorded logical input order using Kahan-style compensation state that is part of the semantic algorithm; kernels MUST surface the selector in replay so a non-compensated result cannot satisfy this profile."
+    }
+  ]
+}

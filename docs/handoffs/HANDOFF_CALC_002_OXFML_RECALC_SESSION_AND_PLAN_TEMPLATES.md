@@ -15,10 +15,11 @@ without adding private adapters around OxFml internals.
 - Source workset: `W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK`
 - Source bead: `calc-cwpl.H1`
 - Driving local evidence:
-  - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` sections 22.17 and 22.20
+  - `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md` sections 22.17, 22.18, 22.20, and 22.21
   - `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`
   - `docs/upstream/NOTES_FOR_OXFML.md` sections 68-80
   - `docs/test-runs/core-engine/treecalc-local/w050-b8-treecalc-session-corpus-001`
+  - `docs/test-runs/core-engine/w050-f3-derivation-trace-invoke-outcome-001`
 - OxFml references reviewed read-only:
   - `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
   - `../OxFml/docs/spec/OXFML_CONSUMER_INTERFACE_AND_FACADE_CONTRACT_V1.md`
@@ -44,6 +45,9 @@ OxCalc now exercises the current public OxFml V1 consumer runtime facade:
 5. Current V1 compatibility still requires OxCalc to derive prepared-callable
    identity, plan-template identity, hole bindings, formal-reference handles,
    and some replay/correlation diagnostics locally from public OxFml outputs.
+6. Current V1 `PreparedCalls` trace mode gives OxCalc ordered prepared-call
+   entries and returned values for derivation trace evidence, but not deeper
+   parent/child invocation nesting.
 
 This packet asks OxFml to decide which of those compatibility derivations
 should become canonical public runtime-facade fields.
@@ -164,6 +168,9 @@ Requested fields or equivalent canonical accessors:
 8. template hole identity and binding identity
 9. capability/hole taxonomy columns where admitted by the receiving OxFml
    and OxFunc plans
+10. parent/child prepared-call invocation structure, or explicit confirmation
+    that ordered prepared-call records are the public trace granularity
+11. kernel-returned value per prepared call
 
 Requested clause direction:
 1. replay/correlation facts should be structured fields, not diagnostic
@@ -172,6 +179,9 @@ Requested clause direction:
    evidence schema, not become the shared OxFml schema,
 3. OxFml should define the canonical shared schema or result projection that
    supersedes the current compatibility evidence packet.
+4. derivation-trace consumers should not need to reconstruct hidden formula
+   semantics to infer invocation hierarchy beyond the structure OxFml chooses
+   to expose.
 
 ### 6. Bind-Visible Metadata Invalidation
 OxFml and OxFunc should expose the metadata needed for OxCalc to invalidate

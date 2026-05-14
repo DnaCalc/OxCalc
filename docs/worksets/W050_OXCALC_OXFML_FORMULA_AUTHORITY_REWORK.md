@@ -314,6 +314,13 @@ owned by `.beads/`, not this document.
     identities, two hole-binding fingerprints, and distinct published
     values. This is current V1 trace-count evidence, not a canonical OxFml
     cache claim.
+15. C6 live uptake: current V1 records the compile-time folding boundary
+    for plan-template identity. OxCalc does not fold formula source text or
+    import OxFunc semantics to infer folded plans; the deterministic C6
+    test keeps `=2+3*4` and `=14` distinct by `shape_key` and
+    `plan_template_key`. Canonical folded-plan identity remains routed to
+    CALC-002, and future evidence-gated narrowing producers remain routed
+    through CALC-004.
 
 ## 7. Required Work
 
@@ -358,7 +365,11 @@ The W050 work, organised by lane.
     OxFunc kernel activation for sparse/rich producers remain open.
 22. Document the wide-by-default policy and reserve narrowing producers (`ConstNumericHole`, etc.) for opt-in evidence-gated implementation.
     C3 documents and tests the current V1 wide-by-default mapping; narrower
-    producers remain evidence-gated successor work.
+    producers remain evidence-gated successor work. C6 records the
+    compile-time folding boundary: no current public OxFml surface exposes
+    folded-plan identity, so current V1 keeps folded-equivalent source
+    strings distinct until CALC-002/CALC-004 provide the producer and
+    identity contract.
 23. Treat changes to `ArgPreparationProfile` for any existing OxFunc function as bind-visible name-world events; verify the invalidation pathway in the test corpus.
     C4 covers the current V1 conservative invalidation path with
     structure-context-version and runtime rebind tests. Narrow
@@ -733,7 +744,7 @@ The §10 design baseline is the *unified prepared-callable model* — the minimu
 
 Three smaller catches affect everything above and land within W050:
 
-- **Compile-time constant folding at bind.** `=2 + 3*4` folds to `14` in the plan. Standard compiler hygiene; `plan_template_key` makes the folded form share trivially. Specified at bind time as part of Lane C; not left implicit.
+- **Compile-time constant folding at bind.** Intended as OxFml/OxFunc-owned compiler hygiene: if `=2 + 3*4` folds to `14` in the plan, the folded form must enter canonical `plan_template_key` identity through public OxFml surfaces. Current V1 records the boundary instead of inferring it in OxCalc; C6 keeps `=2+3*4` and `=14` distinct until CALC-002/CALC-004 expose the folded-plan and narrowing-producer contracts.
 - **Common-subexpression elimination across plan templates.** When `=SUM(A1:A100)/COUNT(A1:A100)` appears in many cells, the two aggregates over the same range share a materialisation pass. Restricted to deterministic-pure kernels; not applied to volatile or side-effecting paths. Lane F.
 - **Compilation as observable phase.** "This template was compiled at epoch X with these inputs" enters the trace stream alongside evaluation events. Replay validates compilation determinism, not only evaluation determinism. Lane F.
 

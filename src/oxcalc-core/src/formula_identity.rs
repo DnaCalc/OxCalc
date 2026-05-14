@@ -947,6 +947,18 @@ mod tests {
     }
 
     #[test]
+    fn current_v1_does_not_fold_constants_into_plan_template_identity() {
+        let expression = identity_for("formula:expression", "=2+3*4");
+        let already_folded = identity_for("formula:already_folded", "=14");
+
+        assert_ne!(expression.shape_key, already_folded.shape_key);
+        assert_ne!(
+            expression.plan_template_key,
+            already_folded.plan_template_key
+        );
+    }
+
+    #[test]
     fn hole_taxonomy_stable_keys_are_deterministic() {
         let cases = [
             (

@@ -1383,3 +1383,36 @@ Current non-assumptions:
 3. OxCalc is using this as trace-count evidence that the identity split can
    observe one template across multiple call sites without semantic
    shortcutting.
+
+## 77. W050 C6 Compile-Time Folding Identity Boundary
+OxCalc has recorded the current V1 boundary for compile-time constant
+folding as part of plan-template identity.
+
+Current OxCalc code shape is:
+1. `plan_template_key` is derived only from public OxFml parse, bind, and
+   semantic-plan artifacts,
+2. OxCalc does not constant-fold source text and does not import OxFunc
+   function semantics to infer folded plans,
+3. the C6 deterministic test keeps `=2+3*4` and `=14` distinct by
+   `shape_key` and `plan_template_key` in the current V1 compatibility
+   identity layer.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. if OxFml supports compile-time constant folding, OxFml should expose a
+   canonical folded plan form or stable folding trace through the public
+   plan-template/semantic-plan identity surface,
+2. canonical `PlanTemplate` identity should already reflect the folded
+   plan form so OxCalc does not infer folding from source text.
+
+Current OxCalc gap routed to `HANDOFF-CALC-004`:
+1. future evidence-gated narrowing producers such as `ConstNumericHole`
+   need an OxFml/OxFunc-owned producer contract,
+2. any such narrowing must enter `plan_template_key` through the canonical
+   capability/hole-admission surface rather than OxCalc-local semantic
+   interpretation.
+
+Current non-assumptions:
+1. OxCalc is not asking for private OxFml plan internals,
+2. OxCalc is not implementing constant folding locally,
+3. OxCalc is not treating folded-equivalent source strings as sharing a
+   template until OxFml exposes canonical folded-plan identity.

@@ -1055,7 +1055,39 @@ currently exercised Stage 1 profile. Observable formula results are
 invariant; the C5 evidence specifically checks distinct published values
 for call sites sharing one template key.
 
-### 22.16 CALC-002 Handoff Inputs
+### 22.16 Current V1 Compile-Time Folding Identity Boundary
+The current OxCalc C6 uptake records the compile-time constant-folding
+boundary for plan-template identity.
+
+Current mapping:
+1. Current V1 `plan_template_key` derivation uses public OxFml parse, bind,
+   and semantic-plan artifacts only.
+2. No public OxFml consumer/runtime surface currently identifies a
+   compile-time folded constant, canonical folded plan form, or folding
+   trace suitable for OxCalc plan-template identity.
+3. OxCalc does not constant-fold formula source text and does not move
+   OxFunc function semantics into OxCalc to infer folded plans.
+4. The deterministic C6 test records the current boundary: `=2+3*4` and
+   `=14` remain distinct `shape_key` and `plan_template_key` values in the
+   current V1 compatibility identity layer.
+
+Current C6 gaps:
+1. `HANDOFF-CALC-002` must ask OxFml for canonical plan-template fields
+   that already reflect any OxFml-owned folded plan form, if folding is
+   supported.
+2. `HANDOFF-CALC-004` remains the relevant capability/hole-admission
+   packet for future evidence-gated narrowing producers such as
+   `ConstNumericHole`; such narrowings must enter `plan_template_key` only
+   through an OxFml/OxFunc-owned producer contract.
+
+Semantic equivalence statement: C6 adds boundary evidence, spec text, and
+upstream notes only. It does not change source parsing, binding,
+semantic-plan compilation, runtime invocation, candidate adaptation,
+rejection policy, scheduling strategy, or OxCalc coordinator publication
+authority for any currently exercised Stage 1 profile. Observable formula
+results are invariant.
+
+### 22.17 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -1109,6 +1141,10 @@ for call sites sharing one template key.
     canonical plan-template reuse/cache counters or stable trace fields so
     OxCalc does not need compatibility-only grouping over locally derived
     `PreparedFormulaIdentityTrace` records.
+16. the C6-observed compile-time folding bridge: if OxFml supports
+    compile-time folding, canonical `PlanTemplate` and semantic-plan
+    identity fields should expose the folded plan form or stable folding
+    trace so OxCalc does not infer folding from source text.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

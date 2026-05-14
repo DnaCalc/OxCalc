@@ -1,3 +1,4 @@
 handoff_id,direction,title,status,source_workset,target_workset,filed_date,acknowledged_date
 HANDOFF-CALC-001,outbound,Coordinator-Facing Seam Hardening for Accepted Results Reject Detail and Fence Consequences,acknowledged,W005,OxFml-TBD,2026-03-15,2026-03-15
 HANDOFF-FML-001,inbound,Minimum Seam Schema Tightening for Candidate Commit Reject and Trace Payloads,acknowledged,OxFml/W001,W020,2026-03-15,2026-03-18
+HANDOFF-CALC-002,outbound,Recalc Session And Plan Template Support For W050,filed,W050,OxFml-TBD,2026-05-14,

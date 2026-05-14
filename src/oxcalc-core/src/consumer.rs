@@ -296,7 +296,9 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeRecalcResult {
 mod tests {
     use super::*;
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
-    use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaBinding};
+    use crate::formula::{
+        FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
+    };
     use crate::recalc::OverlayKind;
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshot,
@@ -341,6 +343,10 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn fixture_formula(owner_node_id: TreeNodeId, ast: FixtureFormulaAst) -> TreeFormula {
+        ast.to_tree_formula(owner_node_id)
     }
 
     #[test]
@@ -419,9 +425,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Literal {
-                            value: "7".to_string(),
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Literal {
+                                value: "7".to_string(),
+                            },
+                        ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
                 },
@@ -482,11 +491,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Reference(
-                            crate::formula::TreeReference::DynamicPotential {
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
                                 carrier_id: "carrier:dynamic".to_string(),
                                 detail: "late_bound_projection".to_string(),
-                            },
+                            }),
                         ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
@@ -555,9 +565,12 @@ mod tests {
                 owner_node_id: TreeNodeId(3),
                 formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                 bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                expression: TreeFormula::Literal {
-                    value: "7".to_string(),
-                },
+                expression: fixture_formula(
+                    TreeNodeId(3),
+                    FixtureFormulaAst::Literal {
+                        value: "7".to_string(),
+                    },
+                ),
             }]),
             seeded_published_values: BTreeMap::new(),
         };
@@ -631,17 +644,20 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Binary {
-                            op: FormulaBinaryOp::Add,
-                            left: Box::new(TreeFormula::Reference(
-                                crate::formula::TreeReference::DirectNode {
-                                    target_node_id: TreeNodeId(2),
-                                },
-                            )),
-                            right: Box::new(TreeFormula::Literal {
-                                value: "3".to_string(),
-                            }),
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Binary {
+                                op: FixtureFormulaBinaryOp::Add,
+                                left: Box::new(FixtureFormulaAst::Reference(
+                                    TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(2),
+                                    },
+                                )),
+                                right: Box::new(FixtureFormulaAst::Literal {
+                                    value: "3".to_string(),
+                                }),
+                            },
+                        ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
                 },
@@ -671,11 +687,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Reference(
-                            crate::formula::TreeReference::HostSensitive {
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::HostSensitive {
                                 carrier_id: "carrier:host".to_string(),
                                 detail: "active_selection".to_string(),
-                            },
+                            }),
                         ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
@@ -719,11 +736,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Reference(
-                            crate::formula::TreeReference::CapabilitySensitive {
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::CapabilitySensitive {
                                 carrier_id: "carrier:capability".to_string(),
                                 detail: "host_function_availability".to_string(),
-                            },
+                            }),
                         ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
@@ -769,11 +787,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Reference(
-                            crate::formula::TreeReference::ShapeTopology {
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::ShapeTopology {
                                 carrier_id: "carrier:shape".to_string(),
                                 detail: "range_shape_projection".to_string(),
-                            },
+                            }),
                         ),
                     }]),
                     seeded_published_values: BTreeMap::new(),
@@ -813,11 +832,12 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Reference(
-                            crate::formula::TreeReference::DynamicPotential {
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
                                 carrier_id: "carrier:dynamic".to_string(),
                                 detail: "late_bound_projection".to_string(),
-                            },
+                            }),
                         ),
                     }]),
                     seeded_published_values: BTreeMap::new(),

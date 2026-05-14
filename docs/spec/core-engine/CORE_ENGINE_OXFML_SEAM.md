@@ -848,7 +848,41 @@ denial, `RuntimeFormulaResult` adaptation, and OxCalc single-publisher
 coordinator authority are preserved for the currently exercised Stage 1
 profiles.
 
-### 22.10 CALC-002 Handoff Inputs
+### 22.10 Current V1 Opaque Formula Source Mapping
+The current OxCalc A3 uptake removes `TreeFormula` as a semantic AST.
+TreeCalc production formula input is now an opaque OxFml source string
+plus explicit reference/evaluator-fact carriers.
+
+Current mapping:
+1. `TreeFormula.source_text` is passed into `FormulaSourceRecord` without
+   OxCalc semantic rewriting.
+2. `TreeFormulaReferenceCarrier` records the source token, when one
+   exists, and the OxCalc structural/evaluator fact carrier that maps the
+   source token to dependency graph truth.
+3. `project_opaque_formula` projects those carriers into the current V1
+   `BindContext.names`, unresolved bindings, and runtime residual facts.
+4. Legacy source construction is quarantined as `FixtureFormulaAst` for
+   checked-in TreeCalc fixture JSON, unit tests, and the procedural scale
+   runner. That quarantine renders fixture AST values into opaque
+   `TreeFormula` values before they reach production recalc.
+5. The previous `translate_formula` / `TranslationState` path and
+   `formula_allows_lazy_residual_publication` special-case function are
+   no longer TreeCalc source-code surfaces.
+
+Current A3 limit: the fixture quarantine still renders formula source for
+legacy corpora, and current V1 still uses synthetic source tokens plus A1
+compatibility inputs. CALC-002 owns the canonical prepared-callable input
+transport that can retire those compatibility carriers.
+
+Semantic equivalence statement: A3 changes the local representation of
+TreeCalc formula input, not the current Stage 1 recalc semantics. The
+fixture quarantine renders the same formula source strings and carrier
+sequence used before A3, and production recalc still feeds the same source
+text, source tokens, dependency carriers, residual facts, session
+invocation path, and OxCalc coordinator publication authority to the
+currently exercised profiles.
+
+### 22.11 CALC-002 Handoff Inputs
 `HANDOFF_CALC_002` must ask OxFml for canonical support or confirmation for:
 1. prepared-callable identity surfaced through the public consumer runtime
    path,
@@ -873,6 +907,10 @@ profiles.
    production invocation still maps structural targets through synthetic
    A1 `cell_values` and defined-name reference bindings until OxFml
    exposes canonical prepared-callable reference/input transport.
+10. the A3-observed source/carrier compatibility bridge: current TreeCalc
+    opaque formula input still needs source-token carriers until OxFml
+    exposes canonical prepared-callable input bindings and formal
+    reference identities.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam

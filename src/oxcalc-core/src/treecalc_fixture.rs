@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::dependency::InvalidationReasonKind;
-use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
+use crate::formula::{FixtureFormulaAst, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralEditOutcome, StructuralError,
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
@@ -122,7 +122,7 @@ pub struct TreeCalcFixtureFormulaBinding {
     pub owner_node_id: u64,
     pub formula_artifact_id: String,
     pub bind_artifact_id: Option<String>,
-    pub expression: TreeFormula,
+    pub expression: FixtureFormulaAst,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -409,7 +409,9 @@ fn to_formula_binding(binding: &TreeCalcFixtureFormulaBinding) -> TreeFormulaBin
             .bind_artifact_id
             .as_ref()
             .map(|id| BindArtifactId(id.clone())),
-        expression: binding.expression.clone(),
+        expression: binding
+            .expression
+            .to_tree_formula(TreeNodeId(binding.owner_node_id)),
     }
 }
 

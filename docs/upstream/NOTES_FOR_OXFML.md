@@ -1193,3 +1193,35 @@ Current non-assumptions:
 2. OxCalc is not treating `MinimalUpstreamHostPacket` as a future
    production seam,
 3. OxCalc is not moving coordinator publication authority into OxFml.
+
+## 71. W050 A3 Opaque TreeFormula Source Uptake
+OxCalc has quarantined its legacy TreeCalc formula expression AST away
+from production recalc input.
+
+Current OxCalc code shape is:
+1. production `TreeFormula` now carries opaque OxFml `source_text`,
+   explicit source/reference carriers, and a current V1 lazy-residual
+   compatibility flag,
+2. TreeCalc preparation passes the opaque source into
+   `FormulaSourceRecord` and projects explicit carriers into
+   `BindContext.names`, unresolved bindings, and runtime residual facts,
+3. the old semantic variants (`Literal`, `Binary`, `FunctionCall`,
+   `Reference`, `RawOxfml`) are quarantined as `FixtureFormulaAst` for
+   checked-in fixtures, unit tests, and the procedural scale runner,
+4. `translate_formula`, `TranslationState`, and the old IF-specific
+   residual special-case function are no longer TreeCalc source-code
+   surfaces.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. current V1 still needs source-token carriers to connect opaque formula
+   text to OxCalc structural targets,
+2. current V1 still needs synthetic A1 compatibility inputs for cell
+   values and defined-name references,
+3. OxCalc still needs OxFml-owned prepared-callable input bindings and
+   formal reference identities to retire those compatibility carriers.
+
+Current non-assumptions:
+1. OxCalc is not asking OxFml to accept OxCalc semantic formula ASTs,
+2. OxCalc is not treating `FixtureFormulaAst` as a production interface,
+3. OxCalc is not moving formula text construction or formula semantics
+   into OxCalc.

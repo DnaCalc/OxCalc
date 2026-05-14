@@ -32,7 +32,7 @@ use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
     InvalidationReasonKind, InvalidationSeed,
 };
-use crate::formula::{FormulaBinaryOp, TreeFormula, TreeFormulaCatalog, TreeReference};
+use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
@@ -1591,13 +1591,14 @@ struct PreparedOxfmlFormula {
     translated: TranslatedFormula,
     bound_formula: oxfml_core::binding::BoundFormula,
     bind_diagnostics: Vec<String>,
+    lazy_residual_publication: bool,
 }
 
 fn prepare_oxfml_formula(
     snapshot: &StructuralSnapshot,
     binding: &crate::formula::TreeFormulaBinding,
 ) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
-    let translated = translate_formula(snapshot, binding.owner_node_id, &binding.expression);
+    let translated = project_opaque_formula(snapshot, binding.owner_node_id, &binding.expression);
     let source = FormulaSourceRecord::new(
         binding.formula_artifact_id.to_string(),
         binding.owner_node_id.0,
@@ -1636,6 +1637,7 @@ fn prepare_oxfml_formula(
             .map(|diagnostic| format!("oxfml_bind_diagnostic:{}", diagnostic.message))
             .collect(),
         bound_formula: bind_result.bound_formula,
+        lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
 }
 
@@ -1904,13 +1906,6 @@ fn residual_evaluation_failure(
     })
 }
 
-fn formula_allows_lazy_residual_publication(formula: &TreeFormula) -> bool {
-    matches!(
-        formula,
-        TreeFormula::FunctionCall { function_name, .. } if function_name.eq_ignore_ascii_case("IF")
-    )
-}
-
 fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
@@ -1950,7 +1945,7 @@ fn evaluate_with_oxfml_session(
         run.returned_value_surface.kind,
         ReturnedValueSurfaceKind::TypedHostProviderOutcome
     ) || (!prepared.translated.residuals.is_empty()
-        && !formula_allows_lazy_residual_publication(&prepared.binding.expression));
+        && !prepared.lazy_residual_publication);
     if should_reject_residual
         && let Some(failure) = residual_evaluation_failure(
             prepared,
@@ -2201,101 +2196,67 @@ fn validate_oxfml_commit_bundle(
 
     Ok(())
 }
-fn translate_formula(
+
+fn project_opaque_formula(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
     formula: &TreeFormula,
 ) -> TranslatedFormula {
-    let mut state = TranslationState {
+    let mut state = FormulaCarrierProjectionState {
         snapshot,
         owner_node_id,
-        next_reference_index: 0,
+        fallback_reference_index: 0,
         reference_bindings: Vec::new(),
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
-    let source_text = format!("={}", state.translate(formula));
+    for carrier in formula.reference_carriers() {
+        state.project_carrier(carrier);
+    }
     TranslatedFormula {
-        source_text,
+        source_text: formula.source_text().to_string(),
         reference_bindings: state.reference_bindings,
         unresolved_bindings: state.unresolved_bindings,
         residuals: state.residuals,
     }
 }
 
-struct TranslationState<'a> {
+struct FormulaCarrierProjectionState<'a> {
     snapshot: &'a StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    next_reference_index: usize,
+    fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
 }
 
-impl TranslationState<'_> {
-    fn translate(&mut self, formula: &TreeFormula) -> String {
-        match formula {
-            TreeFormula::Literal { value } => render_literal(value),
-            TreeFormula::Reference(reference) => self.translate_reference(reference),
-            TreeFormula::Binary { op, left, right } => {
-                let left = self.translate(left);
-                let right = self.translate(right);
-                let operator = match op {
-                    FormulaBinaryOp::Add => "+",
-                    FormulaBinaryOp::Subtract => "-",
-                    FormulaBinaryOp::Multiply => "*",
-                    FormulaBinaryOp::Divide => "/",
-                };
-                format!("({left}{operator}{right})")
-            }
-            TreeFormula::FunctionCall {
-                function_name,
-                arguments,
-                ..
-            } => {
-                let arguments = arguments
-                    .iter()
-                    .map(|argument| self.translate(argument))
-                    .collect::<Vec<_>>();
-                format!(
-                    "{}({})",
-                    function_name.to_ascii_uppercase(),
-                    arguments.join(",")
-                )
-            }
-            TreeFormula::RawOxfml {
-                source_text,
-                reference_carriers,
-            } => {
-                for reference in reference_carriers {
-                    let _ = self.translate_reference(reference);
-                }
-                source_text.trim_start_matches('=').to_string()
-            }
-        }
-    }
-
-    fn translate_reference(&mut self, reference: &TreeReference) -> String {
+impl FormulaCarrierProjectionState<'_> {
+    fn project_carrier(&mut self, carrier: &TreeFormulaReferenceCarrier) {
+        let reference = &carrier.reference;
         match reference {
-            TreeReference::DirectNode { target_node_id } => self.bind_target(
+            crate::formula::TreeReference::DirectNode { target_node_id } => self.bind_target(
+                carrier.source_token.clone(),
                 *target_node_id,
                 reference.descriptor_kind(),
                 reference.carrier_detail(),
                 reference.requires_rebind_on_structural_change(),
             ),
-            TreeReference::DynamicResolved { target_node_id, .. } => self.bind_target(
-                *target_node_id,
-                reference.descriptor_kind(),
-                reference.carrier_detail(),
-                reference.requires_rebind_on_structural_change(),
-            ),
-            TreeReference::ProjectionPath { .. }
-            | TreeReference::RelativePath { .. }
-            | TreeReference::SiblingOffset { .. } => {
+            crate::formula::TreeReference::DynamicResolved { target_node_id, .. } => self
+                .bind_target(
+                    carrier.source_token.clone(),
+                    *target_node_id,
+                    reference.descriptor_kind(),
+                    reference.carrier_detail(),
+                    reference.requires_rebind_on_structural_change(),
+                ),
+            crate::formula::TreeReference::ProjectionPath { .. }
+            | crate::formula::TreeReference::RelativePath { .. }
+            | crate::formula::TreeReference::SiblingOffset { .. } => {
                 if let Some(target_node_id) =
                     reference.resolve_target(self.snapshot, self.owner_node_id)
                 {
                     self.bind_target(
+                        carrier.source_token.clone(),
                         target_node_id,
                         reference.descriptor_kind(),
                         reference.carrier_detail(),
@@ -2303,50 +2264,47 @@ impl TranslationState<'_> {
                     )
                 } else {
                     self.bind_unresolved(
+                        carrier.source_token.clone(),
                         reference.descriptor_kind(),
                         reference.carrier_detail(),
                         reference.requires_rebind_on_structural_change(),
                     )
                 }
             }
-            TreeReference::HostSensitive { carrier_id, detail } => {
+            crate::formula::TreeReference::HostSensitive { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::HostSensitive,
                     owner_node_id: self.owner_node_id,
                     carrier_id: carrier_id.clone(),
                     detail: detail.clone(),
                 });
-                "INFO(\"system\")".to_string()
             }
-            TreeReference::CapabilitySensitive { carrier_id, detail } => {
+            crate::formula::TreeReference::CapabilitySensitive { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::CapabilitySensitive,
                     owner_node_id: self.owner_node_id,
                     carrier_id: carrier_id.clone(),
                     detail: detail.clone(),
                 });
-                "INFO(\"osversion\")".to_string()
             }
-            TreeReference::ShapeTopology { carrier_id, detail } => {
+            crate::formula::TreeReference::ShapeTopology { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::ShapeTopology,
                     owner_node_id: self.owner_node_id,
                     carrier_id: carrier_id.clone(),
                     detail: detail.clone(),
                 });
-                "ROWS(A1:A1)".to_string()
             }
-            TreeReference::DynamicPotential { carrier_id, detail } => {
+            crate::formula::TreeReference::DynamicPotential { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::DynamicPotential,
                     owner_node_id: self.owner_node_id,
                     carrier_id: carrier_id.clone(),
                     detail: detail.clone(),
                 });
-                let topic = escape_excel_text(carrier_id);
-                format!("RTD(\"TREECALC\",\"\",\"{topic}\")")
             }
-            TreeReference::Unresolved { token: _ } => self.bind_unresolved(
+            crate::formula::TreeReference::Unresolved { token: _ } => self.bind_unresolved(
+                carrier.source_token.clone(),
                 reference.descriptor_kind(),
                 reference.carrier_detail(),
                 reference.requires_rebind_on_structural_change(),
@@ -2356,57 +2314,46 @@ impl TranslationState<'_> {
 
     fn bind_target(
         &mut self,
+        source_token: Option<String>,
         target_node_id: TreeNodeId,
         kind: DependencyDescriptorKind,
         carrier_detail: String,
         requires_rebind_on_structural_change: bool,
-    ) -> String {
-        let token = format!(
-            "TREE_REF_{}_{}",
-            self.owner_node_id.0, self.next_reference_index
-        );
-        self.next_reference_index += 1;
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
         self.reference_bindings.push(SyntheticReferenceBinding {
-            token: token.clone(),
+            token,
             target_node_id,
             kind,
             carrier_detail,
             requires_rebind_on_structural_change,
         });
-        token
     }
 
     fn bind_unresolved(
         &mut self,
+        source_token: Option<String>,
         kind: DependencyDescriptorKind,
         carrier_detail: String,
         requires_rebind_on_structural_change: bool,
-    ) -> String {
-        let token = format!(
-            "TREE_UNRESOLVED_{}_{}",
-            self.owner_node_id.0, self.next_reference_index
-        );
-        self.next_reference_index += 1;
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_UNRESOLVED"));
         self.unresolved_bindings.push(SyntheticUnresolvedBinding {
-            token: token.clone(),
+            token,
             kind,
             carrier_detail,
             requires_rebind_on_structural_change,
         });
+    }
+
+    fn next_fallback_token(&mut self, prefix: &str) -> String {
+        let token = format!(
+            "{}_{}_{}",
+            prefix, self.owner_node_id.0, self.fallback_reference_index
+        );
+        self.fallback_reference_index += 1;
         token
     }
-}
-
-fn render_literal(value: &str) -> String {
-    if value.parse::<f64>().is_ok() {
-        value.to_string()
-    } else {
-        format!("\"{}\"", escape_excel_text(value))
-    }
-}
-
-fn escape_excel_text(value: &str) -> String {
-    value.replace('"', "\"\"")
 }
 
 fn synthetic_cell_row(node_id: TreeNodeId) -> u32 {
@@ -2470,13 +2417,20 @@ fn residual_runtime_effect(residual: &ResidualCarrier) -> RuntimeEffect {
 
 #[cfg(test)]
 mod tests {
-    use crate::formula::{RelativeReferenceBase, TreeFormulaBinding};
+    use crate::formula::{
+        FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
+        TreeFormulaBinding, TreeReference,
+    };
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
         StructuralSnapshotId,
     };
 
     use super::*;
+
+    fn fixture_formula(owner_node_id: TreeNodeId, ast: FixtureFormulaAst) -> TreeFormula {
+        ast.to_tree_formula(owner_node_id)
+    }
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -2539,33 +2493,41 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Binary {
-                            op: FormulaBinaryOp::Add,
-                            left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                                target_node_id: TreeNodeId(2),
-                            })),
-                            right: Box::new(TreeFormula::Literal {
-                                value: "3".to_string(),
-                            }),
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Binary {
+                                op: FixtureFormulaBinaryOp::Add,
+                                left: Box::new(FixtureFormulaAst::Reference(
+                                    TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(2),
+                                    },
+                                )),
+                                right: Box::new(FixtureFormulaAst::Literal {
+                                    value: "3".to_string(),
+                                }),
+                            },
+                        ),
                     },
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(4),
                         formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
-                        expression: TreeFormula::FunctionCall {
-                            function_name: "SUM".to_string(),
-                            arguments: vec![
-                                TreeFormula::Reference(TreeReference::RelativePath {
-                                    base: RelativeReferenceBase::ParentNode,
-                                    path_segments: vec!["A".to_string()],
-                                }),
-                                TreeFormula::Reference(TreeReference::DirectNode {
-                                    target_node_id: TreeNodeId(3),
-                                }),
-                            ],
-                            may_introduce_dynamic_dependencies: false,
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(4),
+                            FixtureFormulaAst::FunctionCall {
+                                function_name: "SUM".to_string(),
+                                arguments: vec![
+                                    FixtureFormulaAst::Reference(TreeReference::RelativePath {
+                                        base: RelativeReferenceBase::ParentNode,
+                                        path_segments: vec!["A".to_string()],
+                                    }),
+                                    FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(3),
+                                    }),
+                                ],
+                                may_introduce_dynamic_dependencies: false,
+                            },
+                        ),
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
@@ -2680,33 +2642,41 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: TreeFormula::Binary {
-                            op: FormulaBinaryOp::Add,
-                            left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                                target_node_id: TreeNodeId(2),
-                            })),
-                            right: Box::new(TreeFormula::Literal {
-                                value: "3".to_string(),
-                            }),
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Binary {
+                                op: FixtureFormulaBinaryOp::Add,
+                                left: Box::new(FixtureFormulaAst::Reference(
+                                    TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(2),
+                                    },
+                                )),
+                                right: Box::new(FixtureFormulaAst::Literal {
+                                    value: "3".to_string(),
+                                }),
+                            },
+                        ),
                     },
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(4),
                         formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
                         bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
-                        expression: TreeFormula::FunctionCall {
-                            function_name: "SUM".to_string(),
-                            arguments: vec![
-                                TreeFormula::Reference(TreeReference::RelativePath {
-                                    base: RelativeReferenceBase::ParentNode,
-                                    path_segments: vec!["A".to_string()],
-                                }),
-                                TreeFormula::Reference(TreeReference::DirectNode {
-                                    target_node_id: TreeNodeId(3),
-                                }),
-                            ],
-                            may_introduce_dynamic_dependencies: false,
-                        },
+                        expression: fixture_formula(
+                            TreeNodeId(4),
+                            FixtureFormulaAst::FunctionCall {
+                                function_name: "SUM".to_string(),
+                                arguments: vec![
+                                    FixtureFormulaAst::Reference(TreeReference::RelativePath {
+                                        base: RelativeReferenceBase::ParentNode,
+                                        path_segments: vec!["A".to_string()],
+                                    }),
+                                    FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                        target_node_id: TreeNodeId(3),
+                                    }),
+                                ],
+                                may_introduce_dynamic_dependencies: false,
+                            },
+                        ),
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
@@ -2731,29 +2701,35 @@ mod tests {
                 owner_node_id: TreeNodeId(3),
                 formula_artifact_id: FormulaArtifactId("formula:y".to_string()),
                 bind_artifact_id: Some(BindArtifactId("bind:y".to_string())),
-                expression: TreeFormula::Binary {
-                    op: FormulaBinaryOp::Multiply,
-                    left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(2),
-                    })),
-                    right: Box::new(TreeFormula::Literal {
-                        value: "20".to_string(),
-                    }),
-                },
+                expression: fixture_formula(
+                    TreeNodeId(3),
+                    FixtureFormulaAst::Binary {
+                        op: FixtureFormulaBinaryOp::Multiply,
+                        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        })),
+                        right: Box::new(FixtureFormulaAst::Literal {
+                            value: "20".to_string(),
+                        }),
+                    },
+                ),
             },
             TreeFormulaBinding {
                 owner_node_id: TreeNodeId(4),
                 formula_artifact_id: FormulaArtifactId("formula:z".to_string()),
                 bind_artifact_id: Some(BindArtifactId("bind:z".to_string())),
-                expression: TreeFormula::Binary {
-                    op: FormulaBinaryOp::Add,
-                    left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(2),
-                    })),
-                    right: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(3),
-                    })),
-                },
+                expression: fixture_formula(
+                    TreeNodeId(4),
+                    FixtureFormulaAst::Binary {
+                        op: FixtureFormulaBinaryOp::Add,
+                        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        })),
+                        right: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(3),
+                        })),
+                    },
+                ),
             },
         ]);
 
@@ -2828,15 +2804,20 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Binary {
-                        op: FormulaBinaryOp::Add,
-                        left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
-                            target_node_id: TreeNodeId(2),
-                        })),
-                        right: Box::new(TreeFormula::Literal {
-                            value: "3".to_string(),
-                        }),
-                    },
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Binary {
+                            op: FixtureFormulaBinaryOp::Add,
+                            left: Box::new(FixtureFormulaAst::Reference(
+                                TreeReference::DirectNode {
+                                    target_node_id: TreeNodeId(2),
+                                },
+                            )),
+                            right: Box::new(FixtureFormulaAst::Literal {
+                                value: "3".to_string(),
+                            }),
+                        },
+                    ),
                 }]),
                 seeded_published_values: seeded,
                 seeded_published_runtime_effects: Vec::new(),
@@ -2886,17 +2867,23 @@ mod tests {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                         bind_artifact_id: None,
-                        expression: TreeFormula::Reference(TreeReference::DirectNode {
-                            target_node_id: TreeNodeId(4),
-                        }),
+                        expression: fixture_formula(
+                            TreeNodeId(3),
+                            FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                target_node_id: TreeNodeId(4),
+                            }),
+                        ),
                     },
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(4),
                         formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
                         bind_artifact_id: None,
-                        expression: TreeFormula::Reference(TreeReference::DirectNode {
-                            target_node_id: TreeNodeId(3),
-                        }),
+                        expression: fixture_formula(
+                            TreeNodeId(4),
+                            FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                                target_node_id: TreeNodeId(3),
+                            }),
+                        ),
                     },
                 ]),
                 seeded_published_values: BTreeMap::new(),
@@ -2931,10 +2918,13 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Reference(TreeReference::HostSensitive {
-                        carrier_id: "carrier:host".to_string(),
-                        detail: "active_selection".to_string(),
-                    }),
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Reference(TreeReference::HostSensitive {
+                            carrier_id: "carrier:host".to_string(),
+                            detail: "active_selection".to_string(),
+                        }),
+                    ),
                 }]),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -2991,10 +2981,13 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Reference(TreeReference::DynamicPotential {
-                        carrier_id: "carrier:dynamic".to_string(),
-                        detail: "late_bound_projection".to_string(),
-                    }),
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                            carrier_id: "carrier:dynamic".to_string(),
+                            detail: "late_bound_projection".to_string(),
+                        }),
+                    ),
                 }]),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -3046,11 +3039,14 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Reference(TreeReference::DynamicResolved {
-                        target_node_id: TreeNodeId(2),
-                        carrier_id: "carrier:dynamic".to_string(),
-                        detail: "resolved_late_bound_projection".to_string(),
-                    }),
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Reference(TreeReference::DynamicResolved {
+                            target_node_id: TreeNodeId(2),
+                            carrier_id: "carrier:dynamic".to_string(),
+                            detail: "resolved_late_bound_projection".to_string(),
+                        }),
+                    ),
                 }]),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -3097,9 +3093,12 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(2),
-                    }),
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        }),
+                    ),
                 }]),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
                 seeded_published_runtime_effects: Vec::new(),
@@ -3147,9 +3146,12 @@ mod tests {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(2),
-                    }),
+                    expression: fixture_formula(
+                        TreeNodeId(3),
+                        FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        }),
+                    ),
                 }]),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
                 seeded_published_runtime_effects: Vec::new(),
@@ -3185,34 +3187,37 @@ mod tests {
             owner_node_id: TreeNodeId(4),
             formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
-            expression: TreeFormula::FunctionCall {
-                function_name: "SUM".to_string(),
-                arguments: vec![
-                    TreeFormula::Reference(TreeReference::DirectNode {
-                        target_node_id: TreeNodeId(2),
-                    }),
-                    TreeFormula::Reference(TreeReference::SiblingOffset {
-                        offset: -1,
-                        tail_segments: vec![],
-                    }),
-                    TreeFormula::Reference(TreeReference::RelativePath {
-                        base: RelativeReferenceBase::ParentNode,
-                        path_segments: vec!["Missing".to_string()],
-                    }),
-                    TreeFormula::Reference(TreeReference::Unresolved {
-                        token: "../Missing".to_string(),
-                    }),
-                    TreeFormula::Reference(TreeReference::HostSensitive {
-                        carrier_id: "host.selection".to_string(),
-                        detail: "active branch".to_string(),
-                    }),
-                    TreeFormula::Reference(TreeReference::DynamicPotential {
-                        carrier_id: "runtime.topic".to_string(),
-                        detail: "late bound".to_string(),
-                    }),
-                ],
-                may_introduce_dynamic_dependencies: true,
-            },
+            expression: fixture_formula(
+                TreeNodeId(4),
+                FixtureFormulaAst::FunctionCall {
+                    function_name: "SUM".to_string(),
+                    arguments: vec![
+                        FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                            target_node_id: TreeNodeId(2),
+                        }),
+                        FixtureFormulaAst::Reference(TreeReference::SiblingOffset {
+                            offset: -1,
+                            tail_segments: vec![],
+                        }),
+                        FixtureFormulaAst::Reference(TreeReference::RelativePath {
+                            base: RelativeReferenceBase::ParentNode,
+                            path_segments: vec!["Missing".to_string()],
+                        }),
+                        FixtureFormulaAst::Reference(TreeReference::Unresolved {
+                            token: "../Missing".to_string(),
+                        }),
+                        FixtureFormulaAst::Reference(TreeReference::HostSensitive {
+                            carrier_id: "host.selection".to_string(),
+                            detail: "active branch".to_string(),
+                        }),
+                        FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                            carrier_id: "runtime.topic".to_string(),
+                            detail: "late bound".to_string(),
+                        }),
+                    ],
+                    may_introduce_dynamic_dependencies: true,
+                },
+            ),
         };
 
         let prepared = prepare_oxfml_formula(&structural_snapshot, &binding).unwrap();
@@ -3268,9 +3273,7 @@ mod tests {
             unresolved_relative
                 .source_reference_handle
                 .as_deref()
-                .is_some_and(
-                    |handle| handle.starts_with("oxfml_unresolved_ref:TREE_UNRESOLVED_4_2:")
-                )
+                .is_some_and(|handle| handle.starts_with("oxfml_unresolved_ref:TREE_REF_4_2:"))
         );
         assert!(unresolved_relative.requires_rebind_on_structural_change);
 
@@ -3348,10 +3351,13 @@ mod tests {
             owner_node_id: TreeNodeId(4),
             formula_artifact_id: FormulaArtifactId("formula:c".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
-            expression: TreeFormula::Reference(TreeReference::RelativePath {
-                base: RelativeReferenceBase::ParentNode,
-                path_segments: vec!["A".to_string()],
-            }),
+            expression: fixture_formula(
+                TreeNodeId(4),
+                FixtureFormulaAst::Reference(TreeReference::RelativePath {
+                    base: RelativeReferenceBase::ParentNode,
+                    path_segments: vec!["A".to_string()],
+                }),
+            ),
         }]);
 
         let predecessor_snapshot = snapshot();
@@ -3378,20 +3384,26 @@ mod tests {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
-            expression: TreeFormula::Reference(TreeReference::DynamicResolved {
-                target_node_id: TreeNodeId(2),
-                carrier_id: "carrier:dynamic:auto".to_string(),
-                detail: "resolved_before_release".to_string(),
-            }),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicResolved {
+                    target_node_id: TreeNodeId(2),
+                    carrier_id: "carrier:dynamic:auto".to_string(),
+                    detail: "resolved_before_release".to_string(),
+                }),
+            ),
         }]);
         let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
-            expression: TreeFormula::Reference(TreeReference::DynamicPotential {
-                carrier_id: "carrier:dynamic:auto".to_string(),
-                detail: "released_to_runtime".to_string(),
-            }),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic:auto".to_string(),
+                    detail: "released_to_runtime".to_string(),
+                }),
+            ),
         }]);
         let structural_snapshot = snapshot();
 
@@ -3424,20 +3436,26 @@ mod tests {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
-            expression: TreeFormula::Reference(TreeReference::DynamicPotential {
-                carrier_id: "carrier:dynamic:auto".to_string(),
-                detail: "unresolved_before_addition".to_string(),
-            }),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic:auto".to_string(),
+                    detail: "unresolved_before_addition".to_string(),
+                }),
+            ),
         }]);
         let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:auto".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:auto".to_string())),
-            expression: TreeFormula::Reference(TreeReference::DynamicResolved {
-                target_node_id: TreeNodeId(2),
-                carrier_id: "carrier:dynamic:auto".to_string(),
-                detail: "resolved_after_addition".to_string(),
-            }),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicResolved {
+                    target_node_id: TreeNodeId(2),
+                    carrier_id: "carrier:dynamic:auto".to_string(),
+                    detail: "resolved_after_addition".to_string(),
+                }),
+            ),
         }]);
         let structural_snapshot = snapshot();
 
@@ -3470,35 +3488,49 @@ mod tests {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:mixed".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:mixed".to_string())),
-            expression: TreeFormula::Binary {
-                op: FormulaBinaryOp::Add,
-                left: Box::new(TreeFormula::Reference(TreeReference::DynamicResolved {
-                    target_node_id: TreeNodeId(2),
-                    carrier_id: "carrier:dynamic:mixed-left".to_string(),
-                    detail: "resolved_before_mixed_release".to_string(),
-                })),
-                right: Box::new(TreeFormula::Reference(TreeReference::DynamicPotential {
-                    carrier_id: "carrier:dynamic:mixed-right".to_string(),
-                    detail: "unresolved_before_mixed_addition".to_string(),
-                })),
-            },
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Binary {
+                    op: FixtureFormulaBinaryOp::Add,
+                    left: Box::new(FixtureFormulaAst::Reference(
+                        TreeReference::DynamicResolved {
+                            target_node_id: TreeNodeId(2),
+                            carrier_id: "carrier:dynamic:mixed-left".to_string(),
+                            detail: "resolved_before_mixed_release".to_string(),
+                        },
+                    )),
+                    right: Box::new(FixtureFormulaAst::Reference(
+                        TreeReference::DynamicPotential {
+                            carrier_id: "carrier:dynamic:mixed-right".to_string(),
+                            detail: "unresolved_before_mixed_addition".to_string(),
+                        },
+                    )),
+                },
+            ),
         }]);
         let successor_catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:dynamic:mixed".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:dynamic:mixed".to_string())),
-            expression: TreeFormula::Binary {
-                op: FormulaBinaryOp::Add,
-                left: Box::new(TreeFormula::Reference(TreeReference::DynamicPotential {
-                    carrier_id: "carrier:dynamic:mixed-left".to_string(),
-                    detail: "released_to_runtime_resolution".to_string(),
-                })),
-                right: Box::new(TreeFormula::Reference(TreeReference::DynamicResolved {
-                    target_node_id: TreeNodeId(4),
-                    carrier_id: "carrier:dynamic:mixed-right".to_string(),
-                    detail: "resolved_after_mixed_addition".to_string(),
-                })),
-            },
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Binary {
+                    op: FixtureFormulaBinaryOp::Add,
+                    left: Box::new(FixtureFormulaAst::Reference(
+                        TreeReference::DynamicPotential {
+                            carrier_id: "carrier:dynamic:mixed-left".to_string(),
+                            detail: "released_to_runtime_resolution".to_string(),
+                        },
+                    )),
+                    right: Box::new(FixtureFormulaAst::Reference(
+                        TreeReference::DynamicResolved {
+                            target_node_id: TreeNodeId(4),
+                            carrier_id: "carrier:dynamic:mixed-right".to_string(),
+                            detail: "resolved_after_mixed_addition".to_string(),
+                        },
+                    )),
+                },
+            ),
         }]);
         let structural_snapshot = snapshot();
 
@@ -3545,9 +3577,12 @@ mod tests {
             owner_node_id: TreeNodeId(3),
             formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-            expression: TreeFormula::Reference(TreeReference::DirectNode {
-                target_node_id: TreeNodeId(2),
-            }),
+            expression: fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                    target_node_id: TreeNodeId(2),
+                }),
+            ),
         }]);
 
         let predecessor_snapshot = snapshot();

@@ -15,8 +15,8 @@ use crate::dependency::{
     InvalidationClosure, InvalidationReasonKind, InvalidationSeed,
 };
 use crate::formula::{
-    FormulaBinaryOp, RelativeReferenceBase, TreeFormula, TreeFormulaBinding, TreeFormulaCatalog,
-    TreeReference,
+    FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
+    TreeFormulaBinding, TreeFormulaCatalog, TreeReference,
 };
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
@@ -507,9 +507,9 @@ fn build_grid_cross_sum_model(
                 formula_artifact_id,
                 bind_artifact_id: Some(bind_artifact_id),
                 expression: if include_dynamic_indirect {
-                    dynamic_indirect_grid_expression(options, row, col, left_id, top_id)
+                    dynamic_indirect_grid_expression(options, row, col, node_id, left_id, top_id)
                 } else {
-                    grid_cross_sum_expression(left_id, top_id)
+                    grid_cross_sum_expression(node_id, left_id, top_id)
                 },
             });
         }
@@ -647,7 +647,7 @@ fn build_fanout_bands_model(
             owner_node_id: node_id,
             formula_artifact_id,
             bind_artifact_id: Some(bind_artifact_id),
-            expression: fanout_sum_expression(&anchor_ids),
+            expression: fanout_sum_expression(node_id, &anchor_ids),
         });
     }
 
@@ -748,7 +748,7 @@ fn build_relative_rebind_churn_model(
             owner_node_id: node_id,
             formula_artifact_id,
             bind_artifact_id: Some(bind_artifact_id),
-            expression: relative_anchor_sum_expression(options.fanout),
+            expression: relative_anchor_sum_expression(node_id, options.fanout),
         });
     }
 
@@ -793,60 +793,80 @@ fn build_relative_rebind_churn_model(
     })
 }
 
-fn grid_cross_sum_expression(left_id: TreeNodeId, top_id: TreeNodeId) -> TreeFormula {
-    TreeFormula::Binary {
-        op: FormulaBinaryOp::Add,
-        left: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+fn grid_cross_sum_expression(
+    owner_node_id: TreeNodeId,
+    left_id: TreeNodeId,
+    top_id: TreeNodeId,
+) -> TreeFormula {
+    FixtureFormulaAst::Binary {
+        op: FixtureFormulaBinaryOp::Add,
+        left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
             target_node_id: left_id,
         })),
-        right: Box::new(TreeFormula::Reference(TreeReference::DirectNode {
+        right: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
             target_node_id: top_id,
         })),
     }
+    .to_tree_formula(owner_node_id)
 }
 
 fn dynamic_indirect_grid_expression(
     options: &TreeCalcScaleOptions,
     row: usize,
     col: usize,
+    owner_node_id: TreeNodeId,
     left_id: TreeNodeId,
     top_id: TreeNodeId,
 ) -> TreeFormula {
     let selector_bucket = col % options.selector_period;
-    TreeFormula::Binary {
-        op: FormulaBinaryOp::Add,
-        left: Box::new(grid_cross_sum_expression(left_id, top_id)),
-        right: Box::new(TreeFormula::FunctionCall {
+    FixtureFormulaAst::Binary {
+        op: FixtureFormulaBinaryOp::Add,
+        left: Box::new(FixtureFormulaAst::Binary {
+            op: FixtureFormulaBinaryOp::Add,
+            left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                target_node_id: left_id,
+            })),
+            right: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                target_node_id: top_id,
+            })),
+        }),
+        right: Box::new(FixtureFormulaAst::FunctionCall {
             function_name: "INDIRECT".to_string(),
-            arguments: vec![TreeFormula::Reference(TreeReference::DynamicPotential {
-                carrier_id: format!("scale.indirect.r{row}.bucket{selector_bucket}"),
-                detail: format!("INDIRECT selector row={row} col={col} bucket={selector_bucket}"),
-            })],
+            arguments: vec![FixtureFormulaAst::Reference(
+                TreeReference::DynamicPotential {
+                    carrier_id: format!("scale.indirect.r{row}.bucket{selector_bucket}"),
+                    detail: format!(
+                        "INDIRECT selector row={row} col={col} bucket={selector_bucket}"
+                    ),
+                },
+            )],
             may_introduce_dynamic_dependencies: true,
         }),
     }
+    .to_tree_formula(owner_node_id)
 }
 
-fn fanout_sum_expression(anchor_ids: &[TreeNodeId]) -> TreeFormula {
-    TreeFormula::FunctionCall {
+fn fanout_sum_expression(owner_node_id: TreeNodeId, anchor_ids: &[TreeNodeId]) -> TreeFormula {
+    FixtureFormulaAst::FunctionCall {
         function_name: "SUM".to_string(),
         arguments: anchor_ids
             .iter()
             .copied()
             .map(|target_node_id| {
-                TreeFormula::Reference(TreeReference::DirectNode { target_node_id })
+                FixtureFormulaAst::Reference(TreeReference::DirectNode { target_node_id })
             })
             .collect(),
         may_introduce_dynamic_dependencies: false,
     }
+    .to_tree_formula(owner_node_id)
 }
 
-fn relative_anchor_sum_expression(fanout: usize) -> TreeFormula {
-    TreeFormula::FunctionCall {
+fn relative_anchor_sum_expression(owner_node_id: TreeNodeId, fanout: usize) -> TreeFormula {
+    FixtureFormulaAst::FunctionCall {
         function_name: "SUM".to_string(),
         arguments: (0..fanout)
             .map(|index| {
-                TreeFormula::Reference(TreeReference::RelativePath {
+                FixtureFormulaAst::Reference(TreeReference::RelativePath {
                     base: RelativeReferenceBase::ParentNode,
                     path_segments: vec![format!("A{index}")],
                 })
@@ -854,6 +874,7 @@ fn relative_anchor_sum_expression(fanout: usize) -> TreeFormula {
             .collect(),
         may_introduce_dynamic_dependencies: false,
     }
+    .to_tree_formula(owner_node_id)
 }
 
 fn synthetic_recalc(

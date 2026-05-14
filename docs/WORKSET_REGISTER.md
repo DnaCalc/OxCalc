@@ -521,7 +521,10 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 6. initial_epic_lanes:
    parent epic `calc-cwpl`; seven lanes — Lane A removal (`calc-cwpl.A1`–`.A4`), Lane B new seam (`calc-cwpl.B1`–`.B6`), Lane C plan-template identity (`calc-cwpl.C1`–`.C4`), Lane D external invalidation (`calc-cwpl.D1`–`.D4`), Lane E correctness floor (`calc-cwpl.E1`–`.E3`), Lane F performance/observability (`calc-cwpl.F1`–`.F3`), Lane G forward scaffolding (`calc-cwpl.G1`–`.G3`); cross-repo handoff beads `calc-cwpl.H1`–`.H3`. Predecessor beads `calc-cwpl.1`–`.6` are mapped into the lane structure (W050 §6). Phasing: Wave 1 lands Lanes B + C concurrently with A following; Wave 2 lands Lanes D + E in parallel; Wave 3 lands Lane F; Lane G lands cheapest alongside Lane C.
 7. rollout_mode:
-   `execution_target` (`open_planning` at lane level; lanes roll into epics/beads under `calc-cwpl`).
+   `execution_target` (expanded into `.beads/` on 2026-05-14 with parent
+   epic `calc-cwpl`, lane epics `calc-cwpl.8` through `calc-cwpl.16`, and
+   canonical lane refs carried as `br external_ref` values; live readiness,
+   blockers, and leaf status remain owned by `.beads/`).
 
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:

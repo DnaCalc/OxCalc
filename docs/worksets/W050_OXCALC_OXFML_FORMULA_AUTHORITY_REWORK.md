@@ -1,10 +1,16 @@
 # W050 OxCalc/OxFml Formula Authority Rework
 
-Status: `open_planning`
+Status: `open_bead_execution`
 
 Parent predecessor: `W048` single-host scoped circular-reference closure
 
 Parent epic: `calc-cwpl`
+
+Activation review: 2026-05-14. W050 has been reviewed against the
+current Rust tree, the current OxFml inbound observation ledger, and
+Foundation doctrine. The live execution graph is now expanded in
+`.beads/`; this workset packet remains the scope and gate authority, not
+a second execution tracker.
 
 ## 1. Purpose
 
@@ -174,6 +180,61 @@ Cross-repo handoff beads (filed against `docs/handoffs/HANDOFF_REGISTER.csv`):
 | `calc-cwpl.H3` | `HANDOFF_CALC_004_OXFML_CAPABILITY_SET_HOLE_ADMISSION.md` | Lane G |
 
 The original W050 bead numbering is mapped into the new lane structure above. The historical identifiers are preserved as references; the new identifiers are authoritative going forward.
+
+### 6.1 Live `br` Rollout Map
+
+The canonical lane names above are carried in `br` as `external_ref`
+values. The live `br` ids are:
+
+| Canonical lane | `br` id | Role |
+| --- | --- | --- |
+| `calc-cwpl` | `calc-cwpl` | parent epic |
+| `calc-cwpl.R0` | `calc-cwpl.7` | activation review and rollout control bead |
+| `calc-cwpl.A` | `calc-cwpl.8` | Lane A epic |
+| `calc-cwpl.B` | `calc-cwpl.9` | Lane B epic |
+| `calc-cwpl.C` | `calc-cwpl.10` | Lane C epic |
+| `calc-cwpl.D` | `calc-cwpl.11` | Lane D epic |
+| `calc-cwpl.E` | `calc-cwpl.12` | Lane E epic |
+| `calc-cwpl.F` | `calc-cwpl.13` | Lane F epic |
+| `calc-cwpl.G` | `calc-cwpl.14` | Lane G epic |
+| `calc-cwpl.H` | `calc-cwpl.15` | handoff epic |
+| `calc-cwpl.X` | `calc-cwpl.16` | cross-cutting spec/evidence/audit epic |
+
+Leaf bead mapping uses the canonical `external_ref` values in `br`; the
+current expanded graph has 64 total issues under the W050 parent set.
+`br dep cycles` reports no dependency cycles. Current leaf readiness is
+owned by `.beads/`, not this document.
+
+### 6.2 Activation Review Findings
+
+1. Reviewed inbound observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
+   now says ordinary downstream use should target
+   `consumer::runtime`, `consumer::editor`, and `consumer::replay`;
+   public `substrate::...` access is gone from OxFml's library surface.
+   W050 must therefore consume `oxfml_core::consumer::runtime` and route
+   missing prepared-callable / plan-template identity support through
+   handoff packets, not OxCalc-local adapters.
+2. Current OxFml code confirms the available consumer surface:
+   `RuntimeEnvironment`, `RuntimeFormulaRequest`, `RuntimeFormulaResult`,
+   and `RuntimeSessionFacade`. `RuntimeSessionFacade` has managed-session
+   operations (`open_managed_session`, `execute_managed`,
+   `commit_managed`, termination, diagnostics), but it does not yet expose
+   W050's exact `ensure_prepared` / `invoke` / `PlanTemplate` names. That
+   is a CALC-002 handoff pressure, not a reason to build a long-term
+   OxCalc wrapper around non-consumer internals.
+3. Current OxCalc code still contains the W050 target surfaces:
+   `TreeFormula` semantic variants in `src/oxcalc-core/src/formula.rs`,
+   `translate_formula`, `TranslationState`, `synthetic_cell_target`,
+   `synthetic_cell_row`, `formula_allows_lazy_residual_publication`, and
+   the per-formula `MinimalUpstreamHostPacket` / `evaluate_via_oxfml`
+   path in `src/oxcalc-core/src/treecalc.rs`. These remain execution
+   targets, not accepted permanent design.
+4. The expanded bead graph adds explicit work for the full W050 exit
+   gate: lane epics A-G, handoff lane H, cross-cutting spec/evidence lane
+   X, and leaf beads for repository/session substrate, identity keys,
+   hole taxonomy, stream discipline, correctness-floor selectors,
+   observability, rich-value admission, handoff registration, evidence
+   roots, and final audit.
 
 ## 7. Required Work
 

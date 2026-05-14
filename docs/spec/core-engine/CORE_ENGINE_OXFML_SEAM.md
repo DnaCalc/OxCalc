@@ -1159,6 +1159,17 @@ results are invariant.
     fields. OxFml should preserve canonical correlation columns for
     `candidate_result_id`, `commit_attempt_id`, reject trace correlation,
     returned-value surface classification, and replay diagnostics.
+19. the B9-observed facade compatibility ledger: current OxCalc composes
+    with the frozen public V1 consumer runtime facade through
+    `RuntimeEnvironment`, `RuntimeFormulaRequest`, `RuntimeFormulaResult`,
+    and `RuntimeSessionFacade`, so OxCalc should not add private adapters
+    around OxFml internals. CALC-002 should still define which current
+    compatibility derivations migrate into canonical public fields:
+    prepared-callable and `PlanTemplate` identity, hole bindings, reference
+    and input transport, full managed-result surfaces, stable
+    replay/correlation columns, callable/rich/spill returned-value payloads,
+    plan-reuse and folding trace fields, and targeted metadata-invalidation
+    fields.
 
 Until that handoff is acknowledged, OxCalc may prototype only against the
 current public V1 runtime facade. It must not add a long-lived private seam
@@ -1263,6 +1274,81 @@ invocation, candidate adaptation, reject policy, scheduling strategy, or
 OxCalc coordinator publication authority for any currently exercised Stage
 1 profile. Observable formula results are invariant under this artifact
 emission addition.
+
+### 22.20 Current V1 Compatibility And Gap Ledger
+B9 records the current read-only compatibility position between W050 and
+OxFml's frozen V1 consumer runtime facade.
+
+Read-only OxFml V1 inventory:
+1. `src/oxcalc-core/Cargo.toml` depends on
+   `../../../OxFml/crates/oxfml_core`.
+2. `../OxFml/docs/spec/OXFML_CONSUMER_INTERFACE_AND_FACADE_CONTRACT_V1.md`
+   names `RuntimeEnvironment`, `RuntimeFormulaRequest`,
+   `RuntimeFormulaResult`, and `RuntimeSessionFacade` as the runtime facade
+   contract.
+3. `../OxFml/docs/spec/OXFML_CONSUMER_INTERFACE_IMPLEMENTATION_PROGRAM_V1.md`
+   maps lower-level `SessionService` prepare/open/execute/commit/terminate
+   surfaces to `RuntimeSessionFacade::{open_managed_session,
+   execute_managed, commit_managed, execute_and_commit_managed,
+   abort_managed, expire_managed, managed_session_snapshot}`.
+4. `../OxFml/crates/oxfml_core/src/consumer/runtime/mod.rs` exposes the
+   current public structs used by OxCalc: `RuntimeEnvironment`,
+   `RuntimeFormulaRequest`, `RuntimeFormulaResult`,
+   `RuntimeManagedOpenResult`, `RuntimeManagedExecutionResult`,
+   `RuntimeManagedCommitResult`, `RuntimeManagedSessionSnapshot`, and
+   `RuntimeSessionFacade`.
+5. `../OxFml/crates/oxfml_core/src/seam/mod.rs` exposes candidate/commit
+   and reject structures carrying `candidate_result_id`,
+   `commit_attempt_id`, `trace_correlation_id`, value/shape/topology
+   deltas, returned-value surface, spill events, and execution profile
+   summary.
+
+Current OxCalc compatibility mapping:
+1. `OxfmlRecalcSessionDriver::ensure_prepared` calls
+   `RuntimeSessionFacade::open_managed_session`.
+2. `OxfmlRecalcSessionDriver::invoke` calls
+   `RuntimeSessionFacade::execute` because TreeCalc currently consumes the
+   full `RuntimeFormulaResult` surface.
+3. `OxfmlRecalcSessionDriver::invoke_managed_commit` and
+   `commit_prepared` exercise `execute_and_commit_managed` and
+   `commit_managed` as current V1 compatibility evidence.
+4. `OxfmlRecalcWave` uses the same driver to preserve the six-phase wave
+   shape while keeping OxCalc as the only coordinator publisher.
+5. `LocalTreeCalcEngine` now invokes the driver directly and builds the
+   current `RuntimeEnvironment` / `RuntimeFormulaRequest` from opaque
+   OxFml source, explicit carriers, working values, and deterministic
+   provider shims.
+
+Compatibility result:
+1. Current V1 is sufficient for the active W050 TreeCalc session path to
+   stay on OxFml's public facade.
+2. Current V1 is sufficient for deterministic B8 replay/session evidence
+   over the local corpus.
+3. Current V1 does not yet eliminate OxCalc's compatibility derivations for
+   prepared-callable identity, plan-template identity, hole bindings,
+   reference/input transport, or targeted metadata invalidation.
+4. Current V1 managed commit is useful evidence but does not replace the
+   full-result path because `RuntimeManagedCommitResult` does not carry all
+   `RuntimeFormulaResult` surfaces currently consumed by TreeCalc evidence
+   and coordinator checks.
+5. No OxCalc-private adapter around OxFml internals is authorized by this
+   ledger. Gaps stay routed to `HANDOFF_CALC_002`.
+
+B9 validation evidence:
+1. `cargo test -p oxcalc-core session_driver_ -- --nocapture` exercises the
+   facade session driver mapping.
+2. `cargo test -p oxcalc-core treecalc_runner_emits_local_run_artifacts -- --nocapture`
+   exercises the B8 corpus evidence path on the current facade.
+3. `cargo test -p oxcalc-core`, `cargo clippy --all-targets --all-features -- -D warnings`,
+   `scripts/check-worksets.ps1`, and `br dep cycles` are the repository
+   compatibility checks for this ledger.
+
+Semantic equivalence statement: B9 adds a read-only inventory, gap ledger,
+and validation checklist only. It does not change source parsing, binding,
+semantic-plan compilation, runtime invocation, candidate adaptation,
+reject policy, scheduling strategy, or OxCalc coordinator publication
+authority for any currently exercised Stage 1 profile. Observable formula
+results are invariant under this ledger addition.
 
 ## 23. Status
 - execution_state: in_progress

@@ -1498,3 +1498,46 @@ Current non-assumptions:
 3. OxCalc is not moving publication authority into OxFml; the packet records
    that accepted candidates still publish only through the OxCalc
    coordinator and rejected candidates retain no publication bundle.
+
+## 80. W050 B9 OxFml V1 Compatibility Ledger
+OxCalc has recorded the current W050 compatibility position against the
+frozen public OxFml V1 consumer runtime facade.
+
+Current OxCalc code shape is:
+1. `src/oxcalc-core/Cargo.toml` depends on the sibling
+   `../../../OxFml/crates/oxfml_core` crate.
+2. `OxfmlRecalcSessionDriver` imports public
+   `oxfml_core::consumer::runtime` types:
+   `RuntimeEnvironment`, `RuntimeFormulaRequest`, `RuntimeFormulaResult`,
+   `RuntimeManagedCommitResult`, `RuntimeManagedOpenResult`, and
+   `RuntimeSessionFacade`.
+3. `ensure_prepared` maps to `RuntimeSessionFacade::open_managed_session`.
+4. TreeCalc full-result invocation maps to `RuntimeSessionFacade::execute`.
+5. Managed-commit evidence maps to
+   `RuntimeSessionFacade::execute_and_commit_managed` and
+   `RuntimeSessionFacade::commit_managed`.
+
+Current OxCalc gap routed to `HANDOFF-CALC-002`:
+1. canonical prepared-callable and `PlanTemplate` identity fields,
+2. canonical hole-binding fields,
+3. canonical reference/input transport that retires synthetic A1
+   compatibility inputs,
+4. full managed-result fields or an equivalent public result surface for
+   TreeCalc evidence/coordinator checks,
+5. stable replay and correlation columns for current diagnostic-derived
+   session facts,
+6. structured callable/rich/spill returned-value payloads beyond the
+   current exercised fallback and summary surfaces,
+7. canonical plan-reuse and compile-time-folding trace fields,
+8. targeted metadata-invalidation fields for bind-visible
+   `ArgPreparationProfile` changes.
+
+Current non-assumptions:
+1. OxCalc is not asking for private OxFml internals.
+2. OxCalc is not treating current compatibility identity derivations as
+   canonical OxFml fields.
+3. OxCalc is not replacing the full-result TreeCalc session path with
+   managed commit until the public facade carries the required result
+   surfaces.
+4. OxCalc is not reopening the frozen V1 facade; B9 only names the current
+   compatibility state and the fields that CALC-002 should address.

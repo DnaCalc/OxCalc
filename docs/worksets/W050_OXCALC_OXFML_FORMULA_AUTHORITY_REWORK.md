@@ -448,6 +448,17 @@ owned by `.beads/`, not this document.
     per-entry non-mutation checks. The replay-appliance bundle references
     the packet and validates the path in
     `replay-appliance/validation/bundle_validation.json`.
+19. B9 live uptake: current W050 session use composes with the frozen public
+    OxFml V1 consumer facade. The read-only inventory confirms OxCalc uses
+    `RuntimeEnvironment`, `RuntimeFormulaRequest`, `RuntimeFormulaResult`,
+    and `RuntimeSessionFacade` from `oxfml_core::consumer::runtime`, with
+    `OxfmlRecalcSessionDriver::ensure_prepared` mapped to
+    `open_managed_session`, full-result `invoke` mapped to `execute`, and
+    managed-commit evidence mapped to `execute_and_commit_managed` /
+    `commit_managed`. Remaining prepared-callable, plan-template,
+    reference/input, full managed-result, replay-correlation, callable/rich
+    value, folding/reuse trace, and metadata-invalidation fields remain
+    CALC-002 pressure rather than OxCalc-private adapter work.
 
 ## 7. Required Work
 
@@ -472,7 +483,7 @@ The W050 work, organised by lane.
 
 10. Design and document the full first-call protocol per §10 (drafted in §10.3–§10.5).
 11. Implement Calculation Repository: persistent structural state, dependency graph, per-node `NodeCalcState`, overlays, pinned reader views.
-12. Implement OxFml Recalc Session over `oxfml_core::consumer::runtime`: open/close, `ensure_prepared`, `invoke`. Verify the session shape composes with the frozen `OxFml_V1` consumer-facade contract without reopening it.
+12. Implement OxFml Recalc Session over `oxfml_core::consumer::runtime`: open/close, `ensure_prepared`, `invoke`. Verify the session shape composes with the frozen `OxFml_V1` consumer-facade contract without reopening it. B9 records that compatibility ledger and routes missing canonical fields to CALC-002 rather than private OxFml adapters.
 13. Implement the six-phase wave lifecycle (§10.5).
 14. Wire reference handles: OxFml bind returns a normalised reference set; OxCalc maps it to structural targets; the dependency graph is derived from that mapping. No address-string round-trips.
 15. Keep TreeCalc production invocation on the session-driven path. B7 routes `LocalTreeCalcEngine` through `OxfmlRecalcSessionDriver::invoke`; remaining work is final fixture quarantine/deletion and the explicit V1 gap ledger.
@@ -490,7 +501,10 @@ The W050 work, organised by lane.
     Its `session_path_evidence.json` packet records the root policy,
     command manifest, candidate/commit/reject correlation keys,
     replay-facing diagnostics, checked-in retention policy, and replay
-    non-mutation validation.
+    non-mutation validation. B9 records the public-facade compatibility
+    inventory and confirms that current full-result session invocation
+    remains the TreeCalc path while managed commit stays compatibility
+    evidence pending CALC-002 full managed-result fields.
 
 **Lane C — Identity Layer.**
 

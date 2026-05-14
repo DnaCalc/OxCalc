@@ -71,6 +71,7 @@ pub enum InvalidationReasonKind {
     StructuralRebindRequired,
     StructuralRecalcOnly,
     UpstreamPublication,
+    ExternallyInvalidated,
     DependencyAdded,
     DependencyRemoved,
     DependencyReclassified,
@@ -299,7 +300,8 @@ fn derive_seed_state(reason: InvalidationReasonKind, in_cycle: bool) -> NodeCalc
     }
 
     match reason {
-        InvalidationReasonKind::UpstreamPublication => NodeCalcState::Needed,
+        InvalidationReasonKind::UpstreamPublication
+        | InvalidationReasonKind::ExternallyInvalidated => NodeCalcState::Needed,
         InvalidationReasonKind::StructuralRecalcOnly => NodeCalcState::DirtyPending,
         InvalidationReasonKind::StructuralRebindRequired
         | InvalidationReasonKind::DependencyAdded

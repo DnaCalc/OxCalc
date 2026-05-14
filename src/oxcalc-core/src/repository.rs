@@ -7,7 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::dependency::{DependencyDescriptor, DependencyGraph, InvalidationClosure};
+use crate::dependency::{
+    DependencyDescriptor, DependencyGraph, InvalidationClosure, InvalidationReasonKind,
+    InvalidationSeed,
+};
 use crate::recalc::{NodeCalcState, OverlayEntry, OverlayKey};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, PinnedStructuralView, StructuralSnapshot,
@@ -88,6 +91,24 @@ pub struct TopicEnvelopeUpdate {
     pub payload_ref: String,
     pub ordering_key: String,
     pub dedupe_identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct ExternalInvalidationDirtySeed {
+    pub topic_id: SubscriptionTopicId,
+    pub topic_sequence: u64,
+    pub formula_stable_id: String,
+    pub node_id: TreeNodeId,
+}
+
+impl ExternalInvalidationDirtySeed {
+    #[must_use]
+    pub fn invalidation_seed(&self) -> InvalidationSeed {
+        InvalidationSeed {
+            node_id: self.node_id,
+            reason: InvalidationReasonKind::ExternallyInvalidated,
+        }
+    }
 }
 
 impl TopicEnvelope {
@@ -377,6 +398,41 @@ impl CalculationRepository {
             .collect()
     }
 
+    #[must_use]
+    pub fn external_invalidation_dirty_seeds(
+        &self,
+        topic_id: &SubscriptionTopicId,
+        topic_sequence: u64,
+    ) -> Vec<ExternalInvalidationDirtySeed> {
+        let mut dirty_seeds = self
+            .subscriptions_for_topic(topic_id)
+            .into_iter()
+            .filter_map(|entry| {
+                self.node_id_for_formula_stable_id(&entry.formula_stable_id)
+                    .map(|node_id| ExternalInvalidationDirtySeed {
+                        topic_id: topic_id.clone(),
+                        topic_sequence,
+                        formula_stable_id: entry.formula_stable_id.clone(),
+                        node_id,
+                    })
+            })
+            .collect::<Vec<_>>();
+        dirty_seeds.sort();
+        dirty_seeds
+    }
+
+    #[must_use]
+    pub fn derive_external_invalidation_closure(
+        &self,
+        dirty_seeds: &[ExternalInvalidationDirtySeed],
+    ) -> InvalidationClosure {
+        let seeds = dirty_seeds
+            .iter()
+            .map(ExternalInvalidationDirtySeed::invalidation_seed)
+            .collect::<Vec<_>>();
+        self.dependency_graph.derive_invalidation_closure(&seeds)
+    }
+
     pub fn apply_topic_envelope_update(
         &mut self,
         update: TopicEnvelopeUpdate,
@@ -465,6 +521,12 @@ impl CalculationRepository {
         self.formula_slots
             .values()
             .any(|slot| slot.source_identity.formula_stable_id == formula_stable_id)
+    }
+
+    fn node_id_for_formula_stable_id(&self, formula_stable_id: &str) -> Option<TreeNodeId> {
+        self.formula_slots.iter().find_map(|(node_id, slot)| {
+            (slot.source_identity.formula_stable_id == formula_stable_id).then_some(*node_id)
+        })
     }
 }
 

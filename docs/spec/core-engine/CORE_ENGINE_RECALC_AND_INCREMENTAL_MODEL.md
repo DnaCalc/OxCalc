@@ -237,6 +237,12 @@ Replay artifacts that include topic-update events must identify the active
 `profile_version` and `stream_semantics_version`, and the update batch must be
 validated against the selected behavior.
 
+External update dispatch emits replay-visible dirty seeds as
+`(topic_id, topic_sequence, formula_stable_id, node_id)`. Those seeds enter the
+ordinary dependency-closure path with reason `ExternallyInvalidated`; they do
+not publish values or runtime effects. Publication remains exclusively under
+the coordinator commit path after ordinary session invocation.
+
 ## 10. Recalc Modes
 The engine architecture permits distinct recalc modes, provided they preserve semantic truth.
 

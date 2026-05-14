@@ -485,6 +485,9 @@ fn parse_invalidation_reason(
         "UpstreamPublication" | "upstream_publication" => {
             InvalidationReasonKind::UpstreamPublication
         }
+        "ExternallyInvalidated" | "externally_invalidated" => {
+            InvalidationReasonKind::ExternallyInvalidated
+        }
         "DependencyAdded" | "dependency_added" => InvalidationReasonKind::DependencyAdded,
         "DependencyRemoved" | "dependency_removed" => InvalidationReasonKind::DependencyRemoved,
         "DependencyReclassified" | "dependency_reclassified" => {

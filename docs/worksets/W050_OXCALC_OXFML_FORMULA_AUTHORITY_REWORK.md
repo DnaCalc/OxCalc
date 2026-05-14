@@ -502,6 +502,14 @@ owned by `.beads/`, not this document.
     `profile_version` plus selector value, exposes replay profile keys and
     behavior hooks, and dispatches topic updates through the selector. Tests
     cover selector serialization plus V0, V1, and V2 dispatch behavior.
+26. D5 live uptake: external topic updates now dispatch through
+    `StreamSemanticsProfile::dispatch_external_invalidation_updates`, producing
+    replay-visible `ExternalInvalidationDirtySeed` records with `topic_id`,
+    `topic_sequence`, `formula_stable_id`, and `node_id`. Those seeds feed the
+    ordinary `DependencyGraph::derive_invalidation_closure` path with
+    `InvalidationReasonKind::ExternallyInvalidated`; tests prove topic fanout,
+    no side-channel publication, ordinary session invocation, and coordinator
+    commit authority.
 
 ## 7. Required Work
 
@@ -607,6 +615,11 @@ The W050 work, organised by lane.
     through the same envelope path and exposes an RTD lifecycle hook for the
     later lifecycle/replay corpus beads.
 27. Implement the typed dirty-seed pathway: external signal → topic envelope update → all subscribing formula_stable_ids marked dirty for the next wave.
+    D5 adds `ExternalInvalidationDirtySeed` fanout by topic subscription,
+    routes those seeds into ordinary dependency closure, preserves existing
+    published values until coordinator commit, and exercises ordinary
+    `OxfmlRecalcWave` session prepare/dependency/invoke plus
+    `TreeCalcCoordinator` publication authority.
 28. RTD-driven recalc replay-determinism corpus: a fixture suite that verifies a recorded sequence of topic updates reproduces identical published values under each `StreamSemanticsVersion`.
 
 **Lane E — Correctness Floor.**
@@ -874,6 +887,7 @@ OxFml retains canonical authority over body parse, bind, semantic plan, and eval
 - The Repository carries a **Topic Envelope** per subscribed topic: `(topic_id, topic_sequence, last_observed_payload_ref, ordering_key, dedupe_identity)`. The envelope is the replay-visible identity of "the most recent state of this topic"; ordering and dedupe semantics are profile-governed by `StreamSemanticsVersion = ExternalInvalidationV0 | TopicEnvelopeV1 | RtdLifecycleV2`.
 - The active `StreamSemanticsProfile` is replay-visible as `(profile_version, stream_semantics_version)`. `ExternalInvalidationV0` is the pathfinder dirty-seed hook without envelope mutation; `TopicEnvelopeV1` records topic envelopes with deterministic ordering and event-identity dedupe; `RtdLifecycleV2` uses the same envelope path and additionally exposes RTD lifecycle tracking hooks for the later corpus/lifecycle lane.
 - An external invalidation signal routes through the selected behavior hook and stamps every subscribing `formula_stable_id` as a dirty seed with reason `ExternallyInvalidated(topic_id, topic_sequence)`. Under `TopicEnvelopeV1` and `RtdLifecycleV2`, the signal also updates the topic envelope. The next wave's dirty closure includes subscribing formulas. The wave evaluates subscribed callables by ordinary `invoke`; the `RtdProvider` / registered-external provider consults the topic envelope when the active selector records one. **The push is invalidation only; evaluation remains pull.**
+- The dirty-seed record is replay-visible as `(topic_id, topic_sequence, formula_stable_id, node_id)` and enters the same dependency closure as structural or upstream-publication seeds. It does not publish values or runtime effects; only the coordinator can accept and publish a later candidate result.
 - When the active selector records topic envelopes, they are recorded as wave inputs alongside formula text and structural edits. Replay reconstructs them by replaying topic-update events in the recorded order under the active `StreamSemanticsVersion`. RTD-driven recalc therefore reproduces deterministically — the engine reads the same envelope, the provider returns the same payload, the invoke produces the same result.
 
 The same wiring applies to host-supplied invalidation hooks (custom UDFs that signal "my output changed") under the same envelope discipline. External invalidation is a first-class seed source, not a side channel.

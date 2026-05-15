@@ -129,7 +129,38 @@ W049 deliberately depends on W048 rather than absorbing it. W048 owns circular d
 
 W049 should formalize cycle behavior only after W048 has produced an implementation-facing behavioral target. If W048 leaves a cycle question open, W049 must either exclude it explicitly or mark the corresponding formal/checker lane blocked.
 
-## 4. Status Surface
+## 4. Post-W050 Formalization Intake
+
+The W050 closure pass routes formalization-shaped remainder here rather than
+keeping it as W050 process debt. W049 should treat these as inputs to its
+eventual planning pass, not as already allocated beads:
+
+1. The post-W050 runtime seam vocabulary: candidate, accepted candidate,
+   commit, publication, prepared formula package, plan template,
+   hole-binding identity, formal reference, formal input binding, reject,
+   runtime effect, and derivation trace.
+2. Non-vacuous invariants over the Stage-1 sequential engine: dependency
+   graph construction, SCC/cycle classification, invalidation closure,
+   rebind requirement, evaluation order, working-value reads, reject/no-publish
+   behavior, and single-publisher commit authority.
+3. Refinement/equivalence statements tying TreeCalc optimized runs,
+   TraceCalc/reference traces, OxFml runtime packages, and checked replay
+   artifacts to the same observable calculation behavior.
+4. Proof-carrying or checker sidecars for real paths, especially rebind
+   required-and-rejected paths, dynamic dependency publication/release paths,
+   and derivation trace package/template/hole identity.
+5. Bounded-memory and cache-retention properties after W054: deterministic
+   eviction order, pinned-epoch safety, replay-visible retention decisions,
+   and the interaction with per-edge value cache and subscription/topic
+   envelope state.
+
+Non-workset future ideas such as virtualized arrays beyond Excel-compatible
+sheet/reference behavior, generic external rich data producers, and queryable
+rich objects are explicitly not W049 formalization intake. They are parked in
+`docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+until promoted by an explicit product decision.
+
+## 5. Status Surface
 
 - execution_state: `pre_planning`
 - scope_completeness: `scope_partial`

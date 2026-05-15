@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OxCalc W051 Sparse Range Readers</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #5b6978;
+      --line: #d8dee7;
+      --paper: #f7f8fa;
+      --panel: #ffffff;
+      --blue: #2266a8;
+      --green: #2c7a56;
+      --red: #a8483a;
+      --amber: #9b6a14;
+      --violet: #6654a4;
+      --code: #eef2f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.35;
+    }
+
+    main {
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .deck {
+      height: 100%;
+      display: flex;
+      transition: transform 240ms ease;
+    }
+
+    .slide {
+      min-width: 100vw;
+      height: 100vh;
+      padding: 44px 56px 64px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.96), rgba(247,248,250,.98)),
+        repeating-linear-gradient(90deg, rgba(34,102,168,.08) 0 1px, transparent 1px 80px),
+        repeating-linear-gradient(0deg, rgba(44,122,86,.06) 0 1px, transparent 1px 44px);
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(42px, 6vw, 74px);
+      line-height: 1;
+      max-width: 980px;
+    }
+
+    h2 {
+      font-size: clamp(30px, 4.2vw, 50px);
+      line-height: 1.05;
+      max-width: 1020px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 22px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .panel strong {
+      color: var(--ink);
+    }
+
+    .panel p, li {
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    code {
+      background: var(--code);
+      border: 1px solid #dce4ed;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: .9em;
+      color: #26394f;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow .step {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--blue);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 112px;
+    }
+
+    .step .num {
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 160px 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .lane > div {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    .lane .owner {
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .matrix th, .matrix td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .matrix th {
+      background: #edf3f8;
+      color: #24394d;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    .matrix tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .green { background: var(--green); }
+    .amber { background: var(--amber); }
+    .red { background: var(--red); }
+    .violet { background: var(--violet); }
+
+    .diagram {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+
+    .cells {
+      display: grid;
+      grid-template-columns: 96px repeat(8, 1fr);
+      grid-auto-rows: 36px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: #edf1f6;
+    }
+
+    .cell {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      color: #607080;
+      background: #fff;
+    }
+
+    .cell.header {
+      background: #e6edf5;
+      font-weight: 800;
+      color: #405162;
+    }
+
+    .cell.defined {
+      background: #dff1e8;
+      color: #204f39;
+      font-weight: 800;
+    }
+
+    .cell.blank {
+      background: #fff;
+    }
+
+    .callout {
+      border-left: 6px solid var(--green);
+      background: #eef7f2;
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      color: #274b38;
+      font-size: 19px;
+    }
+
+    .warn {
+      border-left-color: var(--amber);
+      background: #fff7e8;
+      color: #65420d;
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: #fff0ee;
+      color: #693126;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .controls {
+      position: fixed;
+      right: 18px;
+      bottom: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      min-width: 40px;
+      height: 38px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--blue);
+    }
+
+    .progress {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      height: 5px;
+      background: var(--blue);
+      width: 0;
+      z-index: 6;
+      transition: width 180ms ease;
+    }
+
+    @media (max-width: 900px) {
+      .slide {
+        padding: 30px 22px 62px;
+        overflow-y: auto;
+      }
+
+      .content {
+        align-content: start;
+      }
+
+      .grid-2, .grid-3, .flow, .lane {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 40px;
+      }
+
+      h2 {
+        font-size: 32px;
+      }
+    }
+
+    @media print {
+      main {
+        height: auto;
+        overflow: visible;
+      }
+
+      .deck {
+        display: block;
+        transform: none !important;
+      }
+
+      .slide {
+        min-width: 0;
+        height: 100vh;
+        page-break-after: always;
+      }
+
+      .controls, .progress {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="deck" id="deck">
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">OxCalc W051</p>
+            <h1>Sparse Range Readers And Defined-Entry Semantics</h1>
+            <p class="subtitle">The next workset after W050: Excel-compatible whole-column and large-area range reads without dense materialisation.</p>
+          </div>
+          <span class="tag">activation_review_ready</span>
+        </header>
+        <div class="content">
+          <div class="grid-3">
+            <div class="panel">
+              <h3>What it is</h3>
+              <p>A concrete sparse reader for worksheet references: declared extent, defined entries, blank reads, point reads, and deterministic iteration.</p>
+            </div>
+            <div class="panel">
+              <h3>What it is not</h3>
+              <p>Not generic virtualized arrays, not arbitrary queryable objects, and not a broad rich-data protocol.</p>
+            </div>
+            <div class="panel">
+              <h3>Why now</h3>
+              <p>W050 moved OxCalc onto OxFml runtime packages and formal inputs. W051 uses that seam to make large Excel ranges practical.</p>
+            </div>
+          </div>
+        </div>
+        <footer class="footer"><span>Source: docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md</span><span>1 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Problem</p>
+            <h2>Dense range materialisation is the wrong shape for ordinary large worksheet references.</h2>
+          </div>
+          <span class="tag">Excel scope</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>The user-visible case</h3>
+            <ul>
+              <li>Whole-column references such as <code>A:A</code>.</li>
+              <li>Large rectangular ranges such as <code>A1:XFD1048576</code>.</li>
+              <li>Mostly blank sheets with a small number of defined cells.</li>
+              <li>Aggregation formulas that should run over the logical range, not allocate the dense range.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>The engine problem</h3>
+            <ul>
+              <li>The formula result depends on the declared extent and defined entries.</li>
+              <li>Allocating every blank cell is wasteful and can hide semantic mistakes.</li>
+              <li>Replay must prove what was read without storing a dense shadow sheet.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>W051 target: worksheet calculation over large sparse references</span><span>2 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Fit In Sequence</p>
+            <h2>W051 is the first successor built on the W050 formula-authority seam.</h2>
+          </div>
+          <span class="tag">go-forward path</span>
+        </header>
+        <div class="content">
+          <div class="flow">
+            <div class="step"><div class="num">W050</div><h3>Formula authority</h3><p>Runtime packages, formal inputs, prepared identity, bridge versions.</p></div>
+            <div class="step"><div class="num">W051</div><h3>Sparse ranges</h3><p>Excel sparse readers and defined-entry replay.</p></div>
+            <div class="step"><div class="num">W054</div><h3>Bounded memory</h3><p>Retention and pinned-epoch policy over the artifact set.</p></div>
+            <div class="step"><div class="num">W049</div><h3>Formalization</h3><p>Proof/model restart over the settled engine surface.</p></div>
+            <div class="step"><div class="num">W052</div><h3>Sensitivity</h3><p>Derivative and what-if capability lane.</p></div>
+            <div class="step"><div class="num">W053</div><h3>Concurrency</h3><p>Stage 2 partitioned evaluators after formal and memory gates.</p></div>
+          </div>
+          <p class="callout">W051 should finish the Excel range artifact set before W054 specifies deterministic memory discipline over that set.</p>
+        </div>
+        <footer class="footer"><span>Register sequence: W050 -> W051 -> W054 -> W049 -> W052 -> W053</span><span>3 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Post-W050 State</p>
+            <h2>The seam exists. The sparse reader does not.</h2>
+          </div>
+          <span class="tag">current reality</span>
+        </header>
+        <div class="content">
+          <table class="matrix">
+            <thead><tr><th>Area</th><th>Current state</th><th>W051 implication</th></tr></thead>
+            <tbody>
+              <tr><td>OxCalc</td><td>TreeCalc snapshots, repository value maps, runtime prepared-package consumption.</td><td>Needs a sparse range reader/backing adapter.</td></tr>
+              <tr><td>OxFml</td><td>Formal references, formal input bindings, prepared identity, bridge versions.</td><td>Needs sparse binding through runtime and replay.</td></tr>
+              <tr><td>OxFunc</td><td>Sparse admission reserved as metadata; no sparse kernel consumer yet.</td><td>Needs first aggregation-family admission and execution path.</td></tr>
+              <tr><td>Replay</td><td>W050 replay identity exists for package/formal input surfaces.</td><td>Needs declared extent, defined stream, and no-dense-materialisation evidence.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="footer"><span>Activation review must lock the concrete API before code beads are created</span><span>4 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Core Contract</p>
+            <h2><code>SparseRangeReader</code> is a worksheet-reference reader, not a rich object abstraction.</h2>
+          </div>
+          <span class="tag">contract slice</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>Required operations</h3>
+            <ul>
+              <li><code>declared_extent</code>: the logical range shape.</li>
+              <li><code>defined_cardinality</code>: count of defined entries.</li>
+              <li><code>defined_iter</code>: deterministic stream of defined entries.</li>
+              <li><code>read_at(coord)</code>: <code>Defined(EvalValue)</code> or <code>Blank</code>.</li>
+              <li><code>contains(coord)</code>: coordinate membership in extent.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Non-negotiables</h3>
+            <ul>
+              <li>Operations must not require O(extent) traversal.</li>
+              <li>Iteration order is contractual and replay-visible.</li>
+              <li>Blank and empty string must remain distinct.</li>
+              <li>UsedRange and formatting belong to sparse sheet structural management, not <code>read_at</code> value state.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>First deliverable: shared coordinate, extent, entry, and ordering shape</span><span>5 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Cell Semantics</p>
+            <h2>The value model is two-state: defined value or blank.</h2>
+          </div>
+          <span class="tag">Excel behavior</span>
+        </header>
+        <div class="content grid-2">
+          <div class="diagram">
+            <div class="cells" aria-label="Example sparse worksheet range">
+              <div class="cell header">Row</div><div class="cell header">A</div><div class="cell header">B</div><div class="cell header">C</div><div class="cell header">D</div><div class="cell header">E</div><div class="cell header">F</div><div class="cell header">G</div><div class="cell header">H</div>
+              <div class="cell header">1</div><div class="cell defined">12</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell defined">""</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div>
+              <div class="cell header">2</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell defined">7</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div>
+              <div class="cell header">3</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell defined">#N/A</div><div class="cell blank"></div><div class="cell blank"></div>
+              <div class="cell header">4</div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell blank"></div><div class="cell defined">5</div><div class="cell blank"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>What the reader must preserve</h3>
+            <ul>
+              <li>Never-assigned and assigned-then-cleared are both <code>Blank</code> at formula value level.</li>
+              <li>Empty string is <code>Defined(EvalValue::Text(""))</code>.</li>
+              <li><code>COUNTBLANK</code>, <code>COUNTA</code>, arithmetic coercion, and equality rely on this split.</li>
+              <li>Used range, formatting, comments, validation, and conditional formats may back sparse bounds, but they are not formula value state.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>W051 must not invent a third cell-value state</span><span>6 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">In Scope</p>
+            <h2>W051 is deliberately narrow.</h2>
+          </div>
+          <span class="tag">scope boundary</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>In W051</h3>
+            <ul>
+              <li>Worksheet cell/range semantics for whole-column and large-area reads.</li>
+              <li>Defined-entry versus blank behavior for formulas.</li>
+              <li>Aggregation and criteria-family functions where Excel behavior can be preserved sparsely.</li>
+              <li>Replay of declared extent, defined stream, iteration order, and result.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Out of W051</h3>
+            <ul>
+              <li>Generic virtualized arrays unrelated to worksheet references.</li>
+              <li>Queryable external objects and producer-specific pushdown protocols.</li>
+              <li>Generic rich producer/consumer protocol beyond the Excel sparse reader.</li>
+              <li>New non-Excel capability families.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>Non-Excel ideas remain in CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md</span><span>7 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Ownership</p>
+            <h2>The work is cross-repo, but each repo has a crisp responsibility.</h2>
+          </div>
+          <span class="tag">integration shape</span>
+        </header>
+        <div class="content">
+          <div class="lane">
+            <div class="owner">OxCalc</div>
+            <div><strong>Owns</strong><p>Concrete backing reader/adapter over the worksheet structural/value store.</p></div>
+            <div><strong>Evidence</strong><p>TreeCalc integration fixtures proving declared extent, defined stream, and formula result.</p></div>
+          </div>
+          <div class="lane">
+            <div class="owner">OxFml</div>
+            <div><strong>Owns</strong><p>Sparse binding through semantic plan, runtime prepared identity, and replay projection.</p></div>
+            <div><strong>Evidence</strong><p>Runtime/replay tests showing sparse formal input transport without dense materialisation.</p></div>
+          </div>
+          <div class="lane">
+            <div class="owner">OxFunc</div>
+            <div><strong>Owns</strong><p>Sparse argument-preparation profile and aggregation-kernel consumption.</p></div>
+            <div><strong>Evidence</strong><p>Function tests for first sparse-enabled family and metadata/version changes.</p></div>
+          </div>
+        </div>
+        <footer class="footer"><span>First action: ask OxFml/OxFunc for the concrete intake shapes</span><span>8 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Work Sequence</p>
+            <h2>Do the contract first, then the smallest executable slice.</h2>
+          </div>
+          <span class="tag">recommended order</span>
+        </header>
+        <div class="content">
+          <table class="matrix">
+            <thead><tr><th>Step</th><th>Work</th><th>Exit evidence</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Lock sparse reader contract: coordinates, extent, entries, ordering, complexity, blank semantics.</td><td>Shared contract doc and accepted OxFml/OxFunc responses.</td></tr>
+              <tr><td>2</td><td>Implement OxCalc reader adapter over real or clearly labeled fixture backing store.</td><td>Reader unit tests for point reads, iteration, cardinality, and empty-string/blank behavior.</td></tr>
+              <tr><td>3</td><td>Enable OxFunc first function family.</td><td><code>SUM</code>, <code>COUNT</code>, <code>COUNTA</code>, <code>COUNTBLANK</code> sparse-input tests.</td></tr>
+              <tr><td>4</td><td>Thread OxFml runtime/replay sparse bindings.</td><td>Prepared identity and replay projection include sparse binding facts.</td></tr>
+              <tr><td>5</td><td>Run OxCalc integration over a large sparse reference.</td><td>Replay artifact shows declared extent, defined stream, iteration order, result, and no dense allocation.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="footer"><span>This creates beads only after the cross-repo intake is explicit</span><span>9 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">First Function Slice</p>
+            <h2>Start with functions that prove the sparse value semantics.</h2>
+          </div>
+          <span class="tag">SUM COUNT COUNTA COUNTBLANK</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>Recommended first group</h3>
+            <ul>
+              <li><code>SUM</code>: numeric aggregation and blank-as-zero behavior.</li>
+              <li><code>COUNT</code>: numeric defined-entry counting.</li>
+              <li><code>COUNTA</code>: defined nonblank counting, including empty string.</li>
+              <li><code>COUNTBLANK</code>: blank counting over declared extent.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Later widening</h3>
+            <ul>
+              <li><code>AVERAGE</code>, <code>MIN</code>, <code>MAX</code> after first semantics are stable.</li>
+              <li>Criteria-family functions after reference criteria handling is pinned.</li>
+              <li>Producer-side filtering only when replay records resolved iterators exactly.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>The first group covers numeric, defined, blank, and empty-string behavior</span><span>10 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Replay</p>
+            <h2>Replay must show what was read, not merely that the result matched.</h2>
+          </div>
+          <span class="tag">evidence policy</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>Required artifact fields</h3>
+            <ul>
+              <li>Declared extent and coordinate system.</li>
+              <li>Defined-entry stream in deterministic order.</li>
+              <li>Blank and empty-string behavior evidence.</li>
+              <li>Function result and function input profile.</li>
+              <li>No-dense-materialisation check or counter.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Bad evidence</h3>
+            <ul>
+              <li>A result-only test over a small range.</li>
+              <li>A dense vector passed through a sparse-shaped API.</li>
+              <li>A replay artifact that cannot reconstruct the read stream.</li>
+              <li>A contract that hides iteration order as implementation detail.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>W051 evidence needs traceability, not just correctness by accident</span><span>11 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Activation Gate</p>
+            <h2>Questions to answer before execution starts.</h2>
+          </div>
+          <span class="tag">not yet execution_target</span>
+        </header>
+        <div class="content">
+          <table class="matrix">
+            <thead><tr><th>Question</th><th>Why it matters</th></tr></thead>
+            <tbody>
+              <tr><td>What exact shared/Rust shape represents a sparse range reader?</td><td>Prevents three repos from implementing incompatible reader facades.</td></tr>
+              <tr><td>What backing store does OxCalc use first?</td><td>Separates production authority from fixture scaffolding.</td></tr>
+              <tr><td>Is the first function group accepted by OxFunc?</td><td>Prevents W051 from becoming a broad aggregation rewrite.</td></tr>
+              <tr><td>What are the complexity guarantees?</td><td>Preserves the point of sparse reads: no O(extent) operations.</td></tr>
+              <tr><td>What replay fields prove no dense materialisation?</td><td>Makes performance and determinism falsifiable.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <footer class="footer"><span>When these are answered, create the W051 epic and beads</span><span>12 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Risks</p>
+            <h2>The main failure modes are scope drift and fake sparsity.</h2>
+          </div>
+          <span class="tag">controls</span>
+        </header>
+        <div class="content grid-2">
+          <div class="panel">
+            <h3>Watch for</h3>
+            <ul>
+              <li>Generic rich-data work sneaking into an Excel sparse range workset.</li>
+              <li>A dense implementation hidden behind sparse names.</li>
+              <li>Fixture-only backing stores reported as production substrate.</li>
+              <li>Result-only tests that do not prove iteration and replay.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Controls</h3>
+            <ul>
+              <li>Keep the scope bound to worksheet references.</li>
+              <li>Require operation-level complexity claims and checks.</li>
+              <li>Label fixture and production paths separately.</li>
+              <li>Make declared extent and defined stream mandatory artifacts.</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="footer"><span>Engineering quality bar: observable behavior and replay evidence</span><span>13 / 14</span></footer>
+      </article>
+
+      <article class="slide">
+        <header>
+          <div>
+            <p class="eyebrow">Landing Space</p>
+            <h2>W051 is ready when large Excel ranges are sparse, replayable, and boring.</h2>
+          </div>
+          <span class="tag">target outcome</span>
+        </header>
+        <div class="content">
+          <div class="grid-3">
+            <div class="panel">
+              <h3>Functional</h3>
+              <p>Whole-column and large-area worksheet references feed supported aggregation kernels without dense materialisation.</p>
+            </div>
+            <div class="panel">
+              <h3>Semantic</h3>
+              <p>Defined values, blanks, and empty strings match Excel-visible behavior across the first function slice.</p>
+            </div>
+            <div class="panel">
+              <h3>Operational</h3>
+              <p>Replay reconstructs the sparse read and W054 can specify memory retention over the resulting artifact set.</p>
+            </div>
+          </div>
+          <p class="callout warn">Current status remains partial until the sparse API, backing reader, OxFml threading, OxFunc kernel admission, and integration evidence are all present.</p>
+        </div>
+        <footer class="footer"><span>scope_partial | target_partial | integration_completeness: partial</span><span>14 / 14</span></footer>
+      </article>
+    </section>
+  </main>
+
+  <div class="controls" aria-label="Slide controls">
+    <button id="prev" type="button" aria-label="Previous slide" title="Previous slide">&lt;</button>
+    <button id="next" type="button" aria-label="Next slide" title="Next slide">&gt;</button>
+  </div>
+  <div class="progress" id="progress"></div>
+
+  <script>
+    const deck = document.getElementById("deck");
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const progress = document.getElementById("progress");
+    let index = 0;
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function show(nextIndex) {
+      index = clamp(nextIndex, 0, slides.length - 1);
+      deck.style.transform = `translateX(${-index * 100}vw)`;
+      progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+      history.replaceState(null, "", `#${index + 1}`);
+    }
+
+    document.getElementById("prev").addEventListener("click", () => show(index - 1));
+    document.getElementById("next").addEventListener("click", () => show(index + 1));
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        show(index + 1);
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp" || event.key === "Backspace") {
+        event.preventDefault();
+        show(index - 1);
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        show(0);
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        show(slides.length - 1);
+      }
+    });
+
+    const fromHash = Number.parseInt(location.hash.replace("#", ""), 10);
+    show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+  </script>
+</body>
+</html>

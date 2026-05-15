@@ -113,6 +113,16 @@ Rule:
 1. any semantic widening lane must update engine, oracle, and conformance comparison in the same execution slice,
 2. widening work is not gate-ready if one of those three surfaces is left behind.
 
+W050 application:
+1. the formula-authority rework did not stop at replacing code paths; it also
+   refreshed checked derivation trace artifacts, TreeCalc runner outputs,
+   OxFml runtime package/formal-input evidence, and W050 seam/status docs in
+   the same pass,
+2. successor formalization and sparse/rich work are routed to W049/W051/W054
+   rather than being treated as W050 closure gaps,
+3. the lesson generalizes from "engine and oracle" to "engine, consumed seam,
+   and replay evidence" when the changed behavior crosses repo boundaries.
+
 ### Lesson 9: Workset Closure and Feature-Area Continuation Must Stay Separate
 W014 reinforced that a workset can reach its declared gate while the broader feature area still continues in later waves.
 
@@ -198,8 +208,8 @@ These lessons should now influence:
 ## 5. Status
 - execution_state: in_progress
 - scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
+- target_completeness: target_complete
+- integration_completeness: integrated
 - open_lanes:
-  - this local doctrine now reflects W013 and W014 lessons, but later replay-appliance and retained-witness waves may add further lessons
+  - this local doctrine now reflects W013, W014, and the W050 formula-authority/replay-evidence lesson, but later replay-appliance and retained-witness waves may add further lessons
   - later execution waves may add or refine local lessons

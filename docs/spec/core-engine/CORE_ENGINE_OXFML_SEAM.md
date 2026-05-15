@@ -636,8 +636,8 @@ CALC-002/CALC-003/CALC-004 receiving-repo feedback has been recorded.
 |---|---|---|
 | Formula source authority | OxCalc stores opaque formula text and identity; OxFml parses, projects red view, binds, compiles, evaluates, and reports returned-value surfaces. OxCalc must not parse formula language or reconstruct source as semantic input. | CALC-002 receipt accepts the public runtime/session facade as the ordinary surface and promotes a narrower successor plan for canonical prepared formula fields. |
 | Session model | A recalc wave is modeled as wave preparation, `ensure_prepared`, trace-visible compilation, dependency derivation, scheduled invoke, coordinator commit, and close/capture. | OxFml runtime facade remains the consumed surface; richer compile/cache trace fields belong in OxFml if exposed. |
-| Prepared callable identity | OxCalc derives current V1 compatibility `shape_key`, `dispatch_skeleton_key`, `plan_template_key`, `PlanTemplate`, `HoleBindings`, and `prepared_callable_key` from public bound-formula and semantic-plan artifacts. | CALC-002 receipt adapts the canonical direction toward `PreparedFormulaPackage`, `PlanTemplate`, `HoleBindingSet`, and formal reference/input transport; OxCalc compatibility keys remain local until those fields are emitted. |
-| Bind-output reference mapping | Current TreeCalc maps local residual/reference carriers to dependency descriptors and rebind seeds using OxFml parse/bind products plus OxCalc structural truth. | CALC-002 receipt accepts replacement of synthetic A1/reference-input compatibility bridges with `FormalReference` / `FormalReferenceSet` transport. |
+| Prepared formula identity | OxCalc consumes OxFml `RuntimePreparedFormulaIdentity` from the public managed prepare/runtime facade. TreeCalc no longer derives local prepared-callable compatibility keys from bound-formula/semantic-plan artifacts. | CALC-002 canonical identity now lands through OxFml runtime fields; remaining gaps are richer public package naming and any additional template-hole detail OxFml chooses to expose. |
+| Bind-output reference mapping | Current TreeCalc maps local residual/reference carriers to dependency descriptors and rebind seeds using OxFml `RuntimeFormalReference` identity plus OxCalc structural truth. Runtime invocation supplies values through OxFml formal-input bindings rather than synthetic A1 cells. | CALC-002 reference/input transport has landed for TreeCalc scalar formal inputs. Richer formal-reference package fields and non-scalar carrier kinds remain OxFml-owned extension surfaces if needed. |
 | Typed outcomes | OxCalc consumes value publication, verified-clean suppression, typed reject/no-publish, runtime effects, derivation trace, topic envelopes, and correctness-floor selector replay records as distinct surfaces. | CALC-002 receipt covers structured result/reject/correlation fields; CALC-003 receipt accepts OxFml `CorrectnessFloorContext` carriage, OxFunc selector semantics, and `semantic_kernel_metadata_version`; CALC-004 receipt reserves capability/hole identity, accepts `arg_admission_metadata_version`, and defers producer activation. OxCalc now threads both bridge versions into TreeCalc prepared identity and OxFml runtime input. |
 | External invalidation | Subscription registry, topic envelopes, stream-semantics selectors, dirty seeds, and subscription lifecycle diagnostics are OxCalc-local repository behavior. Evaluation remains pull; external signals only seed invalidation. | Future OxFml/OxFunc feedback may refine RTD/registered-external topic descriptors but does not move publication authority. |
 | Optimization boundary | OxCalc may cache by public identity keys and recorded hole-binding fingerprints. It must not synthesize common-subexpression reuse by rewriting formulas, inferring algebraic equivalence, or inspecting OxFunc kernels. | Pure-kernel CSE, folded subplans, and internal expression ids are OxFml/OxFunc-owned trace/artifact surfaces if exposed later. |
@@ -665,8 +665,9 @@ Replay and evidence obligations:
 1. Every W050 behavior claim must point either to checked runtime tests, a
    checked evidence root under `docs/test-runs/core-engine`, or an explicit
    handoff/watch dependency.
-2. Compatibility-only fields must be named as compatibility fields until the
-   receiving repo supplies canonical replacements.
+2. Retired compatibility-only fields must not be reintroduced as active
+   TreeCalc identity surfaces; successor detail belongs in OxFml-owned
+   runtime/replay fields.
 3. Spec text without replay, trace, or test evidence remains planning text; it
    does not close a W050 behavior lane.
 
@@ -697,7 +698,10 @@ The minimum input families are:
      one observable result
 4. Reference/value environment:
    - current published or working values for already-derived structural
-     targets at invocation time
+     targets at invocation time, supplied through OxFml
+     `RuntimeFormalInputBinding` records
+   - OxFml `RuntimeFormalReference` handles/descriptors used when the
+     prepared identity is available
    - no synthetic A1 address generation as the dependency identity layer
    - no OxCalc-authored formula AST lowered into Excel source
 
@@ -715,7 +719,7 @@ Conceptually:
 
 ```text
 ensure_prepared(formula_stable_id, formula_text_version, source, caller_context)
-  -> PreparedCallable | BindResult
+  -> RuntimePreparedFormulaIdentity | BindResult
 ```
 
 Required semantics:
@@ -852,10 +856,11 @@ Current mapping:
    the OxCalc target mapping, so mapping evidence no longer depends on an
    A1 address-string round trip.
 
-Current B5 limit: current V1 still requires a migration carrier for some
-TreeCalc structural targets. CALC-002 must still ask OxFml for the
-canonical formal-reference set and stable prepared-callable reference
-handles that make those carriers unnecessary.
+Current B5 landing: current TreeCalc scalar formula inputs use OxFml formal
+input bindings instead of synthetic `cell_values` and defined-name reference
+fixtures. Dependency graph ownership still belongs to OxCalc structural
+truth, with OxFml formal-reference handles preserved for identity and replay
+correlation.
 
 ### 22.9 Current V1 TreeCalc Production Invocation Mapping
 The current OxCalc B7 uptake removes the TreeCalc production evaluation
@@ -867,10 +872,12 @@ current in-wave value map.
 Current mapping:
 1. `RuntimeFormulaRequest` uses the existing `PreparedOxfmlFormula`
    `FormulaSourceRecord` and `EvaluationBackend::OxFuncBacked`.
-2. `RuntimeEnvironment` uses the prepared bound formula's
+2. `RuntimeEnvironment` uses the prepared formula identity's
    `structure_context_version`, the TreeCalc owner node as caller
-   position, current in-wave values as `cell_values`, and translated
-   reference bindings as `DefinedNameBinding::Reference` entries.
+   position, and translated reference carriers as
+   `RuntimeFormalInputBinding` entries. Prepare-time bindings provide the
+   source-visible descriptor; invoke-time bindings include the matching
+   `RuntimeFormalReference` handle when OxFml has exposed it.
 3. Host-sensitive residuals are represented by a TreeCalc-local
    `HostInfoProvider` that preserves the current deterministic
    `treecalc.host_sensitive_reference` provider-failure outcome for
@@ -884,11 +891,11 @@ Current mapping:
    and runner evidence). They are no longer used by the TreeCalc
    production recalc path.
 
-Current B7 limit: current V1 still uses synthetic A1 targets for
-`cell_values` and defined-name reference bindings while CALC-002 owns the
-canonical prepared-callable reference/input transport. This keeps B7
-scoped to replacing the production packet dependency rather than
-pretending the final reference model is already available.
+Current B7 landing: TreeCalc production invocation no longer maps structural
+targets through synthetic A1 `cell_values` or defined-name reference
+bindings. Remaining formal-input extension work is limited to richer
+OxFml-owned carrier kinds if a future formula surface needs more than scalar
+value transport.
 
 Semantic equivalence statement: B7 changes how TreeCalc constructs the
 current V1 OxFml call, not the observable recalc strategy. The same
@@ -962,10 +969,12 @@ Current mapping:
    remain formula-instance or current-artifact identities rather than
    plan-template identities.
 
-Current C1/C2/C3 limit: these are OxCalc-side compatibility fingerprints over
-public V1 artifacts. Canonical OxFml `PreparedCallable` fields,
-`PlanTemplate`, `HoleBindings`, canonical formal-reference identities, and
-capability-set vocabulary remain CALC-002/Lane G work.
+Current W050 landing: the OxCalc-side compatibility fingerprint layer has
+been retired from TreeCalc. Current TreeCalc identity traces consume OxFml
+`RuntimePreparedFormulaIdentity` fields (`prepared_formula_key`,
+`plan_template`, `hole_binding`, `formal_references`, and the OxFunc bridge
+metadata versions). OxFml remains owner of richer package naming and any
+additional template-hole detail beyond the current runtime identity fields.
 
 Semantic equivalence statement: C1 changes identity derivation and trace
 projection only. It does not change formula source, bind context, runtime
@@ -973,37 +982,29 @@ environment, invocation path, candidate adaptation, rejection policy, or
 OxCalc coordinator publication authority for any currently exercised
 Stage 1 profile.
 
-### 22.12 Current V1 PreparedCallable And PlanTemplate Artifact Mapping
-The current OxCalc C2 uptake makes the plan-template split a first-class
-OxCalc compatibility artifact while still deriving it only from public
-OxFml V1 artifacts.
+### 22.12 Current Runtime Prepared Formula Artifact Mapping
+The current OxCalc C2 landing consumes OxFml runtime prepared identity instead
+of deriving an OxCalc-local prepared-callable artifact.
 
 Current mapping:
-1. `PlanTemplate` carries `shape_key`, `dispatch_skeleton_key`,
-   `plan_template_key`, and an ordered hole skeleton. The skeleton records
-   a stable hole id, ordinal, expression/reference path, and current V1
-   default taxonomy hole kind.
-2. `HoleBindings` carries `binding_fingerprint` plus the per-formula hole
-   payload vector. Literal values, concrete references, omitted arguments,
-   and helper/lambda parameter names are bound here rather than in the
-   template identity.
-3. `PreparedCallable` is modeled as
-   `{ prepared_callable_key, PlanTemplate, HoleBindings }`, where
-   `prepared_callable_key` fingerprints `plan_template_key` plus
-   `binding_fingerprint`.
-4. `PreparedOxfmlFormula` carries the `PreparedCallable`, not just loose
-   identity strings. TreeCalc trace records expose
-   `prepared_callable_key`, `plan_template_key`,
-   `hole_binding_fingerprint`, and `template_hole_count`.
-5. Deterministic tests prove that `=SUM(A1,2)` and `=SUM(B7,99)` share the
-   same `PlanTemplate` but have different `HoleBindings`, while `SUM` and
-   `MAX` with the same leaf payloads share hole bindings but diverge at
-   dispatch/template identity.
+1. TreeCalc calls OxFml managed prepare and records
+   `RuntimePreparedFormulaIdentity`.
+2. `PreparedFormulaIdentityTrace.prepared_formula_key` is copied from
+   OxFml `prepared_formula_key`.
+3. `plan_template_key`, `dispatch_skeleton_key`, `shape_key` when present,
+   `hole_binding_fingerprint`, and `template_hole_count` are copied from
+   OxFml runtime identity fields rather than recomputed locally.
+4. Formal-reference dependency descriptors are driven by OxFml
+   `RuntimeFormalReference` handles/descriptors plus OxCalc structural truth
+   for host mapping.
+5. TreeCalc no longer exposes an OxCalc-local `PreparedCallable`,
+   `prepared_callable_key`, or compatibility hole taxonomy as an active
+   runtime artifact.
 
-Current C2/C3 limit: the artifact shape and hole taxonomy are OxCalc-side
-compatibility projections over public V1 artifacts. Plan-template
-cache/reuse evidence and canonical OxFml prepared-callable fields remain
-C5/CALC-002 work.
+Current C2/C3 limit: OxFml's current public runtime identity does not yet
+surface all former OxCalc compatibility template-hole detail, and its current
+template key is not claimed by OxCalc as cross-call-site reuse evidence.
+That detail is OxFml-owned successor surface, not an OxCalc projection.
 
 Semantic equivalence statement: C2 changes artifact shape and trace
 projection only. It does not change source parsing, binding, semantic-plan
@@ -1099,19 +1100,19 @@ The current OxCalc C5 uptake adds deterministic trace-count evidence for
 the plan-template identity split.
 
 Current mapping:
-1. TreeCalc diagnostics now include
-   `oxfml_plan_template_reuse_count:{plan_template_key}:call_sites=N;prepared_callables=M;hole_bindings=K`.
+1. TreeCalc diagnostics include
+   `oxfml_plan_template_reuse_count:{plan_template_key}:call_sites=N;prepared_formulas=M;hole_bindings=K`
+   only when the OxFml-owned runtime identity reports the same
+   `plan_template_key` at more than one call site.
 2. The counter groups current `PreparedFormulaIdentityTrace` records by
    `plan_template_key` and counts call sites, distinct
-   `prepared_callable_key` values, and distinct `hole_binding_fingerprint`
+   `prepared_formula_key` values, and distinct `hole_binding_fingerprint`
    values.
-3. The deterministic C5 test runs two `SUM` call sites with the same
-   template shape and different hole bindings. It observes one
-   `plan_template_key`, two prepared-callable identities, two
-   hole-binding fingerprints, and two distinct published values.
-4. The evidence is trace-counting evidence over current V1 compatibility
-   artifacts. It does not claim a canonical OxFml cache, shared object
-   lifetime, or skipped semantic work inside OxFml.
+3. After retirement of the OxCalc compatibility projection, the
+   deterministic C5 test runs two `SUM` call sites, observes distinct OxFml
+   runtime `plan_template_key` values, and verifies OxCalc does not
+   synthesize a reuse count.
+4. Cross-call-site template reuse is now an OxFml-owned evidence question.
 
 Semantic equivalence statement: C5 adds reuse-count diagnostics and tests
 only. It does not change source parsing, binding, semantic-plan
@@ -1119,7 +1120,7 @@ compilation, runtime invocation, candidate adaptation, rejection policy,
 scheduling strategy, or OxCalc coordinator publication authority for any
 currently exercised Stage 1 profile. Observable formula results are
 invariant; the C5 evidence specifically checks distinct published values
-for call sites sharing one template key.
+while preventing an OxCalc-local reuse overclaim.
 
 ### 22.16 Current V1 Compile-Time Folding Identity Boundary
 The current OxCalc C6 uptake records the compile-time constant-folding
@@ -1168,11 +1169,11 @@ Current mapping:
    `OxCalcTreeRecalcResult`.
 4. The record carries schema id
    `oxcalc.derivation_trace.invoke_outcome.v1`, owner/formula identity,
-   template selection (`prepared_callable_key`, `shape_key`,
-   `dispatch_skeleton_key`, `plan_template_key`, template holes), hole
-   bindings, a root prepared-callable invocation, child OxFml prepared-call
-   entries, per-call `kernel_returned_value`, final returned value, and
-   OxFml seam trace event summaries.
+   template selection (`prepared_formula_key`, `shape_key`,
+   `dispatch_skeleton_key`, `plan_template_key`, template holes when exposed
+   by OxFml), hole-binding identity, a root prepared-formula invocation,
+   child OxFml prepared-call entries, per-call `kernel_returned_value`,
+   final returned value, and OxFml seam trace event summaries.
 5. TreeCalc runner result/trace artifacts surface the same record when the
    opt-in flag is enabled.
 6. Checked evidence is
@@ -1250,24 +1251,22 @@ Observable formula results are invariant for the exercised Stage 1 profile.
 8. the B3-observed managed-session output gap: current
    `RuntimeManagedCommitResult` does not carry all full
    `RuntimeFormulaResult` surfaces consumed by OxCalc's coordinator path.
-9. the B7-observed remaining compatibility bridge: current TreeCalc
-   production invocation still maps structural targets through synthetic
-   A1 `cell_values` and defined-name reference bindings until OxFml
-   exposes canonical prepared-callable reference/input transport.
+9. the B7 formal-input bridge: current TreeCalc production invocation maps
+   structural scalar values through OxFml `RuntimeFormalInputBinding`
+   records and validates them against `RuntimeFormalReference` handles when
+   available. No synthetic A1 `cell_values` or defined-name reference
+   fixtures remain in the TreeCalc invocation path.
 10. the A3-observed source/carrier compatibility bridge: current TreeCalc
     opaque formula input still needs source-token carriers until OxFml
-    exposes canonical prepared-callable input bindings and formal
+    exposes richer prepared formula input bindings and formal
     reference identities.
-11. the C1/C2-observed identity compatibility bridge: OxCalc can derive
-    current V1 `shape_key`, `dispatch_skeleton_key`, and
-    `plan_template_key` fingerprints and split `PreparedCallable` into
-    `PlanTemplate` plus `HoleBindings` from public bound/semantic-plan
-    artifacts, but OxFml still owns the canonical prepared-callable,
-    `PlanTemplate`, and hole-binding identity fields.
-12. the C2-observed artifact-shape bridge: OxFml should expose canonical
-    hole ids, hole kinds, hole-binding fingerprints, and prepared-callable
-    keys so OxCalc does not need to treat the compatibility artifact as a
-    shared seam.
+11. the retired C1/C2 identity compatibility bridge: OxCalc no longer
+    derives local `shape_key`, `dispatch_skeleton_key`,
+    `plan_template_key`, or prepared-callable keys from bound/semantic-plan
+    artifacts. It consumes OxFml `RuntimePreparedFormulaIdentity`.
+12. the C2 successor artifact-shape bridge: OxFml may expose richer
+    canonical hole ids, hole kinds, hole-binding fingerprints, and package
+    fields; OxCalc must not synthesize them as a shared seam.
 13. the C3-observed hole-taxonomy bridge: OxFml should confirm the
     canonical naming, stable serialization, and emission rules for
     `ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`,

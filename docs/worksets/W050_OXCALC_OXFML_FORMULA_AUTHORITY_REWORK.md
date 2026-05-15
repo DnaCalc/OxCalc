@@ -1,6 +1,6 @@
 # W050 OxCalc/OxFml Formula Authority Rework
 
-Status: `open_bead_execution`
+Status: `reached_gate_pending_final_bead_sync`
 
 Parent predecessor: `W048` single-host scoped circular-reference closure
 
@@ -26,7 +26,7 @@ The workset covers:
 6. the correctness-floor decisions — numerical reduction policy and error algebra — as profile-governed semantic state;
 7. identity scaffolding for differential evaluation, derivation trace, and push/pull duality as performance/observability layers.
 
-W050 is intentionally large. It is planned and executed in lanes (§5) that can run partly in parallel and that all roll up to the comprehensive exit gate in §8. The workset is `open_planning` at lane level; individual lanes may advance independently under the bead structure in §6, but the workset itself closes only when every lane meets its share of the exit gate.
+W050 is intentionally large. It was planned and executed in lanes (§5) that can run partly in parallel and that all roll up to the comprehensive exit gate in §8. The production formula-authority target has reached its gate: OxCalc now consumes OxFml runtime prepared-package/formal-input surfaces, the local compatibility projection is retired, and successor work is routed to W049/W051/W054/W052 rather than kept as W050 debt.
 
 Working principle (made comprehensive):
 
@@ -72,7 +72,7 @@ W050 is the umbrella for the following changes. Each is detailed in §10 (design
 
 **A. Seam Reshape (§§10.3–10.5).** OxCalc Calculation Repository as the persistent structural truth surface. OxFml Recalc Session as the only consumer entry surface during a wave. `ensure_prepared(formula_stable_id, …) → PreparedCallable` and `invoke(call_site, bindings) → InvocationOutcome` as the only operations. Six-phase wave lifecycle.
 
-**B. Removal of Wrong-Shape Code (§10.10).** `TreeFormula` AST and `translate_formula` / `TranslationState`. `MinimalUpstreamHostPacket` and the `Minimal*` family. Synthetic A1 cell-fixture flattening. Per-formula `RuntimeEnvironment::new().execute(...)` pattern in `evaluate_via_oxfml`. `formula_allows_lazy_residual_publication` (subsumed by general lazy-control-form handling).
+**B. Removal of Wrong-Shape Code (§10.10).** `TreeFormula` AST and `translate_formula` / `TranslationState`. `MinimalUpstreamHostPacket` and the `Minimal*` family removed from production formula invocation or quarantined as fixture/test scaffolding. Synthetic A1 cell-fixture flattening. Per-formula `RuntimeEnvironment::new().execute(...)` pattern in `evaluate_via_oxfml`. `formula_allows_lazy_residual_publication` (subsumed by general lazy-control-form handling).
 
 **C. Plan-Template Identity Layer (§10.6).** `shape_key`, `dispatch_skeleton_key`, `plan_template_key`. `PlanTemplate` as a first-class artefact; `PreparedCallable = (PlanTemplate, HoleBindings)`.
 
@@ -98,9 +98,9 @@ W050 is the umbrella for the following changes. Each is detailed in §10 (design
 | `FixtureFormulaAst` / `FixtureFormulaBinaryOp` | Quarantined fixture/scale-runner AST used only to render legacy checked-in fixtures and procedural scale corpora into opaque `TreeFormula` values | Lane A — delete or archive when fixture corpora use authored opaque OxFml sources directly |
 | `TreeReference::*` | Dependency-carrier projection and fixture binding | Lane B — replace with bind-output reference handles |
 | `translate_formula` / `TranslationState` | Retired AST-to-source-text lowering path; A3 replaces it with `project_opaque_formula` over explicit carriers | Lane A — keep retired; remove any future regressions |
-| `MinimalUpstreamHostPacket` and `Minimal*` family | Deterministic upstream-host fixture/scaffolding packet surface; no longer the TreeCalc production invocation path after B7 | Lane B/A — keep fixture-only until canonical session intake covers the same evidence surface, then delete or quarantine |
-| `evaluate_with_oxfml_session` / `invoke_prepared_formula_via_session` | Current V1 TreeCalc production bridge into `OxfmlRecalcSessionDriver::invoke`; still carries synthetic A1 compatibility inputs | Lane B — replace compatibility inputs with canonical prepared-callable invocation transport |
-| `synthetic_cell_target` / `synthetic_cell_row` | Synthetic A1 address generation for current V1 cell-value / defined-name compatibility | Lane B/A — delete once CALC-002 reference/input transport lands |
+| `MinimalUpstreamHostPacket` and `Minimal*` family | Deterministic upstream-host fixture/scaffolding packet surface; no longer the TreeCalc production invocation path after B7 | Lane B/A — quarantine as fixture/test support; not production formula-authority debt |
+| `evaluate_with_oxfml_session` / `invoke_prepared_formula_via_session` | Current TreeCalc production bridge into `OxfmlRecalcSessionDriver::invoke`; carries OxFml formal input bindings rather than synthetic A1 compatibility inputs | Lane B — keep the public runtime/session path; richer non-scalar formal carriers belong in OxFml if required |
+| `synthetic_cell_row` | Caller-position helper for current runtime locus construction | Lane B/A — keep only as caller-locus plumbing while OxFml runtime still asks for row/column caller coordinates |
 | `TreeFormula.lazy_residual_publication` | Current V1 compatibility flag set by fixture quarantine for lazy-control residual cases | Lane B — replace with OxFml callable/control-form outcome metadata |
 | `Stage1RecalcTracker` | Per-node state machine | Lane B — preserve, recompose plumbing |
 | `TreeCalcCoordinator` | Single-publisher publication authority | Lane B — preserve, recompose plumbing |
@@ -126,7 +126,7 @@ only as allowed archive hits if the final search gate sees them.
 | Exact path | Surface found | Classification | Follow-on bead |
 | --- | --- | --- | --- |
 | `src/oxcalc-core/src/formula.rs` | `TreeFormula`, `TreeFormulaReferenceCarrier`, `TreeReference`, `FixtureFormulaAst`, `FixtureFormulaBinaryOp`, `TreeFormulaCatalog` | `TreeFormula` is opaque source carriage plus explicit carriers; `TreeReference` is dependency/evaluator-fact projection; `FixtureFormulaAst` is fixture/test scaffolding. | `calc-cwpl.2`, `calc-cwpl.8.1`, `calc-cwpl.8.2`, `calc-cwpl.9.7` / CALC-002 |
-| `src/oxcalc-core/src/treecalc.rs` | `prepare_oxfml_formula`, `project_opaque_formula`, `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `synthetic_cell_row`, `synthetic_cell_target` | Production OxFml session bridge. Source text is passed through opaquely; carriers are projected to current V1 compatibility bindings. Synthetic A1 helpers are architectural residue pending CALC-002 reference/input transport. | `calc-cwpl.8.2`, `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `src/oxcalc-core/src/treecalc.rs` | `prepare_oxfml_formula`, `project_opaque_formula`, `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `formal_input_bindings_for_runtime`, `synthetic_cell_row` | Production OxFml session bridge. Source text is passed through opaquely; carriers are projected to OxFml `RuntimeFormalInputBinding` values and matched to `RuntimeFormalReference` handles after prepare. `synthetic_cell_row` remains caller-locus plumbing, not dependency/input identity. | `calc-cwpl.8.2`, `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `src/oxcalc-core/src/treecalc_fixture.rs` | `TreeCalcFixtureFormulaBinding.expression: FixtureFormulaAst` and fixture-to-catalog lowering | Fixture loader scaffolding for active TreeCalc fixture JSON. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `src/oxcalc-core/src/treecalc_scale.rs` | Procedural `FixtureFormulaAst` builders for scale/demo corpora | Scale/demo generator scaffolding; not production formula semantics. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `src/oxcalc-core/src/consumer.rs` | Unit-test `FixtureFormulaAst` / `TreeReference` constructions | Test scaffolding around the consumer facade. | `calc-cwpl.2`, `calc-cwpl.8.2` |
@@ -230,7 +230,7 @@ W050 decomposes into seven lanes. Lanes are independent enough to run partly in 
 
 **Phasing recommendation.** Wave 1 lands Lanes B and C concurrently (the new seam plus the identity layer); Lane A follows as soon as the new seam covers the existing test corpus. Wave 2 lands Lanes D and E in parallel. Wave 3 lands Lane F. Lane G can land in any wave; the cheapest moment is alongside Lane C since both touch the hole-type taxonomy.
 
-Each lane carries its own bead chain under the parent epic `calc-cwpl` (§6) and its own corpus of acceptance tests. Lane completion is gated on the exit-gate clauses in §8 that apply to that lane. The workset itself remains `open_planning` until all lanes meet their share of the gate.
+Each lane carries its own bead chain under the parent epic `calc-cwpl` (§6) and its own corpus of acceptance tests. Lane completion is gated on the exit-gate clauses in §8 that apply to that lane. The W050 production target has reached its gate; remaining bead activity is final status synchronization and pre-closure audit recording.
 
 ## 6. Bead Path
 
@@ -321,9 +321,10 @@ owned by `.beads/`, not this document.
    is a CALC-002 handoff pressure, not a reason to build a long-term
    OxCalc wrapper around non-consumer internals.
 3. Current OxCalc code still contains W050 target surfaces:
-   `synthetic_cell_target`, `synthetic_cell_row`, the
-   `FixtureFormulaAst` fixture quarantine, and fixture/scaffolding
-   `Minimal*` packet surfaces. After A3, `TreeFormula` no longer has
+   `synthetic_cell_row`, the `FixtureFormulaAst` fixture quarantine, and
+   fixture/scaffolding `Minimal*` packet surfaces. `synthetic_cell_target`
+   and TreeCalc synthetic A1 input flattening have been removed from the
+   production session path. After A3, `TreeFormula` no longer has
    semantic variants, and `translate_formula`, `TranslationState`, and
    `formula_allows_lazy_residual_publication` are no longer source-code
    surfaces. After B7, `src/oxcalc-core/src/treecalc.rs` no longer imports
@@ -362,8 +363,10 @@ owned by `.beads/`, not this document.
    `PreparedOxfmlFormula`, current working values, and TreeCalc-local
    deterministic provider shims for host-sensitive and dynamic-potential
    residuals. `MinimalUpstreamHostPacket` is now fixture/scaffolding only
-   in `upstream_host*`, integration tests, and runner evidence. Synthetic
-   A1 compatibility inputs remain a Lane B / CALC-002 cleanup target.
+   in `upstream_host*`, integration tests, and runner evidence. TreeCalc
+   no longer uses synthetic A1 compatibility inputs in the production
+   invocation path; scalar inputs are supplied through OxFml formal input
+   bindings.
 9. A3 live uptake: `TreeFormula` now carries opaque OxFml `source_text`,
    explicit `TreeFormulaReferenceCarrier` entries, and a current V1
    lazy-residual compatibility flag. The old semantic variants
@@ -372,33 +375,27 @@ owned by `.beads/`, not this document.
    and the procedural scale runner. TreeCalc preparation now projects
    explicit carriers through `project_opaque_formula` and no longer lowers
    a local semantic AST.
-10. C1 live uptake: `src/oxcalc-core/src/formula_identity.rs` now derives
-    current V1 `shape_key`, `dispatch_skeleton_key`, and
-    `plan_template_key` fingerprints from public OxFml
-    `BoundFormula`/`SemanticPlan` artifacts. `PreparedOxfmlFormula` carries
-    those keys, and TreeCalc run artifacts plus runner traces surface
-    `prepared_formula_identity` records. This is a compatibility identity
-    layer; canonical OxFml `PreparedCallable`, `PlanTemplate`,
-    `HoleBindings`, and formal-reference identity fields remain CALC-002
-    pressure.
-11. C2 live uptake: `formula_identity.rs` now models
-    `PreparedCallable = (PlanTemplate, HoleBindings)` for the current V1
-    compatibility path. `PlanTemplate` carries the C1 keys plus ordered
-    compatibility holes; `HoleBindings` carries the per-formula payload
-    vector and `binding_fingerprint`; TreeCalc and runner traces surface
-    `prepared_callable_key`, `hole_binding_fingerprint`, and
-    `template_hole_count`. Reuse evidence and canonical OxFml artifact
-    fields remain C5/CALC-002 pressure.
-12. C3 live uptake: `formula_identity.rs` now maps the default W050 hole
-    taxonomy into current V1 prepared-call identity. `ValuesOnlyPreAdapter`
-    arguments emit `ValueHole(AnyValue)`, `RefsVisibleInAdapter` arguments
-    emit `RefOrValueHole(ReferenceIdentityVisible)`, invocation callees can
-    emit `CallableHole(AnyCallable)`, and stable serialization exists for
-    `ShapeSensitiveHole`, `SparseRangeHole`, and `RichValueHole`.
-    `SparseRangeHole` and `RichValueHole` are representable but not emitted
-    by current production kernels; Lane G capability vocabulary,
-    cache/reuse evidence, and canonical OxFml artifact fields remain open.
-13. C4 live uptake: TreeCalc now carries
+10. C1/C2 landing update: the OxCalc-local `formula_identity.rs`
+    compatibility projection has been removed. `PreparedOxfmlFormula` now
+    carries OxFml `RuntimePreparedFormulaIdentity` from managed prepare, and
+    TreeCalc/runner traces surface `prepared_formula_key`,
+    `plan_template_key`, `hole_binding_fingerprint`, bridge metadata
+    versions, and formal-reference identity from OxFml runtime fields.
+11. C3 landing update: the former OxCalc-local hole taxonomy is no longer an
+    active runtime identity source. Template holes and hole-binding counts are
+    copied only when OxFml exposes them; missing rich/sparse hole detail is an
+    OxFml/OxFunc successor surface rather than an OxCalc projection.
+12. B5/B7 formal-input landing update: TreeCalc scalar formula inputs now flow
+    through OxFml `RuntimeFormalInputBinding` records. Prepare-time records
+    bind source-visible descriptors; invoke-time records include the matching
+    `RuntimeFormalReference` handle when OxFml exposed one. The production
+    invocation path no longer creates synthetic A1 `cell_values` or
+    defined-name reference fixtures.
+13. C5 landing update: OxCalc emits plan-template reuse diagnostics only when
+    OxFml runtime identity reports the same `plan_template_key` at multiple
+    call sites. The current two-`SUM` test verifies distinct published values
+    and no synthesized OxCalc reuse count when OxFml keys differ.
+14. C4 live uptake: TreeCalc now carries
     `arg_preparation_profile_version` in `LocalTreeCalcEnvironmentContext`,
     threads it into OxFml `StructureContextVersion`, and derives
     `StructuralRebindRequired` seeds when the previous and next profile
@@ -633,11 +630,14 @@ The W050 work, organised by lane.
 1. Delete the OxCalc-local `TreeFormula` AST variants (`Literal`, `Binary`, `FunctionCall`, `Reference`) and all helpers that construct them. A3 has moved the remaining legacy construction into `FixtureFormulaAst`; that quarantine must not re-enter production inputs.
 2. Delete `translate_formula`, `TranslationState`, and all production source-text rendering paths in OxCalc. A3 replaced the TreeCalc production preparation path with opaque source plus explicit carrier projection; fixture rendering remains quarantined.
 3. Delete `synthetic_cell_target`, `synthetic_cell_row`, and the synthetic A1 cell-fixture flattening.
-   A6 finds only the current V1 compatibility uses in `treecalc.rs`; deletion
-   remains blocked on CALC-002/H1 canonical reference/input transport.
-4. Delete `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, `MinimalBindingWorld`, `MinimalTypedQueryFacts`, `MinimalRuntimeCatalogFacts` once the session API covers the same intake surface.
+   `synthetic_cell_target` and TreeCalc synthetic A1 input flattening have
+   been removed from the production invocation path. `synthetic_cell_row`
+   remains as caller-position plumbing while the OxFml runtime takes
+   row/column locus coordinates.
+4. Delete or quarantine `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, `MinimalBindingWorld`, `MinimalTypedQueryFacts`, `MinimalRuntimeCatalogFacts` once the session API covers the same production intake surface.
    A6 classifies these hits as upstream-host fixture/scaffolding residue, not
-   the TreeCalc production invocation path.
+   the TreeCalc production invocation path; W050 accepts fixture/test
+   quarantine as satisfying the production-removal gate.
 5. Delete any remaining per-formula `RuntimeEnvironment::new().execute(...)` production pattern. B7 removed the `evaluate_via_oxfml` / packet-builder bridge from `treecalc.rs`; remaining packet surfaces must stay fixture-only until deleted or quarantined by later Lane A/B cleanup.
 6. Convert or quarantine W047/W048 CTRO and cycle fixtures that use `TreeFormula` structured carriers.
    A2 tags `tc_w048_excel_iter_two_node_order_001` as representative
@@ -838,8 +838,8 @@ W050 may close only when **all** of the following hold. The gate is comprehensiv
 **Lane A — Removal.**
 
 1. The OxCalc-local `TreeFormula` AST is deleted or quarantined so no production-path semantic expression constructor remains.
-2. `translate_formula`, `TranslationState`, `synthetic_cell_target`, `synthetic_cell_row` are deleted from production paths; current A3 leaves only the synthetic A1 compatibility helpers needed by B7/CALC-002.
-3. `MinimalUpstreamHostPacket` and the `Minimal*` family are deleted; the session API covers the same intake surface.
+2. `translate_formula`, `TranslationState`, `synthetic_cell_target`, and synthetic A1 input flattening are deleted from production paths. `synthetic_cell_row` may remain only as caller-locus plumbing while the OxFml runtime surface takes row/column coordinates.
+3. `MinimalUpstreamHostPacket` and the `Minimal*` family are deleted from production paths or quarantined as fixture/test scaffolding; the session API covers the production intake surface.
 4. Per-formula `RuntimeEnvironment::new().execute(...)` patterns are deleted from OxCalc production code.
 5. W047/W048 CTRO/cycle fixtures use either OxFml-authored formula sources or explicitly-opaque/quarantined migration adapters; no `TreeFormula::{Literal,Binary,FunctionCall}` references remain in fixture corpora.
 
@@ -893,37 +893,45 @@ W050 may close only when **all** of the following hold. The gate is comprehensiv
 
 ## 9. Three-Axis Status
 
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - Lane A — removal of wrong-shape OxCalc code (per §3.B and §7 items 1–9);
-  - Lane C — plan-template identity layer (per §3.C, §3.D and §7 items 17–23);
-  - Lane D — external invalidation discipline (per §3.E and §7 items 24–28);
-  - Lane E — correctness floor (per §3.G and §7 items 29–32);
-  - Lane F — performance / observability layer (per §3.H and §7 items 33–36);
-  - Lane G — forward-direction rich-value scaffolding (per §3.F and §7 items 37–40);
-  - cross-cutting documentation, handoffs, fixtures (per §7 items 41–44).
+- scope_completeness: `scope_complete`
+- target_completeness: `target_complete`
+- integration_completeness: `integrated`
+- open_lanes: none inside W050 production scope; successor work is routed below.
 
-Lane B status note: the local OxCalc seam bead set through B9 now has
-evidence for the first-call protocol, Calculation Repository, public OxFml
-session driver, six-phase wave lifecycle, bind-output reference handles,
-TreeCalc session invocation, opaque result coverage, session corpus packet,
-and OxFml V1 compatibility ledger. Remaining canonical reference/input,
-managed-result, plan-template, and structured replay/correlation fields are
-carried by the cross-cutting `HANDOFF_CALC_002` lane rather than by private
-OxFml adapters in OxCalc.
+W050 landing summary:
+
+1. OxCalc removed the local prepared-callable compatibility projection and
+   consumes OxFml `RuntimePreparedFormulaIdentity` /
+   `RuntimePreparedFormulaPackage` surfaces.
+2. TreeCalc production invocation uses OxFml formal input bindings instead of
+   synthetic A1 `cell_values` / defined-name reference fixtures.
+3. OxFml/OxFunc bridge metadata versions are threaded through runtime identity
+   and invalidation keys.
+4. Subscription registry, topic envelopes, correctness-floor selectors,
+   derivation trace, per-edge value cache, push/pull scheduling evidence, and
+   capability trace columns have checked OxCalc evidence.
+5. Dynamic arrays and returned rich surfaces remain opaque OxFml/OxFunc result
+   surfaces to OxCalc.
+
+Post-closure routing note: formalization-shaped remainder from W050 belongs
+to W049's post-rework formalization intake: terminology, invariants,
+refinement/equivalence, proof-carrying/checker sidecars, and bounded-memory
+properties after W054. Rich/virtual data ideas beyond Excel-compatible
+sheet/reference behavior are parked in
+`docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+and are not W050 successor worksets.
 
 Lane A status note: A6 records the removal search gate in
 `docs/test-runs/core-engine/w050-a6-lane-a-search-gate-001/SEARCH_GATE_SUMMARY.md`.
 The retired production names are absent from Rust production/test search
 scope, and active showcase wording no longer carries the targeted local
-formula-semantics claims. Aggregate Lane A remains partial because current V1
-synthetic A1 compatibility helpers, Minimal* upstream-host fixture
-scaffolding, and legacy structured fixture/scale quarantine surfaces still
-exist until CALC-002 and fixture-migration work provide replacement evidence.
+formula-semantics claims. `Minimal*` upstream-host packet code and legacy
+structured fixture/scale quarantine surfaces remain fixture/test scaffolding
+only; they are not production formula-authority surfaces and are not W050
+successor blockers.
 
-W050 is `open_planning` at lane level; individual lanes may advance independently under the bead structure in §6. The aggregate workset remains `open_planning` until all lanes meet their share of the exit gate in §8.
+W050 bead state is expected to close after the final pre-closure audit bead
+records the validation commands and three-axis report.
 
 ## 10. Ideal-Design Target — Unified Recalc Session and Prepared-Callable Model
 
@@ -1085,7 +1093,7 @@ The same wiring applies to host-supplied invalidation hooks (custom UDFs that si
 The audit table in §4 lists rework targets at the surface level. This subsection states what is removed outright when the §10 design lands:
 
 - The OxCalc-local `TreeFormula` AST (`Literal`, `Binary`, `FunctionCall`, `Reference`) and every helper that constructs Excel source text from it.
-- `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, `MinimalBindingWorld`, the synthetic `A1` cell-fixture flattening, and the `synthetic_cell_target`/`synthetic_cell_row` helpers.
+- `MinimalUpstreamHostPacket`, `MinimalFormulaSlotFacts`, and `MinimalBindingWorld` from production formula invocation. They may survive as fixture/test scaffolding while upstream-host corpus tests still exercise the old packet shape. The synthetic `A1` cell-fixture flattening and the `synthetic_cell_target` helper are removed from the TreeCalc production invocation path. `synthetic_cell_row` is not dependency/input identity and survives only as caller-locus plumbing while needed by the runtime facade.
 - `translate_formula` and `TranslationState` — they exist only to lower the local AST to source text for OxFml.
 - The per-formula `RuntimeEnvironment::new().execute(...)` pattern in `evaluate_via_oxfml`. Invocation goes through the session.
 - `formula_allows_lazy_residual_publication` — a one-off special case for `IF`; under the unified model this is just how the lazy control form's compiled plan already behaves.

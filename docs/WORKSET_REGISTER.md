@@ -66,7 +66,7 @@ The active go-forward execution sequence over the calculation-model rework and i
 
 Rationale:
 1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
-2. **W051** lands sparse range readers as the first concrete rich-value class, so the artefact set is complete before memory discipline is specified over it.
+2. **W051** lands Excel-scope sparse range readers and defined-entry semantics for large sheet ranges, so the artefact set needed by ordinary worksheet calculation is complete before memory discipline is specified over it.
 3. **W054** specifies bounded-memory and pinned-epoch GC over the now-complete artefact set while the engine is still Stage-1 sequential — the simpler setting in which to pin deterministic eviction order as a replay-conformance obligation.
 4. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
 5. **W052** adds the sensitivity / derivative capability lane on top of the formalized core.
@@ -87,7 +87,7 @@ Carry-forward items (NOT lost — already wired into W049's register entry, repe
 - The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into the W049 epic at activation; the W046 closure docs are re-pointed at that time. This is the one concrete bead-level carry-forward from the retired set — it is now recorded as intended W049 scope in **W049 §2.8** (with the authoritative obligation table and the no-silent-loss rule), and is also referenced in the W049 register entry (`depends_on` / `closure_condition`). It must survive W049 activation.
 - The W046 failure-mode punch list (avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, terminology drift) is inherited by W049 per W049's purpose.
 
-After this pass the only `execution_target` workset is **W050**; the forward-pending set is the §5.1 go-forward sequence (`W050 -> W051 -> W054 -> W049 -> W052 -> W053`). The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
+After W050 closure, there is no active `execution_target` until W051 activation creates its epic/bead path. The forward-pending set remains the §5.1 go-forward sequence (`W051 -> W054 -> W049 -> W052 -> W053`), with W050 now serving as the reached formula-authority substrate. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
 
 ## 6. Active Workset Sequence
 
@@ -509,7 +509,7 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 
 ### W050 Calculation Model Rework — Unified Recalc Session, Plan Templates, And Engine Improvement Moves
 1. purpose:
-   the umbrella workset for bringing the OxCalc + OxFml + LET/LAMBDA calculation model into alignment with current best thinking. It is intentionally large and disruptive, planned and executed in seven lanes (A–G). It (a) removes the OxCalc-local formula AST and source-construction surfaces, so OxFml is the first and only parser; (b) replaces the per-formula host-packet seam with a session-shaped OxCalc/OxFml protocol built on prepared callables (`ensure_prepared`/`invoke`, a six-phase wave lifecycle, Calculation Repository + Recalc Session + Coordinator); (c) introduces layered identity (`shape_key`/`dispatch_skeleton_key`/`plan_template_key`) so structurally equivalent formulas share compiled plan templates; (d) admits the hole-type taxonomy (`ValueHole`, `RefOrValueHole`, `CallableHole`, `ShapeSensitiveHole`, `SparseRangeHole`, `RichValueHole`) under a wide-by-default widening policy so sparse and rich values land additively without retrofit; (e) wires external/RTD invalidation as a first-class Subscription Registry + Topic Envelope discipline governed by `StreamSemanticsVersion`; (f) ships the correctness-floor decisions — `NumericalReductionPolicy` and `ErrorAlgebra` — as profile-governed semantic state; (g) lays identity scaffolding for differential evaluation, derivation trace, and push/pull duality. LET/LAMBDA become the general case rather than a special form: every cell formula is a prepared callable, and the recalc engine is the same machinery lambda invocation already uses.
+   the umbrella workset for bringing the OxCalc + OxFml + LET/LAMBDA calculation model into alignment with current best thinking. It reached the production formula-authority gate by removing OxCalc-local prepared-callable compatibility projections, replacing synthetic A1 input transport with OxFml formal input bindings, consuming OxFml runtime prepared-package/template-hole/formal-reference identity, and routing non-W050 successor work to W049/W051/W054/W052. LET/LAMBDA are no longer a special side path for this boundary: ordinary cell formulas now use the same session/prepared-package shape at the OxCalc/OxFml seam.
 2. depends_on:
    `W048`, `OxFml formula/evaluator seam`
 3. parent_doctrine_and_spec_surfaces:
@@ -517,18 +517,18 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 4. upstream_dependencies:
    `OxFml` — the session-shaped consumer surface expressed over `oxfml_core::consumer::runtime` without reopening the frozen `OxFml_V1` consumer-facade contract; plan-template identity surfacing (`shape_key`/`dispatch_skeleton_key`/`plan_template_key`); `NumericalReductionPolicy`/`ErrorAlgebra` threading through semantic plan and evaluation context (OxFunc cooperation required for kernel-side reduction discipline); capability-set hole admission. Three cross-repo handoff packets drive these: `HANDOFF_CALC_002` (recalc session + plan templates), `HANDOFF_CALC_003` (numerical reduction + error algebra), `HANDOFF_CALC_004` (capability-set hole admission). Returned value/effect/dependency surfaces remain opaque to OxCalc, especially dynamic arrays/spills and volatile functions.
 5. closure_condition:
-   the comprehensive exit gate in `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §8 — 30 clauses across Lane A (removal of wrong-shape code), Lane B (new seam implementation), Lane C (plan-template identity layer), Lane D (external invalidation discipline), Lane E (correctness floor), Lane F (performance/observability layer), Lane G (forward-direction rich-value scaffolding), and cross-cutting documentation/handoffs/fixtures. The aggregate workset stays `open_planning` until every lane meets its share of the gate; individual lanes may advance independently under the bead structure.
+   reached-gate closure for the W050 production scope: runtime seam, prepared-package identity, formal input transport, bridge metadata, subscription/topic envelopes, correctness-floor selectors, derivation trace, value-cache/scheduling evidence, and successor routing are validated. Fixture-only upstream-host scaffolding and legacy fixture/scale quarantine surfaces remain test support, not production formula-authority debt.
 6. initial_epic_lanes:
    parent epic `calc-cwpl`; seven lanes — Lane A removal (`calc-cwpl.A1`–`.A4`), Lane B new seam (`calc-cwpl.B1`–`.B6`), Lane C plan-template identity (`calc-cwpl.C1`–`.C4`), Lane D external invalidation (`calc-cwpl.D1`–`.D4`), Lane E correctness floor (`calc-cwpl.E1`–`.E3`), Lane F performance/observability (`calc-cwpl.F1`–`.F3`), Lane G forward scaffolding (`calc-cwpl.G1`–`.G3`); cross-repo handoff beads `calc-cwpl.H1`–`.H3`. Predecessor beads `calc-cwpl.1`–`.6` are mapped into the lane structure (W050 §6). Phasing: Wave 1 lands Lanes B + C concurrently with A following; Wave 2 lands Lanes D + E in parallel; Wave 3 lands Lane F; Lane G lands cheapest alongside Lane C.
 7. rollout_mode:
-   `execution_target` (expanded into `.beads/` on 2026-05-14 with parent
+   `reached_gate_pending_final_bead_sync` (expanded into `.beads/` on 2026-05-14 with parent
    epic `calc-cwpl`, lane epics `calc-cwpl.8` through `calc-cwpl.16`, and
-   canonical lane refs carried as `br external_ref` values; live readiness,
-   blockers, and leaf status remain owned by `.beads/`).
+   canonical lane refs carried as `br external_ref` values; final bead sync
+   closes the W050 parent/epic bookkeeping after the pre-closure audit record).
 
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:
-   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, and W054 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-callable / plan-template model with sparse-reader and bounded-memory discipline — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 would be wasted work.
+   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, and W054 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-formula package / plan-template / formal-input model with Excel-scope sparse-reader and bounded-memory discipline — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 would be wasted work.
 2. depends_on:
    `W047`, `W048`, `W050` (sequenced after `W051` and `W054` per §5.1)
 3. parent_doctrine_and_spec_surfaces:
@@ -544,19 +544,19 @@ After this pass the only `execution_target` workset is **W050**; the forward-pen
 
 ### W051 Sparse Range Readers And Defined-Entry Semantics
 1. purpose:
-   the first concrete rich-value class after W050 admits `SparseRangeHole` and the `RichValueHole` capability vocabulary. Implements `SparseRangeReader` — `declared_extent`, `defined_cardinality`, `defined_iter`, `read_at(coord) -> Defined(EvalValue) | Blank`, `contains(coord)` — and activates the kernel-side `SparseIteratorOk` argument-preparation profile so aggregation kernels (`SUM`, `COUNT`, `AVERAGE`, `MIN`, `MAX`, criteria family) consume whole-column references without dense materialisation. The cell-value model is two-state: `Defined` covers all assigned values including empty-string `""`; `Blank` covers both never-assigned and assigned-then-cleared cells, which Excel treats identically at the cell-value level (`ISBLANK`, `COUNTBLANK`, `COUNTA`, arithmetic coercion, equality all agree). Sheet-structural state that persists across clear operations — used range, cell formatting, conditional-format ranges, data-validation rules, comments — is owned by other Repository surfaces, not by the reader.
+   Excel-scope sparse range readers and defined-entry semantics on top of the closed W050 formula-authority seam. Implements `SparseRangeReader` — `declared_extent`, `defined_cardinality`, `defined_iter`, `read_at(coord) -> Defined(EvalValue) | Blank`, `contains(coord)` — and activates the kernel-side sparse argument-preparation profile, currently reserved upstream as `SparseRangeAccepted(extent_class, cardinality_class)` / `SparseIteratorOk`-equivalent metadata. Recommended first function group is `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK`, before widening to `AVERAGE`, `MIN`, `MAX`, and criteria-family functions. The cell-value model is two-state: `Defined` covers all assigned values including empty-string `""`; `Blank` covers both never-assigned and assigned-then-cleared cells, which Excel treats identically at the cell-value level. Sheet-structural state that persists across clear operations — used range, cell formatting, conditional-format ranges, data-validation rules, comments — belongs in sparse sheet structural management and may back efficient range bounds, but it is not part of the formula value-level `SparseRangeReader.read_at` state. Rich data types beyond Excel-compatible sheet/reference semantics are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`, not in W051.
 2. depends_on:
-   `W050` (Lane C hole-type taxonomy, Lane G capability vocabulary)
+   `W050` (runtime seam, formal input/reference transport, prepared-package identity, and sparse range identity reservation)
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §10.7, §11.2
+   `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
 4. upstream_dependencies:
-   `OxFunc` is the primary owner of the `SparseIteratorOk` argument-preparation profile and the aggregation-kernel updates; `OxFml` threads the sparse binding through semantic plan and evaluation context.
+   `OxFunc` owns sparse argument-preparation metadata/profile and aggregation-kernel consumption. `OxFml` owns sparse binding through semantic plan, runtime prepared identity, and replay projection. `OxCalc` owns the concrete backing reader/adapter.
 5. closure_condition:
-   not yet specified — pre-planning only. Will be specified after W050 lands the hole-type taxonomy and capability vocabulary.
+   not yet specified. Activation gate: agree the cross-repo reader/API contract, first function group, and replay artifact shape before creating the W051 epic/bead path.
 6. initial_epic_lanes:
-   pre-planning background only.
+   activation review only: contract slice, OxCalc backing reader, OxFunc sparse kernel admission, OxFml sparse runtime/replay threading, integration evidence.
 7. rollout_mode:
-   `pre_planning` (not yet `execution_target`).
+   `activation_review_ready` (not yet `execution_target`).
 
 ### W052 Sensitivity And Derivative Seam
 1. purpose:

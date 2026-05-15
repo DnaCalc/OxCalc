@@ -3,43 +3,41 @@
 This file is a compact orientation surface. It is not live execution state; `.beads/` owns that. Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
-1. `W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`
-2. Current route: re-establish the OxCalc/OxFml formula authority boundary before further TreeCalc showcase or formula-surface expansion.
-3. Predecessors: W047 CTRO implementation-first work through `calc-aylq`; W048 circular-reference closure under single-host Excel scope.
-4. W049 route remains available for successor formalization/deepening, but W050 should clarify formula authority first where formula semantics are in question.
+1. `W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`
+2. Current route: keep W050 as the reached-gate formula-authority substrate, then plan Excel-scope sparse range readers before bounded-memory and formalization work.
+3. Predecessors: W050 formula-authority/session/prepared-package rework, W047 CTRO implementation-first work, and W048 circular-reference closure under single-host Excel scope.
+4. W049 receives post-W050 formalization intake; non-Excel rich/virtual data ideas are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`.
 
 ## Active Aim
-W048 now owns the circular dependency calculation target end to end. The scope was reopened because the prior run closed on a conservative non-iterative slice and deferred Excel-match iterative behavior. Corrected active aim:
-1. repair W048 scope/status surfaces and mark the prior closure audit superseded,
-2. replace W048 Python tooling with PowerShell, Rust, or C#,
-3. collect reproducible, bit-exact Excel circular-reference observations including iterative calculation,
-4. materialize dependency graphs explicitly across structural, published-effective, and candidate-effective layers,
-5. make cycle-root/order, initial-value, terminal, publication, release/re-entry, and calculation-chain choices explicit,
-6. implement Excel-match iterative circular-reference behavior in TraceCalc,
-7. implement the same behavior in TreeCalc optimized/core,
-8. develop and execute the circular-reference conformance corpus against Excel, TraceCalc, and TreeCalc,
-9. introduce W048-owned formal definitions, proof/model artifacts, and checker targets using non-Python tooling,
-10. capture innovation opportunities only as explicit opt-in profiles after the Excel-match default is separated.
+The active calculation-model line has moved from W050 execution to successor planning. Current active aim:
+1. keep W050 closure/status surfaces aligned with the landed production seam,
+2. plan W051 as Excel-compatible sparse range readers and defined-entry semantics, not generic rich data,
+3. keep W054 bounded-memory and pinned-epoch GC sequenced after the W051 artifact set,
+4. route post-W050 formalization to W049,
+5. route sensitivity/derivative behavior to W052 only where it maps to recognizable spreadsheet behavior,
+6. keep non-Excel virtual/rich data ideas out of the workset queue until a product decision promotes them.
 
 Current next engineering move:
 
-1. Activate W050 child beads for code inventory and docs/showcase wording repair.
-2. Audit `TreeFormula`, `TreeReference`, and the retired pre-W050 `evaluate_via_oxfml` bridge to distinguish source carriage from formula semantics.
-3. Remove or quarantine tests/docs that imply OxCalc locally computes dynamic arrays or spreadsheet functions.
+1. Use the W051 activation review to lock the sparse reader API, first function group, and replay artifact shape across OxCalc/OxFml/OxFunc.
+2. Create the W051 epic/bead path only after those intake points are explicit.
+3. Keep fixture-only reader scaffolding clearly separated from production sparse range authority.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`
 2. `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`
 3. `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`
-4. `docs/spec/core-engine/w048-cycles/`
-5. `docs/spec/core-engine/w047-ctro/`
-6. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
-7. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
-8. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
-9. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-10. `formal/tla/` for current engine-state models
-11. `formal/lean/` for active proof/model files
-12. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
+4. `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`
+5. `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
+6. `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`
+7. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+8. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+9. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
+10. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
+11. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+12. `formal/tla/` for current engine-state models
+13. `formal/lean/` for active proof/model files
+14. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
 
 ## Archived Predecessor Material
 W038-W045 packet docs, workset docs, late row-classifier Lean files, generated evidence roots, and superseded showcase material now live under top-level `archive/`.

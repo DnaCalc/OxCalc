@@ -40,7 +40,7 @@ pub enum OxfmlArtifactKind {
     RedView,
     BoundFormula,
     SemanticPlan,
-    PreparedCallable,
+    PreparedFormula,
     PlanTemplate,
 }
 
@@ -89,7 +89,7 @@ pub enum SubscriptionLifecycleReason {
     NameWorldChanged,
     StructureContextChanged,
     FormulaRemoved,
-    PreparedCallableReplaced,
+    PreparedFormulaReplaced,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -698,7 +698,7 @@ fn formula_slot_subscription_invalidation_reason(
     next: &FormulaSlotRecord,
 ) -> Option<SubscriptionLifecycleReason> {
     if existing.source_identity.formula_stable_id != next.source_identity.formula_stable_id {
-        return Some(SubscriptionLifecycleReason::PreparedCallableReplaced);
+        return Some(SubscriptionLifecycleReason::PreparedFormulaReplaced);
     }
     if existing.source_identity.formula_text_version != next.source_identity.formula_text_version
         || existing.source_identity.formula_token != next.source_identity.formula_token
@@ -710,7 +710,7 @@ fn formula_slot_subscription_invalidation_reason(
         return Some(SubscriptionLifecycleReason::NameWorldChanged);
     }
     if existing.formula_artifact_id != next.formula_artifact_id {
-        return Some(SubscriptionLifecycleReason::PreparedCallableReplaced);
+        return Some(SubscriptionLifecycleReason::PreparedFormulaReplaced);
     }
     None
 }

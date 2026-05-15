@@ -15,20 +15,12 @@
         "formula_stable_id": "formula:b",
         "hole_bindings": [
           {
-            "hole_id": "hole:0",
-            "payload": "helper_parameter:base"
+            "hole_id": "runtime_hole_binding:0",
+            "payload": "d4b713ffa16c52a4"
           },
           {
-            "hole_id": "hole:1",
-            "payload": "number:2"
-          },
-          {
-            "hole_id": "hole:2",
-            "payload": "reference:FunctionCall { function_name: \"LAMBDA\", args: [HelperParameterName(\"delta\"), Binary { op: Add, left: Reference(Atom(Name(NameRef { name: \"base\", workbook_id: \"book:default\", sheet_id: \"sheet:default\", kind: HelperLocal, caller_context_dependent: false }))), right: Reference(Atom(Name(NameRef { name: \"delta\", workbook_id: \"book:default\", sheet_id: \"sheet:default\", kind: HelperLocal, caller_context_dependent: false }))) }] }"
-          },
-          {
-            "hole_id": "hole:3",
-            "payload": "number:5"
+            "hole_id": "runtime_hole_binding:1",
+            "payload": "d4b713ffa16c52a4"
           }
         ],
         "kernel_returned_value": "7",
@@ -157,43 +149,31 @@
                 ]
               }
             ],
-            "function_id": "oxcalc.prepared_callable.invoke.v1",
+            "function_id": "oxfml.prepared_formula.invoke.v1",
             "function_name": "formula:formula:b",
-            "invocation_kind": "oxcalc_prepared_callable_invoke",
+            "invocation_kind": "oxfml_prepared_formula_invoke",
             "invocation_ordinal": 0,
             "kernel_returned_value": "7",
             "prepared_arguments": []
           }
         ],
         "template_selection": {
-          "dispatch_skeleton_key": "dispatch_skeleton:v1:a016814ee141049b",
-          "plan_template_key": "plan_template:v1:7428465bfa876479",
-          "prepared_callable_key": "prepared_callable:v1:6901444b9fa78d0d",
-          "shape_key": "shape:v1:b5f5a85ec96fc820",
+          "dispatch_skeleton_key": "dc2506d6ce796449",
+          "plan_template_key": "ec553732b99b6eeb",
+          "prepared_formula_key": "76337f86e3d95349",
+          "shape_key": "shape_key:unavailable",
           "template_holes": [
             {
-              "hole_id": "hole:0",
-              "kind": "ValueHole(AnyValue)",
+              "hole_id": "hole:reference:0",
+              "kind": "RefOrValueHole:direct",
               "ordinal": 0,
-              "path": "root.arg0"
+              "path": "name:base"
             },
             {
-              "hole_id": "hole:1",
-              "kind": "ValueHole(AnyValue)",
+              "hole_id": "hole:reference:1",
+              "kind": "RefOrValueHole:direct",
               "ordinal": 1,
-              "path": "root.arg1"
-            },
-            {
-              "hole_id": "hole:2",
-              "kind": "CallableHole(AnyCallable)",
-              "ordinal": 2,
-              "path": "root.arg2.callee"
-            },
-            {
-              "hole_id": "hole:3",
-              "kind": "ValueHole(AnyValue)",
-              "ordinal": 3,
-              "path": "root.arg2.arg0"
+              "path": "name:delta"
             }
           ]
         },

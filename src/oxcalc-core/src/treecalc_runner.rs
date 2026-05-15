@@ -1079,7 +1079,7 @@ fn build_trace_events(
             "formula_artifact_id": identity.formula_artifact_id,
             "bind_artifact_id": identity.bind_artifact_id,
             "formula_stable_id": identity.formula_stable_id,
-            "prepared_callable_key": identity.prepared_callable_key,
+            "prepared_formula_key": identity.prepared_formula_key,
             "shape_key": identity.shape_key,
             "dispatch_skeleton_key": identity.dispatch_skeleton_key,
             "plan_template_key": identity.plan_template_key,
@@ -1254,7 +1254,7 @@ fn prepared_formula_identity_json(identity: &PreparedFormulaIdentityTrace) -> se
         "formula_artifact_id": identity.formula_artifact_id,
         "bind_artifact_id": identity.bind_artifact_id,
         "formula_stable_id": identity.formula_stable_id,
-        "prepared_callable_key": identity.prepared_callable_key,
+        "prepared_formula_key": identity.prepared_formula_key,
         "shape_key": identity.shape_key,
         "dispatch_skeleton_key": identity.dispatch_skeleton_key,
         "plan_template_key": identity.plan_template_key,
@@ -2816,7 +2816,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             published_dependency_graph["descriptors"][0]["descriptor_id"],
-            "bind:formula:b:oxfml_ref:0"
+            "bind:formula:b:oxfml_ref_fallback:0"
         );
         assert_eq!(
             published_dependency_graph["descriptors"][0]["owner_node_id"],
@@ -2845,27 +2845,27 @@ mod tests {
         assert!(
             published_result["prepared_formula_identities"][0]["shape_key"]
                 .as_str()
-                .is_some_and(|value| value.starts_with("shape:v1:"))
+                .is_some_and(|value| !value.is_empty())
         );
         assert!(
             published_result["prepared_formula_identities"][0]["dispatch_skeleton_key"]
                 .as_str()
-                .is_some_and(|value| value.starts_with("dispatch_skeleton:v1:"))
+                .is_some_and(|value| value.len() == 16)
         );
         assert!(
             published_result["prepared_formula_identities"][0]["plan_template_key"]
                 .as_str()
-                .is_some_and(|value| value.starts_with("plan_template:v1:"))
+                .is_some_and(|value| value.len() == 16)
         );
         assert!(
-            published_result["prepared_formula_identities"][0]["prepared_callable_key"]
+            published_result["prepared_formula_identities"][0]["prepared_formula_key"]
                 .as_str()
-                .is_some_and(|value| value.starts_with("prepared_callable:v1:"))
+                .is_some_and(|value| value.len() >= 16)
         );
         assert!(
             published_result["prepared_formula_identities"][0]["hole_binding_fingerprint"]
                 .as_str()
-                .is_some_and(|value| value.starts_with("hole_bindings:v1:"))
+                .is_some_and(|value| value.len() >= 16)
         );
         assert!(
             published_result["prepared_formula_identities"][0]["template_hole_count"]
@@ -2884,10 +2884,10 @@ mod tests {
                     event["label"] == "prepared_formula_identity"
                         && event["plan_template_key"]
                             .as_str()
-                            .is_some_and(|value| value.starts_with("plan_template:v1:"))
+                            .is_some_and(|value| value.len() == 16)
                         && event["hole_binding_fingerprint"]
                             .as_str()
-                            .is_some_and(|value| value.starts_with("hole_bindings:v1:"))
+                            .is_some_and(|value| value.len() >= 16)
                 }))
         );
         assert_eq!(

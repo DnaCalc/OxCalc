@@ -13,7 +13,6 @@ pub mod correctness_floor;
 pub mod dependency;
 pub mod error_algebra;
 pub mod formula;
-pub mod formula_identity;
 pub mod numerical_reduction;
 pub mod oxfml_session;
 pub mod recalc;

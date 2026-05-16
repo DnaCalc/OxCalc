@@ -11,8 +11,8 @@ use thiserror::Error;
 
 use crate::upstream_host::{
     MinimalAddressMode, MinimalFormulaSlotFacts, MinimalHostInfoMode, MinimalLocaleContextKind,
-    MinimalRtdMode, MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts, MinimalUpstreamHostPacket,
-    UpstreamDefinedNameBinding, UpstreamHostAnchor,
+    MinimalRandomProviderKind, MinimalRtdMode, MinimalRuntimeCatalogFacts, MinimalTypedQueryFacts,
+    MinimalUpstreamHostPacket, UpstreamDefinedNameBinding, UpstreamHostAnchor,
 };
 use oxfml_core::binding::NameKind;
 use oxfml_core::interface::{
@@ -198,7 +198,7 @@ pub struct UpstreamHostFixtureTypedQueryFacts {
     #[serde(default)]
     pub locale_context_kind: String,
     pub now_serial: Option<f64>,
-    pub random_value: Option<f64>,
+    pub random_provider: Option<String>,
     #[serde(default)]
     pub registered_external_present: bool,
 }
@@ -382,6 +382,8 @@ pub enum UpstreamHostFixtureError {
     UnsupportedFormulaChannelKind { kind: String },
     #[error("unsupported locale context kind '{kind}'")]
     UnsupportedLocaleContextKind { kind: String },
+    #[error("unsupported random provider kind '{kind}'")]
+    UnsupportedRandomProviderKind { kind: String },
     #[error("unsupported table region kind '{kind}'")]
     UnsupportedTableRegionKind { kind: String },
     #[error("unsupported evaluation backend '{backend}'")]
@@ -962,7 +964,9 @@ fn build_packet(
                 &case.typed_query_facts.locale_context_kind,
             )?,
             now_serial: case.typed_query_facts.now_serial,
-            random_value: case.typed_query_facts.random_value,
+            random_provider_kind: parse_random_provider_kind(
+                case.typed_query_facts.random_provider.as_deref(),
+            )?,
             registered_external_present: case.typed_query_facts.registered_external_present,
         },
         runtime_catalog: MinimalRuntimeCatalogFacts {
@@ -1029,6 +1033,19 @@ fn parse_locale_context_kind(
         "current_excel_host" => Ok(MinimalLocaleContextKind::CurrentExcelHost),
         _ => Err(UpstreamHostFixtureError::UnsupportedLocaleContextKind {
             kind: kind.to_string(),
+        }),
+    }
+}
+
+fn parse_random_provider_kind(
+    kind: Option<&str>,
+) -> Result<MinimalRandomProviderKind, UpstreamHostFixtureError> {
+    match kind.unwrap_or("disabled") {
+        "" | "disabled" => Ok(MinimalRandomProviderKind::Disabled),
+        "fixed_0_25" => Ok(MinimalRandomProviderKind::Fixed0_25),
+        "fixed_0_5" => Ok(MinimalRandomProviderKind::Fixed0_5),
+        other => Err(UpstreamHostFixtureError::UnsupportedRandomProviderKind {
+            kind: other.to_string(),
         }),
     }
 }

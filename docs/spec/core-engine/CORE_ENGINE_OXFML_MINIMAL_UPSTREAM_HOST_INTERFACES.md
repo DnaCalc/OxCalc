@@ -74,7 +74,7 @@ The first minimal upstream host interface package is:
 2. `rtd_mode`
 3. `locale_context_kind`
 4. optional `now_serial`
-5. optional `random_value`
+5. optional `random_provider_kind`
 6. `registered_external_present`
 
 ### 4.4 Runtime catalog facts

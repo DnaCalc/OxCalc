@@ -22,6 +22,7 @@ use oxfml_core::source::{
     FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
 };
 use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
+use oxfunc_core::functions::rand_fn::RandomProvider;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::locale_format::LocaleFormatContext;
@@ -99,13 +100,21 @@ pub enum MinimalLocaleContextKind {
     CurrentExcelHost,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MinimalRandomProviderKind {
+    #[default]
+    Disabled,
+    Fixed0_25,
+    Fixed0_5,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct MinimalTypedQueryFacts {
     pub host_info_mode: MinimalHostInfoMode,
     pub rtd_mode: MinimalRtdMode,
     pub locale_context_kind: MinimalLocaleContextKind,
     pub now_serial: Option<f64>,
-    pub random_value: Option<f64>,
+    pub random_provider_kind: MinimalRandomProviderKind,
     pub registered_external_present: bool,
 }
 
@@ -116,11 +125,24 @@ impl Default for MinimalTypedQueryFacts {
             rtd_mode: MinimalRtdMode::Disabled,
             locale_context_kind: MinimalLocaleContextKind::Disabled,
             now_serial: None,
-            random_value: None,
+            random_provider_kind: MinimalRandomProviderKind::Disabled,
             registered_external_present: false,
         }
     }
 }
+
+struct FixedRandomProvider {
+    value: f64,
+}
+
+impl RandomProvider for FixedRandomProvider {
+    fn random_unit(&self) -> f64 {
+        self.value
+    }
+}
+
+static FIXED_RANDOM_PROVIDER_025: FixedRandomProvider = FixedRandomProvider { value: 0.25 };
+static FIXED_RANDOM_PROVIDER_05: FixedRandomProvider = FixedRandomProvider { value: 0.5 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MinimalRuntimeCatalogFacts {
@@ -233,6 +255,15 @@ impl MinimalUpstreamHostPacket {
             mode: self.typed_query_facts.rtd_mode.clone(),
         };
         let locale_ctx = locale_context(self.typed_query_facts.locale_context_kind);
+        let random_provider = match self.typed_query_facts.random_provider_kind {
+            MinimalRandomProviderKind::Disabled => None,
+            MinimalRandomProviderKind::Fixed0_25 => {
+                Some(&FIXED_RANDOM_PROVIDER_025 as &dyn RandomProvider)
+            }
+            MinimalRandomProviderKind::Fixed0_5 => {
+                Some(&FIXED_RANDOM_PROVIDER_05 as &dyn RandomProvider)
+            }
+        };
         let query_bundle = TypedContextQueryBundle::new(
             (!matches!(
                 self.typed_query_facts.host_info_mode,
@@ -243,7 +274,7 @@ impl MinimalUpstreamHostPacket {
                 .then_some(&rtd_provider as &dyn RtdProvider),
             locale_ctx.as_ref(),
             self.typed_query_facts.now_serial,
-            self.typed_query_facts.random_value,
+            random_provider,
         );
 
         let mut request =
@@ -529,7 +560,7 @@ mod tests {
         };
         packet.typed_query_facts.locale_context_kind = MinimalLocaleContextKind::CurrentExcelHost;
         packet.typed_query_facts.now_serial = Some(46000.0);
-        packet.typed_query_facts.random_value = Some(0.25);
+        packet.typed_query_facts.random_provider_kind = MinimalRandomProviderKind::Fixed0_25;
         packet.typed_query_facts.registered_external_present = true;
 
         let output = packet.recalc(EvaluationBackend::OxFuncBacked).unwrap();
@@ -560,7 +591,7 @@ mod tests {
             output
                 .typed_query_bundle_spec
                 .families
-                .contains(&TypedContextQueryFamily::RandomValue)
+                .contains(&TypedContextQueryFamily::RandomProvider)
         );
         assert!(packet.typed_query_facts.registered_external_present);
     }

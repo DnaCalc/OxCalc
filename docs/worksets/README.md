@@ -63,7 +63,12 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 23. `W047` Calc-Time Rebinding Overlay design sweep,
 24. `W048` circular dependency calculation processing,
 25. `W049` core engine formalization restart after CTRO and cycles,
-26. `W050` OxCalc/OxFml formula authority rework.
+26. `W050` OxCalc/OxFml formula authority rework,
+27. `W051` sparse range readers and defined-entry semantics,
+28. `W052` sensitivity and derivative seam,
+29. `W053` staged concurrency Stage 2,
+30. `W054` bounded-memory and pinned-epoch GC,
+31. `W055` circular references and iterative calculation Excel-match closure.
 
 ## Historical Note
 

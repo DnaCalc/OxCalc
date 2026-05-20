@@ -8,9 +8,10 @@ Worksets remain the scoped planning and provenance units for substantive repo wo
 
 Use these surfaces together:
 
-1. [WORKSET_REGISTER.md](/C:/Work/DnaCalc/OxCalc/docs/WORKSET_REGISTER.md) for ordered workset truth.
-2. [BEADS.md](/C:/Work/DnaCalc/OxCalc/docs/BEADS.md) for the `workset -> epic -> bead` execution method.
-3. `.beads/` for live readiness, in-progress state, blockers, and closure flow.
+1. [SPEC.md](/C:/Work/DnaCalc/OxCalc/docs/SPEC.md) for the spec/design entrypoint.
+2. [WORKSET_REGISTER.md](/C:/Work/DnaCalc/OxCalc/docs/WORKSET_REGISTER.md) for roadmap, large work areas, dependency shape, and coarse history.
+3. `.beads/` for live readiness, in-progress state, blockers, dependencies, and closure flow.
+4. [BEADS.md](/C:/Work/DnaCalc/OxCalc/docs/BEADS.md) as a pocket reference for bead mechanics.
 
 This directory is now a compact index plus the workset files themselves.
 
@@ -32,7 +33,7 @@ Each workset file should still define:
 4. evidence expectations when applicable,
 5. any cross-repo seam or handoff implications.
 
-Execution state should not be maintained here once the workset has been registered and broken into bead-level execution.
+Execution state should not be maintained here once the workset has been registered and broken into bead-level execution. Use these files as provenance packets only when their detail is still useful; prefer distilling durable behavior into the active spec set over adding new per-workset status documents.
 
 ## Current Register-Tracked Line
 

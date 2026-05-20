@@ -1,6 +1,8 @@
 # OxCalc In-Progress Feature Worklist
 
-This file is a compact orientation surface. It is not live execution state; `.beads/` owns that. Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
+This file is a compact feature-orientation surface. It is not live execution state; `.beads/` owns that. It is also not the source for broad product-feature claims; use the active spec, implementation, and evidence surfaces for that.
+
+Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
 1. `W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`

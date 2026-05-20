@@ -4,21 +4,21 @@ Status: `active_register`
 Date: 2026-05-14
 
 ## 1. Purpose
-This is the live ordered workset register for current OxCalc execution.
+This is the living workset register for OxCalc.
 
-It defines the current workset set, dependency order, and intended rollout shape
-for the repo under the lighter bead-structured doctrine.
+It defines large work areas, dependency order, default rollout shape, and coarse work history.
 
 This file is not an execution-status board.
-It owns workset truth, not bead state.
+It owns workset planning truth, not bead state or feature-status claims.
 
 ## 2. Planning-Surface Clarification
-Planning and execution truth in OxCalc is now split as follows:
+Planning and execution truth in OxCalc is split as follows:
 1. [CHARTER.md](../CHARTER.md) owns mission, scope, and completion doctrine.
-2. [OPERATIONS.md](../OPERATIONS.md) owns the operating model and execution rules.
-3. this register owns the ordered workset set and dependency shape.
-4. `.beads/` owns epics, beads, readiness, blockers, in-progress state, and closure.
-5. current spec, seam, replay, oracle, and evidence artifacts remain the supporting truth surfaces for supported claims.
+2. [OPERATIONS.md](../OPERATIONS.md) owns the operating model.
+3. [SPEC.md](SPEC.md) indexes the active spec/design truth.
+4. this register owns the ordered workset set and dependency shape.
+5. `.beads/` owns epics, beads, readiness, blockers, in-progress state, dependencies, and closure.
+6. current spec, seam, replay, oracle, and evidence artifacts support product claims.
 
 Transition note:
 1. `W032` is the doctrine-migration provenance packet for this shift.
@@ -29,13 +29,15 @@ Transition note:
 Use this document as:
 1. the repo-local workset authority,
 2. the source for future `workset -> epic -> bead` rollout,
-3. the current ordered implementation map for active OxCalc work.
+3. the current ordered implementation map for active OxCalc work,
+4. a coarse history of workset-level decisions.
 
 Do not use this document as:
 1. a second blocker tracker,
 2. a substitute for the bead graph,
 3. a reason to keep one status narrative per workset forever,
-4. a duplicate of current seam, runtime, or evidence truth surfaces.
+4. a duplicate of current seam, runtime, or evidence truth surfaces,
+5. the place to answer broad product-feature status questions.
 
 ## 4. Register Contract
 Each workset in this register carries:

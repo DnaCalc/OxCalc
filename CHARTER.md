@@ -43,12 +43,22 @@ Disallowed sources:
 2. reverse engineering of internals,
 3. decompilation/disassembly of Excel internals.
 
-## 6. Definition of Done (Lane)
-A coordinator policy/spec change is done only when:
-1. spec text and realization notes are updated,
-2. required pack expectations are updated,
-3. deterministic replay evidence exists,
-4. FEC/F3E cross-repo impact is recorded.
+## 6. Product Claims And Closure
+OxCalc reports product behavior and formal/proof status separately.
+
+A coordinator policy or engine feature can be claimed for a declared product scope when:
+1. the supported scope is explicit,
+2. implementation exists beyond scaffolding,
+3. the relevant local, replay, Excel, or formal checks for that scope passed,
+4. exclusions and successor lanes are named.
+
+Formal proof, pack promotion, and cross-repo seam uptake remain important but are separate status dimensions unless the declared claim depends on them.
+
+A shared FEC/F3E coordinator-facing change additionally requires:
+1. spec text and realization notes,
+2. required pack expectation updates where applicable,
+3. deterministic replay or equivalent evidence for affected behavior,
+4. cross-repo impact assessment and handoff when OxFml-owned seam text changes.
 
 ## 7. Implementation Direction
 1. OxCalc-owned executable realization is Rust-first from this point onward.

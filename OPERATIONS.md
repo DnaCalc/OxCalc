@@ -1,11 +1,14 @@
 # OPERATIONS.md — OxCalc Operations
 
 ## 1. Purpose
-Define day-to-day execution rules for core multi-node recalc and coordinator policy.
-This now includes the lighter OxCalc execution split:
-1. `docs/WORKSET_REGISTER.md` for ordered workset truth,
-2. `docs/BEADS.md` for the local bead method,
-3. `.beads/` for live execution-state truth.
+Define how OxCalc works day to day. The rule is deliberately lean: trust the spec, the workset register, and the bead graph; do not add status ceremony to compensate for unclear product direction.
+
+OxCalc follows the DnaTreeCalc / Foundation slim execution model:
+1. `CHARTER.md` owns mission and repo boundaries.
+2. `docs/SPEC.md` indexes the mutable spec/design set.
+3. `docs/WORKSET_REGISTER.md` owns the roadmap, large work areas, dependency shape, and coarse history.
+4. `.beads/`, through `br`, owns live execution truth.
+5. `docs/BEADS.md` is a pocket reference for local bead mechanics, not a second execution authority.
 
 ## 2. Operating Principles
 1. Semantic stability is invariant under strategy changes.
@@ -14,22 +17,21 @@ This now includes the lighter OxCalc execution split:
 4. Visibility-priority optimization must preserve stabilized semantic equivalence.
 
 ## 2A. Execution Model
-OxCalc now executes through:
-1. `docs/WORKSET_REGISTER.md`
-2. `workset -> epic -> bead`
-3. the coupled evidence lanes required by each active workset
+OxCalc executes through `workset -> epic bead -> child beads`.
 
 Execution-state rule:
-1. worksets are planning units, not execution-state objects,
-2. epics are the main execution lanes under a workset,
-3. beads are the unit of executable progress,
-4. `.beads/` owns readiness, blockers, in-progress state, and closure.
+1. worksets are large planned work areas, not atomic tasks,
+2. every active non-bootstrap workset should have an epic bead once it enters execution,
+3. beads are the atomic units of executable progress,
+4. `.beads/` owns readiness, blockers, in-progress state, dependencies, and closure,
+5. the register is a roadmap and work history, not a live board.
 
 Transition rule:
 1. `W032` established the bead-model doctrine shift in OxCalc,
 2. `.beads/` is now bootstrapped as the live execution-state surface,
 3. `CURRENT_BLOCKERS.md` no longer owns ordinary blocker truth,
-4. `docs/worksets/README.md` and `docs/IN_PROGRESS_FEATURE_WORKLIST.md` are no longer live execution-status surfaces.
+4. `docs/worksets/README.md` and `docs/IN_PROGRESS_FEATURE_WORKLIST.md` are orientation surfaces, not execution-status surfaces,
+5. use `br ready`, `br list --status in_progress`, and `br epic status` for live state.
 
 ## 2B. High-Signal Execution Doctrine
 OxCalc execution should keep the active repo small enough to understand and strong enough to trust.
@@ -41,7 +43,18 @@ OxCalc execution should keep the active repo small enough to understand and stro
 5. Generated evidence stays active only while it is a normative baseline or an input to current validation. Historical snapshots belong under the top-level `archive/` with a short manifest.
 6. Prefer direct engineering moves over taxonomy expansion: fix behavior, write the model, run the replay, tighten the invariant, or remove stale material.
 7. Keep code free of workset-specific accretion unless the runner or fixture is still an active validation tool. Legacy runners should be isolated, retired, or archived through explicit cleanup beads.
-8. Reports should identify the decision enabled by the work and the next concrete engineering move.
+8. Reports should identify what behavior changed, what check proved it, and the next concrete engineering move.
+
+## 2C. Product Claims Versus Formal Claims
+Feature-area status must be reported in plain product terms first.
+
+Use this shape unless a workset explicitly asks for something else:
+1. `Product status`: what is supported and for whom.
+2. `Evidence`: the decisive tests, replay runs, Excel observations, model checks, or review observations.
+3. `Still open`: concrete exclusions or gaps.
+4. `Formal status`: Lean/TLA/model/proof status, separate from product implementation status.
+
+Do not use broad `partial` wording as a substitute for naming the supported product scope. A feature can be implemented for a declared product scope while formal proof, broader Excel-version coverage, or a successor edge-case lane remains open.
 
 ## 3. Staged Realization
 1. Stage 1:
@@ -79,76 +92,64 @@ No scheduler/invalidation policy promotion without:
 2. updated pack expectations and matrix links,
 3. explicit semantic-equivalence statement.
 
-## 7. Pre-Closure Verification Checklist
+## 7. Verification And Closure
 
-Before claiming any workset or feature item as complete, answer each item yes or no.
-All items must be "yes" for a completion claim. Any "no" means the item is `in_progress`.
+Verification is layered and applied to the work actually touched. Do not run or report a blanket ceremony when a small useful check answers the question.
 
-| # | Check | Yes/No |
-|---|-------|--------|
-| 1 | Spec text and realization notes updated for all in-scope items? | |
-| 2 | Pack expectations updated for affected packs? | |
-| 3 | At least one deterministic replay artifact exists per in-scope behavior? | |
-| 4 | Semantic-equivalence statement provided for policy/strategy changes? | |
-| 5 | FEC/F3E cross-repo impact assessed and handoff filed if needed? | |
-| 6 | All required tests pass? | |
-| 7 | No known semantic gaps remain in declared scope? | |
-| 8 | Completion language audit passed (no premature "done"/"complete" per AGENTS.md Section 3)? | |
-| 9 | `WORKSET_REGISTER.md` updated when ordered workset truth changed? | |
-| 10 | `IN_PROGRESS_FEATURE_WORKLIST.md` updated when feature-map truth changed? | |
-| 11 | execution-state blocker surface updated (`.beads/` for ordinary blockers; prose blocker surface only for exceptional narrative blockers)? | |
+Gate tiers:
+1. **Local checks**: Rust build/test/lint/format, scripts, read-through, link/register scan, or `br` sanity check as appropriate.
+2. **Excel anchor**: required when the behavior is Excel-defined. The claim is "matches Excel for this declared scope", backed by reproducible observations or replay/comparison artifacts.
+3. **Formal anchor**: Lean/TLA/model/proof checks where they are load-bearing. Formal anchoring is a standing aim, but formal proof is not automatically the product-implementation gate.
 
-## 8. Expanded Definition of Done
+A bead closes when:
+1. its one outcome exists,
+2. the useful acceptance check or observation ran,
+3. a fresh-eyes review found no material issue or filed follow-up beads,
+4. touched spec/design surfaces are updated,
+5. newly discovered work is back in `.beads/`.
 
-A workset or feature item is done for its declared scope only when all of the following hold:
+A workset closes when:
+1. its closure condition is satisfied for the declared scope,
+2. its epic/child bead state supports that claim,
+3. touched artifacts have a housekeeping pass: keep, mark, or delete,
+4. product status, evidence, exclusions, and formal status can be stated plainly.
 
-1. **Spec text**: all in-scope coordinator/policy spec text and realization notes are updated and internally consistent.
-2. **Pack expectations**: all affected pack expectations are updated with evidence links.
-3. **Replay evidence**: at least one deterministic replay artifact per in-scope behavior proves intended semantics.
-4. **Semantic-equivalence**: for any policy or strategy change, a semantic-equivalence statement demonstrates that observable results are invariant under the change for affected profiles.
-5. **FEC/F3E impact**: cross-repo impact on OxFml evaluator-facing clauses is assessed; handoff packet filed if shared protocol changes needed.
-6. **Overlay invariants**: overlay lifecycle changes are demonstrated to be deterministic and epoch-safe.
-7. **No semantic gaps**: no known semantic gap remains between spec and exercised behavior for declared scope.
-8. **Three-axis report**: completion report includes `scope_completeness`, `target_completeness`, `integration_completeness`, and `open_lanes` per AGENTS.md Section 3.
-9. **Checklist attached**: Pre-Closure Verification Checklist (Section 7) is filled in and all items are "yes".
+## 8. Completion Claims
 
-## 9. Completion Claim Self-Audit
+Completion language is allowed when scoped. Say what is implemented and for which scope; do not replace the answer with abstract completeness axes.
 
-Before submitting a completion claim, the agent must perform this self-audit and include the results.
+A valid completion claim names:
+1. the declared product or workset scope,
+2. the implementation surface,
+3. the decisive evidence/checks,
+4. explicit exclusions and successor lanes,
+5. formal/proof status if relevant.
 
-### Step 1: Scope Re-Read
-Re-read the workset scope declaration. For each in-scope item, verify that exercised implementation (not scaffolding) matches. Any missing item = `in_progress`.
+Scaffolding, placeholder code, compile-only paths, unexercised switches, and unconsumed spec text are not implementation. Handoffs are dependencies; they close only the local request, not behavior that depends on the receiving repo.
 
-### Step 2: Gate Criteria Re-Read
-Re-read the workset gate criteria. All pass criteria must be met. Any unmet criterion = gate open.
+## 9. Fresh-Eyes Review
 
-### Step 3: Silent Scope Reduction Check
-Compare the original scope declaration with what was actually delivered. Any unreported narrowing of scope is a doctrine violation. If scope was intentionally narrowed, it must be explicitly documented with rationale.
+Before closing a non-trivial bead or workset, re-read or exercise the touched area as if encountering it fresh. Look for:
+1. contradictions between spec, code, tests, and artifacts,
+2. unsupported product claims,
+3. stale status wording,
+4. hidden exclusions,
+5. brittle fixture-only behavior presented as general behavior,
+6. docs or generated outputs that no longer earn their place.
 
-### Step 4: "Looks Done But Is Not" Pattern Check
-Check for these patterns:
-- Stubs or placeholder implementations reported as real.
-- Insufficient test coverage masking untested paths.
-- Spec text that does not match exercised implementation.
-- Handoffs filed but not acknowledged by receiving repo.
+Fix issues in scope. File follow-up beads for real out-of-scope work. Close notes should name the decisive check or observation, not repeat boilerplate.
 
-### Step 5: Include Result
-Include the self-audit result in the completion report with explicit pass/fail for each step.
+## 10. Reporting
 
-## 10. Report-Back Completeness Contract
+Use the shortest report that answers the user's question.
 
-Every completion report (status updates, workset closure notes, handoff summaries) must include:
+Preferred shape:
+1. `Product status`: supported scope in plain language.
+2. `Evidence`: decisive checks, runs, observations, or review findings.
+3. `Still open`: concrete gaps or exclusions.
+4. `Formal status`: proof/model state when relevant.
 
-1. `execution_state`: `planned` | `in_progress` | `blocked` | `complete`
-2. `scope_completeness`: `scope_complete` | `scope_partial`
-3. `target_completeness`: `target_complete` | `target_partial`
-4. `integration_completeness`: `integrated` | `partial`
-5. `open_lanes`: explicit list when any completeness axis is partial
-
-Normative wording rules:
-1. Use `complete for declared scope` only when the declared scope already represents full known semantics and only integration or external limits remain partial.
-2. Do not use `complete for declared scope` for semantically bounded subsets that still carry known gaps; report those as `scope_partial`.
-3. Do not claim `fully complete` unless all three completeness axes are complete and evidence links are present.
+Historical packet-local status fields may remain valid in older artifacts. Do not copy them into ordinary reports or completion notes unless the artifact being edited explicitly owns that format.
 
 ## 11. Carried-Forward Operating Lessons
 
@@ -315,12 +316,12 @@ This avoids:
 3. ambiguity about where the next capability promotion act belongs.
 
 ### 14.5 Workset Versus Feature-Area Rule
-Execution packets and feature-register items have different closure semantics.
+Worksets are planning containers. Feature areas are product capabilities.
 
 Rule:
-1. a workset may reach `complete` for its declared scope while the broader feature area remains `in-progress`,
-2. later widening must use a successor workset or explicit extension lane rather than silently reopening a completed workset,
-3. completion reports should state this distinction whenever a broader feature area remains active,
+1. a workset may close for its declared scope without closing the broader feature area,
+2. later widening should use a successor workset or explicit extension lane,
+3. reports must say the product feature status plainly instead of implying that a scoped workset closure answers the whole feature-area question,
 4. ordered workset truth belongs in `docs/WORKSET_REGISTER.md` while live execution state belongs in `.beads/`.
 
 ## 15. Local Doctrine Reference

@@ -69,7 +69,7 @@ The active go-forward execution sequence over the calculation-model rework and i
 Rationale:
 1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
 2. **W051** lands Excel-scope sparse range readers and defined-entry semantics for large sheet ranges, so the artefact set needed by ordinary worksheet calculation is complete before memory discipline is specified over it.
-3. **W055** replaces the W048 fixture-slice posture for circular references and iterative calculation with a product-grade Excel-match closure target, including the hard Excel cases: dynamic-array spill cycles, data tables, external workbook links, and cross-thread calculation variants. W055 is recorded as a planning target only until the user-directed doctrine/meta-work is resolved; it is not an execution target yet.
+3. **W055** replaces the W048 fixture-slice posture for circular references and iterative calculation with a product-grade Excel-match closure target. Its first tranche should replace fixture-keyed iterative behavior with a general profile-driven cycle engine. Dynamic-array spill cycles, data tables, external workbook links, and thread variants are separate lanes, not hidden exclusions.
 4. **W054** specifies bounded-memory and pinned-epoch GC over the now-complete artefact set while the engine is still Stage-1 sequential — the simpler setting in which to pin deterministic eviction order as a replay-conformance obligation.
 5. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
 6. **W052** adds the sensitivity / derivative capability lane on top of the formalized core.
@@ -87,10 +87,10 @@ Retired in this pass:
 4. **W048 — Circular Dependency Calculation Processing.** Already closed (`closed_single_host_scope`); listed here for completeness. W048 was the trigger for the W050 design rework, which now subsumes the forward calculation-model work.
 
 Carry-forward items (NOT lost — already wired into W049's register entry, repeated here so they are not forgotten):
-- The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into the W049 epic at activation; the W046 closure docs are re-pointed at that time. This is the one concrete bead-level carry-forward from the retired set — it is now recorded as intended W049 scope in **W049 §2.8** (with the authoritative obligation table and the no-silent-loss rule), and is also referenced in the W049 register entry (`depends_on` / `closure_condition`). It must survive W049 activation.
+- The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into W049. W049 now records them in its inherited-obligation table. When W049 starts, each obligation must be taken on, deferred, or dropped with a recorded reason.
 - The W046 failure-mode punch list (avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, terminology drift) is inherited by W049 per W049's purpose.
 
-After W050 closure, there is no active `execution_target` until W051 activation creates its epic/bead path. The forward-pending set remains the §5.1 go-forward sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`), with W050 now serving as the reached formula-authority substrate. W055 is a doctrine-blocked planning target and must not be expanded into execution beads until the user explicitly activates it after the planned doctrine/meta-work. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
+After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`). These worksets are open planning containers until their epic/bead paths are created. The next execution move is to roll out W051 when sparse-reader contract work starts, or W055 when circular-reference widening starts. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
 
 ## 6. Active Workset Sequence
 
@@ -524,10 +524,7 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 6. initial_epic_lanes:
    parent epic `calc-cwpl`; seven lanes — Lane A removal (`calc-cwpl.A1`–`.A4`), Lane B new seam (`calc-cwpl.B1`–`.B6`), Lane C plan-template identity (`calc-cwpl.C1`–`.C4`), Lane D external invalidation (`calc-cwpl.D1`–`.D4`), Lane E correctness floor (`calc-cwpl.E1`–`.E3`), Lane F performance/observability (`calc-cwpl.F1`–`.F3`), Lane G forward scaffolding (`calc-cwpl.G1`–`.G3`); cross-repo handoff beads `calc-cwpl.H1`–`.H3`. Predecessor beads `calc-cwpl.1`–`.6` are mapped into the lane structure (W050 §6). Phasing: Wave 1 lands Lanes B + C concurrently with A following; Wave 2 lands Lanes D + E in parallel; Wave 3 lands Lane F; Lane G lands cheapest alongside Lane C.
 7. rollout_mode:
-   `reached_gate_pending_final_bead_sync` (expanded into `.beads/` on 2026-05-14 with parent
-   epic `calc-cwpl`, lane epics `calc-cwpl.8` through `calc-cwpl.16`, and
-   canonical lane refs carried as `br external_ref` values; final bead sync
-   closes the W050 parent/epic bookkeeping after the pre-closure audit record).
+   `closed` (parent epic `calc-cwpl` and child lane epics are closed for the declared W050 production formula-authority scope; successor work is routed to W051, W055, W054, W049, and W052).
 
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:
@@ -539,11 +536,11 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 4. upstream_dependencies:
    `OxFml` — W049 formalizes the post-W050 engine, which consumes the session-shaped OxFml seam (`ensure_prepared` / `invoke`, plan-template identity, typed invocation outcomes); the formalization models those consumed surfaces as imported/assumed contracts rather than re-deriving them. To be re-evaluated when the W049 plan is finalized.
 5. closure_condition:
-   not yet specified — pre-planning only. Will be specified after W047 and W048 clarify scope, beads, exit gate, and evidence policy. The W046 successor obligations currently mislabeled against W047 `calc-aylq.1`–`.4` (Rust Tarjan / sidecar enrichment / dynamic publication / readiness gate) transfer into the W049 epic at activation; the W046 closure docs will be re-pointed at that time.
+   W049 closes when a selected set of formal/checker targets constrain real implementation or replay evidence, inherited W046 obligations are dispositioned, stale/unbound evidence roots are bound or retired, and product/evidence/open/formal status is reported separately.
 6. initial_epic_lanes:
-   pre-planning background only — see W049 doc §2 for the W046 punch list inherited as inputs and §2.6 working theory; lanes to be specified after W047 and W048 unblock a stable implementation and cycle-semantics target.
+   terminology and authority glossary, inherited W046 obligation disposition, evidence-root audit, selected proof/checker targets, implementation-bound artifacts, cycle/CTRO intake, closure review.
 7. rollout_mode:
-   `pre_planning` (not yet `execution_target`).
+   `queued_successor`
 
 ### W051 Sparse Range Readers And Defined-Entry Semantics
 1. purpose:
@@ -555,11 +552,11 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 4. upstream_dependencies:
    `OxFunc` owns sparse argument-preparation metadata/profile and aggregation-kernel consumption. `OxFml` owns sparse binding through semantic plan, runtime prepared identity, and replay projection. `OxCalc` owns the concrete backing reader/adapter.
 5. closure_condition:
-   not yet specified. Activation gate: agree the cross-repo reader/API contract, first function group, and replay artifact shape before creating the W051 epic/bead path.
+   W051 closes its first scope when the sparse reader API is specified and implemented in OxCalc, OxFml carries sparse inputs through runtime/replay, OxFunc consumes the reader for the first function group, replay evidence shows declared extent and defined-entry order, and dense materialization is ruled out for the declared large-range path.
 6. initial_epic_lanes:
-   activation review only: contract slice, OxCalc backing reader, OxFunc sparse kernel admission, OxFml sparse runtime/replay threading, integration evidence.
+   shared reader contract, coordinate/extent model, replay shape, OxCalc reader adapter, first OxFunc function group, OxFml runtime/replay threading, integration evidence.
 7. rollout_mode:
-   `activation_review_ready` (not yet `execution_target`).
+   `open_next`
 
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
@@ -571,11 +568,11 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 4. upstream_dependencies:
    `OxFunc` is the primary owner of per-kernel derivative metadata; `OxFml` threads the `Differentiable` capability through semantic plan.
 5. closure_condition:
-   not yet specified — pre-planning only.
+   W052 closes its first scope when at least one derivative-capable path is exercised, unsupported/discontinuous paths have typed outcomes, sensitivity results are replay-visible, and Goal Seek/Solver product work is either implemented or routed to a successor.
 6. initial_epic_lanes:
-   pre-planning background only.
+   capability contract, OxFunc derivative metadata handoff, discontinuity outcome rule, OxFml runtime/replay threading, OxCalc graph-walk scenario, replay evidence.
 7. rollout_mode:
-   `pre_planning` (not yet `execution_target`).
+   `queued_successor`
 
 ### W053 Staged Concurrency Stage 2
 1. purpose:
@@ -585,13 +582,13 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W053_STAGED_CONCURRENCY_STAGE_2.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.8 staged-realization contract, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3, `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
 4. upstream_dependencies:
-   none planned at activation; to be re-evaluated when the W053 plan is finalized.
+   Foundation Wave B FEC/F3E concurrency-hardening gates, plus any OxFml runtime/fence surfaces needed for deterministic contention replay.
 5. closure_condition:
-   not yet specified — pre-planning only. Stage 2 contention remains unpromoted unless deterministic parity/equivalence evidence gates are satisfied (Foundation semantic-equivalence-under-strategy-change doctrine applies).
+   W053 closes its first Stage-2 scope when partitioned evaluation is implemented for a declared graph class, stale-fingerprint/contention paths are exercised, replay reproduces accepted/rejected outcomes, observable results match the Stage-1 baseline, and speculative-candidate retention is deterministic.
 6. initial_epic_lanes:
-   pre-planning background only.
+   partition strategy, speculative candidate identity, fingerprint granularity, contention replay artifacts, W054 retention extension, Stage-1 versus Stage-2 differential scenarios.
 7. rollout_mode:
-   `pre_planning` (not yet `execution_target`).
+   `queued_successor`
 
 ### W054 Bounded-Memory And Pinned-Epoch GC
 1. purpose:
@@ -601,26 +598,26 @@ After W050 closure, there is no active `execution_target` until W051 activation 
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.3 (overlay eviction is deterministic and epoch-safe) and §6.8 (overlay lifecycle baseline), `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3
 4. upstream_dependencies:
-   none planned at activation; to be re-evaluated when the W054 plan is finalized.
+   none planned; W054 consumes W050/W051 engine artifacts and Foundation pinned-epoch doctrine.
 5. closure_condition:
-   not yet specified — pre-planning only. Requires post-W050 measurement infrastructure (artefact retention costs, overlay residency, pin-epoch distance histograms) before the eviction policy can be specified honestly.
+   W054 closes its first scope when every declared cache/overlay surface has a retention class, pinned-epoch protection is implemented or blocked explicitly, eviction order is deterministic, replay records eviction decisions, and W053-only speculative retention is routed forward.
 6. initial_epic_lanes:
-   pre-planning background only.
+   residency counters, cache/overlay surface list, retention classes, pin/unpin rules, eviction ordering, replay-visible eviction trace, bounded-memory scenario.
 7. rollout_mode:
-   `pre_planning` (not yet `execution_target`).
+   `queued_successor`
 
 ### W055 Circular References And Iterative Calculation Excel-Match Closure
 1. purpose:
    turn the W048 single-host scoped circular-reference evidence slice into a product-grade Excel-match feature-area target. W055 explicitly includes the difficult Excel cases that must be teased out through black-box observation and then specified and matched in code: ordinary structural cycles, CTRO/dynamic-reference cycles, iterative calculation, dynamic-array spill cycles, data-table cycles, external workbook link cycles, volatile/external invalidation inside cycle regions, edit-order and calculation-chain sensitivity, workbook reopen behavior, and cross-thread/multithread variants. The intended end state is a clear product claim for the declared Excel-match scope, with formal proof status reported separately from implementation status.
 2. depends_on:
-   `W048`, `W050`, `W051`
+   `W048`, `W050` for Tranche A; `W051` only for sparse/range-backed cycle lanes such as data-table-adjacent or spill/range fixtures.
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W055_CIRCULAR_REFERENCES_AND_ITERATIVE_CALCULATION_EXCEL_MATCH_CLOSURE.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/spec/core-engine/w048-cycles/`, `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`, `docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md`, `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
 4. upstream_dependencies:
    `OxFml` for formula/evaluator-facing behavior, dynamic arrays/spills, external references, and replay surfaces; `OxFunc` for function semantics, volatility, external invalidation, numeric precision, and data-table-adjacent kernel behavior; Foundation only if doctrine/profile/conformance-pack promotion changes are needed.
 5. closure_condition:
-   not yet specified as an executable gate. Pre-activation gate: finish the user-directed doctrine/meta-work, then declare the Excel-match product scope, exclusions, evidence matrix, and bead rollout. Product closure will require broad Excel observations, TraceCalc and TreeCalc/core conformance, general profile-driven implementation, explicit treatment of dynamic-array spill cycles/data tables/external links/thread variants, spec/replay updates, and formalization packetization without making formal proof the product-implementation blocker.
+   W055 closes only for a declared product scope. That scope requires profile-named cycle modes, Excel observations or accepted blockers for included scenario families, TraceCalc and TreeCalc/core conformance, a general implementation path rather than fixture-keyed result tables, explicit handling or exclusion of hard Excel families, updated spec/replay contracts, and separate formalization obligations.
 6. initial_epic_lanes:
-   pre-planning only: doctrine/meta-work intake, Excel observation matrix design, implementation architecture, dynamic-array spill cycle lane, data-table lane, external-link lane, cross-thread lane, conformance comparison, spec consolidation, formalization handoff.
+   rollout and scope bead, general cycle-engine design, fixture-keyed implementation replacement, TraceCalc/TreeCalc conformance, Excel observation matrix, dynamic-array lane, data-table lane, external-link lane, thread-variant lane, spec/replay update, formalization handoff.
 7. rollout_mode:
-   `pre_planning_doctrine_blocked` (not yet `execution_target`; do not create execution beads until explicitly activated by the user).
+   `open_ready_for_rollout`

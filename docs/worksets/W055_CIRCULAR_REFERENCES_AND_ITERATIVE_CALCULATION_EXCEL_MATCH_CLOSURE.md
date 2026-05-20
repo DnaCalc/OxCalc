@@ -1,166 +1,154 @@
 # W055 Circular References And Iterative Calculation Excel-Match Closure
 
-Status: `pre_planning_doctrine_blocked`
+Status: `open_ready_for_rollout`
 
-Parent predecessor: `W048` (single-host scoped circular dependency calculation processing)
+Parent predecessor: `W048` single-host circular-reference scope
 
-Parent epic: TBD (allocated only after explicit activation)
+Parent epic: allocate when W055 starts.
 
 ## 1. Purpose
 
-W055 exists to turn circular references and iterative calculation from a narrow evidence slice into a product-grade Excel-match feature area.
+W055 turns the W048 single-host fixture slice into a product-grade circular
+reference and iterative calculation feature area.
 
-The target answer for this workset is:
+The first goal is not to claim every hard Excel case at once. The first goal is
+to replace fixture-keyed behavior with a general profile-driven cycle engine,
+then widen the Excel evidence family by family.
 
-> Circular references and iterative calculation are implemented for the declared Excel-match scope. The implementation matches Excel across a broad tested scenario spread, including edge cases that Excel leaves implicit. Formal proof is not yet required for the product claim, but definitions, contracts, and formalization obligations are packetized for successor formal work.
+Formal proof is not required for the product claim. Formal obligations must be
+recorded separately for W049 or a successor proof lane.
 
-This workset is intentionally not an implementation start. It is recorded now so the feature area has a clear future product target instead of remaining trapped between an over-broad impossible bar and a narrow fixture-slice claim.
+## 2. Current Product Status
 
-## 2. Activation Rule
+W048 supports declared circular-reference and iterative fixtures for one
+observed Excel host/version.
 
-Do not create execution beads, change code, run Excel probes, or widen evidence under W055 until the user explicitly activates this workset after the planned doctrine/meta-work.
+W055 has not yet implemented broader product scope.
 
-Activation requires:
+Current limitation:
 
-1. a doctrine decision that separates product feature claims from full formal proof claims,
-2. an explicit declared Excel-match scope,
-3. an explicit exclusion policy for any behavior not included in that declared scope,
-4. a concrete evidence plan,
-5. a bead rollout that preserves product accountability rather than hiding behind partial-status language.
+1. cross-version Excel behavior is not claimed,
+2. W048 iterative publication is fixture/probe driven,
+3. dynamic-array spill cycles, data tables, external workbook link cycles, and
+   broad thread variants are not product-supported yet.
 
-## 3. Scope
+## 3. Work Tranches
 
-W055 includes ordinary and difficult Excel circular-reference behavior. The scope must not silently exclude the hard cases.
+### Tranche A — General Cycle Engine
+
+This is the first implementation tranche.
 
 In scope:
 
 1. direct self-references,
 2. two-node and larger structural cycles,
-3. guarded activation cycles,
+3. CTRO/dynamic-reference cycles already represented by W048-style evidence,
 4. iterative calculation with `MaxIterations` and `MaxChange`,
-5. edit-order and calculation-chain sensitivity,
-6. initial-vector behavior for blank, zero, numeric, text, logical, error, and prior calculated states,
-7. manual versus automatic recalculation interactions,
-8. full recalculation and workbook reopen behavior where calculation-chain state matters,
-9. CTRO and dynamic-reference cycles such as `INDIRECT`-like references,
-10. dynamic-array spill cycles, including spill growth, spill contraction, blocked spills, and spill-cycle release,
-11. data-table circular-reference behavior and its special recalculation rules,
-12. external workbook link cycles, including closed-source, stale-link, missing-link, and refresh-order variants,
-13. volatile and externally invalidated functions inside cycle regions,
-14. downstream dependent publication after convergence, max-iteration terminal states, rejection, release, or re-entry,
-15. multi-threaded and cross-thread calculation variants, including nondeterministic-looking Excel behavior that must be reduced to explicit profile rules or documented compatibility limits,
-16. least-significant-bit numeric parity for tested numeric surfaces.
+5. member order and initial-vector rules as profile data,
+6. convergence and max-iteration terminal states,
+7. atomic publication or no-publication rejection,
+8. downstream invalidation and recomputation after release or publication,
+9. replay-visible cycle-region and iteration summaries.
 
-Out of scope until explicitly added:
+Acceptance requires replacing fixture-keyed terminal values with a general
+algorithm for the declared scope.
 
-1. unsupported proprietary internals or reverse engineering,
-2. claims not backed by reproducible public documentation or black-box observation,
-3. formal proof as a prerequisite for the product feature claim.
+### Tranche B — Excel Observation Matrix
 
-## 4. Required Outcome
+This tranche widens evidence.
 
-W055 should leave the repo with a clear feature-area answer, not a defensive status cloud.
+Each family must get observations, an accepted blocker, or an explicit
+exclusion before it can be included in a product claim:
 
-Required product claim shape:
+1. edit-order and calculation-chain sensitivity,
+2. blank, zero, numeric, text, logical, error, and prior-state initial vectors,
+3. manual versus automatic recalculation,
+4. full recalculation and workbook reopen behavior,
+5. volatile and externally invalidated functions inside cycle regions,
+6. least-significant-bit numeric parity for tested numeric surfaces.
 
-1. supported circular-reference modes are named by profile,
-2. supported Excel-match scope is named directly,
-3. exclusions are listed as exclusions, not hidden as "partial" generalities,
-4. ordinary users and downstream hosts can tell whether circular references and iterative calculation are supported,
-5. evidence links show the scenario spread tested against Excel,
-6. implementation paths are general algorithms where possible, not fixture-keyed result tables,
-7. broad compatibility claims are bounded by observed Excel versions and profile declarations,
-8. formalization status is reported separately from product implementation status.
+### Tranche C — Hard Excel Families
 
-## 5. Evidence Plan
+These are not allowed to hide inside the general cycle claim.
 
-The future evidence plan should include:
+Each family gets its own lane:
 
-1. an Excel observation matrix with scenario families, Excel version/build, calculation mode, thread mode, workbook save/open state, and exact observed values,
-2. a scenario taxonomy for ordinary cycles, dynamic-reference cycles, spill cycles, data tables, external links, volatile/external invalidation, and cross-thread variants,
-3. deterministic reproduction scripts using approved tooling only,
-4. TraceCalc fixtures that model the observed semantics,
-5. TreeCalc/core fixtures that exercise the actual implementation path,
-6. cross-run conformance summaries that compare Excel observations, TraceCalc reference behavior, and TreeCalc/core behavior,
-7. a failure ledger that distinguishes implementation bugs, Excel-version divergence, unsupported product scope, and formalization gaps.
+1. dynamic-array spill cycles,
+2. data-table circular-reference behavior,
+3. external workbook link cycles,
+4. multi-threaded and cross-thread variants.
 
-## 6. Implementation Expectations
+Each lane may close as implemented, blocked, or explicitly excluded from the
+declared product scope.
 
-Implementation should move beyond the W048 fixture slice.
+## 4. Dependencies
 
-Required implementation direction:
+Required now:
 
-1. general cycle-region construction and stable identity,
-2. declared member ordering rules per profile,
-3. declared initial-vector construction per profile,
-4. iterative update engine with explicit update model, stop metric, iteration bound, and terminal-state behavior,
-5. atomic cycle-region publication when the active profile publishes terminal values,
-6. no-publication rejection when the active profile rejects the candidate,
-7. downstream invalidation and recomputation after accepted cycle values or cycle release,
-8. graph/materialized sidecars that expose cycle members, order, prior values, iteration summaries, terminal state, and publication decision,
-9. explicit handling for dynamic-array spill and data-table cycle surfaces rather than treating them as generic cycles without evidence,
-10. external-link and thread-mode behavior represented as profile dimensions or explicit compatibility limitations.
+1. `W048` for cycle vocabulary and single-host evidence,
+2. `W050` for the formula-authority and prepared-runtime seam.
 
-## 7. Formalization Boundary
+Required only for some lanes:
 
-W055 should not make full formal proof a blocker for the product feature claim.
+1. `W051` for sparse/range-backed behavior, data-table-adjacent range surfaces,
+   and any spill/range fixture that needs sparse readers,
+2. OxFml for formula/evaluator behavior, dynamic arrays/spills, external
+   references, and replay surfaces,
+3. OxFunc for function semantics, volatility, numeric precision, external
+   invalidation, and data-table-adjacent kernel behavior.
 
-It must, however, leave formalization material strong enough for W049 or a successor formal lane:
+Foundation involvement is needed only if profiles or conformance-pack policy
+change.
 
-1. cycle-region definitions,
-2. graph-layer definitions over structural, published-effective, and candidate-effective graphs,
-3. profile definitions for non-iterative, Excel-match iterative, deterministic iterative, and any compatibility-limited variants,
-4. transition contracts for reject, publish, release, and re-entry,
-5. replay-visible trace/event contracts,
-6. proof obligations for future Lean/TLA/model work.
+## 5. First Work
 
-Formal proof status must be reported separately from implementation status.
+The first W055 beads should:
 
-## 8. Dependencies And Coordination
+1. create the W055 epic and child bead map,
+2. declare the first product scope for Tranche A,
+3. declare the artifact root and evidence layout,
+4. write the general cycle-engine design,
+5. replace W048 fixture-keyed iterative behavior for the declared scope,
+6. run TraceCalc and TreeCalc/core conformance against W048 evidence,
+7. start the Excel observation matrix for Tranche B,
+8. create separate lanes for dynamic arrays, data tables, external links, and
+   thread variants.
 
-Depends on:
+Suggested artifact roots:
 
-1. `W048` for the existing single-host scoped evidence slice and cycle vocabulary,
-2. `W050` for the current formula-authority and prepared-runtime seam,
-3. `W051` where sparse/range surfaces affect data tables, dynamic-array spill behavior, or range-backed cycle fixtures.
+1. `docs/test-runs/excel-cycles/w055-*`
+2. `docs/test-runs/core-engine/w055-cycles/`
 
-Expected upstream coordination:
+The first rollout bead may refine these roots before evidence is emitted.
 
-1. `OxFml` for formula/evaluator-facing behavior, dynamic arrays/spills, external references, and trace/replay surfaces,
-2. `OxFunc` for function semantics inside cycle regions, volatility, external invalidation, numeric precision, and data-table-adjacent kernel behavior,
-3. Foundation only for doctrine/profile changes and conformance-pack promotion.
+## 6. Closure Gate
 
-## 9. Closure Gate
+W055 can claim product support only for the declared scope.
 
-Closure criteria are intentionally product-facing.
+For that scope, closure requires:
 
-W055 can claim the feature area is implemented for its declared scope only when:
+1. supported cycle modes named by profile,
+2. Excel observations or accepted blockers for every included scenario family,
+3. TraceCalc and TreeCalc/core matching the accepted observation set,
+4. a general implementation path, not fixture-keyed result tables,
+5. numeric precision stated and checked where claimed,
+6. dynamic arrays, data tables, external links, and thread variants either
+   implemented, blocked, or explicitly excluded,
+7. profile selectors and capability manifests updated,
+8. spec and replay contracts updated,
+9. proof/model obligations packetized separately,
+10. final report states product status, evidence, still-open work, and formal
+    status separately.
 
-1. declared Excel-match scope is explicit,
-2. all in-scope scenario families have Excel observations or exact blockers accepted before activation,
-3. TraceCalc and TreeCalc/core both match the accepted Excel observation set,
-4. implementation uses general profile-driven behavior for the declared scope, with any fixture-specific behavior removed or justified as test-only,
-5. numeric surfaces match to the declared precision, including least-significant-bit checks where claimed,
-6. data-table, dynamic-array spill, external-link, and thread-mode behaviors are either implemented and evidenced or explicitly excluded from the declared product scope before the claim,
-7. profile selectors and capability manifests state the supported cycle behavior,
-8. spec text and replay contracts are updated,
-9. formal definitions and future proof obligations are packetized,
-10. final reporting separates product implementation status from formal proof status.
+## 7. Status
 
-## 10. Status Surface
+Product status: W048 single-host fixture scope is supported; W055 product scope
+is not implemented yet.
 
-- execution_state: `planned`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- open_lanes:
-  - doctrine/meta-work before activation;
-  - Excel observation matrix;
-  - general implementation;
-  - dynamic-array spill cycles;
-  - data-table cycles;
-  - external workbook link cycles;
-  - cross-thread and multithread variants;
-  - conformance comparison;
-  - spec consolidation;
-  - formalization packetization.
+Evidence: W048 Excel observations, TraceCalc fixtures, TreeCalc/core fixtures,
+and conformance checks are the starting evidence.
+
+Still open: general cycle engine, Excel observation matrix, hard Excel-family
+lanes, conformance comparison, spec/replay updates, formalization handoff.
+
+Formal status: no W055 proof claim.

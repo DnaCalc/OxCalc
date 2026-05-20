@@ -1,67 +1,77 @@
 # W053 Staged Concurrency Stage 2
 
-Status: `pre_planning`
+Status: `queued_successor`
 
-Parent predecessors: `W050` (Stage 1 sequential coordinator on the new session model) and `W049` (formalised Stage-1 baseline)
+Parent predecessors:
+- `W050` Stage-1 sequential coordinator on the current session model
+- `W049` formalized Stage-1 baseline
+- `W054` bounded-memory and pinned-epoch GC
 
-Parent epic: TBD (allocated when W053 is activated)
+Parent epic: allocate when W053 starts.
 
 ## 1. Purpose
 
-W053 lands Stage 2 of the Foundation staged-realization contract: partitioned parallel evaluators behind the same single-publisher coordinator authority. The target is wall-clock speedup on multi-core hardware without losing the Stage 1 single-publisher correctness invariant.
+W053 adds Stage-2 partitioned evaluation while keeping one Coordinator as the
+only publisher.
 
-The W050 §10 design baseline is deliberately Stage-2-shaped: independent acyclic nodes carry no ordering constraint beyond the dependency graph, so a partitioned scheduler can evaluate them concurrently while the single Coordinator commit authority stays intact. W053 realises that latent shape.
+The goal is speedup on multi-core hardware without changing worksheet-visible
+results.
 
-W053 implements:
+## 2. Product Scope
 
-1. Partitioned parallel evaluators over the dependency graph, with the partition boundary respecting SCC isolation and the topological frontier.
-2. Speculative evaluation as the conflict-resolution discipline: an evaluator may invoke a `PreparedCallable` with provisional reference bindings; the result is held as a speculative candidate tagged with its input-binding fingerprint; at Coordinator commit time the fingerprint is checked against actual published values, and the candidate is promoted on match or discarded and re-invoked on mismatch.
-3. The semantic-equivalence demonstration: observable results under partitioned Stage 2 must be invariant against the formalised Stage-1 baseline (Foundation semantic-equivalence-under-strategy-change doctrine; `AGENTS.md` Rule 8).
+In scope:
 
-W053 is in a deliberate `pre_planning` state. Scope, beads, exit gates, and evidence policy are decided after W050 lands the Stage 1 sequential coordinator and W049 produces the formalised baseline. This document is pre-planning background only; do not infer a bead path or commit to artefacts from it.
+1. partitioned evaluators over the dependency graph,
+2. SCC/cycle isolation,
+3. topological frontier scheduling,
+4. speculative candidates with input-binding fingerprints,
+5. commit-time fingerprint checks,
+6. deterministic replay of contention and rejection,
+7. equivalence evidence against the Stage-1 baseline.
 
-## 2. Pre-Planning Background
+Out of scope unless explicitly added:
 
-### 2.1 Why W049 is a hard dependency, not just a sequence preference
+1. Stage-3 advanced dynamic-topology policies,
+2. multiple publishers,
+3. distributed multi-host arbitration,
+4. nondeterministic replay.
 
-Foundation's staged-realization contract requires Stage 2 to demonstrate *semantic equivalence under strategy change*. W049 produces the formalised Stage-1 baseline that W053 proves equivalence *against*. Without W049 first, W053 has no rigorous reference to compare partitioned and speculative behaviour to — it could only assert equivalence, not demonstrate it.
+## 3. Invariant
 
-### 2.2 The single-publisher invariant is preserved, not relaxed
+Stage 2 may add evaluators. It may not add publishers.
 
-Stage 2 does not introduce multiple publishers. It introduces multiple *evaluators* behind one Coordinator. Conflict resolution stays at one well-defined choke point — the commit-time fingerprint check. The Stage 1 invariants (atomic publication, reject-is-no-publish, observer-stable state) are unchanged; what changes is only how many evaluators produce candidates in flight.
+Accepted publication still flows through one Coordinator. Rejected candidates
+publish no derived deltas and must carry structured rejection detail.
 
-### 2.3 W053 revisits the W054 retention model
+## 4. First Work
 
-W054 specifies bounded-memory and pinned-epoch GC for the Stage-1 sequential engine. Speculative evaluation introduces a new retention class — provisional speculative candidates held pending fingerprint check — that W054's sequential model does not cover. W053 revisits and extends the W054 retention model for partitioned and speculative evaluators.
+The first W053 beads should:
 
-### 2.4 Foundation gate dependency
+1. choose the partition strategy,
+2. define speculative candidate identity and fingerprint granularity,
+3. define contention replay artifacts,
+4. extend W054 retention rules for speculative candidates,
+5. run differential Stage-1 versus Stage-2 scenarios,
+6. state the exact semantic-equivalence claim.
 
-W053 also depends on the Foundation Wave B FEC/F3E concurrency-hardening gates. Stage 2 contention remains unpromoted unless deterministic parity / equivalence evidence gates are satisfied.
+## 5. Closure Gate
 
-## 3. Relationship To W050, W049, W054
+W053 can close its first Stage-2 scope when:
 
-- W050: provides the Stage-1 sequential coordinator, the session model, the dependency graph, and the prepared-callable cache that W053 partitions over.
-- W049: provides the formalised Stage-1 baseline that W053 proves semantic equivalence against.
-- W054: provides the Stage-1 bounded-memory retention model that W053 extends for speculative candidates.
+1. partitioned evaluation is implemented for the declared graph class,
+2. contention and stale-fingerprint paths are exercised,
+3. replay reproduces the same accepted/rejected outcomes,
+4. observable results match the Stage-1 baseline,
+5. memory retention for speculative candidates is deterministic,
+6. Stage-3 behavior remains unpromoted unless separately evidenced.
 
-## 4. Open Scoping Questions
+## 6. Status
 
-Deferred until W050, W049, and W054 land and W053 is planned in detail:
+Product status: queued successor work. Stage 2 is not implemented or promoted.
 
-- What is the partition strategy — static graph partition, work-stealing, or frontier-driven?
-- How aggressive is speculation — speculate on any not-yet-final input, or only on inputs likely to be stable?
-- What is the fingerprint granularity for the commit-time check?
-- How is the semantic-equivalence demonstration structured — differential replay against the W049 baseline, a TLA model of the partitioned scheduler, or both?
-- Does W053 target Stage 3 (advanced incremental lanes) at all, or strictly Stage 2?
+Evidence: W050 provides the Stage-1 session/coordinator shape. W049 and W054
+must provide the baseline and memory discipline before W053 executes.
 
-## 5. Status Surface
+Still open: all W053 lanes.
 
-- execution_state: `pre_planning`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- prerequisites: W050 (Stage 1 sequential coordinator on the new session model), W049 (formalised Stage-1 baseline), Foundation Wave B FEC/F3E concurrency-hardening gates
-- bead_path: not yet specified — W053 epic id and bead structure allocated when W053 is activated
-- exit_gate: not yet specified — Stage 2 contention remains unpromoted unless deterministic parity / equivalence evidence gates are satisfied
-- evidence_policy: not yet specified
-- upstream_dependencies: Foundation Wave B FEC/F3E concurrency-hardening gates; to be re-evaluated when the W053 plan is finalised
+Formal status: no Stage-2 equivalence proof yet.

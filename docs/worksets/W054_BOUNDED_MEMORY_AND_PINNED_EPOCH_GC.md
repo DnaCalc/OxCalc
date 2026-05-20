@@ -1,70 +1,88 @@
 # W054 Bounded-Memory And Pinned-Epoch GC
 
-Status: `pre_planning`
+Status: `queued_successor`
 
-Parent predecessors: `W050` (the artefact set must exist to measure) and `W051` (sparse-reader artefacts complete the artefact set)
+Parent predecessors:
+- `W050` formula-authority rework
+- `W051` sparse range readers
 
-Parent epic: TBD (allocated when W054 is activated)
+Parent epic: allocate when W054 starts.
 
 ## 1. Purpose
 
-W054 specifies operational memory discipline for the artefact and overlay surfaces the W050 rework introduces — the compiled-artefact / plan-template cache, runtime overlays, the per-edge differential-evaluation value cache, Subscription Registry topic envelopes, and pinned reader views. Without an explicit eviction discipline, every one of these grows unboundedly across recalc waves.
+W054 adds deterministic memory discipline for the artifacts introduced by W050
+and W051.
 
-W054 makes the bounded-memory contract part of the spec rather than an implementation detail. It implements:
+Without this work, caches and overlays can grow without a replay-visible
+retention rule.
 
-1. A profile-declared retention class per cache surface — `Required`, `Best-Effort`, `Discardable`.
-2. A pinned-epoch protection rule — active session, stabilisation window, observer-pinned — generalising Foundation's overlay-eviction discipline (`CORE_ENGINE_FORMAL_MODEL` §6.3) from overlays to every W050 cache surface.
-3. Deterministic eviction order: given the same operation history and the same retention claims, two engines evict in the same order, and the eviction trace is part of replay conformance.
+W054 covers:
 
-W054 is in a deliberate `pre_planning` state. Scope, beads, exit gates, and evidence policy are decided after W050 lands the artefact set and W051 completes it with sparse-reader artefacts. This document is pre-planning background only; do not infer a bead path or commit to artefacts from it.
+1. prepared formula and plan-template caches,
+2. runtime overlays,
+3. per-edge value caches,
+4. subscription/topic envelopes,
+5. pinned reader views,
+6. sparse-reader artifacts from W051.
 
-## 2. Pre-Planning Background
+## 2. Product Scope
 
-### 2.1 Why W054 follows W050 and W051, not precedes them
+The product requirement is simple: the engine must know what it may retain,
+what it may evict, and in what order.
 
-The eviction *policy* cannot be specified honestly until the artefact set exists and retention costs can be measured. Specifying eviction thresholds before W050's plan-template cache, overlays, per-edge value cache, and topic envelopes exist — and before W051's sparse-reader artefacts complete the set — would be guessing. W054 requires post-W050 measurement infrastructure: artefact retention costs, overlay residency, pin-epoch distance histograms.
+W054 defines:
 
-### 2.2 Why W054 precedes W053
+1. retention classes: `Required`, `Best-Effort`, `Discardable`,
+2. pinned-epoch protection: active session, stabilization window,
+   observer-pinned,
+3. deterministic eviction order,
+4. replay-visible eviction traces.
 
-W054 nails deterministic eviction in the simpler Stage-1 *sequential* setting. Doing this before W053 means the eviction discipline is settled in the setting with one evaluator and one publisher, before W053 adds the complication of partitioned and speculative evaluators. W053 then revisits the W054 retention model to add the speculative-candidate retention class — an extension over a settled base, not a co-design.
+## 3. First Work
 
-### 2.3 Replay-deterministic, not just replay-friendly
+The first W054 beads should:
 
-The distinguishing requirement is deterministic eviction *order*. A spec that does not pin eviction order produces replay artefacts that drift across implementations even when published results agree — a `replay-friendly` engine but not a `replay-deterministic` one. W054's eviction trace is a replay-conformance obligation: replay validates that two implementations, given the same operation history and retention claims, evicted in the same order.
+1. add or reuse measurement counters for artifact residency,
+2. list every cache/overlay surface W054 owns,
+3. assign first retention classes,
+4. define pin and unpin rules,
+5. define eviction ordering and tie-breaks,
+6. emit a replay-visible eviction trace,
+7. run a bounded-memory scenario that proves deterministic eviction.
 
-### 2.4 Surfaces W054 governs
+Suggested artifact root:
 
-- the compiled-artefact / plan-template cache (W050 Lane C),
-- runtime overlays and the overlay lifecycle (`OverlayKey` / `OverlayEntry`, W050 Lane B),
-- the per-edge differential-evaluation value cache (W050 Lane F, Move B),
-- Subscription Registry topic envelopes (W050 Lane D),
-- pinned reader views (W050 Lane B),
-- `SparseRangeReader` artefacts and any sparse backing residency (W051).
+`docs/test-runs/core-engine/w054-bounded-memory/`
 
-## 3. Relationship To W050, W051, W053
+The first rollout bead may refine that root before emitting checked evidence.
 
-- W050: introduces the artefact and overlay surfaces W054 governs; Foundation `CORE_ENGINE_FORMAL_MODEL` §6.3 and §6.8 (overlay eviction is deterministic and epoch-safe; overlay lifecycle baseline) is the doctrinal seed W054 generalises.
-- W051: completes the artefact set with `SparseRangeReader` artefacts, which W054's retention model must cover — hence W051 precedes W054.
-- W053: extends the W054 retention model for partitioned and speculative evaluators; W054's deterministic-eviction discipline is the base W053 builds on.
+## 4. Relationship To W053
 
-## 4. Open Scoping Questions
+W054 is Stage-1 memory discipline. W053 later extends it for partitioned and
+speculative evaluators.
 
-Deferred until W050 and W051 land and W054 is planned in detail:
+Do not mix Stage-2 speculative retention into W054 unless the W054 scope is
+explicitly widened.
 
-- What measurement infrastructure must land first — and is that a W054 lane or a W050 cross-cutting item?
-- How are retention classes assigned per cache surface — fixed in the spec, or profile-declared and tunable?
-- What is the eviction-order tie-break rule that makes two implementations agree?
-- How is the eviction trace represented in the replay bundle, and what does conformance check?
-- Does W054 cover memory-pressure backpressure (refuse new artefacts under pressure) or only eviction?
+## 5. Closure Gate
 
-## 5. Status Surface
+W054 can close its first scope when:
 
-- execution_state: `pre_planning`
-- scope_completeness: `scope_partial`
-- target_completeness: `target_partial`
-- integration_completeness: `partial`
-- prerequisites: W050 (the artefact set must exist so retention costs are measurable), W051 (sparse-reader artefacts complete the artefact set)
-- bead_path: not yet specified — W054 epic id and bead structure allocated when W054 is activated
-- exit_gate: not yet specified — requires post-W050 measurement infrastructure before the eviction policy can be specified honestly
-- evidence_policy: not yet specified
-- upstream_dependencies: none planned at activation; to be re-evaluated when the W054 plan is finalised
+1. every declared cache/overlay surface has a retention class,
+2. pinned-epoch protection is implemented or explicitly blocked,
+3. eviction order is deterministic,
+4. replay records and validates eviction decisions,
+5. memory counters show the bounded scenario behaved as expected,
+6. W053-only speculative retention is routed forward.
+
+## 6. Status
+
+Product status: queued successor work. No bounded-memory product claim yet.
+
+Evidence: W050 defines the main artifact set. W051 must add sparse-reader
+artifacts before W054 finalizes the surface list.
+
+Still open: counters, retention classes, pin rules, eviction order, replay
+trace, and bounded-memory run.
+
+Formal status: no proof claim.

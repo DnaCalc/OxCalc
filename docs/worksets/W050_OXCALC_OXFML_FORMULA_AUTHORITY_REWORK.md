@@ -1,6 +1,6 @@
 # W050 OxCalc/OxFml Formula Authority Rework
 
-Status: `reached_gate_pending_final_bead_sync`
+Status: `closed_production_formula_authority_scope`
 
 Parent predecessor: `W048` single-host scoped circular-reference closure
 

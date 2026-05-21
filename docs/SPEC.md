@@ -15,6 +15,8 @@ Use this file the way newer DnaCalc repos use `docs/SPEC.md`: start here, then f
 7. OxFml seam companion: [`CORE_ENGINE_OXFML_SEAM.md`](spec/core-engine/CORE_ENGINE_OXFML_SEAM.md)
 8. TraceCalc reference machine: [`CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`](spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md)
 9. Formalization and assurance: [`CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`](spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md)
+10. Active W055 cycle packets: [`docs/spec/core-engine/w055-cycles/`](spec/core-engine/w055-cycles/)
+11. OxCalcTree host contract: [`CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`](spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md)
 
 ## Active Planning And Execution Pointers
 

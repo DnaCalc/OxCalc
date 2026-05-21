@@ -237,12 +237,23 @@ It carries:
 2. `publication_id`
 3. `compatibility_basis`
 4. `artifact_token_basis`
+5. W055 target extension: `cycle_config`
 
 Working meaning:
 1. candidate/publication identity is explicit at the host-facing boundary,
 2. compatibility and artifact-token basis remain visible to the consumer-facing runtime contract,
 3. coordinator-facing correlation is not hidden in ambient runtime state.
 
+W055 cycle-config extension:
+
+1. `cycle_config` is the production field for selecting circular-reference and
+   iterative-calculation behavior for a run.
+2. absent `cycle_config` means `cycle.non_iterative_stage1`.
+3. `cycle_config.cycle_profile_id` admits `cycle.non_iterative_stage1`,
+   `cycle.excel_match_iterative`, and `cycle.iterative_deterministic_v0`.
+4. `cycle_config.maximum_iterations` and `cycle_config.maximum_change` carry
+   host overrides for iterative profiles; absent values use profile defaults.
+5. `compatibility_basis` must not be used as the semantic cycle config channel.
 
 ### 6.4 OxCalcTreeRecalcResult
 `OxCalcTreeRecalcResult` is the canonical host-facing result object for the current TreeCalc-first phase.
@@ -263,6 +274,7 @@ It returns:
 10. published values
 11. node states
 12. diagnostics
+13. W055 target extension: cycle diagnostics
 
 It must preserve:
 1. candidate versus publication distinction,
@@ -277,6 +289,17 @@ Anticipated async/completion extension:
 4. the host resumes by making another explicit synchronous call against the same handle or pinned version,
 5. pending state is not accepted publication and must not leak uncommitted candidate results into stable reads.
 
+W055 cycle-diagnostics extension:
+
+1. `cycle_diagnostics` is the production result field for circular-reference
+   and iterative-calculation outcomes.
+2. each record identifies the cycle region, selected profile, region source,
+   members, root/report node when available, member order, terminal state,
+   publication decision, reject kind, and iteration trace summary.
+3. string diagnostics may mirror these facts, but hosts should not parse string
+   diagnostics to understand cycle behavior.
+4. non-iterative cycle rejection must expose a typed `Worksheet.CircularReference`
+   equivalent when available.
 
 Current direct reachability rule:
 1. emitted runtime-derived families in the current TreeCalc-first lane must be directly reachable on `OxCalcTreeRecalcResult.runtime_effects`

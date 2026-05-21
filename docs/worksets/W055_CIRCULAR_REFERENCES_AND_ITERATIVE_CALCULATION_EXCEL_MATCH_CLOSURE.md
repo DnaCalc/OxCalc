@@ -1,10 +1,10 @@
 # W055 Circular References And Iterative Calculation Excel-Match Closure
 
-Status: `open_ready_for_rollout`
+Status: `in_progress`
 
 Parent predecessor: `W048` single-host circular-reference scope
 
-Parent epic: allocate when W055 starts.
+Parent epic: `calc-9ouy`
 
 ## 1. Purpose
 
@@ -13,7 +13,8 @@ reference and iterative calculation feature area.
 
 The first goal is not to claim every hard Excel case at once. The first goal is
 to replace fixture-keyed behavior with a general profile-driven cycle engine,
-then widen the Excel evidence family by family.
+then expose the needed host-facing cycle config and diagnostics, then widen the
+Excel evidence family by family.
 
 Formal proof is not required for the product claim. Formal obligations must be
 recorded separately for W049 or a successor proof lane.
@@ -45,10 +46,12 @@ In scope:
 3. CTRO/dynamic-reference cycles already represented by W048-style evidence,
 4. iterative calculation with `MaxIterations` and `MaxChange`,
 5. member order and initial-vector rules as profile data,
-6. convergence and max-iteration terminal states,
+6. profile-specific terminal states and publish/reject rules,
 7. atomic publication or no-publication rejection,
 8. downstream invalidation and recomputation after release or publication,
-9. replay-visible cycle-region and iteration summaries.
+9. replay-visible cycle-region and iteration summaries,
+10. typed OxCalcTree host input for cycle profile and iterative bounds,
+11. typed OxCalcTree result diagnostics for circular-reference outcomes.
 
 Acceptance requires replacing fixture-keyed terminal values with a general
 algorithm for the declared scope.
@@ -81,6 +84,44 @@ Each family gets its own lane:
 Each lane may close as implemented, blocked, or explicitly excluded from the
 declared product scope.
 
+### Downstream Host Contract
+
+DnaTreeCalc requested the production contract for cycle profile selection,
+iteration bounds, and returned circular-reference diagnostics.
+
+W055 treats this as part of Tranche A, not as a later documentation cleanup.
+The intake packet is:
+`docs/spec/core-engine/w055-cycles/W055_DNATREECALC_CYCLE_CONFIG_HANDOVER_INTAKE.md`.
+
+The contract packet is:
+`docs/spec/core-engine/w055-cycles/W055_HOST_CONTRACT_TERMINAL_SEMANTICS_AND_PARITY_GATES.md`.
+
+Current disposition:
+
+1. `compatibility_basis` may describe fixture provenance, but it is not the
+   final cycle config API,
+2. the production input field is `OxCalcTreeRecalcRequest.cycle_config`,
+3. the production result field is `OxCalcTreeRecalcResult.cycle_diagnostics`,
+4. DnaTreeCalc iterative cycle corpus cases should stay pending until the typed
+   implementation and acceptance evidence land.
+
+### Parity Levels
+
+W055 reports Excel parity only by declared scope.
+
+Allowed claims:
+
+1. `Excel-faithful (covered surfaces)` for the current W048/W055 single-host
+   covered surfaces,
+2. `Tranche A Excel parity` after the general engine replaces fixture-keyed
+   behavior for the declared Tranche A surface and conformance passes,
+3. hard-family parity only after each separate hard-family lane closes.
+
+W055 does not claim broad Excel parity for all circular-reference behavior until
+cross-version, thread, dynamic-array, data-table, and external-link dimensions
+are implemented, blocked with accepted limitation, or explicitly excluded from
+the named product scope.
+
 ## 4. Dependencies
 
 Required now:
@@ -102,17 +143,18 @@ change.
 
 ## 5. First Work
 
-The first W055 beads should:
+The first W055 beads are:
 
-1. create the W055 epic and child bead map,
-2. declare the first product scope for Tranche A,
-3. declare the artifact root and evidence layout,
-4. write the general cycle-engine design,
-5. replace W048 fixture-keyed iterative behavior for the declared scope,
-6. run TraceCalc and TreeCalc/core conformance against W048 evidence,
-7. start the Excel observation matrix for Tranche B,
-8. create separate lanes for dynamic arrays, data tables, external links, and
-   thread variants.
+1. `calc-9ouy.1` rollout, scope, and evidence root,
+2. `calc-9ouy.2` general cycle-engine design,
+3. `calc-9ouy.3` fixture-keyed iterative implementation replacement,
+4. `calc-9ouy.4` Tranche A conformance and replay evidence,
+5. `calc-9ouy.5` Excel observation matrix,
+6. `calc-9ouy.6` hard Excel family lanes,
+7. `calc-9ouy.7` formalization handoff packet,
+8. `calc-9ouy.8` DnaTreeCalc cycle config host contract,
+9. `calc-9ouy.9` OxCalcTree typed cycle config and diagnostics implementation,
+10. `calc-9ouy.10` DnaTreeCalc cycle bridge acceptance evidence.
 
 Suggested artifact roots:
 
@@ -120,6 +162,15 @@ Suggested artifact roots:
 2. `docs/test-runs/core-engine/w055-cycles/`
 
 The first rollout bead may refine these roots before evidence is emitted.
+
+The rollout/scope packet is
+`docs/spec/core-engine/w055-cycles/W055_TRANCHE_A_ROLLOUT_AND_SCOPE.md`.
+
+The DnaTreeCalc handover intake packet is
+`docs/spec/core-engine/w055-cycles/W055_DNATREECALC_CYCLE_CONFIG_HANDOVER_INTAKE.md`.
+
+The host contract and parity-gate packet is
+`docs/spec/core-engine/w055-cycles/W055_HOST_CONTRACT_TERMINAL_SEMANTICS_AND_PARITY_GATES.md`.
 
 ## 6. Closure Gate
 
@@ -134,10 +185,14 @@ For that scope, closure requires:
 5. numeric precision stated and checked where claimed,
 6. dynamic arrays, data tables, external links, and thread variants either
    implemented, blocked, or explicitly excluded,
-7. profile selectors and capability manifests updated,
-8. spec and replay contracts updated,
-9. proof/model obligations packetized separately,
-10. final report states product status, evidence, still-open work, and formal
+7. typed host-facing cycle config and result diagnostics specified and
+   implemented,
+8. DnaTreeCalc bridge or handoff evidence shows the typed contract satisfies the
+   downstream ask,
+9. profile selectors and capability manifests updated,
+10. spec and replay contracts updated,
+11. proof/model obligations packetized separately,
+12. final report states product status, evidence, still-open work, and formal
     status separately.
 
 ## 7. Status
@@ -148,7 +203,9 @@ is not implemented yet.
 Evidence: W048 Excel observations, TraceCalc fixtures, TreeCalc/core fixtures,
 and conformance checks are the starting evidence.
 
-Still open: general cycle engine, Excel observation matrix, hard Excel-family
-lanes, conformance comparison, spec/replay updates, formalization handoff.
+Still open: general cycle engine, typed OxCalcTree cycle config/result contract,
+typed Rust facade implementation, DnaTreeCalc acceptance evidence, Excel
+observation matrix, hard Excel-family lanes, conformance comparison, spec/replay
+updates, formalization handoff.
 
 Formal status: no W055 proof claim.

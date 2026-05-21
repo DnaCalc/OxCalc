@@ -17,7 +17,8 @@ Status:
    - keep narrower seam residuals explicit rather than implicit,
 3. implementation-backed at the first local sequential TreeCalc slice,
 4. not yet a full product-host API freeze,
-5. aligned to the landed OxFml V1 `consumer::runtime` and `consumer::replay` entry surface.
+5. aligned to the landed OxFml V1 `consumer::runtime` and `consumer::replay` entry surface,
+6. now explicitly commits the host-driven engine-handle interaction direction, with the current one-shot facade as the first implementation-backed slice rather than a separate path to be replaced later.
 
 This document is for actual OxCalc runtime consumers.
 Hosts that use OxCalc only as seam-reference material and do not consume the OxCalc runtime directly should still start with `CORE_ENGINE_DOWNSTREAM_HOST_SEAM_REFERENCE.md`.
@@ -32,10 +33,10 @@ OxCalc already has:
 
 What it did not have was one explicit OxCalc-owned tree-runtime contract that a host such as `DNA TreeCalc` could read as the intended OxCalc entry surface.
 
-This keeps the boundary explicit: `DNA TreeCalc` owns product/host concerns and
-edit orchestration, while OxCalc owns the `OxCalcTree` engine contract, the
-tree model structure, and the internal tree-substrate/runtime implementation
-that backs it.
+This keeps the boundary explicit: `DNA TreeCalc` owns product/host concerns,
+persistence, handle lifetime, and edit orchestration, while OxCalc owns the
+`OxCalcTree` engine contract, the canonical calculation tree model structure,
+and the internal tree-substrate/runtime implementation that backs it.
 
 The result was too much spread across:
 1. architecture and seam docs,
@@ -46,7 +47,7 @@ The result was too much spread across:
 This document closes that gap.
 
 ## 3. Hard Boundaries
-This consumer contract must be read under three non-negotiable boundaries.
+This consumer contract must be read under these non-negotiable boundaries.
 
 ### 3.1 OxFml Owns Formula-Language Meaning
 OxCalc consumer packaging does not reopen or replace:
@@ -67,7 +68,31 @@ OxCalc owns:
 4. runtime-overlay meaning on the engine side,
 5. stable published-view semantics.
 
-### 3.3 Consumer Packaging Does Not Close Narrower TreeCalc Residuals
+### 3.3 Passive Host-Driven Engine Boundary
+OxCalc is a passive library at the host boundary.
+
+The host drives every advance through explicit calls:
+1. open or construct engine state,
+2. apply typed edits or external updates,
+3. request recalc or bounded progress,
+4. resume pending work with completion data,
+5. query stable views,
+6. close or drop the handle.
+
+OxCalc must not:
+1. own an ambient event loop or background scheduler that progresses between host calls,
+2. call back into the host,
+3. hide mutable document or scheduler state behind process-global storage,
+4. require a particular executor model for correctness,
+5. publish derived state outside coordinator-controlled candidate and publication paths.
+
+Future parallel, async, or GPU execution is compatible with this rule only when
+the executor is host-supplied or scoped to the host call/step. Any such work
+must be joined, suspended, or returned as explicit progress data before control
+returns to the host. No engine-owned runtime may keep ticking the model after a
+call returns.
+
+### 3.4 Consumer Packaging Does Not Close Narrower TreeCalc Residuals
 This contract does not imply closure of the still-open TreeCalc residual lanes:
 1. caller-context breadth,
 2. bind/reference intake breadth,
@@ -76,7 +101,7 @@ This contract does not imply closure of the still-open TreeCalc residual lanes:
 
 Those remain explicit `W026` and successor work lanes until exercised evidence closes them.
 
-### 3.4 W051 Reference-Collection Boundary
+### 3.5 W051 Reference-Collection Boundary
 The W051 TreeCalc reference-collection lane is now an explicit consumer-contract
 pressure point.
 
@@ -127,7 +152,10 @@ This remains the richer internal and assurance-oriented engine surface:
 6. narrower seam-consumption details that are not yet stabilized as host-facing contract.
 
 ### 4.2 Consumer-facing runtime facade
-This is the preferred host-facing entry surface for the TreeCalc-first phase:
+This is the preferred host-facing entry surface for the TreeCalc-first phase.
+The contract direction is a host-held engine handle whose internal state is
+OxCalc-owned. The first implemented object set is the one-shot first slice of
+that model:
 1. `OxCalcTreeEnvironment`
 2. `OxCalcTreeDocument`
 3. `OxCalcTreeRecalcRequest`
@@ -137,20 +165,32 @@ This is the preferred host-facing entry surface for the TreeCalc-first phase:
 Current implementation note:
 1. this object set now exists in `src/oxcalc-core/src/consumer.rs`,
 2. it is currently a thin consumer wrapper over the first local sequential TreeCalc engine,
-3. that thinness is intentional for the current phase because it keeps consumer packaging explicit without inventing a second semantic layer.
+3. that thinness is intentional for the current phase because it keeps consumer packaging explicit without inventing a second semantic layer,
+4. the current `execute(document, request)` call is semantically equivalent to opening a transient handle, loading one document snapshot, running one host-driven recalc, returning the result, and dropping the transient handle.
 
 ## 5. Primary Consumer Contract
-The first stable OxCalc tree-runtime consumer contract is:
-1. an explicit environment object,
-2. an explicit immutable or snapshot-oriented document object,
-3. an explicit per-run request object,
-4. an explicit canonical run result object,
-5. one ordinary runtime facade that executes the run.
+The stable OxCalc tree-runtime consumer direction is an explicit engine handle
+plus host-driven calls against that handle.
+
+The handle model means:
+1. the host owns the handle lifetime,
+2. OxCalc owns the handle's internal structure, dependency graph, publication state, pins, and runtime overlays,
+3. host edits enter as typed calls or edit batches rather than direct mutation of OxCalc internals,
+4. every accepted structural edit creates a new pinned structural version or a typed rejection,
+5. recalc, F9, external-value/RTD updates, and future async completions are all explicit synchronous calls into OxCalc,
+6. stable reads observe a published version or an explicitly pinned view.
+
+The V1 one-shot facade is the first slice of that model:
+1. `OxCalcTreeDocument` is the seed state for a transient handle,
+2. `OxCalcTreeRecalcRequest` is the first host-driven run request,
+3. `OxCalcTreeRecalcResult` is the stable result/read surface returned from that run,
+4. `OxCalcTreeRuntimeFacade::execute` is the current transient-handle operation.
 
 Working rule:
 1. hosts should prefer this object set over reaching directly into local proving-floor engine types,
 2. OxCalc may evolve richer internals underneath it,
-3. but host-facing packaging should not require hosts to stitch coordinator, dependency, and local runtime internals together by hand.
+3. persistent handle, edit, step, pin, and close APIs must widen this object set rather than replace it with a callback or service boundary,
+4. host-facing packaging should not require hosts to stitch coordinator, dependency, and local runtime internals together by hand.
 
 ## 6. OxCalcTree Runtime Contract
 
@@ -171,7 +211,8 @@ Runtime-derived effect production also receives this environment context, allowi
 It must not:
 1. hide OxFml-owned semantic inputs behind ambient mutable state,
 2. collapse candidate/publication distinction,
-3. smuggle scheduler or mutation policy in undocumented ways.
+3. smuggle scheduler or mutation policy in undocumented ways,
+4. imply an engine-owned ambient executor or callback channel.
 
 ### 6.2 OxCalcTreeDocument
 `OxCalcTreeDocument` is the snapshot-oriented input document for one TreeCalc runtime act.
@@ -202,6 +243,7 @@ Working meaning:
 2. compatibility and artifact-token basis remain visible to the consumer-facing runtime contract,
 3. coordinator-facing correlation is not hidden in ambient runtime state.
 
+
 ### 6.4 OxCalcTreeRecalcResult
 `OxCalcTreeRecalcResult` is the canonical host-facing result object for the current TreeCalc-first phase.
 
@@ -227,6 +269,14 @@ It must preserve:
 2. reject-is-no-publish behavior,
 3. replay-visible runtime-derived effects, including explicit runtime-effect family classification where the current engine can distinguish dynamic-dependency versus execution-restriction truth,
 4. explicit diagnostics rather than opaque success or failure.
+
+Anticipated async/completion extension:
+1. a future run state such as `Pending` or `AwaitingCompletion` is accepted as the contract direction for async function, RTD, streaming, or externally completed work,
+2. pending state must return completion descriptors as data, including opaque completion tokens, affected node or work ids, candidate/version basis, and resume requirements,
+3. OxCalc must not block, spawn an ambient task, or call the host to complete that work,
+4. the host resumes by making another explicit synchronous call against the same handle or pinned version,
+5. pending state is not accepted publication and must not leak uncommitted candidate results into stable reads.
+
 
 Current direct reachability rule:
 1. emitted runtime-derived families in the current TreeCalc-first lane must be directly reachable on `OxCalcTreeRecalcResult.runtime_effects`
@@ -264,14 +314,61 @@ No second seam layer rule:
 ### 6.5 OxCalcTreeRuntimeFacade
 `OxCalcTreeRuntimeFacade` is the ordinary host-facing runtime service.
 
-It should support:
+It supports the first one-shot slice of the engine-handle model:
 1. one-shot execution of an `OxCalcTreeDocument` plus `OxCalcTreeRecalcRequest`,
 2. a stable environment-plus-request execution model,
-3. later widening toward richer host/runtime lifecycle packaging without forcing host-side rewrites.
+3. explicit return of result, publication, reject, diagnostic, and derived-state families,
+4. no engine-to-host callbacks,
+5. no ambient executor or hidden service lifecycle.
+
+The committed widening direction is:
+1. `open(document) -> handle` or equivalent handle construction,
+2. typed edit or edit-batch calls against the handle,
+3. recalc/step calls against the handle,
+4. explicit pin/read calls for stable views,
+5. explicit close/drop semantics.
 
 Current scope note:
 1. the first implementation covers one-shot execution only,
-2. later session, incremental, or driven-host packaging is a later bounded widening lane rather than implied current scope.
+2. persistent handles, incremental edit calls, version navigation, explicit cancellation, and steppable progress are not implemented in the current facade,
+3. those APIs are successor work that must preserve this host-driven/passive interaction shape rather than introduce a separate scheduler or callback mechanism.
+
+### 6.6 Version, Cancellation, And Concurrent-Read Contract Direction
+The existing architecture and implementation already contain the core substrate
+for versioned structural truth and no-publish rejection:
+1. `StructuralSnapshot` is immutable and `StructuralEdit::apply_edit` creates a successor snapshot with a new `StructuralSnapshotId`,
+2. coordinator state separates candidate, accepted candidate, publication, reject detail, and pinned publication views,
+3. a rejected candidate publishes no stable state,
+4. pinned readers observe a stable structural/publication view while later work proceeds.
+
+The contract direction built on that substrate is:
+1. incremental edits produce named structural versions and invalidation consequences,
+2. undo/redo is version navigation over retained engine versions, not a host-forged inverse edit,
+3. cancellation abandons the in-flight candidate or progress state and preserves the last stable publication,
+4. safe read-during-recalc is through immutable published or pinned views,
+5. retention of older versions and derived artifacts is governed by bounded-memory and pinned-epoch rules rather than by host mutation.
+
+Current implementation boundary:
+1. structural snapshot edits and coordinator pin/reject primitives exist in Rust,
+2. the host-facing persistent handle, edit-to-version map, undo/redo navigation surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeRuntimeFacade`,
+3. W054 owns bounded-memory and pinned-epoch retention policy,
+4. W053 owns Stage 2 partitioned/concurrent promotion,
+5. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
+
+### 6.7 System Of Record And Host Sync Contract
+System-of-record ownership is split as follows:
+1. OxCalc owns the canonical calculation tree structure inside the engine handle,
+2. OxCalc owns dependency descriptors, invalidation, publication, pinned views, runtime overlays, and calc-state derived from that structure,
+3. DNA TreeCalc owns product workspace state, UI/view state, skin state, persistence policy, command grouping, and edit orchestration,
+4. OxFml owns formula parse/bind/evaluator meanings consumed through the OxCalc-supplied host formula context,
+5. OxFunc owns worksheet value/function semantics.
+
+The host-to-engine sync contract is:
+1. the host sends document seeds, typed edits, edit batches, external value updates, recalc requests, completion tokens, and pin/read requests into OxCalc,
+2. OxCalc returns version ids, edit impacts, invalidation consequences, run state, pending descriptors, publications, rejects, diagnostics, and stable read views as data,
+3. a host-side mirror is permitted only as a projection or cache for rendering/persistence; it is reconciled by OxCalc version and publication ids,
+4. if the host mirror disagrees with the engine-held calculation structure for engine-visible facts, the engine-held version is authoritative for calculation,
+5. persistent serialization may include host product data plus OxCalc-exported structure/version state, but it must not require the host to mutate OxCalc internals directly.
 
 ## 7. Relationship To OxFml V1
 The OxCalc consumer contract is intentionally shaped to align with the OxFml V1 approach.
@@ -301,21 +398,27 @@ The current OxFml-facing deterministic host packet that feeds the first local sl
 Current interpretation rule:
 1. ordinary TreeCalc-style hosts should reason about OxCalc consumption through the consumer contract in this document,
 2. implementation-backed packet companions remain valid supporting detail,
-3. narrower seam-intake planning docs remain supporting or temporary material rather than host-facing contract.
+3. narrower seam-intake planning docs remain supporting or temporary material rather than host-facing contract,
+4. current Rust code does not yet implement a persistent host-held `OxCalcTree` engine handle, typed incremental edit API, pending/completion-token state, explicit cancellation, or async/parallel executor injection.
 
 ## 9. Scope Boundary For V1
 This V1 contract includes:
 1. one-shot local sequential TreeCalc runtime execution,
 2. explicit document/request/result packaging,
 3. explicit coordinator-facing result families,
-4. implementation-backed alignment to OxFml V1 runtime/replay intake.
+4. implementation-backed alignment to OxFml V1 runtime/replay intake,
+5. the normative interaction direction that one-shot execution is the first slice of a host-held, OxCalc-owned engine-handle model.
 
 This V1 contract does not include:
-1. full host session lifecycle,
-2. full structural-edit host API,
-3. full product-host integration policy,
-4. closure of W026 residuals,
-5. later Stage 2 or concurrency-facing host packaging.
+1. implemented persistent host session or handle lifecycle,
+2. implemented full structural-edit host API,
+3. implemented version-navigation undo/redo API,
+4. implemented pending/completion-token API,
+5. implemented cancellation or steppable-progress API,
+6. implemented executor injection, Stage 2 partitioning, GPU execution, or async facade,
+7. full product-host integration policy,
+8. closure of W026 residuals,
+9. W051 reference-collection implementation and evidence.
 
 ## 10. Reading Order
 For an actual OxCalc runtime consumer such as `DNA TreeCalc`, the intended reading order is:
@@ -335,12 +438,25 @@ For an actual OxCalc runtime consumer such as `DNA TreeCalc`, the intended readi
 Use `CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md` only as an implementation-backed packet companion after the consumer contract is understood.
 
 ## 11. Status
-- execution_state: in_progress
-- scope_completeness: scope_partial
-- target_completeness: target_partial
-- integration_completeness: partial
-- open_lanes:
-  - current consumer packaging is one-shot execution only
-  - broader TreeCalc bind/reference intake and W026 residuals remain open
-  - later host lifecycle and richer consumer-facing mutation/session surfaces are not yet defined here
-  - current implementation is local-sequential TreeCalc-first scope, not a broader product-host freeze
+Product status: OxCalc commits the host-driven engine-handle interaction shape
+as the contract direction for OxCalcTree. The current implemented user-visible
+slice is synchronous one-shot local sequential execution through
+`OxCalcTreeRuntimeFacade::execute(document, request)`.
+
+Evidence: the Rust facade exists in `src/oxcalc-core/src/consumer.rs`; the
+underlying local runtime exists in `src/oxcalc-core/src/treecalc.rs`;
+`StructuralSnapshot` successor edits and coordinator candidate/publication/
+reject/pin primitives exist in `src/oxcalc-core/src/structural.rs` and
+`src/oxcalc-core/src/coordinator.rs`; W051 records OxCalc custody of the
+TreeCalc model for reference-collection resolution.
+
+Still open: persistent handle API, typed incremental edit API, edit-to-version
+and undo/redo surface, pending/completion-token API, explicit cancellation and
+steppable recalc, executor injection, Stage 2 concurrency/GPU/async facade,
+W051 reference-collection implementation, W054 retention policy, W053
+partitioned concurrency, and closure of the remaining W026 residual lanes.
+
+Formal status: no new proof claim. Existing state/snapshot and coordinator
+docs define the pinned-reader, no-torn-view, reject-is-no-publish, and
+single-publisher obligations that later handle/concurrency work must model and
+exercise.

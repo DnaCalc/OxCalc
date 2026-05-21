@@ -1541,3 +1541,56 @@ Current non-assumptions:
    surfaces.
 4. OxCalc is not reopening the frozen V1 facade; B9 only names the current
    compatibility state and the fields that CALC-002 should address.
+
+## 81. W051 Host Formula Context And Namespace Resolution
+OxCalc has clarified the W051 TreeCalc-reference pressure case as a generic
+OxCalc-to-OxFml host-context requirement, not a request for OxFml to embed
+TreeCalc semantics.
+
+Current OxCalc position:
+1. DNA TreeCalc supplies formula text and model-edit requests; it does not
+   parse or lower formulas.
+2. OxCalc is the TreeCalc model custodian and supplies the active host formula
+   context to OxFml.
+3. OxFml owns formula grammar, parse/bind, lexical scopes, call structure,
+   prepared identity, and bind diagnostics.
+4. OxFunc owns function semantics and the canonical function registry surface,
+   including built-ins and registered UDFs.
+5. TreeCalc names, node paths, selectors such as `@CHILDREN`, and
+   set-producing references are host namespace/reference facts owned and
+   resolved by OxCalc.
+
+Requested OxFml design direction:
+1. accept a generic host formula context with `dialect_id` /
+   `capability_profile_id`, reference-expression hook, host namespace resolver,
+   function registry view, caller context, and cache/replay identity,
+2. keep OxFml's parser generic around that hook: calls, argument lists,
+   operators, literals, arrays, `LET`, `LAMBDA`, and source spans,
+3. make bare-call and non-call name resolution explicit and Excel-matched
+   across built-in functions, registered UDFs, workbook/sheet defined names,
+   and defined-name `LAMBDA` invocation before product semantics are frozen,
+4. map TreeCalc host names and lambda-valued nodes onto the closest
+   Excel-defined-name lane, or record any TreeCalc-only behavior as an
+   explicit extension,
+5. make explicit host-reference syntax/paths bypass function-name ambiguity,
+6. emit typed diagnostics and replay-visible resolution-layer facts for
+   ambiguity, unknown functions, unresolved host names, capability denial, and
+   set-reference-as-callable errors.
+
+Driving W051 scenario:
+1. `=SUM(@CHILDREN)` should parse/bind in OxFml with `SUM` resolved through the
+   function registry and `@CHILDREN` carried as an opaque host-reference
+   collection supplied by OxCalc.
+2. OxCalc then lowers the host-reference artifact against the OxCalc-owned
+   tree model, creates current-member and membership/order dependencies, and
+   supplies the dereference/iterator authority at runtime.
+3. OxFunc should see ordinary values/arrays or an opaque `ReferenceLike` plus
+   resolver, not TreeCalc reference text or selector payloads.
+
+Current routed dependency:
+1. filed as `docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`,
+2. aligns with OxFml W074's UDF-aware formula binding and name-resolution
+   invalidation work,
+3. leaves OxCalc W051 responsible for the TreeCalc reference-collection
+   carrier, set-membership dependency edge, invalidation, and resolver/reader
+   materialization.

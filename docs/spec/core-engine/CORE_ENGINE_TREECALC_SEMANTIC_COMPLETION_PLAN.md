@@ -92,7 +92,8 @@ The following are still absent from the live TreeCalc engine path:
 2. real OxFml bind products as the driver of reference meaning,
 3. automatic dependency-graph build from formulas and bind facts,
 4. actual evaluator-produced candidate results as the active execution path for the broader TreeCalc dependency-driven scope beyond the current first local slice,
-5. real tree-relative and direct-node reference support beyond the test-only `TraceCalc` calc-space,
+5. real tree-relative, direct-node, and ordered reference-collection support
+   beyond the test-only `TraceCalc` calc-space,
 6. end-to-end structure -> formula -> bind -> dependency -> evaluation -> publication execution over the real engine substrate.
 
 The work sequence below exists to close exactly that gap.
@@ -119,10 +120,12 @@ The minimum TreeCalc node taxonomy for this phase should cover:
 The first TreeCalc-ready engine should cover at least:
 1. direct named-node references,
 2. tree-relative references based on explicit relative-navigation semantics,
-3. static multi-dependency formulas,
-4. conditional dependency selection where the effective edge set depends on runtime facts,
-5. explicit direct-binding-sensitive families where semantic truth depends on concrete identity,
-6. typed unsupported or out-of-scope reference paths as explicit no-publish or unsupported outcomes.
+3. ordered reference collections such as DNA TreeCalc `@CHILDREN` / `.*`,
+   carried as reference-like inputs rather than syntax-time value arrays,
+4. static multi-dependency formulas,
+5. conditional dependency selection where the effective edge set depends on runtime facts,
+6. explicit direct-binding-sensitive families where semantic truth depends on concrete identity,
+7. typed unsupported or out-of-scope reference paths as explicit no-publish or unsupported outcomes.
 
 ### 5.4 Reference Families Out Of Scope
 Not required for this first phase:

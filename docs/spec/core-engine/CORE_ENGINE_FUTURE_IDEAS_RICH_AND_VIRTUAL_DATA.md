@@ -18,6 +18,11 @@ Keep in active worksets:
    OxFunc/OxFml already publish concrete carrier metadata.
 4. Goal Seek / Solver / what-if style sensitivity lanes where they map to
    recognizable spreadsheet behavior (`W052` planning owns that decision).
+5. DNA TreeCalc ordered reference collections such as `@CHILDREN` / `.*` when
+   OxFml parses/binds them through a generic OxCalc-supplied host formula
+   context and OxCalc carries them as reference-like formula inputs through the
+   W051 sparse/reference-reader abstraction. This is not a generic
+   virtual-array promotion.
 
 Park here:
 

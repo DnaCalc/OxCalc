@@ -6,14 +6,14 @@ Older detailed W033-W045 status material was archived during the W046 cleanup pr
 
 ## Current Focus
 1. `W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`
-2. Current route: keep W050 as the reached-gate formula-authority substrate, then plan Excel-scope sparse range readers before bounded-memory and formalization work.
+2. Current route: keep W050 as the reached-gate formula-authority substrate, then plan Excel-compatible sparse range readers plus the first generic OxFml host-context / OxCalc-resolve TreeCalc reference-collection lane before bounded-memory and formalization work.
 3. Predecessors: W050 formula-authority/session/prepared-package rework, W047 CTRO implementation-first work, and W048 circular-reference closure under single-host Excel scope.
 4. W049 receives post-W050 formalization intake; non-Excel rich/virtual data ideas are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`.
 
 ## Active Aim
 The active calculation-model line has moved from W050 execution to successor planning. Current active aim:
 1. keep W050 closure/status surfaces aligned with the landed production seam,
-2. plan W051 as Excel-compatible sparse range readers and defined-entry semantics, not generic rich data,
+2. plan W051 as Excel-compatible sparse range readers, defined-entry semantics, and DNA TreeCalc `@CHILDREN` / `.*` reference-collection compatibility with OxFml-owned generic parsing, an OxCalc-supplied host context, and OxCalc-owned resolution, not generic rich data,
 3. keep W054 bounded-memory and pinned-epoch GC sequenced after the W051 artifact set,
 4. route post-W050 formalization to W049,
 5. route sensitivity/derivative behavior to W052 only where it maps to recognizable spreadsheet behavior,
@@ -21,9 +21,9 @@ The active calculation-model line has moved from W050 execution to successor pla
 
 Current next engineering move:
 
-1. Use the W051 activation review to lock the sparse reader API, first function group, and replay artifact shape across OxCalc/OxFml/OxFunc.
+1. Use the W051 activation review to lock the sparse reader API, generic OxCalc-to-OxFml host formula context, Excel-matched function/UDF/defined-name/defined-name-LAMBDA shadowing plan, OxCalc reference-collection resolution carrier, first function group, and replay artifact shape across OxCalc/OxFml/OxFunc.
 2. Create the W051 epic/bead path only after those intake points are explicit.
-3. Keep fixture-only reader scaffolding clearly separated from production sparse range authority.
+3. Keep fixture-only reader scaffolding clearly separated from production sparse range and reference-collection authority.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

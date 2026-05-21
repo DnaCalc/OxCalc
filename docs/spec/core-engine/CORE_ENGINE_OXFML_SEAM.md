@@ -144,6 +144,102 @@ This is necessary for cases such as:
 
 These effects must not be left as hidden evaluator internals if OxCalc is expected to coordinate on them.
 
+### 10.1 Reference-Reader And TreeCalc Collection Pressure
+W051 adds one concrete seam pressure point that is not optional for the
+TreeCalc host line: ordered DNA TreeCalc reference collections such as
+`@CHILDREN` / `.*` must be able to cross the OxCalc/OxFml boundary as
+reference-like inputs.
+
+Ownership is strict here: OxFml parses and binds formula text through a generic
+host formula context. OxCalc supplies the TreeCalc host reference/name dialect
+and owns the tree model. OxCalc does not parse the whole formula text and DNA
+TreeCalc does not parse formula text. OxCalc consumes the OxFml
+bind/formal-reference output, resolves it against the OxCalc-owned internal
+tree model, and supplies the runtime reference binding or dereference adapter
+back through the OxFml runtime seam.
+
+From the OxCalc side, the required seam shape is:
+1. OxFml exposes a generic host-context parse/bind output that identifies the
+   reference collection selector and caller/base context without requiring
+   OxCalc to reinterpret source text,
+2. OxCalc can bind a formal input to a reference-like carrier rather than only
+   to an eager scalar value,
+3. OxFml can preserve that reference binding for reference-visible call
+   profiles and can dereference it through a supplied resolver/materialization
+   adapter for value-oriented call profiles,
+4. replay can show the parse/bind identity, formal input descriptor, reference
+   target identity,
+   declared extent or member stream, dereference order, and resulting value
+   stream,
+5. OxFunc receives no TreeCalc syntax or tree-structure objects; it receives
+   values/arrays or an opaque `ReferenceLike` plus the ordinary resolver path.
+
+Current code already has `RuntimeFormalInputBinding` and
+`DefinedNameBinding::Reference(ReferenceLike)` on the OxFml side, but the
+current OxCalc TreeCalc runtime binds translated references as
+`DefinedNameBinding::Value(...)`. W051 owns closing that gap for both sparse
+worksheet ranges and the first TreeCalc reference-collection carrier.
+
+The first aggregate group also needs an explicit admission decision. For
+example, OxFunc `SUM` already has a resolver-backed reference path, but its
+current metadata is values-only from OxFml's ordinary argument-preparation
+view. W051 must either give OxFml a stable way to pass the reference/reader
+through to that aggregate adapter or mark eager value-array materialization as
+a temporary, non-closing fallback for the reference-preserving scenario.
+
+If the canonical OxFml seam needs a new resolver hook, reference family, or
+replay field for this to be stable, OxCalc must file that as an explicit
+handoff rather than creating a private evaluator contract.
+
+### 10.2 Host Formula Context And Namespace Resolution
+The preferred seam direction is not an OxFml-internal `TreeCalc` parser mode.
+It is a generic host formula context supplied by OxCalc.
+
+At prepare/bind time, OxCalc should provide OxFml:
+1. a `dialect_id` / `capability_profile_id` such as `oxcalc.treecalc-v1`,
+2. a reference-expression parser hook for host reference syntax in operand and
+   callee-prefix positions,
+3. a host namespace resolver for node names, defined names, relative paths,
+   set-producing selectors, and host-sensitive references,
+4. a function registry view that includes OxFunc built-ins and registered UDFs,
+5. caller context needed to bind lexical walk-up and relative references.
+
+OxFml remains responsible for the formula grammar around that hook: function
+calls, argument lists, operators, literals, arrays, `LET`, `LAMBDA`, and
+prepared-package identity. The host hook consumes only the host reference/name
+surface and returns opaque syntax/bind objects with source spans and shape
+hints.
+
+Name and call resolution should be explicit. The exact name-shadowing
+precedence is not frozen by this OxCalc note: OxFml must match observed Excel
+behavior for built-in functions, registered UDFs, workbook/sheet defined names,
+and defined-name `LAMBDA` invocation before promoting product semantics.
+TreeCalc host names should then map onto the closest Excel-defined-name
+category, with any TreeCalc-only extension documented as such.
+
+The current planning shape is:
+1. OxFml-owned special forms and lexical bindings keep their existing
+   precedence.
+2. Bare call position is resolved by the Excel-matched precedence across
+   built-ins, registered UDFs, defined names, and defined-name lambdas.
+3. When that precedence leaves a host namespace lookup lane, OxFml asks the
+   OxCalc host namespace whether the callee resolves to a callable host
+   reference, such as a lambda-valued node.
+4. In non-call position, bare names resolve through the host namespace rather
+   than the function registry, unless Excel defines a function/UDF symbol as
+   meaningful in that non-call position.
+5. Explicit host-reference syntax and explicit paths bind through the host
+   namespace and are replay-visible as host-reference resolutions.
+6. Any ambiguous or denied resolution must produce a typed bind diagnostic that
+   records the resolution layer that won or the explicit disambiguation needed.
+
+This keeps Excel compatibility as the source of truth for function/UDF/name
+shadowing, keeps node/defined-name references with OxCalc, and gives OxFml a
+generic binding interface rather than a TreeCalc-specific semantic branch.
+
+The OxFml-side contract request is tracked in
+`docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

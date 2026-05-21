@@ -32,7 +32,10 @@ OxCalc already has:
 
 What it did not have was one explicit OxCalc-owned tree-runtime contract that a host such as `DNA TreeCalc` could read as the intended OxCalc entry surface.
 
-This keeps the boundary explicit: `DNA TreeCalc` owns product/host concerns, while OxCalc owns the `OxCalcTree` engine contract and the internal tree-substrate/runtime implementation that backs it.
+This keeps the boundary explicit: `DNA TreeCalc` owns product/host concerns and
+edit orchestration, while OxCalc owns the `OxCalcTree` engine contract, the
+tree model structure, and the internal tree-substrate/runtime implementation
+that backs it.
 
 The result was too much spread across:
 1. architecture and seam docs,
@@ -72,6 +75,44 @@ This contract does not imply closure of the still-open TreeCalc residual lanes:
 4. publication/topology breadth beyond the current local floor.
 
 Those remain explicit `W026` and successor work lanes until exercised evidence closes them.
+
+### 3.4 W051 Reference-Collection Boundary
+The W051 TreeCalc reference-collection lane is now an explicit consumer-contract
+pressure point.
+
+For a DNA TreeCalc host, a formula such as `=SUM(@CHILDREN)` must be able to
+enter OxCalcTree as formula text that OxFml parses and binds through an
+OxCalc-supplied host formula context. OxCalc then resolves the resulting
+reference collection against the OxCalc-owned tree model rather than relying
+on precomputed formula text magic or a host-specific OxFunc call.
+
+Contract requirements:
+1. the host-facing document/update path must carry formula text and tree-model
+   creation/update inputs for the OxCalc-owned model, not a host-parsed
+   expression tree,
+2. OxFml must own parse/bind and consume an OxCalc-supplied host formula
+   context for reference dialect, host namespace lookup, and caller context,
+3. OxFml must produce a reference/formal-input structure that identifies the
+   collection selector, caller/base context, source token, and resolution
+   layer,
+4. OxCalc must own resolution and lowering from that OxFml structure into
+   dependency, invalidation, replay, and OxFml runtime input surfaces,
+5. current member value changes, child-membership changes, and sibling-order
+   changes must be dependency relevant for `@CHILDREN` / `.*`,
+6. bare call names must resolve through a declared hierarchy whose
+   function/UDF/defined-name/defined-name-`LAMBDA` shadowing behavior matches
+   observed Excel before product semantics are frozen; TreeCalc host callable
+   references then map onto the closest Excel-defined-name lane or an explicit
+   TreeCalc extension, and explicit host-reference syntax must be available for
+   collisions,
+7. OxFml runtime must be able to preserve reference identity or dereference
+   through the supplied OxCalc adapter,
+8. OxFunc must remain TreeCalc-opaque and see ordinary values/arrays or an
+   opaque `ReferenceLike` plus resolver.
+
+Until W051 implements this, the current consumer contract is scaffolded for
+direct-node prepared-formula smoke paths only; it is not product-complete for
+DNA TreeCalc formula-text parsing/binding or reference-array formulas.
 
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.

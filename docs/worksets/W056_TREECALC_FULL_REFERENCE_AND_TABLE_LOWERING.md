@@ -132,26 +132,29 @@ dependency-lowering surface in `src/oxcalc-core/src/structured_table.rs`.
 Current implemented scope:
 
 1. consumes only public OxFml table-context packet types:
-   `table_catalog`, `enclosing_table_ref`, and `caller_table_region`,
+   `table_catalog`, `enclosing_table_ref`, `caller_table_region`, stable row
+   membership/order identities, and exact header/totals region refs,
 2. accepts a normalized `StructuredTableReferenceIntake` from the host/OxFml
    bind path rather than parsing formula text or mirroring structured-reference
    grammar,
-3. lowers available facts for table identity, selected column identity, header
-   text, data region, caller row context for `#This Row`, and omitted-table-name
-   enclosing-table dependency,
+3. lowers available facts for table identity, stable row membership, stable row
+   order, selected column identity, header text, exact header region, data
+   region, exact totals region, caller row context for `#This Row`, and
+   omitted-table-name enclosing-table dependency,
 4. preserves table dependencies as context-only dependency descriptors so the
    dependency graph retains them without inventing TreeNodeId reverse edges,
-5. records typed blockers for facts not present in the current public packet:
-   stable row membership, row order, exact header-row region identity, and exact
-   totals-row region identity.
+5. records typed blockers only when optional packet facts are absent or when the
+   packet states that the requested header/totals/caller row context does not
+   exist.
 
 Current non-claim:
 
 This is an implemented OxCalc intake/lowering surface for the current generic
-packet, not full structured table behavior. Full behavior remains blocked until
-the upstream packet supplies stable row membership/order and exact region
-identity, and until OxFml emits exercised normalized structured-reference bind
-packets for the selected table/columns/regions.
+packet, including the stable table fact fields added by OxFml `fml-ds0.8`.
+It is not full structured table behavior. Full behavior remains blocked until
+OxFml emits exercised normalized structured-reference bind packets for the
+selected table/columns/regions and the DnaTreeCalc/OxReplay retained table
+evidence runs through the real bridge.
 
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
@@ -218,13 +221,13 @@ Current non-claim:
 
 This is runtime prepared-identity/cache invalidation for the carriers that
 OxCalc can currently project through public OxFml runtime context fields. It is
-not full W056 closure. Stable structured-table row membership/order and exact
-header/totals region identity remain blocked by `calc-4vs8.4`; broader
-upstream packet/oracle surfaces, including final name/call precedence and
-public cross-workspace availability/degradation semantics, remain blocked by
-`calc-4vs8.5`. The registry-view/capability-denial portion of that upstream
-dependency is now evidenced by OxFml `fml-ds0.7` and should not be treated as
-an open blocker.
+not full W056 closure. The stable structured-table packet facts added by OxFml
+`fml-ds0.8` are now consumed by the OxCalc lowering surface; broader upstream
+packet/oracle surfaces, including final name/call precedence, exercised
+normalized structured-reference bind packets, and public cross-workspace
+availability/degradation semantics, remain blocked by `calc-4vs8.5`. The
+registry-view/capability-denial portion of that upstream dependency is now
+evidenced by OxFml `fml-ds0.7` and should not be treated as an open blocker.
 
 ## 4E. `calc-4vs8.7` Raw Formula-Text Children Prebind Surface
 
@@ -337,14 +340,18 @@ execute end-to-end through the existing OxCalc/OxFml/OxFunc reference path.
 packets, preserve qualified token text/spans, bind to the supplied base
 `TreeNodeId`, reject qualified syntax without a matching resolved base, and
 execute end-to-end through the same reference-preserving path.
+`calc-4vs8.4` consumes OxFml `fml-ds0.8` stable table packet facts and adds
+focused Rust coverage proving row membership, row order, exact header region,
+and exact totals region lower as context dependency descriptors when supplied,
+while typed blockers remain for legacy packets where those optional facts are
+absent.
 
-Still open: stable table row membership/order and exact header/totals region
-packet support, W074 final name/call precedence evidence, exercised OxFml
+Still open: W074 final name/call precedence evidence, exercised OxFml
 structured-reference bind packets, a versioned cross-workspace
 availability/degradation model, selector dependency models for recursive and
 sibling/preceding/following set selectors, full OxCalc-owned explicit path
 resolution for raw `base` text, DnaTreeCalc receiving-side corpus activation
-for the new OxCalc prebind surface, and broader end-to-end scenarios. Blockers
-`calc-4vs8.4` and `calc-4vs8.5` remain open.
+for the new OxCalc prebind surface and table packets, and broader end-to-end
+scenarios. Blocker `calc-4vs8.5` remains open after `calc-4vs8.4` closure.
 
 Formal status: no proof claim.

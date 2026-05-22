@@ -118,6 +118,14 @@ pub struct UpstreamHostFixtureTableDescriptor {
     pub workbook_scope_ref: String,
     pub sheet_scope_ref: String,
     pub table_range_ref: String,
+    #[serde(default)]
+    pub row_membership_identity: Option<String>,
+    #[serde(default)]
+    pub row_order_identity: Option<String>,
+    #[serde(default)]
+    pub header_region_ref: Option<String>,
+    #[serde(default)]
+    pub totals_region_ref: Option<String>,
     pub header_row_present: bool,
     pub totals_row_present: bool,
     #[serde(default)]
@@ -1156,6 +1164,10 @@ fn to_table_descriptor(descriptor: &UpstreamHostFixtureTableDescriptor) -> Table
         workbook_scope_ref: descriptor.workbook_scope_ref.clone(),
         sheet_scope_ref: descriptor.sheet_scope_ref.clone(),
         table_range_ref: descriptor.table_range_ref.clone(),
+        row_membership_identity: descriptor.row_membership_identity.clone(),
+        row_order_identity: descriptor.row_order_identity.clone(),
+        header_region_ref: descriptor.header_region_ref.clone(),
+        totals_region_ref: descriptor.totals_region_ref.clone(),
         header_row_present: descriptor.header_row_present,
         totals_row_present: descriptor.totals_row_present,
         columns: descriptor

@@ -465,6 +465,10 @@ mod tests {
             workbook_scope_ref: "book:1".to_string(),
             sheet_scope_ref: "sheet:1".to_string(),
             table_range_ref: "A1:B4".to_string(),
+            row_membership_identity: None,
+            row_order_identity: None,
+            header_region_ref: None,
+            totals_region_ref: None,
             header_row_present: true,
             totals_row_present: false,
             columns: vec![TableColumnDescriptor {

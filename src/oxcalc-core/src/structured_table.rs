@@ -280,7 +280,7 @@ pub fn lower_structured_table_dependencies(
     };
 
     push_table_identity(request, table, &mut facts);
-    push_row_membership_and_order_blockers(request, table, &mut facts);
+    push_row_membership_and_order_facts(request, table, &mut facts);
     push_column_facts(request, table, &mut facts);
     push_region_facts(request, table, &mut facts);
     push_caller_context_fact(request, table, &mut facts);
@@ -332,29 +332,48 @@ fn push_table_identity(
     ));
 }
 
-fn push_row_membership_and_order_blockers(
+fn push_row_membership_and_order_facts(
     request: &StructuredTableDependencyLoweringRequest,
     table: &TableDescriptor,
     facts: &mut Vec<StructuredTableDependencyFact>,
 ) {
-    for (suffix, kind) in [
+    for (suffix, kind, identity) in [
         (
             "row_membership",
             StructuredTableDependencyFactKind::RowMembership,
+            table.row_membership_identity.as_ref(),
         ),
-        ("row_order", StructuredTableDependencyFactKind::RowOrder),
+        (
+            "row_order",
+            StructuredTableDependencyFactKind::RowOrder,
+            table.row_order_identity.as_ref(),
+        ),
     ] {
-        facts.push(StructuredTableDependencyFact::blocked(
-            fact_id(request, suffix, &table.table_id),
-            kind,
-            Some(table.table_id.clone()),
-            None,
-            StructuredTableLoweringBlocker::MissingStableRowMembershipAndOrderPacket,
-            format!(
-                "current OxFml TableDescriptor supplies table_range_ref={} but no stable row membership/order identity",
-                table.table_range_ref
-            ),
-        ));
+        if let Some(identity) = identity {
+            facts.push(StructuredTableDependencyFact::lowered(
+                fact_id(request, suffix, identity),
+                kind,
+                table.table_id.clone(),
+                None,
+                format!(
+                    "table_{suffix}:v1:table={};identity={identity}",
+                    table.table_id
+                ),
+                format!("stable {suffix} identity is supplied by the OxFml TableDescriptor"),
+            ));
+        } else {
+            facts.push(StructuredTableDependencyFact::blocked(
+                fact_id(request, suffix, &table.table_id),
+                kind,
+                Some(table.table_id.clone()),
+                None,
+                StructuredTableLoweringBlocker::MissingStableRowMembershipAndOrderPacket,
+                format!(
+                    "current OxFml TableDescriptor supplies table_range_ref={} but no stable {suffix} identity",
+                    table.table_range_ref
+                ),
+            ));
+        }
     }
 }
 
@@ -423,15 +442,30 @@ fn push_region_facts(
                     "header text is supplied as TableColumnDescriptor.column_name".to_string(),
                 ));
             }
-            facts.push(StructuredTableDependencyFact::blocked(
-                fact_id(request, "header_region", &table.table_id),
-                StructuredTableDependencyFactKind::HeaderRegion,
-                Some(table.table_id.clone()),
-                None,
-                StructuredTableLoweringBlocker::MissingHeaderRegionRange,
-                "current table packet has header presence/text but no header row region identity"
-                    .to_string(),
-            ));
+            if let Some(header_region_ref) = table.header_region_ref.as_ref() {
+                facts.push(StructuredTableDependencyFact::lowered(
+                    fact_id(request, "header_region", header_region_ref),
+                    StructuredTableDependencyFactKind::HeaderRegion,
+                    table.table_id.clone(),
+                    None,
+                    format!(
+                        "table_header_region:v1:table={};region={header_region_ref}",
+                        table.table_id
+                    ),
+                    "exact header row region identity is supplied by the OxFml TableDescriptor"
+                        .to_string(),
+                ));
+            } else {
+                facts.push(StructuredTableDependencyFact::blocked(
+                    fact_id(request, "header_region", &table.table_id),
+                    StructuredTableDependencyFactKind::HeaderRegion,
+                    Some(table.table_id.clone()),
+                    None,
+                    StructuredTableLoweringBlocker::MissingHeaderRegionRange,
+                    "current table packet has header presence/text but no header row region identity"
+                        .to_string(),
+                ));
+            }
         } else {
             facts.push(StructuredTableDependencyFact::blocked(
                 fact_id(request, "header_region", &table.table_id),
@@ -473,25 +507,39 @@ fn push_region_facts(
         .selected_regions
         .contains(&StructuredTableRegionSelection::Totals)
     {
-        let (blocker, detail) = if table.totals_row_present {
-            (
-                StructuredTableLoweringBlocker::MissingTotalsRegionRange,
-                "current table packet has totals presence but no totals row region identity",
-            )
-        } else {
-            (
+        if !table.totals_row_present {
+            facts.push(StructuredTableDependencyFact::blocked(
+                fact_id(request, "totals_region", &table.table_id),
+                StructuredTableDependencyFactKind::TotalsRegion,
+                Some(table.table_id.clone()),
+                None,
                 StructuredTableLoweringBlocker::TotalsRowAbsent,
-                "structured reference selected totals but table declares no totals row",
-            )
-        };
-        facts.push(StructuredTableDependencyFact::blocked(
-            fact_id(request, "totals_region", &table.table_id),
-            StructuredTableDependencyFactKind::TotalsRegion,
-            Some(table.table_id.clone()),
-            None,
-            blocker,
-            detail.to_string(),
-        ));
+                "structured reference selected totals but table declares no totals row".to_string(),
+            ));
+        } else if let Some(totals_region_ref) = table.totals_region_ref.as_ref() {
+            facts.push(StructuredTableDependencyFact::lowered(
+                fact_id(request, "totals_region", totals_region_ref),
+                StructuredTableDependencyFactKind::TotalsRegion,
+                table.table_id.clone(),
+                None,
+                format!(
+                    "table_totals_region:v1:table={};region={totals_region_ref}",
+                    table.table_id
+                ),
+                "exact totals row region identity is supplied by the OxFml TableDescriptor"
+                    .to_string(),
+            ));
+        } else {
+            facts.push(StructuredTableDependencyFact::blocked(
+                fact_id(request, "totals_region", &table.table_id),
+                StructuredTableDependencyFactKind::TotalsRegion,
+                Some(table.table_id.clone()),
+                None,
+                StructuredTableLoweringBlocker::MissingTotalsRegionRange,
+                "current table packet has totals presence but no totals row region identity"
+                    .to_string(),
+            ));
+        }
     }
 }
 
@@ -704,12 +752,16 @@ fn table_context_identity(
                 .collect::<Vec<_>>()
                 .join("|");
             format!(
-                "{}:{}:{}:{}:{}:{}:{}",
+                "{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
                 table.table_id,
                 table.table_name,
                 table.workbook_scope_ref,
                 table.sheet_scope_ref,
                 table.table_range_ref,
+                table.row_membership_identity.as_deref().unwrap_or("none"),
+                table.row_order_identity.as_deref().unwrap_or("none"),
+                table.header_region_ref.as_deref().unwrap_or("none"),
+                table.totals_region_ref.as_deref().unwrap_or("none"),
                 table.header_row_present,
                 table.totals_row_present
             ) + ":"
@@ -752,6 +804,10 @@ mod tests {
             workbook_scope_ref: "book:1".to_string(),
             sheet_scope_ref: "sheet:1".to_string(),
             table_range_ref: "A1:C5".to_string(),
+            row_membership_identity: Some("rows:sales:membership:v1".to_string()),
+            row_order_identity: Some("rows:sales:order:v1".to_string()),
+            header_region_ref: Some("A1:C1".to_string()),
+            totals_region_ref: Some("A5:C5".to_string()),
             header_row_present: true,
             totals_row_present: true,
             columns: vec![
@@ -774,11 +830,18 @@ mod tests {
     fn request(
         reference: StructuredTableReferenceIntake,
     ) -> StructuredTableDependencyLoweringRequest {
+        request_with_table(table(), reference)
+    }
+
+    fn request_with_table(
+        table: TableDescriptor,
+        reference: StructuredTableReferenceIntake,
+    ) -> StructuredTableDependencyLoweringRequest {
         StructuredTableDependencyLoweringRequest {
             owner_node_id: TreeNodeId(10),
             source_reference_handle: Some("oxfml-structured-ref:1".to_string()),
             context_packet: StructuredTableContextPacket::from_oxfml_table_packet(
-                vec![table()],
+                vec![table],
                 Some(TableRef {
                     table_id: "table:sales".to_string(),
                 }),
@@ -816,6 +879,16 @@ mod tests {
             None
         )));
         assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::RowMembership,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
             StructuredTableDependencyFactKind::ColumnIdentity,
             StructuredTableDependencyFactStatus::Lowered,
             None
@@ -826,7 +899,17 @@ mod tests {
             None
         )));
         assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::HeaderRegion,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
             StructuredTableDependencyFactKind::DataRegion,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::TotalsRegion,
             StructuredTableDependencyFactStatus::Lowered,
             None
         )));
@@ -844,6 +927,58 @@ mod tests {
             |descriptor| descriptor.kind == DependencyDescriptorKind::StructuredTableDataRegion
         ));
         assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableRowMembership)
+        );
+        assert!(
+            lowering
+                .descriptors
+                .iter()
+                .any(|descriptor| descriptor.kind
+                    == DependencyDescriptorKind::StructuredTableRowOrder)
+        );
+        assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableHeaderRegion)
+        );
+        assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableTotalsRegion)
+        );
+        let details_by_kind = lowering
+            .descriptors
+            .iter()
+            .map(|descriptor| (descriptor.kind, descriptor.carrier_detail.as_str()))
+            .collect::<BTreeMap<_, _>>();
+        assert_eq!(
+            details_by_kind[&DependencyDescriptorKind::StructuredTableRowMembership],
+            "table_row_membership:v1:table=table:sales;identity=rows:sales:membership:v1"
+        );
+        assert_eq!(
+            details_by_kind[&DependencyDescriptorKind::StructuredTableRowOrder],
+            "table_row_order:v1:table=table:sales;identity=rows:sales:order:v1"
+        );
+        assert_eq!(
+            details_by_kind[&DependencyDescriptorKind::StructuredTableHeaderRegion],
+            "table_header_region:v1:table=table:sales;region=A1:C1"
+        );
+        assert_eq!(
+            details_by_kind[&DependencyDescriptorKind::StructuredTableTotalsRegion],
+            "table_totals_region:v1:table=table:sales;region=A5:C5"
+        );
+        assert!(
+            lowering
+                .table_context_identity
+                .contains("rows:sales:membership:v1")
+        );
+        assert!(
+            lowering
+                .table_context_identity
+                .contains("rows:sales:order:v1")
+        );
+        assert!(lowering.table_context_identity.contains("A1:C1"));
+        assert!(lowering.table_context_identity.contains("A5:C5"));
+        assert!(
             lowering
                 .descriptors
                 .iter()
@@ -860,8 +995,13 @@ mod tests {
                     StructuredTableRegionSelection::Headers,
                     StructuredTableRegionSelection::Totals,
                 ]);
+        let mut table = table();
+        table.row_membership_identity = None;
+        table.row_order_identity = None;
+        table.header_region_ref = None;
+        table.totals_region_ref = None;
 
-        let lowering = lower_structured_table_dependencies(&request(reference));
+        let lowering = lower_structured_table_dependencies(&request_with_table(table, reference));
         let blockers = lowering
             .blocked_facts()
             .into_iter()
@@ -925,7 +1065,7 @@ mod tests {
 
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.edges_by_owner.len(), 0);
-        assert_eq!(graph.descriptors_by_owner[&TreeNodeId(10)].len(), 3);
+        assert_eq!(graph.descriptors_by_owner[&TreeNodeId(10)].len(), 5);
     }
 
     #[test]

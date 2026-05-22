@@ -37,7 +37,10 @@ use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
     InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
 };
-use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
+use crate::formula::{
+    CallerContextIdentityNeed, NamespaceIdentityNeed, TreeFormula, TreeFormulaCatalog,
+    TreeFormulaReferenceCarrier,
+};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
     NodeCalcState, OverlayEntry, OverlayKey, OverlayKind, RecalcError, Stage1RecalcTracker,
@@ -48,6 +51,7 @@ use crate::sparse_reader::{SparseRangeReader, TreeCalcChildrenSparseReader};
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
+use crate::tree_reference_rebind::descriptor_identity_needs;
 use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
     EdgeValueCachePolicy, EdgeValueCacheStoreResult,
@@ -80,6 +84,11 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub runtime_lane: String,
     pub session_id: Option<String>,
     pub capability_profile_id: String,
+    pub host_namespace_version: String,
+    pub resolution_rule_version: String,
+    pub caller_context_identity_version: String,
+    pub table_context_identity: Option<String>,
+    pub cross_workspace_availability_version: Option<String>,
     pub arg_preparation_profile_version: String,
     pub oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     pub dynamic_dependency_effects: bool,
@@ -98,6 +107,11 @@ impl Default for LocalTreeCalcEnvironmentContext {
             runtime_lane: "local_sequential_treecalc".to_string(),
             session_id: None,
             capability_profile_id: "host-capabilities:default".to_string(),
+            host_namespace_version: "treecalc-host-namespace:v1".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            caller_context_identity_version: "treecalc-caller-context:v1".to_string(),
+            table_context_identity: None,
+            cross_workspace_availability_version: None,
             arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
             oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata::default(),
             dynamic_dependency_effects: true,
@@ -116,6 +130,36 @@ impl LocalTreeCalcEnvironmentContext {
     #[must_use]
     pub fn with_arg_preparation_profile_version(mut self, version: impl Into<String>) -> Self {
         self.arg_preparation_profile_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_capability_profile_id(mut self, profile_id: impl Into<String>) -> Self {
+        self.capability_profile_id = profile_id.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_namespace_version(mut self, version: impl Into<String>) -> Self {
+        self.host_namespace_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_caller_context_identity_version(mut self, version: impl Into<String>) -> Self {
+        self.caller_context_identity_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_table_context_identity(mut self, identity: impl Into<String>) -> Self {
+        self.table_context_identity = Some(identity.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_cross_workspace_availability_version(mut self, version: impl Into<String>) -> Self {
+        self.cross_workspace_availability_version = Some(version.into());
         self
     }
 
@@ -514,6 +558,11 @@ impl LocalTreeCalcEngine {
             prepared_formulas
                 .values()
                 .flat_map(prepared_formula_identity_diagnostics),
+        );
+        diagnostics.extend(
+            prepared_formulas
+                .values()
+                .flat_map(w056_prepared_identity_diagnostics),
         );
         diagnostics.extend(
             prepared_formulas
@@ -2218,6 +2267,7 @@ struct PreparedOxfmlFormula {
     translated: TranslatedFormula,
     semantic_plan: SemanticPlan,
     runtime_prepared_identity: RuntimePreparedFormulaIdentity,
+    w056_prepared_identity_requirements: Vec<(NamespaceIdentityNeed, CallerContextIdentityNeed)>,
     oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     requires_host_query: bool,
     requires_image_provider: bool,
@@ -2237,16 +2287,28 @@ fn prepare_oxfml_formula(
         binding.owner_node_id.0,
         translated.source_text.clone(),
     );
-    let mut prepare_environment = build_treecalc_runtime_environment_from_parts(
-        &source,
-        &translated,
-        snapshot,
+    let structure_context_version =
+        bind_visible_structure_context_version(snapshot, environment_context);
+    let w056_prepared_identity_requirements =
+        w056_prepared_identity_requirements_for_translated(&translated);
+    let host_formula_context = w056_runtime_host_formula_context(
         binding.owner_node_id,
-        bind_visible_structure_context_version(snapshot, environment_context),
-        &environment_context.oxfunc_bridge_metadata,
-        &BTreeMap::new(),
-        None,
+        &structure_context_version.0,
+        environment_context,
+        &w056_prepared_identity_requirements,
     );
+    let empty_working_values = BTreeMap::new();
+    let mut prepare_environment =
+        build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
+            translated: &translated,
+            structural_snapshot: snapshot,
+            owner_node_id: binding.owner_node_id,
+            structure_context_version,
+            oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
+            working_values: &empty_working_values,
+            prepared_formula_identity: None,
+            host_formula_context: host_formula_context.clone(),
+        });
     if let Some(version) = &environment_context
         .oxfunc_bridge_metadata
         .semantic_kernel_metadata_version
@@ -2288,6 +2350,7 @@ fn prepare_oxfml_formula(
             .collect(),
         semantic_plan,
         runtime_prepared_identity: open.prepared_formula_identity,
+        w056_prepared_identity_requirements,
         oxfunc_bridge_metadata: environment_context.oxfunc_bridge_metadata.clone(),
         requires_host_query,
         requires_image_provider,
@@ -2429,6 +2492,47 @@ fn prepared_formula_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec
             prepared.binding.formula_artifact_id, version
         ));
     }
+    diagnostics
+}
+
+fn w056_prepared_identity_diagnostics(prepared: &PreparedOxfmlFormula) -> Vec<String> {
+    let mut diagnostics = prepared
+        .w056_prepared_identity_requirements
+        .iter()
+        .map(|(namespace, caller)| {
+            format!(
+                "w056_prepared_identity_requirement:{}:namespace={namespace:?};caller={caller:?}",
+                prepared.binding.formula_artifact_id
+            )
+        })
+        .collect::<Vec<_>>();
+
+    if let Some(host_context) = &prepared.runtime_prepared_identity.host_formula_context {
+        diagnostics.push(format!(
+            "w056_prepared_identity_host_context:{}:{}",
+            prepared.binding.formula_artifact_id,
+            host_context.cache_identity_contribution()
+        ));
+        if host_context
+            .host_namespace_version
+            .as_deref()
+            .is_some_and(|identity| identity.contains("cross_workspace_availability_version="))
+        {
+            diagnostics.push(format!(
+                "w056_prepared_identity_cross_workspace_availability_projected:{}",
+                prepared.binding.formula_artifact_id
+            ));
+        }
+        if host_context.table_context_identity.as_deref()
+            == Some("treecalc-table-context:unavailable-current-packet")
+        {
+            diagnostics.push(format!(
+                "w056_prepared_identity_table_context_blocked:{}:missing_public_packet_identity",
+                prepared.binding.formula_artifact_id
+            ));
+        }
+    }
+
     diagnostics
 }
 
@@ -2694,12 +2798,13 @@ fn store_edge_value_cache(
 fn edge_value_cache_key(prepared: &PreparedOxfmlFormula) -> EdgeValueCacheKey {
     EdgeValueCacheKey::new(
         format!(
-            "tree_node:{};plan_template:{}",
+            "tree_node:{};plan_template:{};prepared_formula:{}",
             prepared.binding.owner_node_id,
             prepared
                 .runtime_prepared_identity
                 .plan_template
-                .plan_template_key
+                .plan_template_key,
+            prepared.runtime_prepared_identity.prepared_formula_key
         ),
         prepared
             .runtime_prepared_identity
@@ -2707,6 +2812,34 @@ fn edge_value_cache_key(prepared: &PreparedOxfmlFormula) -> EdgeValueCacheKey {
             .hole_binding_fingerprint
             .clone(),
     )
+}
+
+fn w056_prepared_identity_requirements_for_translated(
+    translated: &TranslatedFormula,
+) -> Vec<(NamespaceIdentityNeed, CallerContextIdentityNeed)> {
+    let mut requirements = BTreeSet::new();
+
+    for reference in &translated.reference_bindings {
+        requirements.insert(descriptor_identity_needs(reference.kind));
+    }
+    for unresolved in &translated.unresolved_bindings {
+        requirements.insert(descriptor_identity_needs(unresolved.kind));
+    }
+    for _ in &translated.collection_bindings {
+        requirements.insert(descriptor_identity_needs(
+            DependencyDescriptorKind::TreeReferenceCollectionMembership,
+        ));
+        requirements.insert(descriptor_identity_needs(
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+        ));
+    }
+    for residual in &translated.residuals {
+        requirements.insert(descriptor_identity_needs(
+            residual.kind.dependency_descriptor_kind(),
+        ));
+    }
+
+    requirements.into_iter().collect()
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
@@ -3111,21 +3244,24 @@ fn build_treecalc_runtime_environment(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
 ) -> RuntimeEnvironment<'static> {
-    build_treecalc_runtime_environment_from_parts(
-        &prepared.source,
-        &prepared.translated,
-        &prepared.structural_snapshot,
-        prepared.binding.owner_node_id,
-        StructureContextVersion(
+    build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
+        translated: &prepared.translated,
+        structural_snapshot: &prepared.structural_snapshot,
+        owner_node_id: prepared.binding.owner_node_id,
+        structure_context_version: StructureContextVersion(
             prepared
                 .runtime_prepared_identity
                 .structure_context_version
                 .clone(),
         ),
-        &prepared.oxfunc_bridge_metadata,
+        oxfunc_bridge_metadata: &prepared.oxfunc_bridge_metadata,
         working_values,
-        Some(&prepared.runtime_prepared_identity),
-    )
+        prepared_formula_identity: Some(&prepared.runtime_prepared_identity),
+        host_formula_context: prepared
+            .runtime_prepared_identity
+            .host_formula_context
+            .clone(),
+    })
 }
 
 fn formal_input_bindings_for_runtime(
@@ -3277,19 +3413,116 @@ fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
 fn treecalc_host_formula_context(
     owner_node_id: TreeNodeId,
     structure_context_version: &str,
-    oxfunc_bridge_metadata: &LocalTreeCalcOxFuncBridgeMetadata,
+    environment_context: &LocalTreeCalcEnvironmentContext,
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
 ) -> RuntimeHostFormulaContext {
     RuntimeHostFormulaContext {
         dialect_id: "oxcalc.treecalc-v1".to_string(),
-        capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
-        resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
-        host_namespace_version: Some("treecalc-host-namespace:v1".to_string()),
-        registry_snapshot_identity: oxfunc_bridge_metadata
+        capability_profile_id: effective_treecalc_capability_profile_id(environment_context),
+        resolution_rule_version: environment_context.resolution_rule_version.clone(),
+        host_namespace_version: w056_host_namespace_identity(environment_context, requirements),
+        registry_snapshot_identity: environment_context
+            .oxfunc_bridge_metadata
             .semantic_kernel_metadata_version
             .clone(),
-        structure_context_version: Some(structure_context_version.to_string()),
-        caller_context_identity: Some(format!("treecalc-caller:{}", owner_node_id)),
-        table_context_identity: None,
+        structure_context_version: w056_requires_namespace(
+            requirements,
+            NamespaceIdentityNeed::StructureContextVersion,
+        )
+        .then(|| structure_context_version.to_string()),
+        caller_context_identity: w056_requires_caller_context(requirements).then(|| {
+            format!(
+                "treecalc-caller:{};{}",
+                owner_node_id, environment_context.caller_context_identity_version
+            )
+        }),
+        table_context_identity: w056_requires_namespace(
+            requirements,
+            NamespaceIdentityNeed::TableContextIdentity,
+        )
+        .then(|| {
+            environment_context
+                .table_context_identity
+                .clone()
+                .unwrap_or_else(|| "treecalc-table-context:unavailable-current-packet".to_string())
+        }),
+    }
+}
+
+fn effective_treecalc_capability_profile_id(
+    environment_context: &LocalTreeCalcEnvironmentContext,
+) -> String {
+    if environment_context.capability_profile_id == "host-capabilities:default" {
+        "host-capabilities:treecalc-v1".to_string()
+    } else {
+        environment_context.capability_profile_id.clone()
+    }
+}
+
+fn w056_runtime_host_formula_context(
+    owner_node_id: TreeNodeId,
+    structure_context_version: &str,
+    environment_context: &LocalTreeCalcEnvironmentContext,
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+) -> Option<RuntimeHostFormulaContext> {
+    w056_requirements_need_public_host_context(requirements).then(|| {
+        treecalc_host_formula_context(
+            owner_node_id,
+            structure_context_version,
+            environment_context,
+            requirements,
+        )
+    })
+}
+
+fn w056_requirements_need_public_host_context(
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+) -> bool {
+    requirements.iter().any(|(namespace, caller)| {
+        *caller != CallerContextIdentityNeed::None
+            || !matches!(
+                namespace,
+                NamespaceIdentityNeed::None | NamespaceIdentityNeed::StructureContextVersion
+            )
+    })
+}
+
+fn w056_requires_namespace(
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+    required: NamespaceIdentityNeed,
+) -> bool {
+    requirements
+        .iter()
+        .any(|(namespace, _)| *namespace == required)
+}
+
+fn w056_requires_caller_context(
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+) -> bool {
+    requirements
+        .iter()
+        .any(|(_, caller)| *caller != CallerContextIdentityNeed::None)
+}
+
+fn w056_host_namespace_identity(
+    environment_context: &LocalTreeCalcEnvironmentContext,
+    requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+) -> Option<String> {
+    if w056_requires_namespace(requirements, NamespaceIdentityNeed::HostNamespaceVersion)
+        || w056_requires_namespace(requirements, NamespaceIdentityNeed::ResolutionRuleVersion)
+        || w056_requires_namespace(
+            requirements,
+            NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+        )
+    {
+        let mut identity = environment_context.host_namespace_version.clone();
+        if let Some(version) = &environment_context.cross_workspace_availability_version {
+            identity.push_str("|cross_workspace_availability_version=");
+            identity.push_str(version);
+        }
+        Some(identity)
+    } else {
+        None
     }
 }
 
@@ -3325,42 +3558,51 @@ fn host_reference_bind_results_for_runtime(
         .collect()
 }
 
-fn build_treecalc_runtime_environment_from_parts(
-    _source: &FormulaSourceRecord,
-    translated: &TranslatedFormula,
-    structural_snapshot: &StructuralSnapshot,
+struct TreeCalcRuntimeEnvironmentBuild<'a> {
+    translated: &'a TranslatedFormula,
+    structural_snapshot: &'a StructuralSnapshot,
     owner_node_id: TreeNodeId,
     structure_context_version: StructureContextVersion,
-    oxfunc_bridge_metadata: &LocalTreeCalcOxFuncBridgeMetadata,
-    working_values: &BTreeMap<TreeNodeId, String>,
-    prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
+    oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
+    working_values: &'a BTreeMap<TreeNodeId, String>,
+    prepared_formula_identity: Option<&'a RuntimePreparedFormulaIdentity>,
+    host_formula_context: Option<RuntimeHostFormulaContext>,
+}
+
+fn build_treecalc_runtime_environment_from_parts(
+    parts: TreeCalcRuntimeEnvironmentBuild<'_>,
 ) -> RuntimeEnvironment<'static> {
-    let host_structure_context_version = structure_context_version.0.clone();
-    let formal_input_bindings =
-        formal_input_bindings_for_runtime(translated, working_values, prepared_formula_identity);
+    let formal_input_bindings = formal_input_bindings_for_runtime(
+        parts.translated,
+        parts.working_values,
+        parts.prepared_formula_identity,
+    );
 
     let mut environment = RuntimeEnvironment::new()
-        .with_structure_context_version(structure_context_version)
-        .with_caller_position(synthetic_cell_row(owner_node_id), 1)
+        .with_structure_context_version(parts.structure_context_version)
+        .with_caller_position(synthetic_cell_row(parts.owner_node_id), 1)
         .with_formal_input_bindings(formal_input_bindings);
-    if !translated.collection_bindings.is_empty() {
+    if let Some(host_formula_context) = parts.host_formula_context {
+        environment = environment.with_host_formula_context(host_formula_context);
+    }
+    if !parts.translated.collection_bindings.is_empty() {
         environment = environment
-            .with_host_formula_context(treecalc_host_formula_context(
-                owner_node_id,
-                &host_structure_context_version,
-                oxfunc_bridge_metadata,
+            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(
+                parts.translated,
             ))
-            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(translated))
             .with_sparse_reference_value_bindings(sparse_reference_value_bindings_for_runtime(
-                translated,
-                structural_snapshot,
-                working_values,
+                parts.translated,
+                parts.structural_snapshot,
+                parts.working_values,
             ));
     }
-    if let Some(version) = &oxfunc_bridge_metadata.semantic_kernel_metadata_version {
+    if let Some(version) = &parts
+        .oxfunc_bridge_metadata
+        .semantic_kernel_metadata_version
+    {
         environment = environment.with_semantic_kernel_metadata_version(version.clone());
     }
-    if let Some(version) = &oxfunc_bridge_metadata.arg_admission_metadata_version {
+    if let Some(version) = &parts.oxfunc_bridge_metadata.arg_admission_metadata_version {
         environment = environment.with_arg_admission_metadata_version(version.clone());
     }
     environment
@@ -5695,6 +5937,174 @@ mod tests {
         assert_has_diagnostic(
             &run,
             "oxfml_runtime_arg_admission_metadata_version:formula:b:oxfunc.arg-admission:v3",
+        );
+    }
+
+    #[test]
+    fn w056_host_namespace_and_caller_context_enter_relative_reference_prepared_identity() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(TREE_REF_3_0,2)",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_3_0",
+                    TreeReference::RelativePath {
+                        base: RelativeReferenceBase::ParentNode,
+                        path_segments: vec!["A".to_string()],
+                    },
+                )],
+            ),
+        };
+        let first_context = LocalTreeCalcEnvironmentContext::default()
+            .with_host_namespace_version("treecalc-host-namespace:v1")
+            .with_caller_context_identity_version("caller-context:v1");
+        let second_context = LocalTreeCalcEnvironmentContext::default()
+            .with_host_namespace_version("treecalc-host-namespace:v2")
+            .with_caller_context_identity_version("caller-context:v2");
+
+        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
+        let second =
+            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+
+        let first_host_context = first
+            .runtime_prepared_identity
+            .host_formula_context
+            .as_ref()
+            .expect("relative references should contribute W056 host context");
+        assert_eq!(
+            first_host_context.host_namespace_version.as_deref(),
+            Some("treecalc-host-namespace:v1")
+        );
+        assert_eq!(
+            first_host_context.caller_context_identity.as_deref(),
+            Some("treecalc-caller:node:3;caller-context:v1")
+        );
+        assert_ne!(
+            first.runtime_prepared_identity.prepared_formula_key,
+            second.runtime_prepared_identity.prepared_formula_key
+        );
+    }
+
+    #[test]
+    fn w056_capability_profile_enters_capability_sensitive_prepared_identity() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(1,2)",
+                [TreeFormulaReferenceCarrier::fact(
+                    TreeReference::CapabilitySensitive {
+                        carrier_id: "carrier:capability".to_string(),
+                        detail: "provider profile changes admission".to_string(),
+                    },
+                )],
+            ),
+        };
+        let first_context = LocalTreeCalcEnvironmentContext::default()
+            .with_capability_profile_id("host-capabilities:w056-a");
+        let second_context = LocalTreeCalcEnvironmentContext::default()
+            .with_capability_profile_id("host-capabilities:w056-b");
+
+        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
+        let second =
+            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+
+        assert_eq!(
+            first
+                .runtime_prepared_identity
+                .host_formula_context
+                .as_ref()
+                .map(|context| context.capability_profile_id.as_str()),
+            Some("host-capabilities:w056-a")
+        );
+        assert_ne!(
+            first.runtime_prepared_identity.prepared_formula_key,
+            second.runtime_prepared_identity.prepared_formula_key
+        );
+    }
+
+    #[test]
+    fn w056_table_and_cross_workspace_inputs_project_through_public_host_context() {
+        let requirements = vec![
+            (
+                NamespaceIdentityNeed::TableContextIdentity,
+                CallerContextIdentityNeed::TableCallerRegion,
+            ),
+            (
+                NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+                CallerContextIdentityNeed::None,
+            ),
+        ];
+        let context = LocalTreeCalcEnvironmentContext::default()
+            .with_table_context_identity("table-context:Sales:v2")
+            .with_cross_workspace_availability_version("workspace-availability:v3");
+
+        let host_context = w056_runtime_host_formula_context(
+            TreeNodeId(3),
+            "structure:v1",
+            &context,
+            &requirements,
+        )
+        .expect("table/cross-workspace needs should use public host context");
+
+        assert_eq!(
+            host_context.table_context_identity.as_deref(),
+            Some("table-context:Sales:v2")
+        );
+        assert!(
+            host_context
+                .host_namespace_version
+                .as_deref()
+                .is_some_and(|identity| identity
+                    .contains("cross_workspace_availability_version=workspace-availability:v3"))
+        );
+    }
+
+    #[test]
+    fn w056_prepared_formula_key_contributes_to_edge_cache_key() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(TREE_REF_3_0,2)",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_3_0",
+                    TreeReference::RelativePath {
+                        base: RelativeReferenceBase::ParentNode,
+                        path_segments: vec!["A".to_string()],
+                    },
+                )],
+            ),
+        };
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default()
+                .with_host_namespace_version("treecalc-host-namespace:v1"),
+        )
+        .unwrap();
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default()
+                .with_host_namespace_version("treecalc-host-namespace:v2"),
+        )
+        .unwrap();
+
+        assert_ne!(
+            first.runtime_prepared_identity.prepared_formula_key,
+            second.runtime_prepared_identity.prepared_formula_key
+        );
+        assert_ne!(
+            edge_value_cache_key(&first).call_site_id,
+            edge_value_cache_key(&second).call_site_id
         );
     }
 

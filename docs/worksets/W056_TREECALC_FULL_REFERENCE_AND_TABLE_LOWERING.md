@@ -184,6 +184,40 @@ runtime closure remains blocked where OxFml has not yet emitted exercised
 generic host-reference, structured-reference, name/call precedence, or
 cross-workspace oracle packet surfaces.
 
+## 4D. `calc-4vs8.6` Runtime Prepared-Identity Contribution
+
+The fourth W056 tranche consumes the typed dependency/rebind identity needs
+during local TreeCalc runtime preparation in `src/oxcalc-core/src/treecalc.rs`.
+
+Current implemented scope:
+
+1. derives W056 namespace and caller-context identity needs from the translated
+   TreeCalc reference carriers and runtime-fact carriers before calling the
+   public OxFml runtime prepare path,
+2. projects host namespace, resolution-rule, capability-profile, structure
+   context, caller-context, table-context, and cross-workspace availability
+   identity inputs through OxFml's public `RuntimeHostFormulaContext` where the
+   current public surface can carry them,
+3. keeps the first `ChildrenV1` host-reference bind results and sparse
+   reference-values path on the same public OxFml runtime surface,
+4. records W056 prepared-identity requirement diagnostics so the runtime path
+   exposes which namespace/caller-context classes contributed,
+5. includes the OxFml `prepared_formula_key` in the local per-edge value-cache
+   call-site key so host-context and prepared-package identity changes cannot
+   reuse stale cached values under the same plan-template/hole-binding pair,
+6. preserves cross-workspace as a typed projected identity input only; no
+   executable cross-workspace fallback is invented.
+
+Current non-claim:
+
+This is runtime prepared-identity/cache invalidation for the carriers that
+OxCalc can currently project through public OxFml runtime context fields. It is
+not full W056 closure. Stable structured-table row membership/order and exact
+header/totals region identity remain blocked by `calc-4vs8.4`; broader
+upstream packet/oracle surfaces, including name/call precedence and public
+cross-workspace availability/degradation semantics, remain blocked by
+`calc-4vs8.5`.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -204,12 +238,15 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.3`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.6`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
 OxFml table packet, and a typed dependency/reverse-edge/invalidation/rebind
-projection over current OxCalc graph facts. This is not a
+projection over current OxCalc graph facts. Runtime preparation now consumes
+the typed W056 identity needs through public OxFml `RuntimeHostFormulaContext`
+fields where available, and the local edge-value cache includes the resulting
+prepared formula identity in its call-site key. This is not a
 full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -224,13 +261,16 @@ omitted-table-name enclosing context failure. `calc-4vs8.3` adds focused Rust
 tests for target reverse-edge facts, context reverse-edge facts,
 namespace/caller-context prepared-identity inputs, dynamic potential versus
 resolved dynamic rebind facts, and cross-workspace typed blocker preservation.
+`calc-4vs8.6` adds focused Rust tests for host namespace and caller-context
+prepared-key changes, capability-profile prepared-key changes, table-context
+and cross-workspace public host-context projection, and prepared-formula-key
+participation in the local edge-value cache key.
 
-Still open: applying the W056 dependency/rebind projection as a runtime
-prepared-package invalidation gate, stable table row membership/order and exact
-header/totals region packet support, W074 name/call precedence evidence,
-exercised OxFml structured-reference bind packets, a versioned
-cross-workspace availability/degradation model, selector dependency models for
-recursive and sibling/preceding/following set selectors, and end-to-end
-scenarios.
+Still open: stable table row membership/order and exact header/totals region
+packet support, W074 name/call precedence evidence, exercised OxFml
+structured-reference bind packets, a versioned cross-workspace
+availability/degradation model, selector dependency models for recursive and
+sibling/preceding/following set selectors, and end-to-end scenarios. Blockers
+`calc-4vs8.4` and `calc-4vs8.5` remain open.
 
 Formal status: no proof claim.

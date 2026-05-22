@@ -1,6 +1,6 @@
 # W056 TreeCalc Full Reference And Table Lowering
 
-Status: `queued_successor`
+Status: `in_progress`
 
 Parent predecessor: `W051` first reference-carrier pattern
 
@@ -89,6 +89,39 @@ bridges, OxFunc TreeCalc semantics, or parser shims in host repos.
 10. W074/W036 OxFml evidence intake and handoff watch,
 11. end-to-end TreeCalc reference/table scenarios.
 
+## 4A. `calc-4vs8.1` Implementation-Input Surface
+
+The first W056 tranche turns the full TreeCalc reference inventory into typed
+OxCalc-owned implementation inputs in
+`src/oxcalc-core/src/formula.rs`:
+
+1. `TreeReferenceInventoryVariant` names the admitted and blocked reference
+   families, including current concrete carriers, set-producing selectors,
+   cross-workspace references, structured table references, and bare
+   name/callable references.
+2. `TreeReferenceImplementationInput` records, per variant, whether the
+   family is a current carrier, an admitted implementation input, or a typed
+   exclusion; the host-reference correlation need; namespace and caller-context
+   identity needs; dependency descriptor facts; invalidation facts; and any
+   successor bead.
+3. Existing `TreeReference` values map back to this inventory through
+   `TreeReference::inventory_variant()` and
+   `TreeReference::implementation_input()`.
+
+Current admitted implementation inputs are not a product-complete full
+TreeCalc reference claim. They are the typed work inputs for the remaining
+W056 beads. In particular:
+
+1. structured table references are a typed exclusion linked to
+   `calc-4vs8.2`,
+2. dependency/reverse-edge, dynamic rebind, namespace, and caller-context
+   widening continues in `calc-4vs8.3`,
+3. bare name/callable references remain blocked on OxFml W074-CALC005
+   name/call precedence evidence,
+4. cross-workspace and recursive selectors remain typed exclusions until the
+   workspace availability and selector dependency models are specified and
+   exercised.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -109,15 +142,20 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: queued successor. W051 is closed for the first OxCalc
-`ChildrenV1` carrier pattern; W056 is the registered place for the full
-TreeCalc reference family and table-lowering product scope.
+Product status: in progress for `calc-4vs8.1`. W051 is closed for the first
+OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
+implementation-input inventory for the broader reference family. This is not a
+full-reference/table-lowering product claim.
 
-Evidence: W051 focused tests cover the first carrier's local
-membership/member-value dependency descriptors, reference-preserving formal
-input binding, OxFml sparse reference-values binding, OxFunc aggregate
-consumption, and membership/order invalidation facts.
+Evidence: W051 focused tests cover the first carrier's local membership/member
+value dependency descriptors, reference-preserving formal input binding,
+OxFml sparse reference-values binding, OxFunc aggregate consumption, and
+membership/order invalidation facts. `calc-4vs8.1` adds focused Rust tests for
+the W056 inventory, concrete `TreeReference` mapping, and `ChildrenV1`
+handle/dependency/invalidation correlation facts.
 
-Still open: all W056 lanes above.
+Still open: dependency/reverse-edge widening, invalidation and dynamic rebind
+widening, namespace/caller-context prepared-identity invalidation, structured
+table lowering, W074/W036 intake, and end-to-end scenarios.
 
 Formal status: no proof claim.

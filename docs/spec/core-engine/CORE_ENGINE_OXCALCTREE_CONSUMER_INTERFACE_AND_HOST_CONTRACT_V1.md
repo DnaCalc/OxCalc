@@ -164,6 +164,30 @@ product-complete for DNA TreeCalc formula-text parsing/binding or
 reference-array formulas until OxFml's generic host-context path and the
 OxFml/OxFunc resolver/admission path are exercised end to end.
 
+### 3.6 W056 Reference Inventory Boundary
+
+W056 starts from the W051 `ChildrenV1` carrier pattern and widens the TreeCalc
+reference inventory as typed OxCalc-owned implementation input. The active Rust
+surface is `TreeReferenceImplementationInput` in
+`src/oxcalc-core/src/formula.rs`.
+
+That inventory records, per reference family:
+1. whether the family is a current carrier, an admitted implementation input,
+   or a typed exclusion,
+2. the required correlation back to OxFml host-reference handles or formal
+   reference/source-token identity,
+3. host namespace, resolution-rule, structure-context, capability-profile,
+   table-context, or cross-workspace identity needs,
+4. caller-context identity needs such as caller node, ancestor walk, sibling
+   position, host runtime context, or table caller region,
+5. dependency descriptor facts and invalidation facts that OxCalc owns.
+
+This inventory is implementation input, not a completed full-reference product
+claim. Structured table references are explicitly routed to W056 bead
+`calc-4vs8.2`; dependency/reverse-edge, dynamic rebind, namespace, and
+caller-context widening are routed to `calc-4vs8.3`; bare name/callable
+references remain gated on OxFml W074-CALC005 evidence.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

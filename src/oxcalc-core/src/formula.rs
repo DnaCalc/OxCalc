@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::dependency::{
-    DependencyDescriptor, DependencyDescriptorKind, TreeReferenceCollectionDependency,
+    DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind,
+    TreeReferenceCollectionDependency,
 };
 use crate::structural::{BindArtifactId, FormulaArtifactId, StructuralSnapshot, TreeNodeId};
 
@@ -105,6 +106,449 @@ impl TreeCalcChildrenReferenceCollection {
 pub enum TreeReferenceCarrierClass {
     FormulaReference,
     RuntimeFactProjection,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeReferenceInventoryVariant {
+    DirectNode,
+    ChildrenV1,
+    ProjectionPath,
+    RelativePathSelf,
+    RelativePathParent,
+    RelativePathAncestor,
+    SiblingOffset,
+    ExplicitPath,
+    DynamicPotential,
+    DynamicResolved,
+    HostSensitive,
+    CapabilitySensitive,
+    ShapeTopology,
+    Unresolved,
+    SiblingSetSelector,
+    PrecedingFollowingSelector,
+    CrossWorkspaceReference,
+    RecursiveSelector,
+    StructuredTableReference,
+    BareNameOrCallableReference,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeReferenceInventoryStatus {
+    AdmittedCurrentCarrier,
+    AdmittedImplementationInput,
+    TypedExclusion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeReferenceInventoryBlocker {
+    NeedsResolvableHostReference,
+    NeedsOxFmlNameCallPrecedenceEvidence,
+    NeedsOxFmlStructuredReferencePacket,
+    NeedsCrossWorkspaceModel,
+    NeedsSelectorDependencyModel,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HostReferenceCorrelationNeed {
+    None,
+    SourceTokenToFormalReference,
+    HostReferenceHandle,
+    RuntimeFactCarrier,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NamespaceIdentityNeed {
+    None,
+    StructureContextVersion,
+    HostNamespaceVersion,
+    ResolutionRuleVersion,
+    CapabilityProfileVersion,
+    CrossWorkspaceAvailabilityVersion,
+    TableContextIdentity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CallerContextIdentityNeed {
+    None,
+    CallerNode,
+    AncestorWalk,
+    SiblingPosition,
+    HostRuntimeContext,
+    TableCallerRegion,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeReferenceImplementationInput {
+    pub variant: TreeReferenceInventoryVariant,
+    pub status: TreeReferenceInventoryStatus,
+    pub blocker: Option<TreeReferenceInventoryBlocker>,
+    pub carrier_class: Option<TreeReferenceCarrierClass>,
+    pub host_reference_correlation: HostReferenceCorrelationNeed,
+    pub namespace_identity_need: NamespaceIdentityNeed,
+    pub caller_context_identity_need: CallerContextIdentityNeed,
+    pub dependency_facts: Vec<DependencyDescriptorKind>,
+    pub invalidation_facts: Vec<InvalidationReasonKind>,
+    pub successor_bead: Option<&'static str>,
+    pub evidence_note: &'static str,
+}
+
+impl TreeReferenceImplementationInput {
+    #[must_use]
+    pub fn is_admitted(&self) -> bool {
+        matches!(
+            self.status,
+            TreeReferenceInventoryStatus::AdmittedCurrentCarrier
+                | TreeReferenceInventoryStatus::AdmittedImplementationInput
+        )
+    }
+}
+
+#[must_use]
+pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementationInput> {
+    use CallerContextIdentityNeed as Caller;
+    use DependencyDescriptorKind as Dep;
+    use HostReferenceCorrelationNeed as Correlation;
+    use InvalidationReasonKind as Invalidates;
+    use NamespaceIdentityNeed as Namespace;
+    use TreeReferenceInventoryBlocker as Blocker;
+    use TreeReferenceInventoryStatus as Status;
+    use TreeReferenceInventoryVariant as Variant;
+
+    vec![
+        TreeReferenceImplementationInput {
+            variant: Variant::DirectNode,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::StructureContextVersion,
+            caller_context_identity_need: Caller::None,
+            dependency_facts: vec![Dep::StaticDirect],
+            invalidation_facts: vec![
+                Invalidates::StructuralRecalcOnly,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: None,
+            evidence_note: "existing direct node carrier and static dependency lowering",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::ChildrenV1,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: None,
+            evidence_note: "W051 ChildrenV1 collection handle with membership and member-value facts",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::ProjectionPath,
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::None,
+            dependency_facts: vec![Dep::StaticDirect],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "explicit path carrier exists; wider rebind/invalidation closure belongs to W056 dependency widening",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::RelativePathSelf,
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::RelativeBound],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "self-relative carrier is representable but remains W056 input until exercised",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::RelativePathParent,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::RelativeBound],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "parent-relative carrier and descriptor lowering exist; W056 widens replay-visible invalidation",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::RelativePathAncestor,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::AncestorWalk,
+            dependency_facts: vec![Dep::RelativeBound],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "ancestor-relative carrier and descriptor lowering exist; W056 widens replay-visible invalidation",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::SiblingOffset,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::SiblingPosition,
+            dependency_facts: vec![Dep::RelativeBound],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "sibling-offset carrier and descriptor lowering exist; sibling membership/order rebind is W056 widening input",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::ExplicitPath,
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::ResolutionRuleVersion,
+            caller_context_identity_need: Caller::None,
+            dependency_facts: vec![Dep::StaticDirect],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "explicit path syntax remains an OxFml generic host-reference input; OxCalc owns resolved dependency facts",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::DynamicPotential,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::RuntimeFactProjection),
+            host_reference_correlation: Correlation::RuntimeFactCarrier,
+            namespace_identity_need: Namespace::StructureContextVersion,
+            caller_context_identity_need: Caller::HostRuntimeContext,
+            dependency_facts: vec![Dep::DynamicPotential],
+            invalidation_facts: vec![
+                Invalidates::DynamicDependencyActivated,
+                Invalidates::DynamicDependencyReclassified,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "unresolved dynamic dependency is a typed runtime fact and no-publish diagnostic input",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::DynamicResolved,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::StructureContextVersion,
+            caller_context_identity_need: Caller::HostRuntimeContext,
+            dependency_facts: vec![Dep::DynamicPotential],
+            invalidation_facts: vec![
+                Invalidates::DynamicDependencyReleased,
+                Invalidates::DynamicDependencyReclassified,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "resolved dynamic dependency publishes a target edge and remains rebind-sensitive",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::HostSensitive,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::RuntimeFactProjection),
+            host_reference_correlation: Correlation::RuntimeFactCarrier,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::HostRuntimeContext,
+            dependency_facts: vec![Dep::HostSensitive],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::ExternallyInvalidated,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "host-sensitive fact is surfaced as dependency diagnostic until a concrete host provider admits it",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::CapabilitySensitive,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::RuntimeFactProjection),
+            host_reference_correlation: Correlation::RuntimeFactCarrier,
+            namespace_identity_need: Namespace::CapabilityProfileVersion,
+            caller_context_identity_need: Caller::HostRuntimeContext,
+            dependency_facts: vec![Dep::CapabilitySensitive],
+            invalidation_facts: vec![
+                Invalidates::DependencyReclassified,
+                Invalidates::ExternallyInvalidated,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "capability-sensitive fact remains typed and must not be collapsed into generic failure",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::ShapeTopology,
+            status: Status::AdmittedCurrentCarrier,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::RuntimeFactProjection),
+            host_reference_correlation: Correlation::RuntimeFactCarrier,
+            namespace_identity_need: Namespace::StructureContextVersion,
+            caller_context_identity_need: Caller::HostRuntimeContext,
+            dependency_facts: vec![Dep::ShapeTopology],
+            invalidation_facts: vec![
+                Invalidates::DependencyReclassified,
+                Invalidates::StructuralRebindRequired,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "shape/topology fact remains typed and replay-visible as dependency-sensitive input",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::Unresolved,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsResolvableHostReference),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::Unresolved],
+            invalidation_facts: vec![Invalidates::StructuralRebindRequired],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "unresolved references are explicit descriptors, not silent fallback behavior",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::SiblingSetSelector,
+            status: Status::AdmittedImplementationInput,
+            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::SiblingPosition,
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "sibling set selectors follow the ChildrenV1 collection pattern after dependency widening",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::PrecedingFollowingSelector,
+            status: Status::AdmittedImplementationInput,
+            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::SiblingPosition,
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "preceding/following selectors need ordered-set lowering and invalidation facts",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::CrossWorkspaceReference,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsCrossWorkspaceModel),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::CrossWorkspaceAvailabilityVersion,
+            caller_context_identity_need: Caller::None,
+            dependency_facts: vec![Dep::Unresolved],
+            invalidation_facts: vec![
+                Invalidates::StructuralRebindRequired,
+                Invalidates::ExternallyInvalidated,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "cross-workspace availability and degradation need a versioned workspace model before execution",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::RecursiveSelector,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::TreeReferenceCollectionMembership],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+            ],
+            successor_bead: Some("calc-4vs8.3"),
+            evidence_note: "recursive selectors are held out until traversal bounds and dependency fanout are specified",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::StructuredTableReference,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsOxFmlStructuredReferencePacket),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::TableContextIdentity,
+            caller_context_identity_need: Caller::TableCallerRegion,
+            dependency_facts: Vec::new(),
+            invalidation_facts: Vec::new(),
+            successor_bead: Some("calc-4vs8.2"),
+            evidence_note: "table row/column/header/totals lowering is intentionally deferred to calc-4vs8.2",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::BareNameOrCallableReference,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsOxFmlNameCallPrecedenceEvidence),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::SourceTokenToFormalReference,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::Unresolved],
+            invalidation_facts: vec![Invalidates::StructuralRebindRequired],
+            successor_bead: None,
+            evidence_note: "bare names and callables stay gated on OxFml W074-CALC005 precedence evidence",
+        },
+    ]
+}
+
+#[must_use]
+pub fn tree_reference_implementation_input(
+    variant: TreeReferenceInventoryVariant,
+) -> Option<TreeReferenceImplementationInput> {
+    tree_reference_implementation_inputs()
+        .into_iter()
+        .find(|input| input.variant == variant)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -537,6 +981,43 @@ fn escape_excel_text(value: &str) -> String {
 
 impl TreeReference {
     #[must_use]
+    pub fn inventory_variant(&self) -> TreeReferenceInventoryVariant {
+        match self {
+            TreeReference::DirectNode { .. } => TreeReferenceInventoryVariant::DirectNode,
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(_)) => {
+                TreeReferenceInventoryVariant::ChildrenV1
+            }
+            TreeReference::ProjectionPath { .. } => TreeReferenceInventoryVariant::ProjectionPath,
+            TreeReference::RelativePath { base, .. } => match base {
+                RelativeReferenceBase::SelfNode => TreeReferenceInventoryVariant::RelativePathSelf,
+                RelativeReferenceBase::ParentNode => {
+                    TreeReferenceInventoryVariant::RelativePathParent
+                }
+                RelativeReferenceBase::Ancestor(_) => {
+                    TreeReferenceInventoryVariant::RelativePathAncestor
+                }
+            },
+            TreeReference::SiblingOffset { .. } => TreeReferenceInventoryVariant::SiblingOffset,
+            TreeReference::HostSensitive { .. } => TreeReferenceInventoryVariant::HostSensitive,
+            TreeReference::CapabilitySensitive { .. } => {
+                TreeReferenceInventoryVariant::CapabilitySensitive
+            }
+            TreeReference::ShapeTopology { .. } => TreeReferenceInventoryVariant::ShapeTopology,
+            TreeReference::DynamicPotential { .. } => {
+                TreeReferenceInventoryVariant::DynamicPotential
+            }
+            TreeReference::DynamicResolved { .. } => TreeReferenceInventoryVariant::DynamicResolved,
+            TreeReference::Unresolved { .. } => TreeReferenceInventoryVariant::Unresolved,
+        }
+    }
+
+    #[must_use]
+    pub fn implementation_input(&self) -> TreeReferenceImplementationInput {
+        tree_reference_implementation_input(self.inventory_variant())
+            .expect("all concrete TreeReference variants must have W056 inventory input")
+    }
+
+    #[must_use]
     pub fn carrier_class(&self) -> TreeReferenceCarrierClass {
         match self {
             TreeReference::HostSensitive { .. }
@@ -696,6 +1177,8 @@ impl TreeReference {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use crate::dependency::{DependencyDescriptorKind, DependencyDiagnosticKind, DependencyGraph};
     use crate::structural::{StructuralNode, StructuralNodeKind, StructuralSnapshotId};
 
@@ -763,6 +1246,185 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn w056_inventory_names_admitted_reference_inputs_and_typed_exclusions() {
+        let inputs = tree_reference_implementation_inputs();
+        let variants = inputs
+            .iter()
+            .map(|input| input.variant)
+            .collect::<BTreeSet<_>>();
+
+        assert_eq!(inputs.len(), variants.len());
+        assert!(variants.contains(&TreeReferenceInventoryVariant::DirectNode));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::ChildrenV1));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::RelativePathParent));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::RelativePathAncestor));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::SiblingOffset));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::DynamicPotential));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::DynamicResolved));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::Unresolved));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::CrossWorkspaceReference));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::StructuredTableReference));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::BareNameOrCallableReference));
+
+        let admitted = inputs.iter().filter(|input| input.is_admitted()).count();
+        let typed_exclusions = inputs
+            .iter()
+            .filter(|input| input.status == TreeReferenceInventoryStatus::TypedExclusion)
+            .count();
+        assert!(admitted > typed_exclusions);
+
+        let table = tree_reference_implementation_input(
+            TreeReferenceInventoryVariant::StructuredTableReference,
+        )
+        .expect("table reference inventory");
+        assert_eq!(
+            table.blocker,
+            Some(TreeReferenceInventoryBlocker::NeedsOxFmlStructuredReferencePacket)
+        );
+        assert_eq!(table.successor_bead, Some("calc-4vs8.2"));
+        assert!(table.dependency_facts.is_empty());
+        assert!(table.invalidation_facts.is_empty());
+
+        let bare_name = tree_reference_implementation_input(
+            TreeReferenceInventoryVariant::BareNameOrCallableReference,
+        )
+        .expect("bare name inventory");
+        assert_eq!(
+            bare_name.blocker,
+            Some(TreeReferenceInventoryBlocker::NeedsOxFmlNameCallPrecedenceEvidence)
+        );
+    }
+
+    #[test]
+    fn concrete_tree_references_map_to_w056_inventory_inputs() {
+        let cases = [
+            (
+                TreeReference::DirectNode {
+                    target_node_id: TreeNodeId(2),
+                },
+                TreeReferenceInventoryVariant::DirectNode,
+                TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::SourceTokenToFormalReference,
+                NamespaceIdentityNeed::StructureContextVersion,
+                CallerContextIdentityNeed::None,
+            ),
+            (
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                    TreeCalcChildrenReferenceCollection::new(TreeNodeId(2), "@CHILDREN"),
+                )),
+                TreeReferenceInventoryVariant::ChildrenV1,
+                TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::HostReferenceHandle,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::CallerNode,
+            ),
+            (
+                TreeReference::RelativePath {
+                    base: RelativeReferenceBase::SelfNode,
+                    path_segments: vec!["Leaf".to_string()],
+                },
+                TreeReferenceInventoryVariant::RelativePathSelf,
+                TreeReferenceInventoryStatus::AdmittedImplementationInput,
+                HostReferenceCorrelationNeed::SourceTokenToFormalReference,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::CallerNode,
+            ),
+            (
+                TreeReference::RelativePath {
+                    base: RelativeReferenceBase::Ancestor(2),
+                    path_segments: vec!["Sibling".to_string()],
+                },
+                TreeReferenceInventoryVariant::RelativePathAncestor,
+                TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::SourceTokenToFormalReference,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::AncestorWalk,
+            ),
+            (
+                TreeReference::SiblingOffset {
+                    offset: 1,
+                    tail_segments: Vec::new(),
+                },
+                TreeReferenceInventoryVariant::SiblingOffset,
+                TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::SourceTokenToFormalReference,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::SiblingPosition,
+            ),
+            (
+                TreeReference::DynamicPotential {
+                    carrier_id: "dyn".to_string(),
+                    detail: "late".to_string(),
+                },
+                TreeReferenceInventoryVariant::DynamicPotential,
+                TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::RuntimeFactCarrier,
+                NamespaceIdentityNeed::StructureContextVersion,
+                CallerContextIdentityNeed::HostRuntimeContext,
+            ),
+            (
+                TreeReference::Unresolved {
+                    token: "../Missing".to_string(),
+                },
+                TreeReferenceInventoryVariant::Unresolved,
+                TreeReferenceInventoryStatus::TypedExclusion,
+                HostReferenceCorrelationNeed::SourceTokenToFormalReference,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::CallerNode,
+            ),
+        ];
+
+        for (
+            reference,
+            expected_variant,
+            expected_status,
+            expected_correlation,
+            expected_namespace,
+            expected_caller,
+        ) in cases
+        {
+            let input = reference.implementation_input();
+            assert_eq!(reference.inventory_variant(), expected_variant);
+            assert_eq!(input.variant, expected_variant);
+            assert_eq!(input.status, expected_status);
+            assert_eq!(input.host_reference_correlation, expected_correlation);
+            assert_eq!(input.namespace_identity_need, expected_namespace);
+            assert_eq!(input.caller_context_identity_need, expected_caller);
+            assert_eq!(input.carrier_class, Some(reference.carrier_class()));
+        }
+    }
+
+    #[test]
+    fn children_inventory_preserves_handle_correlation_and_dependency_facts() {
+        let input = tree_reference_implementation_input(TreeReferenceInventoryVariant::ChildrenV1)
+            .expect("ChildrenV1 inventory");
+
+        assert_eq!(
+            input.status,
+            TreeReferenceInventoryStatus::AdmittedCurrentCarrier
+        );
+        assert_eq!(
+            input.host_reference_correlation,
+            HostReferenceCorrelationNeed::HostReferenceHandle
+        );
+        assert_eq!(
+            input.dependency_facts,
+            vec![
+                DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+            ]
+        );
+        assert_eq!(
+            input.invalidation_facts,
+            vec![
+                InvalidationReasonKind::TreeReferenceMembershipChanged,
+                InvalidationReasonKind::TreeReferenceOrderChanged,
+                InvalidationReasonKind::UpstreamPublication,
+            ]
+        );
     }
 
     #[test]

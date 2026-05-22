@@ -48,7 +48,9 @@ use crate::recalc::{
 };
 use crate::repository::{SubscriptionHandle, SubscriptionRegistryEntry, SubscriptionTopicId};
 use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
-use crate::sparse_reader::{SparseRangeReader, TreeCalcChildrenSparseReader};
+use crate::sparse_reader::{
+    SparseRangeReader, TreeCalcChildrenSparseReader, TreeCalcOrderedSelectorSparseReader,
+};
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
@@ -3351,13 +3353,40 @@ fn sparse_reference_value_bindings_for_runtime(
         .collection_bindings
         .iter()
         .filter_map(|collection| {
-            treecalc_children_sparse_reference_values_binding(
+            treecalc_sparse_reference_values_binding(
                 collection,
                 structural_snapshot,
                 working_values,
             )
         })
         .collect()
+}
+
+fn treecalc_sparse_reference_values_binding(
+    collection: &SyntheticReferenceCollectionBinding,
+    structural_snapshot: &StructuralSnapshot,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Option<RuntimeSparseReferenceValuesBinding> {
+    match collection.collection_dependency.family {
+        TreeReferenceCollectionFamily::ChildrenV1 => {
+            treecalc_children_sparse_reference_values_binding(
+                collection,
+                structural_snapshot,
+                working_values,
+            )
+        }
+        TreeReferenceCollectionFamily::SiblingSetV1
+        | TreeReferenceCollectionFamily::PrecedingV1
+        | TreeReferenceCollectionFamily::FollowingV1
+        | TreeReferenceCollectionFamily::AncestorsV1
+        | TreeReferenceCollectionFamily::RecursiveDescendantsV1 => {
+            treecalc_ordered_selector_sparse_reference_values_binding(
+                collection,
+                structural_snapshot,
+                working_values,
+            )
+        }
+    }
 }
 
 fn treecalc_children_sparse_reference_values_binding(
@@ -3386,6 +3415,60 @@ fn treecalc_children_sparse_reference_values_binding(
         },
         &reader,
     ))
+}
+
+fn treecalc_ordered_selector_sparse_reference_values_binding(
+    collection: &SyntheticReferenceCollectionBinding,
+    structural_snapshot: &StructuralSnapshot,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Option<RuntimeSparseReferenceValuesBinding> {
+    let family = ordered_selector_family_from_dependency(collection.collection_dependency.family)?;
+    let reader = TreeCalcOrderedSelectorSparseReader::from_published_values(
+        structural_snapshot,
+        crate::formula::TreeCalcOrderedSelectorReferenceCollection {
+            family,
+            host_ref_handle: collection.host_ref_handle.clone(),
+            base_node_id: collection.base_node_id,
+            member_node_ids: collection.member_node_ids.clone(),
+            source_span_utf8: collection.source_span_utf8,
+            source_token_text: collection.source_token_text.clone(),
+            opaque_selector: collection.opaque_selector.clone(),
+            membership_version: collection.collection_dependency.membership_version.clone(),
+            order_version: collection.collection_dependency.order_version.clone(),
+        },
+        working_values,
+    )
+    .ok()?;
+    Some(runtime_sparse_reference_values_binding(
+        ReferenceLike {
+            kind: ReferenceKind::Structured,
+            target: collection.host_ref_handle.clone(),
+        },
+        &reader,
+    ))
+}
+
+fn ordered_selector_family_from_dependency(
+    family: TreeReferenceCollectionFamily,
+) -> Option<crate::formula::TreeCalcOrderedSelectorFamily> {
+    match family {
+        TreeReferenceCollectionFamily::ChildrenV1 => None,
+        TreeReferenceCollectionFamily::SiblingSetV1 => {
+            Some(crate::formula::TreeCalcOrderedSelectorFamily::SiblingSetV1)
+        }
+        TreeReferenceCollectionFamily::PrecedingV1 => {
+            Some(crate::formula::TreeCalcOrderedSelectorFamily::PrecedingV1)
+        }
+        TreeReferenceCollectionFamily::FollowingV1 => {
+            Some(crate::formula::TreeCalcOrderedSelectorFamily::FollowingV1)
+        }
+        TreeReferenceCollectionFamily::AncestorsV1 => {
+            Some(crate::formula::TreeCalcOrderedSelectorFamily::AncestorsV1)
+        }
+        TreeReferenceCollectionFamily::RecursiveDescendantsV1 => {
+            Some(crate::formula::TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1)
+        }
+    }
 }
 
 fn runtime_sparse_reference_values_binding(
@@ -4319,6 +4402,8 @@ mod tests {
         TreeCalcReferenceCollection, TreeFormula, TreeFormulaBinding, TreeFormulaReferenceCarrier,
         TreeReference, prebind_treecalc_formula_text,
         prebind_treecalc_formula_text_with_resolved_bases,
+        prebind_treecalc_formula_text_with_resolved_ordered_selectors,
+        treecalc_formula_text_ordered_selector_queries,
     };
     use crate::repository::{
         CalculationRepository, FormulaSlotRecord, FormulaSourceIdentity,
@@ -7402,6 +7487,74 @@ mod tests {
 
             assert_eq!(run.published_values[&TreeNodeId(10)], "5");
         }
+    }
+
+    #[test]
+    fn raw_ordered_selector_formula_text_uses_caller_supplied_resolved_collection() {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let source_text = "=SUM(@PRECEDING)";
+        let queries = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text);
+        let expression = prebind_treecalc_formula_text_with_resolved_ordered_selectors(
+            TreeNodeId(10),
+            source_text,
+            [queries[0].to_resolution(TreeNodeId(10), [TreeNodeId(3), TreeNodeId(4)])],
+        )
+        .expect("ordered raw prebind");
+        assert_eq!(expression.source_text(), "=SUM(TREE_REF_10_0)");
+
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(10),
+            formula_artifact_id: FormulaArtifactId("formula:ordered-selector-total".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:ordered-selector-total".to_string())),
+            expression,
+        };
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("ordered raw prebound formula should prepare");
+
+        assert_eq!(prepared.translated.collection_bindings.len(), 1);
+        assert_eq!(
+            prepared.translated.collection_bindings[0].host_ref_handle,
+            "treecalc-hostref:v1:preceding:node:10"
+        );
+        assert_eq!(
+            prepared.translated.collection_bindings[0].source_token_text,
+            "@PRECEDING"
+        );
+        assert!(
+            prepared.translated.collection_bindings[0]
+                .collection_dependency
+                .carrier_detail()
+                .starts_with("treecalc_ordered_selector_v1:family=preceding")
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .source_token_text,
+            "@PRECEDING"
+        );
+
+        let run = LocalTreeCalcEngine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot,
+                formula_catalog: TreeFormulaCatalog::new([binding]),
+                seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: "candidate:w056:raw-ordered-selector-prebind".to_string(),
+                publication_id: "publication:w056:raw-ordered-selector-prebind".to_string(),
+                compatibility_basis: "snapshot:w056:raw-ordered-selector-prebind".to_string(),
+                artifact_token_basis: "snapshot:w056:raw-ordered-selector-prebind".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .expect("raw ordered selector formula should execute");
+
+        assert_eq!(run.published_values[&TreeNodeId(10)], "5");
     }
 
     fn assert_raw_children_formula_text_prebinds_and_executes_through_oxfml_path(

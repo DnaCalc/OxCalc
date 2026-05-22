@@ -12,11 +12,13 @@ Record the OxCalc-owned surface that reduces DnaTreeCalc blocker
 
 This note is an OxCalc-owned observation ledger. DnaTreeCalc has now consumed
 the first free-standing and qualified children slice in commit `6611684`; the
-broader reference/table suite remains successor work.
+broader reference/table suite remains successor work. OxCalc has also added the
+public raw ordered-selector query/resolved-collection prebind surface that the
+next DnaTreeCalc corpus activation slice can consume.
 
 ## 2. Core Message
 
-OxCalc now exposes a public raw formula-text prebind surface for the first
+OxCalc now exposes public raw formula-text prebind surfaces for the first
 explicit TreeCalc host-reference collection syntax.
 
 DnaTreeCalc should submit original formula text to OxCalc rather than parsing
@@ -29,6 +31,15 @@ semantics locally. The current receiving-side slice uses OxCalc's public
 qualified-base query packets plus DnaTreeCalc's model-owned path lookup to pass
 typed resolved-base packets into
 `prebind_treecalc_formula_text_with_resolved_bases(...)`.
+
+For ordered collection syntax, DnaTreeCalc should use OxCalc's public
+`treecalc_formula_text_ordered_selector_queries(...)` packets for the authored
+spellings `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and recursive `**`
+forms, including qualified forms such as `Q2.**` and
+`Accounts.2005.**.Margin`. DnaTreeCalc or a future OxCalc resolver supplies
+the resolved base and ordered member node ids back through
+`TreeCalcOrderedSelectorResolution`; OxCalc then emits the existing
+`OrderedSelectorV1` carrier and sparse-reader path.
 
 ## 3. Current Evidence
 
@@ -52,6 +63,18 @@ Current OxCalc code shape:
    and end-to-end execution through the existing OxCalc/OxFml/OxFunc path.
 8. DnaTreeCalc commit `6611684` activates the matching corpus slice through
    the live OxCalc bridge and preserves ordered dependency projection.
+9. `treecalc_formula_text_ordered_selector_queries(...)` exposes family,
+   source/base/selector/tail spans, exact token text, optional base token, and
+   optional recursive tail token for `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`,
+   and `**`.
+10. `prebind_treecalc_formula_text_with_resolved_ordered_selectors(...)`
+    admits those ordered selector forms only when supplied with a
+    source-span-keyed resolved collection containing base `TreeNodeId` and
+    ordered member node ids. It preserves source text/spans on
+    `TreeCalcReferenceCollection::OrderedSelectorV1`.
+11. The TreeCalc runtime sparse reference-values path dispatches ordered
+    selectors to `TreeCalcOrderedSelectorSparseReader`, preserving
+    reference-like aggregate execution without eager materialization.
 
 ## 4. Interface Implications
 
@@ -61,10 +84,13 @@ DnaTreeCalc integration should:
 2. for qualified children syntax, pass only an already-resolved stable
    `TreeNodeId` plus exact source/base/selector spans to OxCalc, or leave the
    case pending until OxCalc's explicit path resolver is available,
-3. store/use the returned `TreeFormula` in the existing OxCalcTree formula
+3. for ordered selectors, use OxCalc's ordered-selector query packets and feed
+   back only resolved collection facts: base `TreeNodeId`, ordered member ids,
+   resolution layer, and resolution identity,
+4. store/use the returned `TreeFormula` in the existing OxCalcTree formula
    catalog path,
-4. treat prebind diagnostics as typed host-facing diagnostics,
-5. avoid local parsing or string matching for `@CHILDREN`, `.*`, or future
+5. treat prebind diagnostics as typed host-facing diagnostics,
+6. avoid local parsing or string matching for `@CHILDREN`, `.*`, or future
    TreeCalc reference syntax.
 
 ## 5. Minimum Invariants
@@ -81,12 +107,10 @@ DnaTreeCalc integration should:
 
 1. Full DnaTreeCalc W004/W005 corpus activation beyond the first active
    children slice.
-2. OxCalc-owned explicit path-resolution and raw selector packet surfaces for
-   reference families that cannot be represented by the current
-   qualified-children query packet. `calc-4vs8.12` supplies the resolved
-   ordered collection carrier shape for sibling, preceding, following,
-   ancestor, and recursive-descendant selector outputs, but not raw syntax
-   parsing or DnaTreeCalc corpus activation for those families.
+2. OxCalc-owned explicit path-resolution for raw base text and
+   traversal-membership computation for ordered selector packets. `calc-4vs8.13`
+   supplies source-preserving query packets and resolved-collection prebind for
+   `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and recursive `**`, but not the
+   resolver that computes those member sets or DnaTreeCalc corpus activation.
 3. How DnaTreeCalc wants to display typed prebind diagnostics for unsupported
-   selectors such as `@ANCESTORS`, recursive selectors, or structured table
-   references.
+   selectors and structured table references.

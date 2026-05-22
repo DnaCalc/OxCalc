@@ -374,7 +374,12 @@ selector packets, including membership/order dependency facts and sparse
 reference-reader support. `calc-4vs8.13` exposes public raw formula-text query
 packets for `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and recursive `**`
 spelling, plus caller-supplied resolved-collection prebind into the existing
-`OrderedSelectorV1` carrier and runtime sparse reader path.
+`OrderedSelectorV1` carrier and runtime sparse reader path. DnaTreeCalc commit
+`66355f8` activates the first receiving-side ordered-selector corpus slice for
+`@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and `Base.**.Margin` through those
+public query/resolved-collection packets. `calc-4vs8.14` keeps the generic
+OxFml host-reference bind packet shape explicit by reporting ordered-selector
+family hints separately from `ChildrenV1`.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -437,15 +442,17 @@ diagnostics; prebinding with caller-supplied resolved collections produces
 neutral OxFml source and `OrderedSelectorV1` carriers; string literals are
 ignored; and `=SUM(@PRECEDING)` executes through OxFml/OxFunc using the generic
 sparse reference-values path rather than eager materialization.
+`calc-4vs8.14` adds focused Rust coverage that `RuntimeHostReferenceBindResult`
+shape hints distinguish `ordered_collection:children_v1` from
+`ordered_collection:treecalc_ordered_selector_v1:<family>`.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, exercised OxFml host-reference packets beyond
 the admitted children/table slices, a versioned cross-workspace availability/
-degradation model, traversal-membership resolver implementation and
-traversal-bound policy for raw recursive/preceding/following/ancestor
-selectors, full OxCalc-owned explicit path resolution for raw `base` text,
-DnaTreeCalc receiving-side corpus activation for table packets and the broader
-W004/W005 reference suite, and broader end-to-end scenarios. Blocker
-`calc-4vs8.5` remains open after `calc-4vs8.13` closure.
+degradation model, traversal-bound policy for raw recursive/preceding/
+following/ancestor selectors, full OxCalc-owned explicit path resolution for
+raw `base` text, DnaTreeCalc receiving-side corpus activation for table packets
+and the broader W004/W005 reference suite, and broader end-to-end scenarios.
+Blocker `calc-4vs8.5` remains open for the remaining full-W056 closure scope.
 
 Formal status: no proof claim.

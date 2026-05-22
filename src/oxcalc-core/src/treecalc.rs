@@ -3644,7 +3644,7 @@ fn host_reference_bind_results_for_runtime(
                 source_token_text: collection.source_token_text.clone(),
                 opaque_selector_payload: Some(collection.opaque_selector.clone()),
                 resolution_layer: "explicit_host_ref".to_string(),
-                shape_hint: Some("ordered_collection:children_v1".to_string()),
+                shape_hint: Some(host_reference_shape_hint(collection)),
                 caller_context_dependent: true,
                 diagnostics: Vec::new(),
                 replay_identity_contribution: format!(
@@ -3656,6 +3656,16 @@ fn host_reference_bind_results_for_runtime(
             }
         })
         .collect()
+}
+
+fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -> String {
+    match collection.collection_dependency.family {
+        TreeReferenceCollectionFamily::ChildrenV1 => "ordered_collection:children_v1".to_string(),
+        family => format!(
+            "ordered_collection:treecalc_ordered_selector_v1:{}",
+            family.stable_id()
+        ),
+    }
 }
 
 struct TreeCalcRuntimeEnvironmentBuild<'a> {
@@ -7537,6 +7547,14 @@ mod tests {
                 .source_token_text,
             "@PRECEDING"
         );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .shape_hint
+                .as_deref(),
+            Some("ordered_collection:treecalc_ordered_selector_v1:preceding")
+        );
 
         let run = LocalTreeCalcEngine
             .execute(LocalTreeCalcInput {
@@ -7716,6 +7734,14 @@ mod tests {
                 .host_reference_bind_results[0]
                 .resolution_layer,
             "explicit_host_ref"
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .shape_hint
+                .as_deref(),
+            Some("ordered_collection:children_v1")
         );
 
         let run = LocalTreeCalcEngine

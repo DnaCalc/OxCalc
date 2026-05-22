@@ -261,8 +261,12 @@ Host namespace resolver output shape:
    `host_name_defined_name_like`, `function`, `defined_name`, `lexical`, or
    `unresolved`. W051 uses `explicit_host_ref` or `host_path` for the explicit
    syntax above; bare names and callees stay evidence-gated by W074.
-4. `shape_hint`: `single`, `collection`, `dynamic`, or `unknown`.
-   `@CHILDREN` and `.*` return `collection`.
+4. `shape_hint`: a stable category string suitable for routing, not semantic
+   interpretation. The first W051 carrier now reports
+   `ordered_collection:children_v1`; W056 ordered selectors report
+   `ordered_collection:treecalc_ordered_selector_v1:<family>`. Older summary
+   categories such as `single`, `collection`, `dynamic`, and `unknown` remain
+   broad classes only, not the runtime packet vocabulary.
 5. `caller_context_dependency`: `none`, `caller_node`, `ancestor_walk`,
    `workspace_selector`, or `active_selection`. Free-standing `@CHILDREN` and
    `.*` are `caller_node`; explicit absolute workspace-root selectors are
@@ -297,7 +301,7 @@ First TreeCalc reference-collection carrier:
 1. carrier name: `TreeCalcReferenceCollection::ChildrenV1`,
 2. host-hook carrier fields: `host_ref_handle`, `base_node_id`,
    `source_span_utf8`, `source_token_text`, `opaque_selector`, and
-   `shape_hint = collection`,
+   `shape_hint = ordered_collection:children_v1`,
 3. OxCalc lowering emits typed `TreeReferenceCollectionDependency` facts with
    `membership_version`, `order_version`, and `member_node_ids` derived from
    the structural member snapshot, not parsed back out of trace text,

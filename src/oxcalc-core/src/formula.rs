@@ -384,6 +384,7 @@ impl TreeCalcFormulaTextPrebindContext {
 pub enum TreeCalcQualifiedBaseResolutionLayer {
     CallerSuppliedResolvedBase,
     ExplicitHostPath,
+    OxCalcStructuralPath,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,6 +406,190 @@ pub struct TreeCalcQualifiedChildrenBaseQuery {
     pub source_token_text: String,
     pub base_token_text: String,
     pub selector_token_text: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcHostPathBaseResolutionLayer {
+    ProjectionPath,
+    DottedProjectionPath,
+    RootDescendantPath,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcHostPathBaseResolution {
+    pub base_token_text: String,
+    pub base_node_id: TreeNodeId,
+    pub canonical_projection_path: String,
+    pub resolution_layer: TreeCalcHostPathBaseResolutionLayer,
+    pub resolution_identity: String,
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum TreeCalcHostPathBaseResolutionError {
+    #[error("TreeCalc explicit host path base token is empty")]
+    EmptyBaseToken,
+    #[error(
+        "TreeCalc cross-workspace base token '{base_token_text}' needs a workspace availability model"
+    )]
+    CrossWorkspaceBaseToken { base_token_text: String },
+    #[error(
+        "TreeCalc explicit host path base token '{base_token_text}' has invalid syntax: {detail}"
+    )]
+    InvalidBaseTokenSyntax {
+        base_token_text: String,
+        detail: String,
+    },
+    #[error("TreeCalc explicit host path base token '{base_token_text}' did not resolve")]
+    UnresolvedBaseToken { base_token_text: String },
+}
+
+pub fn resolve_treecalc_explicit_host_path_base(
+    snapshot: &StructuralSnapshot,
+    base_token_text: impl AsRef<str>,
+) -> Result<TreeCalcHostPathBaseResolution, TreeCalcHostPathBaseResolutionError> {
+    let base_token_text = base_token_text.as_ref().trim();
+    if base_token_text.is_empty() {
+        return Err(TreeCalcHostPathBaseResolutionError::EmptyBaseToken);
+    }
+    if base_token_text.contains('!') {
+        return Err(
+            TreeCalcHostPathBaseResolutionError::CrossWorkspaceBaseToken {
+                base_token_text: base_token_text.to_string(),
+            },
+        );
+    }
+
+    if let Some(node_id) = snapshot.try_resolve_projection_path(base_token_text) {
+        return host_path_base_resolution(
+            snapshot,
+            base_token_text,
+            node_id,
+            TreeCalcHostPathBaseResolutionLayer::ProjectionPath,
+        );
+    }
+
+    let segments = split_treecalc_host_path_token(base_token_text)?;
+    if segments.is_empty() {
+        return Err(TreeCalcHostPathBaseResolutionError::UnresolvedBaseToken {
+            base_token_text: base_token_text.to_string(),
+        });
+    }
+
+    let dotted_projection_path = segments.join("/");
+    if let Some(node_id) = snapshot.try_resolve_projection_path(&dotted_projection_path) {
+        return host_path_base_resolution(
+            snapshot,
+            base_token_text,
+            node_id,
+            TreeCalcHostPathBaseResolutionLayer::DottedProjectionPath,
+        );
+    }
+
+    let node_id = snapshot
+        .try_resolve_descendant_path(snapshot.root_node_id(), &segments)
+        .ok_or_else(
+            || TreeCalcHostPathBaseResolutionError::UnresolvedBaseToken {
+                base_token_text: base_token_text.to_string(),
+            },
+        )?;
+    host_path_base_resolution(
+        snapshot,
+        base_token_text,
+        node_id,
+        TreeCalcHostPathBaseResolutionLayer::RootDescendantPath,
+    )
+}
+
+fn host_path_base_resolution(
+    snapshot: &StructuralSnapshot,
+    base_token_text: &str,
+    base_node_id: TreeNodeId,
+    resolution_layer: TreeCalcHostPathBaseResolutionLayer,
+) -> Result<TreeCalcHostPathBaseResolution, TreeCalcHostPathBaseResolutionError> {
+    let canonical_projection_path = snapshot.get_projection_path(base_node_id).map_err(|_| {
+        TreeCalcHostPathBaseResolutionError::UnresolvedBaseToken {
+            base_token_text: base_token_text.to_string(),
+        }
+    })?;
+    let resolution_identity = format!(
+        "treecalc-explicit-host-path:v1:token={base_token_text};canonical={canonical_projection_path};base={base_node_id};layer={resolution_layer:?}"
+    );
+    Ok(TreeCalcHostPathBaseResolution {
+        base_token_text: base_token_text.to_string(),
+        base_node_id,
+        canonical_projection_path,
+        resolution_layer,
+        resolution_identity,
+    })
+}
+
+fn split_treecalc_host_path_token(
+    base_token_text: &str,
+) -> Result<Vec<String>, TreeCalcHostPathBaseResolutionError> {
+    let mut segments = Vec::new();
+    let mut segment = String::new();
+    let mut bracket_depth = 0usize;
+    for ch in base_token_text.chars() {
+        match ch {
+            '[' if bracket_depth > 0 => {
+                return Err(
+                    TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
+                        base_token_text: base_token_text.to_string(),
+                        detail: "nested bracketed path segments are not admitted".to_string(),
+                    },
+                );
+            }
+            '[' => {
+                bracket_depth += 1;
+            }
+            ']' if bracket_depth > 0 => {
+                bracket_depth -= 1;
+            }
+            ']' => {
+                return Err(
+                    TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
+                        base_token_text: base_token_text.to_string(),
+                        detail: "closing bracket without an open bracket".to_string(),
+                    },
+                );
+            }
+            '.' | '/' if bracket_depth == 0 => {
+                push_treecalc_host_path_segment(&mut segments, &mut segment);
+            }
+            _ => segment.push(ch),
+        }
+    }
+    if bracket_depth != 0 {
+        return Err(
+            TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
+                base_token_text: base_token_text.to_string(),
+                detail: "unclosed bracketed path segment".to_string(),
+            },
+        );
+    }
+    push_treecalc_host_path_segment(&mut segments, &mut segment);
+    Ok(segments)
+}
+
+fn push_treecalc_host_path_segment(segments: &mut Vec<String>, segment: &mut String) {
+    let trimmed = segment.trim();
+    if !trimmed.is_empty() {
+        segments.push(unquote_treecalc_host_path_segment(trimmed));
+    }
+    segment.clear();
+}
+
+fn unquote_treecalc_host_path_segment(segment: &str) -> String {
+    segment
+        .strip_prefix('\'')
+        .and_then(|rest| rest.strip_suffix('\''))
+        .or_else(|| {
+            segment
+                .strip_prefix('"')
+                .and_then(|rest| rest.strip_suffix('"'))
+        })
+        .unwrap_or(segment)
+        .to_string()
 }
 
 impl TreeCalcQualifiedChildrenBaseQuery {
@@ -448,6 +633,18 @@ impl TreeCalcQualifiedChildrenBaseQuery {
     ) -> TreeCalcQualifiedChildrenBaseResolution {
         self.to_resolution(base_node_id)
             .with_resolution_layer(resolution_layer, resolution_identity)
+    }
+
+    pub fn to_resolution_with_structural_path_base(
+        &self,
+        snapshot: &StructuralSnapshot,
+    ) -> Result<TreeCalcQualifiedChildrenBaseResolution, TreeCalcHostPathBaseResolutionError> {
+        let base = resolve_treecalc_explicit_host_path_base(snapshot, &self.base_token_text)?;
+        Ok(self.to_resolution_with_layer(
+            base.base_node_id,
+            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath,
+            base.resolution_identity,
+        ))
     }
 }
 
@@ -665,6 +862,39 @@ impl TreeCalcOrderedSelectorQuery {
             traversal,
         })
     }
+
+    pub fn to_resolution_with_structural_path_base_and_traversal(
+        &self,
+        snapshot: &StructuralSnapshot,
+        policy: TreeCalcOrderedSelectorTraversalPolicy,
+    ) -> Result<
+        TreeCalcOrderedSelectorTraversalResolution,
+        TreeCalcOrderedSelectorStructuralResolutionError,
+    > {
+        let base_token_text = self
+            .base_token_text
+            .as_deref()
+            .ok_or(TreeCalcOrderedSelectorStructuralResolutionError::MissingQualifiedBaseToken)?;
+        let base = resolve_treecalc_explicit_host_path_base(snapshot, base_token_text)?;
+        let mut resolved = self
+            .to_resolution_with_structural_traversal(snapshot, base.base_node_id, policy)
+            .map_err(TreeCalcOrderedSelectorStructuralResolutionError::from)?;
+        resolved.resolution.resolution_identity = format!(
+            "{};base_resolution={}",
+            resolved.resolution.resolution_identity, base.resolution_identity
+        );
+        Ok(resolved)
+    }
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum TreeCalcOrderedSelectorStructuralResolutionError {
+    #[error("ordered selector query does not have a qualified base token")]
+    MissingQualifiedBaseToken,
+    #[error(transparent)]
+    BasePath(#[from] TreeCalcHostPathBaseResolutionError),
+    #[error(transparent)]
+    Traversal(#[from] TreeCalcOrderedSelectorTraversalError),
 }
 
 pub fn resolve_treecalc_ordered_selector_traversal(
@@ -2842,6 +3072,83 @@ mod tests {
     }
 
     #[test]
+    fn explicit_host_path_base_resolver_maps_structural_paths_without_name_precedence() {
+        let snapshot = snapshot();
+
+        let exact = resolve_treecalc_explicit_host_path_base(&snapshot, "Root/Branch").unwrap();
+        assert_eq!(exact.base_node_id, TreeNodeId(2));
+        assert_eq!(exact.canonical_projection_path, "Root/Branch");
+        assert_eq!(
+            exact.resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::ProjectionPath
+        );
+
+        let dotted = resolve_treecalc_explicit_host_path_base(&snapshot, "Root.Branch").unwrap();
+        assert_eq!(dotted.base_node_id, TreeNodeId(2));
+        assert_eq!(
+            dotted.resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::DottedProjectionPath
+        );
+
+        let root_descendant =
+            resolve_treecalc_explicit_host_path_base(&snapshot, "Branch.[Leaf]").unwrap();
+        assert_eq!(root_descendant.base_node_id, TreeNodeId(4));
+        assert_eq!(
+            root_descendant.resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::RootDescendantPath
+        );
+
+        let cross_workspace =
+            resolve_treecalc_explicit_host_path_base(&snapshot, "Other!Root.Branch")
+                .expect_err("cross-workspace remains typed exclusion");
+        assert!(matches!(
+            cross_workspace,
+            TreeCalcHostPathBaseResolutionError::CrossWorkspaceBaseToken { .. }
+        ));
+
+        for malformed in ["Branch.[Leaf", "Branch.Leaf]", "Branch.[Leaf.[Nested]]"] {
+            let error = resolve_treecalc_explicit_host_path_base(&snapshot, malformed)
+                .expect_err("malformed bracketed path should be rejected");
+            assert!(
+                matches!(
+                    error,
+                    TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax { .. }
+                ),
+                "unexpected error for {malformed}: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn qualified_children_query_can_resolve_base_from_structural_path() {
+        let source_text = "=SUM(Branch.@CHILDREN)";
+        let query =
+            treecalc_formula_text_qualified_children_base_queries(TreeNodeId(10), source_text)
+                .into_iter()
+                .next()
+                .expect("qualified children query");
+        let resolution = query
+            .to_resolution_with_structural_path_base(&snapshot())
+            .expect("structural path base resolution");
+
+        assert_eq!(resolution.base_node_id, TreeNodeId(2));
+        assert_eq!(
+            resolution.resolution_layer,
+            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath
+        );
+        assert!(
+            resolution
+                .resolution_identity
+                .contains("treecalc-explicit-host-path:v1")
+        );
+        assert!(
+            resolution
+                .resolution_identity
+                .contains("canonical=Root/Branch")
+        );
+    }
+
+    #[test]
     fn raw_treecalc_formula_text_qualified_children_queries_ignore_string_literals() {
         let queries = treecalc_formula_text_qualified_children_base_queries(
             TreeNodeId(10),
@@ -3070,6 +3377,46 @@ mod tests {
             direct_tail_match.resolution.member_node_ids,
             vec![TreeNodeId(4)]
         );
+    }
+
+    #[test]
+    fn ordered_selector_query_can_resolve_base_path_and_traversal_membership() {
+        let source_text = "=SUM(Branch.@FOLLOWING,Root.**.Leaf)";
+        let queries = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text);
+
+        let following = queries[0]
+            .to_resolution_with_structural_path_base_and_traversal(
+                &snapshot(),
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .expect("structural path and following traversal");
+        assert_eq!(following.resolution.base_node_id, TreeNodeId(2));
+        assert_eq!(following.resolution.member_node_ids, vec![TreeNodeId(3)]);
+        assert_eq!(
+            following.resolution.resolution_layer,
+            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal
+        );
+        assert!(
+            following
+                .resolution
+                .resolution_identity
+                .contains("base_resolution=treecalc-explicit-host-path:v1")
+        );
+        assert!(
+            following
+                .resolution
+                .resolution_identity
+                .contains("canonical=Root/Branch")
+        );
+
+        let recursive = queries[1]
+            .to_resolution_with_structural_path_base_and_traversal(
+                &snapshot(),
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .expect("structural path and recursive traversal");
+        assert_eq!(recursive.resolution.base_node_id, TreeNodeId(1));
+        assert_eq!(recursive.resolution.member_node_ids, vec![TreeNodeId(4)]);
     }
 
     #[test]

@@ -429,7 +429,7 @@ pub enum TreeCalcHostPathBaseResolutionError {
     #[error("TreeCalc explicit host path base token is empty")]
     EmptyBaseToken,
     #[error(
-        "TreeCalc cross-workspace base token '{base_token_text}' needs a workspace availability model"
+        "TreeCalc cross-workspace base token '{base_token_text}' needs workspace provider and alias semantics"
     )]
     CrossWorkspaceBaseToken { base_token_text: String },
     #[error(
@@ -441,6 +441,124 @@ pub enum TreeCalcHostPathBaseResolutionError {
     },
     #[error("TreeCalc explicit host path base token '{base_token_text}' did not resolve")]
     UnresolvedBaseToken { base_token_text: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcCrossWorkspaceAvailabilityStatus {
+    Available,
+    Unavailable,
+    Degraded,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcCrossWorkspaceDiagnosticCode {
+    WorkspaceProviderMissing,
+    WorkspaceUnavailable,
+    WorkspaceDegraded,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcCrossWorkspaceDiagnostic {
+    pub code: TreeCalcCrossWorkspaceDiagnosticCode,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcCrossWorkspaceAvailabilityPacket {
+    pub workspace_handle: String,
+    pub workspace_selector_token: String,
+    pub availability_version: String,
+    pub status: TreeCalcCrossWorkspaceAvailabilityStatus,
+    pub degradation_layer: Option<String>,
+    pub diagnostics: Vec<TreeCalcCrossWorkspaceDiagnostic>,
+}
+
+impl TreeCalcCrossWorkspaceAvailabilityPacket {
+    #[must_use]
+    pub fn unavailable(
+        workspace_handle: impl Into<String>,
+        workspace_selector_token: impl Into<String>,
+        availability_version: impl Into<String>,
+        detail: impl Into<String>,
+    ) -> Self {
+        Self {
+            workspace_handle: workspace_handle.into(),
+            workspace_selector_token: workspace_selector_token.into(),
+            availability_version: availability_version.into(),
+            status: TreeCalcCrossWorkspaceAvailabilityStatus::Unavailable,
+            degradation_layer: Some("workspace_unavailable".to_string()),
+            diagnostics: vec![TreeCalcCrossWorkspaceDiagnostic {
+                code: TreeCalcCrossWorkspaceDiagnosticCode::WorkspaceUnavailable,
+                detail: detail.into(),
+            }],
+        }
+    }
+
+    #[must_use]
+    pub fn provider_missing(workspace_selector_token: impl Into<String>) -> Self {
+        let workspace_selector_token = workspace_selector_token.into();
+        Self {
+            workspace_handle: format!("treecalc-workspace:unresolved:{workspace_selector_token}"),
+            availability_version: "treecalc-cross-workspace-availability:v1:provider_missing"
+                .to_string(),
+            workspace_selector_token,
+            status: TreeCalcCrossWorkspaceAvailabilityStatus::Unavailable,
+            degradation_layer: Some("workspace_provider_missing".to_string()),
+            diagnostics: vec![TreeCalcCrossWorkspaceDiagnostic {
+                code: TreeCalcCrossWorkspaceDiagnosticCode::WorkspaceProviderMissing,
+                detail: "no cross-workspace provider was supplied for this TreeCalc host reference"
+                    .to_string(),
+            }],
+        }
+    }
+
+    #[must_use]
+    pub fn degraded(
+        workspace_handle: impl Into<String>,
+        workspace_selector_token: impl Into<String>,
+        availability_version: impl Into<String>,
+        degradation_layer: impl Into<String>,
+        detail: impl Into<String>,
+    ) -> Self {
+        Self {
+            workspace_handle: workspace_handle.into(),
+            workspace_selector_token: workspace_selector_token.into(),
+            availability_version: availability_version.into(),
+            status: TreeCalcCrossWorkspaceAvailabilityStatus::Degraded,
+            degradation_layer: Some(degradation_layer.into()),
+            diagnostics: vec![TreeCalcCrossWorkspaceDiagnostic {
+                code: TreeCalcCrossWorkspaceDiagnosticCode::WorkspaceDegraded,
+                detail: detail.into(),
+            }],
+        }
+    }
+
+    #[must_use]
+    pub fn available(
+        workspace_handle: impl Into<String>,
+        workspace_selector_token: impl Into<String>,
+        availability_version: impl Into<String>,
+    ) -> Self {
+        Self {
+            workspace_handle: workspace_handle.into(),
+            workspace_selector_token: workspace_selector_token.into(),
+            availability_version: availability_version.into(),
+            status: TreeCalcCrossWorkspaceAvailabilityStatus::Available,
+            degradation_layer: None,
+            diagnostics: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn prepared_identity_component(&self) -> String {
+        format!(
+            "cross_workspace_availability_version={};workspace_handle={};status={:?};degradation_layer={}",
+            self.availability_version,
+            self.workspace_handle,
+            self.status,
+            self.degradation_layer.as_deref().unwrap_or("none")
+        )
+    }
 }
 
 pub fn resolve_treecalc_explicit_host_path_base(
@@ -1716,6 +1834,7 @@ pub enum TreeReferenceInventoryBlocker {
     NeedsOxFmlStructuredReferencePacket,
     NeedsStableStructuredTableRowMembershipAndOrderPacket,
     NeedsCrossWorkspaceModel,
+    NeedsCrossWorkspaceProvider,
     NeedsSelectorDependencyModel,
 }
 
@@ -2075,7 +2194,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         TreeReferenceImplementationInput {
             variant: Variant::CrossWorkspaceReference,
             status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsCrossWorkspaceModel),
+            blocker: Some(Blocker::NeedsCrossWorkspaceProvider),
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::CrossWorkspaceAvailabilityVersion,
@@ -2086,7 +2205,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::ExternallyInvalidated,
             ],
             successor_bead: Some("calc-4vs8.3"),
-            evidence_note: "cross-workspace availability and degradation need a versioned workspace model before execution",
+            evidence_note: "calc-4vs8.18 adds versioned availability/degradation packets; execution still requires a workspace provider and alias model",
         },
         TreeReferenceImplementationInput {
             variant: Variant::RecursiveSelector,
@@ -3117,6 +3236,62 @@ mod tests {
                 "unexpected error for {malformed}: {error:?}"
             );
         }
+    }
+
+    #[test]
+    fn cross_workspace_availability_packet_is_identity_and_diagnostic_surface_only() {
+        let missing = TreeCalcCrossWorkspaceAvailabilityPacket::provider_missing("Book2!Root");
+        assert_eq!(
+            missing.status,
+            TreeCalcCrossWorkspaceAvailabilityStatus::Unavailable
+        );
+        assert_eq!(
+            missing.diagnostics[0].code,
+            TreeCalcCrossWorkspaceDiagnosticCode::WorkspaceProviderMissing
+        );
+        assert!(
+            missing
+                .prepared_identity_component()
+                .contains("cross_workspace_availability_version=")
+        );
+        assert!(
+            missing
+                .prepared_identity_component()
+                .contains("status=Unavailable")
+        );
+
+        let degraded = TreeCalcCrossWorkspaceAvailabilityPacket::degraded(
+            "treecalc-workspace:Book2",
+            "Book2",
+            "treecalc-cross-workspace-availability:v1:Book2:degraded",
+            "stale_snapshot",
+            "workspace snapshot is stale",
+        );
+        assert_eq!(
+            degraded.status,
+            TreeCalcCrossWorkspaceAvailabilityStatus::Degraded
+        );
+        assert!(
+            degraded
+                .prepared_identity_component()
+                .contains("degradation_layer=stale_snapshot")
+        );
+
+        let available = TreeCalcCrossWorkspaceAvailabilityPacket::available(
+            "treecalc-workspace:Book2",
+            "Book2",
+            "treecalc-cross-workspace-availability:v1:Book2:available",
+        );
+        assert_eq!(
+            available.status,
+            TreeCalcCrossWorkspaceAvailabilityStatus::Available
+        );
+        assert!(available.diagnostics.is_empty());
+        assert!(
+            available
+                .prepared_identity_component()
+                .contains("status=Available")
+        );
     }
 
     #[test]

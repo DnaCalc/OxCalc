@@ -646,7 +646,7 @@ mod tests {
     }
 
     #[test]
-    fn inventory_surface_keeps_cross_workspace_as_typed_blocker() {
+    fn inventory_surface_keeps_cross_workspace_as_provider_blocker() {
         let graph = DependencyGraph::build(&snapshot(), &[]);
         let surface = w056_reference_dependency_surface(&graph);
 
@@ -658,7 +658,7 @@ mod tests {
 
         assert_eq!(
             cross_workspace.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsCrossWorkspaceModel)
+            Some(TreeReferenceInventoryBlocker::NeedsCrossWorkspaceProvider)
         );
         assert_eq!(
             cross_workspace.namespace_identity_need,

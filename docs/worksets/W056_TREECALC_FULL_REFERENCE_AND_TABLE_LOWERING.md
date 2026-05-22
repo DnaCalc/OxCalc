@@ -414,6 +414,32 @@ node precedence. It applies only to explicit host-reference selector bases and
 does not freeze W074 name/call semantics, table syntax, workspace aliases,
 DnaTreeCalc corpus activation, or retained replay evidence.
 
+## 4J. `calc-4vs8.18` Cross-Workspace Availability Packet
+
+The next W056 tranche adds the OxCalc-owned cross-workspace
+availability/degradation packet:
+
+1. `TreeCalcCrossWorkspaceAvailabilityPacket` carries a stable workspace
+   handle, workspace selector token, `availability_version`, status
+   (`Available`, `Unavailable`, `Degraded`), optional degradation layer, and
+   typed diagnostics.
+2. `prepared_identity_component()` projects the availability version, workspace
+   handle, status, and degradation layer as a deterministic prepared/cache
+   identity contribution.
+3. the cross-workspace inventory row now points to
+   `NeedsCrossWorkspaceProvider`: the packet/version model exists, but
+   execution still requires a workspace provider and alias model.
+4. explicit host-path tokens containing `!` remain typed rejects in
+   `resolve_treecalc_explicit_host_path_base(...)` until the provider/alias
+   model lands.
+
+Current non-claim:
+
+This is not executable cross-workspace reference resolution. It supplies the
+packet and identity shape needed to report availability/degradation without
+inventing workspace alias semantics, external workspace lookup, or retained
+cross-workspace corpus evidence.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -434,7 +460,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.17`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.18`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -477,6 +503,9 @@ known. `calc-4vs8.17` adds explicit structural path base resolution for
 qualified selector tokens, so `base.@CHILDREN`, `base.@FOLLOWING`, and
 `base.**.Tail`-style packets can be resolved by OxCalc without host-side path
 semantics when the token is an admitted explicit host-reference selector base.
+`calc-4vs8.18` adds the typed cross-workspace availability/degradation packet
+and prepared-identity component, narrowing the previous missing-packet blocker
+to the remaining workspace provider and alias semantics.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -557,15 +586,19 @@ recursive traversal-bound failure; and typed empty-tail-match diagnostics.
 dotted projection path, root-descendant dotted/bracketed path, typed
 cross-workspace rejection, qualified children structural-base resolution, and
 ordered selector structural-base-plus-traversal resolution.
+`calc-4vs8.18` adds focused Rust coverage proving unavailable/degraded/
+available cross-workspace packet statuses, typed diagnostics, deterministic
+prepared-identity projection, and the W056 inventory transition from missing
+model to missing provider.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, exercised OxFml host-reference packets beyond the
-admitted children/table/ordered-selector slices, a versioned cross-workspace
-availability/degradation model, workspace alias and first-position `!`
-semantics, table-specific path syntax, DnaTreeCalc receiving-side corpus
-activation for table packets and the broader W004/W005 reference suite,
-retained OxReplay/OxXlPlay evidence, and broader end-to-end scenarios. Blocker
-`calc-4vs8.5` remains open for the remaining full-W056 closure scope.
+admitted children/table/ordered-selector slices, cross-workspace provider and
+workspace alias/first-position `!` semantics, table-specific path syntax,
+DnaTreeCalc receiving-side corpus activation for table packets and the broader
+W004/W005 reference suite, retained OxReplay/OxXlPlay evidence, and broader
+end-to-end scenarios. Blocker `calc-4vs8.5` remains open for the remaining
+full-W056 closure scope.
 
 Formal status: no proof claim.

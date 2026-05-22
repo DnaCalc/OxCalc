@@ -109,13 +109,14 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: queued successor. W051 implements the first `ChildrenV1`
-carrier pattern locally; W056 is the registered place for the full TreeCalc
-reference family and table-lowering product scope.
+Product status: queued successor. W051 is closed for the first OxCalc
+`ChildrenV1` carrier pattern; W056 is the registered place for the full
+TreeCalc reference family and table-lowering product scope.
 
 Evidence: W051 focused tests cover the first carrier's local
 membership/member-value dependency descriptors, reference-preserving formal
-input binding, and membership/order invalidation facts.
+input binding, OxFml sparse reference-values binding, OxFunc aggregate
+consumption, and membership/order invalidation facts.
 
 Still open: all W056 lanes above.
 

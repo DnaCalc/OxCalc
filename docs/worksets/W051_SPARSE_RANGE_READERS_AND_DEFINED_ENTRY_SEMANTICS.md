@@ -467,11 +467,13 @@ W051 can close for its first product scope when:
 
 ## 8. Status
 
-Product status: the OxCalc-local first reference-carrier pattern is
-implemented for `TreeCalcReferenceCollection::ChildrenV1`. W051 now explicitly
-includes the TreeCalc reference-collection compatibility lane required for
+Product status: closed for the OxCalc-local W051 first product scope. The
+sparse reader API, worksheet large-range adapter,
+`TreeCalcReferenceCollection::ChildrenV1` reader, generic TreeCalc
+`HostFormulaContext`, host-reference bind-output preservation, and
+reference-preserving sparse value binding are implemented and exercised for
 `=SUM(@CHILDREN)` / `=SUM(.*)`. The OxFml receipt for `HANDOFF-CALC-005`
-has been processed into the plan: OxCalc supplies
+has been processed into the implementation plan: OxCalc supplies
 `dialect_id = oxcalc.treecalc-v1`,
 `capability_profile_id = host-capabilities:treecalc-v1`, explicit
 `@CHILDREN` / `.*` host-reference source preservation, the
@@ -498,21 +500,27 @@ bead wires TreeCalc collection formulas into `RuntimeHostFormulaContext`, emits
 `base.@CHILDREN`, and `base.*` source-token identity and UTF-8 spans, keeps the
 formula argument as an opaque structured `ReferenceLike`, and resolves the host
 handle through a generic resolver binding backed by the
-`TreeCalcChildrenSparseReader`. Focused checks:
+`TreeCalcChildrenSparseReader`. The fourth implementation bead replaces the
+bounded resolver-array bridge with OxFml's generic sparse reference-values
+binding: OxCalc now supplies the opaque structured `ReferenceLike` as the
+formal input and a matching `RuntimeSparseReferenceValuesBinding` whose
+declared extent, defined cells, and stable reader identity are projected from
+`TreeCalcChildrenSparseReader`. The OxFunc first aggregate group consumes that
+generic resolver/reader surface; OxFunc still receives neither TreeCalc syntax
+nor tree-structure objects. Focused checks:
 `cargo test -p oxcalc-core children_collection -- --nocapture` and
-`cargo test -p oxcalc-core sparse_reader`. The HANDOFF-CALC-005 receipt accepts
-the generic host-context direction and routes final name/call precedence
-evidence to W074. The DNA TreeCalc bridge still uses a temporary
-prepared-formula smoke carrier rather than the target formula-text-to-OxFml
-path.
+`cargo test -p oxcalc-core sparse_reader`; full check:
+`cargo test -p oxcalc-core`. Fresh-eyes review found no code issue and one
+status-wording issue, now addressed by naming the DnaTreeCalc bridge exclusion
+explicitly. The HANDOFF-CALC-005 receipt accepts the generic host-context
+direction and routes final name/call precedence evidence to W074.
 
-Still open: W051 closure audit, replacement of the bounded resolver-array
-bridge with a true sparse resolver/reader path once OxFml/OxFunc expose that
-surface, and the W074-CALC005 Excel oracle matrix for
-built-in/UDF/defined-name/defined-name-`LAMBDA` shadowing. The `ReferenceLike`
-plus resolver/reader path is the W051 target; eager materialization is only a
-labeled fallback if metadata blocks that target. Full TreeCalc reference
-families and structured table lowering are registered in successor W056 rather
-than being hidden inside this first carrier pattern.
+Still open outside the scoped OxCalc W051 close: DnaTreeCalc's product bridge
+from TreeCalc formula text into the real OxCalc/OxFml path, the W074-CALC005
+Excel oracle matrix for built-in/UDF/defined-name/defined-name-`LAMBDA`
+shadowing, and full TreeCalc reference families plus structured table lowering
+in successor W056. The `ReferenceLike` plus resolver/reader path is now
+exercised for `ChildrenV1`; any eager materialization fallback remains
+non-closing evidence.
 
 Formal status: no proof claim.

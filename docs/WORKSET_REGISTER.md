@@ -562,7 +562,13 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 6. initial_epic_lanes:
    shared reader contract, coordinate/extent model, replay shape, OxCalc reader adapter, generic OxCalc-to-OxFml host formula context and bind-output shape, exact `@CHILDREN` / `.*` source-span and source-token preservation, host namespace version and caller-context identity, W074-gated function/UDF/defined-name/defined-name-LAMBDA shadowing matrix, `TreeCalcReferenceCollection::ChildrenV1` resolver/reader carrier, current-member value dependency and set-membership dependency shape, first OxFunc function group, OxFml runtime/replay threading, integration evidence.
 7. rollout_mode:
-   `open_next`
+   `closed_first_scope` (epic `calc-yptj` and children are closed for the
+   declared OxCalc W051 first product scope: sparse reader API, worksheet
+   adapter, `ChildrenV1` sparse reader, generic TreeCalc host context,
+   source-preserving host-reference bind output, OxFml sparse
+   reference-values binding, and OxFunc first aggregate consumption. Product
+   DnaTreeCalc formula-text bridge activation, full TreeCalc references,
+   structured tables, and W074 name/call precedence remain successor work.)
 
 ### W056 TreeCalc Full Reference And Table Lowering
 1. purpose:

@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormalInputBinding, RuntimeFormalReference, RuntimeFormulaRequest,
     RuntimeFormulaResult, RuntimeHostFormulaContext, RuntimeHostReferenceBindResult,
-    RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
+    RuntimePreparedFormulaIdentity, RuntimeSparseReferenceCell,
+    RuntimeSparseReferenceValuesBinding, RuntimeTemplateHole,
 };
 use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::TypedContextQueryBundle;
@@ -23,8 +24,7 @@ use oxfunc_core::host_info::{
     ResolvedWebImage,
 };
 use oxfunc_core::value::{
-    ArrayCellValue, ArrayShape, EvalArray, EvalValue, ExcelText, ReferenceKind, ReferenceLike,
-    WorksheetErrorCode,
+    ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
 };
 use serde::Serialize;
 use thiserror::Error;
@@ -3130,11 +3130,10 @@ fn build_treecalc_runtime_environment(
 
 fn formal_input_bindings_for_runtime(
     translated: &TranslatedFormula,
-    structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
 ) -> Vec<RuntimeFormalInputBinding> {
-    let mut bindings = translated
+    translated
         .reference_bindings
         .iter()
         .map(|reference| {
@@ -3187,25 +3186,32 @@ fn formal_input_bindings_for_runtime(
                 }),
             }
         }))
-        .collect::<Vec<_>>();
-
-    bindings.extend(
-        translated
-            .collection_bindings
-            .iter()
-            .filter_map(|collection| {
-                treecalc_children_resolver_binding(collection, structural_snapshot, working_values)
-            }),
-    );
-
-    bindings
+        .collect::<Vec<_>>()
 }
 
-fn treecalc_children_resolver_binding(
+fn sparse_reference_value_bindings_for_runtime(
+    translated: &TranslatedFormula,
+    structural_snapshot: &StructuralSnapshot,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Vec<RuntimeSparseReferenceValuesBinding> {
+    translated
+        .collection_bindings
+        .iter()
+        .filter_map(|collection| {
+            treecalc_children_sparse_reference_values_binding(
+                collection,
+                structural_snapshot,
+                working_values,
+            )
+        })
+        .collect()
+}
+
+fn treecalc_children_sparse_reference_values_binding(
     collection: &SyntheticReferenceCollectionBinding,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
-) -> Option<RuntimeFormalInputBinding> {
+) -> Option<RuntimeSparseReferenceValuesBinding> {
     let reader = TreeCalcChildrenSparseReader::from_published_values(
         structural_snapshot,
         crate::formula::TreeCalcChildrenReferenceCollection {
@@ -3220,43 +3226,40 @@ fn treecalc_children_resolver_binding(
         working_values,
     )
     .ok()?;
-    Some(RuntimeFormalInputBinding {
-        reference_handle: None,
-        reference_descriptor: collection.host_ref_handle.clone(),
-        binding: DefinedNameBinding::Value(EvalValue::Array(materialize_sparse_reader_as_array(
-            &reader,
-        ))),
-    })
+    Some(runtime_sparse_reference_values_binding(
+        ReferenceLike {
+            kind: ReferenceKind::Structured,
+            target: collection.host_ref_handle.clone(),
+        },
+        &reader,
+    ))
 }
 
-fn materialize_sparse_reader_as_array(reader: &impl SparseRangeReader) -> EvalArray {
+fn runtime_sparse_reference_values_binding(
+    reference: ReferenceLike,
+    reader: &impl SparseRangeReader,
+) -> RuntimeSparseReferenceValuesBinding {
     let extent = reader.declared_extent();
-    let row_count = usize::try_from(extent.row_count).unwrap_or(usize::MAX);
-    let column_count = usize::try_from(extent.column_count).unwrap_or(usize::MAX);
-    let mut cells = vec![ArrayCellValue::EmptyCell; row_count.saturating_mul(column_count)];
-    for cell in reader.defined_iter() {
-        if cell.coord.row == 0 || cell.coord.column == 0 {
-            continue;
-        }
-        let row = usize::try_from(cell.coord.row - 1).unwrap_or(usize::MAX);
-        let column = usize::try_from(cell.coord.column - 1).unwrap_or(usize::MAX);
-        let index = row.saturating_mul(column_count).saturating_add(column);
-        if let Some(slot) = cells.get_mut(index) {
-            *slot = eval_value_to_array_cell(cell.value);
-        }
+    let identity = reader.reader_identity();
+    RuntimeSparseReferenceValuesBinding {
+        reference,
+        declared_rows: usize::try_from(extent.row_count).unwrap_or(usize::MAX),
+        declared_cols: usize::try_from(extent.column_count).unwrap_or(usize::MAX),
+        defined_cells: reader
+            .defined_iter()
+            .map(|cell| {
+                RuntimeSparseReferenceCell::new(
+                    usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
+                    usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
+                    eval_value_to_array_cell(cell.value),
+                )
+            })
+            .collect(),
+        reader_identity: Some(format!(
+            "reader_id={};source={};snapshot={}",
+            identity.reader_id, identity.source_identity, identity.snapshot_identity
+        )),
     }
-    EvalArray::new(
-        ArrayShape {
-            rows: row_count.max(1),
-            cols: column_count.max(1),
-        },
-        if cells.is_empty() {
-            vec![ArrayCellValue::EmptyCell]
-        } else {
-            cells
-        },
-    )
-    .expect("reader extent should produce a valid materialized resolver array")
 }
 
 fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
@@ -3333,12 +3336,8 @@ fn build_treecalc_runtime_environment_from_parts(
     prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
 ) -> RuntimeEnvironment<'static> {
     let host_structure_context_version = structure_context_version.0.clone();
-    let formal_input_bindings = formal_input_bindings_for_runtime(
-        translated,
-        structural_snapshot,
-        working_values,
-        prepared_formula_identity,
-    );
+    let formal_input_bindings =
+        formal_input_bindings_for_runtime(translated, working_values, prepared_formula_identity);
 
     let mut environment = RuntimeEnvironment::new()
         .with_structure_context_version(structure_context_version)
@@ -3351,7 +3350,12 @@ fn build_treecalc_runtime_environment_from_parts(
                 &host_structure_context_version,
                 oxfunc_bridge_metadata,
             ))
-            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(translated));
+            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(translated))
+            .with_sparse_reference_value_bindings(sparse_reference_value_bindings_for_runtime(
+                translated,
+                structural_snapshot,
+                working_values,
+            ));
     }
     if let Some(version) = &oxfunc_bridge_metadata.semantic_kernel_metadata_version {
         environment = environment.with_semantic_kernel_metadata_version(version.clone());
@@ -6777,19 +6781,14 @@ mod tests {
             binding.owner_node_id,
             &binding.expression,
         );
-        let formal_inputs = formal_input_bindings_for_runtime(
-            &translated,
-            &structural_snapshot,
-            &BTreeMap::new(),
-            None,
-        );
+        let formal_inputs = formal_input_bindings_for_runtime(&translated, &BTreeMap::new(), None);
 
         assert_eq!(translated.collection_bindings.len(), 1);
         assert_eq!(
             translated.collection_bindings[0].member_node_ids,
             vec![TreeNodeId(3), TreeNodeId(4)]
         );
-        assert_eq!(formal_inputs.len(), 2);
+        assert_eq!(formal_inputs.len(), 1);
         assert_eq!(formal_inputs[0].reference_descriptor, "name:TREE_REF_10_0");
         assert_eq!(
             formal_inputs[0].reference_handle.as_deref(),
@@ -6802,30 +6801,47 @@ mod tests {
             }
             other => panic!("expected reference-preserving binding, got {other:?}"),
         }
+
+        let sparse_bindings = sparse_reference_value_bindings_for_runtime(
+            &translated,
+            &structural_snapshot,
+            &BTreeMap::from([
+                (TreeNodeId(3), "2".to_string()),
+                (TreeNodeId(4), "3".to_string()),
+            ]),
+        );
+        assert_eq!(sparse_bindings.len(), 1);
+        assert_eq!(sparse_bindings[0].reference.kind, ReferenceKind::Structured);
         assert_eq!(
-            formal_inputs[1].reference_descriptor,
+            sparse_bindings[0].reference.target,
             "treecalc-hostref:v1:children:node:2"
         );
-        assert!(formal_inputs[1].reference_handle.is_none());
-        match &formal_inputs[1].binding {
-            DefinedNameBinding::Value(EvalValue::Array(array)) => {
-                assert_eq!(array.shape().rows, 2);
-                assert_eq!(array.shape().cols, 1);
-            }
-            other => panic!("expected resolver array binding, got {other:?}"),
-        }
+        assert_eq!(sparse_bindings[0].declared_rows, 2);
+        assert_eq!(sparse_bindings[0].declared_cols, 1);
+        assert_eq!(sparse_bindings[0].defined_cells.len(), 2);
+        assert_eq!(sparse_bindings[0].defined_cells[0].row, 1);
+        assert_eq!(sparse_bindings[0].defined_cells[0].col, 1);
+        assert_eq!(
+            sparse_bindings[0].defined_cells[0].value,
+            ArrayCellValue::Number(2.0)
+        );
+        assert!(
+            sparse_bindings[0].reader_identity.as_deref().is_some_and(
+                |identity| identity.contains("reader_id=treecalc-hostref:v1:children:node:2")
+            )
+        );
     }
 
     #[test]
-    fn children_collection_sum_uses_generic_host_context_and_reference_resolver() {
+    fn children_collection_sum_uses_generic_host_context_and_sparse_reference_values() {
         for source_token_text in ["@CHILDREN", ".*", "base.@CHILDREN", "base.*"] {
-            assert_children_collection_sum_uses_generic_host_context_and_reference_resolver(
+            assert_children_collection_sum_uses_generic_host_context_and_sparse_reference_values(
                 source_token_text,
             );
         }
     }
 
-    fn assert_children_collection_sum_uses_generic_host_context_and_reference_resolver(
+    fn assert_children_collection_sum_uses_generic_host_context_and_sparse_reference_values(
         source_token_text: &str,
     ) {
         let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);

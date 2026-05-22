@@ -7,20 +7,25 @@ use std::time::{Duration, Instant};
 
 use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormalInputBinding, RuntimeFormalReference, RuntimeFormulaRequest,
-    RuntimeFormulaResult, RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
+    RuntimeFormulaResult, RuntimeHostFormulaContext, RuntimeHostReferenceBindResult,
+    RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
 };
 use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::TypedContextQueryBundle;
 use oxfml_core::interface::{ReturnedValueSurface, ReturnedValueSurfaceKind};
 use oxfml_core::semantics::{FormulaDeterminismClass, FormulaVolatilityClass, SemanticPlan};
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
+use oxfml_core::syntax::token::TextSpan;
 use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{
     CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
     ResolvedWebImage,
 };
-use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
+use oxfunc_core::value::{
+    ArrayCellValue, ArrayShape, EvalArray, EvalValue, ExcelText, ReferenceKind, ReferenceLike,
+    WorksheetErrorCode,
+};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -39,6 +44,7 @@ use crate::recalc::{
 };
 use crate::repository::{SubscriptionHandle, SubscriptionRegistryEntry, SubscriptionTopicId};
 use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
+use crate::sparse_reader::{SparseRangeReader, TreeCalcChildrenSparseReader};
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
@@ -2180,6 +2186,9 @@ struct SyntheticReferenceCollectionBinding {
     token: String,
     host_ref_handle: String,
     base_node_id: TreeNodeId,
+    source_span_utf8: Option<(usize, usize)>,
+    source_token_text: String,
+    opaque_selector: String,
     member_node_ids: Vec<TreeNodeId>,
     collection_dependency: TreeReferenceCollectionDependency,
 }
@@ -2204,6 +2213,7 @@ struct TranslatedFormula {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PreparedOxfmlFormula {
     binding: crate::formula::TreeFormulaBinding,
+    structural_snapshot: StructuralSnapshot,
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
     semantic_plan: SemanticPlan,
@@ -2230,6 +2240,7 @@ fn prepare_oxfml_formula(
     let mut prepare_environment = build_treecalc_runtime_environment_from_parts(
         &source,
         &translated,
+        snapshot,
         binding.owner_node_id,
         bind_visible_structure_context_version(snapshot, environment_context),
         &environment_context.oxfunc_bridge_metadata,
@@ -2267,6 +2278,7 @@ fn prepare_oxfml_formula(
 
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
+        structural_snapshot: snapshot.clone(),
         source,
         translated,
         bind_diagnostics: open
@@ -3102,6 +3114,7 @@ fn build_treecalc_runtime_environment(
     build_treecalc_runtime_environment_from_parts(
         &prepared.source,
         &prepared.translated,
+        &prepared.structural_snapshot,
         prepared.binding.owner_node_id,
         StructureContextVersion(
             prepared
@@ -3117,10 +3130,11 @@ fn build_treecalc_runtime_environment(
 
 fn formal_input_bindings_for_runtime(
     translated: &TranslatedFormula,
+    structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
 ) -> Vec<RuntimeFormalInputBinding> {
-    translated
+    let mut bindings = translated
         .reference_bindings
         .iter()
         .map(|reference| {
@@ -3173,25 +3187,172 @@ fn formal_input_bindings_for_runtime(
                 }),
             }
         }))
+        .collect::<Vec<_>>();
+
+    bindings.extend(
+        translated
+            .collection_bindings
+            .iter()
+            .filter_map(|collection| {
+                treecalc_children_resolver_binding(collection, structural_snapshot, working_values)
+            }),
+    );
+
+    bindings
+}
+
+fn treecalc_children_resolver_binding(
+    collection: &SyntheticReferenceCollectionBinding,
+    structural_snapshot: &StructuralSnapshot,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Option<RuntimeFormalInputBinding> {
+    let reader = TreeCalcChildrenSparseReader::from_published_values(
+        structural_snapshot,
+        crate::formula::TreeCalcChildrenReferenceCollection {
+            host_ref_handle: collection.host_ref_handle.clone(),
+            base_node_id: collection.base_node_id,
+            source_span_utf8: collection.source_span_utf8,
+            source_token_text: collection.source_token_text.clone(),
+            opaque_selector: collection.opaque_selector.clone(),
+            membership_version: collection.collection_dependency.membership_version.clone(),
+            order_version: collection.collection_dependency.order_version.clone(),
+        },
+        working_values,
+    )
+    .ok()?;
+    Some(RuntimeFormalInputBinding {
+        reference_handle: None,
+        reference_descriptor: collection.host_ref_handle.clone(),
+        binding: DefinedNameBinding::Value(EvalValue::Array(materialize_sparse_reader_as_array(
+            &reader,
+        ))),
+    })
+}
+
+fn materialize_sparse_reader_as_array(reader: &impl SparseRangeReader) -> EvalArray {
+    let extent = reader.declared_extent();
+    let row_count = usize::try_from(extent.row_count).unwrap_or(usize::MAX);
+    let column_count = usize::try_from(extent.column_count).unwrap_or(usize::MAX);
+    let mut cells = vec![ArrayCellValue::EmptyCell; row_count.saturating_mul(column_count)];
+    for cell in reader.defined_iter() {
+        if cell.coord.row == 0 || cell.coord.column == 0 {
+            continue;
+        }
+        let row = usize::try_from(cell.coord.row - 1).unwrap_or(usize::MAX);
+        let column = usize::try_from(cell.coord.column - 1).unwrap_or(usize::MAX);
+        let index = row.saturating_mul(column_count).saturating_add(column);
+        if let Some(slot) = cells.get_mut(index) {
+            *slot = eval_value_to_array_cell(cell.value);
+        }
+    }
+    EvalArray::new(
+        ArrayShape {
+            rows: row_count.max(1),
+            cols: column_count.max(1),
+        },
+        if cells.is_empty() {
+            vec![ArrayCellValue::EmptyCell]
+        } else {
+            cells
+        },
+    )
+    .expect("reader extent should produce a valid materialized resolver array")
+}
+
+fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
+    match value {
+        EvalValue::Number(value) => ArrayCellValue::Number(value),
+        EvalValue::Text(value) => ArrayCellValue::Text(value),
+        EvalValue::Logical(value) => ArrayCellValue::Logical(value),
+        EvalValue::Error(value) => ArrayCellValue::Error(value),
+        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+            ArrayCellValue::Error(WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn treecalc_host_formula_context(
+    owner_node_id: TreeNodeId,
+    structure_context_version: &str,
+    oxfunc_bridge_metadata: &LocalTreeCalcOxFuncBridgeMetadata,
+) -> RuntimeHostFormulaContext {
+    RuntimeHostFormulaContext {
+        dialect_id: "oxcalc.treecalc-v1".to_string(),
+        capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
+        resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+        host_namespace_version: Some("treecalc-host-namespace:v1".to_string()),
+        registry_snapshot_identity: oxfunc_bridge_metadata
+            .semantic_kernel_metadata_version
+            .clone(),
+        structure_context_version: Some(structure_context_version.to_string()),
+        caller_context_identity: Some(format!("treecalc-caller:{}", owner_node_id)),
+        table_context_identity: None,
+    }
+}
+
+fn host_reference_bind_results_for_runtime(
+    translated: &TranslatedFormula,
+) -> Vec<RuntimeHostReferenceBindResult> {
+    translated
+        .collection_bindings
+        .iter()
+        .map(|collection| {
+            let source_span = collection.source_span_utf8.map_or_else(
+                || TextSpan::new(0, collection.source_token_text.len()),
+                |(start, end)| TextSpan::new(start, end.saturating_sub(start)),
+            );
+            RuntimeHostReferenceBindResult {
+                reference_handle: collection.host_ref_handle.clone(),
+                formal_reference_id: None,
+                source_span,
+                source_token_text: collection.source_token_text.clone(),
+                opaque_selector_payload: Some(collection.opaque_selector.clone()),
+                resolution_layer: "explicit_host_ref".to_string(),
+                shape_hint: Some("ordered_collection:children_v1".to_string()),
+                caller_context_dependent: true,
+                diagnostics: Vec::new(),
+                replay_identity_contribution: format!(
+                    "treecalc-host-reference:v1:handle={};membership={};order={}",
+                    collection.host_ref_handle,
+                    collection.collection_dependency.membership_version,
+                    collection.collection_dependency.order_version
+                ),
+            }
+        })
         .collect()
 }
 
 fn build_treecalc_runtime_environment_from_parts(
     _source: &FormulaSourceRecord,
     translated: &TranslatedFormula,
+    structural_snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &LocalTreeCalcOxFuncBridgeMetadata,
     working_values: &BTreeMap<TreeNodeId, String>,
     prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
 ) -> RuntimeEnvironment<'static> {
-    let formal_input_bindings =
-        formal_input_bindings_for_runtime(translated, working_values, prepared_formula_identity);
+    let host_structure_context_version = structure_context_version.0.clone();
+    let formal_input_bindings = formal_input_bindings_for_runtime(
+        translated,
+        structural_snapshot,
+        working_values,
+        prepared_formula_identity,
+    );
 
     let mut environment = RuntimeEnvironment::new()
         .with_structure_context_version(structure_context_version)
         .with_caller_position(synthetic_cell_row(owner_node_id), 1)
         .with_formal_input_bindings(formal_input_bindings);
+    if !translated.collection_bindings.is_empty() {
+        environment = environment
+            .with_host_formula_context(treecalc_host_formula_context(
+                owner_node_id,
+                &host_structure_context_version,
+                oxfunc_bridge_metadata,
+            ))
+            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(translated));
+    }
     if let Some(version) = &oxfunc_bridge_metadata.semantic_kernel_metadata_version {
         environment = environment.with_semantic_kernel_metadata_version(version.clone());
     }
@@ -3766,6 +3927,9 @@ impl FormulaCarrierProjectionState<'_> {
                 token,
                 host_ref_handle: collection.host_ref_handle.clone(),
                 base_node_id: collection.base_node_id,
+                source_span_utf8: collection.source_span_utf8,
+                source_token_text: collection.source_token_text.clone(),
+                opaque_selector: collection.opaque_selector.clone(),
                 member_node_ids,
                 collection_dependency,
             });
@@ -4001,7 +4165,15 @@ mod tests {
     }
 
     fn children_collection_catalog() -> TreeFormulaCatalog {
-        let collection = TreeCalcChildrenReferenceCollection::new(TreeNodeId(2), "@CHILDREN");
+        children_collection_catalog_with_source_token("@CHILDREN")
+    }
+
+    fn children_collection_catalog_with_source_token(
+        source_token_text: &str,
+    ) -> TreeFormulaCatalog {
+        let collection =
+            TreeCalcChildrenReferenceCollection::new(TreeNodeId(2), source_token_text.to_string())
+                .with_source_span_utf8(5, 5 + source_token_text.len());
         TreeFormulaCatalog::new([TreeFormulaBinding {
             owner_node_id: TreeNodeId(10),
             formula_artifact_id: FormulaArtifactId("formula:total".to_string()),
@@ -6605,14 +6777,19 @@ mod tests {
             binding.owner_node_id,
             &binding.expression,
         );
-        let formal_inputs = formal_input_bindings_for_runtime(&translated, &BTreeMap::new(), None);
+        let formal_inputs = formal_input_bindings_for_runtime(
+            &translated,
+            &structural_snapshot,
+            &BTreeMap::new(),
+            None,
+        );
 
         assert_eq!(translated.collection_bindings.len(), 1);
         assert_eq!(
             translated.collection_bindings[0].member_node_ids,
             vec![TreeNodeId(3), TreeNodeId(4)]
         );
-        assert_eq!(formal_inputs.len(), 1);
+        assert_eq!(formal_inputs.len(), 2);
         assert_eq!(formal_inputs[0].reference_descriptor, "name:TREE_REF_10_0");
         assert_eq!(
             formal_inputs[0].reference_handle.as_deref(),
@@ -6625,6 +6802,118 @@ mod tests {
             }
             other => panic!("expected reference-preserving binding, got {other:?}"),
         }
+        assert_eq!(
+            formal_inputs[1].reference_descriptor,
+            "treecalc-hostref:v1:children:node:2"
+        );
+        assert!(formal_inputs[1].reference_handle.is_none());
+        match &formal_inputs[1].binding {
+            DefinedNameBinding::Value(EvalValue::Array(array)) => {
+                assert_eq!(array.shape().rows, 2);
+                assert_eq!(array.shape().cols, 1);
+            }
+            other => panic!("expected resolver array binding, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn children_collection_sum_uses_generic_host_context_and_reference_resolver() {
+        for source_token_text in ["@CHILDREN", ".*", "base.@CHILDREN", "base.*"] {
+            assert_children_collection_sum_uses_generic_host_context_and_reference_resolver(
+                source_token_text,
+            );
+        }
+    }
+
+    fn assert_children_collection_sum_uses_generic_host_context_and_reference_resolver(
+        source_token_text: &str,
+    ) {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let catalog = children_collection_catalog_with_source_token(source_token_text);
+        let binding = catalog
+            .try_get_binding(TreeNodeId(10))
+            .expect("children collection binding");
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("children collection formula should prepare");
+
+        let host_context = prepared
+            .runtime_prepared_identity
+            .host_formula_context
+            .as_ref()
+            .expect("TreeCalc collection should contribute host context");
+        assert_eq!(host_context.dialect_id, "oxcalc.treecalc-v1");
+        assert_eq!(
+            host_context.capability_profile_id,
+            "host-capabilities:treecalc-v1"
+        );
+        assert_eq!(
+            host_context.resolution_rule_version,
+            "treecalc-host-resolution:v1"
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .reference_handle,
+            "treecalc-hostref:v1:children:node:2"
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .source_token_text,
+            source_token_text
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .source_span
+                .start,
+            5
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .source_span
+                .len,
+            source_token_text.len()
+        );
+        assert_eq!(
+            prepared
+                .runtime_prepared_identity
+                .host_reference_bind_results[0]
+                .resolution_layer,
+            "explicit_host_ref"
+        );
+
+        let run = LocalTreeCalcEngine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot,
+                formula_catalog: catalog,
+                seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: "candidate:w051:children-sum".to_string(),
+                publication_id: "publication:w051:children-sum".to_string(),
+                compatibility_basis: "snapshot:w051:children-sum".to_string(),
+                artifact_token_basis: "snapshot:w051:children-sum".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .expect("SUM over ChildrenV1 reference should execute");
+
+        assert_eq!(run.published_values[&TreeNodeId(10)], "5");
+        assert!(
+            run.prepared_formula_identities
+                .iter()
+                .any(|identity| identity.owner_node_id == TreeNodeId(10))
+        );
     }
 
     #[test]

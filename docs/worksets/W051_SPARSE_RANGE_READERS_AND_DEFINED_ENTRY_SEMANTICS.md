@@ -492,7 +492,13 @@ one-column sparse range whose declared rows are ordered child members and whose
 defined cells are member values; missing member values remain `Blank`, including
 after add/remove/reorder shape changes. The adapter includes a published-value
 constructor so later OxFml/OxFunc integration consumes the same reader path
-rather than duplicating TreeCalc value conversion. Focused checks:
+rather than duplicating TreeCalc value conversion. The third implementation
+bead wires TreeCalc collection formulas into `RuntimeHostFormulaContext`, emits
+`RuntimeHostReferenceBindResult` records preserving `@CHILDREN`, `.*`,
+`base.@CHILDREN`, and `base.*` source-token identity and UTF-8 spans, keeps the
+formula argument as an opaque structured `ReferenceLike`, and resolves the host
+handle through a generic resolver binding backed by the
+`TreeCalcChildrenSparseReader`. Focused checks:
 `cargo test -p oxcalc-core children_collection -- --nocapture` and
 `cargo test -p oxcalc-core sparse_reader`. The HANDOFF-CALC-005 receipt accepts
 the generic host-context direction and routes final name/call precedence
@@ -500,10 +506,9 @@ evidence to W074. The DNA TreeCalc bridge still uses a temporary
 prepared-formula smoke carrier rather than the target formula-text-to-OxFml
 path.
 
-Still open: OxFml resolver/materialization threading for the public runtime
-path, OxFunc sparse/reference admission activation for the first function
-group, end-to-end `SUM(@CHILDREN)` evidence through generic
-`HostFormulaContext`, and the W074-CALC005 Excel oracle matrix for
+Still open: W051 closure audit, replacement of the bounded resolver-array
+bridge with a true sparse resolver/reader path once OxFml/OxFunc expose that
+surface, and the W074-CALC005 Excel oracle matrix for
 built-in/UDF/defined-name/defined-name-`LAMBDA` shadowing. The `ReferenceLike`
 plus resolver/reader path is the W051 target; eager materialization is only a
 labeled fallback if metadata blocks that target. Full TreeCalc reference

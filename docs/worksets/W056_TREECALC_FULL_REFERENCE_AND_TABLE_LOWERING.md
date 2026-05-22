@@ -328,6 +328,35 @@ traversal bounds, activate the DnaTreeCalc corpus, or define final name/call
 precedence. DnaTreeCalc or a future OxCalc resolver must supply the resolved
 collection packet through the public query coordinates.
 
+## 4G. `calc-4vs8.15` W093/W074 Registered-External Intake
+
+The current W056 blocker is narrower after the OxFunc W093 and OxFml W074
+registered-external reconciliation tranche:
+
+1. OxFunc W093 source mapping and reconciliation beads have landed for OxFml
+   invalidation handoff acknowledgement, UDF collision/name-precedence evidence
+   intake, registered-external seam alignment, public UDF source mapping, and
+   JavaScript custom-function metadata mapping.
+2. Descriptor-only `REGISTER.ID`/`CALL` state remains adjacent
+   registered-external state, not ordinary bind-visible UDF registration.
+3. Ordinary bind-visible UDF registration still flows through the OxFunc
+   registry snapshot/change-set lane, while descriptor-only mutation can
+   preserve ordinary registry snapshot identity and use targeted reevaluation.
+4. OxFunc's W093 reconciliation does not add any TreeCalc-specific function
+   branch and does not inspect TreeCalc selectors.
+5. OxFml W074 has acknowledged the same registered-external split, so W056 no
+   longer treats the source-mapping or descriptor-only/friendly-UDF distinction
+   as a missing upstream packet.
+
+Current non-claim:
+
+This intake does not freeze name/call precedence. OxFml W074 still owns the
+formula-call registry lookup migration, broad cache-invalidation evidence,
+host namespace mutation invalidation, and Excel-oracle-backed precedence rows
+for built-in/UDF/defined-name/defined-name-`LAMBDA` collisions. TreeCalc bare
+host names and lambda-valued host nodes therefore remain mapped to the closest
+Excel defined-name lane until that evidence lands.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -379,7 +408,11 @@ spelling, plus caller-supplied resolved-collection prebind into the existing
 `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and `Base.**.Margin` through those
 public query/resolved-collection packets. `calc-4vs8.14` keeps the generic
 OxFml host-reference bind packet shape explicit by reporting ordered-selector
-family hints separately from `ChildrenV1`.
+family hints separately from `ChildrenV1`. `calc-4vs8.15` records the
+cross-repo W093/W074 registered-external reconciliation intake: OxFunc source
+mapping, registered-external split, and JavaScript custom-function metadata
+mapping are no longer W056 upstream packet blockers, while W074 name/call and
+cache-invalidation evidence remains open.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -445,14 +478,22 @@ sparse reference-values path rather than eager materialization.
 `calc-4vs8.14` adds focused Rust coverage that `RuntimeHostReferenceBindResult`
 shape hints distinguish `ordered_collection:children_v1` from
 `ordered_collection:treecalc_ordered_selector_v1:<family>`.
+`calc-4vs8.15` is a coordination intake: OxFunc W093 source mapping,
+registered-external seam alignment, and JavaScript custom-function metadata
+mapping have landed without transferring TreeCalc selector semantics into
+OxFunc, and OxFml W074 has acknowledged the descriptor-only registered-external
+split. This removes stale W093 source/reconciliation packet blockers from the
+W056 status surface only.
 
 Still open: W074 final name/call precedence evidence beyond the observed
-W074-CALC005-014 table-name row, exercised OxFml host-reference packets beyond
-the admitted children/table slices, a versioned cross-workspace availability/
-degradation model, traversal-bound policy for raw recursive/preceding/
-following/ancestor selectors, full OxCalc-owned explicit path resolution for
-raw `base` text, DnaTreeCalc receiving-side corpus activation for table packets
-and the broader W004/W005 reference suite, and broader end-to-end scenarios.
-Blocker `calc-4vs8.5` remains open for the remaining full-W056 closure scope.
+W074-CALC005-014 table-name row, W074 formula-call registry lookup and
+cache-invalidation migration, exercised OxFml host-reference packets beyond the
+admitted children/table/ordered-selector slices, a versioned cross-workspace
+availability/degradation model, traversal-bound policy for raw
+recursive/preceding/following/ancestor selectors, full OxCalc-owned explicit
+path resolution for raw `base` text, DnaTreeCalc receiving-side corpus
+activation for table packets and the broader W004/W005 reference suite, and
+broader end-to-end scenarios. Blocker `calc-4vs8.5` remains open for the
+remaining full-W056 closure scope.
 
 Formal status: no proof claim.

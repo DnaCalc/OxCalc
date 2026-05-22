@@ -415,6 +415,7 @@ mod tests {
             target_node_id: Some(TreeNodeId(2)),
             kind: DependencyDescriptorKind::StaticDirect,
             carrier_detail: "report reads price".to_string(),
+            tree_reference_collection: None,
             requires_rebind_on_structural_change: false,
         }]);
         repository

@@ -11,6 +11,8 @@ use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
 pub enum DependencyDescriptorKind {
     StaticDirect,
     RelativeBound,
+    TreeReferenceCollectionMembership,
+    TreeReferenceCollectionMemberValue,
     DynamicPotential,
     HostSensitive,
     CapabilitySensitive,
@@ -26,7 +28,79 @@ pub struct DependencyDescriptor {
     pub target_node_id: Option<TreeNodeId>,
     pub kind: DependencyDescriptorKind,
     pub carrier_detail: String,
+    pub tree_reference_collection: Option<TreeReferenceCollectionDependency>,
     pub requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeReferenceCollectionFamily {
+    ChildrenV1,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeReferenceCollectionDependency {
+    pub family: TreeReferenceCollectionFamily,
+    pub host_ref_handle: String,
+    pub base_node_id: TreeNodeId,
+    pub membership_version: String,
+    pub order_version: String,
+    pub member_node_ids: Vec<TreeNodeId>,
+}
+
+impl TreeReferenceCollectionDependency {
+    #[must_use]
+    pub fn children_v1(
+        host_ref_handle: impl Into<String>,
+        base_node_id: TreeNodeId,
+        member_node_ids: Vec<TreeNodeId>,
+    ) -> Self {
+        Self {
+            family: TreeReferenceCollectionFamily::ChildrenV1,
+            host_ref_handle: host_ref_handle.into(),
+            base_node_id,
+            membership_version: format!(
+                "treecalc-membership:v1:base={base_node_id};members={}",
+                format_tree_node_id_set(&member_node_ids)
+            ),
+            order_version: format!(
+                "treecalc-order:v1:base={base_node_id};members={}",
+                format_tree_node_id_list(&member_node_ids)
+            ),
+            member_node_ids,
+        }
+    }
+
+    #[must_use]
+    pub fn carrier_detail(&self) -> String {
+        match self.family {
+            TreeReferenceCollectionFamily::ChildrenV1 => format!(
+                "treecalc_children_v1:base={};membership={};order={};members={}",
+                self.base_node_id,
+                self.membership_version,
+                self.order_version,
+                format_tree_node_id_list(&self.member_node_ids)
+            ),
+        }
+    }
+}
+
+fn format_tree_node_id_list(node_ids: &[TreeNodeId]) -> String {
+    node_ids
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn format_tree_node_id_set(node_ids: &[TreeNodeId]) -> String {
+    node_ids
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(|node_id| node_id.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,6 +146,8 @@ pub enum InvalidationReasonKind {
     StructuralRecalcOnly,
     UpstreamPublication,
     ExternallyInvalidated,
+    TreeReferenceMembershipChanged,
+    TreeReferenceOrderChanged,
     DependencyAdded,
     DependencyRemoved,
     DependencyReclassified,
@@ -152,6 +228,12 @@ impl DependencyGraph {
                         .push(edge);
                 }
                 None => {
+                    if matches!(
+                        descriptor.kind,
+                        DependencyDescriptorKind::TreeReferenceCollectionMembership
+                    ) {
+                        continue;
+                    }
                     let kind = match descriptor.kind {
                         DependencyDescriptorKind::HostSensitive => {
                             DependencyDiagnosticKind::HostSensitiveReference
@@ -303,6 +385,8 @@ fn derive_seed_state(reason: InvalidationReasonKind, in_cycle: bool) -> NodeCalc
         InvalidationReasonKind::UpstreamPublication
         | InvalidationReasonKind::ExternallyInvalidated => NodeCalcState::Needed,
         InvalidationReasonKind::StructuralRecalcOnly => NodeCalcState::DirtyPending,
+        InvalidationReasonKind::TreeReferenceMembershipChanged
+        | InvalidationReasonKind::TreeReferenceOrderChanged => NodeCalcState::DirtyPending,
         InvalidationReasonKind::StructuralRebindRequired
         | InvalidationReasonKind::DependencyAdded
         | InvalidationReasonKind::DependencyRemoved
@@ -476,6 +560,7 @@ mod tests {
                     target_node_id: Some(TreeNodeId(3)),
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "A->B".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: false,
                 },
                 DependencyDescriptor {
@@ -485,6 +570,7 @@ mod tests {
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::RelativeBound,
                     carrier_detail: "B->A".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: true,
                 },
                 DependencyDescriptor {
@@ -494,6 +580,7 @@ mod tests {
                     target_node_id: None,
                     kind: DependencyDescriptorKind::Unresolved,
                     carrier_detail: "relative sibling lookup".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: true,
                 },
             ],
@@ -526,6 +613,7 @@ mod tests {
                     target_node_id: Some(TreeNodeId(3)),
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "A->B".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: false,
                 },
                 DependencyDescriptor {
@@ -535,6 +623,7 @@ mod tests {
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::RelativeBound,
                     carrier_detail: "B->A".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: true,
                 },
                 DependencyDescriptor {
@@ -544,6 +633,7 @@ mod tests {
                     target_node_id: Some(TreeNodeId(2)),
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "C->A".to_string(),
+                    tree_reference_collection: None,
                     requires_rebind_on_structural_change: false,
                 },
             ],
@@ -577,6 +667,7 @@ mod tests {
                 target_node_id: Some(TreeNodeId(2)),
                 kind: DependencyDescriptorKind::StaticDirect,
                 carrier_detail: "C->A".to_string(),
+                tree_reference_collection: None,
                 requires_rebind_on_structural_change: false,
             }],
         );

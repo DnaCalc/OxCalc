@@ -4,4 +4,4 @@ HANDOFF-FML-001,inbound,Minimum Seam Schema Tightening for Candidate Commit Reje
 HANDOFF-CALC-002,outbound,Recalc Session And Plan Template Support For W050,acknowledged,W050,OxFml-TBD,2026-05-14,2026-05-14
 HANDOFF-CALC-003,outbound,Numerical Reduction Policy And Error Algebra For W050,acknowledged,W050,OxFml/OxFunc-TBD,2026-05-14,2026-05-14
 HANDOFF-CALC-004,outbound,Capability-Set Hole Admission For W050,acknowledged,W050,OxFml/OxFunc-TBD,2026-05-14,2026-05-14
-HANDOFF-CALC-005,outbound,Generic Host Formula Context And Namespace Resolution For W051,pending,W051,OxFml-TBD,2026-05-21,
+HANDOFF-CALC-005,outbound,Generic Host Formula Context And Namespace Resolution For W051,acknowledged,W051,OxFml-TBD,2026-05-21,2026-05-21

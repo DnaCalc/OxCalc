@@ -4,7 +4,7 @@ Status: `open_next`
 
 Parent predecessor: `W050` formula-authority rework
 
-Parent epic: allocate when W051 starts.
+Parent epic: `calc-hkj9`.
 
 ## 1. Purpose
 
@@ -136,7 +136,8 @@ not TreeCalc syntax hardcoded into OxFml.
 
 The context supplied by OxCalc to OxFml should include:
 
-1. `dialect_id` / `capability_profile_id` such as `oxcalc.treecalc-v1`,
+1. `dialect_id = oxcalc.treecalc-v1` and
+   `capability_profile_id = host-capabilities:treecalc-v1`,
 2. a host reference parser hook for reference positions and callee-prefix
    positions, returning opaque host-reference syntax nodes with source spans,
 3. a host namespace resolver for node names, defined names, relative paths,
@@ -176,14 +177,177 @@ semantics with OxFunc and tree-name/reference semantics with OxCalc.
 
 The OxFml-side request is filed as
 `docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`.
-W051 must treat that as an open cross-repo dependency until OxFml acknowledges
-the context, bind-output, and resolution-diagnostic shape.
+OxFml receipt
+`../OxFml/docs/handoffs/HANDOFF_CALC_005_OXFML_RECEIPT.md` accepts this as
+`accept_as_w051_plan_with_w074_evidence_gate`. W051 therefore owns the
+OxCalc-side context and resolver shape below; W074 remains the evidence gate
+for final Excel name/call precedence.
 
 For TreeCalc reference collections, OxFunc is intentionally reference-opaque:
 it should continue to see the same value/reference universe it already uses for
 worksheet ranges. A new OxFunc `ReferenceKind` is only acceptable if evidence
 shows the existing `ReferenceLike` kind/target space cannot carry an opaque
 host reference safely.
+
+### 3.2 CALC-005 Receipt Intake: W051 Implementation Inputs
+
+This section is the OxCalc-side plan needed before W051 implementation starts.
+It answers the shape requests in the OxFml receipt without asking OxFml to
+hardcode TreeCalc syntax.
+
+Stable context ids:
+
+1. `dialect_id`: `oxcalc.treecalc-v1`
+2. `capability_profile_id`: `host-capabilities:treecalc-v1`
+3. `resolution_rule_version`: `treecalc-host-resolution:v1`
+4. strict-Excel rejection profile for TreeCalc-only syntax:
+   `host-capabilities:strict-excel`
+
+`dialect_id` versions the host reference syntax admitted by the hook.
+`capability_profile_id` versions the enabled host capability bundle. They are
+separate prepared-identity inputs because a future profile can disable or
+enable features without changing the syntax grammar, and a future dialect can
+change syntax while preserving a broader capability bundle.
+
+First explicit host-reference syntax that enters the OxFml host hook:
+
+1. free-standing self selector: `@CHILDREN`, canonicalized to
+   `caller.@CHILDREN`,
+2. free-standing children sugar: `.*`, canonicalized to
+   `caller.@CHILDREN`,
+3. postfix selector on a resolved single base: `base.@CHILDREN`,
+4. postfix children sugar on a resolved single base: `base.*`,
+5. explicit base paths for the first selector scope:
+   - ancestor anchors: `^`, `^.Name`, `^^.Name`, and deeper `^` stacks,
+   - workspace-root anchors: `[]Name`, `[][Escaped Name]`,
+   - workspace selectors: `[workspace]Name` and `['quoted path']Name`,
+   - dotted paths: `Name.Child`, `Name.[Escaped Child]`,
+   - first-position sheet separator alias: `Sheet1!Name`.
+
+A bare single identifier with no anchor, selector, or path separator is not an
+explicit host-reference bypass. It stays in the name/call precedence lane that
+W074 must settle. For the first W051 closure, only the children collection
+selector is in scope; `@ANCESTORS`, `@PRECEDING`, `@FOLLOWING`, recursive
+descent `**`, structured table references, and cross-workspace value loading
+remain outside the first collection carrier unless a successor slice names
+them explicitly.
+
+Source preservation rule:
+
+1. OxFml source spans remain over `FormulaSourceRecord.formula_text`, including
+   the leading `=` when present.
+2. The host hook must return `source_span_utf8` as `[start_byte, end_byte)`,
+   `source_token_text` as the exact source substring, and
+   `source_token_kind` as `TreeCalcPath`, `TreeCalcChildrenAccessor`, or
+   `TreeCalcChildrenSugar`.
+3. Bracket escaping, quoting, case, and separator spelling are preserved in
+   `source_token_text`; canonical selector fields are separate.
+4. Replay output must preserve the full host reference source substring plus
+   per-token spans for the base path and the selector token when both exist.
+
+Host namespace resolver output shape:
+
+1. `host_ref_handle`: stable OxCalc-owned handle. For the first collection
+   carrier, the stable form is equivalent to
+   `treecalc-hostref:v1:children:<base_node_id>`; serialization may be an
+   interned id, but the identity inputs are dialect, selector kind, base
+   `TreeNodeId`, and resolution rule version.
+2. `opaque_selector`: OxCalc-owned payload with schema
+   `oxcalc.treecalc.host_selector.v1`. For the first carrier it contains
+   `selector_kind = Children`, `base_node_id`, `include_meta = false`,
+   `order = sibling_index`, and an internal selector fingerprint. OxFml stores
+   or echoes the payload but does not inspect it.
+3. `resolution_layer`: one of `explicit_host_ref`, `host_path`,
+   `host_name_defined_name_like`, `function`, `defined_name`, `lexical`, or
+   `unresolved`. W051 uses `explicit_host_ref` or `host_path` for the explicit
+   syntax above; bare names and callees stay evidence-gated by W074.
+4. `shape_hint`: `single`, `collection`, `dynamic`, or `unknown`.
+   `@CHILDREN` and `.*` return `collection`.
+5. `caller_context_dependency`: `none`, `caller_node`, `ancestor_walk`,
+   `workspace_selector`, or `active_selection`. Free-standing `@CHILDREN` and
+   `.*` are `caller_node`; explicit absolute workspace-root selectors are
+   `none` after their base is resolved.
+6. `caller_context_id`: required whenever `caller_context_dependency` is not
+   `none`. The first identity is
+   `treecalc-caller:v1:<structure_context_version>:<caller_node_id>:<formula_slot_id-or-none>`.
+7. `diagnostics`: typed records, not prose-only strings. First W051 diagnostic
+   codes are `UnresolvedHostName`, `AmbiguousHostName`, `CapabilityDenied`,
+   `UnsupportedSelector`, `NonSingleBaseForSelector`,
+   `SetReferenceUsedAsCallable`, `ExternalWorkspaceUnavailable`,
+   `MetaNodeInvisible`, and `NameCollisionRequiresExplicitSyntax`.
+
+Prepared identity and cache invalidation inputs:
+
+1. `host_namespace_version`: OxCalc-issued version over bind-visible TreeCalc
+   namespace truth. It changes on node create/delete, rename, move, sibling
+   order changes that affect walk-up or path lookup, meta-visibility changes,
+   workspace alias changes, and any host namespace rule change.
+2. `structure_context_version`: existing structural snapshot/version identity
+   consumed by the host/runtime packet.
+3. `caller_context_id`: defined above; it changes when the caller node,
+   formula slot, or structural context that makes a relative or self selector
+   meaningful changes.
+4. `registry_snapshot_identity`: OxFunc/OxFml function registry view identity,
+   included where function/name classification can affect bind results.
+5. `resolution_rule_version`: `treecalc-host-resolution:v1`, included so a
+   future resolver rule change invalidates prepared identities deterministically.
+
+First TreeCalc reference-collection carrier:
+
+1. carrier name: `TreeCalcReferenceCollection::ChildrenV1`,
+2. host-hook carrier fields: `host_ref_handle`, `base_node_id`,
+   `source_span_utf8`, `source_token_text`, `opaque_selector`, and
+   `shape_hint = collection`,
+3. OxCalc lowering emits typed `TreeReferenceCollectionDependency` facts with
+   `membership_version`, `order_version`, and `member_node_ids` derived from
+   the structural member snapshot, not parsed back out of trace text,
+4. membership: regular children only, excluding meta-effective children,
+5. order: ascending persisted `sibling_index`,
+6. empty result: valid empty reference collection, not `#REF!`,
+7. base deleted or no longer resolvable: typed `#REF!`/unresolved diagnostic
+   through the resolver path.
+
+W051's target transport is reference-preserving: expose this carrier through
+`ReferenceLike` plus an OxCalc resolver/reader. The first adapter may encode
+the handle as an opaque target such as
+`ReferenceLike { kind: Structured, target: "treecalc-hostref:v1:<host_ref_handle>" }`
+until OxFunc and OxFml need a dedicated host-reference kind. That encoding is
+only a transport label; OxFunc must not inspect the TreeCalc selector. If the
+current OxFml/OxFunc argument-preparation metadata cannot pass that reference
+for the first function group, W051 may use a labeled fallback named
+`treecalc_eager_values_fallback.v1`, but that fallback is not closure evidence
+for the reference-preserving scenario.
+
+Set-membership dependency and invalidation facts owned by OxCalc:
+
+1. `TreeCalcSetMembershipDependency { owner_node_id, host_ref_handle,
+   selector_kind = Children, base_node_id, membership_version, order_version }`
+   is emitted by OxCalc and correlated to the OxFml host-reference handle.
+2. Current member value dependencies are separate value edges from the formula
+   owner to each `member_node_id`.
+3. Child add/remove, child meta-visibility changes, and base deletion
+   invalidate membership.
+4. Sibling reorder invalidates order even if membership is unchanged.
+5. Member value publication invalidates the value edge without changing
+   membership.
+6. Base rename/move invalidates host namespace and may require rebind for
+   path-resolved references; a handle already bound to stable `base_node_id`
+   remains correlated for diagnostics until rebind decides otherwise.
+7. OxFml semantics stop at the host-reference handle and opaque selector.
+   Member lists, child filtering, ordering, membership versions, and structural
+   invalidation are OxCalc semantics and replay facts.
+
+W074-blocked decisions:
+
+1. bare call precedence across built-ins, registered UDFs, workbook/sheet
+   defined names, and defined-name `LAMBDA`,
+2. non-call bare-name behavior when the same text can be a function, UDF,
+   defined name, or host name,
+3. TreeCalc lambda-valued node invocation beyond mapping it to the closest
+   Excel defined-name `LAMBDA` lane,
+4. cache invalidation after registry mutation, defined-name mutation,
+   capability overlay denial, and host namespace mutation where those facts
+   change name/call classification.
 
 ## 4. Current Code Inventory
 
@@ -196,17 +360,21 @@ The current investigated floor is:
    Its live OxCalc bridge currently uses a temporary prepared-formula carrier
    for literal, binary, and direct-node smoke paths; that carrier is not the
    target formula-text parse/bind path.
-2. OxCalc `TreeReference` currently has scalar/direct, relative, dynamic, and
-   residual carrier variants, but no reference-collection variant. The current
-   `SyntheticReferenceBinding` stores one `target_node_id`, and
-   `formal_input_bindings_for_runtime` binds every translated reference as
-   `DefinedNameBinding::Value(...)`, which scalarizes references before OxFml
-   can preserve identity.
-3. OxCalc dependency descriptors currently model targetful scalar edges or
-   untargeted residual diagnostics. There is no set-membership descriptor for
-   "this formula depends on the child collection of node X", no collection
-   lowering into current member value edges, and no structural invalidation
-   rule for add/remove/reorder of collection members.
+2. OxCalc `TreeReference` now includes the first reference-collection carrier
+   pattern:
+   `TreeCalcReferenceCollection::ChildrenV1(TreeCalcChildrenReferenceCollection)`.
+   The carrier records the stable host reference handle, base node, source
+   token text/span, opaque selector, membership version, and order version.
+   Runtime preparation now keeps this carrier as
+   `DefinedNameBinding::Reference(ReferenceLike { kind: Structured, target:
+   treecalc-hostref:v1:children:<base_node_id> })` instead of scalarizing it to
+   a value.
+3. OxCalc dependency descriptors now include collection-membership and
+   collection-member-value facts for `ChildrenV1`. Membership descriptors are
+   correlated to the OxFml host-reference handle; member value descriptors
+   create ordinary reverse edges from each current member node to the formula
+   owner. Local invalidation facts distinguish child membership changes from
+   sibling-order-only changes.
 4. OxFml already has `RuntimeFormalInputBinding` with
    `DefinedNameBinding::Reference(ReferenceLike)`, and its ordinary function
    path can preserve references when the function metadata requests
@@ -237,15 +405,20 @@ The first W051 beads should:
 6. thread sparse input through OxFml runtime/replay,
 7. lock the generic OxCalc-to-OxFml host formula context, including function
    registry lookup, host namespace lookup, reference parser hooks, and
-   bind/formal-reference output shape for `@CHILDREN` / `.*`, with final
-   call/name shadowing gated on an Excel oracle matrix for built-ins, UDFs,
-   defined names, and defined-name `LAMBDA` invocation,
+   bind/formal-reference output shape for `@CHILDREN` / `.*`, using
+   `dialect_id = oxcalc.treecalc-v1`,
+   `capability_profile_id = host-capabilities:treecalc-v1`, and
+   `resolution_rule_version = treecalc-host-resolution:v1`; final call/name
+   shadowing remains gated on the W074 Excel oracle matrix for built-ins,
+   UDFs, defined names, and defined-name `LAMBDA` invocation,
 8. add the OxCalcTree reference-collection carrier/resolution shape that
    consumes that output,
 9. add the corresponding dependency/invalidation shape for current member
    value changes, child-membership change, and sibling-order change,
-10. choose the opaque `ReferenceLike` representation or record the exact
-   blocker if a new kind is unavoidable,
+10. attempt the opaque `ReferenceLike` plus OxCalc resolver/reader carrier for
+    `TreeCalcReferenceCollection::ChildrenV1`; any eager value-array path must
+    be labeled `treecalc_eager_values_fallback.v1` and treated as non-closing
+    for reference-preserving behavior,
 11. thread a reference-binding and resolver/iterator materialization path
     through OxFml without requiring OxFunc to understand TreeCalc reference
     text,
@@ -294,21 +467,38 @@ W051 can close for its first product scope when:
 
 ## 8. Status
 
-Product status: not implemented yet. W051 now explicitly includes the
-TreeCalc reference-collection compatibility lane required for
-`=SUM(@CHILDREN)` / `=SUM(.*)`.
+Product status: the OxCalc-local first reference-carrier pattern is
+implemented for `TreeCalcReferenceCollection::ChildrenV1`. W051 now explicitly
+includes the TreeCalc reference-collection compatibility lane required for
+`=SUM(@CHILDREN)` / `=SUM(.*)`. The OxFml receipt for `HANDOFF-CALC-005`
+has been processed into the plan: OxCalc supplies
+`dialect_id = oxcalc.treecalc-v1`,
+`capability_profile_id = host-capabilities:treecalc-v1`, explicit
+`@CHILDREN` / `.*` host-reference source preservation, the
+`TreeCalcReferenceCollection::ChildrenV1` carrier, and OxCalc-owned
+membership/value invalidation facts.
 
 Evidence: W050 provides prepared runtime identity and formal input/reference
-transport. Current code investigation shows OxFml and OxFunc already have
-reference-binding/resolver surfaces, while OxCalc still lacks the TreeCalc
-collection resolution carrier, set-membership dependency, and
-reference-preserving runtime binding. The DNA TreeCalc bridge still uses a
-temporary prepared-formula smoke carrier rather than the target
+transport. Current code now adds `ChildrenV1` to the OxCalc formula substrate,
+lowers it into collection-membership plus current-member value descriptors,
+preserves the runtime formal input as an opaque structured `ReferenceLike`, and
+emits local invalidation reasons for membership versus order changes. Focused
+checks:
+`cargo test -p oxcalc-core children_collection -- --nocapture`. The
+HANDOFF-CALC-005 receipt accepts the generic host-context direction and routes
+final name/call precedence evidence to W074. The DNA TreeCalc bridge still
+uses a temporary prepared-formula smoke carrier rather than the target
 formula-text-to-OxFml path.
 
-Still open: reader contract, OxCalc adapter, TreeCalc collection carrier,
-set-membership dependency and invalidation, opaque `ReferenceLike` carrier
-choice, OxFml resolver/materialization threading, OxFunc sparse admission
-activation, and integration evidence.
+Still open: sparse worksheet reader contract, OxCalc sparse adapter
+implementation, OxFml resolver/materialization threading for the public
+runtime path, OxFunc sparse/reference admission activation for the first
+function group, end-to-end `SUM(@CHILDREN)` evidence through generic
+`HostFormulaContext`, and the W074-CALC005 Excel oracle matrix for
+built-in/UDF/defined-name/defined-name-`LAMBDA` shadowing. The `ReferenceLike`
+plus resolver/reader path is the W051 target; eager materialization is only a
+labeled fallback if metadata blocks that target. Full TreeCalc reference
+families and structured table lowering are registered in successor W056 rather
+than being hidden inside this first carrier pattern.
 
 Formal status: no proof claim.

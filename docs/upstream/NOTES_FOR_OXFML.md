@@ -1594,3 +1594,25 @@ Current routed dependency:
 3. leaves OxCalc W051 responsible for the TreeCalc reference-collection
    carrier, set-membership dependency edge, invalidation, and resolver/reader
    materialization.
+
+Receipt processed:
+1. OxFml receipt
+   `../OxFml/docs/handoffs/HANDOFF_CALC_005_OXFML_RECEIPT.md` accepts the
+   direction as `accept_as_w051_plan_with_w074_evidence_gate`.
+2. OxCalc W051 now fixes and locally implements the first carrier-pattern
+   inputs:
+   `dialect_id = oxcalc.treecalc-v1`,
+   `capability_profile_id = host-capabilities:treecalc-v1`,
+   `resolution_rule_version = treecalc-host-resolution:v1`, explicit
+   `@CHILDREN` / `.*` source-span and source-token preservation, host
+   namespace resolver output shape, host namespace/caller-context identity,
+   and `TreeCalcReferenceCollection::ChildrenV1`.
+3. OxFml W074 remains the blocker for built-in/UDF/defined-name/
+   defined-name-`LAMBDA` name/call precedence and the corresponding cache
+   invalidation evidence.
+4. Current OxCalc code now preserves the `ChildrenV1` runtime formal input as
+   an opaque structured `ReferenceLike` and emits collection-membership,
+   current-member value, membership-change, and order-change facts locally.
+   OxCalc still needs OxFml/OxFunc to exercise the public generic
+   host-context and resolver/admission path before claiming end-to-end
+   `SUM(@CHILDREN)` product behavior.

@@ -488,6 +488,12 @@ fn parse_invalidation_reason(
         "ExternallyInvalidated" | "externally_invalidated" => {
             InvalidationReasonKind::ExternallyInvalidated
         }
+        "TreeReferenceMembershipChanged" | "tree_reference_membership_changed" => {
+            InvalidationReasonKind::TreeReferenceMembershipChanged
+        }
+        "TreeReferenceOrderChanged" | "tree_reference_order_changed" => {
+            InvalidationReasonKind::TreeReferenceOrderChanged
+        }
         "DependencyAdded" | "dependency_added" => InvalidationReasonKind::DependencyAdded,
         "DependencyRemoved" | "dependency_removed" => InvalidationReasonKind::DependencyRemoved,
         "DependencyReclassified" | "dependency_reclassified" => {

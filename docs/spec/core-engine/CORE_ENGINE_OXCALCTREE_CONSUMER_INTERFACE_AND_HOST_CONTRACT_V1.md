@@ -135,9 +135,34 @@ Contract requirements:
 8. OxFunc must remain TreeCalc-opaque and see ordinary values/arrays or an
    opaque `ReferenceLike` plus resolver.
 
-Until W051 implements this, the current consumer contract is scaffolded for
-direct-node prepared-formula smoke paths only; it is not product-complete for
-DNA TreeCalc formula-text parsing/binding or reference-array formulas.
+The first W051 host-context ids are:
+1. `dialect_id = oxcalc.treecalc-v1`,
+2. `capability_profile_id = host-capabilities:treecalc-v1`,
+3. `resolution_rule_version = treecalc-host-resolution:v1`.
+
+The first explicit host-reference syntax slice is `@CHILDREN`, `.*`,
+`base.@CHILDREN`, and `base.*`, where `base` is either the caller node or an
+explicit single base path using ancestor anchors, workspace-root anchors,
+workspace selectors, dotted paths, bracket-escaped path segments, or the
+first-position `!` sheet separator alias. Source spans are preserved over the
+full formula source, and the exact selector token text is retained for replay
+and diagnostics.
+
+OxCalc lowers the resulting handle to
+`TreeCalcReferenceCollection::ChildrenV1`. The local carrier records the stable
+host reference handle, base `TreeNodeId`, source token text/span, opaque
+selector, membership version, order version, and `collection` shape hint; the
+current member list is derived from the pinned structural snapshot during
+lowering. Current-member value edges, child-membership descriptors, and
+sibling-order invalidation are OxCalc-owned facts correlated to the OxFml
+host-reference handle; they are not OxFml or OxFunc semantics.
+
+Current implementation status: OxCalc has implemented the local `ChildrenV1`
+carrier/dependency pattern and preserves the runtime formal input as an opaque
+structured `ReferenceLike`. The consumer contract is still not
+product-complete for DNA TreeCalc formula-text parsing/binding or
+reference-array formulas until OxFml's generic host-context path and the
+OxFml/OxFunc resolver/admission path are exercised end to end.
 
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
@@ -476,8 +501,10 @@ TreeCalc model for reference-collection resolution.
 Still open: persistent handle API, typed incremental edit API, edit-to-version
 and undo/redo surface, pending/completion-token API, explicit cancellation and
 steppable recalc, executor injection, Stage 2 concurrency/GPU/async facade,
-W051 reference-collection implementation, W054 retention policy, W053
-partitioned concurrency, and closure of the remaining W026 residual lanes.
+end-to-end W051 generic host-context/reference-array execution evidence, W054
+retention policy, W053 partitioned concurrency, W056 full TreeCalc
+reference/table-lowering scope, and closure of the remaining W026 residual
+lanes.
 
 Formal status: no new proof claim. Existing state/snapshot and coordinator
 docs define the pinned-reader, no-torn-view, reject-is-no-publish, and

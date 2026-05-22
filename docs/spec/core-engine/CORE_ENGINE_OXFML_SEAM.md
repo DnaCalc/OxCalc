@@ -175,10 +175,14 @@ From the OxCalc side, the required seam shape is:
    values/arrays or an opaque `ReferenceLike` plus the ordinary resolver path.
 
 Current code already has `RuntimeFormalInputBinding` and
-`DefinedNameBinding::Reference(ReferenceLike)` on the OxFml side, but the
-current OxCalc TreeCalc runtime binds translated references as
-`DefinedNameBinding::Value(...)`. W051 owns closing that gap for both sparse
-worksheet ranges and the first TreeCalc reference-collection carrier.
+`DefinedNameBinding::Reference(ReferenceLike)` on the OxFml side. OxCalc now
+uses that path for the first local
+`TreeCalcReferenceCollection::ChildrenV1` carrier by preserving it as an
+opaque structured `ReferenceLike` and lowering membership/member-value
+dependency facts locally. Scalar TreeCalc reference carriers still use the
+current value-binding compatibility path where the older local runtime needs
+eager values. W051 owns widening this reference-preserving path to sparse
+worksheet ranges and end-to-end generic host-context execution.
 
 The first aggregate group also needs an explicit admission decision. For
 example, OxFunc `SUM` already has a resolver-backed reference path, but its
@@ -196,7 +200,9 @@ The preferred seam direction is not an OxFml-internal `TreeCalc` parser mode.
 It is a generic host formula context supplied by OxCalc.
 
 At prepare/bind time, OxCalc should provide OxFml:
-1. a `dialect_id` / `capability_profile_id` such as `oxcalc.treecalc-v1`,
+1. `dialect_id = oxcalc.treecalc-v1`,
+   `capability_profile_id = host-capabilities:treecalc-v1`, and
+   `resolution_rule_version = treecalc-host-resolution:v1`,
 2. a reference-expression parser hook for host reference syntax in operand and
    callee-prefix positions,
 3. a host namespace resolver for node names, defined names, relative paths,
@@ -239,6 +245,29 @@ generic binding interface rather than a TreeCalc-specific semantic branch.
 
 The OxFml-side contract request is tracked in
 `docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`.
+OxFml receipt
+`../OxFml/docs/handoffs/HANDOFF_CALC_005_OXFML_RECEIPT.md` accepts the
+direction as W051 planning with a W074 evidence gate.
+
+For the first W051 implementation slice, the explicit host-reference syntax
+that enters the hook is limited to `@CHILDREN`, `.*`, `base.@CHILDREN`,
+`base.*`, and the explicit base path forms that identify a single base before
+that children selector: `^` ancestor anchors, `[]` workspace-root anchors,
+`[workspace]` selectors, dotted paths, bracket-escaped path segments, and the
+first-position `!` sheet separator alias. A bare single identifier remains in
+the W074 name/call precedence lane.
+
+The host-reference bind output that OxCalc needs from the seam must preserve
+`source_span_utf8` as `[start_byte, end_byte)` over the full
+`FormulaSourceRecord.formula_text`, the exact `source_token_text`, an opaque
+selector payload, a stable `host_ref_handle`, `resolution_layer`,
+`shape_hint`, `caller_context_dependency`, optional `caller_context_id`, and
+typed diagnostics. For `@CHILDREN` and `.*`, OxCalc lowers the handle to
+`TreeCalcReferenceCollection::ChildrenV1`, with membership and order versions
+owned by OxCalc as typed dependency facts derived from the structural member
+snapshot and correlated back to the OxFml host-reference handle.
+OxFml must not inspect the child list, sibling order, meta-child filtering, or
+set-membership invalidation semantics.
 
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 

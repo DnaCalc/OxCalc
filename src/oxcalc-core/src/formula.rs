@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::dependency::{DependencyDescriptor, DependencyDescriptorKind};
+use crate::dependency::{
+    DependencyDescriptor, DependencyDescriptorKind, TreeReferenceCollectionDependency,
+};
 use crate::structural::{BindArtifactId, FormulaArtifactId, StructuralSnapshot, TreeNodeId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -21,6 +23,7 @@ pub enum TreeReference {
     DirectNode {
         target_node_id: TreeNodeId,
     },
+    ReferenceCollection(TreeCalcReferenceCollection),
     ProjectionPath {
         projection_path: String,
     },
@@ -56,6 +59,46 @@ pub enum TreeReference {
     Unresolved {
         token: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcReferenceCollection {
+    ChildrenV1(TreeCalcChildrenReferenceCollection),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcChildrenReferenceCollection {
+    pub host_ref_handle: String,
+    pub base_node_id: TreeNodeId,
+    pub source_span_utf8: Option<(usize, usize)>,
+    pub source_token_text: String,
+    pub opaque_selector: String,
+    pub membership_version: String,
+    pub order_version: String,
+}
+
+impl TreeCalcChildrenReferenceCollection {
+    #[must_use]
+    pub fn new(base_node_id: TreeNodeId, source_token_text: impl Into<String>) -> Self {
+        let source_token_text = source_token_text.into();
+        Self {
+            host_ref_handle: format!("treecalc-hostref:v1:children:{base_node_id}"),
+            base_node_id,
+            source_span_utf8: None,
+            source_token_text,
+            opaque_selector: format!(
+                "oxcalc.treecalc.host_selector.v1:selector=Children;base={base_node_id};include_meta=false;order=sibling_index"
+            ),
+            membership_version: format!("treecalc-membership:v1:{base_node_id}"),
+            order_version: format!("treecalc-order:v1:{base_node_id}"),
+        }
+    }
+
+    #[must_use]
+    pub fn with_source_span_utf8(mut self, start_byte: usize, end_byte: usize) -> Self {
+        self.source_span_utf8 = Some((start_byte, end_byte));
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,7 +292,9 @@ impl TreeFormulaCatalog {
                     .reference_carriers()
                     .iter()
                     .enumerate()
-                    .map(|(index, carrier)| lower_reference(snapshot, binding, carrier, index)),
+                    .flat_map(|(index, carrier)| {
+                        lower_reference(snapshot, binding, carrier, index)
+                    }),
             );
         }
 
@@ -263,15 +308,19 @@ fn lower_reference(
     binding: &TreeFormulaBinding,
     carrier: &TreeFormulaReferenceCarrier,
     index: usize,
-) -> DependencyDescriptor {
+) -> Vec<DependencyDescriptor> {
     let descriptor_id = format!("bind:{}:ref:{index}", binding.formula_artifact_id.0);
     let reference = &carrier.reference;
+    if let TreeReference::ReferenceCollection(collection) = reference {
+        return lower_reference_collection(snapshot, binding, collection, descriptor_id);
+    }
+
     let kind = reference.descriptor_kind();
     let target_node_id = reference.resolve_target(snapshot, binding.owner_node_id);
     let carrier_detail = reference.carrier_detail();
     let requires_rebind_on_structural_change = reference.requires_rebind_on_structural_change();
 
-    DependencyDescriptor {
+    vec![DependencyDescriptor {
         descriptor_id,
         source_reference_handle: carrier
             .source_token
@@ -282,6 +331,55 @@ fn lower_reference(
         kind,
         carrier_detail,
         requires_rebind_on_structural_change,
+        tree_reference_collection: None,
+    }]
+}
+
+fn lower_reference_collection(
+    snapshot: &StructuralSnapshot,
+    binding: &TreeFormulaBinding,
+    collection: &TreeCalcReferenceCollection,
+    descriptor_id: String,
+) -> Vec<DependencyDescriptor> {
+    match collection {
+        TreeCalcReferenceCollection::ChildrenV1(children) => {
+            let member_node_ids = snapshot
+                .try_get_node(children.base_node_id)
+                .map_or_else(Vec::new, |node| node.child_ids.clone());
+            let collection_dependency = TreeReferenceCollectionDependency::children_v1(
+                children.host_ref_handle.clone(),
+                children.base_node_id,
+                member_node_ids.clone(),
+            );
+            let mut descriptors = vec![DependencyDescriptor {
+                descriptor_id: format!("{descriptor_id}:membership"),
+                source_reference_handle: Some(children.host_ref_handle.clone()),
+                owner_node_id: binding.owner_node_id,
+                target_node_id: None,
+                kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                carrier_detail: collection_dependency.carrier_detail(),
+                tree_reference_collection: Some(collection_dependency),
+                requires_rebind_on_structural_change: false,
+            }];
+
+            descriptors.extend(member_node_ids.into_iter().enumerate().map(
+                |(member_index, member_node_id)| DependencyDescriptor {
+                    descriptor_id: format!("{descriptor_id}:member:{member_index}"),
+                    source_reference_handle: Some(children.host_ref_handle.clone()),
+                    owner_node_id: binding.owner_node_id,
+                    target_node_id: Some(member_node_id),
+                    kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+                    carrier_detail: format!(
+                        "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
+                        children.host_ref_handle
+                    ),
+                    tree_reference_collection: None,
+                    requires_rebind_on_structural_change: false,
+                },
+            ));
+
+            descriptors
+        }
     }
 }
 
@@ -337,6 +435,7 @@ impl FixtureFormulaRenderState {
     fn render_reference(&mut self, reference: &TreeReference) -> String {
         match reference {
             TreeReference::DirectNode { .. }
+            | TreeReference::ReferenceCollection(_)
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
@@ -365,6 +464,7 @@ impl FixtureFormulaRenderState {
     fn record_reference(&mut self, reference: &TreeReference) {
         match reference {
             TreeReference::DirectNode { .. }
+            | TreeReference::ReferenceCollection(_)
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
@@ -446,6 +546,7 @@ impl TreeReference {
                 TreeReferenceCarrierClass::RuntimeFactProjection
             }
             TreeReference::DirectNode { .. }
+            | TreeReference::ReferenceCollection(_)
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
@@ -461,6 +562,7 @@ impl TreeReference {
     ) -> Option<TreeNodeId> {
         match self {
             TreeReference::DirectNode { target_node_id } => Some(*target_node_id),
+            TreeReference::ReferenceCollection(_) => None,
             TreeReference::ProjectionPath { projection_path } => {
                 snapshot.try_resolve_projection_path(projection_path)
             }
@@ -507,6 +609,9 @@ impl TreeReference {
             TreeReference::DirectNode { .. } | TreeReference::ProjectionPath { .. } => {
                 DependencyDescriptorKind::StaticDirect
             }
+            TreeReference::ReferenceCollection(_) => {
+                DependencyDescriptorKind::TreeReferenceCollectionMembership
+            }
             TreeReference::RelativePath { .. } | TreeReference::SiblingOffset { .. } => {
                 DependencyDescriptorKind::RelativeBound
             }
@@ -541,6 +646,16 @@ impl TreeReference {
         match self {
             TreeReference::DirectNode { target_node_id } => {
                 format!("direct_node:{target_node_id}")
+            }
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                collection,
+            )) => {
+                format!(
+                    "treecalc_children_v1:base={}:membership={}:order={}",
+                    collection.base_node_id,
+                    collection.membership_version,
+                    collection.order_version
+                )
             }
             TreeReference::ProjectionPath { projection_path } => {
                 format!("projection_path:{projection_path}")
@@ -780,6 +895,60 @@ mod tests {
             descriptors[0].carrier_detail,
             "dynamic_resolved:node:3:carrier:dynamic:resolved_late_bound_projection"
         );
+    }
+
+    #[test]
+    fn formula_catalog_lowers_children_collection_to_membership_and_member_value_edges() {
+        let snapshot = snapshot();
+        let collection = TreeCalcChildrenReferenceCollection::new(TreeNodeId(2), "@CHILDREN")
+            .with_source_span_utf8(5, 14);
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:children".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:children".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(@CHILDREN)",
+                [TreeFormulaReferenceCarrier::named(
+                    "@CHILDREN",
+                    TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                        collection.clone(),
+                    )),
+                )],
+            ),
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+
+        assert_eq!(descriptors.len(), 3);
+        assert_eq!(
+            descriptors[0].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        );
+        assert_eq!(descriptors[0].target_node_id, Some(TreeNodeId(4)));
+        assert_eq!(
+            descriptors[0].source_reference_handle.as_deref(),
+            Some(collection.host_ref_handle.as_str())
+        );
+        assert_eq!(
+            descriptors[1].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        );
+        assert_eq!(descriptors[1].target_node_id, Some(TreeNodeId(5)));
+        assert_eq!(
+            descriptors[2].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMembership
+        );
+        assert!(descriptors[2].target_node_id.is_none());
+        assert!(
+            descriptors[2]
+                .carrier_detail
+                .contains("members=node:4,node:5")
+        );
+
+        let graph = DependencyGraph::build(&snapshot, &descriptors);
+        assert!(graph.diagnostics.is_empty());
+        assert_eq!(graph.reverse_edges[&TreeNodeId(4)].len(), 1);
+        assert_eq!(graph.reverse_edges[&TreeNodeId(5)].len(), 1);
     }
 
     #[test]

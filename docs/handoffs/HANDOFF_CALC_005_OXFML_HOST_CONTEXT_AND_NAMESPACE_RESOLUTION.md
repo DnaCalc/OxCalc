@@ -194,3 +194,25 @@ consumer-runtime worksets and determine:
 4. the preferred public type names for the context, bind output, and
    diagnostics,
 5. any OxCalc-side shape changes needed before W051 implementation starts.
+
+## OxCalc Receipt Intake And Local Disposition
+OxFml receipt
+`../OxFml/docs/handoffs/HANDOFF_CALC_005_OXFML_RECEIPT.md` accepts this
+direction as `accept_as_w051_plan_with_w074_evidence_gate`.
+
+OxCalc local disposition:
+
+1. `dialect_id = oxcalc.treecalc-v1`,
+   `capability_profile_id = host-capabilities:treecalc-v1`, and
+   `resolution_rule_version = treecalc-host-resolution:v1` are the first W051
+   host-context identity inputs.
+2. The first local reference carrier is implemented as
+   `TreeCalcReferenceCollection::ChildrenV1`.
+3. OxCalc now lowers that carrier into collection-membership and current-member
+   value dependency descriptors, preserves the runtime formal input as an
+   opaque structured `ReferenceLike`, and emits local membership/order
+   invalidation facts.
+4. End-to-end `SUM(@CHILDREN)` through generic OxFml host-context parsing and
+   OxFml/OxFunc resolver/admission remains open W051 work.
+5. Full TreeCalc reference families and structured table lowering are routed
+   to successor W056, not added to this handoff.

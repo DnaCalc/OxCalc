@@ -21,9 +21,10 @@ The active calculation-model line has moved from W050 execution to successor pla
 
 Current next engineering move:
 
-1. Use the W051 activation review to lock the sparse reader API, generic OxCalc-to-OxFml host formula context, Excel-matched function/UDF/defined-name/defined-name-LAMBDA shadowing plan, OxCalc reference-collection resolution carrier, first function group, and replay artifact shape across OxCalc/OxFml/OxFunc.
-2. Create the W051 epic/bead path only after those intake points are explicit.
-3. Keep fixture-only reader scaffolding clearly separated from production sparse range and reference-collection authority.
+1. Continue W051 from the implemented OxCalc-local `ChildrenV1` carrier pattern: finish the sparse worksheet reader contract, OxFml generic host-context execution path, OxFml/OxFunc resolver/admission path, and end-to-end `SUM(@CHILDREN)` evidence.
+2. Keep built-in/UDF/defined-name/defined-name-`LAMBDA` name/call precedence blocked on OxFml `W074-CALC005` oracle evidence; map TreeCalc host names and lambda-valued nodes to the closest Excel defined-name lane until that evidence justifies an explicit extension.
+3. Use successor W056 for full TreeCalc reference families and structured table lowering instead of expanding W051 beyond its first reference-carrier pattern.
+4. Keep fixture-only reader scaffolding and any `treecalc_eager_values_fallback.v1` materialization clearly separated from production sparse range and reference-preserving reference-collection authority.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

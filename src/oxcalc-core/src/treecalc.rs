@@ -20,7 +20,7 @@ use oxfunc_core::host_info::{
     CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
     ResolvedWebImage,
 };
-use oxfunc_core::value::{EvalValue, ExcelText, ReferenceLike};
+use oxfunc_core::value::{EvalValue, ExcelText, ReferenceKind, ReferenceLike};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -30,7 +30,7 @@ use crate::coordinator::{
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
-    InvalidationReasonKind, InvalidationSeed,
+    InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
 };
 use crate::formula::{TreeFormula, TreeFormulaCatalog, TreeFormulaReferenceCarrier};
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
@@ -1121,12 +1121,20 @@ pub(crate) fn derive_structural_invalidation_seeds_for_catalogs(
             successor_formula_catalog,
         )
     };
+    let collection_transition_seeds = tree_reference_collection_transition_seeds(
+        predecessor_snapshot,
+        structural_snapshot,
+        predecessor_formula_catalog,
+        successor_formula_catalog,
+    );
     let transition_seed_owner_ids = transition_seeds
         .iter()
+        .chain(collection_transition_seeds.iter())
         .map(|seed| seed.node_id)
         .collect::<BTreeSet<_>>();
 
     let mut seeds = transition_seeds;
+    seeds.extend(collection_transition_seeds);
     seeds.extend(
         derive_structural_context_invalidation_seeds(
             predecessor_snapshot,
@@ -1353,6 +1361,128 @@ fn dependency_descriptor_transition_seeds(
                 .map(move |reason| InvalidationSeed { node_id, reason })
         })
         .collect()
+}
+
+fn tree_reference_collection_transition_seeds(
+    predecessor_snapshot: &StructuralSnapshot,
+    structural_snapshot: &StructuralSnapshot,
+    predecessor_formula_catalog: &TreeFormulaCatalog,
+    successor_formula_catalog: &TreeFormulaCatalog,
+) -> Vec<InvalidationSeed> {
+    let predecessor_memberships = collection_membership_descriptors_by_owner_and_id(
+        predecessor_formula_catalog.to_dependency_descriptors(predecessor_snapshot),
+    );
+    let successor_memberships = collection_membership_descriptors_by_owner_and_id(
+        successor_formula_catalog.to_dependency_descriptors(structural_snapshot),
+    );
+    let successor_owner_ids = successor_formula_catalog
+        .owner_node_ids()
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let owner_node_ids = predecessor_memberships
+        .keys()
+        .chain(successor_memberships.keys())
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let mut reasons_by_owner = BTreeMap::<TreeNodeId, BTreeSet<InvalidationReasonKind>>::new();
+
+    for owner_node_id in owner_node_ids {
+        if !successor_owner_ids.contains(&owner_node_id) {
+            continue;
+        }
+
+        let predecessor_by_id = predecessor_memberships.get(&owner_node_id);
+        let successor_by_id = successor_memberships.get(&owner_node_id);
+        let descriptor_ids = predecessor_by_id
+            .into_iter()
+            .flat_map(|descriptors| descriptors.keys())
+            .chain(
+                successor_by_id
+                    .into_iter()
+                    .flat_map(|descriptors| descriptors.keys()),
+            )
+            .cloned()
+            .collect::<BTreeSet<_>>();
+
+        for descriptor_id in descriptor_ids {
+            let predecessor =
+                predecessor_by_id.and_then(|descriptors| descriptors.get(&descriptor_id));
+            let successor = successor_by_id.and_then(|descriptors| descriptors.get(&descriptor_id));
+            match (predecessor, successor) {
+                (Some(previous), Some(next)) if previous.carrier_detail != next.carrier_detail => {
+                    reasons_by_owner
+                        .entry(owner_node_id)
+                        .or_default()
+                        .insert(collection_membership_change_reason(previous, next));
+                }
+                (Some(_), None) | (None, Some(_)) => {
+                    reasons_by_owner
+                        .entry(owner_node_id)
+                        .or_default()
+                        .insert(InvalidationReasonKind::TreeReferenceMembershipChanged);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    reasons_by_owner
+        .into_iter()
+        .flat_map(|(node_id, reasons)| {
+            reasons
+                .into_iter()
+                .map(move |reason| InvalidationSeed { node_id, reason })
+        })
+        .collect()
+}
+
+fn collection_membership_descriptors_by_owner_and_id(
+    descriptors: Vec<DependencyDescriptor>,
+) -> BTreeMap<TreeNodeId, BTreeMap<String, DependencyDescriptor>> {
+    descriptors
+        .into_iter()
+        .filter(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMembership
+        })
+        .fold(BTreeMap::new(), |mut by_owner, descriptor| {
+            by_owner
+                .entry(descriptor.owner_node_id)
+                .or_insert_with(BTreeMap::new)
+                .insert(descriptor.descriptor_id.clone(), descriptor);
+            by_owner
+        })
+}
+
+fn collection_membership_change_reason(
+    previous: &DependencyDescriptor,
+    next: &DependencyDescriptor,
+) -> InvalidationReasonKind {
+    match (
+        previous.tree_reference_collection.as_ref(),
+        next.tree_reference_collection.as_ref(),
+    ) {
+        (Some(previous_collection), Some(next_collection))
+            if previous_collection.family == next_collection.family
+                && previous_collection.base_node_id == next_collection.base_node_id =>
+        {
+            let previous_set = previous_collection
+                .member_node_ids
+                .iter()
+                .collect::<BTreeSet<_>>();
+            let next_set = next_collection
+                .member_node_ids
+                .iter()
+                .collect::<BTreeSet<_>>();
+            if previous_set == next_set
+                && previous_collection.member_node_ids != next_collection.member_node_ids
+            {
+                InvalidationReasonKind::TreeReferenceOrderChanged
+            } else {
+                InvalidationReasonKind::TreeReferenceMembershipChanged
+            }
+        }
+        _ => InvalidationReasonKind::TreeReferenceMembershipChanged,
+    }
 }
 
 fn descriptors_by_owner_and_id(
@@ -2046,6 +2176,15 @@ struct SyntheticReferenceBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticReferenceCollectionBinding {
+    token: String,
+    host_ref_handle: String,
+    base_node_id: TreeNodeId,
+    member_node_ids: Vec<TreeNodeId>,
+    collection_dependency: TreeReferenceCollectionDependency,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct SyntheticUnresolvedBinding {
     token: String,
     kind: DependencyDescriptorKind,
@@ -2057,6 +2196,7 @@ struct SyntheticUnresolvedBinding {
 struct TranslatedFormula {
     source_text: String,
     reference_bindings: Vec<SyntheticReferenceBinding>,
+    collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
 }
@@ -2623,6 +2763,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                     "oxfml_formal_reference:{}:{}",
                     formal_reference.reference_family, formal_reference.reference_descriptor
                 ),
+                tree_reference_collection: None,
                 requires_rebind_on_structural_change,
             });
         }
@@ -2668,6 +2809,56 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             }),
     );
 
+    descriptors.extend(
+        prepared
+            .translated
+            .collection_bindings
+            .iter()
+            .map(|collection| DependencyDescriptor {
+                descriptor_id: format!(
+                    "bind:{}:treecalc_collection:{}:membership",
+                    prepared.binding.formula_artifact_id.0, collection.token
+                ),
+                source_reference_handle: Some(collection.host_ref_handle.clone()),
+                owner_node_id: prepared.binding.owner_node_id,
+                target_node_id: None,
+                kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                carrier_detail: collection.collection_dependency.carrier_detail(),
+                tree_reference_collection: Some(collection.collection_dependency.clone()),
+                requires_rebind_on_structural_change: false,
+            }),
+    );
+
+    descriptors.extend(
+        prepared
+            .translated
+            .collection_bindings
+            .iter()
+            .flat_map(|collection| {
+                collection
+                    .member_node_ids
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .map(move |(member_index, member_node_id)| DependencyDescriptor {
+                        descriptor_id: format!(
+                            "bind:{}:treecalc_collection:{}:member:{member_index}",
+                            prepared.binding.formula_artifact_id.0, collection.token
+                        ),
+                        source_reference_handle: Some(collection.host_ref_handle.clone()),
+                        owner_node_id: prepared.binding.owner_node_id,
+                        target_node_id: Some(member_node_id),
+                        kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+                        carrier_detail: format!(
+                            "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
+                            collection.host_ref_handle
+                        ),
+                        tree_reference_collection: None,
+                        requires_rebind_on_structural_change: false,
+                    })
+            }),
+    );
+
     descriptors.extend(prepared.translated.residuals.iter().enumerate().map(
         |(index, residual)| DependencyDescriptor {
             descriptor_id: format!(
@@ -2679,6 +2870,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             target_node_id: None,
             kind: residual.kind.dependency_descriptor_kind(),
             carrier_detail: format!("residual:{}:{}", residual.carrier_id, residual.detail),
+            tree_reference_collection: None,
             requires_rebind_on_structural_change:
                 residual.kind.requires_rebind_on_structural_change(),
         },
@@ -2724,6 +2916,7 @@ fn dependency_descriptor_from_bound_reference(
         target_node_id: Some(reference.target_node_id),
         kind: reference.kind,
         carrier_detail: reference.carrier_detail.clone(),
+        tree_reference_collection: None,
         requires_rebind_on_structural_change: reference.requires_rebind_on_structural_change,
     }
 }
@@ -2741,6 +2934,7 @@ fn dependency_descriptor_from_unresolved_binding(
         target_node_id: None,
         kind: unresolved.kind,
         carrier_detail: unresolved.carrier_detail.clone(),
+        tree_reference_collection: None,
         requires_rebind_on_structural_change: unresolved.requires_rebind_on_structural_change,
     }
 }
@@ -2952,6 +3146,33 @@ fn formal_input_bindings_for_runtime(
                 ),
             }
         })
+        .chain(translated.collection_bindings.iter().map(|collection| {
+            let descriptor_without_prefix = collection.token.as_str();
+            let descriptor_with_prefix = format!("name:{}", collection.token);
+            let formal_reference = prepared_formula_identity.and_then(|identity| {
+                identity.formal_references.iter().find(|formal_reference| {
+                    formal_reference.reference_descriptor == descriptor_with_prefix
+                        || formal_reference.reference_descriptor == descriptor_without_prefix
+                })
+            });
+            RuntimeFormalInputBinding {
+                reference_handle: formal_reference
+                    .map(|reference| reference.reference_handle.clone())
+                    .or_else(|| {
+                        prepared_formula_identity
+                            .is_none()
+                            .then(|| collection.host_ref_handle.clone())
+                    }),
+                reference_descriptor: formal_reference
+                    .map_or(descriptor_with_prefix, |reference| {
+                        reference.reference_descriptor.clone()
+                    }),
+                binding: DefinedNameBinding::Reference(ReferenceLike {
+                    kind: ReferenceKind::Structured,
+                    target: collection.host_ref_handle.clone(),
+                }),
+            }
+        }))
         .collect()
 }
 
@@ -3380,6 +3601,7 @@ fn project_opaque_formula(
         owner_node_id,
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
+        collection_bindings: Vec::new(),
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
@@ -3389,6 +3611,7 @@ fn project_opaque_formula(
     TranslatedFormula {
         source_text: formula.source_text().to_string(),
         reference_bindings: state.reference_bindings,
+        collection_bindings: state.collection_bindings,
         unresolved_bindings: state.unresolved_bindings,
         residuals: state.residuals,
     }
@@ -3399,6 +3622,7 @@ struct FormulaCarrierProjectionState<'a> {
     owner_node_id: TreeNodeId,
     fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
+    collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
 }
@@ -3444,6 +3668,9 @@ impl FormulaCarrierProjectionState<'_> {
                     )
                 }
             }
+            crate::formula::TreeReference::ReferenceCollection(
+                crate::formula::TreeCalcReferenceCollection::ChildrenV1(collection),
+            ) => self.bind_children_collection(carrier.source_token.clone(), collection),
             crate::formula::TreeReference::HostSensitive { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::HostSensitive,
@@ -3517,6 +3744,31 @@ impl FormulaCarrierProjectionState<'_> {
             carrier_detail,
             requires_rebind_on_structural_change,
         });
+    }
+
+    fn bind_children_collection(
+        &mut self,
+        source_token: Option<String>,
+        collection: &crate::formula::TreeCalcChildrenReferenceCollection,
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
+        let member_node_ids = self
+            .snapshot
+            .try_get_node(collection.base_node_id)
+            .map_or_else(Vec::new, |node| node.child_ids.clone());
+        let collection_dependency = TreeReferenceCollectionDependency::children_v1(
+            collection.host_ref_handle.clone(),
+            collection.base_node_id,
+            member_node_ids.clone(),
+        );
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token,
+                host_ref_handle: collection.host_ref_handle.clone(),
+                base_node_id: collection.base_node_id,
+                member_node_ids,
+                collection_dependency,
+            });
     }
 
     fn next_fallback_token(&mut self, prefix: &str) -> String {
@@ -3605,7 +3857,8 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::formula::{
-        FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase, TreeFormula,
+        FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase,
+        TreeCalcChildrenReferenceCollection, TreeCalcReferenceCollection, TreeFormula,
         TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
     };
     use crate::repository::{
@@ -3676,6 +3929,93 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn children_collection_snapshot(parent_child_ids: Vec<TreeNodeId>) -> StructuralSnapshot {
+        let mut nodes = vec![
+            StructuralNode {
+                node_id: TreeNodeId(1),
+                kind: StructuralNodeKind::Root,
+                symbol: "Root".to_string(),
+                parent_id: None,
+                child_ids: vec![TreeNodeId(2), TreeNodeId(10)],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+            StructuralNode {
+                node_id: TreeNodeId(2),
+                kind: StructuralNodeKind::Container,
+                symbol: "Branch".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: parent_child_ids.clone(),
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: None,
+            },
+            StructuralNode {
+                node_id: TreeNodeId(3),
+                kind: StructuralNodeKind::Constant,
+                symbol: "A".to_string(),
+                parent_id: Some(TreeNodeId(2)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some("2".to_string()),
+            },
+            StructuralNode {
+                node_id: TreeNodeId(4),
+                kind: StructuralNodeKind::Constant,
+                symbol: "B".to_string(),
+                parent_id: Some(TreeNodeId(2)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some("3".to_string()),
+            },
+            StructuralNode {
+                node_id: TreeNodeId(10),
+                kind: StructuralNodeKind::Calculation,
+                symbol: "Total".to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: vec![],
+                formula_artifact_id: Some(FormulaArtifactId("formula:total".to_string())),
+                bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
+                constant_value: None,
+            },
+        ];
+        if parent_child_ids.contains(&TreeNodeId(5)) {
+            nodes.push(StructuralNode {
+                node_id: TreeNodeId(5),
+                kind: StructuralNodeKind::Constant,
+                symbol: "C".to_string(),
+                parent_id: Some(TreeNodeId(2)),
+                child_ids: vec![],
+                formula_artifact_id: None,
+                bind_artifact_id: None,
+                constant_value: Some("4".to_string()),
+            });
+        }
+
+        StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), nodes).unwrap()
+    }
+
+    fn children_collection_catalog() -> TreeFormulaCatalog {
+        let collection = TreeCalcChildrenReferenceCollection::new(TreeNodeId(2), "@CHILDREN");
+        TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(10),
+            formula_artifact_id: FormulaArtifactId("formula:total".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(TREE_REF_10_0)",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_10_0",
+                    TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                        collection,
+                    )),
+                )],
+            ),
+        }])
     }
 
     fn repository_slot_from_prepared(prepared: &PreparedOxfmlFormula) -> FormulaSlotRecord {
@@ -6249,6 +6589,139 @@ mod tests {
         assert_eq!(
             graph_direct.source_reference_handle.as_deref(),
             Some("treecalc_reference_carrier:TREE_REF_4_0")
+        );
+    }
+
+    #[test]
+    fn children_collection_runtime_binding_preserves_reference_identity() {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let binding = children_collection_catalog()
+            .try_get_binding(TreeNodeId(10))
+            .expect("total binding")
+            .clone();
+
+        let translated = project_opaque_formula(
+            &structural_snapshot,
+            binding.owner_node_id,
+            &binding.expression,
+        );
+        let formal_inputs = formal_input_bindings_for_runtime(&translated, &BTreeMap::new(), None);
+
+        assert_eq!(translated.collection_bindings.len(), 1);
+        assert_eq!(
+            translated.collection_bindings[0].member_node_ids,
+            vec![TreeNodeId(3), TreeNodeId(4)]
+        );
+        assert_eq!(formal_inputs.len(), 1);
+        assert_eq!(formal_inputs[0].reference_descriptor, "name:TREE_REF_10_0");
+        assert_eq!(
+            formal_inputs[0].reference_handle.as_deref(),
+            Some("treecalc-hostref:v1:children:node:2")
+        );
+        match &formal_inputs[0].binding {
+            DefinedNameBinding::Reference(reference) => {
+                assert_eq!(reference.kind, ReferenceKind::Structured);
+                assert_eq!(reference.target, "treecalc-hostref:v1:children:node:2");
+            }
+            other => panic!("expected reference-preserving binding, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn children_collection_dependency_descriptors_track_membership_and_values() {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let catalog = children_collection_catalog();
+
+        let descriptors = catalog
+            .to_dependency_descriptors(&structural_snapshot)
+            .into_iter()
+            .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor))
+            .collect::<BTreeMap<_, _>>();
+
+        let membership = descriptors
+            .values()
+            .find(|descriptor| {
+                descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMembership
+            })
+            .expect("membership descriptor");
+        assert_eq!(
+            membership.source_reference_handle.as_deref(),
+            Some("treecalc-hostref:v1:children:node:2")
+        );
+        assert!(membership.carrier_detail.contains("members=node:3,node:4"));
+        let collection_facts = membership
+            .tree_reference_collection
+            .as_ref()
+            .expect("typed collection facts");
+        assert_eq!(
+            collection_facts.member_node_ids,
+            vec![TreeNodeId(3), TreeNodeId(4)]
+        );
+        assert_eq!(
+            collection_facts.membership_version,
+            "treecalc-membership:v1:base=node:2;members=node:3,node:4"
+        );
+        assert_eq!(
+            collection_facts.order_version,
+            "treecalc-order:v1:base=node:2;members=node:3,node:4"
+        );
+
+        let member_targets = descriptors
+            .values()
+            .filter(|descriptor| {
+                descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+            })
+            .map(|descriptor| descriptor.target_node_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            member_targets,
+            vec![Some(TreeNodeId(3)), Some(TreeNodeId(4))]
+        );
+
+        let graph = DependencyGraph::build(
+            &structural_snapshot,
+            &descriptors.into_values().collect::<Vec<_>>(),
+        );
+        assert!(graph.diagnostics.is_empty());
+        assert_eq!(graph.reverse_edges[&TreeNodeId(3)].len(), 1);
+        assert_eq!(graph.reverse_edges[&TreeNodeId(4)].len(), 1);
+    }
+
+    #[test]
+    fn children_collection_invalidation_distinguishes_membership_and_order_changes() {
+        let catalog = children_collection_catalog();
+        let previous = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let added = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let reordered = children_collection_snapshot(vec![TreeNodeId(4), TreeNodeId(3)]);
+
+        let membership_seeds = derive_structural_invalidation_seeds_for_catalogs(
+            &previous,
+            &added,
+            &catalog,
+            &catalog,
+            &[],
+        );
+        assert_eq!(
+            membership_seeds,
+            vec![InvalidationSeed {
+                node_id: TreeNodeId(10),
+                reason: InvalidationReasonKind::TreeReferenceMembershipChanged,
+            }]
+        );
+
+        let order_seeds = derive_structural_invalidation_seeds_for_catalogs(
+            &previous,
+            &reordered,
+            &catalog,
+            &catalog,
+            &[],
+        );
+        assert_eq!(
+            order_seeds,
+            vec![InvalidationSeed {
+                node_id: TreeNodeId(10),
+                reason: InvalidationReasonKind::TreeReferenceOrderChanged,
+            }]
         );
     }
 

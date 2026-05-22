@@ -69,7 +69,8 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 28. `W052` sensitivity and derivative seam,
 29. `W053` staged concurrency Stage 2,
 30. `W054` bounded-memory and pinned-epoch GC,
-31. `W055` circular references and iterative calculation Excel-match closure.
+31. `W055` circular references and iterative calculation Excel-match closure,
+32. `W056` TreeCalc full reference and table lowering.
 
 ## Historical Note
 

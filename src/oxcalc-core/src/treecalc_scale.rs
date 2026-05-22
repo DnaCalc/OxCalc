@@ -1371,6 +1371,12 @@ fn descriptor_kind_name(kind: DependencyDescriptorKind) -> &'static str {
     match kind {
         DependencyDescriptorKind::StaticDirect => "StaticDirect",
         DependencyDescriptorKind::RelativeBound => "RelativeBound",
+        DependencyDescriptorKind::TreeReferenceCollectionMembership => {
+            "TreeReferenceCollectionMembership"
+        }
+        DependencyDescriptorKind::TreeReferenceCollectionMemberValue => {
+            "TreeReferenceCollectionMemberValue"
+        }
         DependencyDescriptorKind::DynamicPotential => "DynamicPotential",
         DependencyDescriptorKind::HostSensitive => "HostSensitive",
         DependencyDescriptorKind::CapabilitySensitive => "CapabilitySensitive",

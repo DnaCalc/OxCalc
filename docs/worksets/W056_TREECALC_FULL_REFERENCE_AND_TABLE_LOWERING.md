@@ -440,6 +440,45 @@ packet and identity shape needed to report availability/degradation without
 inventing workspace alias semantics, external workspace lookup, or retained
 cross-workspace corpus evidence.
 
+## 4K. `calc-4vs8.19` OxFml Host Namespace Invalidation Intake
+
+OxFml W074 `fml-ds0.6.1` at commit `4a050f9` narrows one upstream W056
+prepared-identity blocker:
+
+1. `host_namespace_version` now has OxFml runtime/replay evidence as a prepared
+   identity input even when `host_reference_bind_results` is empty.
+2. this supports the DnaOneCalc-style no-host-reference case: ordinary
+   single-formula execution still does not require host references, while a
+   host that supplies a namespace version can invalidate prepared identity
+   conservatively.
+3. this is a generic host-context invalidation fact, not a TreeCalc-specific
+   semantic branch.
+
+Current non-claim:
+
+This does not freeze bare host-name resolution, callable TreeCalc host nodes,
+workbook/sheet/UDF/defined-name precedence, or broader formula-call registry
+lookup/cache invalidation. Those remain under OxFml W074 and the open
+`calc-4vs8.5` blocker.
+
+## 4L. `calc-4vs8.20` DnaTreeCalc Structural Traversal Activation Intake
+
+DnaTreeCalc W004 `dtc-z0i.9` at commit `fe678cf` narrows the receiving-side
+corpus blocker for the explicit structural path/traversal slice:
+
+1. DnaTreeCalc expanded the active ordered raw corpus from four to seven cases.
+2. the live bridge now uses OxCalc structural path/traversal resolvers when
+   equivalent to host-visible member projection.
+3. traversal-bound failures are pinned as typed OxCalc policy failures.
+4. W005 remains open; no shell/skin/save-reopen/click-through closure was
+   claimed.
+
+Current non-claim:
+
+This does not close W004/W005, table activation, bare host-name/dotted formula
+binding, dynamic/cross-workspace references, node-as-function/lambda-valued
+nodes, or retained OxReplay evidence.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -460,7 +499,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.18`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.20`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -506,6 +545,13 @@ semantics when the token is an admitted explicit host-reference selector base.
 `calc-4vs8.18` adds the typed cross-workspace availability/degradation packet
 and prepared-identity component, narrowing the previous missing-packet blocker
 to the remaining workspace provider and alias semantics.
+OxFml commit `4a050f9` adds W074 evidence that `host_namespace_version`
+participates in prepared identity even without explicit host-reference bind
+results, narrowing the host namespace mutation invalidation gap without
+freezing name/call precedence.
+DnaTreeCalc commit `fe678cf` activates the scoped explicit structural
+path/traversal raw ordered corpus slice through the public OxCalc resolver path,
+narrowing receiving-side corpus activation without closing W004/W005.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -590,15 +636,22 @@ ordered selector structural-base-plus-traversal resolution.
 available cross-workspace packet statuses, typed diagnostics, deterministic
 prepared-identity projection, and the W056 inventory transition from missing
 model to missing provider.
+`calc-4vs8.19` records the OxFml evidence passed by `cargo fmt --all --
+--check`, focused runtime/replay host-namespace identity tests, full
+`cargo test -p oxfml_core`, and `git diff --check`.
+`calc-4vs8.20` records DnaTreeCalc evidence: corpus validation, `cargo fmt
+--check`, `cargo build --workspace`, `cargo test --workspace`, `cargo clippy
+--workspace -- -D warnings`, and `git diff --check`.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
-cache-invalidation migration, exercised OxFml host-reference packets beyond the
-admitted children/table/ordered-selector slices, cross-workspace provider and
-workspace alias/first-position `!` semantics, table-specific path syntax,
-DnaTreeCalc receiving-side corpus activation for table packets and the broader
-W004/W005 reference suite, retained OxReplay/OxXlPlay evidence, and broader
-end-to-end scenarios. Blocker `calc-4vs8.5` remains open for the remaining
-full-W056 closure scope.
+cache-invalidation migration, bare host-name and callable host-node precedence,
+exercised OxFml host-reference packets beyond the admitted
+children/table/ordered-selector slices, cross-workspace provider and workspace
+alias/first-position `!` semantics, table-specific path syntax, DnaTreeCalc
+receiving-side corpus activation for table packets and the remaining W004/W005
+reference suite, retained OxReplay/OxXlPlay evidence, and broader end-to-end
+scenarios. Blocker `calc-4vs8.5` remains open for the remaining full-W056
+closure scope.
 
 Formal status: no proof claim.

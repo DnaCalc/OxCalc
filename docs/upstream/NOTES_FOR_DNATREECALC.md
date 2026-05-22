@@ -23,6 +23,11 @@ or lowering `@CHILDREN` / `.*` locally. OxCalc rewrites only the source handed
 to OxFml and returns a `TreeFormula` carrying the existing
 `TreeCalcReferenceCollection::ChildrenV1` reference carrier.
 
+For qualified children syntax, DnaTreeCalc must still not parse TreeCalc
+semantics locally. It may either keep the case pending or pass a typed
+resolved-base packet from an existing OxCalc-owned path-resolution result into
+`prebind_treecalc_formula_text_with_resolved_bases(...)`.
+
 ## 3. Current Evidence
 
 Current OxCalc code shape:
@@ -30,25 +35,32 @@ Current OxCalc code shape:
 1. `src/oxcalc-core/src/formula.rs` exposes
    `prebind_treecalc_formula_text(owner_node_id, source_text)`.
 2. Free-standing `@CHILDREN` and `.*` bind to the formula owner/caller context.
-3. The returned `TreeFormula::opaque_oxfml` source uses neutral
+3. `prebind_treecalc_formula_text_with_resolved_bases(...)` admits qualified
+   `base.@CHILDREN` and `base.*` only when the caller supplies an exact
+   source-span-keyed resolved-base packet with base `TreeNodeId`, base span,
+   selector span, resolution layer, and resolution identity.
+4. The returned `TreeFormula::opaque_oxfml` source uses neutral
    `TREE_REF_<owner>_<n>` tokens.
-4. `TreeCalcChildrenReferenceCollection` preserves exact source token text and
+5. `TreeCalcChildrenReferenceCollection` preserves exact source token text and
    UTF-8 span from the original formula text.
-5. The carrier is `TreeFormulaReferenceCarrier::named` over
+6. The carrier is `TreeFormulaReferenceCarrier::named` over
    `TreeCalcReferenceCollection::ChildrenV1`.
-6. Focused OxCalc tests cover `=SUM(@CHILDREN)`, `=SUM(.*)`, unsupported raw
-   syntax diagnostics, and end-to-end execution through the existing
-   OxCalc/OxFml/OxFunc path.
+7. Focused OxCalc tests cover `=SUM(@CHILDREN)`, `=SUM(.*)`,
+   `=SUM(base.@CHILDREN)`, `=SUM(base.*)`, unsupported raw syntax diagnostics,
+   and end-to-end execution through the existing OxCalc/OxFml/OxFunc path.
 
 ## 4. Interface Implications
 
 DnaTreeCalc integration should:
 
 1. pass the caller/owner `TreeNodeId` and original formula text to OxCalc,
-2. store/use the returned `TreeFormula` in the existing OxCalcTree formula
+2. for qualified children syntax, pass only an already-resolved stable
+   `TreeNodeId` plus exact source/base/selector spans to OxCalc, or leave the
+   case pending until OxCalc's explicit path resolver is available,
+3. store/use the returned `TreeFormula` in the existing OxCalcTree formula
    catalog path,
-3. treat prebind diagnostics as typed host-facing diagnostics,
-4. avoid local parsing or string matching for `@CHILDREN`, `.*`, or future
+4. treat prebind diagnostics as typed host-facing diagnostics,
+5. avoid local parsing or string matching for `@CHILDREN`, `.*`, or future
    TreeCalc reference syntax.
 
 ## 5. Minimum Invariants
@@ -63,9 +75,11 @@ DnaTreeCalc integration should:
 
 ## 6. Open Questions
 
-1. DnaTreeCalc receiving-side adoption of `prebind_treecalc_formula_text`.
-2. Whether qualified `base.@CHILDREN` / `base.*` is needed before the broader
-   typed path-resolution surface lands.
+1. DnaTreeCalc receiving-side adoption of `prebind_treecalc_formula_text` and
+   the resolved-base variant where an existing typed base result is available.
+2. Whether DnaTreeCalc has a current source of resolved base spans/handles, or
+   should keep qualified `base.@CHILDREN` / `base.*` pending until OxCalc's
+   broader typed path-resolution surface lands.
 3. How DnaTreeCalc wants to display typed prebind diagnostics for unsupported
    selectors such as `@ANCESTORS`, recursive selectors, or structured table
    references.

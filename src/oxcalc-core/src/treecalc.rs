@@ -4268,9 +4268,10 @@ mod tests {
 
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase,
-        TreeCalcChildrenReferenceCollection, TreeCalcReferenceCollection, TreeFormula,
-        TreeFormulaBinding, TreeFormulaReferenceCarrier, TreeReference,
-        prebind_treecalc_formula_text,
+        TreeCalcChildrenReferenceCollection, TreeCalcQualifiedChildrenBaseResolution,
+        TreeCalcReferenceCollection, TreeFormula, TreeFormulaBinding, TreeFormulaReferenceCarrier,
+        TreeReference, prebind_treecalc_formula_text,
+        prebind_treecalc_formula_text_with_resolved_bases,
     };
     use crate::repository::{
         CalculationRepository, FormulaSlotRecord, FormulaSourceIdentity,
@@ -7259,6 +7260,79 @@ mod tests {
         }
     }
 
+    #[test]
+    fn raw_qualified_children_formula_text_uses_caller_supplied_resolved_base() {
+        for (source_text, source_token_text, selector_text) in [
+            ("=SUM(base.@CHILDREN)", "base.@CHILDREN", "@CHILDREN"),
+            ("=SUM(base.*)", "base.*", ".*"),
+        ] {
+            let structural_snapshot =
+                children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+            let expression = prebind_treecalc_formula_text_with_resolved_bases(
+                TreeNodeId(10),
+                source_text,
+                [qualified_children_base_resolution(
+                    source_text,
+                    source_token_text,
+                    selector_text,
+                    TreeNodeId(2),
+                )],
+            )
+            .expect("qualified raw prebind");
+            assert_eq!(expression.source_text(), "=SUM(TREE_REF_10_0)");
+
+            let binding = TreeFormulaBinding {
+                owner_node_id: TreeNodeId(10),
+                formula_artifact_id: FormulaArtifactId("formula:total".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
+                expression,
+            };
+            let prepared = prepare_oxfml_formula(
+                &structural_snapshot,
+                &binding,
+                &LocalTreeCalcEnvironmentContext::default(),
+            )
+            .expect("qualified raw prebound formula should prepare");
+
+            assert_eq!(prepared.translated.collection_bindings.len(), 1);
+            assert_eq!(
+                prepared.translated.collection_bindings[0].host_ref_handle,
+                "treecalc-hostref:v1:children:node:2"
+            );
+            assert_eq!(
+                prepared.translated.collection_bindings[0].source_token_text,
+                source_token_text
+            );
+            assert_eq!(
+                prepared
+                    .runtime_prepared_identity
+                    .host_reference_bind_results[0]
+                    .source_token_text,
+                source_token_text
+            );
+
+            let run = LocalTreeCalcEngine
+                .execute(LocalTreeCalcInput {
+                    structural_snapshot,
+                    formula_catalog: TreeFormulaCatalog::new([binding]),
+                    seeded_published_values: BTreeMap::new(),
+                    seeded_published_runtime_effects: Vec::new(),
+                    invalidation_seeds: Vec::new(),
+                    previous_arg_preparation_profile_version: None,
+                    candidate_result_id: "candidate:w056:qualified-raw-children-prebind"
+                        .to_string(),
+                    publication_id: "publication:w056:qualified-raw-children-prebind".to_string(),
+                    compatibility_basis: "snapshot:w056:qualified-raw-children-prebind".to_string(),
+                    artifact_token_basis: "snapshot:w056:qualified-raw-children-prebind"
+                        .to_string(),
+                    environment_context: LocalTreeCalcEnvironmentContext::default(),
+                })
+                .expect("qualified raw ChildrenV1 formula should execute");
+
+            assert_eq!(run.published_values[&TreeNodeId(10)], "5");
+        }
+    }
+
     fn assert_raw_children_formula_text_prebinds_and_executes_through_oxfml_path(
         source_text: &str,
     ) {
@@ -7324,6 +7398,33 @@ mod tests {
                 .iter()
                 .any(|identity| identity.owner_node_id == TreeNodeId(2))
         );
+    }
+
+    fn qualified_children_base_resolution(
+        source_text: &str,
+        source_token_text: &str,
+        selector_text: &str,
+        base_node_id: TreeNodeId,
+    ) -> TreeCalcQualifiedChildrenBaseResolution {
+        let source_start = source_text.find(source_token_text).expect("source token");
+        let source_end = source_start + source_token_text.len();
+        let selector_start = source_text[source_start..source_end]
+            .find(selector_text)
+            .map(|offset| source_start + offset)
+            .expect("selector token");
+        let selector_end = selector_start + selector_text.len();
+        let base_end = if selector_text.starts_with('.') {
+            selector_start
+        } else {
+            selector_start - 1
+        };
+        TreeCalcQualifiedChildrenBaseResolution::new(
+            (source_start, source_end),
+            (source_start, base_end),
+            (selector_start, selector_end),
+            source_token_text,
+            base_node_id,
+        )
     }
 
     fn assert_children_collection_sum_uses_generic_host_context_and_sparse_reference_values(

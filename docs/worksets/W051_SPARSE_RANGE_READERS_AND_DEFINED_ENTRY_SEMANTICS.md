@@ -521,8 +521,10 @@ W074-CALC005 Excel oracle matrix for built-in/UDF/defined-name/
 defined-name-`LAMBDA` shadowing, and full TreeCalc reference families plus
 structured table lowering in successor W056. The first OxCalc-owned raw
 formula-text bridge for free-standing `@CHILDREN` / `.*` is now implemented in
-W056; qualified `base.@CHILDREN` / `base.*` still requires typed path
-resolution. The `ReferenceLike` plus resolver/reader path is now exercised for
-`ChildrenV1`; any eager materialization fallback remains non-closing evidence.
+W056, and `calc-4vs8.8` adds the resolved-base contract for qualified
+`base.@CHILDREN` / `base.*` without resolving raw base text locally. Full typed
+path resolution remains W056 successor scope. The `ReferenceLike` plus
+resolver/reader path is now exercised for `ChildrenV1`; any eager
+materialization fallback remains non-closing evidence.
 
 Formal status: no proof claim.

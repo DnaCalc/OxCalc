@@ -5,8 +5,8 @@ This file is a compact feature-orientation surface. It is not live execution sta
 Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
-1. `W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`
-2. Current route: keep W050 as the reached-gate formula-authority substrate, then plan Excel-compatible sparse range readers plus the first generic OxFml host-context / OxCalc-resolve TreeCalc reference-collection lane before bounded-memory and formalization work.
+1. `W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`
+2. Current route: keep W050 as the reached-gate formula-authority substrate and W051 as the closed first sparse/reference-reader scope, then complete the W056 full TreeCalc reference/table-lowering successor before bounded-memory and formalization work.
 3. Predecessors: W050 formula-authority/session/prepared-package rework, W047 CTRO implementation-first work, and W048 circular-reference closure under single-host Excel scope.
 4. W049 receives post-W050 formalization intake; non-Excel rich/virtual data ideas are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`.
 
@@ -21,9 +21,9 @@ The active calculation-model line has moved from W050 execution to successor pla
 
 Current next engineering move:
 
-1. Continue W051 from the implemented OxCalc-local `ChildrenV1` carrier pattern: finish the sparse worksheet reader contract, OxFml generic host-context execution path, OxFml/OxFunc resolver/admission path, and end-to-end `SUM(@CHILDREN)` evidence.
+1. Continue W056 from the closed W051 first scope: widen the implemented `ChildrenV1` carrier and sparse/reference-reader path into the remaining TreeCalc reference families, table packet lowering, and retained bridge evidence.
 2. Keep built-in/UDF/defined-name/defined-name-`LAMBDA` name/call precedence blocked on OxFml `W074-CALC005` oracle evidence; map TreeCalc host names and lambda-valued nodes to the closest Excel defined-name lane until that evidence justifies an explicit extension.
-3. Use successor W056 for full TreeCalc reference families and structured table lowering instead of expanding W051 beyond its first reference-carrier pattern.
+3. Treat the active DnaTreeCalc free-standing and qualified children corpus slice as first bridge evidence only; full W004/W005 reference and table corpus activation remains W056 scope.
 4. Keep fixture-only reader scaffolding and any `treecalc_eager_values_fallback.v1` materialization clearly separated from production sparse range and reference-preserving reference-collection authority.
 
 ## Active Truth Surfaces

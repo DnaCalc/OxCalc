@@ -10,8 +10,9 @@ TreeCalc formula-text intake
 Record the OxCalc-owned surface that reduces DnaTreeCalc blocker
 `BLK-DTC-001` without moving TreeCalc formula parsing into the host repo.
 
-This note is an OxCalc-owned observation ledger. It is not a DnaTreeCalc
-handover response until DnaTreeCalc consumes it in its own repo context.
+This note is an OxCalc-owned observation ledger. DnaTreeCalc has now consumed
+the first free-standing and qualified children slice in commit `6611684`; the
+broader reference/table suite remains successor work.
 
 ## 2. Core Message
 
@@ -24,8 +25,9 @@ to OxFml and returns a `TreeFormula` carrying the existing
 `TreeCalcReferenceCollection::ChildrenV1` reference carrier.
 
 For qualified children syntax, DnaTreeCalc must still not parse TreeCalc
-semantics locally. It may either keep the case pending or pass a typed
-resolved-base packet from an existing OxCalc-owned path-resolution result into
+semantics locally. The current receiving-side slice uses OxCalc's public
+qualified-base query packets plus DnaTreeCalc's model-owned path lookup to pass
+typed resolved-base packets into
 `prebind_treecalc_formula_text_with_resolved_bases(...)`.
 
 ## 3. Current Evidence
@@ -48,6 +50,8 @@ Current OxCalc code shape:
 7. Focused OxCalc tests cover `=SUM(@CHILDREN)`, `=SUM(.*)`,
    `=SUM(base.@CHILDREN)`, `=SUM(base.*)`, unsupported raw syntax diagnostics,
    and end-to-end execution through the existing OxCalc/OxFml/OxFunc path.
+8. DnaTreeCalc commit `6611684` activates the matching corpus slice through
+   the live OxCalc bridge and preserves ordered dependency projection.
 
 ## 4. Interface Implications
 
@@ -75,11 +79,10 @@ DnaTreeCalc integration should:
 
 ## 6. Open Questions
 
-1. DnaTreeCalc receiving-side adoption of `prebind_treecalc_formula_text` and
-   the resolved-base variant where an existing typed base result is available.
-2. Whether DnaTreeCalc has a current source of resolved base spans/handles, or
-   should keep qualified `base.@CHILDREN` / `base.*` pending until OxCalc's
-   broader typed path-resolution surface lands.
+1. Full DnaTreeCalc W004/W005 corpus activation beyond the first active
+   children slice.
+2. OxCalc-owned explicit path-resolution surfaces for reference families that
+   cannot be represented by the current qualified-children query packet.
 3. How DnaTreeCalc wants to display typed prebind diagnostics for unsupported
    selectors such as `@ANCESTORS`, recursive selectors, or structured table
    references.

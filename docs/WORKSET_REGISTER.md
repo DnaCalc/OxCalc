@@ -574,11 +574,11 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    source-preserving host-reference bind output, OxFml sparse
    reference-values binding, and OxFunc first aggregate consumption. Product
    DnaTreeCalc formula-text bridge activation remained successor work and is
-   now reduced on the OxCalc side by W056 `calc-4vs8.7` for free-standing
-   `@CHILDREN` / `.*` and `calc-4vs8.8` for caller-supplied resolved-base
-   `base.@CHILDREN` / `base.*`; receiving-side adoption, full TreeCalc
-   references, structured tables, and W074 name/call precedence remain
-   successor work.)
+   now reduced by W056 `calc-4vs8.7` for free-standing `@CHILDREN` / `.*`,
+   `calc-4vs8.8` / `calc-4vs8.10` for caller-supplied resolved-base
+   `base.@CHILDREN` / `base.*`, and DnaTreeCalc commit `6611684` for the first
+   receiving-side corpus slice. Full TreeCalc references, structured tables,
+   and W074 name/call precedence remain successor work.)
 
 ### W056 TreeCalc Full Reference And Table Lowering
 1. purpose:
@@ -594,7 +594,7 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 6. initial_epic_lanes:
    parent epic `calc-4vs8`; `calc-4vs8.1` full TreeReference inventory and host-reference correlation, `calc-4vs8.3` dependency/reverse-edge widening plus invalidation/dynamic rebind/namespace/caller-context work, `calc-4vs8.2`/`calc-4vs8.9` structured table packet and bind-record intake plus row/column/header/totals dependency lowering, W074/W036 intake and handoff watch, end-to-end scenarios.
 7. rollout_mode:
-   `queued_successor`
+   `in_progress_successor`
 
 ### W052 Sensitivity And Derivative Seam
 1. purpose:

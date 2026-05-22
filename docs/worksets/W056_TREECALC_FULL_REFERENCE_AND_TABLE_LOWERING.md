@@ -311,7 +311,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.10`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.11`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -324,7 +324,13 @@ public raw TreeCalc formula-text prebind for free-standing `@CHILDREN` and
 `.*`, plus a caller-supplied resolved-base prebind contract for
 `base.@CHILDREN` and `base.*` with a public qualified-base query packet,
 producing a neutral OxFml source plus a source-preserving `ChildrenV1` carrier
-for the existing OxFml/OxFunc path.
+for the existing OxFml/OxFunc path. DnaTreeCalc commit `6611684` has activated
+the first receiving-side raw corpus slice for free-standing and qualified
+children forms through that public query/resolved-base packet rather than
+local TreeCalc formula parsing. OxFml commit `9269421` has recorded the
+W074-CALC005-014 defined-name/table-name collision row: in the observed Excel
+COM 16.0 collision state, bare `=Table1` resolves to the workbook defined name
+while `Table1[Amount]` structured syntax is rejected at formula authoring.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -356,6 +362,10 @@ execute end-to-end through the same reference-preserving path.
 query packets expose source span, base span, selector span, source token, base
 token, selector token, convert back into the existing resolved-base packet, and
 ignore string literals.
+DnaTreeCalc commit `6611684` adds receiving-side evidence that its live OxCalc
+bridge can run the active raw children corpus slice for `@CHILDREN`, `.*`,
+`base.@CHILDREN`, and `base.*` through OxCalc's public query packet without
+local formula parsing, including ordered dependency projection.
 `calc-4vs8.4` consumes OxFml `fml-ds0.8` stable table packet facts and adds
 focused Rust coverage proving row membership, row order, exact header region,
 and exact totals region lower as context dependency descriptors when supplied,
@@ -368,14 +378,16 @@ diagnostic-bearing unresolved records map into OxCalc table lowering without
 formula-text parsing. Omitted table-name packets preserve OxFml's bound
 effective table id as the lowering target and separately validate the enclosing
 table context, surfacing a typed blocker if those packet facts disagree.
+OxFml commit `9269421` narrows W074 table-name collision evidence but does not
+freeze TreeCalc bare name/callable precedence.
 
-Still open: W074 final name/call precedence evidence, exercised OxFml
-host-reference packets beyond the admitted children/table slices, a versioned
-cross-workspace availability/degradation model, selector dependency models for
-recursive and sibling/preceding/following set selectors, full OxCalc-owned
-explicit path resolution for raw `base` text, DnaTreeCalc receiving-side corpus
-activation for the new qualified-base query packet and table packets, and
-broader end-to-end scenarios. Blocker `calc-4vs8.5` remains open after
-`calc-4vs8.10` closure.
+Still open: W074 final name/call precedence evidence beyond the observed
+W074-CALC005-014 table-name row, exercised OxFml host-reference packets beyond
+the admitted children/table slices, a versioned cross-workspace availability/
+degradation model, selector dependency models for recursive and sibling/
+preceding/following set selectors, full OxCalc-owned explicit path resolution
+for raw `base` text, DnaTreeCalc receiving-side corpus activation for table
+packets and the broader W004/W005 reference suite, and broader end-to-end
+scenarios. Blocker `calc-4vs8.5` remains open after `calc-4vs8.11` closure.
 
 Formal status: no proof claim.

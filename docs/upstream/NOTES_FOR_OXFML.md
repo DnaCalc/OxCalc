@@ -1691,3 +1691,42 @@ Current non-assumptions:
 3. OxCalc is not adding TreeCalc-only OxFml/OxFunc shims.
 4. OxCalc is not claiming W056 full-reference/table-lowering closure from this
    typed projection alone.
+
+## 84. W056 Raw TreeCalc Formula-Text Prebind Boundary
+
+OxCalc has added a public raw formula-text prebind surface for the first
+DnaTreeCalc explicit host-reference syntax.
+
+Current OxCalc code shape:
+1. `prebind_treecalc_formula_text(owner_node_id, source_text)` accepts original
+   TreeCalc formula text and returns `TreeFormula::opaque_oxfml`.
+2. Free-standing `@CHILDREN` and `.*` are the only admitted raw host-reference
+   syntax in this surface; their base is the formula owner/caller context.
+3. OxCalc rewrites only the submitted OxFml source to neutral formal tokens
+   such as `TREE_REF_<owner>_<n>`.
+4. The exact source token text and UTF-8 span remain preserved on
+   `TreeCalcChildrenReferenceCollection`.
+5. The returned carrier is `TreeFormulaReferenceCarrier::named` with
+   `TreeCalcReferenceCollection::ChildrenV1`, so existing public OxFml host
+   context, host-reference bind-result, formal input, and sparse
+   reference-values paths remain the runtime surface.
+6. Unsupported raw TreeCalc reference families return typed prebind
+   diagnostics. Qualified `base.@CHILDREN` / `base.*` is deliberately rejected
+   until a typed caller-supplied path-resolution surface can supply the base
+   without duplicating name precedence.
+
+Current OxCalc gap routed to W056/W074:
+1. OxFml still owns formula grammar, expression parsing, call/name precedence,
+   and runtime prepared identity.
+2. OxCalc is not asking OxFml to privately parse TreeCalc syntax or to inspect
+   `TREE_REF_*` token naming beyond the existing public formal-reference path.
+3. Broader selectors, qualified paths, bare names/callables, structured table
+   references, and cross-workspace references remain blocked on W056 typed
+   carriers plus W074/OxFml packet evidence.
+
+Current non-assumptions:
+1. This prebind is not a full TreeCalc parser.
+2. DnaTreeCalc still needs to adopt the OxCalc-owned surface; it should not add
+   local TreeCalc formula parsing for this blocker.
+3. OxCalc is not duplicating OxFml name/call precedence or OxFunc function
+   semantics.

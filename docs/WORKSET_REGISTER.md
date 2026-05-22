@@ -567,12 +567,14 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    adapter, `ChildrenV1` sparse reader, generic TreeCalc host context,
    source-preserving host-reference bind output, OxFml sparse
    reference-values binding, and OxFunc first aggregate consumption. Product
-   DnaTreeCalc formula-text bridge activation, full TreeCalc references,
+   DnaTreeCalc formula-text bridge activation remained successor work and is
+   now reduced on the OxCalc side by W056 `calc-4vs8.7` for free-standing
+   `@CHILDREN` / `.*`; receiving-side adoption, full TreeCalc references,
    structured tables, and W074 name/call precedence remain successor work.)
 
 ### W056 TreeCalc Full Reference And Table Lowering
 1. purpose:
-   widen W051's first `TreeCalcReferenceCollection::ChildrenV1` carrier pattern into the full TreeCalc reference and structured table-lowering scope. W056 owns the admitted TreeReference variants beyond children, dependency edges, invalidation facts, dynamic rebind, host namespace versioning, caller context identity, table row/column/header/totals dependencies, and correlation to OxFml host-reference handles while preserving OxFml integration through generic host context only.
+   widen W051's first `TreeCalcReferenceCollection::ChildrenV1` carrier pattern into the full TreeCalc reference and structured table-lowering scope. W056 owns the admitted TreeReference variants beyond children, dependency edges, invalidation facts, dynamic rebind, host namespace versioning, caller context identity, table row/column/header/totals dependencies, and correlation to OxFml host-reference handles while preserving OxFml integration through generic host context only. Its active first-host bridge slice includes OxCalc-owned raw formula-text prebind for free-standing `@CHILDREN` / `.*`, producing neutral OxFml source plus the source-preserving `ChildrenV1` carrier without DnaTreeCalc parsing.
 2. depends_on:
    `W051`; OxFml `W074-CALC005` for name/call precedence where bare names or callables are involved; OxFml structured-reference/table packet work where table grammar/bind semantics are involved.
 3. parent_doctrine_and_spec_surfaces:

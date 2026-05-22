@@ -218,6 +218,39 @@ upstream packet/oracle surfaces, including name/call precedence and public
 cross-workspace availability/degradation semantics, remain blocked by
 `calc-4vs8.5`.
 
+## 4E. `calc-4vs8.7` Raw Formula-Text Children Prebind Surface
+
+The fifth W056 tranche adds an OxCalc-owned public prebind surface in
+`src/oxcalc-core/src/formula.rs` for the first DnaTreeCalc raw formula-text
+pressure point.
+
+Current implemented scope:
+
+1. `prebind_treecalc_formula_text(owner_node_id, source_text)` accepts original
+   TreeCalc formula text and returns a `TreeFormula` suitable for the existing
+   OxFml runtime path,
+2. recognizes only free-standing `@CHILDREN` and `.*` as explicit host
+   references whose base is the formula owner/caller context,
+3. rewrites only the OxFml-submitted formula source to neutral formal tokens
+   such as `TREE_REF_<owner>_<n>`,
+4. preserves the exact source token text and UTF-8 span on
+   `TreeCalcChildrenReferenceCollection`,
+5. emits `TreeFormula::opaque_oxfml` with
+   `TreeFormulaReferenceCarrier::named` carrying
+   `TreeCalcReferenceCollection::ChildrenV1`,
+6. preserves the existing TreeCalc host-context identities and the existing
+   public OxFml sparse reference-values path,
+7. returns typed diagnostics for unsupported raw TreeCalc reference families
+   and for qualified `base.@CHILDREN` / `base.*` syntax instead of guessing a
+   name/path precedence rule.
+
+Current non-claim:
+
+This is not a full raw TreeCalc formula parser. Qualified base paths,
+recursive/sibling/preceding/following selectors, structured table references,
+and bare name/callable precedence remain W056/W074 successor scope until they
+can be resolved through typed caller-supplied path and namespace surfaces.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -238,7 +271,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.6`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.7`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -246,7 +279,10 @@ OxFml table packet, and a typed dependency/reverse-edge/invalidation/rebind
 projection over current OxCalc graph facts. Runtime preparation now consumes
 the typed W056 identity needs through public OxFml `RuntimeHostFormulaContext`
 fields where available, and the local edge-value cache includes the resulting
-prepared formula identity in its call-site key. This is not a
+prepared formula identity in its call-site key. OxCalc now also exposes a
+public raw TreeCalc formula-text prebind for free-standing `@CHILDREN` and
+`.*`, producing a neutral OxFml source plus a source-preserving `ChildrenV1`
+carrier for the existing OxFml/OxFunc path. This is not a
 full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -264,13 +300,19 @@ resolved dynamic rebind facts, and cross-workspace typed blocker preservation.
 `calc-4vs8.6` adds focused Rust tests for host namespace and caller-context
 prepared-key changes, capability-profile prepared-key changes, table-context
 and cross-workspace public host-context projection, and prepared-formula-key
-participation in the local edge-value cache key.
+participation in the local edge-value cache key. `calc-4vs8.7` adds focused
+Rust tests proving `=SUM(@CHILDREN)` and `=SUM(.*)` prebind to neutral
+`TREE_REF_*` OxFml source, preserve source token text/spans, produce
+`ChildrenV1` carriers, reject unsupported raw TreeCalc reference families, and
+execute end-to-end through the existing OxCalc/OxFml/OxFunc reference path.
 
 Still open: stable table row membership/order and exact header/totals region
 packet support, W074 name/call precedence evidence, exercised OxFml
 structured-reference bind packets, a versioned cross-workspace
 availability/degradation model, selector dependency models for recursive and
-sibling/preceding/following set selectors, and end-to-end scenarios. Blockers
+sibling/preceding/following set selectors, typed path resolution for
+`base.@CHILDREN` / `base.*`, DnaTreeCalc receiving-side adoption of the new
+OxCalc prebind surface, and broader end-to-end scenarios. Blockers
 `calc-4vs8.4` and `calc-4vs8.5` remain open.
 
 Formal status: no proof claim.

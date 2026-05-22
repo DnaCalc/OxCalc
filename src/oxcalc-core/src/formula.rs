@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind,
@@ -100,6 +101,294 @@ impl TreeCalcChildrenReferenceCollection {
         self.source_span_utf8 = Some((start_byte, end_byte));
         self
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcFormulaTextPrebindDiagnosticCode {
+    UnsupportedSelector,
+    UnsupportedQualifiedHostReference,
+    UnsupportedRawTreeCalcReference,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcFormulaTextPrebindDiagnostic {
+    pub code: TreeCalcFormulaTextPrebindDiagnosticCode,
+    pub source_span_utf8: (usize, usize),
+    pub source_token_text: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("TreeCalc formula text prebind failed with {diagnostics_len} diagnostic(s)", diagnostics_len = .diagnostics.len())]
+pub struct TreeCalcFormulaTextPrebindError {
+    pub diagnostics: Vec<TreeCalcFormulaTextPrebindDiagnostic>,
+}
+
+#[must_use]
+pub fn treecalc_formula_text_needs_prebind(source_text: &str) -> bool {
+    scan_treecalc_formula_text(source_text).requires_prebind
+}
+
+pub fn prebind_treecalc_formula_text(
+    owner_node_id: TreeNodeId,
+    source_text: impl AsRef<str>,
+) -> Result<TreeFormula, TreeCalcFormulaTextPrebindError> {
+    let source_text = source_text.as_ref();
+    let scan = scan_treecalc_formula_text(source_text);
+    if !scan.diagnostics.is_empty() {
+        return Err(TreeCalcFormulaTextPrebindError {
+            diagnostics: scan.diagnostics,
+        });
+    }
+
+    if scan.children_references.is_empty() {
+        return Ok(TreeFormula::opaque_oxfml(source_text, Vec::new()));
+    }
+
+    let mut rewritten = String::with_capacity(source_text.len());
+    let mut carriers = Vec::with_capacity(scan.children_references.len());
+    let mut cursor = 0;
+    for (reference_index, reference) in scan.children_references.into_iter().enumerate() {
+        let neutral_token = format!("TREE_REF_{}_{}", owner_node_id.0, reference_index);
+        rewritten.push_str(&source_text[cursor..reference.start_byte]);
+        rewritten.push_str(&neutral_token);
+        cursor = reference.end_byte;
+
+        let collection =
+            TreeCalcChildrenReferenceCollection::new(owner_node_id, reference.source_token_text)
+                .with_source_span_utf8(reference.start_byte, reference.end_byte);
+        carriers.push(TreeFormulaReferenceCarrier::named(
+            neutral_token,
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(collection)),
+        ));
+    }
+    rewritten.push_str(&source_text[cursor..]);
+
+    Ok(TreeFormula::opaque_oxfml(rewritten, carriers))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TreeCalcFormulaTextScan {
+    children_references: Vec<RawChildrenReference>,
+    diagnostics: Vec<TreeCalcFormulaTextPrebindDiagnostic>,
+    requires_prebind: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RawChildrenReference {
+    start_byte: usize,
+    end_byte: usize,
+    source_token_text: String,
+}
+
+fn scan_treecalc_formula_text(source_text: &str) -> TreeCalcFormulaTextScan {
+    let mut children_references = Vec::new();
+    let mut diagnostics = Vec::new();
+    let mut requires_prebind = false;
+    let mut index = 0;
+    let mut in_string = false;
+
+    while index < source_text.len() {
+        let Some(current) = source_text[index..].chars().next() else {
+            break;
+        };
+
+        if in_string {
+            if current == '"' {
+                let next_index = index + current.len_utf8();
+                if source_text[next_index..].starts_with('"') {
+                    index = next_index + 1;
+                } else {
+                    in_string = false;
+                    index = next_index;
+                }
+            } else {
+                index += current.len_utf8();
+            }
+            continue;
+        }
+
+        if current == '"' {
+            in_string = true;
+            index += current.len_utf8();
+            continue;
+        }
+
+        if source_text[index..].starts_with("@CHILDREN") {
+            requires_prebind = true;
+            let end_byte = index + "@CHILDREN".len();
+            if !previous_char_allows_free_standing_selector(source_text, index) {
+                let start_byte = host_path_start(source_text, index);
+                diagnostics.push(prebind_diagnostic(
+                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
+                    source_text,
+                    start_byte,
+                    end_byte,
+                    "qualified TreeCalc children selectors require caller-supplied path resolution",
+                ));
+            } else if !is_token_boundary_after(source_text, end_byte) {
+                let end = token_end(source_text, index);
+                diagnostics.push(prebind_diagnostic(
+                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
+                    source_text,
+                    index,
+                    end,
+                    "only the exact @CHILDREN selector is admitted in this prebind surface",
+                ));
+            } else {
+                children_references.push(RawChildrenReference {
+                    start_byte: index,
+                    end_byte,
+                    source_token_text: source_text[index..end_byte].to_string(),
+                });
+            }
+            index = end_byte;
+            continue;
+        }
+
+        if current == '@' {
+            requires_prebind = true;
+            let end_byte = token_end(source_text, index);
+            diagnostics.push(prebind_diagnostic(
+                TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedSelector,
+                source_text,
+                index,
+                end_byte,
+                "unsupported TreeCalc selector; admitted first-scope selector is @CHILDREN",
+            ));
+            index = end_byte;
+            continue;
+        }
+
+        if source_text[index..].starts_with(".*") {
+            requires_prebind = true;
+            let end_byte = index + ".*".len();
+            if previous_char_can_qualify_host_path(source_text, index) {
+                let start_byte = host_path_start(source_text, index);
+                diagnostics.push(prebind_diagnostic(
+                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
+                    source_text,
+                    start_byte,
+                    end_byte,
+                    "qualified TreeCalc children sugar requires caller-supplied path resolution",
+                ));
+            } else if !is_token_boundary_after(source_text, end_byte) {
+                let end = token_end(source_text, index);
+                diagnostics.push(prebind_diagnostic(
+                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
+                    source_text,
+                    index,
+                    end,
+                    "only the exact .* children sugar is admitted in this prebind surface",
+                ));
+            } else {
+                children_references.push(RawChildrenReference {
+                    start_byte: index,
+                    end_byte,
+                    source_token_text: source_text[index..end_byte].to_string(),
+                });
+            }
+            index = end_byte;
+            continue;
+        }
+
+        if source_text[index..].starts_with("**") {
+            requires_prebind = true;
+            let end_byte = index + "**".len();
+            diagnostics.push(prebind_diagnostic(
+                TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedSelector,
+                source_text,
+                index,
+                end_byte,
+                "recursive TreeCalc selectors are outside the first prebind surface",
+            ));
+            index = end_byte;
+            continue;
+        }
+
+        index += current.len_utf8();
+    }
+
+    TreeCalcFormulaTextScan {
+        children_references,
+        diagnostics,
+        requires_prebind,
+    }
+}
+
+fn prebind_diagnostic(
+    code: TreeCalcFormulaTextPrebindDiagnosticCode,
+    source_text: &str,
+    start_byte: usize,
+    end_byte: usize,
+    detail: impl Into<String>,
+) -> TreeCalcFormulaTextPrebindDiagnostic {
+    TreeCalcFormulaTextPrebindDiagnostic {
+        code,
+        source_span_utf8: (start_byte, end_byte),
+        source_token_text: source_text[start_byte..end_byte].to_string(),
+        detail: detail.into(),
+    }
+}
+
+fn previous_non_whitespace_char(source_text: &str, end_byte: usize) -> Option<char> {
+    source_text[..end_byte]
+        .chars()
+        .rev()
+        .find(|ch| !ch.is_whitespace())
+}
+
+fn previous_char_can_qualify_host_path(source_text: &str, end_byte: usize) -> bool {
+    previous_non_whitespace_char(source_text, end_byte).is_some_and(is_host_path_tail_char)
+}
+
+fn previous_char_allows_free_standing_selector(source_text: &str, end_byte: usize) -> bool {
+    previous_non_whitespace_char(source_text, end_byte).is_none_or(|ch| {
+        matches!(
+            ch,
+            '=' | '(' | ',' | ';' | '+' | '-' | '*' | '/' | '^' | '&' | '<' | '>' | '{'
+        )
+    })
+}
+
+fn is_host_path_tail_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | ']' | '\'' | '"')
+}
+
+fn host_path_start(source_text: &str, selector_start: usize) -> usize {
+    source_text[..selector_start]
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_host_path_prefix_char(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0)
+}
+
+fn is_host_path_prefix_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric()
+        || matches!(
+            ch,
+            '_' | '.' | '[' | ']' | '\'' | '"' | '!' | '^' | '\\' | '/'
+        )
+}
+
+fn token_end(source_text: &str, start_byte: usize) -> usize {
+    source_text[start_byte..]
+        .char_indices()
+        .find_map(|(offset, ch)| {
+            (offset > 0 && !is_token_body_char(ch)).then_some(start_byte + offset)
+        })
+        .unwrap_or(source_text.len())
+}
+
+fn is_token_body_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '@' | '.' | '*' | '^' | '[' | ']' | '!' | '\'')
+}
+
+fn is_token_boundary_after(source_text: &str, end_byte: usize) -> bool {
+    source_text[end_byte..]
+        .chars()
+        .next()
+        .is_none_or(|ch| !is_token_body_char(ch))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1265,6 +1554,88 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_prebinds_children_selector_to_neutral_source() {
+        let formula =
+            prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(@CHILDREN)").expect("prebind");
+
+        assert_eq!(formula.source_text(), "=SUM(TREE_REF_2_0)");
+        assert_eq!(formula.reference_carriers().len(), 1);
+        let carrier = &formula.reference_carriers()[0];
+        assert_eq!(carrier.source_token.as_deref(), Some("TREE_REF_2_0"));
+        match &carrier.reference {
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                collection,
+            )) => {
+                assert_eq!(collection.base_node_id, TreeNodeId(2));
+                assert_eq!(collection.source_token_text, "@CHILDREN");
+                assert_eq!(collection.source_span_utf8, Some((5, 14)));
+                assert_eq!(
+                    collection.host_ref_handle,
+                    "treecalc-hostref:v1:children:node:2"
+                );
+            }
+            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_prebinds_children_sugar_to_neutral_source() {
+        let formula = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(.*)").expect("prebind");
+
+        assert_eq!(formula.source_text(), "=SUM(TREE_REF_2_0)");
+        match &formula.reference_carriers()[0].reference {
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                collection,
+            )) => {
+                assert_eq!(collection.source_token_text, ".*");
+                assert_eq!(collection.source_span_utf8, Some((5, 7)));
+            }
+            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_rejects_unsupported_reference_families() {
+        let error = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(@ANCESTORS)")
+            .expect_err("unsupported selector should be diagnosed");
+
+        assert_eq!(error.diagnostics.len(), 1);
+        assert_eq!(
+            error.diagnostics[0].code,
+            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedSelector
+        );
+        assert_eq!(error.diagnostics[0].source_span_utf8, (5, 15));
+        assert_eq!(error.diagnostics[0].source_token_text, "@ANCESTORS");
+
+        let qualified = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(base.@CHILDREN)")
+            .expect_err("qualified children syntax should wait for typed path resolution");
+        assert_eq!(
+            qualified.diagnostics[0].code,
+            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference
+        );
+        assert_eq!(qualified.diagnostics[0].source_token_text, "base.@CHILDREN");
+
+        let adjacent = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(Node@CHILDREN)")
+            .expect_err("adjacent path-like selector should be diagnosed");
+        assert_eq!(
+            adjacent.diagnostics[0].code,
+            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference
+        );
+        assert_eq!(adjacent.diagnostics[0].source_token_text, "Node@CHILDREN");
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_ignores_host_tokens_inside_strings() {
+        let formula =
+            prebind_treecalc_formula_text(TreeNodeId(2), "=CONCAT(\"@CHILDREN\", \".*\")")
+                .expect("string literals should not be prebound");
+
+        assert_eq!(formula.source_text(), "=CONCAT(\"@CHILDREN\", \".*\")");
+        assert!(formula.reference_carriers().is_empty());
+        assert!(!treecalc_formula_text_needs_prebind("=\"@CHILDREN\""));
     }
 
     #[test]

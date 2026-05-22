@@ -116,8 +116,10 @@ W056 beads. In particular:
    `calc-4vs8.2`,
 2. dependency/reverse-edge, dynamic rebind, namespace, and caller-context
    widening continues in `calc-4vs8.3`,
-3. bare name/callable references remain blocked on OxFml W074-CALC005
-   name/call precedence evidence,
+3. formula-call registry-view admission and capability-denied runtime
+   classification have landed in OxFml W074 `fml-ds0.7`; final bare
+   name/callable precedence remains blocked on the broader W074 Excel oracle
+   matrix,
 4. cross-workspace and recursive selectors remain typed exclusions until the
    workspace availability and selector dependency models are specified and
    exercised.
@@ -181,8 +183,12 @@ Current non-claim:
 This is an implemented typed OxCalc surface over current descriptors and graph
 facts. It is not full runtime behavior for every W056 carrier. End-to-end
 runtime closure remains blocked where OxFml has not yet emitted exercised
-generic host-reference, structured-reference, name/call precedence, or
-cross-workspace oracle packet surfaces.
+generic host-reference, structured-reference, final name/call precedence, or
+cross-workspace oracle packet surfaces. The bounded W074 registry/capability
+slice is no longer missing: OxFml `fml-ds0.7` at commit `9da8456` proves
+runtime registry-view formula-call admission and capability-denied
+classification, but it intentionally does not freeze built-in/UDF/defined-name
+or defined-name-`LAMBDA` precedence or TreeCalc name/call semantics.
 
 ## 4D. `calc-4vs8.6` Runtime Prepared-Identity Contribution
 
@@ -214,9 +220,11 @@ This is runtime prepared-identity/cache invalidation for the carriers that
 OxCalc can currently project through public OxFml runtime context fields. It is
 not full W056 closure. Stable structured-table row membership/order and exact
 header/totals region identity remain blocked by `calc-4vs8.4`; broader
-upstream packet/oracle surfaces, including name/call precedence and public
-cross-workspace availability/degradation semantics, remain blocked by
-`calc-4vs8.5`.
+upstream packet/oracle surfaces, including final name/call precedence and
+public cross-workspace availability/degradation semantics, remain blocked by
+`calc-4vs8.5`. The registry-view/capability-denial portion of that upstream
+dependency is now evidenced by OxFml `fml-ds0.7` and should not be treated as
+an open blocker.
 
 ## 4E. `calc-4vs8.7` Raw Formula-Text Children Prebind Surface
 
@@ -319,7 +327,7 @@ Rust tests proving `=SUM(@CHILDREN)` and `=SUM(.*)` prebind to neutral
 execute end-to-end through the existing OxCalc/OxFml/OxFunc reference path.
 
 Still open: stable table row membership/order and exact header/totals region
-packet support, W074 name/call precedence evidence, exercised OxFml
+packet support, W074 final name/call precedence evidence, exercised OxFml
 structured-reference bind packets, a versioned cross-workspace
 availability/degradation model, selector dependency models for recursive and
 sibling/preceding/following set selectors, typed qualified-base resolution for

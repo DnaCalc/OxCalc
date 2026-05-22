@@ -357,6 +357,34 @@ for built-in/UDF/defined-name/defined-name-`LAMBDA` collisions. TreeCalc bare
 host names and lambda-valued host nodes therefore remain mapped to the closest
 Excel defined-name lane until that evidence lands.
 
+## 4H. `calc-4vs8.16` Ordered Selector Traversal Resolver
+
+The next W056 tranche moves ordered-selector membership calculation into an
+OxCalc-owned resolver over a pinned `StructuralSnapshot`:
+
+1. `TreeCalcOrderedSelectorTraversalPolicy` carries the explicit traversal
+   bound as replayable policy identity
+   `treecalc-traversal-bound:v1:max_recursive_descendants=<n>`.
+2. `resolve_treecalc_ordered_selector_traversal(...)` computes member order for
+   resolved `SiblingSetV1`, `PrecedingV1`, `FollowingV1`, `AncestorsV1`, and
+   `RecursiveDescendantsV1` selectors from the structural snapshot.
+3. recursive descent uses stable structural preorder and fails with a typed
+   `RecursiveTraversalLimitExceeded` error when the explicit bound is exceeded.
+4. recursive tail paths such as `**.Margin` are resolved by applying the tail
+   segments below the base and then each descendant in traversal order; a tail
+   that matches no member returns empty membership with a typed diagnostic
+   rather than silently becoming an unrelated reference.
+5. `TreeCalcOrderedSelectorQuery::to_resolution_with_structural_traversal(...)`
+   builds an `OxCalcStructuralTraversal` resolution packet that can feed the
+   existing `OrderedSelectorV1` carrier and sparse reader path.
+
+Current non-claim:
+
+This is traversal membership and bound policy for a resolved base node. It does
+not resolve raw base-token text, define cross-workspace availability, freeze
+TreeCalc name/call precedence, activate DnaTreeCalc corpus families, or supply
+retained OxReplay evidence.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -377,7 +405,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.13`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.16`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -412,7 +440,11 @@ family hints separately from `ChildrenV1`. `calc-4vs8.15` records the
 cross-repo W093/W074 registered-external reconciliation intake: OxFunc source
 mapping, registered-external split, and JavaScript custom-function metadata
 mapping are no longer W056 upstream packet blockers, while W074 name/call and
-cache-invalidation evidence remains open.
+cache-invalidation evidence remains open. `calc-4vs8.16` adds an OxCalc-owned
+ordered-selector traversal resolver and replayable traversal-bound policy for
+resolved base nodes, so sibling/preceding/following/ancestor/recursive
+membership no longer has to be supplied by a host repo once the base node is
+known.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -484,16 +516,20 @@ mapping have landed without transferring TreeCalc selector semantics into
 OxFunc, and OxFml W074 has acknowledged the descriptor-only registered-external
 split. This removes stale W093 source/reconciliation packet blockers from the
 W056 status surface only.
+`calc-4vs8.16` adds focused Rust coverage proving resolved structural
+traversal for sibling-set, preceding, following, ancestor, and recursive
+selectors; query-to-resolution projection with an `OxCalcStructuralTraversal`
+resolution layer and traversal policy identity; recursive tail filtering; typed
+recursive traversal-bound failure; and typed empty-tail-match diagnostics.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, exercised OxFml host-reference packets beyond the
 admitted children/table/ordered-selector slices, a versioned cross-workspace
-availability/degradation model, traversal-bound policy for raw
-recursive/preceding/following/ancestor selectors, full OxCalc-owned explicit
-path resolution for raw `base` text, DnaTreeCalc receiving-side corpus
-activation for table packets and the broader W004/W005 reference suite, and
-broader end-to-end scenarios. Blocker `calc-4vs8.5` remains open for the
+availability/degradation model, full OxCalc-owned explicit path resolution for
+raw `base` text, DnaTreeCalc receiving-side corpus activation for table packets
+and the broader W004/W005 reference suite, retained OxReplay/OxXlPlay evidence,
+and broader end-to-end scenarios. Blocker `calc-4vs8.5` remains open for the
 remaining full-W056 closure scope.
 
 Formal status: no proof claim.

@@ -490,6 +490,7 @@ impl TreeCalcQualifiedChildrenBaseResolution {
 pub enum TreeCalcOrderedSelectorResolutionLayer {
     CallerSuppliedResolvedCollection,
     ExplicitHostPath,
+    OxCalcStructuralTraversal,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -517,6 +518,67 @@ pub struct TreeCalcOrderedSelectorQuery {
     pub base_token_text: Option<String>,
     pub selector_token_text: String,
     pub tail_token_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcOrderedSelectorTraversalPolicy {
+    pub max_recursive_descendants: usize,
+}
+
+impl Default for TreeCalcOrderedSelectorTraversalPolicy {
+    fn default() -> Self {
+        Self {
+            max_recursive_descendants: 10_000,
+        }
+    }
+}
+
+impl TreeCalcOrderedSelectorTraversalPolicy {
+    #[must_use]
+    pub fn stable_id(self) -> String {
+        format!(
+            "treecalc-traversal-bound:v1:max_recursive_descendants={}",
+            self.max_recursive_descendants
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcOrderedSelectorTraversalDiagnosticCode {
+    RecursiveTailMatchedNoMembers,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcOrderedSelectorTraversalDiagnostic {
+    pub code: TreeCalcOrderedSelectorTraversalDiagnosticCode,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcOrderedSelectorTraversalResult {
+    pub member_node_ids: Vec<TreeNodeId>,
+    pub diagnostics: Vec<TreeCalcOrderedSelectorTraversalDiagnostic>,
+    pub traversal_policy_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcOrderedSelectorTraversalResolution {
+    pub resolution: TreeCalcOrderedSelectorResolution,
+    pub traversal: TreeCalcOrderedSelectorTraversalResult,
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum TreeCalcOrderedSelectorTraversalError {
+    #[error("ordered selector base node {base_node_id} is not present in the structural snapshot")]
+    UnknownBaseNode { base_node_id: TreeNodeId },
+    #[error(
+        "recursive ordered selector from {base_node_id} exceeded traversal policy {policy_id} after visiting {visited_count} descendants"
+    )]
+    RecursiveTraversalLimitExceeded {
+        base_node_id: TreeNodeId,
+        policy_id: String,
+        visited_count: usize,
+    },
 }
 
 impl TreeCalcOrderedSelectorQuery {
@@ -569,6 +631,184 @@ impl TreeCalcOrderedSelectorQuery {
         self.to_resolution(base_node_id, member_node_ids)
             .with_resolution_layer(resolution_layer, resolution_identity)
     }
+
+    pub fn to_resolution_with_structural_traversal(
+        &self,
+        snapshot: &StructuralSnapshot,
+        base_node_id: TreeNodeId,
+        policy: TreeCalcOrderedSelectorTraversalPolicy,
+    ) -> Result<TreeCalcOrderedSelectorTraversalResolution, TreeCalcOrderedSelectorTraversalError>
+    {
+        let tail_segments = ordered_selector_tail_segments(self.tail_token_text.as_deref());
+        let traversal = resolve_treecalc_ordered_selector_traversal(
+            snapshot,
+            self.family,
+            base_node_id,
+            &tail_segments,
+            policy,
+        )?;
+        let resolution_identity = format!(
+            "treecalc-ordered-selector:v1:family={};source={}-{};base={base_node_id};resolver=oxcalc_structural_traversal;{}",
+            self.family.stable_id(),
+            self.source_span_utf8.0,
+            self.source_span_utf8.1,
+            traversal.traversal_policy_id
+        );
+        let resolution = self.to_resolution_with_layer(
+            base_node_id,
+            traversal.member_node_ids.clone(),
+            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal,
+            resolution_identity,
+        );
+        Ok(TreeCalcOrderedSelectorTraversalResolution {
+            resolution,
+            traversal,
+        })
+    }
+}
+
+pub fn resolve_treecalc_ordered_selector_traversal(
+    snapshot: &StructuralSnapshot,
+    family: TreeCalcOrderedSelectorFamily,
+    base_node_id: TreeNodeId,
+    tail_segments: &[String],
+    policy: TreeCalcOrderedSelectorTraversalPolicy,
+) -> Result<TreeCalcOrderedSelectorTraversalResult, TreeCalcOrderedSelectorTraversalError> {
+    let Some(base_node) = snapshot.try_get_node(base_node_id) else {
+        return Err(TreeCalcOrderedSelectorTraversalError::UnknownBaseNode { base_node_id });
+    };
+    let traversal_policy_id = policy.stable_id();
+    let mut diagnostics = Vec::new();
+    let member_node_ids = match family {
+        TreeCalcOrderedSelectorFamily::SiblingSetV1 => sibling_window(snapshot, base_node_id, None),
+        TreeCalcOrderedSelectorFamily::PrecedingV1 => {
+            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Preceding))
+        }
+        TreeCalcOrderedSelectorFamily::FollowingV1 => {
+            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Following))
+        }
+        TreeCalcOrderedSelectorFamily::AncestorsV1 => {
+            let mut ancestors = Vec::new();
+            let mut cursor = base_node.parent_id;
+            while let Some(parent_id) = cursor {
+                ancestors.push(parent_id);
+                cursor = snapshot
+                    .try_get_node(parent_id)
+                    .and_then(|node| node.parent_id);
+            }
+            ancestors
+        }
+        TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => {
+            let descendants =
+                recursive_descendants_preorder(snapshot, base_node_id, base_node, policy)?;
+            if tail_segments.is_empty() {
+                descendants
+            } else {
+                let members = std::iter::once(base_node_id)
+                    .chain(descendants)
+                    .filter_map(|descendant_id| {
+                        snapshot.try_resolve_descendant_path(descendant_id, tail_segments)
+                    })
+                    .collect::<Vec<_>>();
+                if members.is_empty() {
+                    diagnostics.push(TreeCalcOrderedSelectorTraversalDiagnostic {
+                        code: TreeCalcOrderedSelectorTraversalDiagnosticCode::RecursiveTailMatchedNoMembers,
+                        detail: format!(
+                            "recursive selector tail '{}' matched no members below {base_node_id}",
+                            tail_segments.join(".")
+                        ),
+                    });
+                }
+                members
+            }
+        }
+    };
+
+    Ok(TreeCalcOrderedSelectorTraversalResult {
+        member_node_ids,
+        diagnostics,
+        traversal_policy_id,
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SiblingWindow {
+    Preceding,
+    Following,
+}
+
+fn sibling_window(
+    snapshot: &StructuralSnapshot,
+    base_node_id: TreeNodeId,
+    window: Option<SiblingWindow>,
+) -> Vec<TreeNodeId> {
+    let Some(parent_id) = snapshot.parent_id_of(base_node_id) else {
+        return Vec::new();
+    };
+    let Some(parent) = snapshot.try_get_node(parent_id) else {
+        return Vec::new();
+    };
+    let Some(base_index) = parent
+        .child_ids
+        .iter()
+        .position(|node_id| *node_id == base_node_id)
+    else {
+        return Vec::new();
+    };
+
+    match window {
+        None => parent
+            .child_ids
+            .iter()
+            .copied()
+            .filter(|node_id| *node_id != base_node_id)
+            .collect(),
+        Some(SiblingWindow::Preceding) => parent.child_ids[..base_index].to_vec(),
+        Some(SiblingWindow::Following) => parent.child_ids[base_index + 1..].to_vec(),
+    }
+}
+
+fn recursive_descendants_preorder(
+    snapshot: &StructuralSnapshot,
+    base_node_id: TreeNodeId,
+    base_node: &crate::structural::StructuralNode,
+    policy: TreeCalcOrderedSelectorTraversalPolicy,
+) -> Result<Vec<TreeNodeId>, TreeCalcOrderedSelectorTraversalError> {
+    let mut descendants = Vec::new();
+    let mut stack = base_node
+        .child_ids
+        .iter()
+        .rev()
+        .copied()
+        .collect::<Vec<_>>();
+    while let Some(node_id) = stack.pop() {
+        if descendants.len() >= policy.max_recursive_descendants {
+            return Err(
+                TreeCalcOrderedSelectorTraversalError::RecursiveTraversalLimitExceeded {
+                    base_node_id,
+                    policy_id: policy.stable_id(),
+                    visited_count: descendants.len() + 1,
+                },
+            );
+        }
+        descendants.push(node_id);
+        if let Some(node) = snapshot.try_get_node(node_id) {
+            stack.extend(node.child_ids.iter().rev().copied());
+        }
+    }
+    Ok(descendants)
+}
+
+fn ordered_selector_tail_segments(tail_token_text: Option<&str>) -> Vec<String> {
+    tail_token_text
+        .map(|tail| {
+            tail.trim_start_matches('.')
+                .split('.')
+                .filter(|segment| !segment.is_empty())
+                .map(ToString::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 impl TreeCalcOrderedSelectorResolution {
@@ -2714,6 +2954,159 @@ mod tests {
         assert_eq!(collections[1].source_token_text, "base.@FOLLOWING");
         assert_eq!(collections[2].base_node_id, TreeNodeId(3));
         assert_eq!(collections[2].source_token_text, "Q2.**.Margin");
+    }
+
+    #[test]
+    fn ordered_selector_traversal_resolver_projects_structural_membership() {
+        let snapshot = snapshot();
+
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::SiblingSetV1,
+                TreeNodeId(4),
+                &[],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(5)]
+        );
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::PrecedingV1,
+                TreeNodeId(5),
+                &[],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(4)]
+        );
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::FollowingV1,
+                TreeNodeId(4),
+                &[],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(5)]
+        );
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::AncestorsV1,
+                TreeNodeId(4),
+                &[],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(2), TreeNodeId(1)]
+        );
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
+                TreeNodeId(1),
+                &[],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(2), TreeNodeId(4), TreeNodeId(5), TreeNodeId(3)]
+        );
+    }
+
+    #[test]
+    fn ordered_selector_query_can_build_structural_traversal_resolution_with_tail() {
+        let snapshot = snapshot();
+        let source_text = "=SUM(Root.**.Leaf)";
+        let query = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text)
+            .into_iter()
+            .next()
+            .expect("recursive query");
+
+        let resolved = query
+            .to_resolution_with_structural_traversal(
+                &snapshot,
+                TreeNodeId(1),
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .expect("structural traversal resolution");
+
+        assert_eq!(
+            resolved.resolution.resolution_layer,
+            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal
+        );
+        assert_eq!(resolved.resolution.member_node_ids, vec![TreeNodeId(4)]);
+        assert_eq!(resolved.traversal.member_node_ids, vec![TreeNodeId(4)]);
+        assert!(resolved.traversal.diagnostics.is_empty());
+        assert!(
+            resolved
+                .resolution
+                .resolution_identity
+                .contains("resolver=oxcalc_structural_traversal")
+        );
+        assert!(
+            resolved
+                .resolution
+                .resolution_identity
+                .contains("max_recursive_descendants=10000")
+        );
+
+        let direct_tail_match = query
+            .to_resolution_with_structural_traversal(
+                &snapshot,
+                TreeNodeId(2),
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .expect("recursive tail can match a direct child of the base");
+        assert_eq!(
+            direct_tail_match.resolution.member_node_ids,
+            vec![TreeNodeId(4)]
+        );
+    }
+
+    #[test]
+    fn ordered_selector_traversal_resolver_reports_bounds_and_missing_tail() {
+        let snapshot = snapshot();
+        let bounded = resolve_treecalc_ordered_selector_traversal(
+            &snapshot,
+            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
+            TreeNodeId(1),
+            &[],
+            TreeCalcOrderedSelectorTraversalPolicy {
+                max_recursive_descendants: 2,
+            },
+        )
+        .expect_err("recursive traversal should respect explicit bound");
+        assert!(matches!(
+            bounded,
+            TreeCalcOrderedSelectorTraversalError::RecursiveTraversalLimitExceeded {
+                base_node_id: TreeNodeId(1),
+                visited_count: 3,
+                ..
+            }
+        ));
+
+        let tail_miss = resolve_treecalc_ordered_selector_traversal(
+            &snapshot,
+            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
+            TreeNodeId(1),
+            &["Missing".to_string()],
+            TreeCalcOrderedSelectorTraversalPolicy::default(),
+        )
+        .expect("tail miss is diagnostic-bearing empty membership");
+        assert!(tail_miss.member_node_ids.is_empty());
+        assert_eq!(
+            tail_miss.diagnostics[0].code,
+            TreeCalcOrderedSelectorTraversalDiagnosticCode::RecursiveTailMatchedNoMembers
+        );
     }
 
     #[test]

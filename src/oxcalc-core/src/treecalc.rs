@@ -36,6 +36,7 @@ use crate::coordinator::{
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
     InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
+    TreeReferenceCollectionFamily,
 };
 use crate::formula::{
     CallerContextIdentityNeed, NamespaceIdentityNeed, TreeFormula, TreeFormulaCatalog,
@@ -2980,12 +2981,8 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             .collection_bindings
             .iter()
             .flat_map(|collection| {
-                collection
-                    .member_node_ids
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .map(move |(member_index, member_node_id)| DependencyDescriptor {
+                collection.member_node_ids.iter().copied().enumerate().map(
+                    move |(member_index, member_node_id)| DependencyDescriptor {
                         descriptor_id: format!(
                             "bind:{}:treecalc_collection:{}:member:{member_index}",
                             prepared.binding.formula_artifact_id.0, collection.token
@@ -2994,13 +2991,15 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                         owner_node_id: prepared.binding.owner_node_id,
                         target_node_id: Some(member_node_id),
                         kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
-                        carrier_detail: format!(
-                            "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
-                            collection.host_ref_handle
+                        carrier_detail: collection_member_carrier_detail(
+                            collection,
+                            member_index,
+                            member_node_id,
                         ),
                         tree_reference_collection: None,
                         requires_rebind_on_structural_change: false,
-                    })
+                    },
+                )
             }),
     );
 
@@ -3023,6 +3022,24 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
 
     descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
     descriptors
+}
+
+fn collection_member_carrier_detail(
+    collection: &SyntheticReferenceCollectionBinding,
+    member_index: usize,
+    member_node_id: TreeNodeId,
+) -> String {
+    match collection.collection_dependency.family {
+        TreeReferenceCollectionFamily::ChildrenV1 => format!(
+            "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
+            collection.host_ref_handle
+        ),
+        family => format!(
+            "treecalc_ordered_selector_v1_member:family={}:handle={}:ordinal={member_index}:target={member_node_id}",
+            family.stable_id(),
+            collection.host_ref_handle
+        ),
+    }
 }
 
 fn dependency_descriptor_shape_from_formal_reference(
@@ -4078,6 +4095,9 @@ impl FormulaCarrierProjectionState<'_> {
             crate::formula::TreeReference::ReferenceCollection(
                 crate::formula::TreeCalcReferenceCollection::ChildrenV1(collection),
             ) => self.bind_children_collection(carrier.source_token.clone(), collection),
+            crate::formula::TreeReference::ReferenceCollection(
+                crate::formula::TreeCalcReferenceCollection::OrderedSelectorV1(collection),
+            ) => self.bind_ordered_selector_collection(carrier.source_token.clone(), collection),
             crate::formula::TreeReference::HostSensitive { carrier_id, detail } => {
                 self.residuals.push(ResidualCarrier {
                     kind: ResidualCarrierKind::HostSensitive,
@@ -4164,6 +4184,32 @@ impl FormulaCarrierProjectionState<'_> {
             .try_get_node(collection.base_node_id)
             .map_or_else(Vec::new, |node| node.child_ids.clone());
         let collection_dependency = TreeReferenceCollectionDependency::children_v1(
+            collection.host_ref_handle.clone(),
+            collection.base_node_id,
+            member_node_ids.clone(),
+        );
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token,
+                host_ref_handle: collection.host_ref_handle.clone(),
+                base_node_id: collection.base_node_id,
+                source_span_utf8: collection.source_span_utf8,
+                source_token_text: collection.source_token_text.clone(),
+                opaque_selector: collection.opaque_selector.clone(),
+                member_node_ids,
+                collection_dependency,
+            });
+    }
+
+    fn bind_ordered_selector_collection(
+        &mut self,
+        source_token: Option<String>,
+        collection: &crate::formula::TreeCalcOrderedSelectorReferenceCollection,
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
+        let member_node_ids = collection.member_node_ids.clone();
+        let collection_dependency = TreeReferenceCollectionDependency::ordered_selector_v1(
+            collection.family.dependency_family(),
             collection.host_ref_handle.clone(),
             collection.base_node_id,
             member_node_ids.clone(),
@@ -4268,7 +4314,8 @@ mod tests {
 
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase,
-        TreeCalcChildrenReferenceCollection, TreeCalcQualifiedChildrenBaseResolution,
+        TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
+        TreeCalcOrderedSelectorReferenceCollection, TreeCalcQualifiedChildrenBaseResolution,
         TreeCalcReferenceCollection, TreeFormula, TreeFormulaBinding, TreeFormulaReferenceCarrier,
         TreeReference, prebind_treecalc_formula_text,
         prebind_treecalc_formula_text_with_resolved_bases,
@@ -4433,6 +4480,30 @@ mod tests {
                     TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
                         collection,
                     )),
+                )],
+            ),
+        }])
+    }
+
+    fn ordered_selector_collection_catalog() -> TreeFormulaCatalog {
+        let collection = TreeCalcOrderedSelectorReferenceCollection::new(
+            TreeCalcOrderedSelectorFamily::PrecedingV1,
+            TreeNodeId(10),
+            "@PRECEDING",
+            [TreeNodeId(3), TreeNodeId(4)],
+        )
+        .with_source_span_utf8(5, 15);
+        TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(10),
+            formula_artifact_id: FormulaArtifactId("formula:total".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(TREE_REF_10_0)",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_10_0",
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::OrderedSelectorV1(collection),
+                    ),
                 )],
             ),
         }])
@@ -7576,6 +7647,40 @@ mod tests {
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.reverse_edges[&TreeNodeId(3)].len(), 1);
         assert_eq!(graph.reverse_edges[&TreeNodeId(4)].len(), 1);
+    }
+
+    #[test]
+    fn ordered_selector_runtime_dependency_descriptors_keep_selector_family_detail() {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let catalog = ordered_selector_collection_catalog();
+        let binding = catalog
+            .try_get_binding(TreeNodeId(10))
+            .expect("ordered selector binding");
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("prepare ordered selector formula");
+
+        let descriptors = oxfml_dependency_descriptors(&prepared);
+        let member_details = descriptors
+            .iter()
+            .filter(|descriptor| {
+                descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+            })
+            .map(|descriptor| descriptor.carrier_detail.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(member_details.len(), 2);
+        assert!(member_details.iter().all(|detail| {
+            detail.starts_with("treecalc_ordered_selector_v1_member:family=preceding")
+        }));
+        assert!(
+            member_details
+                .iter()
+                .all(|detail| !detail.starts_with("treecalc_children_v1_member"))
+        );
     }
 
     #[test]

@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 use oxfunc_core::value::{EvalValue, ExcelText};
 use thiserror::Error;
 
-use crate::formula::TreeCalcChildrenReferenceCollection;
+use crate::formula::{
+    TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorReferenceCollection,
+};
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -262,6 +264,161 @@ pub struct TreeCalcChildrenSparseReader {
     telemetry: SparseReaderAccessTelemetry,
 }
 
+pub struct TreeCalcOrderedSelectorSparseReader {
+    identity: SparseReaderIdentity,
+    extent: SparseRangeExtent,
+    collection: TreeCalcOrderedSelectorReferenceCollection,
+    member_values: BTreeMap<TreeNodeId, EvalValue>,
+    telemetry: SparseReaderAccessTelemetry,
+}
+
+impl std::fmt::Debug for TreeCalcOrderedSelectorSparseReader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TreeCalcOrderedSelectorSparseReader")
+            .field("identity", &self.identity)
+            .field("extent", &self.extent)
+            .field("collection", &self.collection)
+            .field("member_values", &self.member_values)
+            .finish_non_exhaustive()
+    }
+}
+
+impl TreeCalcOrderedSelectorSparseReader {
+    pub fn new(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcOrderedSelectorReferenceCollection,
+        member_values: impl IntoIterator<Item = (TreeNodeId, EvalValue)>,
+    ) -> Result<Self, SparseReaderError> {
+        structural_snapshot
+            .try_get_node(collection.base_node_id)
+            .ok_or(SparseReaderError::UnknownTreeCalcBase {
+                base_node_id: collection.base_node_id,
+            })?;
+        let row_count = u32::try_from(collection.member_node_ids.len()).map_err(|_| {
+            SparseReaderError::TreeCalcMemberOrdinalOverflow {
+                base_node_id: collection.base_node_id,
+            }
+        })?;
+        let admitted_members = collection
+            .member_node_ids
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+        let member_values = member_values
+            .into_iter()
+            .filter(|(node_id, _)| admitted_members.contains(node_id))
+            .collect::<BTreeMap<_, _>>();
+        let identity = SparseReaderIdentity::new(
+            collection.host_ref_handle.clone(),
+            collection.opaque_selector.clone(),
+            format!(
+                "snapshot={};membership={};order={}",
+                structural_snapshot.snapshot_id(),
+                collection.membership_version,
+                collection.order_version
+            ),
+        );
+
+        Ok(Self {
+            identity,
+            extent: SparseRangeExtent::new(SparseCellCoord::new(1, 1), row_count, 1),
+            collection,
+            member_values,
+            telemetry: SparseReaderAccessTelemetry::default(),
+        })
+    }
+
+    pub fn from_published_values(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcOrderedSelectorReferenceCollection,
+        published_values: &BTreeMap<TreeNodeId, String>,
+    ) -> Result<Self, SparseReaderError> {
+        Self::new(
+            structural_snapshot,
+            collection,
+            published_values
+                .iter()
+                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_eval_value(value))),
+        )
+    }
+
+    #[must_use]
+    pub fn collection(&self) -> &TreeCalcOrderedSelectorReferenceCollection {
+        &self.collection
+    }
+
+    #[must_use]
+    pub fn member_node_ids(&self) -> &[TreeNodeId] {
+        &self.collection.member_node_ids
+    }
+
+    #[must_use]
+    pub fn member_node_id_at(&self, coord: SparseCellCoord) -> Option<TreeNodeId> {
+        if !self.extent.contains(coord) || coord.column != 1 {
+            return None;
+        }
+        let ordinal = usize::try_from(coord.row.checked_sub(1)?).ok()?;
+        self.collection.member_node_ids.get(ordinal).copied()
+    }
+
+    #[must_use]
+    pub fn access_summary(&self) -> SparseReaderAccessSummary {
+        self.telemetry.summary()
+    }
+}
+
+impl SparseRangeReader for TreeCalcOrderedSelectorSparseReader {
+    fn reader_identity(&self) -> &SparseReaderIdentity {
+        &self.identity
+    }
+
+    fn declared_extent(&self) -> SparseRangeExtent {
+        self.extent
+    }
+
+    fn defined_cardinality(&self) -> usize {
+        self.collection
+            .member_node_ids
+            .iter()
+            .filter(|node_id| self.member_values.contains_key(node_id))
+            .count()
+    }
+
+    fn defined_iter(&self) -> Box<dyn Iterator<Item = SparseDefinedCell> + '_> {
+        self.telemetry.record_defined_iter();
+        Box::new(
+            self.collection
+                .member_node_ids
+                .iter()
+                .enumerate()
+                .filter_map(|(index, node_id)| {
+                    let value = self.member_values.get(node_id)?.clone();
+                    self.telemetry.record_defined_yield();
+                    Some(SparseDefinedCell {
+                        coord: SparseCellCoord::new(
+                            u32::try_from(index + 1).expect("member count was u32-checked"),
+                            1,
+                        ),
+                        value,
+                    })
+                }),
+        )
+    }
+
+    fn read_at(&self, coord: SparseCellCoord) -> SparseCellRead {
+        self.telemetry.record_read_at();
+        self.member_node_id_at(coord)
+            .and_then(|node_id| self.member_values.get(&node_id))
+            .cloned()
+            .map_or(SparseCellRead::Blank, SparseCellRead::Defined)
+    }
+
+    fn contains(&self, coord: SparseCellCoord) -> bool {
+        self.telemetry.record_contains();
+        self.extent.contains(coord)
+    }
+}
+
 impl std::fmt::Debug for TreeCalcChildrenSparseReader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TreeCalcChildrenSparseReader")
@@ -425,7 +582,10 @@ mod tests {
 
     use oxfunc_core::value::{EvalValue, ExcelText};
 
-    use crate::formula::TreeCalcChildrenReferenceCollection;
+    use crate::formula::{
+        TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
+        TreeCalcOrderedSelectorReferenceCollection,
+    };
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
     };
@@ -433,7 +593,7 @@ mod tests {
     use super::{
         SparseCellCoord, SparseCellRead, SparseDefinedCell, SparseRangeExtent, SparseRangeReader,
         SparseReaderError, SparseReaderIdentity, TreeCalcChildrenSparseReader,
-        WorksheetSparseRangeReader,
+        TreeCalcOrderedSelectorSparseReader, WorksheetSparseRangeReader,
     };
 
     fn identity() -> SparseReaderIdentity {
@@ -790,6 +950,58 @@ mod tests {
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 1)),
             SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("leaf")))
+        );
+    }
+
+    #[test]
+    fn treecalc_ordered_selector_reader_uses_resolver_supplied_member_order() {
+        let snapshot = tree_snapshot(&[3, 4, 5, 6]);
+        let collection = TreeCalcOrderedSelectorReferenceCollection::new(
+            TreeCalcOrderedSelectorFamily::PrecedingV1,
+            TreeNodeId(5),
+            "@PRECEDING",
+            [TreeNodeId(3), TreeNodeId(4)],
+        );
+        let reader = TreeCalcOrderedSelectorSparseReader::new(
+            &snapshot,
+            collection,
+            [
+                (TreeNodeId(4), EvalValue::Number(40.0)),
+                (TreeNodeId(3), EvalValue::Number(30.0)),
+                (TreeNodeId(6), EvalValue::Number(60.0)),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(reader.member_node_ids(), &[TreeNodeId(3), TreeNodeId(4)]);
+        assert_eq!(reader.declared_extent().row_count, 2);
+        assert_eq!(reader.defined_cardinality(), 2);
+        assert_eq!(
+            reader.reader_identity().reader_id,
+            "treecalc-hostref:v1:preceding:node:5"
+        );
+        assert!(
+            reader
+                .reader_identity()
+                .source_identity
+                .contains("selector=Preceding")
+        );
+        assert_eq!(
+            reader.defined_iter().collect::<Vec<_>>(),
+            vec![
+                SparseDefinedCell {
+                    coord: SparseCellCoord::new(1, 1),
+                    value: EvalValue::Number(30.0),
+                },
+                SparseDefinedCell {
+                    coord: SparseCellCoord::new(2, 1),
+                    value: EvalValue::Number(40.0),
+                },
+            ]
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(3, 1)),
+            SparseCellRead::Blank
         );
     }
 }

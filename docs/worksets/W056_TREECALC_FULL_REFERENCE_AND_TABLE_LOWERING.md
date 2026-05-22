@@ -112,17 +112,18 @@ Current admitted implementation inputs are not a product-complete full
 TreeCalc reference claim. They are the typed work inputs for the remaining
 W056 beads. In particular:
 
-1. structured table references are a typed exclusion linked to
-   `calc-4vs8.2`,
+1. structured table references are admitted implementation inputs linked to
+   `calc-4vs8.2`, `calc-4vs8.4`, and `calc-4vs8.9`,
 2. dependency/reverse-edge, dynamic rebind, namespace, and caller-context
    widening continues in `calc-4vs8.3`,
 3. formula-call registry-view admission and capability-denied runtime
    classification have landed in OxFml W074 `fml-ds0.7`; final bare
    name/callable precedence remains blocked on the broader W074 Excel oracle
    matrix,
-4. cross-workspace and recursive selectors remain typed exclusions until the
-   workspace availability and selector dependency models are specified and
-   exercised.
+4. cross-workspace remains a typed exclusion until a versioned workspace
+   availability/degradation model exists; resolved ordered selector packets
+   now have carriers via `calc-4vs8.12`, while raw selector parser/resolver
+   packets, traversal bounds, and corpus activation remain open.
 
 ## 4B. `calc-4vs8.2` Structured Table Lowering Surface
 
@@ -188,8 +189,9 @@ This is an implemented typed OxCalc surface over current descriptors and graph
 facts. It is not full runtime behavior for every W056 carrier. End-to-end
 runtime closure remains blocked where the cross-repo program has not yet
 emitted exercised generic host-reference, final name/call precedence,
-cross-workspace oracle packet surfaces, selector dependency models, or
-retained full-bridge evidence. The bounded W074 registry/capability slice is
+cross-workspace oracle packet surfaces, raw selector parser/resolver packet
+surfaces plus traversal-bound evidence, or retained full-bridge evidence. The
+bounded W074 registry/capability slice is
 no longer missing: OxFml `fml-ds0.7` at commit `9da8456` proves runtime
 registry-view formula-call admission and capability-denied classification, and
 OxFml `fml-ds0.9` at commit `6895e6a` proves normalized structured-reference
@@ -311,7 +313,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.11`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.12`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -331,6 +333,10 @@ local TreeCalc formula parsing. OxFml commit `9269421` has recorded the
 W074-CALC005-014 defined-name/table-name collision row: in the observed Excel
 COM 16.0 collision state, bare `=Table1` resolves to the workbook defined name
 while `Table1[Amount]` structured syntax is rejected at formula authoring.
+`calc-4vs8.12` adds OxCalc-owned ordered selector collection carriers for
+resolved sibling, preceding, following, ancestor, and recursive-descendant
+selector packets, including membership/order dependency facts and sparse
+reference-reader support.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -380,14 +386,21 @@ effective table id as the lowering target and separately validate the enclosing
 table context, surfacing a typed blocker if those packet facts disagree.
 OxFml commit `9269421` narrows W074 table-name collision evidence but does not
 freeze TreeCalc bare name/callable precedence.
+`calc-4vs8.12` adds focused Rust tests proving ordered selector collections
+lower to `TreeReferenceCollectionMembership` plus member-value descriptors,
+preserve host-reference handles and ordered member ids, enter W056 inventory as
+admitted implementation inputs, project through the local TreeCalc carrier
+projection path, and expose a sparse reader that uses resolver-supplied member
+order without parsing TreeCalc text.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, exercised OxFml host-reference packets beyond
 the admitted children/table slices, a versioned cross-workspace availability/
-degradation model, selector dependency models for recursive and sibling/
-preceding/following set selectors, full OxCalc-owned explicit path resolution
-for raw `base` text, DnaTreeCalc receiving-side corpus activation for table
-packets and the broader W004/W005 reference suite, and broader end-to-end
-scenarios. Blocker `calc-4vs8.5` remains open after `calc-4vs8.11` closure.
+degradation model, explicit parser/resolver packet surfaces and traversal-bound
+policy for raw recursive/sibling/preceding/following/ancestor selectors, full
+OxCalc-owned explicit path resolution for raw `base` text, DnaTreeCalc
+receiving-side corpus activation for table packets and the broader W004/W005
+reference suite, and broader end-to-end scenarios. Blocker `calc-4vs8.5`
+remains open after `calc-4vs8.12` closure.
 
 Formal status: no proof claim.

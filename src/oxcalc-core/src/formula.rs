@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind,
-    TreeReferenceCollectionDependency,
+    TreeReferenceCollectionDependency, TreeReferenceCollectionFamily,
 };
 use crate::structural::{BindArtifactId, FormulaArtifactId, StructuralSnapshot, TreeNodeId};
 
@@ -66,6 +66,61 @@ pub enum TreeReference {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TreeCalcReferenceCollection {
     ChildrenV1(TreeCalcChildrenReferenceCollection),
+    OrderedSelectorV1(TreeCalcOrderedSelectorReferenceCollection),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum TreeCalcOrderedSelectorFamily {
+    SiblingSetV1,
+    PrecedingV1,
+    FollowingV1,
+    AncestorsV1,
+    RecursiveDescendantsV1,
+}
+
+impl TreeCalcOrderedSelectorFamily {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            TreeCalcOrderedSelectorFamily::SiblingSetV1 => "siblings",
+            TreeCalcOrderedSelectorFamily::PrecedingV1 => "preceding",
+            TreeCalcOrderedSelectorFamily::FollowingV1 => "following",
+            TreeCalcOrderedSelectorFamily::AncestorsV1 => "ancestors",
+            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => "recursive_descendants",
+        }
+    }
+
+    #[must_use]
+    pub const fn selector_name(self) -> &'static str {
+        match self {
+            TreeCalcOrderedSelectorFamily::SiblingSetV1 => "Siblings",
+            TreeCalcOrderedSelectorFamily::PrecedingV1 => "Preceding",
+            TreeCalcOrderedSelectorFamily::FollowingV1 => "Following",
+            TreeCalcOrderedSelectorFamily::AncestorsV1 => "Ancestors",
+            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => "RecursiveDescendants",
+        }
+    }
+
+    #[must_use]
+    pub const fn dependency_family(self) -> TreeReferenceCollectionFamily {
+        match self {
+            TreeCalcOrderedSelectorFamily::SiblingSetV1 => {
+                TreeReferenceCollectionFamily::SiblingSetV1
+            }
+            TreeCalcOrderedSelectorFamily::PrecedingV1 => {
+                TreeReferenceCollectionFamily::PrecedingV1
+            }
+            TreeCalcOrderedSelectorFamily::FollowingV1 => {
+                TreeReferenceCollectionFamily::FollowingV1
+            }
+            TreeCalcOrderedSelectorFamily::AncestorsV1 => {
+                TreeReferenceCollectionFamily::AncestorsV1
+            }
+            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => {
+                TreeReferenceCollectionFamily::RecursiveDescendantsV1
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,6 +156,79 @@ impl TreeCalcChildrenReferenceCollection {
         self.source_span_utf8 = Some((start_byte, end_byte));
         self
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcOrderedSelectorReferenceCollection {
+    pub family: TreeCalcOrderedSelectorFamily,
+    pub host_ref_handle: String,
+    pub base_node_id: TreeNodeId,
+    pub member_node_ids: Vec<TreeNodeId>,
+    pub source_span_utf8: Option<(usize, usize)>,
+    pub source_token_text: String,
+    pub opaque_selector: String,
+    pub membership_version: String,
+    pub order_version: String,
+}
+
+impl TreeCalcOrderedSelectorReferenceCollection {
+    #[must_use]
+    pub fn new(
+        family: TreeCalcOrderedSelectorFamily,
+        base_node_id: TreeNodeId,
+        source_token_text: impl Into<String>,
+        member_node_ids: impl IntoIterator<Item = TreeNodeId>,
+    ) -> Self {
+        let source_token_text = source_token_text.into();
+        let member_node_ids = member_node_ids.into_iter().collect::<Vec<_>>();
+        let family_id = family.stable_id();
+        Self {
+            family,
+            host_ref_handle: format!("treecalc-hostref:v1:{family_id}:{base_node_id}"),
+            base_node_id,
+            opaque_selector: format!(
+                "oxcalc.treecalc.host_selector.v1:selector={};base={base_node_id};order=stable_tree_order;members={}",
+                family.selector_name(),
+                format_tree_node_ids(&member_node_ids)
+            ),
+            membership_version: format!(
+                "treecalc-membership:v1:family={family_id};base={base_node_id};members={}",
+                format_tree_node_id_set(&member_node_ids)
+            ),
+            order_version: format!(
+                "treecalc-order:v1:family={family_id};base={base_node_id};members={}",
+                format_tree_node_ids(&member_node_ids)
+            ),
+            member_node_ids,
+            source_span_utf8: None,
+            source_token_text,
+        }
+    }
+
+    #[must_use]
+    pub fn with_source_span_utf8(mut self, start_byte: usize, end_byte: usize) -> Self {
+        self.source_span_utf8 = Some((start_byte, end_byte));
+        self
+    }
+}
+
+fn format_tree_node_ids(node_ids: &[TreeNodeId]) -> String {
+    node_ids
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn format_tree_node_id_set(node_ids: &[TreeNodeId]) -> String {
+    node_ids
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(|node_id| node_id.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -683,6 +811,7 @@ pub enum TreeReferenceInventoryVariant {
     Unresolved,
     SiblingSetSelector,
     PrecedingFollowingSelector,
+    AncestorSetSelector,
     CrossWorkspaceReference,
     RecursiveSelector,
     StructuredTableReference,
@@ -822,7 +951,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuralRebindRequired,
                 Invalidates::UpstreamPublication,
             ],
-            successor_bead: Some("calc-4vs8.3"),
+            successor_bead: Some("calc-4vs8.12"),
             evidence_note: "explicit path carrier exists; wider rebind/invalidation closure belongs to W056 dependency widening",
         },
         TreeReferenceImplementationInput {
@@ -838,7 +967,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuralRebindRequired,
                 Invalidates::UpstreamPublication,
             ],
-            successor_bead: Some("calc-4vs8.3"),
+            successor_bead: Some("calc-4vs8.12"),
             evidence_note: "self-relative carrier is representable but remains W056 input until exercised",
         },
         TreeReferenceImplementationInput {
@@ -854,7 +983,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuralRebindRequired,
                 Invalidates::UpstreamPublication,
             ],
-            successor_bead: Some("calc-4vs8.3"),
+            successor_bead: Some("calc-4vs8.12"),
             evidence_note: "parent-relative carrier and descriptor lowering exist; W056 widens replay-visible invalidation",
         },
         TreeReferenceImplementationInput {
@@ -870,7 +999,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuralRebindRequired,
                 Invalidates::UpstreamPublication,
             ],
-            successor_bead: Some("calc-4vs8.3"),
+            successor_bead: Some("calc-4vs8.12"),
             evidence_note: "ancestor-relative carrier and descriptor lowering exist; W056 widens replay-visible invalidation",
         },
         TreeReferenceImplementationInput {
@@ -1002,7 +1131,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         TreeReferenceImplementationInput {
             variant: Variant::SiblingSetSelector,
             status: Status::AdmittedImplementationInput,
-            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::HostNamespaceVersion,
@@ -1017,12 +1146,12 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::UpstreamPublication,
             ],
             successor_bead: Some("calc-4vs8.3"),
-            evidence_note: "sibling set selectors follow the ChildrenV1 collection pattern after dependency widening",
+            evidence_note: "calc-4vs8.12 adds ordered selector collection dependency carriers for resolved sibling-set packets",
         },
         TreeReferenceImplementationInput {
             variant: Variant::PrecedingFollowingSelector,
             status: Status::AdmittedImplementationInput,
-            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::HostNamespaceVersion,
@@ -1037,7 +1166,27 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::UpstreamPublication,
             ],
             successor_bead: Some("calc-4vs8.3"),
-            evidence_note: "preceding/following selectors need ordered-set lowering and invalidation facts",
+            evidence_note: "calc-4vs8.12 adds ordered selector collection dependency carriers for resolved preceding/following packets",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::AncestorSetSelector,
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::AncestorWalk,
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.12"),
+            evidence_note: "calc-4vs8.12 adds ordered selector collection dependency carriers for resolved ancestor-set packets",
         },
         TreeReferenceImplementationInput {
             variant: Variant::CrossWorkspaceReference,
@@ -1057,24 +1206,28 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         },
         TreeReferenceImplementationInput {
             variant: Variant::RecursiveSelector,
-            status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsSelectorDependencyModel),
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::HostNamespaceVersion,
             caller_context_identity_need: Caller::CallerNode,
-            dependency_facts: vec![Dep::TreeReferenceCollectionMembership],
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
             invalidation_facts: vec![
                 Invalidates::TreeReferenceMembershipChanged,
                 Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
             ],
-            successor_bead: Some("calc-4vs8.3"),
-            evidence_note: "recursive selectors are held out until traversal bounds and dependency fanout are specified",
+            successor_bead: Some("calc-4vs8.12"),
+            evidence_note: "calc-4vs8.12 adds resolved recursive-descendant collection dependency carriers; traversal bounds remain resolver/corpus scope",
         },
         TreeReferenceImplementationInput {
             variant: Variant::StructuredTableReference,
             status: Status::AdmittedImplementationInput,
-            blocker: Some(Blocker::NeedsStableStructuredTableRowMembershipAndOrderPacket),
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::TableContextIdentity,
@@ -1100,7 +1253,7 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuredTableCallerContextChanged,
             ],
             successor_bead: Some("calc-4vs8.2"),
-            evidence_note: "calc-4vs8.2 adds typed table-context lowering for available generic OxFml table facts; stable row membership/order and exact header/totals ranges remain upstream packet blockers",
+            evidence_note: "calc-4vs8.2/calc-4vs8.4/calc-4vs8.9 add table-context lowering from public OxFml table packets and bind records, including stable row/order and exact region facts",
         },
         TreeReferenceImplementationInput {
             variant: Variant::BareNameOrCallableReference,
@@ -1400,6 +1553,43 @@ fn lower_reference_collection(
 
             descriptors
         }
+        TreeCalcReferenceCollection::OrderedSelectorV1(collection) => {
+            let collection_dependency = TreeReferenceCollectionDependency::ordered_selector_v1(
+                collection.family.dependency_family(),
+                collection.host_ref_handle.clone(),
+                collection.base_node_id,
+                collection.member_node_ids.clone(),
+            );
+            let mut descriptors = vec![DependencyDescriptor {
+                descriptor_id: format!("{descriptor_id}:membership"),
+                source_reference_handle: Some(collection.host_ref_handle.clone()),
+                owner_node_id: binding.owner_node_id,
+                target_node_id: None,
+                kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                carrier_detail: collection_dependency.carrier_detail(),
+                tree_reference_collection: Some(collection_dependency),
+                requires_rebind_on_structural_change: false,
+            }];
+
+            descriptors.extend(collection.member_node_ids.iter().copied().enumerate().map(
+                |(member_index, member_node_id)| DependencyDescriptor {
+                    descriptor_id: format!("{descriptor_id}:member:{member_index}"),
+                    source_reference_handle: Some(collection.host_ref_handle.clone()),
+                    owner_node_id: binding.owner_node_id,
+                    target_node_id: Some(member_node_id),
+                    kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+                    carrier_detail: format!(
+                        "treecalc_ordered_selector_v1_member:family={}:handle={}:ordinal={member_index}:target={member_node_id}",
+                        collection.family.stable_id(),
+                        collection.host_ref_handle
+                    ),
+                    tree_reference_collection: None,
+                    requires_rebind_on_structural_change: false,
+                },
+            ));
+
+            descriptors
+        }
     }
 }
 
@@ -1563,6 +1753,23 @@ impl TreeReference {
             TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(_)) => {
                 TreeReferenceInventoryVariant::ChildrenV1
             }
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
+                collection,
+            )) => match collection.family {
+                TreeCalcOrderedSelectorFamily::SiblingSetV1 => {
+                    TreeReferenceInventoryVariant::SiblingSetSelector
+                }
+                TreeCalcOrderedSelectorFamily::PrecedingV1
+                | TreeCalcOrderedSelectorFamily::FollowingV1 => {
+                    TreeReferenceInventoryVariant::PrecedingFollowingSelector
+                }
+                TreeCalcOrderedSelectorFamily::AncestorsV1 => {
+                    TreeReferenceInventoryVariant::AncestorSetSelector
+                }
+                TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => {
+                    TreeReferenceInventoryVariant::RecursiveSelector
+                }
+            },
             TreeReference::ProjectionPath { .. } => TreeReferenceInventoryVariant::ProjectionPath,
             TreeReference::RelativePath { base, .. } => match base {
                 RelativeReferenceBase::SelfNode => TreeReferenceInventoryVariant::RelativePathSelf,
@@ -1714,6 +1921,17 @@ impl TreeReference {
                     collection.order_version
                 )
             }
+            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
+                collection,
+            )) => {
+                format!(
+                    "treecalc_ordered_selector_v1:family={}:base={}:membership={}:order={}",
+                    collection.family.stable_id(),
+                    collection.base_node_id,
+                    collection.membership_version,
+                    collection.order_version
+                )
+            }
             TreeReference::ProjectionPath { projection_path } => {
                 format!("projection_path:{projection_path}")
             }
@@ -1755,7 +1973,10 @@ impl TreeReference {
 mod tests {
     use std::collections::BTreeSet;
 
-    use crate::dependency::{DependencyDescriptorKind, DependencyDiagnosticKind, DependencyGraph};
+    use crate::dependency::{
+        DependencyDescriptorKind, DependencyDiagnosticKind, DependencyGraph,
+        TreeReferenceCollectionFamily,
+    };
     use crate::structural::{StructuralNode, StructuralNodeKind, StructuralSnapshotId};
 
     use super::*;
@@ -2119,6 +2340,7 @@ mod tests {
         assert!(variants.contains(&TreeReferenceInventoryVariant::DynamicPotential));
         assert!(variants.contains(&TreeReferenceInventoryVariant::DynamicResolved));
         assert!(variants.contains(&TreeReferenceInventoryVariant::Unresolved));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::AncestorSetSelector));
         assert!(variants.contains(&TreeReferenceInventoryVariant::CrossWorkspaceReference));
         assert!(variants.contains(&TreeReferenceInventoryVariant::StructuredTableReference));
         assert!(variants.contains(&TreeReferenceInventoryVariant::BareNameOrCallableReference));
@@ -2134,10 +2356,7 @@ mod tests {
             TreeReferenceInventoryVariant::StructuredTableReference,
         )
         .expect("table reference inventory");
-        assert_eq!(
-            table.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsStableStructuredTableRowMembershipAndOrderPacket)
-        );
+        assert_eq!(table.blocker, None);
         assert_eq!(table.successor_bead, Some("calc-4vs8.2"));
         assert_eq!(
             table.status,
@@ -2191,6 +2410,21 @@ mod tests {
                 HostReferenceCorrelationNeed::HostReferenceHandle,
                 NamespaceIdentityNeed::HostNamespaceVersion,
                 CallerContextIdentityNeed::CallerNode,
+            ),
+            (
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
+                    TreeCalcOrderedSelectorReferenceCollection::new(
+                        TreeCalcOrderedSelectorFamily::PrecedingV1,
+                        TreeNodeId(4),
+                        "@PRECEDING",
+                        [TreeNodeId(3)],
+                    ),
+                )),
+                TreeReferenceInventoryVariant::PrecedingFollowingSelector,
+                TreeReferenceInventoryStatus::AdmittedImplementationInput,
+                HostReferenceCorrelationNeed::HostReferenceHandle,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::SiblingPosition,
             ),
             (
                 TreeReference::RelativePath {
@@ -2296,6 +2530,45 @@ mod tests {
                 InvalidationReasonKind::UpstreamPublication,
             ]
         );
+    }
+
+    #[test]
+    fn ordered_selector_inventory_preserves_collection_dependency_facts() {
+        for variant in [
+            TreeReferenceInventoryVariant::SiblingSetSelector,
+            TreeReferenceInventoryVariant::PrecedingFollowingSelector,
+            TreeReferenceInventoryVariant::AncestorSetSelector,
+            TreeReferenceInventoryVariant::RecursiveSelector,
+        ] {
+            let input =
+                tree_reference_implementation_input(variant).expect("selector inventory input");
+            assert_eq!(
+                input.status,
+                TreeReferenceInventoryStatus::AdmittedImplementationInput
+            );
+            assert_eq!(input.blocker, None);
+            assert_eq!(
+                input.host_reference_correlation,
+                HostReferenceCorrelationNeed::HostReferenceHandle
+            );
+            assert_eq!(
+                input.dependency_facts,
+                vec![
+                    DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                    DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+                ]
+            );
+            assert!(
+                input
+                    .invalidation_facts
+                    .contains(&InvalidationReasonKind::TreeReferenceMembershipChanged)
+            );
+            assert!(
+                input
+                    .invalidation_facts
+                    .contains(&InvalidationReasonKind::TreeReferenceOrderChanged)
+            );
+        }
     }
 
     #[test]
@@ -2482,6 +2755,68 @@ mod tests {
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.reverse_edges[&TreeNodeId(4)].len(), 1);
         assert_eq!(graph.reverse_edges[&TreeNodeId(5)].len(), 1);
+    }
+
+    #[test]
+    fn formula_catalog_lowers_ordered_selector_collection_to_membership_and_member_value_edges() {
+        let snapshot = snapshot();
+        let collection = TreeCalcOrderedSelectorReferenceCollection::new(
+            TreeCalcOrderedSelectorFamily::PrecedingV1,
+            TreeNodeId(4),
+            "@PRECEDING",
+            [TreeNodeId(3), TreeNodeId(2)],
+        )
+        .with_source_span_utf8(5, 15);
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:preceding".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:preceding".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(@PRECEDING)",
+                [TreeFormulaReferenceCarrier::named(
+                    "@PRECEDING",
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::OrderedSelectorV1(collection.clone()),
+                    ),
+                )],
+            ),
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+
+        assert_eq!(descriptors.len(), 3);
+        assert_eq!(
+            descriptors[0].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        );
+        assert_eq!(descriptors[0].target_node_id, Some(TreeNodeId(3)));
+        assert_eq!(
+            descriptors[1].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        );
+        assert_eq!(descriptors[1].target_node_id, Some(TreeNodeId(2)));
+        assert_eq!(
+            descriptors[2].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMembership
+        );
+        let dependency = descriptors[2]
+            .tree_reference_collection
+            .as_ref()
+            .expect("collection dependency");
+        assert_eq!(
+            dependency.family,
+            TreeReferenceCollectionFamily::PrecedingV1
+        );
+        assert_eq!(
+            dependency.member_node_ids,
+            vec![TreeNodeId(3), TreeNodeId(2)]
+        );
+        assert!(descriptors[2].carrier_detail.contains("family=preceding"));
+
+        let graph = DependencyGraph::build(&snapshot, &descriptors);
+        assert!(graph.diagnostics.is_empty());
+        assert_eq!(graph.reverse_edges[&TreeNodeId(3)].len(), 1);
+        assert_eq!(graph.reverse_edges[&TreeNodeId(2)].len(), 1);
     }
 
     #[test]

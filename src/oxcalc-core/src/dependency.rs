@@ -45,6 +45,11 @@ pub struct DependencyDescriptor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TreeReferenceCollectionFamily {
     ChildrenV1,
+    SiblingSetV1,
+    PrecedingV1,
+    FollowingV1,
+    AncestorsV1,
+    RecursiveDescendantsV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,6 +86,30 @@ impl TreeReferenceCollectionDependency {
     }
 
     #[must_use]
+    pub fn ordered_selector_v1(
+        family: TreeReferenceCollectionFamily,
+        host_ref_handle: impl Into<String>,
+        base_node_id: TreeNodeId,
+        member_node_ids: Vec<TreeNodeId>,
+    ) -> Self {
+        let family_id = family.stable_id();
+        Self {
+            family,
+            host_ref_handle: host_ref_handle.into(),
+            base_node_id,
+            membership_version: format!(
+                "treecalc-membership:v1:family={family_id};base={base_node_id};members={}",
+                format_tree_node_id_set(&member_node_ids)
+            ),
+            order_version: format!(
+                "treecalc-order:v1:family={family_id};base={base_node_id};members={}",
+                format_tree_node_id_list(&member_node_ids)
+            ),
+            member_node_ids,
+        }
+    }
+
+    #[must_use]
     pub fn carrier_detail(&self) -> String {
         match self.family {
             TreeReferenceCollectionFamily::ChildrenV1 => format!(
@@ -90,6 +119,28 @@ impl TreeReferenceCollectionDependency {
                 self.order_version,
                 format_tree_node_id_list(&self.member_node_ids)
             ),
+            family => format!(
+                "treecalc_ordered_selector_v1:family={};base={};membership={};order={};members={}",
+                family.stable_id(),
+                self.base_node_id,
+                self.membership_version,
+                self.order_version,
+                format_tree_node_id_list(&self.member_node_ids)
+            ),
+        }
+    }
+}
+
+impl TreeReferenceCollectionFamily {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            TreeReferenceCollectionFamily::ChildrenV1 => "children",
+            TreeReferenceCollectionFamily::SiblingSetV1 => "siblings",
+            TreeReferenceCollectionFamily::PrecedingV1 => "preceding",
+            TreeReferenceCollectionFamily::FollowingV1 => "following",
+            TreeReferenceCollectionFamily::AncestorsV1 => "ancestors",
+            TreeReferenceCollectionFamily::RecursiveDescendantsV1 => "recursive_descendants",
         }
     }
 }

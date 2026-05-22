@@ -81,8 +81,12 @@ DnaTreeCalc integration should:
 
 1. Full DnaTreeCalc W004/W005 corpus activation beyond the first active
    children slice.
-2. OxCalc-owned explicit path-resolution surfaces for reference families that
-   cannot be represented by the current qualified-children query packet.
+2. OxCalc-owned explicit path-resolution and raw selector packet surfaces for
+   reference families that cannot be represented by the current
+   qualified-children query packet. `calc-4vs8.12` supplies the resolved
+   ordered collection carrier shape for sibling, preceding, following,
+   ancestor, and recursive-descendant selector outputs, but not raw syntax
+   parsing or DnaTreeCalc corpus activation for those families.
 3. How DnaTreeCalc wants to display typed prebind diagnostics for unsupported
    selectors such as `@ANCESTORS`, recursive selectors, or structured table
    references.

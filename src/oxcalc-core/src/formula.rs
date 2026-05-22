@@ -144,6 +144,7 @@ pub enum TreeReferenceInventoryBlocker {
     NeedsResolvableHostReference,
     NeedsOxFmlNameCallPrecedenceEvidence,
     NeedsOxFmlStructuredReferencePacket,
+    NeedsStableStructuredTableRowMembershipAndOrderPacket,
     NeedsCrossWorkspaceModel,
     NeedsSelectorDependencyModel,
 }
@@ -515,16 +516,34 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         },
         TreeReferenceImplementationInput {
             variant: Variant::StructuredTableReference,
-            status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsOxFmlStructuredReferencePacket),
+            status: Status::AdmittedImplementationInput,
+            blocker: Some(Blocker::NeedsStableStructuredTableRowMembershipAndOrderPacket),
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::TableContextIdentity,
             caller_context_identity_need: Caller::TableCallerRegion,
-            dependency_facts: Vec::new(),
-            invalidation_facts: Vec::new(),
+            dependency_facts: vec![
+                Dep::StructuredTableIdentity,
+                Dep::StructuredTableRowMembership,
+                Dep::StructuredTableRowOrder,
+                Dep::StructuredTableColumnIdentity,
+                Dep::StructuredTableHeaderText,
+                Dep::StructuredTableHeaderRegion,
+                Dep::StructuredTableDataRegion,
+                Dep::StructuredTableTotalsRegion,
+                Dep::StructuredTableCallerContext,
+                Dep::StructuredTableEnclosingTable,
+            ],
+            invalidation_facts: vec![
+                Invalidates::StructuredTableContextChanged,
+                Invalidates::StructuredTableRowMembershipChanged,
+                Invalidates::StructuredTableRowOrderChanged,
+                Invalidates::StructuredTableColumnChanged,
+                Invalidates::StructuredTableRegionChanged,
+                Invalidates::StructuredTableCallerContextChanged,
+            ],
             successor_bead: Some("calc-4vs8.2"),
-            evidence_note: "table row/column/header/totals lowering is intentionally deferred to calc-4vs8.2",
+            evidence_note: "calc-4vs8.2 adds typed table-context lowering for available generic OxFml table facts; stable row membership/order and exact header/totals ranges remain upstream packet blockers",
         },
         TreeReferenceImplementationInput {
             variant: Variant::BareNameOrCallableReference,
@@ -1282,11 +1301,28 @@ mod tests {
         .expect("table reference inventory");
         assert_eq!(
             table.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsOxFmlStructuredReferencePacket)
+            Some(TreeReferenceInventoryBlocker::NeedsStableStructuredTableRowMembershipAndOrderPacket)
         );
         assert_eq!(table.successor_bead, Some("calc-4vs8.2"));
-        assert!(table.dependency_facts.is_empty());
-        assert!(table.invalidation_facts.is_empty());
+        assert_eq!(
+            table.status,
+            TreeReferenceInventoryStatus::AdmittedImplementationInput
+        );
+        assert!(
+            table
+                .dependency_facts
+                .contains(&DependencyDescriptorKind::StructuredTableIdentity)
+        );
+        assert!(
+            table
+                .dependency_facts
+                .contains(&DependencyDescriptorKind::StructuredTableCallerContext)
+        );
+        assert!(
+            table
+                .invalidation_facts
+                .contains(&InvalidationReasonKind::StructuredTableContextChanged)
+        );
 
         let bare_name = tree_reference_implementation_input(
             TreeReferenceInventoryVariant::BareNameOrCallableReference,

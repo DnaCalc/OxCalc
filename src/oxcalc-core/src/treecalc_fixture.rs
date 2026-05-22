@@ -494,6 +494,24 @@ fn parse_invalidation_reason(
         "TreeReferenceOrderChanged" | "tree_reference_order_changed" => {
             InvalidationReasonKind::TreeReferenceOrderChanged
         }
+        "StructuredTableContextChanged" | "structured_table_context_changed" => {
+            InvalidationReasonKind::StructuredTableContextChanged
+        }
+        "StructuredTableRowMembershipChanged" | "structured_table_row_membership_changed" => {
+            InvalidationReasonKind::StructuredTableRowMembershipChanged
+        }
+        "StructuredTableRowOrderChanged" | "structured_table_row_order_changed" => {
+            InvalidationReasonKind::StructuredTableRowOrderChanged
+        }
+        "StructuredTableColumnChanged" | "structured_table_column_changed" => {
+            InvalidationReasonKind::StructuredTableColumnChanged
+        }
+        "StructuredTableRegionChanged" | "structured_table_region_changed" => {
+            InvalidationReasonKind::StructuredTableRegionChanged
+        }
+        "StructuredTableCallerContextChanged" | "structured_table_caller_context_changed" => {
+            InvalidationReasonKind::StructuredTableCallerContextChanged
+        }
         "DependencyAdded" | "dependency_added" => InvalidationReasonKind::DependencyAdded,
         "DependencyRemoved" | "dependency_removed" => InvalidationReasonKind::DependencyRemoved,
         "DependencyReclassified" | "dependency_reclassified" => {

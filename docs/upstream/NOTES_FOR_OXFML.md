@@ -1616,3 +1616,40 @@ Receipt processed:
    OxCalc still needs OxFml/OxFunc to exercise the public generic
    host-context and resolver/admission path before claiming end-to-end
    `SUM(@CHILDREN)` product behavior.
+
+## 82. W056 Structured Table Dependency Lowering Intake
+OxCalc has added the first W056 structured table dependency-lowering surface
+for the current generic OxFml table-context packet.
+
+Current OxCalc code shape:
+1. `src/oxcalc-core/src/structured_table.rs` consumes public OxFml
+   `TableDescriptor`, `TableRef`, and `TableCallerRegion` values.
+2. The lowerer accepts a normalized `StructuredTableReferenceIntake` and does
+   not parse formula text or mirror OxFml structured-reference grammar.
+3. The current available lowered facts are table identity, selected column
+   identity, header text, data-region identity from supplied column ranges,
+   caller row context for `#This Row`, and omitted-table-name enclosing-table
+   dependency.
+4. The lowerer emits context-only OxCalc dependency descriptors so the graph can
+   retain table dependencies without inventing TreeNodeId reverse edges.
+5. Missing current-packet facts are explicit typed blockers rather than claimed
+   behavior: stable row membership, row order, exact header-row region identity,
+   and exact totals-row region identity.
+
+Current OxCalc gap routed to OxFml structured-reference/table packet work:
+1. OxCalc needs a stable row membership identity and stable row order identity
+   for table data rows, not only `table_range_ref`.
+2. OxCalc needs exact header and totals region identity when those selectors are
+   present, not only `header_row_present` / `totals_row_present`.
+3. OxCalc needs exercised normalized structured-reference bind packets naming
+   the selected table, columns, regions, omitted-table-name dependence, and
+   caller-row-sensitive dependence.
+
+Current non-assumptions:
+1. OxCalc is not asking OxFml to move table-object ownership out of the
+   host/coordinator side.
+2. OxCalc is not parsing structured-reference formula text.
+3. OxCalc is not claiming full structured table behavior from the current
+   first lowering surface.
+4. OxFunc remains outside workbook table-object ownership and should consume
+   only normalized reference/value consequences downstream.

@@ -22,6 +22,7 @@ pub mod rich_value_capability;
 pub mod sparse_reader;
 pub mod stream_semantics;
 pub mod structural;
+pub mod structured_table;
 pub mod treecalc;
 pub mod treecalc_fixture;
 pub mod treecalc_runner;

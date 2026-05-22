@@ -13,6 +13,16 @@ pub enum DependencyDescriptorKind {
     RelativeBound,
     TreeReferenceCollectionMembership,
     TreeReferenceCollectionMemberValue,
+    StructuredTableIdentity,
+    StructuredTableRowMembership,
+    StructuredTableRowOrder,
+    StructuredTableColumnIdentity,
+    StructuredTableHeaderText,
+    StructuredTableHeaderRegion,
+    StructuredTableDataRegion,
+    StructuredTableTotalsRegion,
+    StructuredTableCallerContext,
+    StructuredTableEnclosingTable,
     DynamicPotential,
     HostSensitive,
     CapabilitySensitive,
@@ -148,6 +158,12 @@ pub enum InvalidationReasonKind {
     ExternallyInvalidated,
     TreeReferenceMembershipChanged,
     TreeReferenceOrderChanged,
+    StructuredTableContextChanged,
+    StructuredTableRowMembershipChanged,
+    StructuredTableRowOrderChanged,
+    StructuredTableColumnChanged,
+    StructuredTableRegionChanged,
+    StructuredTableCallerContextChanged,
     DependencyAdded,
     DependencyRemoved,
     DependencyReclassified,
@@ -231,6 +247,16 @@ impl DependencyGraph {
                     if matches!(
                         descriptor.kind,
                         DependencyDescriptorKind::TreeReferenceCollectionMembership
+                            | DependencyDescriptorKind::StructuredTableIdentity
+                            | DependencyDescriptorKind::StructuredTableRowMembership
+                            | DependencyDescriptorKind::StructuredTableRowOrder
+                            | DependencyDescriptorKind::StructuredTableColumnIdentity
+                            | DependencyDescriptorKind::StructuredTableHeaderText
+                            | DependencyDescriptorKind::StructuredTableHeaderRegion
+                            | DependencyDescriptorKind::StructuredTableDataRegion
+                            | DependencyDescriptorKind::StructuredTableTotalsRegion
+                            | DependencyDescriptorKind::StructuredTableCallerContext
+                            | DependencyDescriptorKind::StructuredTableEnclosingTable
                     ) {
                         continue;
                     }
@@ -386,7 +412,15 @@ fn derive_seed_state(reason: InvalidationReasonKind, in_cycle: bool) -> NodeCalc
         | InvalidationReasonKind::ExternallyInvalidated => NodeCalcState::Needed,
         InvalidationReasonKind::StructuralRecalcOnly => NodeCalcState::DirtyPending,
         InvalidationReasonKind::TreeReferenceMembershipChanged
-        | InvalidationReasonKind::TreeReferenceOrderChanged => NodeCalcState::DirtyPending,
+        | InvalidationReasonKind::TreeReferenceOrderChanged
+        | InvalidationReasonKind::StructuredTableContextChanged
+        | InvalidationReasonKind::StructuredTableRowMembershipChanged
+        | InvalidationReasonKind::StructuredTableRowOrderChanged
+        | InvalidationReasonKind::StructuredTableColumnChanged
+        | InvalidationReasonKind::StructuredTableRegionChanged
+        | InvalidationReasonKind::StructuredTableCallerContextChanged => {
+            NodeCalcState::DirtyPending
+        }
         InvalidationReasonKind::StructuralRebindRequired
         | InvalidationReasonKind::DependencyAdded
         | InvalidationReasonKind::DependencyRemoved
@@ -404,6 +438,12 @@ fn reason_requires_rebind(reason: InvalidationReasonKind) -> bool {
             | InvalidationReasonKind::DependencyAdded
             | InvalidationReasonKind::DependencyRemoved
             | InvalidationReasonKind::DependencyReclassified
+            | InvalidationReasonKind::StructuredTableContextChanged
+            | InvalidationReasonKind::StructuredTableRowMembershipChanged
+            | InvalidationReasonKind::StructuredTableRowOrderChanged
+            | InvalidationReasonKind::StructuredTableColumnChanged
+            | InvalidationReasonKind::StructuredTableRegionChanged
+            | InvalidationReasonKind::StructuredTableCallerContextChanged
     )
 }
 

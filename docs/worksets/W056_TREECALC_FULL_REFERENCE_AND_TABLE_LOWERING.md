@@ -122,6 +122,35 @@ W056 beads. In particular:
    workspace availability and selector dependency models are specified and
    exercised.
 
+## 4B. `calc-4vs8.2` Structured Table Lowering Surface
+
+The second W056 tranche adds the first OxCalc-owned typed structured table
+dependency-lowering surface in `src/oxcalc-core/src/structured_table.rs`.
+
+Current implemented scope:
+
+1. consumes only public OxFml table-context packet types:
+   `table_catalog`, `enclosing_table_ref`, and `caller_table_region`,
+2. accepts a normalized `StructuredTableReferenceIntake` from the host/OxFml
+   bind path rather than parsing formula text or mirroring structured-reference
+   grammar,
+3. lowers available facts for table identity, selected column identity, header
+   text, data region, caller row context for `#This Row`, and omitted-table-name
+   enclosing-table dependency,
+4. preserves table dependencies as context-only dependency descriptors so the
+   dependency graph retains them without inventing TreeNodeId reverse edges,
+5. records typed blockers for facts not present in the current public packet:
+   stable row membership, row order, exact header-row region identity, and exact
+   totals-row region identity.
+
+Current non-claim:
+
+This is an implemented OxCalc intake/lowering surface for the current generic
+packet, not full structured table behavior. Full behavior remains blocked until
+the upstream packet supplies stable row membership/order and exact region
+identity, and until OxFml emits exercised normalized structured-reference bind
+packets for the selected table/columns/regions.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -142,20 +171,25 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress for `calc-4vs8.1`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.2`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
-implementation-input inventory for the broader reference family. This is not a
-full-reference/table-lowering product claim.
+implementation-input inventory for the broader reference family and a first
+structured table-context dependency-lowering surface for the current generic
+OxFml table packet. This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
 value dependency descriptors, reference-preserving formal input binding,
 OxFml sparse reference-values binding, OxFunc aggregate consumption, and
 membership/order invalidation facts. `calc-4vs8.1` adds focused Rust tests for
 the W056 inventory, concrete `TreeReference` mapping, and `ChildrenV1`
-handle/dependency/invalidation correlation facts.
+handle/dependency/invalidation correlation facts. `calc-4vs8.2` adds focused
+Rust tests for available table fact lowering, typed blocker emission for missing
+row/region packet facts, graph retention of context-only descriptors, and
+omitted-table-name enclosing context failure.
 
 Still open: dependency/reverse-edge widening, invalidation and dynamic rebind
-widening, namespace/caller-context prepared-identity invalidation, structured
-table lowering, W074/W036 intake, and end-to-end scenarios.
+widening, namespace/caller-context prepared-identity invalidation, stable table
+row membership/order and exact header/totals region packet support, W074/W036
+intake, and end-to-end scenarios.
 
 Formal status: no proof claim.

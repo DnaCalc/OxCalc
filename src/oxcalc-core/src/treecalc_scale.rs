@@ -1377,6 +1377,16 @@ fn descriptor_kind_name(kind: DependencyDescriptorKind) -> &'static str {
         DependencyDescriptorKind::TreeReferenceCollectionMemberValue => {
             "TreeReferenceCollectionMemberValue"
         }
+        DependencyDescriptorKind::StructuredTableIdentity => "StructuredTableIdentity",
+        DependencyDescriptorKind::StructuredTableRowMembership => "StructuredTableRowMembership",
+        DependencyDescriptorKind::StructuredTableRowOrder => "StructuredTableRowOrder",
+        DependencyDescriptorKind::StructuredTableColumnIdentity => "StructuredTableColumnIdentity",
+        DependencyDescriptorKind::StructuredTableHeaderText => "StructuredTableHeaderText",
+        DependencyDescriptorKind::StructuredTableHeaderRegion => "StructuredTableHeaderRegion",
+        DependencyDescriptorKind::StructuredTableDataRegion => "StructuredTableDataRegion",
+        DependencyDescriptorKind::StructuredTableTotalsRegion => "StructuredTableTotalsRegion",
+        DependencyDescriptorKind::StructuredTableCallerContext => "StructuredTableCallerContext",
+        DependencyDescriptorKind::StructuredTableEnclosingTable => "StructuredTableEnclosingTable",
         DependencyDescriptorKind::DynamicPotential => "DynamicPotential",
         DependencyDescriptorKind::HostSensitive => "HostSensitive",
         DependencyDescriptorKind::CapabilitySensitive => "CapabilitySensitive",

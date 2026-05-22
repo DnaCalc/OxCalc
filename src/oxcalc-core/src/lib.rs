@@ -19,6 +19,7 @@ pub mod recalc;
 pub mod recalc_wave;
 pub mod repository;
 pub mod rich_value_capability;
+pub mod sparse_reader;
 pub mod stream_semantics;
 pub mod structural;
 pub mod treecalc;

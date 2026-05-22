@@ -482,17 +482,21 @@ Evidence: W050 provides prepared runtime identity and formal input/reference
 transport. Current code now adds `ChildrenV1` to the OxCalc formula substrate,
 lowers it into collection-membership plus current-member value descriptors,
 preserves the runtime formal input as an opaque structured `ReferenceLike`, and
-emits local invalidation reasons for membership versus order changes. Focused
-checks:
-`cargo test -p oxcalc-core children_collection -- --nocapture`. The
-HANDOFF-CALC-005 receipt accepts the generic host-context direction and routes
-final name/call precedence evidence to W074. The DNA TreeCalc bridge still
-uses a temporary prepared-formula smoke carrier rather than the target
-formula-text-to-OxFml path.
+emits local invalidation reasons for membership versus order changes. The first
+W051 implementation bead adds `src/oxcalc-core/src/sparse_reader.rs` with the
+shared reader surface, worksheet large-range adapter, defined-versus-blank
+state, deterministic defined iteration, stable reader identity, and access
+telemetry for non-dense evidence. Focused checks:
+`cargo test -p oxcalc-core children_collection -- --nocapture` and
+`cargo test -p oxcalc-core sparse_reader`. The HANDOFF-CALC-005 receipt accepts
+the generic host-context direction and routes final name/call precedence
+evidence to W074. The DNA TreeCalc bridge still uses a temporary
+prepared-formula smoke carrier rather than the target formula-text-to-OxFml
+path.
 
-Still open: sparse worksheet reader contract, OxCalc sparse adapter
-implementation, OxFml resolver/materialization threading for the public
-runtime path, OxFunc sparse/reference admission activation for the first
+Still open: TreeCalc `ChildrenV1` reader adapter over the shared
+`SparseRangeReader` surface, OxFml resolver/materialization threading for the
+public runtime path, OxFunc sparse/reference admission activation for the first
 function group, end-to-end `SUM(@CHILDREN)` evidence through generic
 `HostFormulaContext`, and the W074-CALC005 Excel oracle matrix for
 built-in/UDF/defined-name/defined-name-`LAMBDA` shadowing. The `ReferenceLike`

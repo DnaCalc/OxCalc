@@ -134,9 +134,9 @@ Current implemented scope:
 1. consumes only public OxFml table-context packet types:
    `table_catalog`, `enclosing_table_ref`, `caller_table_region`, stable row
    membership/order identities, and exact header/totals region refs,
-2. accepts a normalized `StructuredTableReferenceIntake` from the host/OxFml
-   bind path rather than parsing formula text or mirroring structured-reference
-   grammar,
+2. accepts public OxFml `StructuredReferenceBindRecord` packets and maps them
+   into normalized `StructuredTableReferenceIntake` values rather than parsing
+   formula text or mirroring structured-reference grammar,
 3. lowers available facts for table identity, stable row membership, stable row
    order, selected column identity, header text, exact header region, data
    region, exact totals region, caller row context for `#This Row`, and
@@ -150,11 +150,12 @@ Current implemented scope:
 Current non-claim:
 
 This is an implemented OxCalc intake/lowering surface for the current generic
-packet, including the stable table fact fields added by OxFml `fml-ds0.8`.
-It is not full structured table behavior. Full behavior remains blocked until
-OxFml emits exercised normalized structured-reference bind packets for the
-selected table/columns/regions and the DnaTreeCalc/OxReplay retained table
-evidence runs through the real bridge.
+packet, including the stable table fact fields added by OxFml `fml-ds0.8` and
+the exercised normalized structured-reference bind packets added by OxFml
+`fml-ds0.9`. It is not full structured table behavior. Full behavior remains
+blocked until DnaTreeCalc/OxReplay retained table evidence runs through the
+real bridge and the remaining W056 cross-workspace/name/selector surfaces are
+exercised.
 
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
@@ -185,13 +186,15 @@ Current non-claim:
 
 This is an implemented typed OxCalc surface over current descriptors and graph
 facts. It is not full runtime behavior for every W056 carrier. End-to-end
-runtime closure remains blocked where OxFml has not yet emitted exercised
-generic host-reference, structured-reference, final name/call precedence, or
-cross-workspace oracle packet surfaces. The bounded W074 registry/capability
-slice is no longer missing: OxFml `fml-ds0.7` at commit `9da8456` proves
-runtime registry-view formula-call admission and capability-denied
-classification, but it intentionally does not freeze built-in/UDF/defined-name
-or defined-name-`LAMBDA` precedence or TreeCalc name/call semantics.
+runtime closure remains blocked where the cross-repo program has not yet
+emitted exercised generic host-reference, final name/call precedence,
+cross-workspace oracle packet surfaces, selector dependency models, or
+retained full-bridge evidence. The bounded W074 registry/capability slice is
+no longer missing: OxFml `fml-ds0.7` at commit `9da8456` proves runtime
+registry-view formula-call admission and capability-denied classification, and
+OxFml `fml-ds0.9` at commit `6895e6a` proves normalized structured-reference
+bind packet projection, but neither freezes built-in/UDF/defined-name or
+defined-name-`LAMBDA` precedence or TreeCalc name/call semantics.
 
 ## 4D. `calc-4vs8.6` Runtime Prepared-Identity Contribution
 
@@ -345,13 +348,21 @@ focused Rust coverage proving row membership, row order, exact header region,
 and exact totals region lower as context dependency descriptors when supplied,
 while typed blockers remain for legacy packets where those optional facts are
 absent.
+`calc-4vs8.9` consumes OxFml `fml-ds0.9` structured-reference bind packets and
+adds focused Rust coverage proving explicit table, omitted table-name,
+`#This Row`, selected section/region, selected column, handle-correlation, and
+diagnostic-bearing unresolved records map into OxCalc table lowering without
+formula-text parsing. Omitted table-name packets preserve OxFml's bound
+effective table id as the lowering target and separately validate the enclosing
+table context, surfacing a typed blocker if those packet facts disagree.
 
 Still open: W074 final name/call precedence evidence, exercised OxFml
-structured-reference bind packets, a versioned cross-workspace
-availability/degradation model, selector dependency models for recursive and
-sibling/preceding/following set selectors, full OxCalc-owned explicit path
-resolution for raw `base` text, DnaTreeCalc receiving-side corpus activation
-for the new OxCalc prebind surface and table packets, and broader end-to-end
-scenarios. Blocker `calc-4vs8.5` remains open after `calc-4vs8.4` closure.
+host-reference packets beyond the admitted children/table slices, a versioned
+cross-workspace availability/degradation model, selector dependency models for
+recursive and sibling/preceding/following set selectors, full OxCalc-owned
+explicit path resolution for raw `base` text, DnaTreeCalc receiving-side corpus
+activation for the new OxCalc prebind surface and table packets, and broader
+end-to-end scenarios. Blocker `calc-4vs8.5` remains open after
+`calc-4vs8.9` closure.
 
 Formal status: no proof claim.

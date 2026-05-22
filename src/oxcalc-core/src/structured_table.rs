@@ -7,7 +7,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use oxfml_core::interface::{TableCallerRegion, TableDescriptor, TableRef, TableRegionKind};
+use oxfml_core::{
+    StructuredReferenceBindRecord, StructuredSectionKind,
+    interface::{TableCallerRegion, TableDescriptor, TableRef, TableRegionKind},
+};
 
 use crate::dependency::{DependencyDescriptor, DependencyDescriptorKind};
 use crate::structural::TreeNodeId;
@@ -47,6 +50,7 @@ impl StructuredTableContextPacket {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum StructuredTableRegionSelection {
+    All,
     Headers,
     Data,
     Totals,
@@ -55,11 +59,25 @@ pub enum StructuredTableRegionSelection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructuredTableReferenceIntake {
     pub reference_handle: String,
+    pub effective_table_ref: Option<TableRef>,
     pub explicit_table_ref: Option<TableRef>,
     pub uses_omitted_table_name: bool,
     pub selected_column_ids: Vec<String>,
     pub selected_regions: BTreeSet<StructuredTableRegionSelection>,
     pub uses_this_row: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StructuredTableBindRecordIntakeError {
+    UnresolvedStructuredReference {
+        bind_record_handle: String,
+        source_token_text: String,
+        diagnostic_codes: Vec<String>,
+    },
+    MissingEffectiveTableId {
+        bind_record_handle: String,
+        source_token_text: String,
+    },
 }
 
 impl StructuredTableReferenceIntake {
@@ -68,11 +86,13 @@ impl StructuredTableReferenceIntake {
         reference_handle: impl Into<String>,
         table_id: impl Into<String>,
     ) -> Self {
+        let table_id = table_id.into();
         Self {
             reference_handle: reference_handle.into(),
             explicit_table_ref: Some(TableRef {
-                table_id: table_id.into(),
+                table_id: table_id.clone(),
             }),
+            effective_table_ref: Some(TableRef { table_id }),
             uses_omitted_table_name: false,
             selected_column_ids: Vec::new(),
             selected_regions: BTreeSet::new(),
@@ -84,6 +104,7 @@ impl StructuredTableReferenceIntake {
     pub fn omitted_table_name(reference_handle: impl Into<String>) -> Self {
         Self {
             reference_handle: reference_handle.into(),
+            effective_table_ref: None,
             explicit_table_ref: None,
             uses_omitted_table_name: true,
             selected_column_ids: Vec::new(),
@@ -112,6 +133,53 @@ impl StructuredTableReferenceIntake {
         self.uses_this_row = true;
         self
     }
+
+    pub fn from_oxfml_bind_record(
+        record: &StructuredReferenceBindRecord,
+    ) -> Result<Self, StructuredTableBindRecordIntakeError> {
+        if !record.diagnostics.is_empty() {
+            return Err(
+                StructuredTableBindRecordIntakeError::UnresolvedStructuredReference {
+                    bind_record_handle: record.bind_record_handle.clone(),
+                    source_token_text: record.source_token_text.clone(),
+                    diagnostic_codes: record
+                        .diagnostics
+                        .iter()
+                        .map(|diagnostic| diagnostic.diagnostic_code.clone())
+                        .collect(),
+                },
+            );
+        }
+
+        let Some(effective_table_id) = record.effective_table_id.clone() else {
+            return Err(
+                StructuredTableBindRecordIntakeError::MissingEffectiveTableId {
+                    bind_record_handle: record.bind_record_handle.clone(),
+                    source_token_text: record.source_token_text.clone(),
+                },
+            );
+        };
+
+        let selected_regions = structured_table_regions_from_oxfml_record(record);
+
+        Ok(Self {
+            reference_handle: record.bind_record_handle.clone(),
+            effective_table_ref: Some(TableRef {
+                table_id: effective_table_id.clone(),
+            }),
+            explicit_table_ref: (!record.omitted_table_name).then_some(TableRef {
+                table_id: effective_table_id,
+            }),
+            uses_omitted_table_name: record.omitted_table_name,
+            selected_column_ids: record.selected_column_ids.clone(),
+            selected_regions,
+            uses_this_row: record.uses_this_row
+                || record.caller_context_dependent
+                || record
+                    .selected_sections
+                    .contains(&StructuredSectionKind::ThisRow),
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,6 +188,22 @@ pub struct StructuredTableDependencyLoweringRequest {
     pub source_reference_handle: Option<String>,
     pub context_packet: StructuredTableContextPacket,
     pub reference: StructuredTableReferenceIntake,
+}
+
+impl StructuredTableDependencyLoweringRequest {
+    pub fn from_oxfml_bind_record(
+        owner_node_id: TreeNodeId,
+        context_packet: StructuredTableContextPacket,
+        record: &StructuredReferenceBindRecord,
+    ) -> Result<Self, StructuredTableBindRecordIntakeError> {
+        let reference = StructuredTableReferenceIntake::from_oxfml_bind_record(record)?;
+        Ok(Self {
+            owner_node_id,
+            source_reference_handle: Some(record.bind_record_handle.clone()),
+            context_packet,
+            reference,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -176,6 +260,7 @@ pub enum StructuredTableLoweringBlocker {
     CallerTableMismatch,
     CallerRegionNotData,
     CallerDataRowOffsetMissing,
+    OmittedTableEnclosingMismatch,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -292,9 +377,16 @@ pub fn lower_structured_table_dependencies(
 fn resolved_table_id(request: &StructuredTableDependencyLoweringRequest) -> Option<String> {
     request
         .reference
-        .explicit_table_ref
+        .effective_table_ref
         .as_ref()
         .map(|table_ref| table_ref.table_id.clone())
+        .or_else(|| {
+            request
+                .reference
+                .explicit_table_ref
+                .as_ref()
+                .map(|table_ref| table_ref.table_id.clone())
+        })
         .or_else(|| {
             request
                 .reference
@@ -423,11 +515,24 @@ fn push_region_facts(
     table: &TableDescriptor,
     facts: &mut Vec<StructuredTableDependencyFact>,
 ) {
-    if request
+    let selects_all = request
         .reference
         .selected_regions
-        .contains(&StructuredTableRegionSelection::Headers)
-    {
+        .contains(&StructuredTableRegionSelection::All);
+    let selects_headers = request
+        .reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::Headers);
+    let selects_data = request
+        .reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::Data);
+    let selects_totals = request
+        .reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::Totals);
+
+    if selects_headers || (selects_all && table.header_row_present) {
         if table.header_row_present {
             for column in selected_columns_or_all(request, table) {
                 facts.push(StructuredTableDependencyFact::lowered(
@@ -479,11 +584,7 @@ fn push_region_facts(
         }
     }
 
-    if request
-        .reference
-        .selected_regions
-        .contains(&StructuredTableRegionSelection::Data)
-    {
+    if selects_data || selects_all {
         let ranges = selected_columns_or_all(request, table)
             .into_iter()
             .map(|column| format!("{}={}", column.column_id, column.column_range_ref))
@@ -502,11 +603,7 @@ fn push_region_facts(
         ));
     }
 
-    if request
-        .reference
-        .selected_regions
-        .contains(&StructuredTableRegionSelection::Totals)
-    {
+    if selects_totals || (selects_all && table.totals_row_present) {
         if !table.totals_row_present {
             facts.push(StructuredTableDependencyFact::blocked(
                 fact_id(request, "totals_region", &table.table_id),
@@ -640,6 +737,23 @@ fn push_enclosing_table_fact(
         return;
     };
 
+    if let Some(effective_table_ref) = request.reference.effective_table_ref.as_ref()
+        && enclosing_table_ref.table_id != effective_table_ref.table_id
+    {
+        facts.push(StructuredTableDependencyFact::blocked(
+            fact_id(request, "enclosing_table", &table.table_id),
+            StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable,
+            Some(table.table_id.clone()),
+            None,
+            StructuredTableLoweringBlocker::OmittedTableEnclosingMismatch,
+            format!(
+                "omitted table-name bind record resolved table_id={} but enclosing_table_ref table_id={}",
+                effective_table_ref.table_id, enclosing_table_ref.table_id
+            ),
+        ));
+        return;
+    }
+
     facts.push(StructuredTableDependencyFact::lowered(
         fact_id(request, "enclosing_table", &table.table_id),
         StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable,
@@ -671,6 +785,59 @@ fn selected_columns_or_all<'a>(
         .iter()
         .filter(|column| selected.contains(&column.column_id))
         .collect()
+}
+
+fn structured_table_regions_from_oxfml_sections(
+    sections: &[StructuredSectionKind],
+    caller_row_sensitive: bool,
+) -> BTreeSet<StructuredTableRegionSelection> {
+    let mut regions = BTreeSet::new();
+
+    if sections.is_empty() {
+        regions.insert(StructuredTableRegionSelection::Data);
+    }
+
+    for section in sections {
+        match section {
+            StructuredSectionKind::All => {
+                regions.insert(StructuredTableRegionSelection::All);
+            }
+            StructuredSectionKind::Data => {
+                regions.insert(StructuredTableRegionSelection::Data);
+            }
+            StructuredSectionKind::Headers => {
+                regions.insert(StructuredTableRegionSelection::Headers);
+            }
+            StructuredSectionKind::Totals => {
+                regions.insert(StructuredTableRegionSelection::Totals);
+            }
+            StructuredSectionKind::ThisRow => {
+                regions.insert(StructuredTableRegionSelection::Data);
+            }
+        }
+    }
+
+    if caller_row_sensitive {
+        regions.insert(StructuredTableRegionSelection::Data);
+    }
+
+    regions
+}
+
+fn structured_table_regions_from_oxfml_record(
+    record: &StructuredReferenceBindRecord,
+) -> BTreeSet<StructuredTableRegionSelection> {
+    let mut sections = record.selected_sections.clone();
+    for selected_region in &record.selected_regions {
+        if !sections.contains(&selected_region.section_kind) {
+            sections.push(selected_region.section_kind);
+        }
+    }
+
+    structured_table_regions_from_oxfml_sections(
+        &sections,
+        record.uses_this_row || record.caller_context_dependent,
+    )
 }
 
 fn lowering_from_facts(
@@ -789,7 +956,11 @@ fn table_context_identity(
 
 #[cfg(test)]
 mod tests {
-    use oxfml_core::interface::{TableColumnDescriptor, TableRegionKind};
+    use oxfml_core::{
+        StructuredReferenceBindDiagnosticLink, StructuredReferenceSelectedRegion,
+        interface::{TableColumnDescriptor, TableRegionKind},
+        syntax::token::TextSpan,
+    };
 
     use super::*;
     use crate::dependency::DependencyGraph;
@@ -852,6 +1023,40 @@ mod tests {
                 }),
             ),
             reference,
+        }
+    }
+
+    fn oxfml_bind_record(
+        bind_record_handle: &str,
+        source_token_text: &str,
+        explicit_table_name: Option<&str>,
+        omitted_table_name: bool,
+        selected_column_ids: impl IntoIterator<Item = String>,
+        selected_sections: impl IntoIterator<Item = StructuredSectionKind>,
+    ) -> StructuredReferenceBindRecord {
+        let selected_sections = selected_sections.into_iter().collect::<Vec<_>>();
+        StructuredReferenceBindRecord {
+            bind_record_handle: bind_record_handle.to_string(),
+            source_span_utf8: TextSpan::new(1, source_token_text.len()),
+            source_token_text: source_token_text.to_string(),
+            explicit_table_name: explicit_table_name.map(str::to_string),
+            omitted_table_name,
+            effective_table_id: Some("table:sales".to_string()),
+            effective_table_name: Some("Sales".to_string()),
+            selected_column_ids: selected_column_ids.into_iter().collect(),
+            selected_regions: selected_sections
+                .iter()
+                .map(|section_kind| StructuredReferenceSelectedRegion {
+                    section_kind: *section_kind,
+                    region_ref: None,
+                    column_range_refs: vec!["B2:B4".to_string()],
+                })
+                .collect(),
+            selected_sections,
+            uses_this_row: false,
+            caller_context_dependent: false,
+            resolved_reference: None,
+            diagnostics: Vec::new(),
         }
     }
 
@@ -1066,6 +1271,267 @@ mod tests {
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.edges_by_owner.len(), 0);
         assert_eq!(graph.descriptors_by_owner[&TreeNodeId(10)].len(), 5);
+    }
+
+    #[test]
+    fn maps_explicit_oxfml_bind_record_to_table_lowering_request() {
+        let record = oxfml_bind_record(
+            "structured-ref:explicit-all",
+            "Sales[[#All],[Amount]]",
+            Some("Sales"),
+            false,
+            ["table:sales:col:amount".to_string()],
+            [StructuredSectionKind::All],
+        );
+
+        let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(10),
+            StructuredTableContextPacket::from_oxfml_table_packet(
+                vec![table()],
+                Some(TableRef {
+                    table_id: "table:sales".to_string(),
+                }),
+                Some(TableCallerRegion {
+                    table_id: "table:sales".to_string(),
+                    region_kind: TableRegionKind::Data,
+                    data_row_offset: Some(1),
+                }),
+            ),
+            &record,
+        )
+        .expect("resolved structured bind record maps to intake");
+
+        assert_eq!(
+            request.reference.explicit_table_ref,
+            Some(TableRef {
+                table_id: "table:sales".to_string()
+            })
+        );
+        assert_eq!(
+            request.source_reference_handle.as_deref(),
+            Some("structured-ref:explicit-all")
+        );
+        assert!(
+            request
+                .reference
+                .selected_regions
+                .contains(&StructuredTableRegionSelection::All)
+        );
+
+        let lowering = lower_structured_table_dependencies(&request);
+
+        assert!(
+            lowering
+                .descriptors
+                .iter()
+                .all(|descriptor| descriptor.source_reference_handle.as_deref()
+                    == Some("structured-ref:explicit-all"))
+        );
+        assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableHeaderRegion)
+        );
+        assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableTotalsRegion)
+        );
+    }
+
+    #[test]
+    fn all_section_omits_absent_optional_table_regions_without_blocking() {
+        let record = oxfml_bind_record(
+            "structured-ref:explicit-all-no-totals",
+            "Sales[[#All],[Amount]]",
+            Some("Sales"),
+            false,
+            ["table:sales:col:amount".to_string()],
+            [StructuredSectionKind::All],
+        );
+        let mut table = table();
+        table.totals_row_present = false;
+        table.totals_region_ref = None;
+
+        let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(10),
+            StructuredTableContextPacket::from_oxfml_table_packet(
+                vec![table],
+                Some(TableRef {
+                    table_id: "table:sales".to_string(),
+                }),
+                Some(TableCallerRegion {
+                    table_id: "table:sales".to_string(),
+                    region_kind: TableRegionKind::Data,
+                    data_row_offset: Some(1),
+                }),
+            ),
+            &record,
+        )
+        .expect("resolved #All bind record maps to intake");
+
+        let lowering = lower_structured_table_dependencies(&request);
+
+        assert!(lowering.blocked_facts().is_empty());
+        assert!(
+            lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableHeaderRegion)
+        );
+        assert!(lowering.descriptors.iter().any(
+            |descriptor| descriptor.kind == DependencyDescriptorKind::StructuredTableDataRegion
+        ));
+        assert!(
+            !lowering.descriptors.iter().any(|descriptor| descriptor.kind
+                == DependencyDescriptorKind::StructuredTableTotalsRegion)
+        );
+    }
+
+    #[test]
+    fn maps_omitted_this_row_oxfml_bind_record_to_caller_and_enclosing_context() {
+        let mut record = oxfml_bind_record(
+            "structured-ref:omitted-this-row",
+            "[@Amount]",
+            None,
+            true,
+            ["table:sales:col:amount".to_string()],
+            [StructuredSectionKind::ThisRow],
+        );
+        record.uses_this_row = true;
+        record.caller_context_dependent = true;
+
+        let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(10),
+            StructuredTableContextPacket::from_oxfml_table_packet(
+                vec![table()],
+                Some(TableRef {
+                    table_id: "table:sales".to_string(),
+                }),
+                Some(TableCallerRegion {
+                    table_id: "table:sales".to_string(),
+                    region_kind: TableRegionKind::Data,
+                    data_row_offset: Some(2),
+                }),
+            ),
+            &record,
+        )
+        .expect("omitted table-name record maps to intake");
+
+        assert_eq!(request.reference.explicit_table_ref, None);
+        assert_eq!(
+            request.reference.effective_table_ref,
+            Some(TableRef {
+                table_id: "table:sales".to_string()
+            })
+        );
+        assert!(request.reference.uses_omitted_table_name);
+        assert!(request.reference.uses_this_row);
+        assert!(
+            request
+                .reference
+                .selected_regions
+                .contains(&StructuredTableRegionSelection::Data)
+        );
+
+        let lowering = lower_structured_table_dependencies(&request);
+        let lowered_kinds = lowering
+            .facts
+            .iter()
+            .filter(|fact| fact.status == StructuredTableDependencyFactStatus::Lowered)
+            .map(|fact| fact.kind)
+            .collect::<BTreeSet<_>>();
+
+        assert!(lowered_kinds.contains(&StructuredTableDependencyFactKind::CallerRowContext));
+        assert!(
+            lowered_kinds
+                .contains(&StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable)
+        );
+    }
+
+    #[test]
+    fn omitted_bind_record_uses_effective_table_and_blocks_enclosing_mismatch() {
+        let record = oxfml_bind_record(
+            "structured-ref:omitted-mismatch",
+            "[Amount]",
+            None,
+            true,
+            ["table:sales:col:amount".to_string()],
+            [StructuredSectionKind::Data],
+        );
+        let mut other_table = table();
+        other_table.table_id = "table:inventory".to_string();
+        other_table.table_name = "Inventory".to_string();
+
+        let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(10),
+            StructuredTableContextPacket::from_oxfml_table_packet(
+                vec![table(), other_table],
+                Some(TableRef {
+                    table_id: "table:inventory".to_string(),
+                }),
+                None,
+            ),
+            &record,
+        )
+        .expect("omitted table-name record keeps its effective table target");
+
+        assert_eq!(request.reference.explicit_table_ref, None);
+        assert_eq!(
+            request.reference.effective_table_ref,
+            Some(TableRef {
+                table_id: "table:sales".to_string()
+            })
+        );
+
+        let lowering = lower_structured_table_dependencies(&request);
+
+        assert!(lowering.facts.iter().any(|fact| {
+            fact.kind == StructuredTableDependencyFactKind::TableIdentity
+                && fact.status == StructuredTableDependencyFactStatus::Lowered
+                && fact.table_id.as_deref() == Some("table:sales")
+        }));
+        assert!(!lowering.facts.iter().any(|fact| {
+            fact.kind == StructuredTableDependencyFactKind::TableIdentity
+                && fact.status == StructuredTableDependencyFactStatus::Lowered
+                && fact.table_id.as_deref() == Some("table:inventory")
+        }));
+        assert!(lowering.facts.iter().any(|fact| {
+            fact.kind == StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable
+                && fact.status == StructuredTableDependencyFactStatus::Blocked
+                && fact.blocker
+                    == Some(StructuredTableLoweringBlocker::OmittedTableEnclosingMismatch)
+        }));
+    }
+
+    #[test]
+    fn rejects_diagnostic_oxfml_bind_record_before_dependency_lowering() {
+        let mut record = oxfml_bind_record(
+            "structured-ref:missing",
+            "Missing[Amount]",
+            Some("Missing"),
+            false,
+            [],
+            [StructuredSectionKind::Data],
+        );
+        record.effective_table_id = None;
+        record.diagnostics = vec![StructuredReferenceBindDiagnosticLink {
+            diagnostic_code: "structured_reference_bind_error".to_string(),
+            message: "unknown table".to_string(),
+            source_span_utf8: TextSpan::new(1, "Missing[Amount]".len()),
+        }];
+
+        let error = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(10),
+            StructuredTableContextPacket::from_oxfml_table_packet(vec![table()], None, None),
+            &record,
+        )
+        .expect_err("diagnostic bind records are not dependency-lowering inputs");
+
+        assert_eq!(
+            error,
+            StructuredTableBindRecordIntakeError::UnresolvedStructuredReference {
+                bind_record_handle: "structured-ref:missing".to_string(),
+                source_token_text: "Missing[Amount]".to_string(),
+                diagnostic_codes: vec!["structured_reference_bind_error".to_string()],
+            }
+        );
     }
 
     #[test]

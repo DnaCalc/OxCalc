@@ -1653,3 +1653,41 @@ Current non-assumptions:
    first lowering surface.
 4. OxFunc remains outside workbook table-object ownership and should consume
    only normalized reference/value consequences downstream.
+
+## 83. W056 Dependency, Invalidation, And Dynamic Rebind Intake
+
+OxCalc has added the first typed W056 dependency/reverse-edge/invalidation
+projection for admitted TreeReference carriers.
+
+Current OxCalc code shape:
+1. `src/oxcalc-core/src/tree_reference_rebind.rs` projects public OxCalc
+   dependency descriptors and `DependencyGraph` facts into W056 descriptor
+   facts.
+2. The projection records target reverse edges for concrete `TreeNodeId`
+   dependencies and context reverse edges for retained context-only facts such
+   as structured table, runtime fact, unresolved, and dynamic-potential
+   descriptors.
+3. The projection records namespace and caller-context identity needs as
+   prepared-identity invalidation inputs.
+4. Dynamic references are classified as unresolved dynamic potential or
+   resolved dynamic target edges with typed activation, release,
+   reclassification, and upstream-publication invalidation facts.
+5. Cross-workspace references remain a typed blocker pending a versioned
+   workspace availability/degradation model.
+
+Current OxCalc gap routed to OxFml-facing packet/oracle work:
+1. generic host-reference and structured-reference bind packets still need
+   exercised runtime/oracle examples for the wider W056 carrier set,
+2. W074 name/call precedence remains required before bare names or callable
+   TreeCalc host references can be product-admitted,
+3. structured-reference packets still need stable row membership/order and
+   exact header/totals region identity as noted in Section 82,
+4. cross-workspace references need a public availability/degradation packet
+   before OxCalc can do more than preserve typed blockers.
+
+Current non-assumptions:
+1. OxCalc is not parsing OxFml private strings.
+2. OxCalc is not duplicating name/call precedence.
+3. OxCalc is not adding TreeCalc-only OxFml/OxFunc shims.
+4. OxCalc is not claiming W056 full-reference/table-lowering closure from this
+   typed projection alone.

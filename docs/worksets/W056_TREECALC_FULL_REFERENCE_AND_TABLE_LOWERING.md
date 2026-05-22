@@ -151,6 +151,39 @@ the upstream packet supplies stable row membership/order and exact region
 identity, and until OxFml emits exercised normalized structured-reference bind
 packets for the selected table/columns/regions.
 
+## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
+
+The third W056 tranche adds the first OxCalc-owned typed projection over the
+dependency graph for the admitted TreeReference carrier families in
+`src/oxcalc-core/src/tree_reference_rebind.rs`.
+
+Current implemented scope:
+
+1. projects existing `DependencyGraph` descriptors into typed W056 descriptor
+   facts with source-reference handle, target, descriptor kind, namespace
+   identity need, caller-context identity need, invalidation facts, and
+   prepared-identity invalidation consequence,
+2. exposes target reverse-edge facts for concrete `TreeNodeId` dependencies
+   and context reverse-edge facts for retained context-only descriptors such
+   as structured table and runtime-fact carriers,
+3. exposes dynamic rebind facts that distinguish unresolved dynamic potential
+   from resolved dynamic target edges and list the activation, release,
+   reclassification, and upstream-publication invalidation facts,
+4. groups host namespace, structure-context, resolution-rule,
+   capability-profile, table-context, cross-workspace, and caller-context
+   identity requirements as prepared-identity invalidation inputs,
+5. preserves cross-workspace references as a typed blocker requiring a
+   versioned cross-workspace availability/degradation model rather than
+   inventing an executable fallback.
+
+Current non-claim:
+
+This is an implemented typed OxCalc surface over current descriptors and graph
+facts. It is not full runtime behavior for every W056 carrier. End-to-end
+runtime closure remains blocked where OxFml has not yet emitted exercised
+generic host-reference, structured-reference, name/call precedence, or
+cross-workspace oracle packet surfaces.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -171,11 +204,13 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.2`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.3`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
-implementation-input inventory for the broader reference family and a first
+implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
-OxFml table packet. This is not a full-reference/table-lowering product claim.
+OxFml table packet, and a typed dependency/reverse-edge/invalidation/rebind
+projection over current OxCalc graph facts. This is not a
+full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
 value dependency descriptors, reference-preserving formal input binding,
@@ -185,11 +220,17 @@ the W056 inventory, concrete `TreeReference` mapping, and `ChildrenV1`
 handle/dependency/invalidation correlation facts. `calc-4vs8.2` adds focused
 Rust tests for available table fact lowering, typed blocker emission for missing
 row/region packet facts, graph retention of context-only descriptors, and
-omitted-table-name enclosing context failure.
+omitted-table-name enclosing context failure. `calc-4vs8.3` adds focused Rust
+tests for target reverse-edge facts, context reverse-edge facts,
+namespace/caller-context prepared-identity inputs, dynamic potential versus
+resolved dynamic rebind facts, and cross-workspace typed blocker preservation.
 
-Still open: dependency/reverse-edge widening, invalidation and dynamic rebind
-widening, namespace/caller-context prepared-identity invalidation, stable table
-row membership/order and exact header/totals region packet support, W074/W036
-intake, and end-to-end scenarios.
+Still open: applying the W056 dependency/rebind projection as a runtime
+prepared-package invalidation gate, stable table row membership/order and exact
+header/totals region packet support, W074 name/call precedence evidence,
+exercised OxFml structured-reference bind packets, a versioned
+cross-workspace availability/degradation model, selector dependency models for
+recursive and sibling/preceding/following set selectors, and end-to-end
+scenarios.
 
 Formal status: no proof claim.

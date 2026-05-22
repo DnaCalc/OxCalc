@@ -188,6 +188,14 @@ claim. Structured table references are explicitly routed to W056 bead
 caller-context widening are routed to `calc-4vs8.3`; bare name/callable
 references remain gated on OxFml W074-CALC005 evidence.
 
+`calc-4vs8.3` adds the first typed dependency/rebind projection in
+`src/oxcalc-core/src/tree_reference_rebind.rs`. That surface preserves target
+reverse edges, context-only reverse edges, descriptor-level invalidation facts,
+dynamic potential versus resolved dynamic rebind state, and prepared-identity
+inputs for host namespace, structure context, capability profile,
+table-context, cross-workspace availability, and caller context. It is a typed
+OxCalc runtime input surface, not a full end-to-end W056 product claim.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

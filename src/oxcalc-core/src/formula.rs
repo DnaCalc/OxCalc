@@ -150,6 +150,21 @@ pub fn prebind_treecalc_formula_text_with_resolved_bases(
     prebind_treecalc_formula_text_with_context(owner_node_id, source_text, &context)
 }
 
+#[must_use]
+pub fn treecalc_formula_text_qualified_children_base_queries(
+    owner_node_id: TreeNodeId,
+    source_text: impl AsRef<str>,
+) -> Vec<TreeCalcQualifiedChildrenBaseQuery> {
+    let source_text = source_text.as_ref();
+    scan_treecalc_formula_text(source_text, owner_node_id)
+        .children_references
+        .iter()
+        .filter_map(|reference| {
+            TreeCalcQualifiedChildrenBaseQuery::from_raw_reference(source_text, reference)
+        })
+        .collect()
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcFormulaTextPrebindContext {
     #[serde(default)]
@@ -199,6 +214,60 @@ pub struct TreeCalcQualifiedChildrenBaseResolution {
     pub base_node_id: TreeNodeId,
     pub resolution_layer: TreeCalcQualifiedBaseResolutionLayer,
     pub resolution_identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcQualifiedChildrenBaseQuery {
+    pub source_span_utf8: (usize, usize),
+    pub base_span_utf8: (usize, usize),
+    pub selector_span_utf8: (usize, usize),
+    pub source_token_text: String,
+    pub base_token_text: String,
+    pub selector_token_text: String,
+}
+
+impl TreeCalcQualifiedChildrenBaseQuery {
+    fn from_raw_reference(source_text: &str, reference: &RawChildrenReference) -> Option<Self> {
+        let RawChildrenReferenceBase::Qualified = reference.base else {
+            return None;
+        };
+        let base_span_utf8 = reference.base_span_utf8?;
+        let selector_span_utf8 = (reference.selector_start_byte, reference.selector_end_byte);
+        Some(Self {
+            source_span_utf8: (reference.start_byte, reference.end_byte),
+            base_span_utf8,
+            selector_span_utf8,
+            source_token_text: reference.source_token_text.clone(),
+            base_token_text: source_text[base_span_utf8.0..base_span_utf8.1].to_string(),
+            selector_token_text: source_text[selector_span_utf8.0..selector_span_utf8.1]
+                .to_string(),
+        })
+    }
+
+    #[must_use]
+    pub fn to_resolution(
+        &self,
+        base_node_id: TreeNodeId,
+    ) -> TreeCalcQualifiedChildrenBaseResolution {
+        TreeCalcQualifiedChildrenBaseResolution::new(
+            self.source_span_utf8,
+            self.base_span_utf8,
+            self.selector_span_utf8,
+            self.source_token_text.clone(),
+            base_node_id,
+        )
+    }
+
+    #[must_use]
+    pub fn to_resolution_with_layer(
+        &self,
+        base_node_id: TreeNodeId,
+        resolution_layer: TreeCalcQualifiedBaseResolutionLayer,
+        resolution_identity: impl Into<String>,
+    ) -> TreeCalcQualifiedChildrenBaseResolution {
+        self.to_resolution(base_node_id)
+            .with_resolution_layer(resolution_layer, resolution_identity)
+    }
 }
 
 impl TreeCalcQualifiedChildrenBaseResolution {
@@ -1852,6 +1921,59 @@ mod tests {
             }
             other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_exposes_public_qualified_children_base_queries() {
+        let source_text = "=SUM(left.@CHILDREN,right.*)";
+        let queries =
+            treecalc_formula_text_qualified_children_base_queries(TreeNodeId(10), source_text);
+
+        assert_eq!(queries.len(), 2);
+        assert_eq!(queries[0].source_span_utf8, (5, 19));
+        assert_eq!(queries[0].base_span_utf8, (5, 9));
+        assert_eq!(queries[0].selector_span_utf8, (10, 19));
+        assert_eq!(queries[0].source_token_text, "left.@CHILDREN");
+        assert_eq!(queries[0].base_token_text, "left");
+        assert_eq!(queries[0].selector_token_text, "@CHILDREN");
+        assert_eq!(queries[1].source_span_utf8, (20, 27));
+        assert_eq!(queries[1].base_span_utf8, (20, 25));
+        assert_eq!(queries[1].selector_span_utf8, (25, 27));
+        assert_eq!(queries[1].source_token_text, "right.*");
+        assert_eq!(queries[1].base_token_text, "right");
+        assert_eq!(queries[1].selector_token_text, ".*");
+
+        let formula = prebind_treecalc_formula_text_with_resolved_bases(
+            TreeNodeId(10),
+            source_text,
+            [
+                queries[0].to_resolution(TreeNodeId(2)),
+                queries[1].to_resolution(TreeNodeId(3)),
+            ],
+        )
+        .expect("query-derived base resolutions prebind");
+
+        let base_ids = formula
+            .reference_carriers()
+            .iter()
+            .map(|carrier| match &carrier.reference {
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                    collection,
+                )) => collection.base_node_id,
+                other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(base_ids, vec![TreeNodeId(2), TreeNodeId(3)]);
+    }
+
+    #[test]
+    fn raw_treecalc_formula_text_qualified_children_queries_ignore_string_literals() {
+        let queries = treecalc_formula_text_qualified_children_base_queries(
+            TreeNodeId(10),
+            "=CONCAT(\"left.@CHILDREN\",\"right.*\")",
+        );
+
+        assert!(queries.is_empty());
     }
 
     #[test]

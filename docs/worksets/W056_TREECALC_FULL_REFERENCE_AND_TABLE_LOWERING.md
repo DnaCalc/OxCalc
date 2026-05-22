@@ -261,6 +261,11 @@ Current implemented scope:
    `base.@CHILDREN` / `base.*` when the caller supplies an exact
    UTF-8-span-keyed resolved-base packet with `base_node_id`, base span,
    selector span, resolution layer, and resolution identity.
+9. `treecalc_formula_text_qualified_children_base_queries(...)` exposes the
+   exact source/base/selector spans and token text for qualified children
+   selectors so host repos can resolve only the base token and feed back a
+   typed resolved-base packet without parsing formula text or constructing
+   private span keys.
 
 Current non-claim:
 
@@ -282,6 +287,9 @@ path resolver provide the exact source span and stable base `TreeNodeId`
 without freezing broader TreeCalc name/path precedence or asking a host repo to
 mirror OxCalc reference semantics. Full OxCalc-owned explicit path resolution
 over a pinned structural snapshot remains successor W056 scope.
+`calc-4vs8.10` closes the remaining typed-input gap for host callers by exposing
+the query packet they need to build those resolved-base packets from
+OxCalc-scanned source coordinates rather than host-side formula parsing.
 
 ## 5. Closure Gate
 
@@ -303,7 +311,7 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through `calc-4vs8.8`. W051 is closed for the first
+Product status: in progress through `calc-4vs8.10`. W051 is closed for the first
 OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -314,8 +322,9 @@ fields where available, and the local edge-value cache includes the resulting
 prepared formula identity in its call-site key. OxCalc now also exposes a
 public raw TreeCalc formula-text prebind for free-standing `@CHILDREN` and
 `.*`, plus a caller-supplied resolved-base prebind contract for
-`base.@CHILDREN` and `base.*`, producing a neutral OxFml source plus a
-source-preserving `ChildrenV1` carrier for the existing OxFml/OxFunc path.
+`base.@CHILDREN` and `base.*` with a public qualified-base query packet,
+producing a neutral OxFml source plus a source-preserving `ChildrenV1` carrier
+for the existing OxFml/OxFunc path.
 This is not a full-reference/table-lowering product claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
@@ -343,6 +352,10 @@ execute end-to-end through the existing OxCalc/OxFml/OxFunc reference path.
 packets, preserve qualified token text/spans, bind to the supplied base
 `TreeNodeId`, reject qualified syntax without a matching resolved base, and
 execute end-to-end through the same reference-preserving path.
+`calc-4vs8.10` adds focused Rust tests proving `base.@CHILDREN` and `base.*`
+query packets expose source span, base span, selector span, source token, base
+token, selector token, convert back into the existing resolved-base packet, and
+ignore string literals.
 `calc-4vs8.4` consumes OxFml `fml-ds0.8` stable table packet facts and adds
 focused Rust coverage proving row membership, row order, exact header region,
 and exact totals region lower as context dependency descriptors when supplied,
@@ -361,8 +374,8 @@ host-reference packets beyond the admitted children/table slices, a versioned
 cross-workspace availability/degradation model, selector dependency models for
 recursive and sibling/preceding/following set selectors, full OxCalc-owned
 explicit path resolution for raw `base` text, DnaTreeCalc receiving-side corpus
-activation for the new OxCalc prebind surface and table packets, and broader
-end-to-end scenarios. Blocker `calc-4vs8.5` remains open after
-`calc-4vs8.9` closure.
+activation for the new qualified-base query packet and table packets, and
+broader end-to-end scenarios. Blocker `calc-4vs8.5` remains open after
+`calc-4vs8.10` closure.
 
 Formal status: no proof claim.

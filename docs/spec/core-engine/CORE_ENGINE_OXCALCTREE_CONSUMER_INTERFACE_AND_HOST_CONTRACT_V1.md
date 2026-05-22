@@ -159,8 +159,13 @@ host-reference handle; they are not OxFml or OxFunc semantics.
 
 Current implementation status: OxCalc has implemented the local `ChildrenV1`
 carrier/dependency pattern and preserves the runtime formal input as an opaque
-structured `ReferenceLike`. The consumer contract is still not
-product-complete for DNA TreeCalc formula-text parsing/binding or
+structured `ReferenceLike`. The executable raw formula-text prebind slice
+currently admits only free-standing `@CHILDREN` and `.*`, whose base is the
+formula owner/caller context. Qualified `base.@CHILDREN` and `base.*` remain
+blocked by W056 `calc-4vs8.8` until OxCalc exposes either a caller-supplied
+resolved-base contract or an OxCalc-owned typed resolver over a pinned
+structural snapshot and explicit path syntax. The consumer contract is still
+not product-complete for DNA TreeCalc formula-text parsing/binding or
 reference-array formulas until OxFml's generic host-context path and the
 OxFml/OxFunc resolver/admission path are exercised end to end.
 

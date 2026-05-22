@@ -251,6 +251,18 @@ recursive/sibling/preceding/following selectors, structured table references,
 and bare name/callable precedence remain W056/W074 successor scope until they
 can be resolved through typed caller-supplied path and namespace surfaces.
 
+Qualified children blocker:
+
+`base.@CHILDREN` and `base.*` remain blocked by `calc-4vs8.8`. The current
+public raw prebind function receives only the owner node and formula text, so
+it has no stable way to turn the raw `base` token into a `TreeNodeId` without
+either freezing broader TreeCalc name/path precedence or asking a host repo to
+mirror OxCalc reference semantics. The successor shape must be a
+resolver-bearing OxCalc API: either a caller-supplied resolved base handle or an
+OxCalc-owned typed resolver over a pinned structural snapshot and explicit path
+syntax. Free-standing owner/caller-based `@CHILDREN` and `.*` remain the only
+currently executable raw formula-text children selectors.
+
 ## 5. Closure Gate
 
 W056 closes only for a declared full-reference/table-lowering scope when:
@@ -310,9 +322,9 @@ Still open: stable table row membership/order and exact header/totals region
 packet support, W074 name/call precedence evidence, exercised OxFml
 structured-reference bind packets, a versioned cross-workspace
 availability/degradation model, selector dependency models for recursive and
-sibling/preceding/following set selectors, typed path resolution for
-`base.@CHILDREN` / `base.*`, DnaTreeCalc receiving-side adoption of the new
-OxCalc prebind surface, and broader end-to-end scenarios. Blockers
-`calc-4vs8.4` and `calc-4vs8.5` remain open.
+sibling/preceding/following set selectors, typed qualified-base resolution for
+`base.@CHILDREN` / `base.*`, DnaTreeCalc receiving-side corpus activation for
+the new OxCalc prebind surface, and broader end-to-end scenarios. Blockers
+`calc-4vs8.4`, `calc-4vs8.5`, and `calc-4vs8.8` remain open.
 
 Formal status: no proof claim.

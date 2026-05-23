@@ -1165,17 +1165,26 @@ tests continue to prove dynamic potential/resolved rebind facts and runtime
 effects. Mixed scalar/reference arrays are rejected at the typed element-packet
 constructor and remain a typed exclusion rather than a silent reference-only
 coercion.
+OxFml `fml-ds0.12` at commit `466213b` closes the generic W056
+structured-reference packet coverage that table nodes depend on: explicit and
+omitted table refs, current-row refs, `#Headers`, `#Data`, `#Totals`, `#All`,
+section+column and multi-column forms, escaped column names, typed diagnostics,
+source span/token preservation, effective table identity, selected
+columns/sections/regions, sparse `ReferenceLike` runtime use, and replay
+projection. This removes W056 table packet coverage as an upstream blocker;
+broader W036 table formula semantics and non-table W074 name/call precedence
+remain separate.
 
-Still open: W074 final name/call precedence evidence beyond the observed
-W074-CALC005-014 table-name row, W074 formula-call registry lookup and
-cache-invalidation migration, bare host-name and callable host-node precedence,
+Still open: W074 final non-table name/call precedence evidence, W074
+formula-call registry lookup and cache-invalidation migration, bare host-name
+and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
 children/table/ordered-selector/cross-workspace/reference-literal-array
 slices, DnaTreeCalc activation for the remaining W004/W005 non-table reference
 suite, broader end-to-end scenarios, and retained evidence intake. The
 provider/alias/first-position `!` packet shape, workspace-qualified carrier
-path, and reference-literal array carrier path are no longer missing, but
-blocker `calc-4vs8.5` remains open for the remaining full-W056 non-table
-closure scope.
+path, reference-literal array carrier path, and generic structured-reference
+table packet coverage are no longer missing, but blocker `calc-4vs8.5` remains
+open for the remaining full-W056 non-table closure scope.
 
 Formal status: no proof claim.

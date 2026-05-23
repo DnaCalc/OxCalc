@@ -227,24 +227,36 @@ Cross-repo counterpart beads now exist for the same spine:
    artifact intake, dependency/invalidation evidence intake, and final
    table-scope diff/explain closure.
 
-Current audit intake from `calc-4vs8.26`: DnaTreeCalc commits `e59c6f1` and
-`a5f7b65` activated the first `tables/structured-references` corpus through
-LiveOxCalc/OxCalc paths, covering `SalesTable[Amount]`,
-`SalesTable[@Amount]`, omitted `[@Amount]`, `#Headers`, `#Data`, `#Totals`,
-composite `Amount:Tax`, unknown-column diagnostics, row formula values, totals
-formula values, dependency lowering, and the OxCalc table update classifier.
-OxXlPlay commit `6c0f53e` closed `oxxlplay-4nd.1` with retained
-WorkbookConstructionSpec-backed baseline artifacts for
-`xlplay_workbook_construction_spec_001`, including normalized replay and
-table-slice views. OxReplay commit `a195815` recorded the receiving-side
-handoff for retained TreeCalc table artifacts and confirmed the remaining
-missing producer fields.
+Current audit intake from `calc-4vs8.26`: DnaTreeCalc commits `b59b2fb` and
+`8eba3cb` activate the table structured-reference corpus through
+LiveOxCalc/OxCalc paths, including `#All`, bracket-escaped table and column
+names, composite escaped refs, escaped current-row refs, unknown-column
+diagnostics, row formula values, totals formula values, dependency lowering,
+update classification, and retained TreeCalc producer artifacts under
+`../DnaTreeCalc/docs/test-runs/w056-table-structured-references-001/`.
+OxReplay commits `b341f8b` and `e6de7a4` accept that retained producer and
+dependency/invalidation evidence through validate-bundle/replay/diff/explain
+without parsing TreeCalc structured-reference text. That closes
+`calc-4vs8.27` and `calc-4vs8.28`.
 
-That evidence is not enough to close the table topic. The final `calc-4vs8.26`
-audit now depends on `calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29`.
-Those blockers intentionally keep closure tied to full corpus breadth, retained
-comparison artifacts, and Excel update observations instead of allowing the
-baseline engine/runtime tests to stand in for product evidence.
+OxXlPlay commit `8176223` closes `oxxlplay-4nd.3` with retained
+`xlplay_table_update_oracle_001` artifacts. OxReplay commit `c387bc9` accepts
+those artifacts through validate-bundle/replay and retains self-diff/explain
+evidence. The admitted Excel-observed update slice covers body edit, row
+insert/delete/reorder, column insert/delete/reorder/rename, header edit,
+totals-row toggle/edit, table rename, table resize, structured-reference
+formula recalculation, and explicit table-move unavailability. `calc-4vs8.29`
+remains open because table delete and save/reopen are not yet retained in the
+Excel oracle, Excel dependency/invalidation internals remain unavailable, and
+OxReplay full-family diff/explain is still blocked on shared value/outcome
+envelope and `table_update_oracle` comparison-policy decisions.
+
+That evidence is not enough to close the whole table topic. The final
+`calc-4vs8.26` audit now depends on the remaining `calc-4vs8.29` gaps rather
+than on DnaTreeCalc/OxReplay retained producer intake. The blocker intentionally
+keeps closure tied to retained Excel update breadth and explicit comparison
+policy instead of allowing baseline engine/runtime tests to stand in for product
+evidence.
 
 The architecture rule for all of these beads is strict: OxCalc/DnaTreeCalc own
 TreeCalc table meaning and structural identity; OxFml owns generic structured

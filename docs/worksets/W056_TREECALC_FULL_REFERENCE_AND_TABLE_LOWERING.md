@@ -198,6 +198,18 @@ The added W056 table spine is:
 6. `calc-4vs8.26` — perform the retained evidence and seam audit using
    DnaTreeCalc active corpus, OxXlPlay Excel observation, and OxReplay retained
    comparison outputs.
+7. `calc-4vs8.27` — consume the DnaTreeCalc residual full table corpus work:
+   `#All`, bracket-escaped table names, bracket-escaped column names, composite
+   escaped refs, current-row escaped refs, and typed table/column diagnostics
+   through the real LiveOxCalc/OxCalc bridge.
+8. `calc-4vs8.28` — consume retained DnaTreeCalc/OxReplay producer and
+   comparison artifacts for `table_slice`, table-cell/per-node values,
+   effective display where TreeCalc can state it or typed unavailability where
+   it cannot, execution outcome, dependency evidence, invalidation evidence,
+   and retained artifact refs.
+9. `calc-4vs8.29` — consume OxXlPlay/OxReplay table update-oracle evidence for
+   body, row, column, header, totals, rename, move, delete, save/reopen, and
+   structured-reference recalculation scenarios.
 
 Cross-repo counterpart beads now exist for the same spine:
 
@@ -214,6 +226,25 @@ Cross-repo counterpart beads now exist for the same spine:
 5. OxReplay `oxreplay-p1w.1` through `oxreplay-p1w.3` own retained producer
    artifact intake, dependency/invalidation evidence intake, and final
    table-scope diff/explain closure.
+
+Current audit intake from `calc-4vs8.26`: DnaTreeCalc commits `e59c6f1` and
+`a5f7b65` activated the first `tables/structured-references` corpus through
+LiveOxCalc/OxCalc paths, covering `SalesTable[Amount]`,
+`SalesTable[@Amount]`, omitted `[@Amount]`, `#Headers`, `#Data`, `#Totals`,
+composite `Amount:Tax`, unknown-column diagnostics, row formula values, totals
+formula values, dependency lowering, and the OxCalc table update classifier.
+OxXlPlay commit `6c0f53e` closed `oxxlplay-4nd.1` with retained
+WorkbookConstructionSpec-backed baseline artifacts for
+`xlplay_workbook_construction_spec_001`, including normalized replay and
+table-slice views. OxReplay commit `a195815` recorded the receiving-side
+handoff for retained TreeCalc table artifacts and confirmed the remaining
+missing producer fields.
+
+That evidence is not enough to close the table topic. The final `calc-4vs8.26`
+audit now depends on `calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29`.
+Those blockers intentionally keep closure tied to full corpus breadth, retained
+comparison artifacts, and Excel update observations instead of allowing the
+baseline engine/runtime tests to stand in for product evidence.
 
 The architecture rule for all of these beads is strict: OxCalc/DnaTreeCalc own
 TreeCalc table meaning and structural identity; OxFml owns generic structured
@@ -855,16 +886,26 @@ scenario set: body value/formula edits, row insert/delete/reorder, column
 insert/delete/reorder/rename, header edits, totals toggle/formula edit, table
 rename/move/delete, save/reopen identity preservation, structural rebind,
 typed post-update diagnostics, and unaffected reader identity stability.
+`calc-4vs8.26` audit intake records cross-repo progress rather than closure:
+DnaTreeCalc activated the first table structured-reference corpus through
+LiveOxCalc/OxCalc (`e59c6f1`, `a5f7b65`), OxXlPlay produced retained baseline
+Excel table observation artifacts (`6c0f53e`), and OxReplay recorded the
+remaining retained-artifact handoff/blocker (`a195815`). The audit filed
+`calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29` so final table closure is
+blocked on full table corpus residuals, retained replay comparison artifacts,
+and Excel update-oracle evidence.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, bare host-name and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
 children/table/ordered-selector slices, cross-workspace provider and workspace
-alias/first-position `!` semantics, table column-formula row-context runtime,
-table update/invalidation scenarios, DnaTreeCalc receiving-side corpus
-activation for table packets and the remaining W004/W005 reference suite,
-retained OxReplay/OxXlPlay evidence, and broader end-to-end scenarios. Blocker
-`calc-4vs8.5` remains open for the remaining full-W056 closure scope.
+alias/first-position `!` semantics, DnaTreeCalc residual table corpus breadth
+(`#All`, bracket-escaped table/column names, composite escaped refs, and
+current-row escaped refs), retained DnaTreeCalc/OxReplay table comparison
+artifacts, OxXlPlay update-oracle observations, DnaTreeCalc activation for the
+remaining W004/W005 reference suite, and broader end-to-end scenarios. Blockers
+`calc-4vs8.5`, `calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29` remain open
+for the remaining full-W056 closure scope.
 
 Formal status: no proof claim.

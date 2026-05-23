@@ -315,6 +315,26 @@ closure for row/column/header/totals edits, retained DnaTreeCalc corpus
 activation, or OxReplay/OxXlPlay comparison; those remain in `calc-4vs8.25`
 and `calc-4vs8.26`.
 
+Implementation note for `calc-4vs8.25`: OxCalc now has the first executable
+table update/dependency/invalidation scenario surface in
+`src/oxcalc-core/src/structured_table.rs`.
+`classify_treecalc_table_update` maps body value edits, body formula edits,
+row insert/delete/reorder, column insert/delete/reorder/rename, header text
+edits, totals row toggle/formula edits, table rename/move/delete, save/reopen,
+and structural rebind into OxCalc-owned dependency kinds, invalidation reasons,
+prepared-identity inputs, source-reference handle correlation, and invalidation
+seeds. The surface keeps body cell value edits as value invalidations rather
+than prepared-identity churn, while row/column/region/table-shape changes
+enter table context and caller-context identity as appropriate.
+
+`validate_treecalc_table_reference_after_update` supplies typed post-update
+diagnostics for deleted tables, missing selected columns, missing caller row
+context, and absent header/totals regions. Focused tests also prove save/reopen
+identity preservation and that a body value edit does not change an unaffected
+table reader identity. This closes the OxCalc-local update/invalidation
+scenario model, but retained DnaTreeCalc/OxXlPlay/OxReplay product evidence
+and final seam audit remain in `calc-4vs8.26`.
+
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
 The third W056 tranche adds the first OxCalc-owned typed projection over the
@@ -825,6 +845,16 @@ columns, contiguous multi-column data ranges, header/totals/#All sections,
 current-row scalar runtime binding, sparse traversal counters, and
 reference-preserving aggregate execution for `SUM`, `COUNT`, `COUNTA`, and
 `COUNTBLANK` through generic OxFml/OxFunc sparse `ReferenceLike` bindings.
+`calc-4vs8.24` adds focused Rust coverage for row-context table formula
+runtime: one formula text evaluated per data row through generic OxFml table
+context, row-specific caller context, sparse/current-row bindings, prepared
+identity variation by row, stable dispatch skeleton reuse, totals formula
+execution, and typed rejection of current-row references outside data rows.
+`calc-4vs8.25` adds focused Rust coverage for the full declared table update
+scenario set: body value/formula edits, row insert/delete/reorder, column
+insert/delete/reorder/rename, header edits, totals toggle/formula edit, table
+rename/move/delete, save/reopen identity preservation, structural rebind,
+typed post-update diagnostics, and unaffected reader identity stability.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and

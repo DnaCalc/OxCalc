@@ -313,6 +313,14 @@ table row/column values, sparse bindings, virtual primary locus, and
 invalidation identity. A totals-row formula uses the totals caller region; a
 current-row reference in that region remains a typed reject.
 
+For table edits, OxCalc owns the dependency and invalidation interpretation.
+Body value edits invalidate table data/value facts without changing prepared
+identity; row membership/order, column/header, table region, totals, rename,
+move, delete, and structural rebind scenarios map to typed OxCalc invalidation
+reasons and prepared-identity inputs. OxFml only sees the resulting generic
+table context, caller context, sparse bindings, and structured-reference
+diagnostics.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

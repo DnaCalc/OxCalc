@@ -754,6 +754,60 @@ Promotion gates from this map:
 9. `calc-4vs8.56` owns dynamic table rebind, including `INDIRECT`-style cases,
    under this same generic host-reference and sparse-reader model.
 
+## 4B.4. `calc-4vs8.45` Virtual Anchor And Identity Contract
+
+The node-table virtual anchor is the contract that lets OxFml bind structured
+references as though the table were an Excel ListObject anchored on a sheet,
+while OxCalc keeps table ownership in the TreeCalc model.
+
+The contract has three identity layers:
+
+1. Stable logical table identity: `table_node_id`, `table_id`, table display
+   path, canonical path, and table name/version. These identify the product
+   table and its namespace binding.
+2. Generic Excel-shaped projection identity: virtual workbook scope, virtual
+   sheet scope, start row/column, table range, header/data/totals region refs,
+   table context identity, and opaque row membership/order and column tokens
+   carried in `TableDescriptor`.
+3. OxCalc-only dependency identity: row membership/order facts, row values,
+   column identity, body/totals formula metadata, table invalidation identity,
+   and lifecycle version state. These never become OxFml semantics.
+
+Identity and update rules:
+
+1. An unchanged save/reopen preserves stable table id, table node id, virtual
+   anchor identity, table context identity, and table invalidation identity.
+2. A table rename, display path change, canonical path change, or namespace
+   version change preserves the table id but changes namespace identity and the
+   table context identity used for prepared/cache invalidation.
+3. A workspace alias, workbook/sheet scope, or virtual anchor movement changes
+   virtual anchor identity and table context identity. Row and column
+   dependency identities remain stable when their membership/order/content has
+   not changed.
+4. Row reorder changes row-order identity and table context identity while
+   preserving row-membership identity when the set is unchanged.
+5. Row insert/delete changes row-membership identity, row-order identity, table
+   range, and caller-row-sensitive prepared identity inputs.
+6. Column insert/delete/reorder/rename changes column identity and any
+   structured-reference binding that selected affected columns.
+7. Header, totals, body formula, table delete, table move, and structural
+   rebind effects are classified by the lifecycle/update contracts, but they
+   consume the same identity layers rather than a separate table path.
+
+Current executable surface:
+
+1. `TreeCalcTableNodeSnapshot` supplies the stable logical table id, virtual
+   anchor, row/column identity versions, and namespace version.
+2. `project_treecalc_table_node_snapshot` produces `TreeCalcTableNodeProjection`
+   with a generic `TableDescriptor`, `StructuredTableContextPacket`, table
+   context identity, table invalidation identity, namespace token, virtual
+   anchor token, row membership/order identities, column identity, and formula
+   metadata tokens.
+3. Focused tests now include
+   `virtual_anchor_identity_contract_separates_table_namespace_anchor_and_membership_changes`,
+   proving unchanged save/reopen stability, namespace/path changes, workspace
+   alias changes, anchor movement, row reorder, and row insertion effects.
+
 `calc-4vs8.35` implemented contract:
 
 The table lifecycle boundary is now represented in

@@ -5581,6 +5581,143 @@ mod tests {
     }
 
     #[test]
+    fn virtual_anchor_identity_contract_separates_table_namespace_anchor_and_membership_changes() {
+        let baseline_snapshot = treecalc_table_snapshot();
+        let baseline =
+            project_treecalc_table_node_snapshot(&baseline_snapshot).expect("baseline projects");
+        let reopened = project_treecalc_table_node_snapshot(&baseline_snapshot)
+            .expect("save reopen of unchanged table preserves identities");
+
+        assert_eq!(reopened.table_id, baseline.table_id);
+        assert_eq!(reopened.table_node_id, baseline.table_node_id);
+        assert_eq!(
+            reopened.virtual_anchor_identity,
+            baseline.virtual_anchor_identity
+        );
+        assert_eq!(
+            reopened.table_context_identity,
+            baseline.table_context_identity
+        );
+        assert_eq!(
+            reopened.table_invalidation_identity,
+            baseline.table_invalidation_identity
+        );
+
+        let mut renamed_path = baseline_snapshot.clone();
+        renamed_path.table_name = "SalesByRegion".to_string();
+        renamed_path.display_path = "Sales By Region".to_string();
+        renamed_path.canonical_path = "Root/Reports/SalesByRegion".to_string();
+        renamed_path.table_namespace_version = "namespace:v2".to_string();
+        let renamed_path_projection =
+            project_treecalc_table_node_snapshot(&renamed_path).expect("renamed table projects");
+        assert_eq!(renamed_path_projection.table_id, baseline.table_id);
+        assert_ne!(
+            renamed_path_projection.table_namespace_identity,
+            baseline.table_namespace_identity
+        );
+        assert_ne!(
+            renamed_path_projection.table_context_identity,
+            baseline.table_context_identity
+        );
+        assert_eq!(
+            renamed_path_projection.virtual_anchor_identity,
+            baseline.virtual_anchor_identity
+        );
+        assert_eq!(
+            renamed_path_projection.oxcalc_row_membership_identity,
+            baseline.oxcalc_row_membership_identity
+        );
+        assert_eq!(
+            renamed_path_projection.oxcalc_column_identity,
+            baseline.oxcalc_column_identity
+        );
+
+        let mut workspace_alias_changed = baseline_snapshot.clone();
+        workspace_alias_changed.virtual_anchor.workbook_scope_ref =
+            "treecalc-workbook:alias".to_string();
+        let workspace_alias_projection =
+            project_treecalc_table_node_snapshot(&workspace_alias_changed)
+                .expect("workspace alias projects");
+        assert_eq!(
+            workspace_alias_projection.table_descriptor.table_range_ref,
+            baseline.table_descriptor.table_range_ref
+        );
+        assert_ne!(
+            workspace_alias_projection.virtual_anchor_identity,
+            baseline.virtual_anchor_identity
+        );
+        assert_ne!(
+            workspace_alias_projection.table_context_identity,
+            baseline.table_context_identity
+        );
+        assert_eq!(
+            workspace_alias_projection.oxcalc_row_order_identity,
+            baseline.oxcalc_row_order_identity
+        );
+
+        let mut anchor_moved = baseline_snapshot.clone();
+        anchor_moved.virtual_anchor.start_row = 6;
+        anchor_moved.virtual_anchor.start_col = 4;
+        let anchor_moved_projection =
+            project_treecalc_table_node_snapshot(&anchor_moved).expect("moved table projects");
+        assert_eq!(
+            anchor_moved_projection.table_descriptor.table_range_ref,
+            "D6:F10"
+        );
+        assert_ne!(
+            anchor_moved_projection.virtual_anchor_identity,
+            baseline.virtual_anchor_identity
+        );
+        assert_eq!(
+            anchor_moved_projection.oxcalc_row_membership_identity,
+            baseline.oxcalc_row_membership_identity
+        );
+        assert_eq!(
+            anchor_moved_projection.oxcalc_column_identity,
+            baseline.oxcalc_column_identity
+        );
+
+        let mut reordered = baseline_snapshot.clone();
+        reordered.rows.reverse();
+        reordered.row_order_version = "row-order:v2".to_string();
+        let reordered_projection =
+            project_treecalc_table_node_snapshot(&reordered).expect("reordered table projects");
+        assert_eq!(
+            reordered_projection.oxcalc_row_membership_identity,
+            baseline.oxcalc_row_membership_identity
+        );
+        assert_ne!(
+            reordered_projection.oxcalc_row_order_identity,
+            baseline.oxcalc_row_order_identity
+        );
+        assert_ne!(
+            reordered_projection.table_context_identity,
+            baseline.table_context_identity
+        );
+
+        let mut row_added = baseline_snapshot;
+        row_added
+            .rows
+            .push(TreeCalcTableRowId("row:south".to_string()));
+        row_added.row_membership_version = "row-membership:v2".to_string();
+        row_added.row_order_version = "row-order:v2".to_string();
+        let row_added_projection =
+            project_treecalc_table_node_snapshot(&row_added).expect("row-added table projects");
+        assert_ne!(
+            row_added_projection.oxcalc_row_membership_identity,
+            baseline.oxcalc_row_membership_identity
+        );
+        assert_ne!(
+            row_added_projection.oxcalc_row_order_identity,
+            baseline.oxcalc_row_order_identity
+        );
+        assert_eq!(
+            row_added_projection.table_descriptor.table_range_ref,
+            "B3:D8"
+        );
+    }
+
+    #[test]
     fn oxcalc_invalidation_identities_frame_domain_strings_without_separator_collisions() {
         let mut left = treecalc_table_snapshot();
         left.table_id = "table;a=1".to_string();

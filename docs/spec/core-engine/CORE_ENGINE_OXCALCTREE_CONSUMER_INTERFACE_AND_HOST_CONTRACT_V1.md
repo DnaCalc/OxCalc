@@ -327,6 +327,25 @@ bridge, parsing another repo's formula strings, mirroring another repo's
 precedence rules, materializing table references eagerly, or asking OxFml/
 OxFunc to learn TreeCalc table selectors.
 
+Current resolver realization:
+
+`src/oxcalc-core/src/structured_table.rs` exposes
+`resolve_treecalc_table_catalog_reference` as the first concrete node-table
+catalog resolver. The resolver consumes OxCalc-owned `TreeCalcTableNodeProjection`
+records plus workspace alias/availability and namespace-adjacency facts, then
+emits a `TreeCalcTableCatalogResolution` with stable table-reference handle,
+opaque selector, resolution layer, shape hint, effective table identity,
+virtual anchor identity, caller-context dependency/id, host namespace version,
+table namespace version, structure-context version, resolution-rule version,
+workspace availability version, and typed diagnostics. Same-node,
+omitted-caller-table, current-root, workspace-qualified, unavailable-workspace,
+deleted-table, ambiguous-selector, and W074-gated adjacency cases are
+represented explicitly.
+
+This resolver is not an OxFml grammar extension. OxFml still receives only the
+generic table catalog/context and structured-reference bind packets; TreeCalc
+path, workspace, namespace, and lifecycle facts remain OxCalc-owned.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

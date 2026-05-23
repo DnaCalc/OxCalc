@@ -940,6 +940,84 @@ Non-goals:
 3. Bare host names, table-name collisions, and callable/lambda-valued host
    nodes remain in the W074 name/call precedence evidence lane.
 
+## 4B.6. `calc-4vs8.47` Table Catalog Resolver And Namespace Versioning
+
+Product status:
+
+OxCalc now has a public table-catalog resolver for node-associated TreeCalc
+tables. The resolver treats a TreeCalc node table like an Excel-shaped table
+anchored at a virtual cell for OxFml purposes, while keeping table lookup,
+workspace qualification, namespace versioning, caller-context dependency, and
+diagnostics in OxCalc.
+
+Implemented Rust surface:
+
+1. `TreeCalcTableCatalogResolveRequest` describes the host lookup request:
+   explicit table name/path, same-node table, omitted-table caller context, or
+   stable table id.
+2. `TreeCalcTableCatalogResolverContext` carries current workspace, table
+   projections, workspace aliases, workspace availability, host namespace
+   version, structure-context version, resolution-rule version, W074-gated
+   namespace-adjacency facts, and deleted-table facts.
+3. `resolve_treecalc_table_catalog_reference` returns a
+   `TreeCalcTableCatalogResolution` with stable table-reference handle, opaque
+   selector, resolution layer, shape hint, effective table id/node id, virtual
+   anchor identity, caller-context dependency/id, host namespace version, table
+   namespace version, structure-context version, resolution-rule version,
+   workspace availability version, and typed diagnostics.
+4. `TreeCalcTableNodeProjection` now carries the table namespace version
+   directly, so resolver identity and prepared/cache invalidation do not need to
+   reconstruct it from private snapshot state.
+
+Covered lookup scenarios:
+
+1. same-workspace table-name lookup,
+2. canonical/display/bracket-escaped path lookup through the existing
+   projection token set,
+3. first-position `!` current-workspace-root lookup,
+4. workspace alias and direct workspace-qualified lookup,
+5. same-node table lookup,
+6. omitted-table lookup through `caller_table_region`,
+7. unavailable workspace lookup,
+8. deleted table lookup,
+9. ambiguous table selector diagnostics,
+10. W074-gated adjacency diagnostics for host names, functions, defined names,
+    and lambda-valued nodes.
+
+Identity and invalidation facts:
+
+1. the stable resolver handle includes selector identity, resolution layer,
+   shape hint, effective table id/node id, virtual anchor identity, host
+   namespace version, table namespace version, structure-context version,
+   resolution-rule version, workspace availability version, caller-context id,
+   and diagnostic class set,
+2. alias target changes, table namespace changes, workspace availability
+   changes, and caller-context changes therefore change prepared/cache identity
+   deterministically,
+3. explicit structured-reference routing remains unblocked because OxCalc
+   supplies the generic table context and OxFml still sees only
+   `TableDescriptor`, enclosing-table, caller-region, and structured-reference
+   bind records.
+
+Evidence:
+
+Focused Rust tests cover current workspace table lookup, same-node lookup,
+omitted caller-table lookup, current-root lookup, workspace alias lookup,
+direct workspace-qualified lookup, exact stable-table-id lookup, unavailable
+workspace diagnostics, deleted table diagnostics, table selector ambiguity,
+W074-gated namespace adjacency, bracket-escaped `!` tokens, caller-row
+invalidation under coarse caller ids, and handle changes after alias/namespace
+mutation.
+
+Still open:
+
+1. `calc-4vs8.48` must close the full table `ReferenceLike` reader surface.
+2. `calc-4vs8.49` must close row-context formula/prepared identity behavior.
+3. `calc-4vs8.50` must close dependency and invalidation matrices for all
+   table lifecycle updates.
+4. Bare host-name/callable precedence remains OxFml W074-gated; this resolver
+   records adjacency diagnostics but does not freeze precedence.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

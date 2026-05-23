@@ -31,6 +31,9 @@ use oxfunc_core::value::{
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind, InvalidationSeed,
 };
+use crate::formula::{
+    TreeCalcCrossWorkspaceAvailabilityPacket, TreeCalcCrossWorkspaceAvailabilityStatus,
+};
 use crate::sparse_reader::{
     SparseCellCoord, SparseCellRead, SparseDefinedCell, SparseRangeExtent, SparseRangeReader,
     SparseReaderAccessSummary, SparseReaderIdentity,
@@ -131,6 +134,7 @@ pub struct TreeCalcTableNodeProjection {
     pub table_context_identity: String,
     pub table_invalidation_identity: String,
     pub table_namespace_identity: String,
+    pub table_namespace_version: String,
     pub table_namespace_token: String,
     pub row_membership_identity: String,
     pub row_order_identity: String,
@@ -338,6 +342,7 @@ pub fn project_treecalc_table_node_snapshot(
         table_context_identity,
         table_invalidation_identity,
         table_namespace_identity,
+        table_namespace_version: snapshot.table_namespace_version.clone(),
         table_namespace_token,
         row_membership_identity,
         row_order_identity,
@@ -352,6 +357,959 @@ pub fn project_treecalc_table_node_snapshot(
         totals_metadata_identity,
         totals_metadata_token,
     })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TreeCalcTableCatalogSelectorKind {
+    TableNameOrPath,
+    SameNodeTable,
+    OmittedTableName,
+    StableTableId,
+}
+
+impl TreeCalcTableCatalogSelectorKind {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::TableNameOrPath => "table_name_or_path",
+            Self::SameNodeTable => "same_node_table",
+            Self::OmittedTableName => "omitted_table_name",
+            Self::StableTableId => "stable_table_id",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TreeCalcTableCatalogResolutionLayer {
+    CurrentWorkspaceTableName,
+    CurrentWorkspacePath,
+    CurrentWorkspaceRoot,
+    SameNodeTable,
+    OmittedCallerTable,
+    WorkspaceAlias,
+    DirectWorkspace,
+    StableTableId,
+    UnavailableWorkspace,
+    DeletedTable,
+    Unresolved,
+}
+
+impl TreeCalcTableCatalogResolutionLayer {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::CurrentWorkspaceTableName => "current_workspace_table_name",
+            Self::CurrentWorkspacePath => "current_workspace_path",
+            Self::CurrentWorkspaceRoot => "current_workspace_root",
+            Self::SameNodeTable => "same_node_table",
+            Self::OmittedCallerTable => "omitted_caller_table",
+            Self::WorkspaceAlias => "workspace_alias",
+            Self::DirectWorkspace => "direct_workspace",
+            Self::StableTableId => "stable_table_id",
+            Self::UnavailableWorkspace => "unavailable_workspace",
+            Self::DeletedTable => "deleted_table",
+            Self::Unresolved => "unresolved",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TreeCalcTableCatalogShapeHint {
+    Table,
+    CallerContextTable,
+    UnavailableWorkspace,
+    DeletedTable,
+    Unresolved,
+}
+
+impl TreeCalcTableCatalogShapeHint {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::Table => "table",
+            Self::CallerContextTable => "caller_context_table",
+            Self::UnavailableWorkspace => "unavailable_workspace",
+            Self::DeletedTable => "deleted_table",
+            Self::Unresolved => "unresolved",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TreeCalcTableCatalogDiagnosticCode {
+    TableNotFound,
+    AmbiguousTableSelector,
+    MissingCallerTableContext,
+    MissingCallerNodeContext,
+    WorkspaceUnavailable,
+    TableDeleted,
+    HostNameAdjacencyW074Gated,
+    FunctionNameAdjacencyW074Gated,
+    DefinedNameAdjacencyW074Gated,
+    LambdaValuedNodeAdjacencyW074Gated,
+}
+
+impl TreeCalcTableCatalogDiagnosticCode {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::TableNotFound => "treecalc.table_catalog.table_not_found",
+            Self::AmbiguousTableSelector => "treecalc.table_catalog.ambiguous_table_selector",
+            Self::MissingCallerTableContext => {
+                "treecalc.table_catalog.missing_caller_table_context"
+            }
+            Self::MissingCallerNodeContext => "treecalc.table_catalog.missing_caller_node_context",
+            Self::WorkspaceUnavailable => "treecalc.table_catalog.workspace_unavailable",
+            Self::TableDeleted => "treecalc.table_catalog.table_deleted",
+            Self::HostNameAdjacencyW074Gated => {
+                "treecalc.table_catalog.host_name_adjacency_w074_gated"
+            }
+            Self::FunctionNameAdjacencyW074Gated => {
+                "treecalc.table_catalog.function_name_adjacency_w074_gated"
+            }
+            Self::DefinedNameAdjacencyW074Gated => {
+                "treecalc.table_catalog.defined_name_adjacency_w074_gated"
+            }
+            Self::LambdaValuedNodeAdjacencyW074Gated => {
+                "treecalc.table_catalog.lambda_valued_node_adjacency_w074_gated"
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableCatalogDiagnostic {
+    pub code: TreeCalcTableCatalogDiagnosticCode,
+    pub message: String,
+    pub source_span_utf8: Option<TextSpan>,
+    pub selector_token_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableCatalogResolveRequest {
+    pub selector_token_text: String,
+    pub selector_kind: TreeCalcTableCatalogSelectorKind,
+    pub source_span_utf8: Option<TextSpan>,
+    pub caller_node_id: Option<TreeNodeId>,
+    pub caller_table_region: Option<TableCallerRegion>,
+    pub caller_context_id: Option<String>,
+}
+
+impl TreeCalcTableCatalogResolveRequest {
+    #[must_use]
+    pub fn table_name_or_path(selector_token_text: impl Into<String>) -> Self {
+        Self {
+            selector_token_text: selector_token_text.into(),
+            selector_kind: TreeCalcTableCatalogSelectorKind::TableNameOrPath,
+            source_span_utf8: None,
+            caller_node_id: None,
+            caller_table_region: None,
+            caller_context_id: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableCatalogWorkspace {
+    pub workspace_handle: String,
+    pub availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket,
+    pub table_projections: Vec<TreeCalcTableNodeProjection>,
+}
+
+impl TreeCalcTableCatalogWorkspace {
+    #[must_use]
+    pub fn available_current(
+        workspace_handle: impl Into<String>,
+        table_projections: Vec<TreeCalcTableNodeProjection>,
+    ) -> Self {
+        let workspace_handle = workspace_handle.into();
+        Self {
+            availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                workspace_handle.clone(),
+                "current",
+                format!("treecalc-table-workspace-availability:v1:{workspace_handle}:available"),
+            ),
+            workspace_handle,
+            table_projections,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableDeletedFact {
+    pub workspace_handle: String,
+    pub table_id: String,
+    pub selector_token_text: String,
+    pub table_namespace_version: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TreeCalcTableNamespaceAdjacency {
+    pub host_names: BTreeSet<String>,
+    pub function_names: BTreeSet<String>,
+    pub defined_names: BTreeSet<String>,
+    pub lambda_valued_node_names: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableCatalogResolverContext {
+    pub current_workspace_handle: String,
+    pub host_namespace_version: String,
+    pub structure_context_version: String,
+    pub resolution_rule_version: String,
+    pub workspaces: Vec<TreeCalcTableCatalogWorkspace>,
+    pub workspace_aliases: BTreeMap<String, String>,
+    pub namespace_adjacency: TreeCalcTableNamespaceAdjacency,
+    pub deleted_tables: Vec<TreeCalcTableDeletedFact>,
+}
+
+impl TreeCalcTableCatalogResolverContext {
+    #[must_use]
+    pub fn for_current_workspace(
+        current_workspace_handle: impl Into<String>,
+        table_projections: Vec<TreeCalcTableNodeProjection>,
+    ) -> Self {
+        let current_workspace_handle = current_workspace_handle.into();
+        Self {
+            current_workspace_handle: current_workspace_handle.clone(),
+            host_namespace_version: "treecalc-host-namespace:v1".to_string(),
+            structure_context_version: "treecalc-structure:v1".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            workspaces: vec![TreeCalcTableCatalogWorkspace::available_current(
+                current_workspace_handle,
+                table_projections,
+            )],
+            workspace_aliases: BTreeMap::new(),
+            namespace_adjacency: TreeCalcTableNamespaceAdjacency::default(),
+            deleted_tables: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_workspace(mut self, workspace: TreeCalcTableCatalogWorkspace) -> Self {
+        self.workspaces.push(workspace);
+        self
+    }
+
+    #[must_use]
+    pub fn with_workspace_alias(
+        mut self,
+        alias: impl Into<String>,
+        workspace_handle: impl Into<String>,
+    ) -> Self {
+        self.workspace_aliases
+            .insert(alias.into(), workspace_handle.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_namespace_adjacency(
+        mut self,
+        namespace_adjacency: TreeCalcTableNamespaceAdjacency,
+    ) -> Self {
+        self.namespace_adjacency = namespace_adjacency;
+        self
+    }
+
+    #[must_use]
+    pub fn with_deleted_table(mut self, deleted_table: TreeCalcTableDeletedFact) -> Self {
+        self.deleted_tables.push(deleted_table);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableCatalogResolution {
+    pub table_reference_handle: String,
+    pub source_span_utf8: Option<TextSpan>,
+    pub source_token_text: String,
+    pub opaque_selector: String,
+    pub resolution_layer: TreeCalcTableCatalogResolutionLayer,
+    pub shape_hint: TreeCalcTableCatalogShapeHint,
+    pub effective_table_id: Option<String>,
+    pub table_node_id: Option<TreeNodeId>,
+    pub virtual_anchor_identity: Option<String>,
+    pub caller_context_dependency: bool,
+    pub caller_context_id: Option<String>,
+    pub host_namespace_version: String,
+    pub table_namespace_version: Option<String>,
+    pub structure_context_version: String,
+    pub resolution_rule_version: String,
+    pub workspace_availability_version: Option<String>,
+    pub diagnostics: Vec<TreeCalcTableCatalogDiagnostic>,
+}
+
+pub fn resolve_treecalc_table_catalog_reference(
+    context: &TreeCalcTableCatalogResolverContext,
+    request: &TreeCalcTableCatalogResolveRequest,
+) -> TreeCalcTableCatalogResolution {
+    let selector_token_text = request.selector_token_text.trim().to_string();
+    let parsed_selector = parse_treecalc_table_catalog_workspace_selector(
+        context,
+        &selector_token_text,
+        request.selector_kind,
+    );
+    let caller_context_dependency = treecalc_table_catalog_caller_context_dependency(request);
+    let caller_context_id =
+        caller_context_dependency.then(|| treecalc_table_catalog_caller_context_identity(request));
+
+    let mut diagnostics = Vec::new();
+    let mut resolution_layer = parsed_selector.resolution_layer;
+    let mut shape_hint = TreeCalcTableCatalogShapeHint::Unresolved;
+    let mut effective_projection = None;
+    let mut deleted_namespace_version = None;
+
+    let workspace = context
+        .workspaces
+        .iter()
+        .find(|workspace| workspace.workspace_handle == parsed_selector.workspace_handle);
+
+    let availability_packet = workspace.map_or_else(
+        || {
+            TreeCalcCrossWorkspaceAvailabilityPacket::unavailable(
+                parsed_selector.workspace_handle.clone(),
+                parsed_selector
+                    .workspace_selector_token
+                    .clone()
+                    .unwrap_or_else(|| parsed_selector.workspace_handle.clone()),
+                format!(
+                    "treecalc-table-workspace-availability:v1:{}:unavailable",
+                    parsed_selector.workspace_handle
+                ),
+                "workspace was not present in the TreeCalc table catalog resolver context",
+            )
+        },
+        |workspace| workspace.availability_packet.clone(),
+    );
+
+    if availability_packet.status != TreeCalcCrossWorkspaceAvailabilityStatus::Available {
+        diagnostics.push(treecalc_table_catalog_diagnostic(
+            TreeCalcTableCatalogDiagnosticCode::WorkspaceUnavailable,
+            format!(
+                "workspace '{}' is not available for table lookup",
+                availability_packet.workspace_selector_token
+            ),
+            request,
+        ));
+        resolution_layer = TreeCalcTableCatalogResolutionLayer::UnavailableWorkspace;
+        shape_hint = TreeCalcTableCatalogShapeHint::UnavailableWorkspace;
+    } else if let Some(workspace) = workspace {
+        match request.selector_kind {
+            TreeCalcTableCatalogSelectorKind::SameNodeTable => {
+                if let Some(caller_node_id) = request.caller_node_id {
+                    effective_projection = workspace
+                        .table_projections
+                        .iter()
+                        .find(|projection| projection.table_node_id == caller_node_id);
+                    if effective_projection.is_none() {
+                        diagnostics.push(treecalc_table_catalog_diagnostic(
+                            TreeCalcTableCatalogDiagnosticCode::TableNotFound,
+                            format!(
+                                "caller node '{caller_node_id}' does not own a table projection"
+                            ),
+                            request,
+                        ));
+                    }
+                } else {
+                    diagnostics.push(treecalc_table_catalog_diagnostic(
+                        TreeCalcTableCatalogDiagnosticCode::MissingCallerNodeContext,
+                        "same-node table lookup requires a caller node id".to_string(),
+                        request,
+                    ));
+                }
+            }
+            TreeCalcTableCatalogSelectorKind::OmittedTableName => {
+                if let Some(caller_table_region) = request.caller_table_region.as_ref() {
+                    effective_projection = workspace
+                        .table_projections
+                        .iter()
+                        .find(|projection| projection.table_id == caller_table_region.table_id);
+                    if effective_projection.is_none() {
+                        diagnostics.push(treecalc_table_catalog_diagnostic(
+                            TreeCalcTableCatalogDiagnosticCode::TableNotFound,
+                            format!(
+                                "caller table '{}' is not present in the table catalog",
+                                caller_table_region.table_id
+                            ),
+                            request,
+                        ));
+                    }
+                } else {
+                    diagnostics.push(treecalc_table_catalog_diagnostic(
+                        TreeCalcTableCatalogDiagnosticCode::MissingCallerTableContext,
+                        "omitted-table structured reference requires caller table context"
+                            .to_string(),
+                        request,
+                    ));
+                }
+            }
+            TreeCalcTableCatalogSelectorKind::StableTableId => {
+                effective_projection = workspace
+                    .table_projections
+                    .iter()
+                    .find(|projection| projection.table_id == selector_token_text);
+                if effective_projection.is_none() {
+                    diagnostics.push(treecalc_table_catalog_diagnostic(
+                        TreeCalcTableCatalogDiagnosticCode::TableNotFound,
+                        format!("stable table id '{selector_token_text}' did not resolve"),
+                        request,
+                    ));
+                }
+            }
+            TreeCalcTableCatalogSelectorKind::TableNameOrPath => {
+                let matches = treecalc_table_catalog_matches(
+                    &workspace.table_projections,
+                    &parsed_selector.local_selector_token,
+                );
+                match matches.as_slice() {
+                    [projection] => {
+                        effective_projection = Some(*projection);
+                        resolution_layer =
+                            treecalc_table_catalog_explicit_layer(*projection, &parsed_selector);
+                    }
+                    [] => {
+                        if let Some(deleted_table) = treecalc_table_catalog_deleted_match(
+                            context,
+                            &parsed_selector.workspace_handle,
+                            &parsed_selector.local_selector_token,
+                        ) {
+                            diagnostics.push(treecalc_table_catalog_diagnostic(
+                                TreeCalcTableCatalogDiagnosticCode::TableDeleted,
+                                format!(
+                                    "table selector '{}' refers to deleted table '{}'",
+                                    parsed_selector.local_selector_token, deleted_table.table_id
+                                ),
+                                request,
+                            ));
+                            deleted_namespace_version =
+                                Some(deleted_table.table_namespace_version.clone());
+                            resolution_layer = TreeCalcTableCatalogResolutionLayer::DeletedTable;
+                            shape_hint = TreeCalcTableCatalogShapeHint::DeletedTable;
+                        } else {
+                            diagnostics.push(treecalc_table_catalog_diagnostic(
+                                TreeCalcTableCatalogDiagnosticCode::TableNotFound,
+                                format!(
+                                    "table selector '{}' did not resolve",
+                                    parsed_selector.local_selector_token
+                                ),
+                                request,
+                            ));
+                        }
+                    }
+                    _ => {
+                        diagnostics.push(treecalc_table_catalog_diagnostic(
+                            TreeCalcTableCatalogDiagnosticCode::AmbiguousTableSelector,
+                            format!(
+                                "table selector '{}' resolved to {} table projections",
+                                parsed_selector.local_selector_token,
+                                matches.len()
+                            ),
+                            request,
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(projection) = effective_projection {
+        shape_hint = if caller_context_dependency {
+            TreeCalcTableCatalogShapeHint::CallerContextTable
+        } else {
+            TreeCalcTableCatalogShapeHint::Table
+        };
+        if matches!(
+            request.selector_kind,
+            TreeCalcTableCatalogSelectorKind::SameNodeTable
+        ) {
+            resolution_layer = TreeCalcTableCatalogResolutionLayer::SameNodeTable;
+        } else if matches!(
+            request.selector_kind,
+            TreeCalcTableCatalogSelectorKind::OmittedTableName
+        ) {
+            resolution_layer = TreeCalcTableCatalogResolutionLayer::OmittedCallerTable;
+        } else if matches!(
+            request.selector_kind,
+            TreeCalcTableCatalogSelectorKind::StableTableId
+        ) {
+            resolution_layer = TreeCalcTableCatalogResolutionLayer::StableTableId;
+        }
+        diagnostics.extend(treecalc_table_catalog_adjacency_diagnostics(
+            context,
+            &parsed_selector.local_selector_token,
+            request,
+        ));
+        build_treecalc_table_catalog_resolution(
+            context,
+            request,
+            parsed_selector,
+            availability_packet,
+            resolution_layer,
+            shape_hint,
+            Some(projection),
+            caller_context_dependency,
+            caller_context_id,
+            diagnostics,
+            None,
+        )
+    } else {
+        diagnostics.extend(treecalc_table_catalog_adjacency_diagnostics(
+            context,
+            &parsed_selector.local_selector_token,
+            request,
+        ));
+        build_treecalc_table_catalog_resolution(
+            context,
+            request,
+            parsed_selector,
+            availability_packet,
+            resolution_layer,
+            shape_hint,
+            None,
+            caller_context_dependency,
+            caller_context_id,
+            diagnostics,
+            deleted_namespace_version,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedTreeCalcTableCatalogWorkspaceSelector {
+    workspace_selector_token: Option<String>,
+    local_selector_token: String,
+    workspace_handle: String,
+    resolution_layer: TreeCalcTableCatalogResolutionLayer,
+}
+
+fn parse_treecalc_table_catalog_workspace_selector(
+    context: &TreeCalcTableCatalogResolverContext,
+    selector_token_text: &str,
+    selector_kind: TreeCalcTableCatalogSelectorKind,
+) -> ParsedTreeCalcTableCatalogWorkspaceSelector {
+    if !matches!(
+        selector_kind,
+        TreeCalcTableCatalogSelectorKind::TableNameOrPath
+    ) {
+        return ParsedTreeCalcTableCatalogWorkspaceSelector {
+            workspace_selector_token: None,
+            local_selector_token: selector_token_text.to_string(),
+            workspace_handle: context.current_workspace_handle.clone(),
+            resolution_layer: match selector_kind {
+                TreeCalcTableCatalogSelectorKind::SameNodeTable => {
+                    TreeCalcTableCatalogResolutionLayer::SameNodeTable
+                }
+                TreeCalcTableCatalogSelectorKind::OmittedTableName => {
+                    TreeCalcTableCatalogResolutionLayer::OmittedCallerTable
+                }
+                TreeCalcTableCatalogSelectorKind::StableTableId => {
+                    TreeCalcTableCatalogResolutionLayer::StableTableId
+                }
+                TreeCalcTableCatalogSelectorKind::TableNameOrPath => unreachable!(),
+            },
+        };
+    }
+
+    if let Some(local_selector_token) = selector_token_text.strip_prefix('!') {
+        return ParsedTreeCalcTableCatalogWorkspaceSelector {
+            workspace_selector_token: Some("!".to_string()),
+            local_selector_token: local_selector_token.trim().to_string(),
+            workspace_handle: context.current_workspace_handle.clone(),
+            resolution_layer: TreeCalcTableCatalogResolutionLayer::CurrentWorkspaceRoot,
+        };
+    }
+
+    if let Some((workspace_selector, local_selector)) =
+        split_treecalc_table_workspace_selector(selector_token_text)
+    {
+        let workspace_selector = unescape_treecalc_bracketed_selector(workspace_selector.trim());
+        let local_selector_token = local_selector.trim().to_string();
+        if let Some(alias_target) =
+            treecalc_table_catalog_workspace_alias(context, &workspace_selector)
+        {
+            return ParsedTreeCalcTableCatalogWorkspaceSelector {
+                workspace_selector_token: Some(workspace_selector),
+                local_selector_token,
+                workspace_handle: alias_target,
+                resolution_layer: TreeCalcTableCatalogResolutionLayer::WorkspaceAlias,
+            };
+        }
+        return ParsedTreeCalcTableCatalogWorkspaceSelector {
+            workspace_selector_token: Some(workspace_selector.clone()),
+            local_selector_token,
+            workspace_handle: workspace_selector,
+            resolution_layer: TreeCalcTableCatalogResolutionLayer::DirectWorkspace,
+        };
+    }
+
+    ParsedTreeCalcTableCatalogWorkspaceSelector {
+        workspace_selector_token: None,
+        local_selector_token: selector_token_text.to_string(),
+        workspace_handle: context.current_workspace_handle.clone(),
+        resolution_layer: TreeCalcTableCatalogResolutionLayer::CurrentWorkspacePath,
+    }
+}
+
+fn treecalc_table_catalog_explicit_layer(
+    projection: &TreeCalcTableNodeProjection,
+    parsed_selector: &ParsedTreeCalcTableCatalogWorkspaceSelector,
+) -> TreeCalcTableCatalogResolutionLayer {
+    match parsed_selector.resolution_layer {
+        TreeCalcTableCatalogResolutionLayer::WorkspaceAlias
+        | TreeCalcTableCatalogResolutionLayer::DirectWorkspace
+        | TreeCalcTableCatalogResolutionLayer::CurrentWorkspaceRoot => {
+            parsed_selector.resolution_layer
+        }
+        _ if projection
+            .table_descriptor
+            .table_name
+            .eq_ignore_ascii_case(&parsed_selector.local_selector_token) =>
+        {
+            TreeCalcTableCatalogResolutionLayer::CurrentWorkspaceTableName
+        }
+        _ => TreeCalcTableCatalogResolutionLayer::CurrentWorkspacePath,
+    }
+}
+
+fn treecalc_table_catalog_matches<'a>(
+    projections: &'a [TreeCalcTableNodeProjection],
+    selector_token_text: &str,
+) -> Vec<&'a TreeCalcTableNodeProjection> {
+    projections
+        .iter()
+        .filter(|projection| {
+            treecalc_table_path_tokens(projection)
+                .iter()
+                .any(|token| token.eq_ignore_ascii_case(selector_token_text))
+        })
+        .collect()
+}
+
+fn treecalc_table_catalog_workspace_alias(
+    context: &TreeCalcTableCatalogResolverContext,
+    workspace_selector: &str,
+) -> Option<String> {
+    context
+        .workspace_aliases
+        .iter()
+        .find(|(alias, _)| alias.eq_ignore_ascii_case(workspace_selector))
+        .map(|(_, workspace_handle)| workspace_handle.clone())
+}
+
+fn treecalc_table_catalog_deleted_match<'a>(
+    context: &'a TreeCalcTableCatalogResolverContext,
+    workspace_handle: &str,
+    selector_token_text: &str,
+) -> Option<&'a TreeCalcTableDeletedFact> {
+    context.deleted_tables.iter().find(|deleted_table| {
+        deleted_table.workspace_handle == workspace_handle
+            && (deleted_table.table_id == selector_token_text
+                || deleted_table
+                    .selector_token_text
+                    .eq_ignore_ascii_case(selector_token_text))
+    })
+}
+
+fn treecalc_table_catalog_caller_context_dependency(
+    request: &TreeCalcTableCatalogResolveRequest,
+) -> bool {
+    matches!(
+        request.selector_kind,
+        TreeCalcTableCatalogSelectorKind::SameNodeTable
+            | TreeCalcTableCatalogSelectorKind::OmittedTableName
+    )
+}
+
+fn treecalc_table_catalog_caller_context_identity(
+    request: &TreeCalcTableCatalogResolveRequest,
+) -> String {
+    identity_record(
+        "treecalc.table_catalog.caller_context.v1",
+        [
+            (
+                "explicit_caller_context_id",
+                request
+                    .caller_context_id
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "caller_table_region",
+                request
+                    .caller_table_region
+                    .as_ref()
+                    .map(treecalc_table_catalog_caller_region_identity)
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "caller_node",
+                request.caller_node_id.map_or_else(
+                    || "none".to_string(),
+                    |node_id| {
+                        identity_record(
+                            "treecalc.table_catalog.caller_node.v1",
+                            [("node_id", node_id.to_string())],
+                        )
+                    },
+                ),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_catalog_caller_region_identity(region: &TableCallerRegion) -> String {
+    identity_record(
+        "treecalc.table_catalog.caller_table_region.v1",
+        [
+            ("table_id", region.table_id.clone()),
+            (
+                "region_kind",
+                match region.region_kind {
+                    TableRegionKind::Headers => "headers",
+                    TableRegionKind::Data => "data",
+                    TableRegionKind::Totals => "totals",
+                }
+                .to_string(),
+            ),
+            (
+                "data_row_offset",
+                region
+                    .data_row_offset
+                    .map_or_else(|| "none".to_string(), |offset| offset.to_string()),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_catalog_adjacency_diagnostics(
+    context: &TreeCalcTableCatalogResolverContext,
+    selector_token_text: &str,
+    request: &TreeCalcTableCatalogResolveRequest,
+) -> Vec<TreeCalcTableCatalogDiagnostic> {
+    let mut diagnostics = Vec::new();
+    if treecalc_table_catalog_set_contains(
+        &context.namespace_adjacency.host_names,
+        selector_token_text,
+    ) {
+        diagnostics.push(treecalc_table_catalog_diagnostic(
+            TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Gated,
+            "explicit table selector is adjacent to a host name; final bare name/call precedence remains W074-gated".to_string(),
+            request,
+        ));
+    }
+    if treecalc_table_catalog_set_contains(
+        &context.namespace_adjacency.function_names,
+        selector_token_text,
+    ) {
+        diagnostics.push(treecalc_table_catalog_diagnostic(
+            TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Gated,
+            "explicit table selector is adjacent to a function name; final call precedence remains W074-gated".to_string(),
+            request,
+        ));
+    }
+    if treecalc_table_catalog_set_contains(
+        &context.namespace_adjacency.defined_names,
+        selector_token_text,
+    ) {
+        diagnostics.push(treecalc_table_catalog_diagnostic(
+            TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Gated,
+            "explicit table selector is adjacent to a defined name; final name precedence remains W074-gated".to_string(),
+            request,
+        ));
+    }
+    if treecalc_table_catalog_set_contains(
+        &context.namespace_adjacency.lambda_valued_node_names,
+        selector_token_text,
+    ) {
+        diagnostics.push(treecalc_table_catalog_diagnostic(
+            TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Gated,
+            "explicit table selector is adjacent to a lambda-valued host node; final callable precedence remains W074-gated".to_string(),
+            request,
+        ));
+    }
+    diagnostics
+}
+
+fn treecalc_table_catalog_set_contains(values: &BTreeSet<String>, needle: &str) -> bool {
+    values
+        .iter()
+        .any(|value| value.eq_ignore_ascii_case(needle))
+}
+
+fn treecalc_table_catalog_diagnostic(
+    code: TreeCalcTableCatalogDiagnosticCode,
+    message: String,
+    request: &TreeCalcTableCatalogResolveRequest,
+) -> TreeCalcTableCatalogDiagnostic {
+    TreeCalcTableCatalogDiagnostic {
+        code,
+        message,
+        source_span_utf8: request.source_span_utf8,
+        selector_token_text: request.selector_token_text.clone(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_treecalc_table_catalog_resolution(
+    context: &TreeCalcTableCatalogResolverContext,
+    request: &TreeCalcTableCatalogResolveRequest,
+    parsed_selector: ParsedTreeCalcTableCatalogWorkspaceSelector,
+    availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket,
+    resolution_layer: TreeCalcTableCatalogResolutionLayer,
+    shape_hint: TreeCalcTableCatalogShapeHint,
+    projection: Option<&TreeCalcTableNodeProjection>,
+    caller_context_dependency: bool,
+    caller_context_id: Option<String>,
+    diagnostics: Vec<TreeCalcTableCatalogDiagnostic>,
+    deleted_namespace_version: Option<String>,
+) -> TreeCalcTableCatalogResolution {
+    let table_namespace_version = projection
+        .map(|projection| projection.table_namespace_version.clone())
+        .or(deleted_namespace_version);
+    let opaque_selector = identity_record(
+        "treecalc.table_catalog.selector.v1",
+        [
+            ("kind", request.selector_kind.stable_id().to_string()),
+            ("source_token", request.selector_token_text.clone()),
+            (
+                "workspace_selector",
+                parsed_selector
+                    .workspace_selector_token
+                    .clone()
+                    .unwrap_or_else(|| "current".to_string()),
+            ),
+            ("workspace_handle", parsed_selector.workspace_handle.clone()),
+            (
+                "local_selector",
+                parsed_selector.local_selector_token.clone(),
+            ),
+            ("layer", resolution_layer.stable_id().to_string()),
+        ],
+    );
+    let handle_identity = identity_record(
+        "treecalc.table_catalog.reference_handle.v1",
+        [
+            ("selector", opaque_selector.clone()),
+            ("layer", resolution_layer.stable_id().to_string()),
+            ("shape", shape_hint.stable_id().to_string()),
+            (
+                "effective_table_id",
+                projection
+                    .map(|projection| projection.table_id.clone())
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "table_node_id",
+                projection
+                    .map(|projection| projection.table_node_id.to_string())
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "virtual_anchor_identity",
+                projection
+                    .map(|projection| projection.virtual_anchor_identity.clone())
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "host_namespace_version",
+                context.host_namespace_version.clone(),
+            ),
+            (
+                "table_namespace_version",
+                table_namespace_version
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "structure_context_version",
+                context.structure_context_version.clone(),
+            ),
+            (
+                "resolution_rule_version",
+                context.resolution_rule_version.clone(),
+            ),
+            (
+                "workspace_availability_version",
+                availability_packet.availability_version.clone(),
+            ),
+            (
+                "caller_context_id",
+                caller_context_id
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "diagnostics",
+                identity_list(
+                    diagnostics
+                        .iter()
+                        .map(|diagnostic| diagnostic.code.stable_id().to_string()),
+                ),
+            ),
+        ],
+    );
+    TreeCalcTableCatalogResolution {
+        table_reference_handle: opaque_identity_token(
+            "treecalc.table_catalog.reference_handle.token.v1",
+            &handle_identity,
+        ),
+        source_span_utf8: request.source_span_utf8,
+        source_token_text: request.selector_token_text.clone(),
+        opaque_selector,
+        resolution_layer,
+        shape_hint,
+        effective_table_id: projection.map(|projection| projection.table_id.clone()),
+        table_node_id: projection.map(|projection| projection.table_node_id),
+        virtual_anchor_identity: projection
+            .map(|projection| projection.virtual_anchor_identity.clone()),
+        caller_context_dependency,
+        caller_context_id,
+        host_namespace_version: context.host_namespace_version.clone(),
+        table_namespace_version,
+        structure_context_version: context.structure_context_version.clone(),
+        resolution_rule_version: context.resolution_rule_version.clone(),
+        workspace_availability_version: Some(availability_packet.availability_version),
+        diagnostics,
+    }
+}
+
+fn split_treecalc_table_workspace_selector(selector: &str) -> Option<(&str, &str)> {
+    let bytes = selector.as_bytes();
+    let mut index = 0usize;
+    let mut bracket_depth = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'[' => {
+                bracket_depth += 1;
+                index += 1;
+            }
+            b']' if bracket_depth > 0 => {
+                if bytes.get(index + 1) == Some(&b']') {
+                    index += 2;
+                } else {
+                    bracket_depth -= 1;
+                    index += 1;
+                }
+            }
+            b'!' if bracket_depth == 0 => {
+                return Some((&selector[..index], &selector[index + 1..]));
+            }
+            _ => {
+                index += 1;
+            }
+        }
+    }
+    None
+}
+
+fn unescape_treecalc_bracketed_selector(selector: &str) -> String {
+    selector
+        .strip_prefix('[')
+        .and_then(|without_open| without_open.strip_suffix(']'))
+        .map_or_else(
+            || selector.to_string(),
+            |bracketed| bracketed.replace("]]", "]"),
+        )
 }
 
 fn validate_treecalc_table_node_snapshot(
@@ -5350,6 +6308,32 @@ mod tests {
         }
     }
 
+    fn projected_treecalc_table() -> TreeCalcTableNodeProjection {
+        project_treecalc_table_node_snapshot(&treecalc_table_snapshot())
+            .expect("table-node snapshot projects")
+    }
+
+    fn alternate_table_snapshot(
+        table_node_id: u64,
+        table_id: &str,
+        table_name: &str,
+        display_path: &str,
+        canonical_path: &str,
+        namespace_version: &str,
+    ) -> TreeCalcTableNodeSnapshot {
+        let mut snapshot = treecalc_table_snapshot();
+        snapshot.table_node_id = TreeNodeId(table_node_id);
+        snapshot.table_id = table_id.to_string();
+        snapshot.table_name = table_name.to_string();
+        snapshot.display_path = display_path.to_string();
+        snapshot.canonical_path = canonical_path.to_string();
+        snapshot.table_namespace_version = namespace_version.to_string();
+        snapshot.virtual_anchor.sheet_scope_ref =
+            format!("treecalc-virtual-sheet:tables:{table_node_id}");
+        snapshot.virtual_anchor.start_row = u32::try_from(table_node_id).unwrap_or(20);
+        snapshot
+    }
+
     #[test]
     fn projects_treecalc_table_node_snapshot_to_virtual_excel_table_descriptor() {
         let snapshot = treecalc_table_snapshot();
@@ -5458,6 +6442,526 @@ mod tests {
             projection
                 .totals_metadata_identity
                 .contains("21:formula:totals:amount")
+        );
+        assert_eq!(projection.table_namespace_version, "namespace:v1");
+    }
+
+    #[test]
+    fn table_catalog_resolver_emits_handles_versions_and_source_for_current_workspace() {
+        let projection = projected_treecalc_table();
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projection.clone()],
+        );
+        let request = TreeCalcTableCatalogResolveRequest {
+            selector_token_text: "SalesTable".to_string(),
+            selector_kind: TreeCalcTableCatalogSelectorKind::TableNameOrPath,
+            source_span_utf8: Some(TextSpan::new(4, "SalesTable".len())),
+            caller_node_id: None,
+            caller_table_region: None,
+            caller_context_id: None,
+        };
+
+        let resolved = resolve_treecalc_table_catalog_reference(&context, &request);
+
+        assert_eq!(
+            resolved.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::CurrentWorkspaceTableName
+        );
+        assert_eq!(resolved.shape_hint, TreeCalcTableCatalogShapeHint::Table);
+        assert_eq!(
+            resolved.table_reference_handle.split(';').next(),
+            Some("treecalc.table_catalog.reference_handle.token.v1")
+        );
+        assert_eq!(resolved.source_span_utf8, request.source_span_utf8);
+        assert_eq!(resolved.source_token_text, "SalesTable");
+        assert_eq!(
+            resolved.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        assert_eq!(resolved.table_node_id, Some(TreeNodeId(20)));
+        assert_eq!(
+            resolved.virtual_anchor_identity.as_deref(),
+            Some(projection.virtual_anchor_identity.as_str())
+        );
+        assert_eq!(
+            resolved.host_namespace_version,
+            "treecalc-host-namespace:v1"
+        );
+        assert_eq!(
+            resolved.table_namespace_version.as_deref(),
+            Some("namespace:v1")
+        );
+        assert_eq!(resolved.structure_context_version, "treecalc-structure:v1");
+        assert_eq!(
+            resolved.resolution_rule_version,
+            "treecalc-host-resolution:v1"
+        );
+        assert_eq!(
+            resolved.workspace_availability_version.as_deref(),
+            Some("treecalc-table-workspace-availability:v1:treecalc-workspace:main:available")
+        );
+        assert!(!resolved.caller_context_dependency);
+        assert!(resolved.caller_context_id.is_none());
+        assert!(resolved.diagnostics.is_empty());
+        assert!(
+            resolved
+                .opaque_selector
+                .contains("local_selector=10:SalesTable")
+        );
+    }
+
+    #[test]
+    fn table_catalog_resolver_handles_same_node_and_omitted_caller_table() {
+        let projection = projected_treecalc_table();
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projection],
+        );
+        let same_node = TreeCalcTableCatalogResolveRequest {
+            selector_token_text: "@TABLE".to_string(),
+            selector_kind: TreeCalcTableCatalogSelectorKind::SameNodeTable,
+            source_span_utf8: Some(TextSpan::new(0, "@TABLE".len())),
+            caller_node_id: Some(TreeNodeId(20)),
+            caller_table_region: None,
+            caller_context_id: Some("caller:node:20".to_string()),
+        };
+
+        let resolved_same_node = resolve_treecalc_table_catalog_reference(&context, &same_node);
+        assert_eq!(
+            resolved_same_node.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::SameNodeTable
+        );
+        assert_eq!(
+            resolved_same_node.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        assert!(resolved_same_node.caller_context_dependency);
+        assert!(
+            resolved_same_node
+                .caller_context_id
+                .as_deref()
+                .is_some_and(|identity| identity.contains("caller:node:20"))
+        );
+
+        let omitted = TreeCalcTableCatalogResolveRequest {
+            selector_token_text: "[#This Row]".to_string(),
+            selector_kind: TreeCalcTableCatalogSelectorKind::OmittedTableName,
+            source_span_utf8: Some(TextSpan::new(2, "[#This Row]".len())),
+            caller_node_id: None,
+            caller_table_region: Some(TableCallerRegion {
+                table_id: "tree-table:sales".to_string(),
+                region_kind: TableRegionKind::Data,
+                data_row_offset: Some(1),
+            }),
+            caller_context_id: None,
+        };
+
+        let resolved_omitted = resolve_treecalc_table_catalog_reference(&context, &omitted);
+        assert_eq!(
+            resolved_omitted.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::OmittedCallerTable
+        );
+        assert_eq!(
+            resolved_omitted.shape_hint,
+            TreeCalcTableCatalogShapeHint::CallerContextTable
+        );
+        assert_eq!(
+            resolved_omitted.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        assert!(resolved_omitted.caller_context_dependency);
+        assert!(
+            resolved_omitted
+                .caller_context_id
+                .as_deref()
+                .is_some_and(|identity| identity.contains("caller_table_region"))
+        );
+
+        let mut omitted_row_two = omitted;
+        omitted_row_two.caller_context_id = Some("coarse-caller-context".to_string());
+        omitted_row_two.caller_table_region = Some(TableCallerRegion {
+            table_id: "tree-table:sales".to_string(),
+            region_kind: TableRegionKind::Data,
+            data_row_offset: Some(2),
+        });
+        let mut omitted_row_one_same_coarse_id = omitted_row_two.clone();
+        omitted_row_one_same_coarse_id.caller_table_region = Some(TableCallerRegion {
+            table_id: "tree-table:sales".to_string(),
+            region_kind: TableRegionKind::Data,
+            data_row_offset: Some(1),
+        });
+        let resolved_row_one =
+            resolve_treecalc_table_catalog_reference(&context, &omitted_row_one_same_coarse_id);
+        let resolved_row_two = resolve_treecalc_table_catalog_reference(&context, &omitted_row_two);
+        assert_ne!(
+            resolved_row_one.table_reference_handle,
+            resolved_row_two.table_reference_handle
+        );
+    }
+
+    #[test]
+    fn table_catalog_resolver_handles_root_alias_and_cross_workspace_paths() {
+        let current_projection = projected_treecalc_table();
+        let projection_table = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
+            30,
+            "tree-table:projections",
+            "ProjectionTable",
+            "Projection Table",
+            "Root/Reports/ProjectionTable",
+            "namespace:projections:v1",
+        ))
+        .unwrap();
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![current_projection],
+        )
+        .with_workspace_alias("Proj", "treecalc-workspace:projections")
+        .with_workspace(TreeCalcTableCatalogWorkspace {
+            workspace_handle: "treecalc-workspace:projections".to_string(),
+            availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                "treecalc-workspace:projections",
+                "Proj",
+                "treecalc-table-workspace-availability:v1:projections:loaded",
+            ),
+            table_projections: vec![projection_table],
+        });
+
+        let rooted = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("!Root/SalesTable"),
+        );
+        assert_eq!(
+            rooted.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::CurrentWorkspaceRoot
+        );
+        assert_eq!(
+            rooted.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+
+        let aliased = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("Proj!ProjectionTable"),
+        );
+        assert_eq!(
+            aliased.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::WorkspaceAlias
+        );
+        assert_eq!(
+            aliased.effective_table_id.as_deref(),
+            Some("tree-table:projections")
+        );
+        assert_eq!(
+            aliased.workspace_availability_version.as_deref(),
+            Some("treecalc-table-workspace-availability:v1:projections:loaded")
+        );
+        assert!(
+            aliased
+                .opaque_selector
+                .contains("workspace_selector=4:Proj")
+        );
+
+        let direct = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path(
+                "treecalc-workspace:projections!ProjectionTable",
+            ),
+        );
+        assert_eq!(
+            direct.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::DirectWorkspace
+        );
+        assert_eq!(
+            direct.effective_table_id.as_deref(),
+            Some("tree-table:projections")
+        );
+    }
+
+    #[test]
+    fn table_catalog_resolver_matches_stable_table_ids_as_opaque_exact_handles() {
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projected_treecalc_table()],
+        );
+        let exact_request = TreeCalcTableCatalogResolveRequest {
+            selector_token_text: "tree-table:sales".to_string(),
+            selector_kind: TreeCalcTableCatalogSelectorKind::StableTableId,
+            source_span_utf8: None,
+            caller_node_id: None,
+            caller_table_region: None,
+            caller_context_id: None,
+        };
+        let resolved_exact = resolve_treecalc_table_catalog_reference(&context, &exact_request);
+        assert_eq!(
+            resolved_exact.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::StableTableId
+        );
+        assert_eq!(
+            resolved_exact.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+
+        let wrong_case_request = TreeCalcTableCatalogResolveRequest {
+            selector_token_text: "TREE-TABLE:SALES".to_string(),
+            ..exact_request
+        };
+        let resolved_wrong_case =
+            resolve_treecalc_table_catalog_reference(&context, &wrong_case_request);
+        assert!(resolved_wrong_case.effective_table_id.is_none());
+        assert!(resolved_wrong_case.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == TreeCalcTableCatalogDiagnosticCode::TableNotFound
+        }));
+    }
+
+    #[test]
+    fn table_catalog_resolver_keeps_bang_inside_bracket_escaped_table_token() {
+        let bracketed_table = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
+            32,
+            "tree-table:sales-bang",
+            "Sales!Table",
+            "Sales!Table",
+            "Root/Sales!Table",
+            "namespace:sales-bang:v1",
+        ))
+        .unwrap();
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![bracketed_table],
+        );
+
+        let resolved = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("[Sales!Table]"),
+        );
+
+        assert_eq!(
+            resolved.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::CurrentWorkspacePath
+        );
+        assert_eq!(
+            resolved.effective_table_id.as_deref(),
+            Some("tree-table:sales-bang")
+        );
+        assert!(
+            !resolved
+                .opaque_selector
+                .contains("workspace_selector=6:[Sales")
+        );
+    }
+
+    #[test]
+    fn table_catalog_resolver_reports_collisions_and_w074_gated_adjacency() {
+        let projection = projected_treecalc_table();
+        let collision = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
+            31,
+            "tree-table:sales-copy",
+            "SalesTable",
+            "Sales Table Copy",
+            "Root/SalesTableCopy",
+            "namespace:copy:v1",
+        ))
+        .unwrap();
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projection, collision],
+        );
+
+        let ambiguous = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("SalesTable"),
+        );
+        assert!(ambiguous.effective_table_id.is_none());
+        assert!(ambiguous.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == TreeCalcTableCatalogDiagnosticCode::AmbiguousTableSelector
+        }));
+
+        let adjacency = TreeCalcTableNamespaceAdjacency {
+            host_names: BTreeSet::from(["SalesTable".to_string()]),
+            function_names: BTreeSet::from(["SalesTable".to_string()]),
+            defined_names: BTreeSet::from(["SalesTable".to_string()]),
+            lambda_valued_node_names: BTreeSet::from(["SalesTable".to_string()]),
+        };
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projected_treecalc_table()],
+        )
+        .with_namespace_adjacency(adjacency);
+
+        let resolved = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("SalesTable"),
+        );
+        assert_eq!(
+            resolved.effective_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        let diagnostic_codes = resolved
+            .diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.code)
+            .collect::<BTreeSet<_>>();
+        assert!(
+            diagnostic_codes
+                .contains(&TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Gated)
+        );
+        assert!(
+            diagnostic_codes
+                .contains(&TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Gated)
+        );
+        assert!(
+            diagnostic_codes
+                .contains(&TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Gated)
+        );
+        assert!(
+            diagnostic_codes
+                .contains(&TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Gated)
+        );
+    }
+
+    #[test]
+    fn table_catalog_resolver_reports_unavailable_and_deleted_tables() {
+        let context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            vec![projected_treecalc_table()],
+        )
+        .with_workspace_alias("Closed", "treecalc-workspace:closed")
+        .with_workspace(TreeCalcTableCatalogWorkspace {
+            workspace_handle: "treecalc-workspace:closed".to_string(),
+            availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::unavailable(
+                "treecalc-workspace:closed",
+                "Closed",
+                "treecalc-table-workspace-availability:v1:closed:unavailable",
+                "closed workspace is not loaded",
+            ),
+            table_projections: Vec::new(),
+        });
+
+        let unavailable = resolve_treecalc_table_catalog_reference(
+            &context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("Closed!SalesTable"),
+        );
+        assert_eq!(
+            unavailable.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::UnavailableWorkspace
+        );
+        assert_eq!(
+            unavailable.shape_hint,
+            TreeCalcTableCatalogShapeHint::UnavailableWorkspace
+        );
+        assert_eq!(
+            unavailable.workspace_availability_version.as_deref(),
+            Some("treecalc-table-workspace-availability:v1:closed:unavailable")
+        );
+        assert!(unavailable.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == TreeCalcTableCatalogDiagnosticCode::WorkspaceUnavailable
+        }));
+
+        let deleted_context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            Vec::new(),
+        )
+        .with_deleted_table(TreeCalcTableDeletedFact {
+            workspace_handle: "treecalc-workspace:main".to_string(),
+            table_id: "tree-table:sales".to_string(),
+            selector_token_text: "SalesTable".to_string(),
+            table_namespace_version: "namespace:deleted:v1".to_string(),
+        });
+        let deleted = resolve_treecalc_table_catalog_reference(
+            &deleted_context,
+            &TreeCalcTableCatalogResolveRequest::table_name_or_path("SalesTable"),
+        );
+        assert_eq!(
+            deleted.resolution_layer,
+            TreeCalcTableCatalogResolutionLayer::DeletedTable
+        );
+        assert_eq!(
+            deleted.shape_hint,
+            TreeCalcTableCatalogShapeHint::DeletedTable
+        );
+        assert_eq!(
+            deleted.table_namespace_version.as_deref(),
+            Some("namespace:deleted:v1")
+        );
+        assert!(deleted.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == TreeCalcTableCatalogDiagnosticCode::TableDeleted
+        }));
+    }
+
+    #[test]
+    fn table_catalog_resolver_handle_changes_on_alias_and_namespace_mutation() {
+        let projection_v1 = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
+            40,
+            "tree-table:projection-v1",
+            "ProjectionTable",
+            "Projection Table",
+            "Root/ProjectionTable",
+            "namespace:projection:v1",
+        ))
+        .unwrap();
+        let projection_v2 = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
+            41,
+            "tree-table:projection-v2",
+            "ProjectionTable",
+            "Projection Table",
+            "Root/ProjectionTable",
+            "namespace:projection:v2",
+        ))
+        .unwrap();
+        let context_v1 = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            Vec::new(),
+        )
+        .with_workspace_alias("Proj", "treecalc-workspace:projections-v1")
+        .with_workspace(TreeCalcTableCatalogWorkspace {
+            workspace_handle: "treecalc-workspace:projections-v1".to_string(),
+            availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                "treecalc-workspace:projections-v1",
+                "Proj",
+                "treecalc-table-workspace-availability:v1:projections-v1:loaded",
+            ),
+            table_projections: vec![projection_v1],
+        });
+        let mut context_v2 = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            "treecalc-workspace:main",
+            Vec::new(),
+        )
+        .with_workspace_alias("Proj", "treecalc-workspace:projections-v2")
+        .with_workspace(TreeCalcTableCatalogWorkspace {
+            workspace_handle: "treecalc-workspace:projections-v2".to_string(),
+            availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                "treecalc-workspace:projections-v2",
+                "Proj",
+                "treecalc-table-workspace-availability:v1:projections-v2:loaded",
+            ),
+            table_projections: vec![projection_v2],
+        });
+        context_v2.host_namespace_version = "treecalc-host-namespace:v2".to_string();
+
+        let request =
+            TreeCalcTableCatalogResolveRequest::table_name_or_path("Proj!ProjectionTable");
+        let resolved_v1 = resolve_treecalc_table_catalog_reference(&context_v1, &request);
+        let resolved_v2 = resolve_treecalc_table_catalog_reference(&context_v2, &request);
+
+        assert_eq!(
+            resolved_v1.effective_table_id.as_deref(),
+            Some("tree-table:projection-v1")
+        );
+        assert_eq!(
+            resolved_v2.effective_table_id.as_deref(),
+            Some("tree-table:projection-v2")
+        );
+        assert_ne!(
+            resolved_v1.table_reference_handle,
+            resolved_v2.table_reference_handle
+        );
+        assert_eq!(
+            resolved_v2.table_namespace_version.as_deref(),
+            Some("namespace:projection:v2")
+        );
+        assert_eq!(
+            resolved_v2.host_namespace_version,
+            "treecalc-host-namespace:v2"
         );
     }
 

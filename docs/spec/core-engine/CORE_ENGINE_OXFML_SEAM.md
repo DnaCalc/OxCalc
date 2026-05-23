@@ -342,6 +342,18 @@ caller context, sparse bindings, and prepared identity tokens sent through this
 seam, but OxFml must not inspect table lifecycle events, TreeCalc row/column
 ids, table-node paths, or table invalidation semantics.
 
+The current W056 resolver implementation adds an OxCalc-only table catalog
+resolution surface before the OxFml seam. `TreeCalcTableCatalogResolution`
+records the stable table-reference handle, opaque selector, resolution layer,
+shape hint, effective table identity, virtual anchor identity, caller-context
+dependency/id, host namespace version, table namespace version, structure
+context version, resolution-rule version, workspace availability version, and
+typed diagnostics for same-node, omitted-caller, path-qualified,
+workspace-qualified, unavailable, deleted, ambiguous, and W074-gated adjacency
+cases. OxFml receives only the generic table context or structured-reference
+bind facts resulting from that resolution; it does not parse workspace aliases,
+TreeCalc paths, or table namespace strings.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

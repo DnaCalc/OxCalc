@@ -50,6 +50,7 @@ use crate::repository::{SubscriptionHandle, SubscriptionRegistryEntry, Subscript
 use crate::rich_value_capability::RichValueCapabilityTraceReplayColumns;
 use crate::sparse_reader::{
     SparseRangeReader, TreeCalcChildrenSparseReader, TreeCalcOrderedSelectorSparseReader,
+    TreeCalcReferenceLiteralArraySparseReader,
 };
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
@@ -3069,6 +3070,10 @@ fn collection_member_carrier_detail(
             "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
             collection.host_ref_handle
         ),
+        TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => format!(
+            "treecalc_reference_literal_array_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
+            collection.host_ref_handle
+        ),
         family => format!(
             "treecalc_ordered_selector_v1_member:family={}:handle={}:ordinal={member_index}:target={member_node_id}",
             family.stable_id(),
@@ -3427,6 +3432,13 @@ fn treecalc_sparse_reference_values_binding(
                 working_values,
             )
         }
+        TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => {
+            treecalc_reference_literal_array_sparse_reference_values_binding(
+                collection,
+                structural_snapshot,
+                working_values,
+            )
+        }
         TreeReferenceCollectionFamily::SiblingSetV1
         | TreeReferenceCollectionFamily::PrecedingV1
         | TreeReferenceCollectionFamily::FollowingV1
@@ -3457,6 +3469,47 @@ fn treecalc_children_sparse_reference_values_binding(
             membership_version: collection.collection_dependency.membership_version.clone(),
             order_version: collection.collection_dependency.order_version.clone(),
         },
+        working_values,
+    )
+    .ok()?;
+    Some(runtime_sparse_reference_values_binding(
+        ReferenceLike {
+            kind: ReferenceKind::Structured,
+            target: collection.host_ref_handle.clone(),
+        },
+        &reader,
+    ))
+}
+
+fn treecalc_reference_literal_array_sparse_reference_values_binding(
+    collection: &SyntheticReferenceCollectionBinding,
+    structural_snapshot: &StructuralSnapshot,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> Option<RuntimeSparseReferenceValuesBinding> {
+    let carrier_id = collection
+        .host_ref_handle
+        .strip_prefix("treecalc-hostref:v1:reference_literal_array:")
+        .unwrap_or(&collection.host_ref_handle);
+    let elements = collection
+        .member_node_ids
+        .iter()
+        .copied()
+        .map(crate::formula::TreeCalcReferenceLiteralArrayElement::ReferenceNode);
+    let mut reference_collection =
+        crate::formula::TreeCalcReferenceLiteralArrayCollection::reference_only_with_handle(
+            carrier_id,
+            collection.host_ref_handle.clone(),
+            collection.base_node_id,
+            collection.source_token_text.clone(),
+            elements,
+        )
+        .ok()?;
+    if let Some((start, end)) = collection.source_span_utf8 {
+        reference_collection = reference_collection.with_source_span_utf8(start, end);
+    }
+    let reader = TreeCalcReferenceLiteralArraySparseReader::from_published_values(
+        structural_snapshot,
+        reference_collection,
         working_values,
     )
     .ok()?;
@@ -3504,7 +3557,8 @@ fn ordered_selector_family_from_dependency(
     family: TreeReferenceCollectionFamily,
 ) -> Option<crate::formula::TreeCalcOrderedSelectorFamily> {
     match family {
-        TreeReferenceCollectionFamily::ChildrenV1 => None,
+        TreeReferenceCollectionFamily::ChildrenV1
+        | TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => None,
         TreeReferenceCollectionFamily::SiblingSetV1 => {
             Some(crate::formula::TreeCalcOrderedSelectorFamily::SiblingSetV1)
         }
@@ -3725,6 +3779,9 @@ fn host_reference_bind_results_for_runtime(
 fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -> String {
     match collection.collection_dependency.family {
         TreeReferenceCollectionFamily::ChildrenV1 => "ordered_collection:children_v1".to_string(),
+        TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => {
+            "ordered_collection:treecalc_reference_literal_array_v1".to_string()
+        }
         family => format!(
             "ordered_collection:treecalc_ordered_selector_v1:{}",
             family.stable_id()
@@ -4263,6 +4320,10 @@ impl FormulaCarrierProjectionState<'_> {
                 crate::formula::TreeCalcReferenceCollection::ChildrenV1(collection),
             ) => self.bind_children_collection(carrier.source_token.clone(), collection),
             crate::formula::TreeReference::ReferenceCollection(
+                crate::formula::TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+            ) => self
+                .bind_reference_literal_array_collection(carrier.source_token.clone(), collection),
+            crate::formula::TreeReference::ReferenceCollection(
                 crate::formula::TreeCalcReferenceCollection::OrderedSelectorV1(collection),
             ) => self.bind_ordered_selector_collection(carrier.source_token.clone(), collection),
             crate::formula::TreeReference::HostSensitive { carrier_id, detail } => {
@@ -4414,6 +4475,31 @@ impl FormulaCarrierProjectionState<'_> {
             });
     }
 
+    fn bind_reference_literal_array_collection(
+        &mut self,
+        source_token: Option<String>,
+        collection: &crate::formula::TreeCalcReferenceLiteralArrayCollection,
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
+        let member_node_ids = collection.member_node_ids().to_vec();
+        let collection_dependency = TreeReferenceCollectionDependency::reference_literal_array_v1(
+            collection.host_ref_handle().to_string(),
+            collection.owner_node_id(),
+            member_node_ids.clone(),
+        );
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token,
+                host_ref_handle: collection.host_ref_handle().to_string(),
+                base_node_id: collection.owner_node_id(),
+                source_span_utf8: collection.source_span_utf8(),
+                source_token_text: collection.source_token_text().to_string(),
+                opaque_selector: collection.opaque_selector().to_string(),
+                member_node_ids,
+                collection_dependency,
+            });
+    }
+
     fn next_fallback_token(&mut self, prefix: &str) -> String {
         let token = format!(
             "{}_{}_{}",
@@ -4503,8 +4589,9 @@ mod tests {
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase,
         TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
         TreeCalcOrderedSelectorReferenceCollection, TreeCalcQualifiedChildrenBaseResolution,
-        TreeCalcReferenceCollection, TreeFormula, TreeFormulaBinding, TreeFormulaReferenceCarrier,
-        TreeReference, prebind_treecalc_formula_text,
+        TreeCalcReferenceCollection, TreeCalcReferenceLiteralArrayCollection,
+        TreeCalcReferenceLiteralArrayElement, TreeFormula, TreeFormulaBinding,
+        TreeFormulaReferenceCarrier, TreeReference, prebind_treecalc_formula_text,
         prebind_treecalc_formula_text_with_resolved_bases,
         prebind_treecalc_formula_text_with_resolved_ordered_selectors,
         treecalc_formula_text_ordered_selector_queries,
@@ -4692,6 +4779,35 @@ mod tests {
                     "TREE_REF_10_0",
                     TreeReference::ReferenceCollection(
                         TreeCalcReferenceCollection::OrderedSelectorV1(collection),
+                    ),
+                )],
+            ),
+        }])
+    }
+
+    fn reference_literal_array_catalog() -> TreeFormulaCatalog {
+        let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
+            "array:q1",
+            TreeNodeId(10),
+            "{A,B,A}",
+            [
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(3)),
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(4)),
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(3)),
+            ],
+        )
+        .expect("reference-only array")
+        .with_source_span_utf8(5, 12);
+        TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(10),
+            formula_artifact_id: FormulaArtifactId("formula:total".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM(TREE_REF_10_0)",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_10_0",
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
                     ),
                 )],
             ),
@@ -7614,6 +7730,84 @@ mod tests {
                 source_token_text,
             );
         }
+    }
+
+    #[test]
+    fn reference_literal_array_sum_preserves_order_duplicates_and_sparse_reference_values() {
+        let structural_snapshot = children_collection_snapshot(vec![TreeNodeId(3), TreeNodeId(4)]);
+        let catalog = reference_literal_array_catalog();
+        let binding = catalog
+            .try_get_binding(TreeNodeId(10))
+            .expect("reference literal array binding");
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("reference literal array formula should prepare");
+
+        let host_reference = &prepared
+            .runtime_prepared_identity
+            .host_reference_bind_results[0];
+        assert_eq!(
+            host_reference.reference_handle,
+            "treecalc-hostref:v1:reference_literal_array:array:q1"
+        );
+        assert_eq!(host_reference.source_token_text, "{A,B,A}");
+        assert_eq!(
+            host_reference.shape_hint.as_deref(),
+            Some("ordered_collection:treecalc_reference_literal_array_v1")
+        );
+        assert!(
+            host_reference
+                .replay_identity_contribution
+                .contains("members=node:3,node:4,node:3")
+        );
+
+        let sparse_bindings = sparse_reference_value_bindings_for_runtime(
+            &prepared.translated,
+            &structural_snapshot,
+            &BTreeMap::from([
+                (TreeNodeId(3), "2".to_string()),
+                (TreeNodeId(4), "3".to_string()),
+            ]),
+        );
+        assert_eq!(sparse_bindings.len(), 1);
+        assert_eq!(
+            sparse_bindings[0].reference.target,
+            "treecalc-hostref:v1:reference_literal_array:array:q1"
+        );
+        assert_eq!(sparse_bindings[0].declared_rows, 3);
+        assert_eq!(
+            sparse_bindings[0]
+                .defined_cells
+                .iter()
+                .map(|cell| (cell.row, cell.value.clone()))
+                .collect::<Vec<_>>(),
+            vec![
+                (1, ArrayCellValue::Number(2.0)),
+                (2, ArrayCellValue::Number(3.0)),
+                (3, ArrayCellValue::Number(2.0)),
+            ]
+        );
+
+        let run = LocalTreeCalcEngine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot,
+                formula_catalog: catalog,
+                seeded_published_values: BTreeMap::new(),
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: "candidate:w056:reference-literal-array-sum".to_string(),
+                publication_id: "publication:w056:reference-literal-array-sum".to_string(),
+                compatibility_basis: "snapshot:w056:reference-literal-array-sum".to_string(),
+                artifact_token_basis: "snapshot:w056:reference-literal-array-sum".to_string(),
+                environment_context: LocalTreeCalcEnvironmentContext::default(),
+            })
+            .expect("SUM over reference literal array should execute");
+
+        assert_eq!(run.published_values[&TreeNodeId(10)], "7");
     }
 
     #[test]

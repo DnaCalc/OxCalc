@@ -54,6 +54,7 @@ pub struct WorkspaceQualifiedTarget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TreeReferenceCollectionFamily {
     ChildrenV1,
+    ReferenceLiteralArrayV1,
     SiblingSetV1,
     PrecedingV1,
     FollowingV1,
@@ -119,10 +120,39 @@ impl TreeReferenceCollectionDependency {
     }
 
     #[must_use]
+    pub fn reference_literal_array_v1(
+        host_ref_handle: impl Into<String>,
+        owner_node_id: TreeNodeId,
+        member_node_ids: Vec<TreeNodeId>,
+    ) -> Self {
+        Self {
+            family: TreeReferenceCollectionFamily::ReferenceLiteralArrayV1,
+            host_ref_handle: host_ref_handle.into(),
+            base_node_id: owner_node_id,
+            membership_version: format!(
+                "treecalc-membership:v1:family=reference_literal_array;owner={owner_node_id};members={}",
+                format_tree_node_id_set(&member_node_ids)
+            ),
+            order_version: format!(
+                "treecalc-order:v1:family=reference_literal_array;owner={owner_node_id};members={}",
+                format_tree_node_id_list(&member_node_ids)
+            ),
+            member_node_ids,
+        }
+    }
+
+    #[must_use]
     pub fn carrier_detail(&self) -> String {
         match self.family {
             TreeReferenceCollectionFamily::ChildrenV1 => format!(
                 "treecalc_children_v1:base={};membership={};order={};members={}",
+                self.base_node_id,
+                self.membership_version,
+                self.order_version,
+                format_tree_node_id_list(&self.member_node_ids)
+            ),
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => format!(
+                "treecalc_reference_literal_array_v1:owner={};membership={};order={};members={}",
                 self.base_node_id,
                 self.membership_version,
                 self.order_version,
@@ -145,6 +175,7 @@ impl TreeReferenceCollectionFamily {
     pub const fn stable_id(self) -> &'static str {
         match self {
             TreeReferenceCollectionFamily::ChildrenV1 => "children",
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => "reference_literal_array",
             TreeReferenceCollectionFamily::SiblingSetV1 => "siblings",
             TreeReferenceCollectionFamily::PrecedingV1 => "preceding",
             TreeReferenceCollectionFamily::FollowingV1 => "following",

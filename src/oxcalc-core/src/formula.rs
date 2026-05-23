@@ -4,7 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 use crate::dependency::{
@@ -74,6 +75,7 @@ pub enum TreeReference {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TreeCalcReferenceCollection {
     ChildrenV1(TreeCalcChildrenReferenceCollection),
+    ReferenceLiteralArrayV1(TreeCalcReferenceLiteralArrayCollection),
     OrderedSelectorV1(TreeCalcOrderedSelectorReferenceCollection),
 }
 
@@ -140,6 +142,210 @@ pub struct TreeCalcChildrenReferenceCollection {
     pub opaque_selector: String,
     pub membership_version: String,
     pub order_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcReferenceLiteralArrayCollection {
+    carrier_id: String,
+    host_ref_handle: String,
+    owner_node_id: TreeNodeId,
+    elements: Vec<TreeCalcReferenceLiteralArrayElement>,
+    member_node_ids: Vec<TreeNodeId>,
+    source_span_utf8: Option<(usize, usize)>,
+    source_token_text: String,
+    opaque_selector: String,
+    membership_version: String,
+    order_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcReferenceLiteralArrayElement {
+    ReferenceNode(TreeNodeId),
+    ScalarValue { source_text: String },
+}
+
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
+pub enum TreeCalcReferenceLiteralArrayError {
+    #[error(
+        "mixed scalar/reference array literal '{source_token_text}' cannot be lowered as a reference-only carrier"
+    )]
+    MixedScalarReferenceArray { source_token_text: String },
+    #[error("reference literal array '{source_token_text}' contains no references")]
+    EmptyReferenceArray { source_token_text: String },
+}
+
+impl TreeCalcReferenceLiteralArrayCollection {
+    pub fn reference_only(
+        carrier_id: impl Into<String>,
+        owner_node_id: TreeNodeId,
+        source_token_text: impl Into<String>,
+        elements: impl IntoIterator<Item = TreeCalcReferenceLiteralArrayElement>,
+    ) -> Result<Self, TreeCalcReferenceLiteralArrayError> {
+        let carrier_id = carrier_id.into();
+        let host_ref_handle = format!("treecalc-hostref:v1:reference_literal_array:{carrier_id}");
+        Self::reference_only_with_handle(
+            carrier_id,
+            host_ref_handle,
+            owner_node_id,
+            source_token_text,
+            elements,
+        )
+    }
+
+    pub fn reference_only_with_handle(
+        carrier_id: impl Into<String>,
+        host_ref_handle: impl Into<String>,
+        owner_node_id: TreeNodeId,
+        source_token_text: impl Into<String>,
+        elements: impl IntoIterator<Item = TreeCalcReferenceLiteralArrayElement>,
+    ) -> Result<Self, TreeCalcReferenceLiteralArrayError> {
+        let carrier_id = carrier_id.into();
+        let host_ref_handle = host_ref_handle.into();
+        let source_token_text = source_token_text.into();
+        let elements = elements.into_iter().collect::<Vec<_>>();
+        let mut member_node_ids = Vec::new();
+        for element in &elements {
+            match element {
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(node_id) => {
+                    member_node_ids.push(*node_id);
+                }
+                TreeCalcReferenceLiteralArrayElement::ScalarValue { .. } => {
+                    return Err(
+                        TreeCalcReferenceLiteralArrayError::MixedScalarReferenceArray {
+                            source_token_text: source_token_text.clone(),
+                        },
+                    );
+                }
+            }
+        }
+        if member_node_ids.is_empty() {
+            return Err(TreeCalcReferenceLiteralArrayError::EmptyReferenceArray {
+                source_token_text: source_token_text.clone(),
+            });
+        }
+
+        Ok(Self {
+            host_ref_handle,
+            carrier_id,
+            owner_node_id,
+            elements,
+            opaque_selector: format!(
+                "oxcalc.treecalc.host_selector.v1:selector=ReferenceLiteralArray;owner={owner_node_id};members={}",
+                format_tree_node_ids(&member_node_ids)
+            ),
+            membership_version: format!(
+                "treecalc-membership:v1:family=reference_literal_array;owner={owner_node_id};members={}",
+                format_tree_node_id_set(&member_node_ids)
+            ),
+            order_version: format!(
+                "treecalc-order:v1:family=reference_literal_array;owner={owner_node_id};members={}",
+                format_tree_node_ids(&member_node_ids)
+            ),
+            member_node_ids,
+            source_span_utf8: None,
+            source_token_text,
+        })
+    }
+
+    #[must_use]
+    pub fn with_source_span_utf8(mut self, start_byte: usize, end_byte: usize) -> Self {
+        self.source_span_utf8 = Some((start_byte, end_byte));
+        self
+    }
+
+    #[must_use]
+    pub fn carrier_id(&self) -> &str {
+        &self.carrier_id
+    }
+
+    #[must_use]
+    pub fn host_ref_handle(&self) -> &str {
+        &self.host_ref_handle
+    }
+
+    #[must_use]
+    pub const fn owner_node_id(&self) -> TreeNodeId {
+        self.owner_node_id
+    }
+
+    #[must_use]
+    pub fn elements(&self) -> &[TreeCalcReferenceLiteralArrayElement] {
+        &self.elements
+    }
+
+    #[must_use]
+    pub fn member_node_ids(&self) -> &[TreeNodeId] {
+        &self.member_node_ids
+    }
+
+    #[must_use]
+    pub const fn source_span_utf8(&self) -> Option<(usize, usize)> {
+        self.source_span_utf8
+    }
+
+    #[must_use]
+    pub fn source_token_text(&self) -> &str {
+        &self.source_token_text
+    }
+
+    #[must_use]
+    pub fn opaque_selector(&self) -> &str {
+        &self.opaque_selector
+    }
+
+    #[must_use]
+    pub fn membership_version(&self) -> &str {
+        &self.membership_version
+    }
+
+    #[must_use]
+    pub fn order_version(&self) -> &str {
+        &self.order_version
+    }
+}
+
+impl Serialize for TreeCalcReferenceLiteralArrayCollection {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state =
+            serializer.serialize_struct("TreeCalcReferenceLiteralArrayCollection", 5)?;
+        state.serialize_field("carrier_id", &self.carrier_id)?;
+        state.serialize_field("owner_node_id", &self.owner_node_id)?;
+        state.serialize_field("source_span_utf8", &self.source_span_utf8)?;
+        state.serialize_field("source_token_text", &self.source_token_text)?;
+        state.serialize_field("elements", &self.elements)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for TreeCalcReferenceLiteralArrayCollection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct ReferenceLiteralArrayPacket {
+            carrier_id: String,
+            owner_node_id: TreeNodeId,
+            #[serde(default)]
+            source_span_utf8: Option<(usize, usize)>,
+            source_token_text: String,
+            elements: Vec<TreeCalcReferenceLiteralArrayElement>,
+        }
+
+        let packet = ReferenceLiteralArrayPacket::deserialize(deserializer)?;
+        let mut collection = Self::reference_only(
+            packet.carrier_id,
+            packet.owner_node_id,
+            packet.source_token_text,
+            packet.elements,
+        )
+        .map_err(serde::de::Error::custom)?;
+        collection.source_span_utf8 = packet.source_span_utf8;
+        Ok(collection)
+    }
 }
 
 impl TreeCalcChildrenReferenceCollection {
@@ -2232,6 +2438,8 @@ pub enum TreeReferenceCarrierClass {
 pub enum TreeReferenceInventoryVariant {
     DirectNode,
     ChildrenV1,
+    ReferenceLiteralArray,
+    MixedReferenceArray,
     ProjectionPath,
     RelativePathSelf,
     RelativePathParent,
@@ -2270,6 +2478,7 @@ pub enum TreeReferenceInventoryBlocker {
     NeedsCrossWorkspaceProvider,
     NeedsWorkspaceQualifiedCarrier,
     NeedsSelectorDependencyModel,
+    NeedsReferenceOnlyArrayCarrier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -2374,6 +2583,39 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
             ],
             successor_bead: None,
             evidence_note: "W051 ChildrenV1 collection handle with membership and member-value facts",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::ReferenceLiteralArray,
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::HostNamespaceVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![
+                Dep::TreeReferenceCollectionMembership,
+                Dep::TreeReferenceCollectionMemberValue,
+            ],
+            invalidation_facts: vec![
+                Invalidates::TreeReferenceMembershipChanged,
+                Invalidates::TreeReferenceOrderChanged,
+                Invalidates::UpstreamPublication,
+            ],
+            successor_bead: Some("calc-4vs8.31"),
+            evidence_note: "calc-4vs8.31 adds reference-literal array collection carriers that preserve authored order and duplicates",
+        },
+        TreeReferenceImplementationInput {
+            variant: Variant::MixedReferenceArray,
+            status: Status::TypedExclusion,
+            blocker: Some(Blocker::NeedsReferenceOnlyArrayCarrier),
+            carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
+            host_reference_correlation: Correlation::HostReferenceHandle,
+            namespace_identity_need: Namespace::StructureContextVersion,
+            caller_context_identity_need: Caller::CallerNode,
+            dependency_facts: vec![Dep::Unresolved],
+            invalidation_facts: vec![Invalidates::StructuralRebindRequired],
+            successor_bead: Some("calc-4vs8.31"),
+            evidence_note: "mixed scalar/reference array literals are typed rejects until scalar/value mixing has an explicit generic reference contract",
         },
         TreeReferenceImplementationInput {
             variant: Variant::ProjectionPath,
@@ -2994,6 +3236,44 @@ fn lower_reference_collection(
 
             descriptors
         }
+        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection) => {
+            let collection_dependency =
+                TreeReferenceCollectionDependency::reference_literal_array_v1(
+                    collection.host_ref_handle.clone(),
+                    collection.owner_node_id,
+                    collection.member_node_ids.clone(),
+                );
+            let mut descriptors = vec![DependencyDescriptor {
+                descriptor_id: format!("{descriptor_id}:membership"),
+                source_reference_handle: Some(collection.host_ref_handle.clone()),
+                owner_node_id: binding.owner_node_id,
+                target_node_id: None,
+                workspace_target: None,
+                kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
+                carrier_detail: collection_dependency.carrier_detail(),
+                tree_reference_collection: Some(collection_dependency),
+                requires_rebind_on_structural_change: false,
+            }];
+
+            descriptors.extend(collection.member_node_ids.iter().copied().enumerate().map(
+                |(member_index, member_node_id)| DependencyDescriptor {
+                    descriptor_id: format!("{descriptor_id}:member:{member_index}"),
+                    source_reference_handle: Some(collection.host_ref_handle.clone()),
+                    owner_node_id: binding.owner_node_id,
+                    target_node_id: Some(member_node_id),
+                    workspace_target: None,
+                    kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
+                    carrier_detail: format!(
+                        "treecalc_reference_literal_array_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
+                        collection.host_ref_handle
+                    ),
+                    tree_reference_collection: None,
+                    requires_rebind_on_structural_change: false,
+                },
+            ));
+
+            descriptors
+        }
         TreeCalcReferenceCollection::OrderedSelectorV1(collection) => {
             let collection_dependency = TreeReferenceCollectionDependency::ordered_selector_v1(
                 collection.family.dependency_family(),
@@ -3198,6 +3478,9 @@ impl TreeReference {
             TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(_)) => {
                 TreeReferenceInventoryVariant::ChildrenV1
             }
+            TreeReference::ReferenceCollection(
+                TreeCalcReferenceCollection::ReferenceLiteralArrayV1(_),
+            ) => TreeReferenceInventoryVariant::ReferenceLiteralArray,
             TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
                 collection,
             )) => match collection.family {
@@ -3390,6 +3673,18 @@ impl TreeReference {
                     collection.base_node_id,
                     collection.membership_version,
                     collection.order_version
+                )
+            }
+            TreeReference::ReferenceCollection(
+                TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+            ) => {
+                format!(
+                    "treecalc_reference_literal_array_v1:carrier={}:owner={}:membership={}:order={};members={}",
+                    collection.carrier_id,
+                    collection.owner_node_id,
+                    collection.membership_version,
+                    collection.order_version,
+                    format_tree_node_ids(&collection.member_node_ids)
                 )
             }
             TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
@@ -4559,6 +4854,8 @@ mod tests {
         assert_eq!(inputs.len(), variants.len());
         assert!(variants.contains(&TreeReferenceInventoryVariant::DirectNode));
         assert!(variants.contains(&TreeReferenceInventoryVariant::ChildrenV1));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::ReferenceLiteralArray));
+        assert!(variants.contains(&TreeReferenceInventoryVariant::MixedReferenceArray));
         assert!(variants.contains(&TreeReferenceInventoryVariant::RelativePathParent));
         assert!(variants.contains(&TreeReferenceInventoryVariant::RelativePathAncestor));
         assert!(variants.contains(&TreeReferenceInventoryVariant::SiblingOffset));
@@ -4630,6 +4927,14 @@ mod tests {
             bare_name.blocker,
             Some(TreeReferenceInventoryBlocker::NeedsOxFmlNameCallPrecedenceEvidence)
         );
+
+        let mixed_array =
+            tree_reference_implementation_input(TreeReferenceInventoryVariant::MixedReferenceArray)
+                .expect("mixed array inventory");
+        assert_eq!(
+            mixed_array.blocker,
+            Some(TreeReferenceInventoryBlocker::NeedsReferenceOnlyArrayCarrier)
+        );
     }
 
     #[test]
@@ -4651,6 +4956,28 @@ mod tests {
                 )),
                 TreeReferenceInventoryVariant::ChildrenV1,
                 TreeReferenceInventoryStatus::AdmittedCurrentCarrier,
+                HostReferenceCorrelationNeed::HostReferenceHandle,
+                NamespaceIdentityNeed::HostNamespaceVersion,
+                CallerContextIdentityNeed::CallerNode,
+            ),
+            (
+                TreeReference::ReferenceCollection(
+                    TreeCalcReferenceCollection::ReferenceLiteralArrayV1(
+                        TreeCalcReferenceLiteralArrayCollection::reference_only(
+                            "array:q1",
+                            TreeNodeId(4),
+                            "{A,C,A}",
+                            [
+                                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(2)),
+                                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(3)),
+                                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(2)),
+                            ],
+                        )
+                        .expect("reference-only array"),
+                    ),
+                ),
+                TreeReferenceInventoryVariant::ReferenceLiteralArray,
+                TreeReferenceInventoryStatus::AdmittedImplementationInput,
                 HostReferenceCorrelationNeed::HostReferenceHandle,
                 NamespaceIdentityNeed::HostNamespaceVersion,
                 CallerContextIdentityNeed::CallerNode,
@@ -5077,6 +5404,117 @@ mod tests {
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.reverse_edges[&TreeNodeId(3)].len(), 1);
         assert_eq!(graph.reverse_edges[&TreeNodeId(2)].len(), 1);
+    }
+
+    #[test]
+    fn formula_catalog_lowers_reference_literal_array_with_order_and_duplicates() {
+        let snapshot = snapshot();
+        let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
+            "array:q1",
+            TreeNodeId(4),
+            "{A,C,A}",
+            [
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(2)),
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(3)),
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(2)),
+            ],
+        )
+        .expect("reference-only array")
+        .with_source_span_utf8(5, 12);
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:reference-array".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:reference-array".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=SUM({A,C,A})",
+                [TreeFormulaReferenceCarrier::named(
+                    "{A,C,A}",
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+                    ),
+                )],
+            ),
+        }]);
+
+        let descriptors = catalog.to_dependency_descriptors(&snapshot);
+
+        assert_eq!(descriptors.len(), 4);
+        assert_eq!(
+            descriptors[0].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        );
+        assert_eq!(descriptors[0].target_node_id, Some(TreeNodeId(2)));
+        assert_eq!(
+            descriptors[0].source_reference_handle.as_deref(),
+            Some("treecalc-hostref:v1:reference_literal_array:array:q1")
+        );
+        assert!(descriptors[0].carrier_detail.contains("ordinal=0"));
+        assert_eq!(descriptors[1].target_node_id, Some(TreeNodeId(3)));
+        assert!(descriptors[1].carrier_detail.contains("ordinal=1"));
+        assert_eq!(descriptors[2].target_node_id, Some(TreeNodeId(2)));
+        assert!(descriptors[2].carrier_detail.contains("ordinal=2"));
+        assert_eq!(
+            descriptors[3].kind,
+            DependencyDescriptorKind::TreeReferenceCollectionMembership
+        );
+        let dependency = descriptors[3]
+            .tree_reference_collection
+            .as_ref()
+            .expect("reference literal dependency");
+        assert_eq!(
+            dependency.family,
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1
+        );
+        assert_eq!(
+            dependency.member_node_ids,
+            vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(2)]
+        );
+        assert!(
+            dependency
+                .order_version
+                .contains("members=node:2,node:3,node:2")
+        );
+        assert!(
+            dependency
+                .membership_version
+                .contains("members=node:2,node:3")
+        );
+
+        let graph = DependencyGraph::build(&snapshot, &descriptors);
+        assert!(graph.diagnostics.is_empty());
+        assert_eq!(graph.reverse_edges[&TreeNodeId(2)].len(), 2);
+        assert_eq!(graph.reverse_edges[&TreeNodeId(3)].len(), 1);
+    }
+
+    #[test]
+    fn mixed_reference_array_is_typed_exclusion_before_lowering() {
+        let error = TreeCalcReferenceLiteralArrayCollection::reference_only(
+            "array:mixed",
+            TreeNodeId(4),
+            "{A,1,C}",
+            [
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(2)),
+                TreeCalcReferenceLiteralArrayElement::ScalarValue {
+                    source_text: "1".to_string(),
+                },
+                TreeCalcReferenceLiteralArrayElement::ReferenceNode(TreeNodeId(3)),
+            ],
+        )
+        .expect_err("mixed scalar/reference array should not become reference-only carrier");
+
+        assert_eq!(
+            error,
+            TreeCalcReferenceLiteralArrayError::MixedScalarReferenceArray {
+                source_token_text: "{A,1,C}".to_string()
+            }
+        );
+        let inventory =
+            tree_reference_implementation_input(TreeReferenceInventoryVariant::MixedReferenceArray)
+                .expect("mixed array inventory");
+        assert_eq!(
+            inventory.status,
+            TreeReferenceInventoryStatus::TypedExclusion
+        );
     }
 
     #[test]

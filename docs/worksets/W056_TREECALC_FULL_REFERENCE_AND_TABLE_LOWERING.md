@@ -860,6 +860,46 @@ This is still not DnaTreeCalc corpus activation, retained replay evidence,
 dynamic `INDIRECT` cross-workspace rebind, or W074 name/call precedence. Those
 remain under the open W056 successor beads.
 
+## 4J.3. `calc-4vs8.31` Reference Literal Arrays And Dynamic Carrier Intake
+
+The W056 non-table tranche now adds the first explicit reference-literal array
+carrier while preserving existing dynamic-reference behavior:
+
+1. `TreeCalcReferenceCollection::ReferenceLiteralArrayV1` is an OxCalc-owned
+   collection carrier for authored reference literal arrays. It carries a
+   stable carrier id, host-reference handle, owner node, exact source token,
+   optional source span, opaque selector payload, member node ids, membership
+   version, and order version.
+   It is constructed from typed reference-literal array elements rather than
+   from a raw member list; scalar elements return a typed
+   `MixedScalarReferenceArray` error before lowering.
+2. `TreeReferenceCollectionFamily::ReferenceLiteralArrayV1` records dependency
+   membership and member-value facts without pretending the array was produced
+   by tree traversal. Membership identity is set-based; order identity
+   preserves authored order and duplicates.
+3. `TreeCalcReferenceLiteralArraySparseReader` exposes the W051 sparse-reader
+   surface for reference-literal arrays: declared extent, defined cardinality,
+   defined iterator, `read_at`, `contains`, and stable reader identity.
+4. Runtime binding passes the carrier through the generic OxFml host-reference
+   path and sparse `ReferenceLike` values. OxFunc still sees only an opaque
+   structured reference target; it does not inspect TreeCalc selectors.
+5. Dynamic `DynamicPotential` and `DynamicResolved` carriers remain the
+   admitted OxCalc dynamic-dependency path. Focused dynamic tests continue to
+   prove potential versus resolved rebind facts, dynamic runtime effects, and
+   resolved shape updates.
+6. Mixed scalar/reference array literals are an executable typed exclusion
+   under `TreeReferenceInventoryVariant::MixedReferenceArray` until there is an
+   explicit generic contract for scalar/reference mixing. They are rejected at
+   the typed element-packet boundary and must not be silently coerced into a
+   reference-only carrier.
+
+Current non-claim:
+
+This is not DnaTreeCalc corpus activation for reference literals, dynamic
+`INDIRECT` end-to-end product evidence, cross-workspace dynamic rebind, or W074
+name/call precedence. Those remain under `calc-4vs8.32`, `calc-4vs8.33`, and
+the narrowed `calc-4vs8.5` blocker.
+
 ## 4K. `calc-4vs8.19` OxFml Host Namespace Invalidation Intake
 
 OxFml W074 `fml-ds0.6.1` at commit `4a050f9` narrows one upstream W056
@@ -1116,15 +1156,25 @@ comparison-policy, and refreshed update-oracle evidence (`a195815`, `b341f8b`,
 depends on the audit verdict itself, including whether the remaining shared
 `comparison_value` wire limitation is outside table semantics or a closure
 blocker.
+`calc-4vs8.31` adds focused Rust coverage for reference literal arrays and
+dynamic carrier intake: `ReferenceLiteralArrayV1` lowers to membership and
+member-value descriptors while preserving authored order and duplicates,
+projects through a sparse reader and generic OxFml host-reference packet, and
+executes `SUM` through opaque `ReferenceLike` sparse values. Existing dynamic
+tests continue to prove dynamic potential/resolved rebind facts and runtime
+effects. Mixed scalar/reference arrays are rejected at the typed element-packet
+constructor and remain a typed exclusion rather than a silent reference-only
+coercion.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, bare host-name and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
-children/table/ordered-selector/cross-workspace slices, DnaTreeCalc activation
-for the remaining W004/W005 non-table reference suite, broader end-to-end
-scenarios, and retained evidence intake. The provider/alias/first-position `!`
-packet shape and workspace-qualified carrier path are no longer missing, but
+children/table/ordered-selector/cross-workspace/reference-literal-array
+slices, DnaTreeCalc activation for the remaining W004/W005 non-table reference
+suite, broader end-to-end scenarios, and retained evidence intake. The
+provider/alias/first-position `!` packet shape, workspace-qualified carrier
+path, and reference-literal array carrier path are no longer missing, but
 blocker `calc-4vs8.5` remains open for the remaining full-W056 non-table
 closure scope.
 

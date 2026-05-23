@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::formula::{
     TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorReferenceCollection,
+    TreeCalcReferenceLiteralArrayCollection,
 };
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 
@@ -167,6 +168,8 @@ pub enum SparseReaderError {
     },
     #[error("TreeCalc children collection base node {base_node_id} is not present")]
     UnknownTreeCalcBase { base_node_id: TreeNodeId },
+    #[error("TreeCalc reference literal array member node {member_node_id} is not present")]
+    UnknownTreeCalcReferenceLiteralMember { member_node_id: TreeNodeId },
     #[error("TreeCalc children collection for base node {base_node_id} has too many members")]
     TreeCalcMemberOrdinalOverflow { base_node_id: TreeNodeId },
 }
@@ -268,6 +271,14 @@ pub struct TreeCalcOrderedSelectorSparseReader {
     identity: SparseReaderIdentity,
     extent: SparseRangeExtent,
     collection: TreeCalcOrderedSelectorReferenceCollection,
+    member_values: BTreeMap<TreeNodeId, EvalValue>,
+    telemetry: SparseReaderAccessTelemetry,
+}
+
+pub struct TreeCalcReferenceLiteralArraySparseReader {
+    identity: SparseReaderIdentity,
+    extent: SparseRangeExtent,
+    collection: TreeCalcReferenceLiteralArrayCollection,
     member_values: BTreeMap<TreeNodeId, EvalValue>,
     telemetry: SparseReaderAccessTelemetry,
 }
@@ -389,6 +400,150 @@ impl SparseRangeReader for TreeCalcOrderedSelectorSparseReader {
         Box::new(
             self.collection
                 .member_node_ids
+                .iter()
+                .enumerate()
+                .filter_map(|(index, node_id)| {
+                    let value = self.member_values.get(node_id)?.clone();
+                    self.telemetry.record_defined_yield();
+                    Some(SparseDefinedCell {
+                        coord: SparseCellCoord::new(
+                            u32::try_from(index + 1).expect("member count was u32-checked"),
+                            1,
+                        ),
+                        value,
+                    })
+                }),
+        )
+    }
+
+    fn read_at(&self, coord: SparseCellCoord) -> SparseCellRead {
+        self.telemetry.record_read_at();
+        self.member_node_id_at(coord)
+            .and_then(|node_id| self.member_values.get(&node_id))
+            .cloned()
+            .map_or(SparseCellRead::Blank, SparseCellRead::Defined)
+    }
+
+    fn contains(&self, coord: SparseCellCoord) -> bool {
+        self.telemetry.record_contains();
+        self.extent.contains(coord)
+    }
+}
+
+impl std::fmt::Debug for TreeCalcReferenceLiteralArraySparseReader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TreeCalcReferenceLiteralArraySparseReader")
+            .field("identity", &self.identity)
+            .field("extent", &self.extent)
+            .field("collection", &self.collection)
+            .field("member_values", &self.member_values)
+            .finish_non_exhaustive()
+    }
+}
+
+impl TreeCalcReferenceLiteralArraySparseReader {
+    pub fn new(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcReferenceLiteralArrayCollection,
+        member_values: impl IntoIterator<Item = (TreeNodeId, EvalValue)>,
+    ) -> Result<Self, SparseReaderError> {
+        for member_node_id in collection.member_node_ids() {
+            structural_snapshot.try_get_node(*member_node_id).ok_or(
+                SparseReaderError::UnknownTreeCalcReferenceLiteralMember {
+                    member_node_id: *member_node_id,
+                },
+            )?;
+        }
+        let row_count = u32::try_from(collection.member_node_ids().len()).map_err(|_| {
+            SparseReaderError::TreeCalcMemberOrdinalOverflow {
+                base_node_id: collection.owner_node_id(),
+            }
+        })?;
+        let admitted_members = collection
+            .member_node_ids()
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+        let member_values = member_values
+            .into_iter()
+            .filter(|(node_id, _)| admitted_members.contains(node_id))
+            .collect::<BTreeMap<_, _>>();
+        let identity = SparseReaderIdentity::new(
+            collection.host_ref_handle().to_string(),
+            collection.opaque_selector().to_string(),
+            format!(
+                "snapshot={};membership={};order={}",
+                structural_snapshot.snapshot_id(),
+                collection.membership_version(),
+                collection.order_version()
+            ),
+        );
+
+        Ok(Self {
+            identity,
+            extent: SparseRangeExtent::new(SparseCellCoord::new(1, 1), row_count, 1),
+            collection,
+            member_values,
+            telemetry: SparseReaderAccessTelemetry::default(),
+        })
+    }
+
+    pub fn from_published_values(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcReferenceLiteralArrayCollection,
+        published_values: &BTreeMap<TreeNodeId, String>,
+    ) -> Result<Self, SparseReaderError> {
+        Self::new(
+            structural_snapshot,
+            collection,
+            published_values
+                .iter()
+                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_eval_value(value))),
+        )
+    }
+
+    #[must_use]
+    pub fn member_node_ids(&self) -> &[TreeNodeId] {
+        self.collection.member_node_ids()
+    }
+
+    #[must_use]
+    pub fn member_node_id_at(&self, coord: SparseCellCoord) -> Option<TreeNodeId> {
+        if !self.extent.contains(coord) || coord.column != 1 {
+            return None;
+        }
+        let ordinal = usize::try_from(coord.row.checked_sub(1)?).ok()?;
+        self.collection.member_node_ids().get(ordinal).copied()
+    }
+
+    #[must_use]
+    pub fn access_summary(&self) -> SparseReaderAccessSummary {
+        self.telemetry.summary()
+    }
+}
+
+impl SparseRangeReader for TreeCalcReferenceLiteralArraySparseReader {
+    fn reader_identity(&self) -> &SparseReaderIdentity {
+        &self.identity
+    }
+
+    fn declared_extent(&self) -> SparseRangeExtent {
+        self.extent
+    }
+
+    fn defined_cardinality(&self) -> usize {
+        self.collection
+            .member_node_ids()
+            .iter()
+            .filter(|node_id| self.member_values.contains_key(node_id))
+            .count()
+    }
+
+    fn defined_iter(&self) -> Box<dyn Iterator<Item = SparseDefinedCell> + '_> {
+        self.telemetry.record_defined_iter();
+        Box::new(
+            self.collection
+                .member_node_ids()
                 .iter()
                 .enumerate()
                 .filter_map(|(index, node_id)| {

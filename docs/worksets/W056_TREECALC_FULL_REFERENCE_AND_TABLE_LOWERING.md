@@ -239,24 +239,25 @@ dependency/invalidation evidence through validate-bundle/replay/diff/explain
 without parsing TreeCalc structured-reference text. That closes
 `calc-4vs8.27` and `calc-4vs8.28`.
 
-OxXlPlay commit `8176223` closes `oxxlplay-4nd.3` with retained
-`xlplay_table_update_oracle_001` artifacts. OxReplay commit `c387bc9` accepts
-those artifacts through validate-bundle/replay and retains self-diff/explain
-evidence. The admitted Excel-observed update slice covers body edit, row
-insert/delete/reorder, column insert/delete/reorder/rename, header edit,
-totals-row toggle/edit, table rename, table resize, structured-reference
-formula recalculation, and explicit table-move unavailability. `calc-4vs8.29`
-remains open because table delete and save/reopen are not yet retained in the
-Excel oracle, Excel dependency/invalidation internals remain unavailable, and
-OxReplay full-family diff/explain is still blocked on shared value/outcome
-envelope and `table_update_oracle` comparison-policy decisions.
+OxXlPlay commit `8176223` first closed `oxxlplay-4nd.3` with retained
+`xlplay_table_update_oracle_001` artifacts, and commit `c3a4c88` closes the
+residual `oxxlplay-4nd.4` update-oracle breadth. OxReplay commits `c387bc9`,
+`9e4c503`, and `16791fb` accept the refreshed artifact through
+validate-bundle/replay, admit `table_update_oracle` as opaque exact JSON, and
+retain self-diff/explain evidence. The admitted Excel-observed update slice now
+covers body edit, row insert/delete/reorder, column insert/delete/reorder/rename,
+header edit, totals-row toggle/edit, table rename, table resize, structured-
+reference formula recalculation, accepted isolated `table_delete`, explicit
+`table_move` unavailability, typed `save_reopen` capture rejection, and
+`execution_outcome.class_id`. Excel dependency/invalidation internals remain
+explicitly unavailable from Excel COM rather than inferred by OxCalc or
+OxReplay.
 
-That evidence is not enough to close the whole table topic. The final
-`calc-4vs8.26` audit now depends on the remaining `calc-4vs8.29` gaps rather
-than on DnaTreeCalc/OxReplay retained producer intake. The blocker intentionally
-keeps closure tied to retained Excel update breadth and explicit comparison
-policy instead of allowing baseline engine/runtime tests to stand in for product
-evidence.
+That closes the `calc-4vs8.29` Excel update-oracle intake blocker. The final
+`calc-4vs8.26` audit no longer depends on missing retained Excel update breadth;
+it must now decide the table-scope closure claim against the remaining shared
+value-wire/matched-scenario limitations without treating those limitations as
+TreeCalc table semantics.
 
 The architecture rule for all of these beads is strict: OxCalc/DnaTreeCalc own
 TreeCalc table meaning and structural identity; OxFml owns generic structured
@@ -264,6 +265,83 @@ reference parsing/binding; OxFunc owns function semantics over opaque carriers;
 OxXlPlay observes Excel; OxReplay compares retained declared payloads. No repo
 may close a table bead by parsing another repo's private strings or mirroring
 another repo's semantics.
+
+## 4B.2. Final Node-Associated Table Audit
+
+Product status:
+
+The W056 node-associated table slice is complete for the declared structured
+table scope. OxCalc can project a TreeCalc node table as an Excel-shaped virtual
+table context for OxFml, lower generic structured-reference packets into
+OxCalc-owned row/column/header/totals/caller-row dependencies, provide sparse
+reference readers without adding `EvalValue::Table`, evaluate per-row table
+formulas with row-specific caller context, and record update/invalidation facts
+for the declared table edits.
+
+Supported structured-reference scope:
+
+1. table paths and omitted-table/caller-row forms: `path[Col]`, `path[@Col]`,
+   `[#Headers]`, `[#Data]`, `[#Totals]`, `#All`, composite structured refs,
+   escaped table names, escaped column names, escaped composite refs, and
+   escaped current-row refs,
+2. table reference carriers/readers: whole table, data body, selected column,
+   current row, headers, totals, and sparse blank/defined traversal,
+3. table formula runtime: one formula text evaluated per table row through
+   generic OxFml table context, stable dispatch skeleton reuse, row-specific
+   caller context identity, totals formula execution, and typed rejection of
+   current-row references outside data rows,
+4. update and invalidation facts: body value/formula edits, row
+   insert/delete/reorder, column insert/delete/reorder/rename, header edits,
+   totals toggle/formula edit, table rename/move/delete, save/reopen identity
+   preservation, structural rebind, and unaffected reader identity stability.
+
+Evidence:
+
+1. OxCalc engine/runtime table beads `calc-4vs8.21` through `calc-4vs8.25`
+   closed with Rust coverage and `cargo test -p oxcalc-core`.
+2. DnaTreeCalc retained table artifacts landed at
+   `../DnaTreeCalc/docs/test-runs/w056-table-structured-references-001/`,
+   covering the active LiveOxCalc/OxCalc table corpus, row formulas, totals
+   formulas, diagnostics, dependency lowering, update classification, and
+   retained replay projection.
+3. OxReplay retained intake accepts the DnaTreeCalc artifact at
+   `../OxReplay/docs/test-runs/dnatreecalc-w056-table-structured-references-001-baseline/`
+   for `table_slice`, value/display/outcome, dependency evidence,
+   invalidation evidence, and retained artifact refs without parsing TreeCalc
+   structured-reference text.
+4. OxXlPlay retained Excel oracle artifacts at
+   `../OxXlPlay/states/excel/xlplay_table_update_oracle_001/` now cover the
+   declared update family, including accepted isolated `table_delete`, typed
+   `save_reopen` capture rejection, explicit `table_move` unavailability, and
+   `execution_outcome.class_id`.
+5. OxReplay accepts the refreshed OxXlPlay oracle at
+   `../OxReplay/docs/test-runs/oxxlplay-seam-xlplay_table_update_oracle_001-baseline/`
+   and admits `table_update_oracle` as opaque exact JSON through
+   `table_update_oracle_json_exact`.
+
+Known exclusions and non-table residuals:
+
+1. Excel COM does not expose internal dependency graphs, dirty-set contents, or
+   invalidation event order for table updates. Those are retained as explicit
+   capture limits in the OxXlPlay artifact and do not move into OxCalc runtime
+   semantics.
+2. OxXlPlay retains `save_reopen` as a typed capture rejection because hidden
+   Excel COM `SaveCopyAs`/open can block unattended observation on the exercised
+   host. OxCalc still has engine-side save/reopen identity coverage for its
+   model state.
+3. OxXlPlay retains `table_move` as typed unavailability for this oracle slice.
+   OxCalc owns TreeCalc table move/rebind semantics and tests them locally.
+4. OxReplay `oxreplay-p1w.3` remains open for matched TreeCalc/Excel scenario
+   mapping and the shared top-level `comparison_value` wire helper/exclusion.
+   That is a shared value-replay seam, not TreeCalc table parsing, lowering,
+   dependency, or invalidation behavior.
+
+Formal status:
+
+This audit is product/evidence closure for the W056 table slice only. It does
+not close the broader W056 reference runtime, W074 name/call precedence,
+cross-workspace references, raw ordered-selector syntax, or the remaining
+DnaTreeCalc W004/W005 non-table reference corpus.
 
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.
@@ -899,25 +977,25 @@ insert/delete/reorder/rename, header edits, totals toggle/formula edit, table
 rename/move/delete, save/reopen identity preservation, structural rebind,
 typed post-update diagnostics, and unaffected reader identity stability.
 `calc-4vs8.26` audit intake records cross-repo progress rather than closure:
-DnaTreeCalc activated the first table structured-reference corpus through
-LiveOxCalc/OxCalc (`e59c6f1`, `a5f7b65`), OxXlPlay produced retained baseline
-Excel table observation artifacts (`6c0f53e`), and OxReplay recorded the
-remaining retained-artifact handoff/blocker (`a195815`). The audit filed
-`calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29` so final table closure is
-blocked on full table corpus residuals, retained replay comparison artifacts,
-and Excel update-oracle evidence.
+DnaTreeCalc activated table structured-reference corpus slices through
+LiveOxCalc/OxCalc (`e59c6f1`, `a5f7b65`, `b59b2fb`, `8eba3cb`), OxXlPlay
+produced retained Excel table observation/update artifacts (`6c0f53e`,
+`8176223`, `c3a4c88`), and OxReplay recorded retained-artifact intake,
+comparison-policy, and refreshed update-oracle evidence (`a195815`, `b341f8b`,
+`e6de7a4`, `c387bc9`, `9e4c503`, `16791fb`). The audit filed and then consumed
+`calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29`; final table closure now
+depends on the audit verdict itself, including whether the remaining shared
+`comparison_value` wire limitation is outside table semantics or a closure
+blocker.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, bare host-name and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
 children/table/ordered-selector slices, cross-workspace provider and workspace
-alias/first-position `!` semantics, DnaTreeCalc residual table corpus breadth
-(`#All`, bracket-escaped table/column names, composite escaped refs, and
-current-row escaped refs), retained DnaTreeCalc/OxReplay table comparison
-artifacts, OxXlPlay update-oracle observations, DnaTreeCalc activation for the
-remaining W004/W005 reference suite, and broader end-to-end scenarios. Blockers
-`calc-4vs8.5`, `calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29` remain open
-for the remaining full-W056 closure scope.
+alias/first-position `!` semantics, DnaTreeCalc activation for the remaining
+W004/W005 non-table reference suite, broader end-to-end scenarios, and the final
+`calc-4vs8.26` table closure audit. Blocker `calc-4vs8.5` remains open for the
+remaining full-W056 non-table closure scope.
 
 Formal status: no proof claim.

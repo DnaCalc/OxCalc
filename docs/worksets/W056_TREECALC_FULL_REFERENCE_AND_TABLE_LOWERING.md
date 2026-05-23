@@ -125,10 +125,12 @@ W056 beads. In particular:
    classification have landed in OxFml W074 `fml-ds0.7`; final bare
    name/callable precedence remains blocked on the broader W074 Excel oracle
    matrix,
-4. cross-workspace remains a typed exclusion until a versioned workspace
-   availability/degradation model exists; resolved ordered selector packets
-   now have carriers via `calc-4vs8.12`, while raw selector parser/resolver
-   packets, traversal bounds, and corpus activation remain open.
+4. cross-workspace now has the versioned workspace availability/degradation
+   packet plus provider/alias resolver shape, but remains a runtime carrier
+   typed exclusion until workspace-qualified reference carriers/dependency
+   facts exist; resolved ordered selector packets now have carriers via
+   `calc-4vs8.12`, while remaining raw selector parser/resolver packets,
+   traversal bounds, and corpus activation remain open.
 
 ## 4B. `calc-4vs8.2` Structured Table Lowering Surface
 
@@ -353,8 +355,9 @@ New execution beads:
 1. `calc-4vs8.30` — cross-workspace alias and availability semantics. This
    owns workspace-provider lookup, workspace aliases, first-position `!`
    alias/base-token behavior, availability-version prepared identity, and typed
-   degradation diagnostics. Public packet shape exists; provider/alias behavior
-   still needs implementation or typed exclusion.
+   degradation diagnostics. OxCalc now has the provider/alias packet shape and
+   local resolver tests; receiving-side DnaTreeCalc corpus activation remains
+   W056 evidence work.
 2. `calc-4vs8.31` — reference literals, mixed reference arrays, and dynamic
    references. This owns typed carriers or exclusions for explicit reference
    literals, ordered/duplicate-preserving reference arrays, scalar/reference
@@ -759,12 +762,12 @@ availability/degradation packet:
 2. `prepared_identity_component()` projects the availability version, workspace
    handle, status, and degradation layer as a deterministic prepared/cache
    identity contribution.
-3. the cross-workspace inventory row now points to
-   `NeedsCrossWorkspaceProvider`: the packet/version model exists, but
-   execution still requires a workspace provider and alias model.
-4. explicit host-path tokens containing `!` remain typed rejects in
-   `resolve_treecalc_explicit_host_path_base(...)` until the provider/alias
-   model lands.
+3. at this tranche, the cross-workspace inventory row still pointed to
+   `NeedsCrossWorkspaceProvider`: the packet/version model existed, but
+   execution still required a workspace provider and alias model.
+4. at this tranche, explicit host-path tokens containing `!` were still typed
+   rejects in `resolve_treecalc_explicit_host_path_base(...)`; `calc-4vs8.30`
+   supersedes that with the first-position sheet-separator rule.
 
 Current non-claim:
 
@@ -772,6 +775,50 @@ This is not executable cross-workspace reference resolution. It supplies the
 packet and identity shape needed to report availability/degradation without
 inventing workspace alias semantics, external workspace lookup, or retained
 cross-workspace corpus evidence.
+
+## 4J.1. `calc-4vs8.30` Cross-Workspace Provider And Alias Packet
+
+The W056 non-table tranche now admits the OxCalc-owned provider/alias surface
+for explicit host-path base tokens:
+
+1. `TreeCalcWorkspaceResolutionRegistry` is the testable host-provider shape:
+   it registers the current workspace, loaded external workspace snapshots,
+   workspace aliases, and each workspace's `availability_version`.
+2. `resolve_treecalc_workspace_host_path_base(...)` returns
+   `TreeCalcWorkspaceHostPathBaseResolution`, carrying the original base token,
+   optional workspace selector token, local path token, stable workspace handle,
+   stable `workspace#node` handle, canonical projection path, workspace
+   resolution layer, local resolution layer, availability packet, and
+   deterministic resolution identity.
+3. `[alias]Path`, quoted direct selectors such as
+   `['C:\Work\projections.dnatree']Path`, `[alias][Escaped Segment].Path`, and
+   `[alias]` workspace-root forms are resolved through the registry without
+   hosts parsing OxFml private strings. Unregistered `[Word]...` forms fall
+   back to escaped current-workspace path binding unless the selector looks
+   like a direct workspace path; this preserves the DnaTreeCalc alias-first
+   bracket-position rule.
+4. unloaded or unregistered workspaces produce typed
+   `WorkspaceUnavailable` diagnostics plus an availability-version prepared
+   identity contribution. No stale-value fallback is introduced.
+5. `!` is no longer treated as the cross-workspace marker. It is admitted only
+   as the sheet-position separator alias after the first path segment
+   (`Sheet1!Foo.Bar` == `Sheet1.Foo.Bar`); leading or mid-path `!` remains a
+   typed syntax error.
+6. the cross-workspace inventory row now points past the old provider-missing
+   blocker and remains a typed exclusion on workspace-qualified carriers: the
+   packet supplies `CrossWorkspaceAvailabilityVersion` identity and
+   `HostSensitive` dependency classification, but existing node carriers still
+   key on local `TreeNodeId`.
+
+Current non-claim:
+
+This does not activate the DnaTreeCalc `references/cross-workspace` corpus,
+does not define bare host-name/call precedence, and does not add dynamic
+`INDIRECT` cross-workspace rebind. It also does not provide the
+workspace-qualified runtime carrier/dependency path needed for executing
+cross-workspace references through existing collection/reference carriers.
+Those remain under `calc-4vs8.31`, `calc-4vs8.32`, and `calc-4vs8.33`, with a
+dedicated successor bead for the workspace-qualified carrier path.
 
 ## 4K. `calc-4vs8.19` OxFml Host Namespace Invalidation Intake
 
@@ -1027,10 +1074,11 @@ Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, bare host-name and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
-children/table/ordered-selector slices, cross-workspace provider and workspace
-alias/first-position `!` semantics, DnaTreeCalc activation for the remaining
+children/table/ordered-selector slices, workspace-qualified cross-workspace
+runtime carriers/dependency facts, DnaTreeCalc activation for the remaining
 W004/W005 non-table reference suite, broader end-to-end scenarios, and the final
-`calc-4vs8.26` table closure audit. Blocker `calc-4vs8.5` remains open for the
-remaining full-W056 non-table closure scope.
+`calc-4vs8.26` table closure audit. The provider/alias/first-position `!`
+packet shape is no longer missing, but blocker `calc-4vs8.5` remains open for
+the remaining full-W056 non-table closure scope.
 
 Formal status: no proof claim.

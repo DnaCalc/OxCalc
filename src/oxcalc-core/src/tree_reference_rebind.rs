@@ -646,7 +646,7 @@ mod tests {
     }
 
     #[test]
-    fn inventory_surface_keeps_cross_workspace_as_provider_blocker() {
+    fn inventory_surface_keeps_cross_workspace_runtime_on_workspace_qualified_carrier() {
         let graph = DependencyGraph::build(&snapshot(), &[]);
         let surface = w056_reference_dependency_surface(&graph);
 
@@ -658,11 +658,12 @@ mod tests {
 
         assert_eq!(
             cross_workspace.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsCrossWorkspaceProvider)
+            Some(TreeReferenceInventoryBlocker::NeedsWorkspaceQualifiedCarrier)
         );
         assert_eq!(
             cross_workspace.namespace_identity_need,
             NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion
         );
+        assert!(cross_workspace.evidence_note.contains("calc-4vs8.30"));
     }
 }

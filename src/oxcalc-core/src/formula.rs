@@ -413,6 +413,7 @@ pub enum TreeCalcHostPathBaseResolutionLayer {
     ProjectionPath,
     DottedProjectionPath,
     RootDescendantPath,
+    WorkspaceRoot,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -561,6 +562,310 @@ impl TreeCalcCrossWorkspaceAvailabilityPacket {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcWorkspaceSelectorKind {
+    CurrentWorkspaceRoot,
+    AliasOrDirectPath,
+    QuotedDirectPath,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeCalcWorkspaceResolutionLayer {
+    CurrentWorkspace,
+    WorkspaceAlias,
+    DirectWorkspacePath,
+    QuotedWorkspacePath,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcWorkspaceResolutionPacket {
+    pub selector_token_text: String,
+    pub selector_kind: TreeCalcWorkspaceSelectorKind,
+    pub workspace_handle: String,
+    pub resolution_layer: TreeCalcWorkspaceResolutionLayer,
+    pub availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcWorkspaceHostPathBaseResolution {
+    pub base_token_text: String,
+    pub workspace_selector_token: Option<String>,
+    pub local_path_token_text: String,
+    pub workspace_handle: String,
+    pub base_node_id: TreeNodeId,
+    pub base_node_handle: String,
+    pub canonical_projection_path: String,
+    pub workspace_resolution_layer: TreeCalcWorkspaceResolutionLayer,
+    pub local_resolution_layer: TreeCalcHostPathBaseResolutionLayer,
+    pub availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket,
+    pub resolution_identity: String,
+}
+
+#[derive(Debug)]
+pub struct TreeCalcWorkspaceRegistryEntry<'a> {
+    pub workspace_handle: String,
+    pub snapshot: &'a StructuralSnapshot,
+    pub availability_version: String,
+}
+
+#[derive(Debug)]
+pub struct TreeCalcWorkspaceResolutionRegistry<'a> {
+    current_workspace_handle: String,
+    workspaces_by_handle: BTreeMap<String, TreeCalcWorkspaceRegistryEntry<'a>>,
+    aliases: BTreeMap<String, String>,
+}
+
+impl<'a> TreeCalcWorkspaceResolutionRegistry<'a> {
+    #[must_use]
+    pub fn with_current_workspace(
+        workspace_handle: impl Into<String>,
+        snapshot: &'a StructuralSnapshot,
+        availability_version: impl Into<String>,
+    ) -> Self {
+        let workspace_handle = workspace_handle.into();
+        let mut registry = Self {
+            current_workspace_handle: workspace_handle.clone(),
+            workspaces_by_handle: BTreeMap::new(),
+            aliases: BTreeMap::new(),
+        };
+        registry.add_workspace(workspace_handle, snapshot, availability_version);
+        registry
+    }
+
+    pub fn add_workspace(
+        &mut self,
+        workspace_handle: impl Into<String>,
+        snapshot: &'a StructuralSnapshot,
+        availability_version: impl Into<String>,
+    ) {
+        let workspace_handle = workspace_handle.into();
+        self.workspaces_by_handle.insert(
+            workspace_handle.clone(),
+            TreeCalcWorkspaceRegistryEntry {
+                workspace_handle,
+                snapshot,
+                availability_version: availability_version.into(),
+            },
+        );
+    }
+
+    pub fn add_alias(
+        &mut self,
+        selector_token_text: impl Into<String>,
+        workspace_handle: impl Into<String>,
+    ) {
+        self.aliases
+            .insert(selector_token_text.into(), workspace_handle.into());
+    }
+
+    #[must_use]
+    pub fn workspace_snapshot(&self, workspace_handle: &str) -> Option<&'a StructuralSnapshot> {
+        self.workspaces_by_handle
+            .get(workspace_handle)
+            .map(|entry| entry.snapshot)
+    }
+
+    #[must_use]
+    pub fn resolve_workspace_selector(
+        &self,
+        selector_token_text: &str,
+        selector_kind: TreeCalcWorkspaceSelectorKind,
+    ) -> TreeCalcWorkspaceResolutionPacket {
+        if matches!(
+            selector_kind,
+            TreeCalcWorkspaceSelectorKind::CurrentWorkspaceRoot
+        ) {
+            let entry = self
+                .workspaces_by_handle
+                .get(&self.current_workspace_handle)
+                .expect("current workspace must be registered");
+            return TreeCalcWorkspaceResolutionPacket {
+                selector_token_text: selector_token_text.to_string(),
+                selector_kind,
+                workspace_handle: entry.workspace_handle.clone(),
+                resolution_layer: TreeCalcWorkspaceResolutionLayer::CurrentWorkspace,
+                availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                    entry.workspace_handle.clone(),
+                    selector_token_text,
+                    entry.availability_version.clone(),
+                ),
+            };
+        }
+
+        let direct_selector = unquoted_workspace_selector(selector_token_text);
+        let alias_target = self.aliases.get(direct_selector);
+        let resolved_handle = alias_target
+            .cloned()
+            .unwrap_or_else(|| direct_selector.to_string());
+        let resolution_layer = match selector_kind {
+            TreeCalcWorkspaceSelectorKind::QuotedDirectPath => {
+                TreeCalcWorkspaceResolutionLayer::QuotedWorkspacePath
+            }
+            TreeCalcWorkspaceSelectorKind::AliasOrDirectPath if alias_target.is_some() => {
+                TreeCalcWorkspaceResolutionLayer::WorkspaceAlias
+            }
+            TreeCalcWorkspaceSelectorKind::AliasOrDirectPath => {
+                TreeCalcWorkspaceResolutionLayer::DirectWorkspacePath
+            }
+            TreeCalcWorkspaceSelectorKind::CurrentWorkspaceRoot => {
+                TreeCalcWorkspaceResolutionLayer::CurrentWorkspace
+            }
+        };
+
+        let availability_packet = self.workspaces_by_handle.get(&resolved_handle).map_or_else(
+            || {
+                TreeCalcCrossWorkspaceAvailabilityPacket::unavailable(
+                    resolved_handle.clone(),
+                    selector_token_text,
+                    format!(
+                        "treecalc-cross-workspace-availability:v1:{resolved_handle}:unavailable"
+                    ),
+                    "workspace is not loaded or no registered alias matched this selector",
+                )
+            },
+            |entry| {
+                TreeCalcCrossWorkspaceAvailabilityPacket::available(
+                    entry.workspace_handle.clone(),
+                    selector_token_text,
+                    entry.availability_version.clone(),
+                )
+            },
+        );
+
+        TreeCalcWorkspaceResolutionPacket {
+            selector_token_text: selector_token_text.to_string(),
+            selector_kind,
+            workspace_handle: resolved_handle,
+            resolution_layer,
+            availability_packet,
+        }
+    }
+}
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum TreeCalcWorkspaceHostPathBaseResolutionError {
+    #[error("{0}")]
+    LocalPath(#[from] TreeCalcHostPathBaseResolutionError),
+    #[error("TreeCalc workspace selector '{selector_token_text}' has invalid syntax: {detail}")]
+    InvalidWorkspaceSelectorSyntax {
+        selector_token_text: String,
+        detail: String,
+    },
+    #[error(
+        "TreeCalc workspace selector '{selector_token_text}' is unavailable for workspace handle '{workspace_handle}'"
+    )]
+    WorkspaceUnavailable {
+        selector_token_text: String,
+        workspace_handle: String,
+        availability_packet: Box<TreeCalcCrossWorkspaceAvailabilityPacket>,
+    },
+}
+
+pub fn resolve_treecalc_workspace_host_path_base(
+    registry: &TreeCalcWorkspaceResolutionRegistry<'_>,
+    base_token_text: impl AsRef<str>,
+) -> Result<TreeCalcWorkspaceHostPathBaseResolution, TreeCalcWorkspaceHostPathBaseResolutionError> {
+    let base_token_text = base_token_text.as_ref().trim();
+    if base_token_text.is_empty() {
+        return Err(TreeCalcHostPathBaseResolutionError::EmptyBaseToken.into());
+    }
+
+    let parsed = parse_treecalc_workspace_base_token(base_token_text)?;
+    if let Some(selector_token_text) = parsed.selector_token_text.as_deref()
+        && parsed.selector_kind == TreeCalcWorkspaceSelectorKind::AliasOrDirectPath
+        && registry.aliases.get(selector_token_text).is_none()
+        && registry
+            .workspaces_by_handle
+            .get(selector_token_text)
+            .is_none()
+        && !looks_like_direct_workspace_selector(selector_token_text)
+    {
+        let workspace = registry
+            .resolve_workspace_selector("", TreeCalcWorkspaceSelectorKind::CurrentWorkspaceRoot);
+        let snapshot = registry
+            .workspace_snapshot(&workspace.workspace_handle)
+            .expect("current workspace must expose a snapshot");
+        let local_path_token_text =
+            format!("[{selector_token_text}]{}", parsed.local_path_token_text);
+        let local = resolve_treecalc_explicit_host_path_base(snapshot, &local_path_token_text)?;
+        let base_node_handle = format!("{}#{}", workspace.workspace_handle, local.base_node_id);
+        let resolution_identity = format!(
+            "treecalc-workspace-host-path:v1:workspace={};workspace_layer={:?};availability={};local={};bracket_fallback=escaped_current_workspace_path",
+            workspace.workspace_handle,
+            workspace.resolution_layer,
+            workspace.availability_packet.availability_version,
+            local.resolution_identity
+        );
+
+        return Ok(TreeCalcWorkspaceHostPathBaseResolution {
+            base_token_text: base_token_text.to_string(),
+            workspace_selector_token: None,
+            local_path_token_text,
+            workspace_handle: workspace.workspace_handle,
+            base_node_id: local.base_node_id,
+            base_node_handle,
+            canonical_projection_path: local.canonical_projection_path,
+            workspace_resolution_layer: workspace.resolution_layer,
+            local_resolution_layer: local.resolution_layer,
+            availability_packet: workspace.availability_packet,
+            resolution_identity,
+        });
+    }
+
+    let workspace = registry.resolve_workspace_selector(
+        parsed.selector_token_text.as_deref().unwrap_or(""),
+        parsed.selector_kind,
+    );
+    if workspace.availability_packet.status != TreeCalcCrossWorkspaceAvailabilityStatus::Available {
+        return Err(
+            TreeCalcWorkspaceHostPathBaseResolutionError::WorkspaceUnavailable {
+                selector_token_text: workspace.selector_token_text,
+                workspace_handle: workspace.workspace_handle,
+                availability_packet: Box::new(workspace.availability_packet),
+            },
+        );
+    }
+
+    let snapshot = registry
+        .workspace_snapshot(&workspace.workspace_handle)
+        .expect("available workspace must expose a snapshot");
+    let local = if parsed.local_path_token_text.is_empty() {
+        host_path_base_resolution(
+            snapshot,
+            "",
+            snapshot.root_node_id(),
+            TreeCalcHostPathBaseResolutionLayer::WorkspaceRoot,
+        )?
+    } else if parsed.selector_token_text.is_some() {
+        resolve_treecalc_workspace_root_path_base(snapshot, &parsed.local_path_token_text)?
+    } else {
+        resolve_treecalc_explicit_host_path_base(snapshot, &parsed.local_path_token_text)?
+    };
+
+    let base_node_handle = format!("{}#{}", workspace.workspace_handle, local.base_node_id);
+    let resolution_identity = format!(
+        "treecalc-workspace-host-path:v1:workspace={};workspace_layer={:?};availability={};local={}",
+        workspace.workspace_handle,
+        workspace.resolution_layer,
+        workspace.availability_packet.availability_version,
+        local.resolution_identity
+    );
+
+    Ok(TreeCalcWorkspaceHostPathBaseResolution {
+        base_token_text: base_token_text.to_string(),
+        workspace_selector_token: parsed.selector_token_text,
+        local_path_token_text: parsed.local_path_token_text,
+        workspace_handle: workspace.workspace_handle,
+        base_node_id: local.base_node_id,
+        base_node_handle,
+        canonical_projection_path: local.canonical_projection_path,
+        workspace_resolution_layer: workspace.resolution_layer,
+        local_resolution_layer: local.resolution_layer,
+        availability_packet: workspace.availability_packet,
+        resolution_identity,
+    })
+}
+
 pub fn resolve_treecalc_explicit_host_path_base(
     snapshot: &StructuralSnapshot,
     base_token_text: impl AsRef<str>,
@@ -568,13 +873,6 @@ pub fn resolve_treecalc_explicit_host_path_base(
     let base_token_text = base_token_text.as_ref().trim();
     if base_token_text.is_empty() {
         return Err(TreeCalcHostPathBaseResolutionError::EmptyBaseToken);
-    }
-    if base_token_text.contains('!') {
-        return Err(
-            TreeCalcHostPathBaseResolutionError::CrossWorkspaceBaseToken {
-                base_token_text: base_token_text.to_string(),
-            },
-        );
     }
 
     if let Some(node_id) = snapshot.try_resolve_projection_path(base_token_text) {
@@ -641,6 +939,108 @@ fn host_path_base_resolution(
     })
 }
 
+fn resolve_treecalc_workspace_root_path_base(
+    snapshot: &StructuralSnapshot,
+    base_token_text: &str,
+) -> Result<TreeCalcHostPathBaseResolution, TreeCalcHostPathBaseResolutionError> {
+    let segments = split_treecalc_host_path_token(base_token_text)?;
+    if segments.is_empty() {
+        return host_path_base_resolution(
+            snapshot,
+            base_token_text,
+            snapshot.root_node_id(),
+            TreeCalcHostPathBaseResolutionLayer::WorkspaceRoot,
+        );
+    }
+
+    if let Some(node_id) = snapshot.try_resolve_descendant_path(snapshot.root_node_id(), &segments)
+    {
+        return host_path_base_resolution(
+            snapshot,
+            base_token_text,
+            node_id,
+            TreeCalcHostPathBaseResolutionLayer::RootDescendantPath,
+        );
+    }
+
+    let projection_path = segments.join("/");
+    if let Some(node_id) = snapshot.try_resolve_projection_path(&projection_path) {
+        return host_path_base_resolution(
+            snapshot,
+            base_token_text,
+            node_id,
+            TreeCalcHostPathBaseResolutionLayer::ProjectionPath,
+        );
+    }
+
+    Err(TreeCalcHostPathBaseResolutionError::UnresolvedBaseToken {
+        base_token_text: base_token_text.to_string(),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedTreeCalcWorkspaceBaseToken {
+    selector_token_text: Option<String>,
+    selector_kind: TreeCalcWorkspaceSelectorKind,
+    local_path_token_text: String,
+}
+
+fn parse_treecalc_workspace_base_token(
+    base_token_text: &str,
+) -> Result<ParsedTreeCalcWorkspaceBaseToken, TreeCalcWorkspaceHostPathBaseResolutionError> {
+    if !base_token_text.starts_with('[') {
+        return Ok(ParsedTreeCalcWorkspaceBaseToken {
+            selector_token_text: None,
+            selector_kind: TreeCalcWorkspaceSelectorKind::CurrentWorkspaceRoot,
+            local_path_token_text: base_token_text.to_string(),
+        });
+    }
+
+    let selector_end = base_token_text.find(']').ok_or_else(|| {
+        TreeCalcWorkspaceHostPathBaseResolutionError::InvalidWorkspaceSelectorSyntax {
+            selector_token_text: base_token_text.to_string(),
+            detail: "unclosed workspace selector".to_string(),
+        }
+    })?;
+    let selector_token_text = &base_token_text[1..selector_end];
+    let selector_kind = if selector_token_text.is_empty() {
+        TreeCalcWorkspaceSelectorKind::CurrentWorkspaceRoot
+    } else if is_quoted_workspace_selector(selector_token_text) {
+        TreeCalcWorkspaceSelectorKind::QuotedDirectPath
+    } else {
+        TreeCalcWorkspaceSelectorKind::AliasOrDirectPath
+    };
+
+    Ok(ParsedTreeCalcWorkspaceBaseToken {
+        selector_token_text: Some(selector_token_text.to_string()),
+        selector_kind,
+        local_path_token_text: base_token_text[(selector_end + 1)..].to_string(),
+    })
+}
+
+fn is_quoted_workspace_selector(selector_token_text: &str) -> bool {
+    selector_token_text.len() >= 2
+        && selector_token_text.starts_with('\'')
+        && selector_token_text.ends_with('\'')
+}
+
+fn unquoted_workspace_selector(selector_token_text: &str) -> &str {
+    if is_quoted_workspace_selector(selector_token_text) {
+        &selector_token_text[1..(selector_token_text.len() - 1)]
+    } else {
+        selector_token_text
+    }
+}
+
+fn looks_like_direct_workspace_selector(selector_token_text: &str) -> bool {
+    let lower = selector_token_text.to_ascii_lowercase();
+    lower.ends_with(".dnatree")
+        || lower.ends_with(".xlsx")
+        || selector_token_text.contains(':')
+        || selector_token_text.contains('\\')
+        || selector_token_text.contains('/')
+}
+
 fn split_treecalc_host_path_token(
     base_token_text: &str,
 ) -> Result<Vec<String>, TreeCalcHostPathBaseResolutionError> {
@@ -672,6 +1072,17 @@ fn split_treecalc_host_path_token(
                 );
             }
             '.' | '/' if bracket_depth == 0 => {
+                push_treecalc_host_path_segment(&mut segments, &mut segment);
+            }
+            '!' if bracket_depth == 0 => {
+                if !segments.is_empty() || segment.trim().is_empty() {
+                    return Err(
+                        TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
+                            base_token_text: base_token_text.to_string(),
+                            detail: "'!' is only admitted after the first path segment".to_string(),
+                        },
+                    );
+                }
                 push_treecalc_host_path_segment(&mut segments, &mut segment);
             }
             _ => segment.push(ch),
@@ -1835,6 +2246,7 @@ pub enum TreeReferenceInventoryBlocker {
     NeedsStableStructuredTableRowMembershipAndOrderPacket,
     NeedsCrossWorkspaceModel,
     NeedsCrossWorkspaceProvider,
+    NeedsWorkspaceQualifiedCarrier,
     NeedsSelectorDependencyModel,
 }
 
@@ -2194,18 +2606,18 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         TreeReferenceImplementationInput {
             variant: Variant::CrossWorkspaceReference,
             status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsCrossWorkspaceProvider),
+            blocker: Some(Blocker::NeedsWorkspaceQualifiedCarrier),
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::CrossWorkspaceAvailabilityVersion,
             caller_context_identity_need: Caller::None,
-            dependency_facts: vec![Dep::Unresolved],
+            dependency_facts: vec![Dep::HostSensitive],
             invalidation_facts: vec![
                 Invalidates::StructuralRebindRequired,
                 Invalidates::ExternallyInvalidated,
             ],
-            successor_bead: Some("calc-4vs8.3"),
-            evidence_note: "calc-4vs8.18 adds versioned availability/degradation packets; execution still requires a workspace provider and alias model",
+            successor_bead: Some("calc-4vs8.30"),
+            evidence_note: "calc-4vs8.30 adds a typed workspace provider/alias resolution packet with availability-version identity; workspace-qualified carriers and receiving-side corpus activation remain W056 evidence work",
         },
         TreeReferenceImplementationInput {
             variant: Variant::RecursiveSelector,
@@ -3048,6 +3460,66 @@ mod tests {
         .unwrap()
     }
 
+    fn projections_snapshot() -> StructuralSnapshot {
+        StructuralSnapshot::create(
+            StructuralSnapshotId(2),
+            TreeNodeId(100),
+            [
+                StructuralNode {
+                    node_id: TreeNodeId(100),
+                    kind: StructuralNodeKind::Root,
+                    symbol: "Projections".to_string(),
+                    parent_id: None,
+                    child_ids: vec![TreeNodeId(101), TreeNodeId(103)],
+                    formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
+                },
+                StructuralNode {
+                    node_id: TreeNodeId(101),
+                    kind: StructuralNodeKind::Container,
+                    symbol: "Branch1".to_string(),
+                    parent_id: Some(TreeNodeId(100)),
+                    child_ids: vec![TreeNodeId(102)],
+                    formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
+                },
+                StructuralNode {
+                    node_id: TreeNodeId(102),
+                    kind: StructuralNodeKind::Calculation,
+                    symbol: "MyNode".to_string(),
+                    parent_id: Some(TreeNodeId(101)),
+                    child_ids: vec![],
+                    formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
+                },
+                StructuralNode {
+                    node_id: TreeNodeId(103),
+                    kind: StructuralNodeKind::Container,
+                    symbol: "Branch X".to_string(),
+                    parent_id: Some(TreeNodeId(100)),
+                    child_ids: vec![TreeNodeId(104)],
+                    formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
+                },
+                StructuralNode {
+                    node_id: TreeNodeId(104),
+                    kind: StructuralNodeKind::Calculation,
+                    symbol: "MyNode".to_string(),
+                    parent_id: Some(TreeNodeId(103)),
+                    child_ids: vec![],
+                    formula_artifact_id: None,
+                    bind_artifact_id: None,
+                    constant_value: None,
+                },
+            ],
+        )
+        .unwrap()
+    }
+
     #[test]
     fn raw_treecalc_formula_text_prebinds_children_selector_to_neutral_source() {
         let formula =
@@ -3217,15 +3689,21 @@ mod tests {
             TreeCalcHostPathBaseResolutionLayer::RootDescendantPath
         );
 
-        let cross_workspace =
-            resolve_treecalc_explicit_host_path_base(&snapshot, "Other!Root.Branch")
-                .expect_err("cross-workspace remains typed exclusion");
-        assert!(matches!(
-            cross_workspace,
-            TreeCalcHostPathBaseResolutionError::CrossWorkspaceBaseToken { .. }
-        ));
+        let sheet_position_alias =
+            resolve_treecalc_explicit_host_path_base(&snapshot, "Root!Branch").unwrap();
+        assert_eq!(sheet_position_alias.base_node_id, TreeNodeId(2));
+        assert_eq!(
+            sheet_position_alias.resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::DottedProjectionPath
+        );
 
-        for malformed in ["Branch.[Leaf", "Branch.Leaf]", "Branch.[Leaf.[Nested]]"] {
+        for malformed in [
+            "Branch.[Leaf",
+            "Branch.Leaf]",
+            "Branch.[Leaf.[Nested]]",
+            "!Branch",
+            "Root.Branch!Leaf",
+        ] {
             let error = resolve_treecalc_explicit_host_path_base(&snapshot, malformed)
                 .expect_err("malformed bracketed path should be rejected");
             assert!(
@@ -3236,6 +3714,145 @@ mod tests {
                 "unexpected error for {malformed}: {error:?}"
             );
         }
+    }
+
+    #[test]
+    fn workspace_host_path_base_resolver_uses_aliases_availability_and_rooted_paths() {
+        let accounts = snapshot();
+        let projections = projections_snapshot();
+        let mut registry = TreeCalcWorkspaceResolutionRegistry::with_current_workspace(
+            "treecalc-workspace:accounts",
+            &accounts,
+            "treecalc-cross-workspace-availability:v1:accounts:loaded",
+        );
+        registry.add_workspace(
+            "treecalc-workspace:projections",
+            &projections,
+            "treecalc-cross-workspace-availability:v1:projections:loaded",
+        );
+        registry.add_alias("projections", "treecalc-workspace:projections");
+        registry.add_alias(
+            "C:\\Work\\projections.dnatree",
+            "treecalc-workspace:projections",
+        );
+        registry.add_alias("missing", "treecalc-workspace:missing");
+
+        let alias =
+            resolve_treecalc_workspace_host_path_base(&registry, "[projections]Branch1.MyNode")
+                .expect("aliased workspace base path");
+        assert_eq!(alias.workspace_handle, "treecalc-workspace:projections");
+        assert_eq!(
+            alias.workspace_selector_token.as_deref(),
+            Some("projections")
+        );
+        assert_eq!(alias.base_node_id, TreeNodeId(102));
+        assert_eq!(
+            alias.base_node_handle,
+            "treecalc-workspace:projections#node:102"
+        );
+        assert_eq!(
+            alias.canonical_projection_path,
+            "Projections/Branch1/MyNode"
+        );
+        assert_eq!(
+            alias.workspace_resolution_layer,
+            TreeCalcWorkspaceResolutionLayer::WorkspaceAlias
+        );
+        assert_eq!(
+            alias.local_resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::RootDescendantPath
+        );
+        assert_eq!(
+            alias.availability_packet.status,
+            TreeCalcCrossWorkspaceAvailabilityStatus::Available
+        );
+        assert!(
+            alias.resolution_identity.contains(
+                "availability=treecalc-cross-workspace-availability:v1:projections:loaded"
+            )
+        );
+
+        let escaped =
+            resolve_treecalc_workspace_host_path_base(&registry, "[projections][Branch X].MyNode")
+                .expect("escaped first path segment");
+        assert_eq!(escaped.base_node_id, TreeNodeId(104));
+
+        let quoted = resolve_treecalc_workspace_host_path_base(
+            &registry,
+            "['C:\\Work\\projections.dnatree']Branch1.MyNode",
+        )
+        .expect("quoted direct path mapped by host registry");
+        assert_eq!(
+            quoted.workspace_resolution_layer,
+            TreeCalcWorkspaceResolutionLayer::QuotedWorkspacePath
+        );
+        assert_eq!(quoted.base_node_id, TreeNodeId(102));
+
+        let workspace_root = resolve_treecalc_workspace_host_path_base(&registry, "[projections]")
+            .expect("workspace root");
+        assert_eq!(workspace_root.base_node_id, TreeNodeId(100));
+        assert_eq!(
+            workspace_root.local_resolution_layer,
+            TreeCalcHostPathBaseResolutionLayer::WorkspaceRoot
+        );
+
+        let current_sheet_alias =
+            resolve_treecalc_workspace_host_path_base(&registry, "Root!Branch")
+                .expect("current workspace first-position ! alias");
+        assert_eq!(
+            current_sheet_alias.workspace_handle,
+            "treecalc-workspace:accounts"
+        );
+        assert_eq!(current_sheet_alias.base_node_id, TreeNodeId(2));
+
+        let projections_only = TreeCalcWorkspaceResolutionRegistry::with_current_workspace(
+            "treecalc-workspace:projections",
+            &projections,
+            "treecalc-cross-workspace-availability:v1:projections:loaded",
+        );
+        let escaped_fallback =
+            resolve_treecalc_workspace_host_path_base(&projections_only, "[Branch X].MyNode")
+                .expect("unregistered bracket word falls back to escaped local path");
+        assert_eq!(escaped_fallback.workspace_selector_token, None);
+        assert_eq!(
+            escaped_fallback.workspace_resolution_layer,
+            TreeCalcWorkspaceResolutionLayer::CurrentWorkspace
+        );
+        assert_eq!(escaped_fallback.local_path_token_text, "[Branch X].MyNode");
+        assert_eq!(escaped_fallback.base_node_id, TreeNodeId(104));
+        assert!(
+            escaped_fallback
+                .resolution_identity
+                .contains("bracket_fallback=escaped_current_workspace_path")
+        );
+
+        let unavailable = resolve_treecalc_workspace_host_path_base(&registry, "[missing]Branch1")
+            .expect_err("registered but unloaded workspace remains typed");
+        let TreeCalcWorkspaceHostPathBaseResolutionError::WorkspaceUnavailable {
+            workspace_handle,
+            availability_packet,
+            ..
+        } = unavailable
+        else {
+            panic!("expected unavailable workspace, got {unavailable:?}");
+        };
+        assert_eq!(
+            workspace_handle, "treecalc-workspace:missing",
+            "registered alias resolves to its opaque host workspace handle"
+        );
+        assert_eq!(
+            availability_packet.diagnostics[0].code,
+            TreeCalcCrossWorkspaceDiagnosticCode::WorkspaceUnavailable
+        );
+        assert_eq!(
+            availability_packet.workspace_handle,
+            "treecalc-workspace:missing"
+        );
+        assert!(
+            availability_packet
+                .prepared_identity_component()
+                .contains("status=Unavailable")
+        );
     }
 
     #[test]

@@ -343,6 +343,41 @@ not close the broader W056 reference runtime, W074 name/call precedence,
 cross-workspace references, raw ordered-selector syntax, or the remaining
 DnaTreeCalc W004/W005 non-table reference corpus.
 
+## 4C. Non-Table Reference Completion Spine
+
+After `calc-4vs8.26`, the table slice is no longer the active W056 blocker.
+The remaining W056 work is the non-table reference runtime and evidence spine.
+
+New execution beads:
+
+1. `calc-4vs8.30` — cross-workspace alias and availability semantics. This
+   owns workspace-provider lookup, workspace aliases, first-position `!`
+   alias/base-token behavior, availability-version prepared identity, and typed
+   degradation diagnostics. Public packet shape exists; provider/alias behavior
+   still needs implementation or typed exclusion.
+2. `calc-4vs8.31` — reference literals, mixed reference arrays, and dynamic
+   references. This owns typed carriers or exclusions for explicit reference
+   literals, ordered/duplicate-preserving reference arrays, scalar/reference
+   rejection behavior, dynamic `INDIRECT`/CTRO-style rebind, and prepared
+   identity inputs.
+3. `calc-4vs8.32` — callable host-name and W074 precedence intake. This remains
+   blocked on OxFml W074 evidence for built-in/UDF/defined-name/
+   defined-name-LAMBDA/table-name/lexical/host-reference precedence and
+   namespace mutation invalidation. TreeCalc host names and lambda-valued nodes
+   stay mapped to the closest Excel defined-name lane until W074 justifies an
+   explicit extension.
+4. `calc-4vs8.33` — full non-table reference corpus and retained evidence
+   intake. This consumes DnaTreeCalc/OxReplay evidence for walk-up, dotted
+   descent, anchors, aliases, escaping/canonicalization, meta accessors,
+   sibling/preceding/following/ancestor/recursive selectors, reference
+   literals/arrays, dynamic references, cross-workspace references, and
+   node-as-function/lambda-valued nodes.
+
+The broad blocker `calc-4vs8.5` now tracks these non-table surfaces only. It no
+longer lists node-associated table lowering, DnaTreeCalc table corpus residuals,
+OxXlPlay table update oracles, or OxReplay table-update-oracle policy as open
+W056 table blockers.
+
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.
 `TreeCalcTableNodeSnapshot` preserves the TreeCalc-owned node identity,

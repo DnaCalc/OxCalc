@@ -256,6 +256,40 @@ as `path[[#Headers],[Col]]`, omitted current-row forms such as `[@Col]`, and
 diagnostics for unknown table paths or columns. This is a host-hook prebind
 surface, not a TreeCalc formula parser and not an OxFml TreeCalc branch.
 
+Implementation note for `calc-4vs8.23`: OxCalc now has the first executable
+structured-table sparse/reference-reader carrier surface in
+`src/oxcalc-core/src/structured_table.rs`.
+`TreeCalcTableSparseReader` consumes a `TreeCalcTableNodeSnapshot`, its
+generic virtual `TableDescriptor` projection, and either a public OxFml
+`StructuredReferenceBindRecord` or normalized `StructuredTableReferenceIntake`.
+It builds a sparse reader with `declared_extent`, `defined_cardinality`,
+`defined_iter`, `read_at`, `contains`, stable `reader_identity`, and an opaque
+`ReferenceLike` keyed to the OxFml resolved A1 or area target. Runtime bindings
+flow through public OxFml sparse-reference value bindings and scalar cell
+values for current-row forms, keeping `EvalValue` free of table-specific
+variants and keeping OxFunc unaware of TreeCalc selectors.
+
+The implemented `calc-4vs8.23` scope covers:
+
+1. single table columns such as `path[Col]`,
+2. contiguous multi-column ranges such as `path[[#Data],[Amount]:[Tax]]`,
+3. `#Headers`, `#Data`, `#Totals`, and `#All` row-section projections,
+4. omitted/current-row forms such as `[@Col]` when the caller supplies the
+   generic enclosing table and caller data-row context,
+5. aggregate runtime carriage for `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK`
+   through OxFml/OxFunc sparse `ReferenceLike` handling,
+6. typed reader errors for missing caller context, missing selected columns,
+   absent header/totals regions, caller-table mismatch, invalid ranges, empty
+   selections, range overflow, and currently unsupported non-contiguous column
+   selections.
+
+This is reference-preserving table-carrier behavior for the declared reader
+slice. It is not full table product closure. Per-row table formula scheduling,
+table update/invalidation scenarios, DnaTreeCalc active corpus coverage,
+OxXlPlay Excel observation, OxReplay retained comparison, and final table seam
+audit remain in `calc-4vs8.24` through `calc-4vs8.26` and their cross-repo
+counterparts.
+
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
 The third W056 tranche adds the first OxCalc-owned typed projection over the
@@ -752,16 +786,30 @@ model to missing provider.
 `calc-4vs8.20` records DnaTreeCalc evidence: corpus validation, `cargo fmt
 --check`, `cargo build --workspace`, `cargo test --workspace`, `cargo clippy
 --workspace -- -D warnings`, and `git diff --check`.
+`calc-4vs8.21` adds focused Rust coverage for node-associated table snapshot
+projection into generic OxFml `TableDescriptor` packets, deterministic virtual
+A1 range assignment, table context identity, OxCalc-only invalidation identity,
+and typed projection exclusions for shapes the generic packet cannot yet carry.
+`calc-4vs8.22` adds focused Rust coverage for TreeCalc table-path
+structured-reference prebind packets that preserve source spans/tokens,
+path/tail spans, handles, selector payloads, caller-context dependency,
+diagnostics, replay identity, omitted current-row forms, bracket escaping, and
+unknown table/column diagnostics without adding TreeCalc parsing to OxFml.
+`calc-4vs8.23` adds focused Rust coverage for table sparse readers over data
+columns, contiguous multi-column data ranges, header/totals/#All sections,
+current-row scalar runtime binding, sparse traversal counters, and
+reference-preserving aggregate execution for `SUM`, `COUNT`, `COUNTA`, and
+`COUNTBLANK` through generic OxFml/OxFunc sparse `ReferenceLike` bindings.
 
 Still open: W074 final name/call precedence evidence beyond the observed
 W074-CALC005-014 table-name row, W074 formula-call registry lookup and
 cache-invalidation migration, bare host-name and callable host-node precedence,
 exercised OxFml host-reference packets beyond the admitted
 children/table/ordered-selector slices, cross-workspace provider and workspace
-alias/first-position `!` semantics, table-specific path syntax, DnaTreeCalc
-receiving-side corpus activation for table packets and the remaining W004/W005
-reference suite, retained OxReplay/OxXlPlay evidence, and broader end-to-end
-scenarios. Blocker `calc-4vs8.5` remains open for the remaining full-W056
-closure scope.
+alias/first-position `!` semantics, table column-formula row-context runtime,
+table update/invalidation scenarios, DnaTreeCalc receiving-side corpus
+activation for table packets and the remaining W004/W005 reference suite,
+retained OxReplay/OxXlPlay evidence, and broader end-to-end scenarios. Blocker
+`calc-4vs8.5` remains open for the remaining full-W056 closure scope.
 
 Formal status: no proof claim.

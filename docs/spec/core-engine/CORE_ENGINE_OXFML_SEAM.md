@@ -296,6 +296,15 @@ caller-context dependency, typed diagnostics, and replay identity. OxFml still
 receives only the generic descriptor/catalog result; it does not parse
 TreeCalc paths or table-node metadata.
 
+At runtime, OxCalc lowers the resolved structured-reference packet to a sparse
+table reader and public OxFml sparse-reference value binding keyed by the
+generic resolved A1 or area reference. Table column, data, header, totals,
+`#All`, and caller-row selections travel as opaque `ReferenceLike` carriers or
+ordinary scalar cell bindings where Excel row-context semantics require a
+single cell. The seam must preserve that carrier without introducing
+TreeCalc-specific `EvalValue` variants, without making OxFml parse TreeCalc
+paths, and without making OxFunc inspect TreeCalc table selectors.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

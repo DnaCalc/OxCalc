@@ -5,8 +5,13 @@
 //! This module consumes public OxFml table-context packets. It does not parse
 //! structured-reference formula text and does not mirror OxFml grammar.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
+use oxfml_core::binding::{AreaRef, CellRef, StructuredResolvedRef};
+use oxfml_core::consumer::runtime::{
+    RuntimeSparseReferenceCell, RuntimeSparseReferenceValuesBinding,
+};
 pub use oxfml_core::interface::{
     TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
 };
@@ -14,8 +19,15 @@ use oxfml_core::{
     StructuredReferenceBindDiagnosticLink, StructuredReferenceBindRecord,
     StructuredReferenceSelectedRegion, StructuredSectionKind, syntax::token::TextSpan,
 };
+use oxfunc_core::value::{
+    ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
+};
 
 use crate::dependency::{DependencyDescriptor, DependencyDescriptorKind};
+use crate::sparse_reader::{
+    SparseCellCoord, SparseCellRead, SparseDefinedCell, SparseRangeExtent, SparseRangeReader,
+    SparseReaderAccessSummary, SparseReaderIdentity,
+};
 use crate::structural::TreeNodeId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1055,7 +1067,7 @@ fn parse_treecalc_structured_tail(
         if let Some(column_name) = part.strip_prefix('@') {
             uses_this_row = true;
             push_unique_section(&mut selected_sections, StructuredSectionKind::ThisRow);
-            resolve_treecalc_structured_column(
+            resolve_treecalc_structured_column_or_range(
                 column_name,
                 table,
                 tail_span,
@@ -1064,7 +1076,7 @@ fn parse_treecalc_structured_tail(
             );
             continue;
         }
-        resolve_treecalc_structured_column(
+        resolve_treecalc_structured_column_or_range(
             part,
             table,
             tail_span,
@@ -1179,6 +1191,110 @@ fn push_unique_section(sections: &mut Vec<StructuredSectionKind>, section: Struc
     }
 }
 
+fn resolve_treecalc_structured_column_or_range(
+    column_name: &str,
+    table: Option<&TableDescriptor>,
+    tail_span: TextSpan,
+    selected_column_ids: &mut Vec<String>,
+    diagnostics: &mut Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+) {
+    if let Some((start, end)) = split_structured_column_range(column_name) {
+        resolve_treecalc_structured_column_range(
+            unwrap_structured_tail_part(start.trim()),
+            unwrap_structured_tail_part(end.trim()),
+            table,
+            tail_span,
+            selected_column_ids,
+            diagnostics,
+        );
+        return;
+    }
+    resolve_treecalc_structured_column(
+        column_name,
+        table,
+        tail_span,
+        selected_column_ids,
+        diagnostics,
+    );
+}
+
+fn split_structured_column_range(part: &str) -> Option<(&str, &str)> {
+    let bytes = part.as_bytes();
+    let mut depth = 0usize;
+    let mut index = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'[' => {
+                depth += 1;
+                index += 1;
+            }
+            b']' => {
+                let run_start = index;
+                while index < bytes.len() && bytes[index] == b']' {
+                    index += 1;
+                }
+                let run_len = index - run_start;
+                let after_run = bytes.get(index).copied();
+                let structural_close = run_len == 1
+                    || after_run.is_none()
+                    || after_run.is_some_and(|byte| !byte.is_ascii_alphanumeric() && byte != b'_');
+                if structural_close {
+                    depth = depth.saturating_sub(run_len.min(depth));
+                }
+            }
+            b':' if depth == 0 => return Some((&part[..index], &part[index + 1..])),
+            _ => index += 1,
+        }
+    }
+    None
+}
+
+fn resolve_treecalc_structured_column_range(
+    start_column_name: &str,
+    end_column_name: &str,
+    table: Option<&TableDescriptor>,
+    tail_span: TextSpan,
+    selected_column_ids: &mut Vec<String>,
+    diagnostics: &mut Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+) {
+    let Some(table) = table else {
+        return;
+    };
+    let Some(start_column_id) =
+        resolve_treecalc_structured_column_id(start_column_name, table, tail_span, diagnostics)
+    else {
+        return;
+    };
+    let Some(end_column_id) =
+        resolve_treecalc_structured_column_id(end_column_name, table, tail_span, diagnostics)
+    else {
+        return;
+    };
+    let Some(start_column) = table
+        .columns
+        .iter()
+        .find(|column| column.column_id == start_column_id)
+    else {
+        return;
+    };
+    let Some(end_column) = table
+        .columns
+        .iter()
+        .find(|column| column.column_id == end_column_id)
+    else {
+        return;
+    };
+    let start = start_column.ordinal.min(end_column.ordinal);
+    let end = start_column.ordinal.max(end_column.ordinal);
+    selected_column_ids.extend(
+        table
+            .columns
+            .iter()
+            .filter(|column| column.ordinal >= start && column.ordinal <= end)
+            .map(|column| column.column_id.clone()),
+    );
+}
+
 fn resolve_treecalc_structured_column(
     column_name: &str,
     table: Option<&TableDescriptor>,
@@ -1189,12 +1305,25 @@ fn resolve_treecalc_structured_column(
     let Some(table) = table else {
         return;
     };
+    if let Some(column_id) =
+        resolve_treecalc_structured_column_id(column_name, table, tail_span, diagnostics)
+    {
+        selected_column_ids.push(column_id);
+    }
+}
+
+fn resolve_treecalc_structured_column_id(
+    column_name: &str,
+    table: &TableDescriptor,
+    tail_span: TextSpan,
+    diagnostics: &mut Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+) -> Option<String> {
     let normalized = column_name.replace("]]", "]").trim().to_ascii_uppercase();
     if let Some(column) = table.columns.iter().find(|column| {
         column.column_id.eq_ignore_ascii_case(&normalized)
             || column.column_name.to_ascii_uppercase() == normalized
     }) {
-        selected_column_ids.push(column.column_id.clone());
+        Some(column.column_id.clone())
     } else {
         diagnostics.push(treecalc_table_structured_diagnostic(
             "treecalc.table.unknown_column",
@@ -1204,6 +1333,7 @@ fn resolve_treecalc_structured_column(
             ),
             tail_span,
         ));
+        None
     }
 }
 
@@ -1281,6 +1411,843 @@ fn treecalc_table_structured_replay_identity(
             ("uses_this_row", uses_this_row.to_string()),
         ],
     )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcTableSparseSection {
+    Headers,
+    Data,
+    Totals,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcTableSparseValue {
+    pub section: TreeCalcTableSparseSection,
+    pub row_id: Option<TreeCalcTableRowId>,
+    pub column_id: String,
+    pub value: EvalValue,
+}
+
+impl TreeCalcTableSparseValue {
+    #[must_use]
+    pub fn data(row_id: impl Into<String>, column_id: impl Into<String>, value: EvalValue) -> Self {
+        Self {
+            section: TreeCalcTableSparseSection::Data,
+            row_id: Some(TreeCalcTableRowId(row_id.into())),
+            column_id: column_id.into(),
+            value,
+        }
+    }
+
+    #[must_use]
+    pub fn header(column_id: impl Into<String>, value: EvalValue) -> Self {
+        Self {
+            section: TreeCalcTableSparseSection::Headers,
+            row_id: None,
+            column_id: column_id.into(),
+            value,
+        }
+    }
+
+    #[must_use]
+    pub fn totals(column_id: impl Into<String>, value: EvalValue) -> Self {
+        Self {
+            section: TreeCalcTableSparseSection::Totals,
+            row_id: None,
+            column_id: column_id.into(),
+            value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeCalcTableSparseReaderError {
+    BindRecordIntake {
+        detail: String,
+    },
+    ProjectionSnapshotMismatch {
+        projection_table_id: String,
+        snapshot_table_id: String,
+    },
+    ReferencedTableMismatch {
+        referenced_table_id: String,
+        projection_table_id: String,
+    },
+    MissingSelectedColumn {
+        column_id: String,
+    },
+    NonContiguousColumnSelection {
+        column_ids: Vec<String>,
+    },
+    HeaderRowAbsent,
+    TotalsRowAbsent,
+    MissingHeaderRegion,
+    MissingTotalsRegion,
+    MissingCallerTableRegion,
+    CallerTableMismatch {
+        caller_table_id: String,
+        referenced_table_id: String,
+    },
+    CallerRegionNotData {
+        region_kind: TableRegionKind,
+    },
+    CallerDataRowOffsetMissing,
+    CallerRowOutOfRange {
+        row_offset: u32,
+        row_count: usize,
+    },
+    MissingColumnRange {
+        column_id: String,
+        range_ref: String,
+    },
+    InvalidRegionRange {
+        region: TreeCalcTableSparseSection,
+        range_ref: String,
+    },
+    EmptySelection,
+    RangeOverflow,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcStructuredTableRuntimeBinding {
+    pub reference: ReferenceLike,
+    pub sparse_reference_values: RuntimeSparseReferenceValuesBinding,
+    pub scalar_cell_values: BTreeMap<String, EvalValue>,
+    pub reader_identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct TreeCalcTableSparseSlot {
+    coord: SparseCellCoord,
+    absolute_row: u32,
+    absolute_col: u32,
+    section: TreeCalcTableSparseSection,
+    row_id: Option<TreeCalcTableRowId>,
+    column_id: String,
+    value: Option<EvalValue>,
+}
+
+#[derive(Debug, Default)]
+struct TreeCalcTableSparseReaderTelemetry {
+    contains_calls: Cell<usize>,
+    read_at_calls: Cell<usize>,
+    defined_iter_calls: Cell<usize>,
+    defined_iter_yield_count: Cell<usize>,
+}
+
+impl TreeCalcTableSparseReaderTelemetry {
+    fn record_contains(&self) {
+        self.contains_calls.set(self.contains_calls.get() + 1);
+    }
+
+    fn record_read_at(&self) {
+        self.read_at_calls.set(self.read_at_calls.get() + 1);
+    }
+
+    fn record_defined_iter(&self) {
+        self.defined_iter_calls
+            .set(self.defined_iter_calls.get() + 1);
+    }
+
+    fn record_defined_yield(&self) {
+        self.defined_iter_yield_count
+            .set(self.defined_iter_yield_count.get() + 1);
+    }
+
+    fn summary(&self) -> SparseReaderAccessSummary {
+        SparseReaderAccessSummary {
+            contains_calls: self.contains_calls.get(),
+            read_at_calls: self.read_at_calls.get(),
+            defined_iter_calls: self.defined_iter_calls.get(),
+            defined_iter_yield_count: self.defined_iter_yield_count.get(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TreeCalcTableSparseReader {
+    identity: SparseReaderIdentity,
+    reference: ReferenceLike,
+    sheet_scope_ref: String,
+    extent: SparseRangeExtent,
+    slots: Vec<TreeCalcTableSparseSlot>,
+    defined_cells: BTreeMap<SparseCellCoord, EvalValue>,
+    current_row_sensitive: bool,
+    telemetry: TreeCalcTableSparseReaderTelemetry,
+}
+
+impl TreeCalcTableSparseReader {
+    pub fn from_oxfml_bind_record(
+        snapshot: &TreeCalcTableNodeSnapshot,
+        projection: &TreeCalcTableNodeProjection,
+        record: &StructuredReferenceBindRecord,
+        caller_table_region: Option<&TableCallerRegion>,
+        values: impl IntoIterator<Item = TreeCalcTableSparseValue>,
+    ) -> Result<Self, TreeCalcTableSparseReaderError> {
+        let reference =
+            StructuredTableReferenceIntake::from_oxfml_bind_record(record).map_err(|error| {
+                TreeCalcTableSparseReaderError::BindRecordIntake {
+                    detail: format!("{error:?}"),
+                }
+            })?;
+        let resolved_reference = record
+            .resolved_reference
+            .as_ref()
+            .map(reference_like_from_structured_resolved_ref);
+        Self::from_reference_intake(
+            snapshot,
+            projection,
+            &reference,
+            caller_table_region,
+            values,
+            record.source_token_text.clone(),
+            record.bind_record_handle.clone(),
+            resolved_reference,
+        )
+    }
+
+    pub fn from_reference_intake(
+        snapshot: &TreeCalcTableNodeSnapshot,
+        projection: &TreeCalcTableNodeProjection,
+        reference: &StructuredTableReferenceIntake,
+        caller_table_region: Option<&TableCallerRegion>,
+        values: impl IntoIterator<Item = TreeCalcTableSparseValue>,
+        source_token_text: impl Into<String>,
+        reference_handle: impl Into<String>,
+        resolved_reference: Option<ReferenceLike>,
+    ) -> Result<Self, TreeCalcTableSparseReaderError> {
+        if projection.table_id != snapshot.table_id {
+            return Err(TreeCalcTableSparseReaderError::ProjectionSnapshotMismatch {
+                projection_table_id: projection.table_id.clone(),
+                snapshot_table_id: snapshot.table_id.clone(),
+            });
+        }
+
+        let referenced_table_id =
+            resolved_table_id_for_sparse_reference(reference).ok_or_else(|| {
+                TreeCalcTableSparseReaderError::BindRecordIntake {
+                    detail: "structured table sparse reader requires an effective table id"
+                        .to_string(),
+                }
+            })?;
+        if referenced_table_id != projection.table_id {
+            return Err(TreeCalcTableSparseReaderError::ReferencedTableMismatch {
+                referenced_table_id,
+                projection_table_id: projection.table_id.clone(),
+            });
+        }
+
+        let selected_columns =
+            selected_columns_for_sparse_reader(&projection.table_descriptor, reference)?;
+        ensure_contiguous_columns(&selected_columns)?;
+        let rows = selected_rows_for_sparse_reader(
+            snapshot,
+            &projection.table_descriptor,
+            reference,
+            caller_table_region,
+        )?;
+        if rows.is_empty() || selected_columns.is_empty() {
+            return Err(TreeCalcTableSparseReaderError::EmptySelection);
+        }
+
+        let current_row_sensitive = reference.uses_this_row;
+        let values_by_key = values
+            .into_iter()
+            .map(|value| {
+                (
+                    (value.section, value.row_id.clone(), value.column_id.clone()),
+                    value.value,
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let data_start_rows = selected_columns
+            .iter()
+            .map(|column| {
+                let range = parse_local_a1_range(&column.column_range_ref).ok_or_else(|| {
+                    TreeCalcTableSparseReaderError::MissingColumnRange {
+                        column_id: column.column_id.clone(),
+                        range_ref: column.column_range_ref.clone(),
+                    }
+                })?;
+                Ok((column.column_id.clone(), range))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
+        let mut slots = Vec::new();
+
+        for (row_index, row) in rows.iter().enumerate() {
+            for (column_index, column) in selected_columns.iter().enumerate() {
+                let absolute_col = data_start_rows[&column.column_id].left_col;
+                let (absolute_row, value) = match row {
+                    TreeCalcTableSparseRow::Headers => {
+                        let header_row = table_header_row(&projection.table_descriptor)?
+                            .ok_or(TreeCalcTableSparseReaderError::HeaderRowAbsent)?;
+                        let explicit = values_by_key
+                            .get(&(
+                                TreeCalcTableSparseSection::Headers,
+                                None,
+                                column.column_id.clone(),
+                            ))
+                            .cloned();
+                        (
+                            header_row,
+                            Some(explicit.unwrap_or_else(|| {
+                                EvalValue::Text(ExcelText::from_interop_assignment(
+                                    &column.column_name,
+                                ))
+                            })),
+                        )
+                    }
+                    TreeCalcTableSparseRow::Data { row_id, row_offset } => {
+                        let data_range = data_start_rows[&column.column_id];
+                        let absolute_row = data_range
+                            .top_row
+                            .checked_add(*row_offset)
+                            .ok_or(TreeCalcTableSparseReaderError::RangeOverflow)?;
+                        let value = values_by_key
+                            .get(&(
+                                TreeCalcTableSparseSection::Data,
+                                Some(row_id.clone()),
+                                column.column_id.clone(),
+                            ))
+                            .cloned();
+                        (absolute_row, value)
+                    }
+                    TreeCalcTableSparseRow::Totals => {
+                        let totals_row = table_totals_row(&projection.table_descriptor)?
+                            .ok_or(TreeCalcTableSparseReaderError::TotalsRowAbsent)?;
+                        let value = values_by_key
+                            .get(&(
+                                TreeCalcTableSparseSection::Totals,
+                                None,
+                                column.column_id.clone(),
+                            ))
+                            .cloned();
+                        (totals_row, value)
+                    }
+                };
+                slots.push(TreeCalcTableSparseSlot {
+                    coord: SparseCellCoord::new(
+                        u32::try_from(row_index + 1)
+                            .map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+                        u32::try_from(column_index + 1)
+                            .map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+                    ),
+                    absolute_row,
+                    absolute_col,
+                    section: row.section(),
+                    row_id: row.row_id().cloned(),
+                    column_id: column.column_id.clone(),
+                    value,
+                });
+            }
+        }
+
+        let reference = resolved_reference.unwrap_or_else(|| {
+            reference_like_for_sparse_slots(&projection.table_descriptor.sheet_scope_ref, &slots)
+                .expect("non-empty slot set already checked")
+        });
+        let extent = SparseRangeExtent::new(
+            SparseCellCoord::new(1, 1),
+            u32::try_from(rows.len()).map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+            u32::try_from(selected_columns.len())
+                .map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+        );
+        let defined_cells = slots
+            .iter()
+            .filter_map(|slot| slot.value.clone().map(|value| (slot.coord, value)))
+            .collect::<BTreeMap<_, _>>();
+        let reference_handle = reference_handle.into();
+        let source_token_text = source_token_text.into();
+        let identity = SparseReaderIdentity::new(
+            format!("treecalc-table-reader:v1:{reference_handle}"),
+            identity_record(
+                "treecalc.table_sparse_selection.v1",
+                [
+                    ("table_id", projection.table_id.clone()),
+                    ("source", source_token_text),
+                    (
+                        "sections",
+                        identity_list(rows.iter().map(|row| format!("{:?}", row.section()))),
+                    ),
+                    (
+                        "columns",
+                        identity_list(
+                            selected_columns
+                                .iter()
+                                .map(|column| format!("{}:{}", column.ordinal, column.column_id)),
+                        ),
+                    ),
+                    ("reference", reference.target.clone()),
+                ],
+            ),
+            identity_record(
+                "treecalc.table_sparse_snapshot.v1",
+                [
+                    ("context", projection.table_context_identity.clone()),
+                    (
+                        "membership",
+                        projection.oxcalc_row_membership_identity.clone(),
+                    ),
+                    ("order", projection.oxcalc_row_order_identity.clone()),
+                    ("columns", projection.oxcalc_column_identity.clone()),
+                    ("body", projection.body_metadata_identity.clone()),
+                    ("totals", projection.totals_metadata_identity.clone()),
+                ],
+            ),
+        );
+
+        Ok(Self {
+            identity,
+            reference,
+            sheet_scope_ref: projection.table_descriptor.sheet_scope_ref.clone(),
+            extent,
+            slots,
+            defined_cells,
+            current_row_sensitive,
+            telemetry: TreeCalcTableSparseReaderTelemetry::default(),
+        })
+    }
+
+    #[must_use]
+    pub fn reference(&self) -> &ReferenceLike {
+        &self.reference
+    }
+
+    #[must_use]
+    pub fn access_summary(&self) -> SparseReaderAccessSummary {
+        self.telemetry.summary()
+    }
+
+    #[must_use]
+    pub fn runtime_binding(&self) -> TreeCalcStructuredTableRuntimeBinding {
+        let sparse_reference_values = RuntimeSparseReferenceValuesBinding {
+            reference: self.reference.clone(),
+            declared_rows: usize::try_from(self.extent.row_count).unwrap_or(usize::MAX),
+            declared_cols: usize::try_from(self.extent.column_count).unwrap_or(usize::MAX),
+            defined_cells: self
+                .defined_iter()
+                .map(|cell| {
+                    RuntimeSparseReferenceCell::new(
+                        usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
+                        usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
+                        table_eval_value_to_array_cell(cell.value),
+                    )
+                })
+                .collect(),
+            reader_identity: Some(format!(
+                "reader_id={};source={};snapshot={}",
+                self.identity.reader_id,
+                self.identity.source_identity,
+                self.identity.snapshot_identity
+            )),
+        };
+        TreeCalcStructuredTableRuntimeBinding {
+            reference: self.reference.clone(),
+            sparse_reference_values,
+            scalar_cell_values: self.current_row_cell_values(),
+            reader_identity: format!(
+                "reader_id={};source={};snapshot={}",
+                self.identity.reader_id,
+                self.identity.source_identity,
+                self.identity.snapshot_identity
+            ),
+        }
+    }
+
+    #[must_use]
+    pub fn current_row_cell_values(&self) -> BTreeMap<String, EvalValue> {
+        if !self.current_row_sensitive {
+            return BTreeMap::new();
+        }
+        self.slots
+            .iter()
+            .filter_map(|slot| {
+                slot.value.clone().map(|value| {
+                    (
+                        qualified_local_reference_target(
+                            &self.sheet_scope_ref,
+                            &a1_cell_ref(slot.absolute_row, slot.absolute_col)
+                                .unwrap_or_else(|| "#REF!".to_string()),
+                        ),
+                        value,
+                    )
+                })
+            })
+            .collect()
+    }
+}
+
+impl SparseRangeReader for TreeCalcTableSparseReader {
+    fn reader_identity(&self) -> &SparseReaderIdentity {
+        &self.identity
+    }
+
+    fn declared_extent(&self) -> SparseRangeExtent {
+        self.extent
+    }
+
+    fn defined_cardinality(&self) -> usize {
+        self.defined_cells.len()
+    }
+
+    fn defined_iter(&self) -> Box<dyn Iterator<Item = SparseDefinedCell> + '_> {
+        self.telemetry.record_defined_iter();
+        Box::new(self.defined_cells.iter().map(|(coord, value)| {
+            self.telemetry.record_defined_yield();
+            SparseDefinedCell {
+                coord: *coord,
+                value: value.clone(),
+            }
+        }))
+    }
+
+    fn read_at(&self, coord: SparseCellCoord) -> SparseCellRead {
+        self.telemetry.record_read_at();
+        if !self.extent.contains(coord) {
+            return SparseCellRead::Blank;
+        }
+        self.defined_cells
+            .get(&coord)
+            .cloned()
+            .map_or(SparseCellRead::Blank, SparseCellRead::Defined)
+    }
+
+    fn contains(&self, coord: SparseCellCoord) -> bool {
+        self.telemetry.record_contains();
+        self.extent.contains(coord)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TreeCalcTableSparseRow {
+    Headers,
+    Data {
+        row_id: TreeCalcTableRowId,
+        row_offset: u32,
+    },
+    Totals,
+}
+
+impl TreeCalcTableSparseRow {
+    fn section(&self) -> TreeCalcTableSparseSection {
+        match self {
+            Self::Headers => TreeCalcTableSparseSection::Headers,
+            Self::Data { .. } => TreeCalcTableSparseSection::Data,
+            Self::Totals => TreeCalcTableSparseSection::Totals,
+        }
+    }
+
+    fn row_id(&self) -> Option<&TreeCalcTableRowId> {
+        match self {
+            Self::Data { row_id, .. } => Some(row_id),
+            Self::Headers | Self::Totals => None,
+        }
+    }
+}
+
+fn resolved_table_id_for_sparse_reference(
+    reference: &StructuredTableReferenceIntake,
+) -> Option<String> {
+    reference
+        .effective_table_ref
+        .as_ref()
+        .map(|table_ref| table_ref.table_id.clone())
+        .or_else(|| {
+            reference
+                .explicit_table_ref
+                .as_ref()
+                .map(|table_ref| table_ref.table_id.clone())
+        })
+}
+
+fn selected_columns_for_sparse_reader<'a>(
+    table: &'a TableDescriptor,
+    reference: &StructuredTableReferenceIntake,
+) -> Result<Vec<&'a TableColumnDescriptor>, TreeCalcTableSparseReaderError> {
+    let selected = if reference.selected_column_ids.is_empty() {
+        table.columns.iter().collect::<Vec<_>>()
+    } else {
+        let by_id = table
+            .columns
+            .iter()
+            .map(|column| (column.column_id.as_str(), column))
+            .collect::<BTreeMap<_, _>>();
+        reference
+            .selected_column_ids
+            .iter()
+            .map(|column_id| {
+                by_id.get(column_id.as_str()).copied().ok_or_else(|| {
+                    TreeCalcTableSparseReaderError::MissingSelectedColumn {
+                        column_id: column_id.clone(),
+                    }
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    let mut selected = selected;
+    selected.sort_by_key(|column| column.ordinal);
+    selected.dedup_by(|left, right| left.column_id == right.column_id);
+    Ok(selected)
+}
+
+fn ensure_contiguous_columns(
+    columns: &[&TableColumnDescriptor],
+) -> Result<(), TreeCalcTableSparseReaderError> {
+    let Some(first) = columns.first() else {
+        return Ok(());
+    };
+    for (index, column) in columns.iter().enumerate() {
+        let expected = first
+            .ordinal
+            .checked_add(
+                u32::try_from(index).map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+            )
+            .ok_or(TreeCalcTableSparseReaderError::RangeOverflow)?;
+        if column.ordinal != expected {
+            return Err(
+                TreeCalcTableSparseReaderError::NonContiguousColumnSelection {
+                    column_ids: columns
+                        .iter()
+                        .map(|column| column.column_id.clone())
+                        .collect(),
+                },
+            );
+        }
+    }
+    Ok(())
+}
+
+fn selected_rows_for_sparse_reader(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    table: &TableDescriptor,
+    reference: &StructuredTableReferenceIntake,
+    caller_table_region: Option<&TableCallerRegion>,
+) -> Result<Vec<TreeCalcTableSparseRow>, TreeCalcTableSparseReaderError> {
+    if reference.uses_this_row {
+        let caller =
+            caller_table_region.ok_or(TreeCalcTableSparseReaderError::MissingCallerTableRegion)?;
+        if caller.table_id != table.table_id {
+            return Err(TreeCalcTableSparseReaderError::CallerTableMismatch {
+                caller_table_id: caller.table_id.clone(),
+                referenced_table_id: table.table_id.clone(),
+            });
+        }
+        if caller.region_kind != TableRegionKind::Data {
+            return Err(TreeCalcTableSparseReaderError::CallerRegionNotData {
+                region_kind: caller.region_kind,
+            });
+        }
+        let row_offset = caller
+            .data_row_offset
+            .ok_or(TreeCalcTableSparseReaderError::CallerDataRowOffsetMissing)?;
+        let index = usize::try_from(row_offset)
+            .map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?;
+        let row_id = snapshot.rows.get(index).cloned().ok_or(
+            TreeCalcTableSparseReaderError::CallerRowOutOfRange {
+                row_offset,
+                row_count: snapshot.rows.len(),
+            },
+        )?;
+        return Ok(vec![TreeCalcTableSparseRow::Data { row_id, row_offset }]);
+    }
+
+    let mut regions = reference.selected_regions.clone();
+    if regions.is_empty() {
+        regions.insert(StructuredTableRegionSelection::Data);
+    }
+    let selects_all = regions.contains(&StructuredTableRegionSelection::All);
+    let mut rows = Vec::new();
+    if regions.contains(&StructuredTableRegionSelection::Headers)
+        || (selects_all && table.header_row_present)
+    {
+        if !table.header_row_present {
+            return Err(TreeCalcTableSparseReaderError::HeaderRowAbsent);
+        }
+        table_header_row(table)?.ok_or(TreeCalcTableSparseReaderError::MissingHeaderRegion)?;
+        rows.push(TreeCalcTableSparseRow::Headers);
+    }
+    if regions.contains(&StructuredTableRegionSelection::Data) || selects_all {
+        for (index, row_id) in snapshot.rows.iter().enumerate() {
+            rows.push(TreeCalcTableSparseRow::Data {
+                row_id: row_id.clone(),
+                row_offset: u32::try_from(index)
+                    .map_err(|_| TreeCalcTableSparseReaderError::RangeOverflow)?,
+            });
+        }
+    }
+    if regions.contains(&StructuredTableRegionSelection::Totals)
+        || (selects_all && table.totals_row_present)
+    {
+        if !table.totals_row_present {
+            return Err(TreeCalcTableSparseReaderError::TotalsRowAbsent);
+        }
+        table_totals_row(table)?.ok_or(TreeCalcTableSparseReaderError::MissingTotalsRegion)?;
+        rows.push(TreeCalcTableSparseRow::Totals);
+    }
+    Ok(rows)
+}
+
+fn table_header_row(
+    table: &TableDescriptor,
+) -> Result<Option<u32>, TreeCalcTableSparseReaderError> {
+    table
+        .header_region_ref
+        .as_ref()
+        .map(|range_ref| {
+            parse_local_a1_range(range_ref)
+                .map(|range| range.top_row)
+                .ok_or_else(|| TreeCalcTableSparseReaderError::InvalidRegionRange {
+                    region: TreeCalcTableSparseSection::Headers,
+                    range_ref: range_ref.clone(),
+                })
+        })
+        .transpose()
+}
+
+fn table_totals_row(
+    table: &TableDescriptor,
+) -> Result<Option<u32>, TreeCalcTableSparseReaderError> {
+    table
+        .totals_region_ref
+        .as_ref()
+        .map(|range_ref| {
+            parse_local_a1_range(range_ref)
+                .map(|range| range.top_row)
+                .ok_or_else(|| TreeCalcTableSparseReaderError::InvalidRegionRange {
+                    region: TreeCalcTableSparseSection::Totals,
+                    range_ref: range_ref.clone(),
+                })
+        })
+        .transpose()
+}
+
+fn reference_like_for_sparse_slots(
+    sheet_scope_ref: &str,
+    slots: &[TreeCalcTableSparseSlot],
+) -> Option<ReferenceLike> {
+    let min_row = slots.iter().map(|slot| slot.absolute_row).min()?;
+    let max_row = slots.iter().map(|slot| slot.absolute_row).max()?;
+    let min_col = slots.iter().map(|slot| slot.absolute_col).min()?;
+    let max_col = slots.iter().map(|slot| slot.absolute_col).max()?;
+    let local_ref = if min_row == max_row && min_col == max_col {
+        a1_cell_ref(min_row, min_col)?
+    } else {
+        a1_range_ref(min_row, min_col, max_row, max_col).ok()?
+    };
+    Some(ReferenceLike::new(
+        if min_row == max_row && min_col == max_col {
+            ReferenceKind::A1
+        } else {
+            ReferenceKind::Area
+        },
+        qualified_local_reference_target(sheet_scope_ref, &local_ref),
+    ))
+}
+
+pub fn reference_like_from_structured_resolved_ref(
+    resolved: &StructuredResolvedRef,
+) -> ReferenceLike {
+    match resolved {
+        StructuredResolvedRef::Cell(cell) => {
+            ReferenceLike::new(ReferenceKind::A1, reference_target_for_cell_ref(cell))
+        }
+        StructuredResolvedRef::Area(area) => {
+            ReferenceLike::new(ReferenceKind::Area, reference_target_for_area_ref(area))
+        }
+    }
+}
+
+fn reference_target_for_cell_ref(cell: &CellRef) -> String {
+    let local_ref = a1_cell_ref(cell.coord.row, cell.coord.col).unwrap_or_else(|| "#REF!".into());
+    qualified_local_reference_target(&cell.sheet_id, &local_ref)
+}
+
+fn reference_target_for_area_ref(area: &AreaRef) -> String {
+    let bottom_row = area
+        .top_left
+        .row
+        .saturating_add(area.height.saturating_sub(1));
+    let right_col = area
+        .top_left
+        .col
+        .saturating_add(area.width.saturating_sub(1));
+    let local_ref = a1_range_ref(area.top_left.row, area.top_left.col, bottom_row, right_col)
+        .unwrap_or_else(|_| "#REF!".into());
+    qualified_local_reference_target(&area.sheet_id, &local_ref)
+}
+
+fn qualified_local_reference_target(sheet_scope_ref: &str, local_ref: &str) -> String {
+    if sheet_scope_ref.is_empty() || sheet_scope_ref.starts_with("sheet:") {
+        local_ref.to_string()
+    } else {
+        format!("{sheet_scope_ref}!{local_ref}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LocalA1Range {
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+}
+
+fn parse_local_a1_range(range_ref: &str) -> Option<LocalA1Range> {
+    let local = range_ref
+        .rsplit_once('!')
+        .map_or(range_ref, |(_, local)| local);
+    let (start, end) = local.split_once(':').unwrap_or((local, local));
+    let start = parse_local_a1_cell(start)?;
+    let end = parse_local_a1_cell(end)?;
+    Some(LocalA1Range {
+        top_row: start.0.min(end.0),
+        left_col: start.1.min(end.1),
+        bottom_row: start.0.max(end.0),
+        right_col: start.1.max(end.1),
+    })
+}
+
+fn parse_local_a1_cell(cell_ref: &str) -> Option<(u32, u32)> {
+    let col_len = cell_ref
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .count();
+    if col_len == 0 || col_len == cell_ref.len() {
+        return None;
+    }
+    let (col_text, row_text) = cell_ref.split_at(col_len);
+    let row = row_text.parse::<u32>().ok()?;
+    let col = excel_column_number(col_text)?;
+    Some((row, col))
+}
+
+fn excel_column_number(text: &str) -> Option<u32> {
+    let mut value = 0u32;
+    for ch in text.chars() {
+        if !ch.is_ascii_alphabetic() {
+            return None;
+        }
+        let upper = ch.to_ascii_uppercase() as u32;
+        value = value.checked_mul(26)?;
+        value = value.checked_add(upper.checked_sub(u32::from(b'A'))? + 1)?;
+    }
+    Some(value)
+}
+
+fn a1_cell_ref(row: u32, col: u32) -> Option<String> {
+    Some(format!("{}{}", excel_column_name(col).ok()?, row))
+}
+
+fn table_eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
+    match value {
+        EvalValue::Number(value) => ArrayCellValue::Number(value),
+        EvalValue::Text(value) => ArrayCellValue::Text(value),
+        EvalValue::Logical(value) => ArrayCellValue::Logical(value),
+        EvalValue::Error(value) => ArrayCellValue::Error(value),
+        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+            ArrayCellValue::Error(WorksheetErrorCode::Value)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -2236,9 +3203,15 @@ fn table_context_identity(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use oxfml_core::{
-        StructuredReferenceBindDiagnosticLink, StructuredReferenceSelectedRegion,
-        interface::{TableColumnDescriptor, TableRegionKind},
+        EvaluationBackend, StructuredReferenceBindDiagnosticLink,
+        StructuredReferenceSelectedRegion,
+        consumer::runtime::{RuntimeEnvironment, RuntimeFormulaRequest},
+        interface::{TableColumnDescriptor, TableRegionKind, TypedContextQueryBundle},
+        seam::Locus,
+        source::FormulaSourceRecord,
         syntax::token::TextSpan,
     };
 
@@ -2833,6 +3806,256 @@ mod tests {
             diagnostic[1].bind_record.diagnostics[0].diagnostic_code,
             "treecalc.table.unknown_column"
         );
+    }
+
+    #[test]
+    fn prebinds_treecalc_table_multi_column_ranges_for_reader_inputs() {
+        let projection = project_treecalc_table_node_snapshot(&treecalc_table_snapshot()).unwrap();
+        let source = "=SUM(SalesTable[[#Data],[Amount]:[Tax]])";
+        let prebound =
+            prebind_treecalc_table_structured_references(source, &[projection], None, None);
+
+        assert_eq!(prebound.len(), 1);
+        assert_eq!(
+            prebound[0].bind_record.selected_column_ids,
+            vec!["col:amount", "col:tax"]
+        );
+        assert_eq!(
+            prebound[0].bind_record.selected_sections,
+            vec![StructuredSectionKind::Data]
+        );
+        assert!(prebound[0].diagnostics.is_empty());
+    }
+
+    #[test]
+    fn table_sparse_reader_projects_data_column_without_dense_blanks() {
+        let snapshot = treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let prebound = prebind_treecalc_table_structured_references(
+            "=SUM(SalesTable[Amount])",
+            std::slice::from_ref(&projection),
+            None,
+            None,
+        );
+        let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+            &snapshot,
+            &projection,
+            &prebound[0].bind_record,
+            None,
+            amount_column_values(),
+        )
+        .expect("table column reader should build");
+
+        assert_eq!(reader.declared_extent().row_count, 3);
+        assert_eq!(reader.declared_extent().column_count, 1);
+        assert_eq!(reader.defined_cardinality(), 2);
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!C4:C6")
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Number(3.0))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(2, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(3, 1)),
+            SparseCellRead::Blank
+        );
+
+        let cells = reader.defined_iter().collect::<Vec<_>>();
+        assert_eq!(cells.len(), 2);
+        assert_eq!(reader.access_summary().read_at_calls, 3);
+        assert_eq!(reader.access_summary().defined_iter_calls, 1);
+        assert_eq!(reader.access_summary().defined_iter_yield_count, 2);
+    }
+
+    #[test]
+    fn table_sparse_runtime_bindings_feed_first_aggregate_group() {
+        let cases = [
+            ("=SUM(SalesTable[Amount])", EvalValue::Number(3.0)),
+            ("=COUNT(SalesTable[Amount])", EvalValue::Number(1.0)),
+            ("=COUNTA(SalesTable[Amount])", EvalValue::Number(2.0)),
+            ("=COUNTBLANK(SalesTable[Amount])", EvalValue::Number(2.0)),
+        ];
+
+        for (formula, expected) in cases {
+            let snapshot = runtime_treecalc_table_snapshot();
+            let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+            let prebound = prebind_treecalc_table_structured_references(
+                formula,
+                std::slice::from_ref(&projection),
+                None,
+                None,
+            );
+            let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+                &snapshot,
+                &projection,
+                &prebound[0].bind_record,
+                None,
+                amount_column_values(),
+            )
+            .expect("table column reader should build");
+            let runtime_binding = reader.runtime_binding();
+            let sparse_reference = runtime_binding.reference.clone();
+            let table_descriptor = projection.table_descriptor.clone();
+
+            let result = RuntimeEnvironment::new()
+                .with_primary_locus(table_primary_locus(&table_descriptor))
+                .with_table_context(vec![table_descriptor], None, None)
+                .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
+                .execute(
+                    RuntimeFormulaRequest::new(
+                        FormulaSourceRecord::new("runtime:w056-tree-table-aggregate", 1, formula),
+                        TypedContextQueryBundle::default(),
+                    )
+                    .with_backend(EvaluationBackend::OxFuncBacked),
+                )
+                .expect("table sparse aggregate should execute through OxFml/OxFunc");
+
+            assert_eq!(result.evaluation.oxfunc_value, expected, "{formula}");
+            assert_eq!(sparse_reference.target, "C4:C6");
+        }
+    }
+
+    #[test]
+    fn table_sparse_runtime_binding_supports_current_row_scalar_formula() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let enclosing = Some(TableRef {
+            table_id: "tree-table:sales".to_string(),
+        });
+        let caller_region = Some(TableCallerRegion {
+            table_id: "tree-table:sales".to_string(),
+            region_kind: TableRegionKind::Data,
+            data_row_offset: Some(1),
+        });
+        let prebound = prebind_treecalc_table_structured_references(
+            "=[@Amount]+2",
+            std::slice::from_ref(&projection),
+            enclosing.clone(),
+            caller_region.clone(),
+        );
+        let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+            &snapshot,
+            &projection,
+            &prebound[0].bind_record,
+            caller_region.as_ref(),
+            [TreeCalcTableSparseValue::data(
+                "row:east",
+                "col:amount",
+                EvalValue::Number(4.0),
+            )],
+        )
+        .expect("current-row table reader should build");
+        let runtime_binding = reader.runtime_binding();
+        let table_descriptor = projection.table_descriptor.clone();
+
+        assert_eq!(
+            runtime_binding.scalar_cell_values,
+            BTreeMap::from([("C5".to_string(), EvalValue::Number(4.0))])
+        );
+
+        let result = RuntimeEnvironment::new()
+            .with_primary_locus(table_primary_locus(&table_descriptor))
+            .with_table_context(vec![table_descriptor], enclosing, caller_region)
+            .with_cell_values(runtime_binding.scalar_cell_values)
+            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
+            .execute(
+                RuntimeFormulaRequest::new(
+                    FormulaSourceRecord::new(
+                        "runtime:w056-tree-table-current-row",
+                        1,
+                        "=[@Amount]+2",
+                    ),
+                    TypedContextQueryBundle::default(),
+                )
+                .with_backend(EvaluationBackend::OxFuncBacked),
+            )
+            .expect("current-row scalar structured reference should execute");
+
+        assert_eq!(result.evaluation.oxfunc_value, EvalValue::Number(6.0));
+    }
+
+    #[test]
+    fn table_sparse_reader_projects_headers_totals_and_all_regions() {
+        let snapshot = treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let all = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:all-amount-tax",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string(), "col:tax".to_string()])
+        .with_selected_regions([StructuredTableRegionSelection::All]);
+        let reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &all,
+            None,
+            [
+                TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
+                TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(4.0)),
+                TreeCalcTableSparseValue::data("row:north", "col:tax", EvalValue::Number(1.5)),
+                TreeCalcTableSparseValue::totals("col:amount", EvalValue::Number(7.0)),
+            ],
+            "SalesTable[[#All],[Amount]:[Tax]]",
+            "structured-ref:all-amount-tax",
+            None,
+        )
+        .expect("#All table reader should build");
+
+        assert_eq!(reader.declared_extent().row_count, 5);
+        assert_eq!(reader.declared_extent().column_count, 2);
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!C3:D7")
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+                "Amount"
+            )))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 2)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("Tax")))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(5, 1)),
+            SparseCellRead::Defined(EvalValue::Number(7.0))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(5, 2)),
+            SparseCellRead::Blank
+        );
+    }
+
+    fn amount_column_values() -> Vec<TreeCalcTableSparseValue> {
+        vec![
+            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
+            TreeCalcTableSparseValue::data(
+                "row:east",
+                "col:amount",
+                EvalValue::Text(ExcelText::from_interop_assignment("")),
+            ),
+        ]
+    }
+
+    fn runtime_treecalc_table_snapshot() -> TreeCalcTableNodeSnapshot {
+        let mut snapshot = treecalc_table_snapshot();
+        snapshot.virtual_anchor.sheet_scope_ref = "sheet:default".to_string();
+        snapshot
+    }
+
+    fn table_primary_locus(table: &TableDescriptor) -> Locus {
+        Locus {
+            sheet_id: table.sheet_scope_ref.clone(),
+            row: 1,
+            col: 1,
+        }
     }
 
     fn table() -> TableDescriptor {

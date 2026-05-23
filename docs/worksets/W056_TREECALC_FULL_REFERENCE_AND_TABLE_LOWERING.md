@@ -607,6 +607,86 @@ the final table-topic promotion audit (`calc-4vs8.38`), the OxFunc-owned
 shared value helper replacement, or the remaining non-table W056 reference
 spine.
 
+`calc-4vs8.38` final table-topic promotion audit:
+
+Product status:
+
+The node-associated TreeCalc table topic is promoted for the declared W056 table
+scope. OxCalc treats a table attached to a TreeCalc node as an Excel-shaped
+virtual table context for OxFml, while preserving TreeCalc table identity,
+structure, dependencies, invalidation, and update semantics in OxCalc/
+DnaTreeCalc. OxFml receives only generic structured-reference/table packets;
+OxFunc receives opaque sparse/reference/value surfaces; OxXlPlay observes Excel
+behavior; OxReplay compares retained declared payloads.
+
+Promoted support:
+
+1. table projection: stable virtual workbook/sheet/table/anchor identity for a
+   node-associated table without requiring `EvalValue::Table`,
+2. structured-reference binding intake: explicit table paths,
+   omitted-table/caller-row forms, `#This Row`, `#Headers`, `#Data`, `#Totals`,
+   `#All`, selected columns, composite references, and bracket-escaped table
+   and column names through generic OxFml packets,
+3. dependency and invalidation ownership: row membership/order, column identity,
+   header text, data/totals regions, caller row context, structural rebind,
+   lifecycle callbacks, and prepared-identity version inputs remain OxCalc facts,
+4. sparse/reference runtime: table data, selected column, current row, headers,
+   totals, and whole-table carriers use sparse `ReferenceLike`/reader surfaces
+   and do not rely on dense eager materialization as closure evidence,
+5. table formula runtime: one formula text can be evaluated per data row through
+   row-specific caller context, with totals formula support and typed rejection
+   of current-row references outside data rows,
+6. function breadth intake: first aggregate group is implemented through opaque
+   sparse references, and broader function families are inventoried as admitted
+   pending OxFunc evidence, richer host-context lanes, or typed exclusions,
+7. retained evidence: DnaTreeCalc, OxXlPlay, and OxReplay retained artifacts
+   cover the table producer slice, Excel update oracle, matched table
+   diff/explain comparison, dependency/invalidation observation limits, and
+   retained artifact refs.
+
+Promotion evidence:
+
+1. OxCalc beads `calc-4vs8.21` through `calc-4vs8.29` closed the first
+   node-associated table spine: projection, prebind, sparse readers, per-row
+   formula runtime, update/invalidation scenarios, retained table evidence, and
+   Excel update-oracle intake.
+2. OxCalc beads `calc-4vs8.34` through `calc-4vs8.37` closed the second-pass
+   table spine: full closure map, lifecycle callback/version contract,
+   structured-table function-breadth intake, and matched TreeCalc/Excel
+   replay/value-wire intake.
+3. DnaTreeCalc retained table corpus evidence is at
+   `../DnaTreeCalc/docs/test-runs/w056-table-structured-references-001/`.
+4. OxXlPlay retained Excel table/update oracle evidence is at
+   `../OxXlPlay/states/excel/xlplay_table_update_oracle_001/`.
+5. OxReplay retained matched comparison evidence is at
+   `../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/` and
+   `../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.
+
+Remaining exclusions and separate work:
+
+1. W056 remains open for non-table reference families, broad W004/W005 corpus
+   activation, callable host names/lambda-valued nodes, and W074 name/call
+   precedence.
+2. OxFunc remains responsible for implementing pending broader function-family
+   admissions over opaque references; OxCalc has only inventoried and classified
+   those lanes for table promotion.
+3. `BLK-REPLAY-003` remains the future OxFunc/OxReplay shared
+   `comparison_value` helper replacement. It is outside TreeCalc table
+   semantics and does not block the table-topic promotion.
+4. Empty data-body tables remain a typed projection exclusion until the generic
+   OxFml `TableDescriptor`/table packet can represent zero-row data-column
+   ranges without requiring parseable data-column A1 area refs.
+5. Excel COM dependency/invalidation internals, `save_reopen` capture, and
+   table-move observation limits remain typed retained observation facts rather
+   than OxCalc runtime semantics.
+
+Formal status:
+
+The final table-topic audit promotes the declared node-associated TreeCalc
+table scope only. It does not close parent W056, final non-table references,
+W074 name/call precedence, W093 pending function implementation lanes, or the
+future shared replay value-helper cleanup.
+
 Promotion rule:
 
 The second-pass table beads may promote the table topic only if the architecture
@@ -654,10 +734,9 @@ New execution beads:
 
 The broad blocker `calc-4vs8.5` now tracks the remaining non-table/upstream
 W056 reference closure gap. It no longer treats the first node-associated table
-slice, DnaTreeCalc table corpus residuals, OxXlPlay table update oracles, or
-OxReplay table-update-oracle policy as missing packet/lowering blockers.
-Second-pass full table promotion is not closed by narrowing `calc-4vs8.5`; it
-belongs to `calc-4vs8.34` through `calc-4vs8.38`.
+slice, second-pass table promotion, DnaTreeCalc table corpus residuals,
+OxXlPlay table update oracles, OxReplay table-update-oracle policy, or matched
+TreeCalc/Excel table replay evidence as missing packet/lowering blockers.
 
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.
@@ -676,8 +755,10 @@ identity components, and identity changes for table rename/namespace, row
 membership add/replace, row order, column rename/add/reorder/version,
 header/totals presence, and virtual anchor movement. Empty data-body tables are
 currently a typed projection exclusion because the current generic OxFml
-`TableDescriptor` requires parseable data-column A1 area refs; W056 table
-reader and OxFml packet widening must settle that before full table closure.
+`TableDescriptor` requires parseable data-column A1 area refs. The final table
+promotion carries this as an explicit typed exclusion; future OxFml packet
+widening is required before empty data-body tables can enter the promoted table
+scope.
 
 Implementation note for `calc-4vs8.22`: OxCalc now has a first public
 TreeCalc table-path structured-reference prebind surface in
@@ -1206,9 +1287,10 @@ corpus blocker for the explicit structural path/traversal slice:
 
 Current non-claim:
 
-This does not close W004/W005, table activation, bare host-name/dotted formula
-binding, dynamic/cross-workspace references, node-as-function/lambda-valued
-nodes, or retained OxReplay evidence.
+This does not close W004/W005 non-table corpus activation, bare host-name/
+dotted formula binding, dynamic/cross-workspace references,
+node-as-function/lambda-valued nodes, or retained OxReplay evidence for
+non-table references.
 
 ## 5. Closure Gate
 
@@ -1235,10 +1317,10 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: in progress through the completed table spine
-`calc-4vs8.21` through `calc-4vs8.29` and the current non-table
-cross-workspace carrier tranche `calc-8tox`. W051 is closed for the first
-OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
+Product status: table-topic promoted for the declared node-associated TreeCalc
+table scope; broader W056 remains in progress for non-table references,
+W004/W005 corpus activation, and W074-dependent name/call behavior. W051 is
+closed for the first OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
 OxFml table packet, and a typed dependency/reverse-edge/invalidation/rebind
@@ -1295,14 +1377,14 @@ freezing name/call precedence.
 DnaTreeCalc commit `fe678cf` activates the scoped explicit structural
 path/traversal raw ordered corpus slice through the public OxCalc resolver path,
 narrowing receiving-side corpus activation without closing W004/W005.
-The table area now has an explicit completion spine in the bead graph:
-`calc-4vs8.21` through `calc-4vs8.26`, with matching DnaTreeCalc, OxFml,
-OxFunc, OxXlPlay, and OxReplay beads for persistence/corpus activation, generic
-structured-reference packet breadth, opaque function admission, Excel
-observation, and retained comparison. Those beads define the remaining work
-needed for node-associated TreeCalc tables to behave for OxFml like
-Excel-anchored tables without adding TreeCalc semantics to OxFml/OxFunc.
-This is not a full-reference/table-lowering product claim.
+The table area now has a closed table-topic completion spine in the bead graph:
+`calc-4vs8.21` through `calc-4vs8.29` and `calc-4vs8.34` through
+`calc-4vs8.38`, with matching DnaTreeCalc, OxFml, OxFunc, OxXlPlay, and
+OxReplay beads for persistence/corpus activation, generic structured-reference
+packet breadth, opaque function admission, Excel observation, retained
+comparison, lifecycle/version policy, and final promotion. This proves the
+declared node-associated TreeCalc table topic without adding TreeCalc semantics
+to OxFml/OxFunc. This is not a full-reference W056 closure claim.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
 value dependency descriptors, reference-preserving formal input binding,

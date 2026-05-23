@@ -1523,6 +1523,289 @@ pub struct TreeCalcStructuredTableRuntimeBinding {
     pub reader_identity: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcStructuredTableFunctionAdmissionStatus {
+    CurrentReferencePreservingEvidence,
+    AdmittedPendingOxFuncEvidence,
+    RequiresTypedHostContext,
+    TypedExclusion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcStructuredTableFunctionCarrierMode {
+    SparseReferenceLike,
+    ReferenceShapeOnly,
+    ResolverIndexedReference,
+    MultiReferenceResolver,
+    DynamicArrayReferenceTransform,
+    HostContextReference,
+    ExternalNativeInvocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcStructuredTableFunctionContextRequirement {
+    SparseReaderCells,
+    ReferenceExtent,
+    ReferenceCoordinateAccess,
+    MultiRangeAlignment,
+    DynamicArraySpillPolicy,
+    RowVisibilityAndFilterState,
+    MetadataDisclosurePolicy,
+    VolatileReferenceRebind,
+    ExternalNativeInvocationPolicy,
+    ImplicitIntersectionCallerContext,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeCalcStructuredTableFunctionAdmission {
+    pub group_id: &'static str,
+    pub function_names: &'static [&'static str],
+    pub status: TreeCalcStructuredTableFunctionAdmissionStatus,
+    pub carrier_mode: TreeCalcStructuredTableFunctionCarrierMode,
+    pub required_context: &'static [TreeCalcStructuredTableFunctionContextRequirement],
+    pub oxfunc_counterpart_bead: &'static str,
+    pub evidence_note: &'static str,
+    pub treecalc_selector_visible_to_oxfunc: bool,
+    pub eager_materialization_closure_allowed: bool,
+}
+
+pub const TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY:
+    &[TreeCalcStructuredTableFunctionAdmission] = &[
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "first_aggregate_group",
+        function_names: &["SUM", "COUNT", "COUNTA", "COUNTBLANK"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::CurrentReferencePreservingEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::SparseReferenceLike,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.15",
+        evidence_note: "current OxCalc/OxFml/OxFunc sparse ReferenceLike runtime evidence; widen under oxf-ypq2.15",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "shape_functions",
+        function_names: &["ROWS", "COLUMNS"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::ReferenceShapeOnly,
+        required_context: &[TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "must consume declared extent from generic reference resolver without reading cells",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "indexed_reference_functions",
+        function_names: &["INDEX"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::ResolverIndexedReference,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceCoordinateAccess,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "must read coordinates through generic resolver APIs and preserve reference-returning forms",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "lookup_match_functions",
+        function_names: &["MATCH", "XMATCH", "XLOOKUP", "VLOOKUP", "HLOOKUP", "LOOKUP"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::MultiReferenceResolver,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::MultiRangeAlignment,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "must compare through opaque sparse/reference readers and keep lookup array/result array alignment generic",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "ordinary_range_scan_functions",
+        function_names: &[
+            "AVERAGE",
+            "AVERAGEA",
+            "MIN",
+            "MINA",
+            "MAX",
+            "MAXA",
+            "PRODUCT",
+            "MEDIAN",
+            "MODE.SNGL",
+            "MODE.MULT",
+            "STDEV.S",
+            "STDEV.P",
+            "VAR.S",
+            "VAR.P",
+            "LARGE",
+            "SMALL",
+            "AVEDEV",
+            "DEVSQ",
+            "GEOMEAN",
+            "HARMEAN",
+            "TRIMMEAN",
+            "AND",
+            "OR",
+            "TEXTJOIN",
+            "CONCAT",
+            "CONCATENATE",
+        ],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::SparseReferenceLike,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.15",
+        evidence_note: "ordinary aggregate/statistical/logical/text range scans must consume opaque sparse references through OxFunc resolver APIs",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "conditional_aggregate_functions",
+        function_names: &[
+            "SUMIF",
+            "SUMIFS",
+            "COUNTIF",
+            "COUNTIFS",
+            "AVERAGEIF",
+            "AVERAGEIFS",
+            "MAXIFS",
+            "MINIFS",
+        ],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::MultiReferenceResolver,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::MultiRangeAlignment,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.15",
+        evidence_note: "must consume criteria and value ranges through generic aligned sparse-reference readers",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "dynamic_array_table_transforms",
+        function_names: &[
+            "FILTER",
+            "SORT",
+            "SORTBY",
+            "UNIQUE",
+            "TAKE",
+            "DROP",
+            "CHOOSECOLS",
+            "CHOOSEROWS",
+            "TOCOL",
+            "TOROW",
+            "WRAPROWS",
+            "WRAPCOLS",
+        ],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::DynamicArrayReferenceTransform,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::DynamicArraySpillPolicy,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "requires generic spill/dynamic-array policy before product admission over table references",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "subtotal_aggregate_context_sensitive",
+        function_names: &["SUBTOTAL", "AGGREGATE"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::HostContextReference,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::RowVisibilityAndFilterState,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "requires typed row-hidden/filter/subtotal context; no TreeCalc table branch may stand in for it",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "reference_metadata_functions",
+        function_names: &["AREAS", "FORMULATEXT", "CELL", "ROW", "COLUMN", "ADDRESS"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::HostContextReference,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::MetadataDisclosurePolicy,
+            TreeCalcStructuredTableFunctionContextRequirement::ImplicitIntersectionCallerContext,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "requires generic metadata disclosure and caller-context rules before table references are product admitted",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "volatile_reference_constructors",
+        function_names: &["OFFSET", "INDIRECT"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::ResolverIndexedReference,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent,
+            TreeCalcStructuredTableFunctionContextRequirement::ReferenceCoordinateAccess,
+            TreeCalcStructuredTableFunctionContextRequirement::VolatileReferenceRebind,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "requires generic volatile/dynamic rebind context rather than host-side eager table materialization",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "reference_operator_forms",
+        function_names: &["OP_IMPLICIT_INTERSECTION", "OP_SPILL_REF"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::HostContextReference,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::ImplicitIntersectionCallerContext,
+            TreeCalcStructuredTableFunctionContextRequirement::DynamicArraySpillPolicy,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "operators need generic caller/spill context and remain outside OxCalc table semantics",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+    TreeCalcStructuredTableFunctionAdmission {
+        group_id: "native_external_invocation",
+        function_names: &["CALL"],
+        status: TreeCalcStructuredTableFunctionAdmissionStatus::TypedExclusion,
+        carrier_mode: TreeCalcStructuredTableFunctionCarrierMode::ExternalNativeInvocation,
+        required_context: &[
+            TreeCalcStructuredTableFunctionContextRequirement::ExternalNativeInvocationPolicy,
+        ],
+        oxfunc_counterpart_bead: "oxf-ypq2.16",
+        evidence_note: "native invocation policy is outside table-reference semantics and must not inspect TreeCalc selectors",
+        treecalc_selector_visible_to_oxfunc: false,
+        eager_materialization_closure_allowed: false,
+    },
+];
+
+#[must_use]
+pub fn treecalc_structured_table_function_admission(
+    function_name: &str,
+) -> Option<&'static TreeCalcStructuredTableFunctionAdmission> {
+    TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY
+        .iter()
+        .find(|admission| {
+            admission
+                .function_names
+                .iter()
+                .any(|candidate| candidate.eq_ignore_ascii_case(function_name))
+        })
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct TreeCalcTableSparseSlot {
     coord: SparseCellCoord,
@@ -5557,6 +5840,17 @@ mod tests {
             let runtime_binding = reader.runtime_binding();
             let sparse_reference = runtime_binding.reference.clone();
             let table_descriptor = projection.table_descriptor.clone();
+            assert!(runtime_binding.scalar_cell_values.is_empty(), "{formula}");
+            assert_eq!(
+                runtime_binding.sparse_reference_values.declared_rows, 3,
+                "{formula}"
+            );
+            assert_eq!(
+                runtime_binding.sparse_reference_values.defined_cells.len(),
+                reader.defined_cardinality(),
+                "{formula}"
+            );
+            assert_eq!(reader.access_summary().read_at_calls, 0, "{formula}");
 
             let result = RuntimeEnvironment::new()
                 .with_primary_locus(table_primary_locus(&table_descriptor))
@@ -5574,6 +5868,148 @@ mod tests {
             assert_eq!(result.evaluation.oxfunc_value, expected, "{formula}");
             assert_eq!(sparse_reference.target, "C4:C6");
         }
+    }
+
+    #[test]
+    fn structured_table_function_breadth_inventory_keeps_table_refs_opaque() {
+        let mut seen = BTreeSet::new();
+        for admission in TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY {
+            assert!(
+                !admission.treecalc_selector_visible_to_oxfunc,
+                "{} exposes TreeCalc selector semantics to OxFunc",
+                admission.group_id
+            );
+            assert!(
+                !admission.eager_materialization_closure_allowed,
+                "{} allows eager materialization as closure evidence",
+                admission.group_id
+            );
+            assert!(
+                !admission.required_context.is_empty(),
+                "{} should name its generic reference/context requirement",
+                admission.group_id
+            );
+            assert!(
+                matches!(
+                    admission.oxfunc_counterpart_bead,
+                    "oxf-ypq2.15" | "oxf-ypq2.16"
+                ),
+                "{} should link to the structured-table OxFunc counterpart bead",
+                admission.group_id
+            );
+            for function_name in admission.function_names {
+                assert!(
+                    seen.insert(*function_name),
+                    "{function_name} is assigned to multiple structured-table lanes"
+                );
+            }
+        }
+
+        for function_name in ["SUM", "COUNT", "COUNTA", "COUNTBLANK"] {
+            let admission = treecalc_structured_table_function_admission(function_name)
+                .expect("first aggregate function should be admitted");
+            assert_eq!(
+                admission.status,
+                TreeCalcStructuredTableFunctionAdmissionStatus::CurrentReferencePreservingEvidence
+            );
+            assert_eq!(
+                admission.carrier_mode,
+                TreeCalcStructuredTableFunctionCarrierMode::SparseReferenceLike
+            );
+            assert!(
+                admission.required_context.contains(
+                    &TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells
+                )
+            );
+        }
+
+        assert_eq!(
+            treecalc_structured_table_function_admission("sum")
+                .expect("lookup is case-insensitive")
+                .group_id,
+            "first_aggregate_group"
+        );
+    }
+
+    #[test]
+    fn structured_table_function_breadth_inventory_types_context_sensitive_lanes() {
+        let rows = treecalc_structured_table_function_admission("ROWS").unwrap();
+        assert_eq!(
+            rows.status,
+            TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence
+        );
+        assert_eq!(
+            rows.carrier_mode,
+            TreeCalcStructuredTableFunctionCarrierMode::ReferenceShapeOnly
+        );
+        assert!(
+            rows.required_context
+                .contains(&TreeCalcStructuredTableFunctionContextRequirement::ReferenceExtent)
+        );
+
+        let index = treecalc_structured_table_function_admission("INDEX").unwrap();
+        assert!(index.required_context.contains(
+            &TreeCalcStructuredTableFunctionContextRequirement::ReferenceCoordinateAccess
+        ));
+
+        let xlookup = treecalc_structured_table_function_admission("XLOOKUP").unwrap();
+        assert_eq!(
+            xlookup.carrier_mode,
+            TreeCalcStructuredTableFunctionCarrierMode::MultiReferenceResolver
+        );
+        assert!(
+            xlookup
+                .required_context
+                .contains(&TreeCalcStructuredTableFunctionContextRequirement::MultiRangeAlignment)
+        );
+
+        let average = treecalc_structured_table_function_admission("AVERAGE").unwrap();
+        assert_eq!(average.group_id, "ordinary_range_scan_functions");
+        assert_eq!(
+            average.carrier_mode,
+            TreeCalcStructuredTableFunctionCarrierMode::SparseReferenceLike
+        );
+        assert_eq!(
+            average.status,
+            TreeCalcStructuredTableFunctionAdmissionStatus::AdmittedPendingOxFuncEvidence
+        );
+
+        let textjoin = treecalc_structured_table_function_admission("TEXTJOIN").unwrap();
+        assert_eq!(textjoin.group_id, "ordinary_range_scan_functions");
+        assert!(
+            textjoin
+                .required_context
+                .contains(&TreeCalcStructuredTableFunctionContextRequirement::SparseReaderCells)
+        );
+
+        let subtotal = treecalc_structured_table_function_admission("SUBTOTAL").unwrap();
+        assert_eq!(
+            subtotal.status,
+            TreeCalcStructuredTableFunctionAdmissionStatus::RequiresTypedHostContext
+        );
+        assert!(subtotal.required_context.contains(
+            &TreeCalcStructuredTableFunctionContextRequirement::RowVisibilityAndFilterState
+        ));
+
+        let filter = treecalc_structured_table_function_admission("FILTER").unwrap();
+        assert_eq!(
+            filter.carrier_mode,
+            TreeCalcStructuredTableFunctionCarrierMode::DynamicArrayReferenceTransform
+        );
+        assert!(
+            filter.required_context.contains(
+                &TreeCalcStructuredTableFunctionContextRequirement::DynamicArraySpillPolicy
+            )
+        );
+
+        let call = treecalc_structured_table_function_admission("CALL").unwrap();
+        assert_eq!(
+            call.status,
+            TreeCalcStructuredTableFunctionAdmissionStatus::TypedExclusion
+        );
+        assert!(call.required_context.contains(
+            &TreeCalcStructuredTableFunctionContextRequirement::ExternalNativeInvocationPolicy
+        ));
     }
 
     #[test]

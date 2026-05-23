@@ -495,6 +495,62 @@ policy for W056. It does not by itself promote the full table topic: function
 breadth remains under `calc-4vs8.36`, retained matched replay/value-wire intake
 under `calc-4vs8.37`, and final product promotion under `calc-4vs8.38`.
 
+`calc-4vs8.36` implemented intake:
+
+OxCalc now records the structured-table function breadth surface as typed Rust
+inventory in `src/oxcalc-core/src/structured_table.rs`:
+`TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY` and
+`treecalc_structured_table_function_admission`. The inventory is an OxCalc
+intake and coordination surface; OxFunc still owns the function implementation
+and must consume generic sparse/reference resolver APIs without seeing TreeCalc
+selectors.
+
+Current admitted and blocked lanes:
+
+1. `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK` are the current
+   reference-preserving evidence lane. Runtime tests execute them through
+   OxFml/OxFunc with sparse `ReferenceLike` bindings, not table-specific
+   `EvalValue` variants and not dense eager arrays.
+2. `ROWS` and `COLUMNS` are admitted pending OxFunc evidence as shape-only
+   consumers of declared reference extent.
+3. `INDEX` is admitted pending OxFunc evidence as a resolver-indexed reference
+   consumer that needs coordinate reads and reference-returning forms.
+4. `MATCH`, `XMATCH`, `XLOOKUP`, `VLOOKUP`, `HLOOKUP`, and `LOOKUP` are
+   admitted pending OxFunc evidence as lookup/match functions requiring generic
+   sparse cells, declared extent, and multi-range alignment.
+5. ordinary range scans such as `AVERAGE`, `MIN`, `MAX`, `PRODUCT`,
+   statistical functions, logical scans, `TEXTJOIN`, and `CONCAT` are admitted
+   pending OxFunc evidence as sparse `ReferenceLike` consumers over generic
+   reader APIs.
+6. `SUMIF`, `SUMIFS`, `COUNTIF`, `COUNTIFS`, `AVERAGEIF`, `AVERAGEIFS`,
+   `MAXIFS`, and `MINIFS` are admitted pending OxFunc evidence as
+   criteria/value-range consumers requiring aligned sparse references.
+7. `FILTER`, `SORT`, `SORTBY`, `UNIQUE`, `TAKE`, `DROP`, `CHOOSECOLS`,
+   `CHOOSEROWS`, `TOCOL`, `TOROW`, `WRAPROWS`, and `WRAPCOLS` require typed
+   dynamic-array/spill policy before product admission over table references.
+8. `SUBTOTAL` and `AGGREGATE` require typed row-hidden/filter/subtotal context;
+   table-specific branches are not acceptable closure evidence.
+9. `AREAS`, `FORMULATEXT`, `CELL`, `ROW`, `COLUMN`, and `ADDRESS` require typed
+   metadata disclosure and caller-context rules.
+10. `OFFSET`, `INDIRECT`, `OP_IMPLICIT_INTERSECTION`, and `OP_SPILL_REF` require
+   typed dynamic rebind, reference coordinate, caller, or spill context.
+11. `CALL` is a typed exclusion for native invocation policy and must not be
+    used as a table-reference closure shortcut.
+
+The inventory links the OxFunc counterpart beads `oxf-ypq2.15` and
+`oxf-ypq2.16`. Each lane explicitly records that OxFunc must not inspect
+TreeCalc selectors and that eager materialization is not allowed as closure
+evidence. Focused tests assert those invariants, ensure function names are
+assigned to only one lane, and verify the first aggregate group continues to
+travel through sparse `ReferenceLike` values with only defined cells carried.
+
+Non-claim:
+
+This closes OxCalc's W056 function-breadth intake and coordination contract. It
+does not close OxFunc W093 implementation for the pending groups, dynamic-array
+spill semantics, row-hidden/filter context, metadata disclosure policy, native
+CALL policy, or final table promotion.
+
 Promotion rule:
 
 The second-pass table beads may promote the table topic only if the architecture

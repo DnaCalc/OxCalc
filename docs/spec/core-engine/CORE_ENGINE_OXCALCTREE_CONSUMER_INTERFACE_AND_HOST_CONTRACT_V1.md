@@ -273,6 +273,31 @@ and prepared/cache identity tokens. OxFunc receives only opaque references or
 ordinary scalar/array values. No consumer should infer TreeCalc table lifecycle
 semantics from private strings or from OxFml/OxFunc artifacts.
 
+### 3.9 W056 Structured-Table Function Breadth Boundary
+
+The function breadth boundary is recorded by OxCalc as
+`TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY`, while OxFunc remains
+the implementation owner for function semantics. The inventory names the
+functions that can consume node-associated table references through generic
+reference APIs and the functions that need typed host context before product
+admission.
+
+The current evidence lane is `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK` over
+sparse `ReferenceLike` table references. The admitted-pending lanes are
+shape-only functions (`ROWS`, `COLUMNS`), indexed reference functions
+(`INDEX`), ordinary range-scan/statistical/logical/text functions,
+lookup/match functions, and criteria aggregate functions. Typed host-context
+lanes cover dynamic-array transforms, `SUBTOTAL`/`AGGREGATE`, metadata
+functions, volatile reference constructors, and reference operators. `CALL` is
+excluded pending native invocation policy.
+
+Every lane carries the same ownership rule: OxCalc supplies generic sparse
+bindings, declared extent, coordinate access, multi-range alignment, caller
+context, dynamic-array/spill policy, row-hidden/filter state, or metadata
+policy as typed generic inputs where needed. OxFunc must not inspect TreeCalc
+selectors, and dense eager materialization cannot be used as table-reference
+closure evidence.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

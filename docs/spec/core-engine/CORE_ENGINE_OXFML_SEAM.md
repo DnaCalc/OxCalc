@@ -191,6 +191,17 @@ view. W051 must either give OxFml a stable way to pass the reference/reader
 through to that aggregate adapter or mark eager value-array materialization as
 a temporary, non-closing fallback for the reference-preserving scenario.
 
+W056 now records the wider structured-table function breadth as OxCalc intake,
+not OxFunc implementation. `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK` have
+current sparse `ReferenceLike` evidence. `ROWS`/`COLUMNS`, `INDEX`, ordinary
+range scans, lookup/match functions, and criteria aggregate families are
+admitted pending OxFunc evidence through generic resolver APIs. Dynamic-array
+transforms, `SUBTOTAL`/`AGGREGATE`,
+metadata functions, volatile reference constructors, and reference operators
+name typed host-context requirements. `CALL` is a typed native-invocation
+exclusion. Across all lanes, OxFunc must not inspect TreeCalc selectors and
+eager materialization is not closure evidence.
+
 If the canonical OxFml seam needs a new resolver hook, reference family, or
 replay field for this to be stable, OxCalc must file that as an explicit
 handoff rather than creating a private evaluator contract.

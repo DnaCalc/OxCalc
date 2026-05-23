@@ -153,7 +153,7 @@ pub enum TreeCalcTableProjectionError {
     EmptyDisplayPath,
     EmptyCanonicalPath,
     EmptyColumns,
-    EmptyDataBodyNotRepresentableByCurrentTableDescriptor,
+    EmptyTableHasNoRepresentableRows,
     InvalidVirtualAnchor { start_row: u32, start_col: u32 },
     DuplicateColumnId { column_id: String },
     DuplicateColumnName { column_name: String },
@@ -179,10 +179,13 @@ pub fn project_treecalc_table_node_snapshot(
         .checked_add(row_count)
         .and_then(|value| value.checked_add(totals_rows))
         .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    if total_rows == 0 {
+        return Err(TreeCalcTableProjectionError::EmptyTableHasNoRepresentableRows);
+    }
     let table_end_row = snapshot
         .virtual_anchor
         .start_row
-        .checked_add(total_rows - 1)
+        .checked_add(total_rows.saturating_sub(1))
         .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
     let table_end_col = snapshot
         .virtual_anchor
@@ -194,9 +197,13 @@ pub fn project_treecalc_table_node_snapshot(
         .start_row
         .checked_add(header_rows)
         .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
-    let data_end_row = data_start_row
-        .checked_add(row_count - 1)
-        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    let data_end_row = (row_count > 0)
+        .then(|| {
+            data_start_row
+                .checked_add(row_count - 1)
+                .ok_or(TreeCalcTableProjectionError::RangeOverflow)
+        })
+        .transpose()?;
 
     let oxcalc_row_membership_identity = treecalc_table_row_membership_fact_identity(snapshot);
     let oxcalc_row_order_identity = treecalc_table_row_order_fact_identity(snapshot);
@@ -235,7 +242,10 @@ pub fn project_treecalc_table_node_snapshot(
                 column_id: column.column_id.clone(),
                 column_name: column.column_name.clone(),
                 ordinal: column.ordinal,
-                column_range_ref: a1_range_ref(data_start_row, col, data_end_row, col)?,
+                column_range_ref: data_end_row
+                    .map(|end_row| a1_range_ref(data_start_row, col, end_row, col))
+                    .transpose()?
+                    .unwrap_or_default(),
             })
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -361,11 +371,6 @@ fn validate_treecalc_table_node_snapshot(
     }
     if snapshot.columns.is_empty() {
         return Err(TreeCalcTableProjectionError::EmptyColumns);
-    }
-    if snapshot.rows.is_empty() {
-        return Err(
-            TreeCalcTableProjectionError::EmptyDataBodyNotRepresentableByCurrentTableDescriptor,
-        );
     }
     if snapshot.virtual_anchor.start_row == 0 || snapshot.virtual_anchor.start_col == 0 {
         return Err(TreeCalcTableProjectionError::InvalidVirtualAnchor {
@@ -1116,10 +1121,26 @@ fn parse_treecalc_structured_tail(
                             .columns
                             .iter()
                             .find(|column| &column.column_id == column_id)
-                            .map(|column| column.column_range_ref.clone())
+                            .and_then(|column| {
+                                (!column.column_range_ref.trim().is_empty())
+                                    .then(|| column.column_range_ref.clone())
+                            })
                     })
                 })
                 .collect(),
+            is_empty: matches!(
+                *section_kind,
+                StructuredSectionKind::Data | StructuredSectionKind::ThisRow
+            ) && table.is_some_and(|descriptor| {
+                !selected_column_ids.is_empty()
+                    && selected_column_ids.iter().all(|column_id| {
+                        descriptor
+                            .columns
+                            .iter()
+                            .find(|column| &column.column_id == column_id)
+                            .is_some_and(|column| column.column_range_ref.trim().is_empty())
+                    })
+            }),
         })
         .collect();
 
@@ -1936,7 +1957,15 @@ impl TreeCalcTableSparseReader {
             reference,
             caller_table_region,
         )?;
-        if rows.is_empty() || selected_columns.is_empty() {
+        if selected_columns.is_empty() {
+            return Err(TreeCalcTableSparseReaderError::EmptySelection);
+        }
+        let empty_data_body_selection = rows.is_empty()
+            && snapshot.rows.is_empty()
+            && selected_columns
+                .iter()
+                .all(|column| column.column_range_ref.trim().is_empty());
+        if rows.is_empty() && !empty_data_body_selection {
             return Err(TreeCalcTableSparseReaderError::EmptySelection);
         }
 
@@ -1950,23 +1979,18 @@ impl TreeCalcTableSparseReader {
                 )
             })
             .collect::<BTreeMap<_, _>>();
-        let data_start_rows = selected_columns
+        let column_positions = selected_columns
             .iter()
             .map(|column| {
-                let range = parse_local_a1_range(&column.column_range_ref).ok_or_else(|| {
-                    TreeCalcTableSparseReaderError::MissingColumnRange {
-                        column_id: column.column_id.clone(),
-                        range_ref: column.column_range_ref.clone(),
-                    }
-                })?;
-                Ok((column.column_id.clone(), range))
+                let col = table_column_absolute_col(&projection.table_descriptor, column)?;
+                Ok((column.column_id.clone(), col))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         let mut slots = Vec::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             for (column_index, column) in selected_columns.iter().enumerate() {
-                let absolute_col = data_start_rows[&column.column_id].left_col;
+                let absolute_col = column_positions[&column.column_id];
                 let (absolute_row, value) = match row {
                     TreeCalcTableSparseRow::Headers => {
                         let header_row = table_header_row(&projection.table_descriptor)?
@@ -1988,7 +2012,13 @@ impl TreeCalcTableSparseReader {
                         )
                     }
                     TreeCalcTableSparseRow::Data { row_id, row_offset } => {
-                        let data_range = data_start_rows[&column.column_id];
+                        let data_range =
+                            parse_non_empty_table_column_range(column).ok_or_else(|| {
+                                TreeCalcTableSparseReaderError::MissingColumnRange {
+                                    column_id: column.column_id.clone(),
+                                    range_ref: column.column_range_ref.clone(),
+                                }
+                            })?;
                         let absolute_row = data_range
                             .top_row
                             .checked_add(*row_offset)
@@ -2034,7 +2064,13 @@ impl TreeCalcTableSparseReader {
 
         let reference = resolved_reference.unwrap_or_else(|| {
             reference_like_for_sparse_slots(&projection.table_descriptor.sheet_scope_ref, &slots)
-                .expect("non-empty slot set already checked")
+                .unwrap_or_else(|| {
+                    reference_like_for_empty_table_selection(
+                        &projection.table_descriptor,
+                        reference,
+                        &selected_columns,
+                    )
+                })
         });
         let extent = SparseRangeExtent::new(
             SparseCellCoord::new(1, 1),
@@ -4025,6 +4061,33 @@ fn selected_rows_for_sparse_reader(
     Ok(rows)
 }
 
+fn parse_non_empty_table_column_range(column: &TableColumnDescriptor) -> Option<LocalA1Range> {
+    let range_ref = column.column_range_ref.trim();
+    (!range_ref.is_empty())
+        .then(|| parse_local_a1_range(range_ref))
+        .flatten()
+}
+
+fn table_column_absolute_col(
+    table: &TableDescriptor,
+    column: &TableColumnDescriptor,
+) -> Result<u32, TreeCalcTableSparseReaderError> {
+    if let Some(range) = parse_non_empty_table_column_range(column) {
+        return Ok(range.left_col);
+    }
+
+    let table_range = parse_local_a1_range(&table.table_range_ref).ok_or_else(|| {
+        TreeCalcTableSparseReaderError::InvalidRegionRange {
+            region: TreeCalcTableSparseSection::Data,
+            range_ref: table.table_range_ref.clone(),
+        }
+    })?;
+    table_range
+        .left_col
+        .checked_add(column.ordinal.saturating_sub(1))
+        .ok_or(TreeCalcTableSparseReaderError::RangeOverflow)
+}
+
 fn table_header_row(
     table: &TableDescriptor,
 ) -> Result<Option<u32>, TreeCalcTableSparseReaderError> {
@@ -4082,6 +4145,47 @@ fn reference_like_for_sparse_slots(
     ))
 }
 
+fn reference_like_for_empty_table_selection(
+    table: &TableDescriptor,
+    reference: &StructuredTableReferenceIntake,
+    selected_columns: &[&TableColumnDescriptor],
+) -> ReferenceLike {
+    let section = if reference.uses_this_row {
+        "ThisRow"
+    } else if reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::All)
+    {
+        "All"
+    } else if reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::Headers)
+    {
+        "Headers"
+    } else if reference
+        .selected_regions
+        .contains(&StructuredTableRegionSelection::Totals)
+    {
+        "Totals"
+    } else {
+        "Data"
+    };
+    ReferenceLike::new(
+        ReferenceKind::Structured,
+        format!(
+            "empty-structured:{}:{}:{}:{}",
+            table.sheet_scope_ref,
+            section,
+            selected_columns
+                .iter()
+                .map(|column| column.column_id.as_str())
+                .collect::<Vec<_>>()
+                .join("|"),
+            selected_columns.len()
+        ),
+    )
+}
+
 pub fn reference_like_from_structured_resolved_ref(
     resolved: &StructuredResolvedRef,
 ) -> ReferenceLike {
@@ -4092,6 +4196,22 @@ pub fn reference_like_from_structured_resolved_ref(
         StructuredResolvedRef::Area(area) => {
             ReferenceLike::new(ReferenceKind::Area, reference_target_for_area_ref(area))
         }
+        StructuredResolvedRef::EmptyArea(empty) => ReferenceLike::new(
+            ReferenceKind::Structured,
+            format!(
+                "empty-structured:{}:{}:{}:{}",
+                empty.sheet_id,
+                match empty.section_kind {
+                    StructuredSectionKind::All => "All",
+                    StructuredSectionKind::Data => "Data",
+                    StructuredSectionKind::Headers => "Headers",
+                    StructuredSectionKind::Totals => "Totals",
+                    StructuredSectionKind::ThisRow => "ThisRow",
+                },
+                empty.selected_column_ids.join("|"),
+                empty.column_count
+            ),
+        ),
     }
 }
 
@@ -5533,12 +5653,65 @@ mod tests {
     }
 
     #[test]
-    fn table_projection_rejects_snapshot_shapes_that_would_create_private_semantics() {
+    fn projects_empty_body_table_snapshot_with_empty_data_ranges() {
         let mut empty_data_body = treecalc_table_snapshot();
         empty_data_body.rows.clear();
+        empty_data_body.row_membership_version = "row-membership:empty".to_string();
+        empty_data_body.row_order_version = "row-order:empty".to_string();
+
+        let projection = project_treecalc_table_node_snapshot(&empty_data_body)
+            .expect("zero-row table projects through generic empty data-body packet shape");
+
+        assert_eq!(projection.table_descriptor.table_range_ref, "B3:D4");
         assert_eq!(
-            project_treecalc_table_node_snapshot(&empty_data_body).unwrap_err(),
-            TreeCalcTableProjectionError::EmptyDataBodyNotRepresentableByCurrentTableDescriptor
+            projection.table_descriptor.header_region_ref.as_deref(),
+            Some("B3:D3")
+        );
+        assert_eq!(
+            projection.table_descriptor.totals_region_ref.as_deref(),
+            Some("B4:D4")
+        );
+        assert_eq!(
+            projection
+                .table_descriptor
+                .columns
+                .iter()
+                .map(|column| (
+                    column.column_id.as_str(),
+                    column.ordinal,
+                    column.column_range_ref.as_str()
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("col:region", 1, ""),
+                ("col:amount", 2, ""),
+                ("col:tax", 3, "")
+            ]
+        );
+        assert!(
+            projection
+                .table_descriptor
+                .row_membership_identity
+                .as_deref()
+                .unwrap()
+                .contains("row_count=1:0")
+        );
+        assert!(
+            projection
+                .table_context_identity
+                .contains("row-membership:empty")
+        );
+    }
+
+    #[test]
+    fn table_projection_rejects_snapshot_shapes_that_would_create_private_semantics() {
+        let mut invisible_empty_table = treecalc_table_snapshot();
+        invisible_empty_table.rows.clear();
+        invisible_empty_table.header_row_present = false;
+        invisible_empty_table.totals_row_present = false;
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&invisible_empty_table).unwrap_err(),
+            TreeCalcTableProjectionError::EmptyTableHasNoRepresentableRows
         );
 
         let mut duplicate_column = treecalc_table_snapshot();
@@ -5809,6 +5982,134 @@ mod tests {
         assert_eq!(reader.access_summary().read_at_calls, 3);
         assert_eq!(reader.access_summary().defined_iter_calls, 1);
         assert_eq!(reader.access_summary().defined_iter_yield_count, 2);
+    }
+
+    #[test]
+    fn table_sparse_reader_preserves_empty_data_body_as_zero_row_reference() {
+        let mut snapshot = treecalc_table_snapshot();
+        snapshot.rows.clear();
+        snapshot.row_membership_version = "row-membership:empty".to_string();
+        snapshot.row_order_version = "row-order:empty".to_string();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let data = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:empty-amount",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string()])
+        .with_selected_regions([StructuredTableRegionSelection::Data]);
+
+        let reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &data,
+            None,
+            Vec::<TreeCalcTableSparseValue>::new(),
+            "SalesTable[Amount]",
+            "structured-ref:empty-amount",
+            None,
+        )
+        .expect("empty data-body table column should produce a zero-row reader");
+
+        assert_eq!(reader.declared_extent().row_count, 0);
+        assert_eq!(reader.declared_extent().column_count, 1);
+        assert_eq!(reader.defined_cardinality(), 0);
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(
+                ReferenceKind::Structured,
+                "empty-structured:treecalc-virtual-sheet:tables:Data:col:amount:1"
+            )
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Blank
+        );
+        assert_eq!(reader.access_summary().read_at_calls, 1);
+        assert!(reader.defined_iter().next().is_none());
+
+        let runtime_binding = reader.runtime_binding();
+        assert_eq!(runtime_binding.sparse_reference_values.declared_rows, 0);
+        assert_eq!(runtime_binding.sparse_reference_values.declared_cols, 1);
+        assert!(
+            runtime_binding
+                .sparse_reference_values
+                .defined_cells
+                .is_empty()
+        );
+        assert!(runtime_binding.scalar_cell_values.is_empty());
+    }
+
+    #[test]
+    fn empty_body_table_reader_keeps_headers_totals_and_current_row_diagnostics_typed() {
+        let mut snapshot = treecalc_table_snapshot();
+        snapshot.rows.clear();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let all = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:empty-all",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string(), "col:tax".to_string()])
+        .with_selected_regions([StructuredTableRegionSelection::All]);
+        let reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &all,
+            None,
+            [TreeCalcTableSparseValue::totals(
+                "col:amount",
+                EvalValue::Number(0.0),
+            )],
+            "SalesTable[[#All],[Amount]:[Tax]]",
+            "structured-ref:empty-all",
+            None,
+        )
+        .expect("empty table #All should retain header and totals rows");
+
+        assert_eq!(reader.declared_extent().row_count, 2);
+        assert_eq!(reader.declared_extent().column_count, 2);
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!C3:D4")
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+                "Amount"
+            )))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(2, 1)),
+            SparseCellRead::Defined(EvalValue::Number(0.0))
+        );
+
+        let current_row = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:empty-current-row",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string()])
+        .with_this_row();
+        let current_row_error = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &current_row,
+            Some(&TableCallerRegion {
+                table_id: "tree-table:sales".to_string(),
+                region_kind: TableRegionKind::Data,
+                data_row_offset: Some(0),
+            }),
+            Vec::<TreeCalcTableSparseValue>::new(),
+            "SalesTable[@Amount]",
+            "structured-ref:empty-current-row",
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(
+            current_row_error,
+            TreeCalcTableSparseReaderError::CallerRowOutOfRange {
+                row_offset: 0,
+                row_count: 0
+            }
+        );
     }
 
     #[test]
@@ -7329,6 +7630,7 @@ mod tests {
                     section_kind: *section_kind,
                     region_ref: None,
                     column_range_refs: vec!["B2:B4".to_string()],
+                    is_empty: false,
                 })
                 .collect(),
             selected_sections,

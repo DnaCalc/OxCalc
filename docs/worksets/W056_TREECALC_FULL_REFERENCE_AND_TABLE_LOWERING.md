@@ -26,7 +26,15 @@ Initial successor beads:
    breadth evidence, DnaTreeCalc lifecycle bridge acceptance, table namespace/
    anchor/workspace collision semantics, and final table support audit without
    relying on the earlier typed projection exclusions.
-7. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
+7. `calc-4vs8.44` through `calc-4vs8.56` — fourth-pass comprehensive
+   node-table design and rollout spine: whole-system ownership map, virtual
+   Excel-anchor identity, generic OxFml packet contract, OxCalc resolver/
+   namespace versioning, full `ReferenceLike` reader surface, row-context
+   prepared identity, complete dependency/invalidation matrix, DnaTreeCalc
+   activation, OxXlPlay oracle construction, OxReplay retained evidence,
+   UDF/VBA/XLL impact, cross-repo handoff coordination, and dynamic table
+   reference rebind/`INDIRECT` semantics.
+8. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
    non-table reference completion spine: cross-workspace provider/alias
    semantics, workspace-qualified carriers, reference literals/dynamic
    carriers, W074 callable/name intake, and retained non-table corpus evidence.
@@ -499,6 +507,76 @@ Systematic third-pass cross-repo sequence:
    ordinary typed exclusions for intended support; parent W056 may still remain
    open for non-table references.
 
+Fourth-pass comprehensive table completion spine:
+
+The third pass made the residuals explicit, but the long-term feature needs a
+more architectural breakdown so node-associated tables do not grow quick fixes
+or parallel paths. The fourth pass is the controlling table completion spine for
+the final W056 table audit.
+
+1. `calc-4vs8.44` — whole-system architecture and ownership map. This bead
+   states the desired end state: a DnaTreeCalc node table is exposed to OxFml
+   as an Excel-shaped ListObject/table context anchored at a virtual cell,
+   while TreeCalc custody, identity, dependencies, namespace versions, caller
+   context, and invalidation remain OxCalc-owned.
+2. `calc-4vs8.45` — virtual Excel anchor and identity contract. This covers
+   stable table handle, table node id, virtual workbook/sheet/range, header/
+   data/totals regions, row membership/order, column identity, table structure
+   and value versions, caller row identity, and save/reopen semantics.
+3. `calc-4vs8.46` — generic structured-reference packet contract for node
+   tables. This keeps OxFml responsible for generic structured-reference
+   parsing/binding and requires exact source spans/tokens, selected sections/
+   regions/columns, effective table identity, diagnostics, caller-context
+   dependency, and replay identity without TreeCalc semantics.
+4. `calc-4vs8.47` — table catalog resolver and namespace versioning. This
+   covers table names, node paths, workspace aliases, root/workspace anchors,
+   omitted-table row context, unavailable workspace/table states, table/name
+   collisions, and W074-gated name/call boundaries.
+5. `calc-4vs8.48` — full table `ReferenceLike` reader surface. This closes
+   reference-preserving readers for whole table, data body, selected columns,
+   multi-column ranges, headers, totals, `#All`, current row, omitted-table
+   current row, empty tables, sparse blanks, errors, and stable reader identity.
+6. `calc-4vs8.49` — table formula row-context and prepared identity. This
+   covers per-row formulas, totals formulas, `#This Row`, omitted-table
+   current-row context, LET/LAMBDA lexical locals remaining OxFml-internal,
+   dispatch skeleton reuse, registry snapshot identity, and DnaOneCalc
+   no-host-reference guardrails.
+7. `calc-4vs8.50` — complete table dependency and invalidation matrix. This
+   covers row/column/header/totals/data/caller-row/anchor/workspace/function
+   dependencies and every intended table update: value/formula edits,
+   row/column insert/delete/reorder, renames, totals toggles, table move/delete,
+   node move/delete, save/reopen, workspace availability, and structural rebind.
+8. `calc-4vs8.51` — DnaTreeCalc full node-table corpus and bridge activation.
+   This is the product activation lane for persistence, UX-relevant table
+   interactions, path-qualified references, omitted/current-row forms, escaped
+   names, empty-body transitions, formulas, diagnostics, cross-workspace table
+   references, and retained producer artifacts through the real bridge.
+9. `calc-4vs8.52` — OxXlPlay Excel table oracle and workbook construction.
+   This maps TreeCalc node-table scenarios onto Excel ListObject fixtures and
+   captures observed structured-reference behavior plus typed COM limitations.
+10. `calc-4vs8.53` — OxReplay retained table comparison and promotion evidence.
+   This owns validate/replay/diff/explain baselines for DnaTreeCalc and
+   OxXlPlay table artifacts, including table slices, values, display, outcomes,
+   dependency/invalidation evidence, prepared identity, source preservation,
+   function admission, and capability snapshots.
+11. `calc-4vs8.54` — table UDF, VBA, XLL, and registry impact scan. This keeps
+   future UDF support registry-backed through OxFunc/OxFml and verifies table
+   references remain opaque `ReferenceLike` values rather than TreeCalc-specific
+   function branches.
+12. `calc-4vs8.55` — cross-repo table rollout and handoff coordination. This
+   ensures counterpart beads or handoff packets exist in the affected repos and
+   prevents downstream work from filling missing contracts with private adapters.
+13. `calc-4vs8.56` — dynamic table reference rebind and `INDIRECT` semantics.
+   This keeps table-valued dynamic references, renamed/moved/deleted dynamic
+   table targets, cross-workspace dynamic table targets, volatile rebind, and
+   typed denial for unsupported dynamic structured-reference forms under the
+   table spine rather than smuggling them through the non-table dynamic lane.
+
+`calc-4vs8.43` now depends on this fourth-pass spine as well as the third-pass
+residual beads. It must not close the full intended table topic until these
+beads are either closed with evidence or explicitly converted into
+user-accepted typed exclusions.
+
 `calc-4vs8.35` implemented contract:
 
 The table lifecycle boundary is now represented in
@@ -732,9 +810,9 @@ Remaining exclusions and separate work:
 1. W056 remains open for non-table reference families, broad W004/W005 corpus
    activation, callable host names/lambda-valued nodes, and W074 name/call
    precedence.
-2. `calc-4vs8.39` through `calc-4vs8.43` now own the full-intended table
-   residuals that were acceptable exclusions for the declared table-topic
-   promotion but are not acceptable final product gaps.
+2. `calc-4vs8.39` through `calc-4vs8.56` now own the full-intended table
+   residuals and architecture/rollout work that were acceptable exclusions for
+   the declared table-topic promotion but are not acceptable final product gaps.
 3. OxFunc remains responsible for implementing pending broader function-family
    admissions over opaque references; OxCalc has only inventoried and classified
    those lanes for table promotion, with executable follow-through now tracked
@@ -1454,6 +1532,15 @@ packet breadth, opaque function admission, Excel observation, retained
 comparison, lifecycle/version policy, and final promotion. This proves the
 declared node-associated TreeCalc table topic without adding TreeCalc semantics
 to OxFml/OxFunc. This is not a full-reference W056 closure claim.
+A new comprehensive table completion spine, `calc-4vs8.44` through
+`calc-4vs8.56`, is open to turn that scoped promotion into the intended
+long-term table feature. It decomposes the remaining table work into
+architecture/ownership, virtual anchor identity, generic OxFml packet contract,
+OxCalc resolver and namespace versioning, full `ReferenceLike` readers,
+row-context prepared identity, complete dependency/invalidation scenarios,
+DnaTreeCalc activation, OxXlPlay oracle construction, OxReplay retained
+evidence, UDF/VBA/XLL impact, cross-repo rollout coordination, and dynamic
+table reference rebind/`INDIRECT` semantics.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
 value dependency descriptors, reference-preserving formal input binding,

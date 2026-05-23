@@ -315,6 +315,14 @@ ordinary scalar cell bindings where Excel row-context semantics require a
 single cell. The seam must preserve that carrier without introducing
 TreeCalc-specific `EvalValue` variants, without making OxFml parse TreeCalc
 paths, and without making OxFunc inspect TreeCalc table selectors.
+The current OxCalc reader surface covers whole data-body references, selected
+columns, contiguous multi-column ranges, all-column `#All`, headers, data,
+totals, current-row and omitted-current-row references, empty data-body
+zero-row references, single-row tables, sparse blanks, defined empty strings,
+typed worksheet errors, row/column order, and stable reader identity. Wider
+function breadth must consume those facts through generic sparse/reference
+APIs; non-contiguous column unions and context-sensitive functions remain typed
+successor lanes until the required generic context exists.
 
 For table column formulas, OxCalc supplies the same authored formula text to
 OxFml once per row with a row-specific generic `caller_table_region` and

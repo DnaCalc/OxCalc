@@ -346,6 +346,23 @@ This resolver is not an OxFml grammar extension. OxFml still receives only the
 generic table catalog/context and structured-reference bind packets; TreeCalc
 path, workspace, namespace, and lifecycle facts remain OxCalc-owned.
 
+Current reader realization:
+
+`TreeCalcTableSparseReader` is the OxCalc-owned reader for node-associated
+tables. It exposes whole data-body references, selected data columns,
+contiguous multi-column ranges, all-column references, `#Headers`, `#Data`,
+`#Totals`, `#All`, current-row references, omitted-table current-row
+references, empty data-body zero-row references, and single-row tables through
+the generic sparse-reader contract. It preserves sparse blanks, defined empty
+strings, typed worksheet error cells, row/column order, and a stable
+`reader_identity` split between source identity and snapshot identity.
+
+The current fully exercised function lane is `SUM`, `COUNT`, `COUNTA`, and
+`COUNTBLANK` over sparse `ReferenceLike` table bindings. Wider range-taking
+functions are admitted only through generic reader/context lanes and OxFunc
+counterpart beads; non-contiguous column unions and context-sensitive functions
+remain typed successor lanes rather than eager-materialized shortcuts.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

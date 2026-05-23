@@ -1018,6 +1018,89 @@ Still open:
 4. Bare host-name/callable precedence remains OxFml W074-gated; this resolver
    records adjacency diagnostics but does not freeze precedence.
 
+## 4B.7. `calc-4vs8.48` Full Table `ReferenceLike` Reader Surface
+
+Product status:
+
+OxCalc now has a complete sparse/reference-reader surface for the declared
+W056 node-associated table selections. `TreeCalcTableSparseReader` can expose a
+TreeCalc node table as an opaque generic `ReferenceLike` plus sparse
+`RuntimeSparseReferenceValuesBinding`, without adding table-specific
+`EvalValue` variants and without giving OxFml or OxFunc TreeCalc selectors.
+
+Implemented reader scope:
+
+1. whole table data-body references,
+2. selected data columns,
+3. contiguous multi-column ranges,
+4. full data-body/all-column references,
+5. `#Headers`, `#Data`, `#Totals`, and `#All`,
+6. current-row references with caller data-row context,
+7. omitted-table current-row references through generic enclosing-table and
+   caller-region packets,
+8. empty data-body tables with zero-row references,
+9. single-row data-body tables,
+10. sparse blank cells,
+11. defined empty strings,
+12. typed worksheet error cells,
+13. row and column order preservation,
+14. stable reader identity split into reader id, source identity, and snapshot
+    identity.
+
+Reader contract:
+
+The reader implements `declared_extent`, `defined_cardinality`,
+`defined_iter`, `read_at(coord) -> Defined(EvalValue) | Blank`, `contains`,
+and `reader_identity`. `contains` reports declared extent membership; blanks
+inside the declared extent remain `read_at(...)=Blank` and are not emitted by
+`defined_iter`.
+
+Runtime/function carriage:
+
+1. `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK` execute through OxFml/OxFunc
+   sparse `ReferenceLike` bindings for the first aggregate evidence lane.
+2. The wider range-taking groups remain admitted as generic reference-reader
+   lanes in `TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY` with
+   OxFunc counterpart beads. They are not allowed to inspect TreeCalc selectors
+   or use eager materialization as closure evidence.
+3. Context-sensitive groups remain typed host-context lanes until the required
+   generic context exists: dynamic-array/spill policy, row visibility/filter
+   state, metadata disclosure policy, volatile/dynamic rebind, implicit
+   intersection caller context, or native invocation policy.
+
+Typed exclusions and successor lanes:
+
+1. unsupported non-contiguous column selections produce
+   `TreeCalcTableSparseReaderError::NonContiguousColumnSelection`;
+   contiguous multi-column ranges are supported,
+2. missing selected columns, absent header/totals regions, caller-table
+   mismatch, missing caller table region, non-data caller region, missing row
+   offset, out-of-range caller row, invalid ranges, empty selections, and range
+   overflow are typed reader errors,
+3. broad OxFunc implementation for the admitted-pending function groups remains
+   owned by the OxFunc counterpart beads; this bead closes the OxCalc reader
+   and carrier side only.
+
+Evidence:
+
+Focused Rust tests cover data columns without dense blanks, whole data-body
+references, all-column `#All`, headers, totals, selected columns,
+contiguous multi-column ranges, current-row scalar formulas, omitted caller
+context, empty data-body zero-row references, single-row references, sparse
+blanks, defined empty strings, typed error cells, `contains`/`read_at`
+behavior, row/column order preservation, row-order snapshot identity changes,
+typed missing-column errors, typed non-contiguous-column exclusions, and the
+first aggregate group through OxFml/OxFunc sparse bindings.
+
+Still open:
+
+1. `calc-4vs8.49` must close table formula row-context and prepared identity.
+2. `calc-4vs8.50` must close the complete table dependency/invalidation
+   matrix.
+3. OxFunc counterpart beads must close the admitted-pending wider function
+   groups before those functions can be claimed as fully implemented product
+   behavior over table references.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

@@ -7649,6 +7649,198 @@ mod tests {
     }
 
     #[test]
+    fn table_sparse_reader_projects_whole_data_body_with_order_errors_and_contains() {
+        let snapshot = treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let whole_data_body = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:data-body",
+            "tree-table:sales",
+        );
+        let reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &whole_data_body,
+            None,
+            [
+                TreeCalcTableSparseValue::data(
+                    "row:west",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                ),
+                TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
+                TreeCalcTableSparseValue::data(
+                    "row:west",
+                    "col:tax",
+                    EvalValue::Error(WorksheetErrorCode::Value),
+                ),
+                TreeCalcTableSparseValue::data(
+                    "row:east",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                ),
+                TreeCalcTableSparseValue::data(
+                    "row:east",
+                    "col:amount",
+                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                ),
+                TreeCalcTableSparseValue::data("row:north", "col:tax", EvalValue::Number(1.5)),
+            ],
+            "SalesTable",
+            "structured-ref:data-body",
+            None,
+        )
+        .expect("whole table data-body reader should build");
+
+        assert_eq!(reader.declared_extent().row_count, 3);
+        assert_eq!(reader.declared_extent().column_count, 3);
+        assert_eq!(reader.defined_cardinality(), 6);
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!B4:D6")
+        );
+        assert!(reader.contains(SparseCellCoord::new(3, 3)));
+        assert!(!reader.contains(SparseCellCoord::new(4, 1)));
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("West")))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(1, 3)),
+            SparseCellRead::Defined(EvalValue::Error(WorksheetErrorCode::Value))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(2, 2)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+        );
+        assert_eq!(
+            reader.read_at(SparseCellCoord::new(3, 2)),
+            SparseCellRead::Blank
+        );
+        assert_eq!(
+            reader
+                .defined_iter()
+                .map(|cell| cell.coord)
+                .collect::<Vec<_>>(),
+            vec![
+                SparseCellCoord::new(1, 1),
+                SparseCellCoord::new(1, 2),
+                SparseCellCoord::new(1, 3),
+                SparseCellCoord::new(2, 1),
+                SparseCellCoord::new(2, 2),
+                SparseCellCoord::new(3, 3),
+            ]
+        );
+        assert_eq!(reader.access_summary().contains_calls, 2);
+    }
+
+    #[test]
+    fn table_sparse_reader_preserves_single_row_shape_and_row_order_identity() {
+        let mut single = treecalc_table_snapshot();
+        single.rows = vec![TreeCalcTableRowId("row:west".to_string())];
+        single.row_membership_version = "row-membership:single".to_string();
+        single.row_order_version = "row-order:single".to_string();
+        let single_projection = project_treecalc_table_node_snapshot(&single).unwrap();
+        let whole_data_body = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:data-body",
+            "tree-table:sales",
+        );
+        let single_reader = TreeCalcTableSparseReader::from_reference_intake(
+            &single,
+            &single_projection,
+            &whole_data_body,
+            None,
+            [TreeCalcTableSparseValue::data(
+                "row:west",
+                "col:amount",
+                EvalValue::Number(3.0),
+            )],
+            "SalesTable",
+            "structured-ref:data-body",
+            None,
+        )
+        .expect("single-row data-body reader should build");
+
+        assert_eq!(single_reader.declared_extent().row_count, 1);
+        assert_eq!(single_reader.declared_extent().column_count, 3);
+        assert_eq!(
+            single_reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!B4:D4")
+        );
+
+        let snapshot = treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let before = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &whole_data_body,
+            None,
+            [
+                TreeCalcTableSparseValue::data(
+                    "row:west",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                ),
+                TreeCalcTableSparseValue::data(
+                    "row:north",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("North")),
+                ),
+            ],
+            "SalesTable",
+            "structured-ref:data-body",
+            None,
+        )
+        .unwrap();
+        let mut reordered = snapshot.clone();
+        reordered.rows.reverse();
+        reordered.row_order_version = "row-order:reversed".to_string();
+        let reordered_projection = project_treecalc_table_node_snapshot(&reordered).unwrap();
+        let after = TreeCalcTableSparseReader::from_reference_intake(
+            &reordered,
+            &reordered_projection,
+            &whole_data_body,
+            None,
+            [
+                TreeCalcTableSparseValue::data(
+                    "row:west",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                ),
+                TreeCalcTableSparseValue::data(
+                    "row:north",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("North")),
+                ),
+            ],
+            "SalesTable",
+            "structured-ref:data-body",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            before.reader_identity().reader_id,
+            after.reader_identity().reader_id
+        );
+        assert_eq!(
+            before.reader_identity().source_identity,
+            after.reader_identity().source_identity
+        );
+        assert_ne!(
+            before.reader_identity().snapshot_identity,
+            after.reader_identity().snapshot_identity
+        );
+        assert_eq!(
+            after.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("North")))
+        );
+        assert_eq!(
+            after.read_at(SparseCellCoord::new(3, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("West")))
+        );
+    }
+
+    #[test]
     fn table_sparse_reader_preserves_empty_data_body_as_zero_row_reference() {
         let mut snapshot = treecalc_table_snapshot();
         snapshot.rows.clear();
@@ -8040,6 +8232,65 @@ mod tests {
     fn table_sparse_reader_projects_headers_totals_and_all_regions() {
         let snapshot = treecalc_table_snapshot();
         let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let headers = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:headers-tax",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:tax".to_string()])
+        .with_selected_regions([StructuredTableRegionSelection::Headers]);
+        let headers_reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &headers,
+            None,
+            Vec::<TreeCalcTableSparseValue>::new(),
+            "SalesTable[[#Headers],[Tax]]",
+            "structured-ref:headers-tax",
+            None,
+        )
+        .expect("headers-only reader should build");
+        assert_eq!(headers_reader.declared_extent().row_count, 1);
+        assert_eq!(headers_reader.declared_extent().column_count, 1);
+        assert_eq!(
+            headers_reader.reference(),
+            &ReferenceLike::new(ReferenceKind::A1, "treecalc-virtual-sheet:tables!D3")
+        );
+        assert_eq!(
+            headers_reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("Tax")))
+        );
+
+        let totals = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:totals-amount",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string()])
+        .with_selected_regions([StructuredTableRegionSelection::Totals]);
+        let totals_reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &totals,
+            None,
+            [TreeCalcTableSparseValue::totals(
+                "col:amount",
+                EvalValue::Number(7.0),
+            )],
+            "SalesTable[[#Totals],[Amount]]",
+            "structured-ref:totals-amount",
+            None,
+        )
+        .expect("totals-only reader should build");
+        assert_eq!(totals_reader.declared_extent().row_count, 1);
+        assert_eq!(totals_reader.declared_extent().column_count, 1);
+        assert_eq!(
+            totals_reader.reference(),
+            &ReferenceLike::new(ReferenceKind::A1, "treecalc-virtual-sheet:tables!C7")
+        );
+        assert_eq!(
+            totals_reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Number(7.0))
+        );
+
         let all = StructuredTableReferenceIntake::explicit_table(
             "structured-ref:all-amount-tax",
             "tree-table:sales",
@@ -8086,6 +8337,95 @@ mod tests {
         assert_eq!(
             reader.read_at(SparseCellCoord::new(5, 2)),
             SparseCellRead::Blank
+        );
+
+        let all_columns = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:all-columns",
+            "tree-table:sales",
+        )
+        .with_selected_regions([StructuredTableRegionSelection::All]);
+        let all_columns_reader = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &all_columns,
+            None,
+            [
+                TreeCalcTableSparseValue::data(
+                    "row:west",
+                    "col:region",
+                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                ),
+                TreeCalcTableSparseValue::totals("col:amount", EvalValue::Number(7.0)),
+            ],
+            "SalesTable[#All]",
+            "structured-ref:all-columns",
+            None,
+        )
+        .expect("all-column #All reader should build");
+        assert_eq!(all_columns_reader.declared_extent().row_count, 5);
+        assert_eq!(all_columns_reader.declared_extent().column_count, 3);
+        assert_eq!(
+            all_columns_reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "treecalc-virtual-sheet:tables!B3:D7")
+        );
+        assert_eq!(
+            all_columns_reader.read_at(SparseCellCoord::new(1, 1)),
+            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+                "Region"
+            )))
+        );
+        assert_eq!(
+            all_columns_reader.read_at(SparseCellCoord::new(5, 2)),
+            SparseCellRead::Defined(EvalValue::Number(7.0))
+        );
+    }
+
+    #[test]
+    fn table_sparse_reader_reports_typed_selection_exclusions() {
+        let snapshot = treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let missing_column = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:missing",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:missing".to_string()]);
+        assert_eq!(
+            TreeCalcTableSparseReader::from_reference_intake(
+                &snapshot,
+                &projection,
+                &missing_column,
+                None,
+                Vec::<TreeCalcTableSparseValue>::new(),
+                "SalesTable[Missing]",
+                "structured-ref:missing",
+                None,
+            )
+            .unwrap_err(),
+            TreeCalcTableSparseReaderError::MissingSelectedColumn {
+                column_id: "col:missing".to_string()
+            }
+        );
+
+        let non_contiguous = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:non-contiguous",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:region".to_string(), "col:tax".to_string()]);
+        assert_eq!(
+            TreeCalcTableSparseReader::from_reference_intake(
+                &snapshot,
+                &projection,
+                &non_contiguous,
+                None,
+                Vec::<TreeCalcTableSparseValue>::new(),
+                "SalesTable[[Region],[Tax]]",
+                "structured-ref:non-contiguous",
+                None,
+            )
+            .unwrap_err(),
+            TreeCalcTableSparseReaderError::NonContiguousColumnSelection {
+                column_ids: vec!["col:region".to_string(), "col:tax".to_string()]
+            }
         );
     }
 

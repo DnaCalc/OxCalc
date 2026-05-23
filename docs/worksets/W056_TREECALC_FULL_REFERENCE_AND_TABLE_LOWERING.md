@@ -222,6 +222,26 @@ OxXlPlay observes Excel; OxReplay compares retained declared payloads. No repo
 may close a table bead by parsing another repo's private strings or mirroring
 another repo's semantics.
 
+Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
+projection surface in `src/oxcalc-core/src/structured_table.rs`.
+`TreeCalcTableNodeSnapshot` preserves the TreeCalc-owned node identity,
+display/canonical path, virtual anchor, row ids/order, column ids/order,
+namespace and version facts, body formula metadata, and totals formula
+metadata. `project_treecalc_table_node_snapshot` emits a generic
+OxFml `TableDescriptor` with parseable virtual A1 table/column/header/totals
+refs and opaque descriptor-visible row membership/order tokens. It also
+computes a tokenized generic `table_context_identity` for OxFml prepared/cache
+identity and a separate OxCalc-only `table_invalidation_identity` that retains
+raw row ids, TreeCalc paths, body formula metadata, and totals formula
+metadata. Focused Rust tests prove deterministic projection, range shape
+(`B3:D7`, column body ranges, header/totals ranges), separator-framed OxCalc
+identity components, and identity changes for table rename/namespace, row
+membership add/replace, row order, column rename/add/reorder/version,
+header/totals presence, and virtual anchor movement. Empty data-body tables are
+currently a typed projection exclusion because the current generic OxFml
+`TableDescriptor` requires parseable data-column A1 area refs; W056 table
+reader and OxFml packet widening must settle that before full table closure.
+
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
 The third W056 tranche adds the first OxCalc-owned typed projection over the

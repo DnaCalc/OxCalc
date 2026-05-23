@@ -9,11 +9,661 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use oxfml_core::{
     StructuredReferenceBindRecord, StructuredSectionKind,
-    interface::{TableCallerRegion, TableDescriptor, TableRef, TableRegionKind},
+    interface::{
+        TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
+    },
 };
 
 use crate::dependency::{DependencyDescriptor, DependencyDescriptorKind};
 use crate::structural::TreeNodeId;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableVirtualAnchor {
+    pub workbook_scope_ref: String,
+    pub sheet_scope_ref: String,
+    pub start_row: u32,
+    pub start_col: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TreeCalcTableRowId(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableFormulaMetadata {
+    pub formula_artifact_id: String,
+    pub bind_artifact_id: Option<String>,
+    pub formula_text_version: String,
+}
+
+impl TreeCalcTableFormulaMetadata {
+    #[must_use]
+    pub fn identity_fragment(&self) -> String {
+        identity_record(
+            "treecalc.table_formula_metadata.v1",
+            [
+                ("formula_artifact_id", self.formula_artifact_id.clone()),
+                (
+                    "bind_artifact_id",
+                    self.bind_artifact_id
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                ("formula_text_version", self.formula_text_version.clone()),
+            ],
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeCalcTableColumnBodyMetadata {
+    ConstantCells,
+    Formula(TreeCalcTableFormulaMetadata),
+}
+
+impl TreeCalcTableColumnBodyMetadata {
+    #[must_use]
+    pub fn identity_fragment(&self) -> String {
+        match self {
+            Self::ConstantCells => "treecalc.table_body.constant_cells.v1".to_string(),
+            Self::Formula(metadata) => identity_record(
+                "treecalc.table_body.formula.v1",
+                [("metadata", metadata.identity_fragment())],
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableColumnSnapshot {
+    pub column_id: String,
+    pub column_name: String,
+    pub ordinal: u32,
+    pub body_metadata: TreeCalcTableColumnBodyMetadata,
+    pub totals_metadata: Option<TreeCalcTableFormulaMetadata>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableNodeSnapshot {
+    pub table_node_id: TreeNodeId,
+    pub table_id: String,
+    pub table_name: String,
+    pub display_path: String,
+    pub canonical_path: String,
+    pub virtual_anchor: TreeCalcTableVirtualAnchor,
+    pub rows: Vec<TreeCalcTableRowId>,
+    pub columns: Vec<TreeCalcTableColumnSnapshot>,
+    pub header_row_present: bool,
+    pub totals_row_present: bool,
+    pub table_namespace_version: String,
+    pub row_membership_version: String,
+    pub row_order_version: String,
+    pub column_identity_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableNodeProjection {
+    pub table_node_id: TreeNodeId,
+    pub table_id: String,
+    pub display_path: String,
+    pub canonical_path: String,
+    pub table_descriptor: TableDescriptor,
+    pub context_packet: StructuredTableContextPacket,
+    pub table_context_identity: String,
+    pub table_invalidation_identity: String,
+    pub table_namespace_identity: String,
+    pub table_namespace_token: String,
+    pub row_membership_identity: String,
+    pub row_order_identity: String,
+    pub oxcalc_row_membership_identity: String,
+    pub oxcalc_row_order_identity: String,
+    pub column_identity: String,
+    pub oxcalc_column_identity: String,
+    pub virtual_anchor_identity: String,
+    pub virtual_anchor_token: String,
+    pub body_metadata_identity: String,
+    pub body_metadata_token: String,
+    pub totals_metadata_identity: String,
+    pub totals_metadata_token: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeCalcTableProjectionError {
+    EmptyTableId,
+    EmptyTableName,
+    EmptyDisplayPath,
+    EmptyCanonicalPath,
+    EmptyColumns,
+    EmptyDataBodyNotRepresentableByCurrentTableDescriptor,
+    InvalidVirtualAnchor { start_row: u32, start_col: u32 },
+    DuplicateColumnId { column_id: String },
+    DuplicateColumnName { column_name: String },
+    DuplicateColumnOrdinal { ordinal: u32 },
+    DuplicateRowId { row_id: String },
+    ColumnOrdinalMustStartAtOne { column_id: String, ordinal: u32 },
+    RangeOverflow,
+}
+
+pub fn project_treecalc_table_node_snapshot(
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> Result<TreeCalcTableNodeProjection, TreeCalcTableProjectionError> {
+    validate_treecalc_table_node_snapshot(snapshot)?;
+
+    let sorted_columns = sorted_treecalc_table_columns(snapshot)?;
+    let row_count = u32::try_from(snapshot.rows.len())
+        .map_err(|_| TreeCalcTableProjectionError::RangeOverflow)?;
+    let column_count = u32::try_from(sorted_columns.len())
+        .map_err(|_| TreeCalcTableProjectionError::RangeOverflow)?;
+    let header_rows = u32::from(snapshot.header_row_present);
+    let totals_rows = u32::from(snapshot.totals_row_present);
+    let total_rows = header_rows
+        .checked_add(row_count)
+        .and_then(|value| value.checked_add(totals_rows))
+        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    let table_end_row = snapshot
+        .virtual_anchor
+        .start_row
+        .checked_add(total_rows - 1)
+        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    let table_end_col = snapshot
+        .virtual_anchor
+        .start_col
+        .checked_add(column_count - 1)
+        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    let data_start_row = snapshot
+        .virtual_anchor
+        .start_row
+        .checked_add(header_rows)
+        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+    let data_end_row = data_start_row
+        .checked_add(row_count - 1)
+        .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+
+    let oxcalc_row_membership_identity = treecalc_table_row_membership_fact_identity(snapshot);
+    let oxcalc_row_order_identity = treecalc_table_row_order_fact_identity(snapshot);
+    let oxcalc_column_identity = treecalc_table_column_fact_identity(snapshot, &sorted_columns);
+    let row_membership_identity = treecalc_table_row_membership_descriptor_identity(snapshot);
+    let row_order_identity = treecalc_table_row_order_descriptor_identity(snapshot);
+    let column_identity = treecalc_table_column_descriptor_identity(snapshot, &sorted_columns);
+    let virtual_anchor_identity = treecalc_table_virtual_anchor_identity(snapshot);
+    let table_namespace_identity = treecalc_table_namespace_identity(snapshot);
+    let body_metadata_identity = treecalc_table_body_metadata_identity(snapshot, &sorted_columns);
+    let totals_metadata_identity =
+        treecalc_table_totals_metadata_identity(snapshot, &sorted_columns);
+    let table_namespace_token = opaque_identity_token(
+        "treecalc.table_namespace.token.v1",
+        &table_namespace_identity,
+    );
+    let virtual_anchor_token =
+        opaque_identity_token("treecalc.table_anchor.token.v1", &virtual_anchor_identity);
+    let body_metadata_token =
+        opaque_identity_token("treecalc.table_body.token.v1", &body_metadata_identity);
+    let totals_metadata_token =
+        opaque_identity_token("treecalc.table_totals.token.v1", &totals_metadata_identity);
+
+    let columns = sorted_columns
+        .iter()
+        .enumerate()
+        .map(|(index, column)| {
+            let offset =
+                u32::try_from(index).map_err(|_| TreeCalcTableProjectionError::RangeOverflow)?;
+            let col = snapshot
+                .virtual_anchor
+                .start_col
+                .checked_add(offset)
+                .ok_or(TreeCalcTableProjectionError::RangeOverflow)?;
+            Ok(TableColumnDescriptor {
+                column_id: column.column_id.clone(),
+                column_name: column.column_name.clone(),
+                ordinal: column.ordinal,
+                column_range_ref: a1_range_ref(data_start_row, col, data_end_row, col)?,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let table_descriptor = TableDescriptor {
+        table_id: snapshot.table_id.clone(),
+        table_name: snapshot.table_name.clone(),
+        workbook_scope_ref: snapshot.virtual_anchor.workbook_scope_ref.clone(),
+        sheet_scope_ref: snapshot.virtual_anchor.sheet_scope_ref.clone(),
+        table_range_ref: a1_range_ref(
+            snapshot.virtual_anchor.start_row,
+            snapshot.virtual_anchor.start_col,
+            table_end_row,
+            table_end_col,
+        )?,
+        row_membership_identity: Some(row_membership_identity.clone()),
+        row_order_identity: Some(row_order_identity.clone()),
+        header_region_ref: snapshot
+            .header_row_present
+            .then(|| {
+                a1_range_ref(
+                    snapshot.virtual_anchor.start_row,
+                    snapshot.virtual_anchor.start_col,
+                    snapshot.virtual_anchor.start_row,
+                    table_end_col,
+                )
+            })
+            .transpose()?,
+        totals_region_ref: snapshot
+            .totals_row_present
+            .then(|| {
+                a1_range_ref(
+                    table_end_row,
+                    snapshot.virtual_anchor.start_col,
+                    table_end_row,
+                    table_end_col,
+                )
+            })
+            .transpose()?,
+        header_row_present: snapshot.header_row_present,
+        totals_row_present: snapshot.totals_row_present,
+        columns,
+    };
+    let context_packet = StructuredTableContextPacket::from_oxfml_table_packet(
+        vec![table_descriptor.clone()],
+        Some(TableRef {
+            table_id: snapshot.table_id.clone(),
+        }),
+        None,
+    );
+    let table_invalidation_identity = identity_record(
+        "treecalc.table_invalidation.v1",
+        [
+            ("table_node_id", snapshot.table_node_id.to_string()),
+            ("table_id", snapshot.table_id.clone()),
+            ("namespace", table_namespace_identity.clone()),
+            ("anchor", virtual_anchor_identity.clone()),
+            ("row_membership", oxcalc_row_membership_identity.clone()),
+            ("row_order", oxcalc_row_order_identity.clone()),
+            ("columns", oxcalc_column_identity.clone()),
+            ("body", body_metadata_identity.clone()),
+            ("totals", totals_metadata_identity.clone()),
+        ],
+    );
+    let table_context_identity = identity_record(
+        "treecalc.table_context.v1",
+        [
+            ("table_id", snapshot.table_id.clone()),
+            ("namespace_token", table_namespace_token.clone()),
+            ("anchor_token", virtual_anchor_token.clone()),
+            ("row_membership", row_membership_identity.clone()),
+            ("row_order", row_order_identity.clone()),
+            ("columns", column_identity.clone()),
+            ("body_token", body_metadata_token.clone()),
+            ("totals_token", totals_metadata_token.clone()),
+            (
+                "generic_packet",
+                context_packet.table_context_identity.clone(),
+            ),
+        ],
+    );
+
+    Ok(TreeCalcTableNodeProjection {
+        table_node_id: snapshot.table_node_id,
+        table_id: snapshot.table_id.clone(),
+        display_path: snapshot.display_path.clone(),
+        canonical_path: snapshot.canonical_path.clone(),
+        table_descriptor,
+        context_packet,
+        table_context_identity,
+        table_invalidation_identity,
+        table_namespace_identity,
+        table_namespace_token,
+        row_membership_identity,
+        row_order_identity,
+        oxcalc_row_membership_identity,
+        oxcalc_row_order_identity,
+        column_identity,
+        oxcalc_column_identity,
+        virtual_anchor_identity,
+        virtual_anchor_token,
+        body_metadata_identity,
+        body_metadata_token,
+        totals_metadata_identity,
+        totals_metadata_token,
+    })
+}
+
+fn validate_treecalc_table_node_snapshot(
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> Result<(), TreeCalcTableProjectionError> {
+    if snapshot.table_id.is_empty() {
+        return Err(TreeCalcTableProjectionError::EmptyTableId);
+    }
+    if snapshot.table_name.is_empty() {
+        return Err(TreeCalcTableProjectionError::EmptyTableName);
+    }
+    if snapshot.display_path.is_empty() {
+        return Err(TreeCalcTableProjectionError::EmptyDisplayPath);
+    }
+    if snapshot.canonical_path.is_empty() {
+        return Err(TreeCalcTableProjectionError::EmptyCanonicalPath);
+    }
+    if snapshot.columns.is_empty() {
+        return Err(TreeCalcTableProjectionError::EmptyColumns);
+    }
+    if snapshot.rows.is_empty() {
+        return Err(
+            TreeCalcTableProjectionError::EmptyDataBodyNotRepresentableByCurrentTableDescriptor,
+        );
+    }
+    if snapshot.virtual_anchor.start_row == 0 || snapshot.virtual_anchor.start_col == 0 {
+        return Err(TreeCalcTableProjectionError::InvalidVirtualAnchor {
+            start_row: snapshot.virtual_anchor.start_row,
+            start_col: snapshot.virtual_anchor.start_col,
+        });
+    }
+
+    let mut row_ids = BTreeSet::new();
+    for row in &snapshot.rows {
+        if !row_ids.insert(row.0.clone()) {
+            return Err(TreeCalcTableProjectionError::DuplicateRowId {
+                row_id: row.0.clone(),
+            });
+        }
+    }
+
+    let mut column_ids = BTreeSet::new();
+    let mut column_names = BTreeSet::new();
+    let mut column_ordinals = BTreeSet::new();
+    for column in &snapshot.columns {
+        if !column_ids.insert(column.column_id.clone()) {
+            return Err(TreeCalcTableProjectionError::DuplicateColumnId {
+                column_id: column.column_id.clone(),
+            });
+        }
+        let normalized_name = column.column_name.to_ascii_uppercase();
+        if !column_names.insert(normalized_name) {
+            return Err(TreeCalcTableProjectionError::DuplicateColumnName {
+                column_name: column.column_name.clone(),
+            });
+        }
+        if !column_ordinals.insert(column.ordinal) {
+            return Err(TreeCalcTableProjectionError::DuplicateColumnOrdinal {
+                ordinal: column.ordinal,
+            });
+        }
+        if column.ordinal == 0 {
+            return Err(TreeCalcTableProjectionError::ColumnOrdinalMustStartAtOne {
+                column_id: column.column_id.clone(),
+                ordinal: column.ordinal,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn sorted_treecalc_table_columns(
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> Result<Vec<TreeCalcTableColumnSnapshot>, TreeCalcTableProjectionError> {
+    let mut columns = snapshot.columns.clone();
+    columns.sort_by(|left, right| {
+        left.ordinal
+            .cmp(&right.ordinal)
+            .then_with(|| left.column_id.cmp(&right.column_id))
+    });
+    for (index, column) in columns.iter().enumerate() {
+        let expected =
+            u32::try_from(index + 1).map_err(|_| TreeCalcTableProjectionError::RangeOverflow)?;
+        if column.ordinal != expected {
+            return Err(TreeCalcTableProjectionError::ColumnOrdinalMustStartAtOne {
+                column_id: column.column_id.clone(),
+                ordinal: column.ordinal,
+            });
+        }
+    }
+    Ok(columns)
+}
+
+fn treecalc_table_namespace_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_namespace.v1",
+        [
+            ("version", snapshot.table_namespace_version.clone()),
+            ("display_path", snapshot.display_path.clone()),
+            ("canonical_path", snapshot.canonical_path.clone()),
+            ("name", snapshot.table_name.clone()),
+        ],
+    )
+}
+
+fn treecalc_table_virtual_anchor_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_anchor.v1",
+        [
+            (
+                "workbook",
+                snapshot.virtual_anchor.workbook_scope_ref.clone(),
+            ),
+            ("sheet", snapshot.virtual_anchor.sheet_scope_ref.clone()),
+            ("row", snapshot.virtual_anchor.start_row.to_string()),
+            ("col", snapshot.virtual_anchor.start_col.to_string()),
+        ],
+    )
+}
+
+fn treecalc_table_row_membership_fact_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    let mut rows = snapshot
+        .rows
+        .iter()
+        .map(|row| row.0.clone())
+        .collect::<Vec<_>>();
+    rows.sort();
+    identity_record(
+        "treecalc.table_rows.membership.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.row_membership_version.clone()),
+            ("rows", identity_list(rows)),
+        ],
+    )
+}
+
+fn treecalc_table_row_order_fact_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_rows.order.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.row_order_version.clone()),
+            (
+                "rows",
+                identity_list(snapshot.rows.iter().map(|row| row.0.clone())),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_row_membership_descriptor_identity(
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> String {
+    identity_record(
+        "treecalc.table_rows.membership_token.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.row_membership_version.clone()),
+            ("row_count", snapshot.rows.len().to_string()),
+        ],
+    )
+}
+
+fn treecalc_table_row_order_descriptor_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_rows.order_token.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.row_order_version.clone()),
+            ("row_count", snapshot.rows.len().to_string()),
+        ],
+    )
+}
+
+fn treecalc_table_column_fact_identity(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    sorted_columns: &[TreeCalcTableColumnSnapshot],
+) -> String {
+    identity_record(
+        "treecalc.table_columns.identity.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.column_identity_version.clone()),
+            (
+                "columns",
+                identity_list(sorted_columns.iter().map(|column| {
+                    identity_record(
+                        "column",
+                        [
+                            ("ordinal", column.ordinal.to_string()),
+                            ("id", column.column_id.clone()),
+                            ("name", column.column_name.clone()),
+                        ],
+                    )
+                })),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_column_descriptor_identity(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    sorted_columns: &[TreeCalcTableColumnSnapshot],
+) -> String {
+    identity_record(
+        "treecalc.table_columns.identity_token.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("version", snapshot.column_identity_version.clone()),
+            ("column_count", sorted_columns.len().to_string()),
+        ],
+    )
+}
+
+fn treecalc_table_body_metadata_identity(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    sorted_columns: &[TreeCalcTableColumnSnapshot],
+) -> String {
+    identity_record(
+        "treecalc.table_body.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            (
+                "columns",
+                identity_list(sorted_columns.iter().map(|column| {
+                    identity_record(
+                        "column_body",
+                        [
+                            ("column_id", column.column_id.clone()),
+                            ("body", column.body_metadata.identity_fragment()),
+                        ],
+                    )
+                })),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_totals_metadata_identity(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    sorted_columns: &[TreeCalcTableColumnSnapshot],
+) -> String {
+    identity_record(
+        "treecalc.table_totals.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            ("present", snapshot.totals_row_present.to_string()),
+            (
+                "columns",
+                identity_list(sorted_columns.iter().map(|column| {
+                    identity_record(
+                        "column_totals",
+                        [
+                            ("column_id", column.column_id.clone()),
+                            (
+                                "totals",
+                                column.totals_metadata.as_ref().map_or(
+                                    "none".to_string(),
+                                    TreeCalcTableFormulaMetadata::identity_fragment,
+                                ),
+                            ),
+                        ],
+                    )
+                })),
+            ),
+        ],
+    )
+}
+
+fn identity_record<const N: usize>(kind: &str, fields: [(&str, String); N]) -> String {
+    let mut result = String::from(kind);
+    for (name, value) in fields {
+        result.push(';');
+        result.push_str(name);
+        result.push('=');
+        result.push_str(&identity_atom(&value));
+    }
+    result
+}
+
+fn identity_list(values: impl IntoIterator<Item = String>) -> String {
+    let values = values.into_iter().collect::<Vec<_>>();
+    let mut result = format!("count={};", values.len());
+    for value in values {
+        result.push_str(&identity_atom(&value));
+    }
+    result
+}
+
+fn identity_atom(value: &str) -> String {
+    format!("{}:{value}", value.len())
+}
+
+fn opaque_identity_token(kind: &str, identity: &str) -> String {
+    format!("{kind};fnv1a64={:016x}", fnv1a64(identity.as_bytes()))
+}
+
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let mut hash = FNV_OFFSET_BASIS;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
+}
+
+fn a1_range_ref(
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+) -> Result<String, TreeCalcTableProjectionError> {
+    if top_row == 0 || left_col == 0 || bottom_row == 0 || right_col == 0 {
+        return Err(TreeCalcTableProjectionError::RangeOverflow);
+    }
+    Ok(format!(
+        "{}{}:{}{}",
+        excel_column_name(left_col)?,
+        top_row,
+        excel_column_name(right_col)?,
+        bottom_row
+    ))
+}
+
+fn excel_column_name(mut col: u32) -> Result<String, TreeCalcTableProjectionError> {
+    if col == 0 {
+        return Err(TreeCalcTableProjectionError::RangeOverflow);
+    }
+    let mut chars = Vec::new();
+    while col > 0 {
+        let remainder = (col - 1) % 26;
+        let ch = char::from(b'A' + u8::try_from(remainder).expect("remainder is less than 26"));
+        chars.push(ch);
+        col = (col - 1) / 26;
+    }
+    chars.reverse();
+    Ok(chars.into_iter().collect())
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructuredTableContextPacket {
@@ -901,57 +1551,102 @@ fn table_context_identity(
     enclosing_table_ref: &Option<TableRef>,
     caller_table_region: &Option<TableCallerRegion>,
 ) -> String {
-    let table_parts = table_catalog
-        .iter()
-        .map(|table| {
-            let columns = table
+    let table_parts = identity_list(table_catalog.iter().map(|table| {
+        let columns = identity_list(
+            table
                 .columns
                 .iter()
                 .map(|column| {
-                    format!(
-                        "{}:{}:{}:{}",
-                        column.column_id,
-                        column.ordinal,
-                        column.column_name,
-                        column.column_range_ref
+                    identity_record(
+                        "table_column",
+                        [
+                            ("column_id", column.column_id.clone()),
+                            ("ordinal", column.ordinal.to_string()),
+                            ("column_name", column.column_name.clone()),
+                            ("column_range_ref", column.column_range_ref.clone()),
+                        ],
                     )
                 })
-                .collect::<Vec<_>>()
-                .join("|");
-            format!(
-                "{}:{}:{}:{}:{}:{}:{}:{}:{}:{}:{}",
-                table.table_id,
-                table.table_name,
-                table.workbook_scope_ref,
-                table.sheet_scope_ref,
-                table.table_range_ref,
-                table.row_membership_identity.as_deref().unwrap_or("none"),
-                table.row_order_identity.as_deref().unwrap_or("none"),
-                table.header_region_ref.as_deref().unwrap_or("none"),
-                table.totals_region_ref.as_deref().unwrap_or("none"),
-                table.header_row_present,
-                table.totals_row_present
-            ) + ":"
-                + &columns
-        })
-        .collect::<Vec<_>>()
-        .join(";");
+                .collect::<Vec<_>>(),
+        );
+        identity_record(
+            "table_descriptor",
+            [
+                ("table_id", table.table_id.clone()),
+                ("table_name", table.table_name.clone()),
+                ("workbook_scope_ref", table.workbook_scope_ref.clone()),
+                ("sheet_scope_ref", table.sheet_scope_ref.clone()),
+                ("table_range_ref", table.table_range_ref.clone()),
+                (
+                    "row_membership_identity",
+                    table
+                        .row_membership_identity
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "row_order_identity",
+                    table
+                        .row_order_identity
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "header_region_ref",
+                    table
+                        .header_region_ref
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "totals_region_ref",
+                    table
+                        .totals_region_ref
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                ("header_row_present", table.header_row_present.to_string()),
+                ("totals_row_present", table.totals_row_present.to_string()),
+                ("columns", columns),
+            ],
+        )
+    }));
     let enclosing = enclosing_table_ref
         .as_ref()
         .map_or("none".to_string(), |table_ref| table_ref.table_id.clone());
     let caller = caller_table_region
         .as_ref()
         .map_or("none".to_string(), |region| {
-            format!(
-                "{}:{:?}:{}",
-                region.table_id,
-                region.region_kind,
-                region
-                    .data_row_offset
-                    .map_or("none".to_string(), |offset| offset.to_string())
+            identity_record(
+                "caller_table_region",
+                [
+                    ("table_id", region.table_id.clone()),
+                    (
+                        "region_kind",
+                        match region.region_kind {
+                            TableRegionKind::Headers => "headers",
+                            TableRegionKind::Data => "data",
+                            TableRegionKind::Totals => "totals",
+                        }
+                        .to_string(),
+                    ),
+                    (
+                        "data_row_offset",
+                        region
+                            .data_row_offset
+                            .map_or("none".to_string(), |offset| offset.to_string()),
+                    ),
+                ],
             )
         });
-    format!("oxcalc.table_context.v1:tables={table_parts};enclosing={enclosing};caller={caller}")
+    identity_record(
+        "oxcalc.table_context.v1",
+        [
+            ("tables", table_parts),
+            ("enclosing", enclosing),
+            ("caller", caller),
+        ],
+    )
 }
 
 #[cfg(test)]
@@ -967,6 +1662,444 @@ mod tests {
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
     };
+
+    fn treecalc_table_snapshot() -> TreeCalcTableNodeSnapshot {
+        TreeCalcTableNodeSnapshot {
+            table_node_id: TreeNodeId(20),
+            table_id: "tree-table:sales".to_string(),
+            table_name: "SalesTable".to_string(),
+            display_path: "Sales Table".to_string(),
+            canonical_path: "Root/SalesTable".to_string(),
+            virtual_anchor: TreeCalcTableVirtualAnchor {
+                workbook_scope_ref: "treecalc-workbook:main".to_string(),
+                sheet_scope_ref: "treecalc-virtual-sheet:tables".to_string(),
+                start_row: 3,
+                start_col: 2,
+            },
+            rows: vec![
+                TreeCalcTableRowId("row:west".to_string()),
+                TreeCalcTableRowId("row:east".to_string()),
+                TreeCalcTableRowId("row:north".to_string()),
+            ],
+            columns: vec![
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:amount".to_string(),
+                    column_name: "Amount".to_string(),
+                    ordinal: 2,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+                    totals_metadata: Some(TreeCalcTableFormulaMetadata {
+                        formula_artifact_id: "formula:totals:amount".to_string(),
+                        bind_artifact_id: Some("bind:totals:amount".to_string()),
+                        formula_text_version: "v1".to_string(),
+                    }),
+                },
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:region".to_string(),
+                    column_name: "Region".to_string(),
+                    ordinal: 1,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+                    totals_metadata: None,
+                },
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:tax".to_string(),
+                    column_name: "Tax".to_string(),
+                    ordinal: 3,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::Formula(
+                        TreeCalcTableFormulaMetadata {
+                            formula_artifact_id: "formula:body:tax".to_string(),
+                            bind_artifact_id: Some("bind:body:tax".to_string()),
+                            formula_text_version: "v1".to_string(),
+                        },
+                    ),
+                    totals_metadata: Some(TreeCalcTableFormulaMetadata {
+                        formula_artifact_id: "formula:totals:tax".to_string(),
+                        bind_artifact_id: None,
+                        formula_text_version: "v1".to_string(),
+                    }),
+                },
+            ],
+            header_row_present: true,
+            totals_row_present: true,
+            table_namespace_version: "namespace:v1".to_string(),
+            row_membership_version: "row-membership:v1".to_string(),
+            row_order_version: "row-order:v1".to_string(),
+            column_identity_version: "columns:v1".to_string(),
+        }
+    }
+
+    #[test]
+    fn projects_treecalc_table_node_snapshot_to_virtual_excel_table_descriptor() {
+        let snapshot = treecalc_table_snapshot();
+
+        let projection = project_treecalc_table_node_snapshot(&snapshot)
+            .expect("table-node snapshot projects to generic TableDescriptor");
+        let projected_again =
+            project_treecalc_table_node_snapshot(&snapshot).expect("projection is repeatable");
+
+        assert_eq!(projection, projected_again);
+        assert_eq!(projection.table_node_id, TreeNodeId(20));
+        assert_eq!(projection.display_path, "Sales Table");
+        assert_eq!(projection.canonical_path, "Root/SalesTable");
+        assert_eq!(projection.table_descriptor.table_id, "tree-table:sales");
+        assert_eq!(projection.table_descriptor.table_name, "SalesTable");
+        assert_eq!(
+            projection.table_descriptor.workbook_scope_ref,
+            "treecalc-workbook:main"
+        );
+        assert_eq!(
+            projection.table_descriptor.sheet_scope_ref,
+            "treecalc-virtual-sheet:tables"
+        );
+        assert_eq!(projection.table_descriptor.table_range_ref, "B3:D7");
+        assert_eq!(
+            projection.table_descriptor.header_region_ref.as_deref(),
+            Some("B3:D3")
+        );
+        assert_eq!(
+            projection.table_descriptor.totals_region_ref.as_deref(),
+            Some("B7:D7")
+        );
+        assert_eq!(
+            projection
+                .table_descriptor
+                .columns
+                .iter()
+                .map(|column| (
+                    column.column_id.as_str(),
+                    column.column_name.as_str(),
+                    column.ordinal,
+                    column.column_range_ref.as_str()
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("col:region", "Region", 1, "B4:B6"),
+                ("col:amount", "Amount", 2, "C4:C6"),
+                ("col:tax", "Tax", 3, "D4:D6"),
+            ]
+        );
+        assert_eq!(
+            projection
+                .table_descriptor
+                .row_membership_identity
+                .as_deref(),
+            Some(
+                "treecalc.table_rows.membership_token.v1;table=16:tree-table:sales;version=17:row-membership:v1;row_count=1:3"
+            )
+        );
+        assert_eq!(
+            projection.table_descriptor.row_order_identity.as_deref(),
+            Some(
+                "treecalc.table_rows.order_token.v1;table=16:tree-table:sales;version=12:row-order:v1;row_count=1:3"
+            )
+        );
+        assert!(
+            !projection
+                .table_descriptor
+                .row_membership_identity
+                .as_deref()
+                .unwrap()
+                .contains("row:east")
+        );
+        assert!(
+            projection
+                .oxcalc_row_membership_identity
+                .contains("row:east")
+        );
+        assert_eq!(projection.context_packet.table_catalog.len(), 1);
+        assert_eq!(
+            projection.context_packet.table_catalog[0],
+            projection.table_descriptor
+        );
+        assert!(
+            projection
+                .table_context_identity
+                .contains("treecalc.table_namespace.token.v1")
+        );
+        assert!(
+            projection
+                .table_context_identity
+                .contains("treecalc.table_anchor.token.v1")
+        );
+        assert!(!projection.table_context_identity.contains("row:east"));
+        assert!(
+            !projection
+                .table_context_identity
+                .contains("formula:body:tax")
+        );
+        assert!(
+            projection
+                .body_metadata_identity
+                .contains("treecalc.table_body.formula.v1")
+        );
+        assert!(
+            projection
+                .totals_metadata_identity
+                .contains("21:formula:totals:amount")
+        );
+    }
+
+    #[test]
+    fn table_context_identity_changes_on_table_shape_and_version_mutations() {
+        let baseline = project_treecalc_table_node_snapshot(&treecalc_table_snapshot())
+            .expect("baseline projects");
+        let baseline_identity = baseline.table_context_identity;
+
+        let mut renamed = treecalc_table_snapshot();
+        renamed.table_namespace_version = "namespace:v2".to_string();
+        renamed.table_name = "SalesRenamed".to_string();
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&renamed)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut reordered = treecalc_table_snapshot();
+        reordered.rows.reverse();
+        reordered.row_order_version = "row-order:v2".to_string();
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&reordered)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut row_added = treecalc_table_snapshot();
+        row_added
+            .rows
+            .push(TreeCalcTableRowId("row:south".to_string()));
+        row_added.row_membership_version = "row-membership:v2".to_string();
+        let row_added_projection = project_treecalc_table_node_snapshot(&row_added).unwrap();
+        assert_eq!(
+            row_added_projection.table_descriptor.table_range_ref,
+            "B3:D8"
+        );
+        assert_ne!(
+            row_added_projection.table_context_identity,
+            baseline_identity
+        );
+
+        let mut row_replaced = treecalc_table_snapshot();
+        row_replaced.rows[0] = TreeCalcTableRowId("row:central".to_string());
+        row_replaced.row_membership_version = "row-membership:v3".to_string();
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&row_replaced)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut column_changed = treecalc_table_snapshot();
+        column_changed.columns[0].column_name = "GrossAmount".to_string();
+        column_changed.column_identity_version = "columns:v2".to_string();
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&column_changed)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut column_added = treecalc_table_snapshot();
+        column_added.columns.push(TreeCalcTableColumnSnapshot {
+            column_id: "col:discount".to_string(),
+            column_name: "Discount".to_string(),
+            ordinal: 4,
+            body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+            totals_metadata: None,
+        });
+        column_added.column_identity_version = "columns:v3".to_string();
+        let column_added_projection = project_treecalc_table_node_snapshot(&column_added).unwrap();
+        assert_eq!(
+            column_added_projection.table_descriptor.table_range_ref,
+            "B3:E7"
+        );
+        assert_ne!(
+            column_added_projection.table_context_identity,
+            baseline_identity
+        );
+
+        let mut column_reordered = treecalc_table_snapshot();
+        column_reordered.columns[0].ordinal = 3;
+        column_reordered.columns[2].ordinal = 2;
+        column_reordered.column_identity_version = "columns:v4".to_string();
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&column_reordered)
+                .unwrap()
+                .table_descriptor
+                .columns
+                .iter()
+                .map(|column| column.column_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["col:region", "col:tax", "col:amount"]
+        );
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&column_reordered)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut header_removed = treecalc_table_snapshot();
+        header_removed.header_row_present = false;
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&header_removed)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut totals_removed = treecalc_table_snapshot();
+        totals_removed.totals_row_present = false;
+        assert_ne!(
+            project_treecalc_table_node_snapshot(&totals_removed)
+                .unwrap()
+                .table_context_identity,
+            baseline_identity
+        );
+
+        let mut moved_anchor = treecalc_table_snapshot();
+        moved_anchor.virtual_anchor.start_col = 5;
+        let moved_projection = project_treecalc_table_node_snapshot(&moved_anchor).unwrap();
+        assert_eq!(moved_projection.table_descriptor.table_range_ref, "E3:G7");
+        assert_ne!(moved_projection.table_context_identity, baseline_identity);
+    }
+
+    #[test]
+    fn oxcalc_invalidation_identities_frame_domain_strings_without_separator_collisions() {
+        let mut left = treecalc_table_snapshot();
+        left.table_id = "table;a=1".to_string();
+        left.rows = vec![
+            TreeCalcTableRowId("row:a|b".to_string()),
+            TreeCalcTableRowId("row:c".to_string()),
+        ];
+        left.columns[0].column_name = "Gross;Amount".to_string();
+        left.columns[2].body_metadata =
+            TreeCalcTableColumnBodyMetadata::Formula(TreeCalcTableFormulaMetadata {
+                formula_artifact_id: "formula;a|b".to_string(),
+                bind_artifact_id: Some("bind;c".to_string()),
+                formula_text_version: "version:d".to_string(),
+            });
+
+        let mut right = left.clone();
+        right.rows = vec![
+            TreeCalcTableRowId("row:a".to_string()),
+            TreeCalcTableRowId("row:b|c".to_string()),
+        ];
+        right.columns[0].column_name = "Gross".to_string();
+        right.columns[1].column_name = "Amount;a=1".to_string();
+        right.columns[2].body_metadata =
+            TreeCalcTableColumnBodyMetadata::Formula(TreeCalcTableFormulaMetadata {
+                formula_artifact_id: "formula;a".to_string(),
+                bind_artifact_id: Some("b|bind;c".to_string()),
+                formula_text_version: "version:d".to_string(),
+            });
+
+        let left_projection = project_treecalc_table_node_snapshot(&left).unwrap();
+        let right_projection = project_treecalc_table_node_snapshot(&right).unwrap();
+
+        assert_ne!(
+            left_projection.oxcalc_row_membership_identity,
+            right_projection.oxcalc_row_membership_identity
+        );
+        assert_ne!(
+            left_projection.oxcalc_column_identity,
+            right_projection.oxcalc_column_identity
+        );
+        assert_ne!(
+            left_projection.table_invalidation_identity,
+            right_projection.table_invalidation_identity
+        );
+        assert_ne!(
+            left_projection.body_metadata_identity,
+            right_projection.body_metadata_identity
+        );
+        assert_ne!(
+            left_projection.context_packet.table_context_identity,
+            right_projection.context_packet.table_context_identity
+        );
+        assert!(
+            left_projection
+                .oxcalc_row_membership_identity
+                .contains("7:row:a|b")
+        );
+        assert!(
+            left_projection
+                .body_metadata_identity
+                .contains("11:formula;a|b")
+        );
+        assert!(
+            left_projection
+                .context_packet
+                .table_context_identity
+                .contains("12:Gross;Amount")
+        );
+        assert!(!left_projection.table_context_identity.contains("row:a|b"));
+    }
+
+    #[test]
+    fn table_projection_rejects_snapshot_shapes_that_would_create_private_semantics() {
+        let mut empty_data_body = treecalc_table_snapshot();
+        empty_data_body.rows.clear();
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&empty_data_body).unwrap_err(),
+            TreeCalcTableProjectionError::EmptyDataBodyNotRepresentableByCurrentTableDescriptor
+        );
+
+        let mut duplicate_column = treecalc_table_snapshot();
+        duplicate_column.columns[1].column_id = duplicate_column.columns[0].column_id.clone();
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&duplicate_column).unwrap_err(),
+            TreeCalcTableProjectionError::DuplicateColumnId {
+                column_id: "col:amount".to_string()
+            }
+        );
+
+        let mut duplicate_row = treecalc_table_snapshot();
+        duplicate_row.rows[1] = duplicate_row.rows[0].clone();
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&duplicate_row).unwrap_err(),
+            TreeCalcTableProjectionError::DuplicateRowId {
+                row_id: "row:west".to_string()
+            }
+        );
+
+        let mut duplicate_column_name = treecalc_table_snapshot();
+        duplicate_column_name.columns[1].column_name =
+            duplicate_column_name.columns[0].column_name.clone();
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&duplicate_column_name).unwrap_err(),
+            TreeCalcTableProjectionError::DuplicateColumnName {
+                column_name: "Amount".to_string()
+            }
+        );
+
+        let mut duplicate_column_ordinal = treecalc_table_snapshot();
+        duplicate_column_ordinal.columns[1].ordinal = duplicate_column_ordinal.columns[0].ordinal;
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&duplicate_column_ordinal).unwrap_err(),
+            TreeCalcTableProjectionError::DuplicateColumnOrdinal { ordinal: 2 }
+        );
+
+        let mut ordinal_gap = treecalc_table_snapshot();
+        ordinal_gap.columns[2].ordinal = 4;
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&ordinal_gap).unwrap_err(),
+            TreeCalcTableProjectionError::ColumnOrdinalMustStartAtOne {
+                column_id: "col:tax".to_string(),
+                ordinal: 4
+            }
+        );
+
+        let mut invalid_anchor = treecalc_table_snapshot();
+        invalid_anchor.virtual_anchor.start_row = 0;
+        assert_eq!(
+            project_treecalc_table_node_snapshot(&invalid_anchor).unwrap_err(),
+            TreeCalcTableProjectionError::InvalidVirtualAnchor {
+                start_row: 0,
+                start_col: 2
+            }
+        );
+    }
 
     fn table() -> TableDescriptor {
         TableDescriptor {

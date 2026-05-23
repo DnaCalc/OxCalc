@@ -269,6 +269,23 @@ snapshot and correlated back to the OxFml host-reference handle.
 OxFml must not inspect the child list, sibling order, meta-child filtering, or
 set-membership invalidation semantics.
 
+For W056 table-node support, OxCalc now owns the projection from a TreeCalc
+table node into the generic OxFml table-context packet. The local
+`TreeCalcTableNodeSnapshot` records TreeCalc-only facts such as
+`table_node_id`, display/canonical path, virtual anchor identity,
+namespace/version facts, row ids/order, column ids/order, and body/totals
+formula metadata. The projection emits only a generic `TableDescriptor` to
+OxFml: stable table id/name, virtual workbook/sheet refs, parseable A1
+`table_range_ref`, parseable column data ranges, header/totals presence, exact
+header/totals range refs, and opaque row membership/order tokens. OxCalc keeps
+raw row ids, TreeCalc paths, column formula metadata, and table invalidation
+facts in the OxCalc-only projection identity; the generic
+`table_context_identity` that may flow into OxFml is tokenized and does not
+expose those TreeCalc internals.
+OxFml must bind structured-reference grammar against the generic descriptor
+catalog only; it must not learn TreeCalc node paths, row ids, column formula
+metadata, or table invalidation semantics.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

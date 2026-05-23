@@ -204,6 +204,39 @@ inputs for host namespace, structure context, capability profile,
 table-context, cross-workspace availability, and caller context. It is a typed
 OxCalc runtime input surface, not a full end-to-end W056 product claim.
 
+### 3.7 W056 Table-Node Projection Boundary
+
+The first W056 table-node contract is now implemented in
+`src/oxcalc-core/src/structured_table.rs` as
+`TreeCalcTableNodeSnapshot` -> `TreeCalcTableNodeProjection`.
+
+This projection is deliberately split:
+
+1. TreeCalc/OxCalc-specific facts stay in the input/projection record:
+   `table_node_id`, display path, canonical path, virtual anchor identity,
+   table namespace version, row membership/order versions, column identity
+   version, body formula metadata, and totals formula metadata.
+2. OxFml receives only a generic Excel-shaped `TableDescriptor` catalog entry:
+   stable `table_id`, `table_name`, virtual workbook/sheet refs,
+   `table_range_ref`, column ids/names/ordinals/ranges, header/totals presence,
+   exact header/totals range refs, and opaque stable row membership/order
+   tokens.
+3. OxCalc computes a generic `table_context_identity` for OxFml prepared/cache
+   invalidation and a separate OxCalc-only `table_invalidation_identity` that
+   keeps raw TreeCalc row ids and body/totals formula metadata out of OxFml's
+   semantics.
+
+The virtual-anchor contract makes a table node look to OxFml like an Excel
+table anchored at an ordinary cell range. It does not introduce
+`EvalValue::Table`, does not require OxFml to understand TreeCalc paths, and
+does not make OxFunc inspect table selectors. Descriptor-visible row
+membership/order identities are opaque tokens; raw row ids remain in the
+OxCalc projection identity only. Current executable evidence covers non-empty
+data-body tables. Empty data-body tables are explicitly typed as not
+representable by the current generic `TableDescriptor` because OxFml's current
+range parser expects parseable A1 area refs for column data ranges. That is a
+W056 widening target rather than a silent fallback.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

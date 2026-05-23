@@ -21,7 +21,12 @@ Initial successor beads:
    spine: full-scope closure map, lifecycle/callback contract freeze,
    structured-table `ReferenceLike` function breadth, matched TreeCalc/Excel
    replay/value-wire intake, and final table-topic promotion audit.
-6. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
+6. `calc-4vs8.39` through `calc-4vs8.43` — third-pass full-intended table
+   support spine: empty data-body packet/reader support, executable function
+   breadth evidence, DnaTreeCalc lifecycle bridge acceptance, table namespace/
+   anchor/workspace collision semantics, and final table support audit without
+   relying on the earlier typed projection exclusions.
+7. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
    non-table reference completion spine: cross-workspace provider/alias
    semantics, workspace-qualified carriers, reference literals/dynamic
    carriers, W074 callable/name intake, and retained non-table corpus evidence.
@@ -222,7 +227,7 @@ The added W056 table spine is:
    body, row, column, header, totals, rename, move, delete, save/reopen, and
    structured-reference recalculation scenarios.
 
-Cross-repo counterpart beads now exist for the same spine:
+Cross-repo counterpart beads now exist for the table spine:
 
 1. DnaTreeCalc `dtc-z0i.5.1` through `dtc-z0i.5.4` own table-node persistence,
    bridge projection, active corpus activation, update scenarios, and retained
@@ -237,6 +242,13 @@ Cross-repo counterpart beads now exist for the same spine:
 5. OxReplay `oxreplay-p1w.1` through `oxreplay-p1w.3` own retained producer
    artifact intake, dependency/invalidation evidence intake, and final
    table-scope diff/explain closure.
+6. Third-pass full-intended table support anchors are: OxFml `fml-ds0.15`
+   for zero-row generic table packets; DnaTreeCalc `dtc-z0i.5.5` and
+   `dtc-z0i.5.6` for lifecycle bridge acceptance and empty-body corpus;
+   OxFunc `oxf-ypq2.15`/`oxf-ypq2.16` for broader structured-table
+   `ReferenceLike` function evidence; OxXlPlay `oxxlplay-4nd.5` for residual
+   Excel table observation; and OxReplay `oxreplay-qb9` for third-pass retained
+   evidence intake.
 
 Current audit intake from `calc-4vs8.26`: DnaTreeCalc commits `b59b2fb` and
 `8eba3cb` activate the table structured-reference corpus through
@@ -428,11 +440,64 @@ Known counterpart anchors at creation time:
    name/call precedence remain separate.
 3. OxFunc `oxf-ypq2.15` and `oxf-ypq2.16` are the current structured-table
    sparse-reader/function-classification lanes that feed `calc-4vs8.36`.
-4. OxXlPlay `oxxlplay-4nd` remains the support parent for WorkbookConstructionSpec,
-   table observation, and update-oracle evidence after its first children
-   supplied retained table fixtures.
-5. OxReplay `oxreplay-p1w.3` is the closed matched TreeCalc/Excel table
-   comparison lane consumed by `calc-4vs8.37`.
+
+Third-pass full-intended table support beads:
+
+The second-pass table spine promotes the declared node-associated table topic
+with explicit typed exclusions. It is not the final long-term table product
+finish line. The third pass exists so the remaining table exclusions and
+counterpart implementation lanes have ordinary bead ownership instead of being
+left as prose caveats.
+
+1. `calc-4vs8.39` — empty-body table packet and reader support. This removes
+   the typed projection exclusion for zero-row data bodies by coordinating a
+   generic OxFml table packet shape, OxCalc projection/readers, OxFunc sparse
+   reference behavior, DnaTreeCalc corpus activation, and OxXlPlay/OxReplay
+   retained evidence for empty headers/data/totals and first-row/last-row
+   updates.
+2. `calc-4vs8.40` — structured-table `ReferenceLike` function implementation
+   evidence. This converts the `calc-4vs8.36` inventory into executable
+   OxFunc/OxFml/OxCalc evidence for admitted range/table consumers such as
+   shape, indexed-reference, range-scan, lookup/match, and criteria-aggregate
+   families, with typed host-context lanes for dynamic-array, subtotal/
+   aggregate, metadata, volatile reference, and operator cases.
+3. `calc-4vs8.41` — DnaTreeCalc table lifecycle bridge acceptance. This proves
+   DnaTreeCalc sends real create/delete, rename/move, row/column/header/totals/
+   body/formula, save/reopen, and structural-rebind events into the OxCalc
+   lifecycle callback contract with persistence and retained evidence.
+4. `calc-4vs8.42` — table namespace, anchor collision, and workspace semantics.
+   This closes the multi-table, table-name collision, virtual anchor movement,
+   workspace-qualified table reference, alias/`!`, canonicalization, and
+   structured-reference source-preservation edge cases, deferring only those
+   name/call decisions that genuinely depend on W074.
+5. `calc-4vs8.43` — full intended table support final audit. This promotes the
+   whole table topic only after the third-pass residual beads and counterpart
+   repo evidence are closed or have explicit user-accepted typed exclusions.
+   OxVba/future-UDF participation is an impact-scan or typed non-impact row
+   unless a concrete table-reference UDF/XLL path is admitted.
+
+Systematic third-pass cross-repo sequence:
+
+1. OxFml widens only generic table/structured-reference packets for zero-row
+   ranges or other missing generic shapes; it does not learn TreeCalc table
+   paths, lifecycle, or selectors.
+2. OxCalc consumes those generic packets, owns the TreeCalc table projection,
+   dependency, invalidation, lifecycle, namespace, virtual-anchor, and prepared
+   identity facts, and keeps `EvalValue` free of table-specific variants.
+3. OxFunc implements admitted function families over opaque `ReferenceLike`
+   and sparse-reader APIs; any function needing hidden/filter/metadata/spill
+   policy gets typed generic host-context requirements instead of table
+   branches.
+4. DnaTreeCalc supplies product table lifecycle/corpus events through the real
+   LiveOxCalc/OxCalc bridge and emits retained artifacts; it does not parse
+   formulas or mirror OxCalc dependency classification.
+5. OxXlPlay observes Excel workbook/table behavior where Excel can state it;
+   capture limits stay typed observation facts.
+6. OxReplay compares declared retained payloads and classifies non-comparable
+   lanes without importing TreeCalc or Excel private semantics.
+7. OxCalc closes `calc-4vs8.43` only when the table topic no longer depends on
+   ordinary typed exclusions for intended support; parent W056 may still remain
+   open for non-table references.
 
 `calc-4vs8.35` implemented contract:
 
@@ -667,16 +732,20 @@ Remaining exclusions and separate work:
 1. W056 remains open for non-table reference families, broad W004/W005 corpus
    activation, callable host names/lambda-valued nodes, and W074 name/call
    precedence.
-2. OxFunc remains responsible for implementing pending broader function-family
+2. `calc-4vs8.39` through `calc-4vs8.43` now own the full-intended table
+   residuals that were acceptable exclusions for the declared table-topic
+   promotion but are not acceptable final product gaps.
+3. OxFunc remains responsible for implementing pending broader function-family
    admissions over opaque references; OxCalc has only inventoried and classified
-   those lanes for table promotion.
-3. `BLK-REPLAY-003` remains the future OxFunc/OxReplay shared
+   those lanes for table promotion, with executable follow-through now tracked
+   by `calc-4vs8.40`.
+4. `BLK-REPLAY-003` remains the future OxFunc/OxReplay shared
    `comparison_value` helper replacement. It is outside TreeCalc table
    semantics and does not block the table-topic promotion.
-4. Empty data-body tables remain a typed projection exclusion until the generic
-   OxFml `TableDescriptor`/table packet can represent zero-row data-column
-   ranges without requiring parseable data-column A1 area refs.
-5. Excel COM dependency/invalidation internals, `save_reopen` capture, and
+5. Empty data-body tables remain a typed projection exclusion for the earlier
+   promotion slice only; `calc-4vs8.39` owns removing that exclusion for full
+   intended table support.
+6. Excel COM dependency/invalidation internals, `save_reopen` capture, and
    table-move observation limits remain typed retained observation facts rather
    than OxCalc runtime semantics.
 

@@ -237,6 +237,42 @@ representable by the current generic `TableDescriptor` because OxFml's current
 range parser expects parseable A1 area refs for column data ranges. That is a
 W056 widening target rather than a silent fallback.
 
+### 3.8 W056 Table Lifecycle Callback Boundary
+
+Node-associated table lifecycle callbacks stay on the OxCalc/DnaTreeCalc side
+of the boundary. DnaTreeCalc supplies a
+`TreeCalcTableLifecycleCallbackPacket`-shaped update packet whenever the table
+product lifecycle changes: create/delete, rename/move, body value/formula edit,
+row insert/delete/reorder, column insert/delete/reorder/rename, header text
+edit, totals toggle/formula edit, save/reopen, or structural rebind.
+
+The packet carries the event kind, before/after
+`TreeCalcTableLifecycleVersionState` values where the event shape requires
+them, context versions, owner node ids, source host-reference handles, and
+changed row/column ids. The version state names the stable table/node/row/column
+handles plus the virtual workbook/sheet/anchor identities, table context
+identity, table invalidation identity, table range/header/totals/data-region
+refs, table namespace version, row membership/order versions, and column
+identity version. Context versions include the host namespace, structure
+context, registry snapshot, and resolution-rule inputs used for prepared/cache
+invalidation.
+
+OxCalc classifies that packet with
+`classify_treecalc_table_lifecycle_callback`. The report is the only table
+lifecycle interpretation product consumers should depend on: changed dependency
+kinds, invalidation reasons, prepared-identity inputs, invalidation seed
+identities, changed rows/columns, source handles, and typed diagnostics. Stable
+`table_node_id` and `table_id` violations are diagnostics because they indicate
+that DnaTreeCalc is sending a new table identity through an update event instead
+of a create/delete or structural rebind.
+
+OxFml receives none of this lifecycle meaning. After OxCalc classifies the
+callback, OxFml only sees the resulting generic table descriptor catalog,
+structured-reference packets, caller table region, sparse reference bindings,
+and prepared/cache identity tokens. OxFunc receives only opaque references or
+ordinary scalar/array values. No consumer should infer TreeCalc table lifecycle
+semantics from private strings or from OxFml/OxFunc artifacts.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

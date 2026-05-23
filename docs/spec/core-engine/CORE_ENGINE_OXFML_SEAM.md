@@ -321,6 +321,16 @@ reasons and prepared-identity inputs. OxFml only sees the resulting generic
 table context, caller context, sparse bindings, and structured-reference
 diagnostics.
 
+The concrete W056 table lifecycle callback contract is OxCalc/DnaTreeCalc-owned:
+`TreeCalcTableLifecycleCallbackPacket` records the event kind, before/after
+version state, context versions, owner nodes, source host-reference handles, and
+changed row/column ids. OxCalc classifies it into dependency kinds,
+invalidation reasons, prepared-identity inputs, invalidation seed identities,
+and typed diagnostics. That report may refresh the generic table context,
+caller context, sparse bindings, and prepared identity tokens sent through this
+seam, but OxFml must not inspect table lifecycle events, TreeCalc row/column
+ids, table-node paths, or table invalidation semantics.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

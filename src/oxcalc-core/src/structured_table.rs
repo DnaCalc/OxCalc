@@ -2421,6 +2421,518 @@ pub enum TreeCalcTableUpdateDiagnostic {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcTableLifecycleEventKind {
+    TableCreate,
+    BodyCellEdit,
+    BodyFormulaEdit,
+    RowInsert,
+    RowDelete,
+    RowReorder,
+    ColumnInsert,
+    ColumnDelete,
+    ColumnReorder,
+    ColumnRename,
+    HeaderTextEdit,
+    TotalsRowToggle,
+    TotalsFormulaEdit,
+    TableRename,
+    TableMove,
+    TableDelete,
+    SaveReopen,
+    StructuralRebind,
+}
+
+impl TreeCalcTableLifecycleEventKind {
+    #[must_use]
+    pub fn update_scenario(self) -> Option<TreeCalcTableUpdateScenarioKind> {
+        Some(match self {
+            Self::TableCreate => return None,
+            Self::BodyCellEdit => TreeCalcTableUpdateScenarioKind::BodyCellEdit,
+            Self::BodyFormulaEdit => TreeCalcTableUpdateScenarioKind::BodyFormulaEdit,
+            Self::RowInsert => TreeCalcTableUpdateScenarioKind::RowInsert,
+            Self::RowDelete => TreeCalcTableUpdateScenarioKind::RowDelete,
+            Self::RowReorder => TreeCalcTableUpdateScenarioKind::RowReorder,
+            Self::ColumnInsert => TreeCalcTableUpdateScenarioKind::ColumnInsert,
+            Self::ColumnDelete => TreeCalcTableUpdateScenarioKind::ColumnDelete,
+            Self::ColumnReorder => TreeCalcTableUpdateScenarioKind::ColumnReorder,
+            Self::ColumnRename => TreeCalcTableUpdateScenarioKind::ColumnRename,
+            Self::HeaderTextEdit => TreeCalcTableUpdateScenarioKind::HeaderTextEdit,
+            Self::TotalsRowToggle => TreeCalcTableUpdateScenarioKind::TotalsRowToggle,
+            Self::TotalsFormulaEdit => TreeCalcTableUpdateScenarioKind::TotalsFormulaEdit,
+            Self::TableRename => TreeCalcTableUpdateScenarioKind::TableRename,
+            Self::TableMove => TreeCalcTableUpdateScenarioKind::TableMove,
+            Self::TableDelete => TreeCalcTableUpdateScenarioKind::TableDelete,
+            Self::SaveReopen => TreeCalcTableUpdateScenarioKind::SaveReopen,
+            Self::StructuralRebind => TreeCalcTableUpdateScenarioKind::StructuralRebind,
+        })
+    }
+
+    #[must_use]
+    pub fn stable_id(self) -> &'static str {
+        match self {
+            Self::TableCreate => "table_create",
+            Self::BodyCellEdit => "body_cell_edit",
+            Self::BodyFormulaEdit => "body_formula_edit",
+            Self::RowInsert => "row_insert",
+            Self::RowDelete => "row_delete",
+            Self::RowReorder => "row_reorder",
+            Self::ColumnInsert => "column_insert",
+            Self::ColumnDelete => "column_delete",
+            Self::ColumnReorder => "column_reorder",
+            Self::ColumnRename => "column_rename",
+            Self::HeaderTextEdit => "header_text_edit",
+            Self::TotalsRowToggle => "totals_row_toggle",
+            Self::TotalsFormulaEdit => "totals_formula_edit",
+            Self::TableRename => "table_rename",
+            Self::TableMove => "table_move",
+            Self::TableDelete => "table_delete",
+            Self::SaveReopen => "save_reopen",
+            Self::StructuralRebind => "structural_rebind",
+        }
+    }
+}
+
+impl From<TreeCalcTableUpdateScenarioKind> for TreeCalcTableLifecycleEventKind {
+    fn from(value: TreeCalcTableUpdateScenarioKind) -> Self {
+        match value {
+            TreeCalcTableUpdateScenarioKind::BodyCellEdit => Self::BodyCellEdit,
+            TreeCalcTableUpdateScenarioKind::BodyFormulaEdit => Self::BodyFormulaEdit,
+            TreeCalcTableUpdateScenarioKind::RowInsert => Self::RowInsert,
+            TreeCalcTableUpdateScenarioKind::RowDelete => Self::RowDelete,
+            TreeCalcTableUpdateScenarioKind::RowReorder => Self::RowReorder,
+            TreeCalcTableUpdateScenarioKind::ColumnInsert => Self::ColumnInsert,
+            TreeCalcTableUpdateScenarioKind::ColumnDelete => Self::ColumnDelete,
+            TreeCalcTableUpdateScenarioKind::ColumnReorder => Self::ColumnReorder,
+            TreeCalcTableUpdateScenarioKind::ColumnRename => Self::ColumnRename,
+            TreeCalcTableUpdateScenarioKind::HeaderTextEdit => Self::HeaderTextEdit,
+            TreeCalcTableUpdateScenarioKind::TotalsRowToggle => Self::TotalsRowToggle,
+            TreeCalcTableUpdateScenarioKind::TotalsFormulaEdit => Self::TotalsFormulaEdit,
+            TreeCalcTableUpdateScenarioKind::TableRename => Self::TableRename,
+            TreeCalcTableUpdateScenarioKind::TableMove => Self::TableMove,
+            TreeCalcTableUpdateScenarioKind::TableDelete => Self::TableDelete,
+            TreeCalcTableUpdateScenarioKind::SaveReopen => Self::SaveReopen,
+            TreeCalcTableUpdateScenarioKind::StructuralRebind => Self::StructuralRebind,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableLifecycleContextVersions {
+    pub host_namespace_version: Option<String>,
+    pub structure_context_version: String,
+    pub registry_snapshot_identity: String,
+    pub resolution_rule_version: String,
+}
+
+impl Default for TreeCalcTableLifecycleContextVersions {
+    fn default() -> Self {
+        Self {
+            host_namespace_version: Some("treecalc-host-namespace:v1".to_string()),
+            structure_context_version: "treecalc-structure:v1".to_string(),
+            registry_snapshot_identity: "oxfunc-registry:default".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+        }
+    }
+}
+
+impl TreeCalcTableLifecycleContextVersions {
+    #[must_use]
+    pub fn identity_fragment(&self) -> String {
+        identity_record(
+            "treecalc.table_lifecycle.context_versions.v1",
+            [
+                (
+                    "host_namespace_version",
+                    self.host_namespace_version
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "structure_context_version",
+                    self.structure_context_version.clone(),
+                ),
+                (
+                    "registry_snapshot_identity",
+                    self.registry_snapshot_identity.clone(),
+                ),
+                (
+                    "resolution_rule_version",
+                    self.resolution_rule_version.clone(),
+                ),
+            ],
+        )
+    }
+
+    #[must_use]
+    pub fn prepared_identity_inputs(&self) -> BTreeSet<TreeCalcTablePreparedIdentityInput> {
+        let mut inputs = BTreeSet::from([
+            TreeCalcTablePreparedIdentityInput::StructureContextVersion,
+            TreeCalcTablePreparedIdentityInput::RegistrySnapshotIdentity,
+            TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
+        ]);
+        if self.host_namespace_version.is_some() {
+            inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+        }
+        inputs
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableLifecycleVersionState {
+    pub table_node_id: TreeNodeId,
+    pub table_id: String,
+    pub table_name: String,
+    pub display_path: String,
+    pub canonical_path: String,
+    pub workbook_scope_ref: String,
+    pub sheet_scope_ref: String,
+    pub table_range_ref: String,
+    pub header_region_ref: Option<String>,
+    pub totals_region_ref: Option<String>,
+    pub column_range_refs: Vec<String>,
+    pub virtual_anchor_identity: String,
+    pub virtual_anchor_token: String,
+    pub table_context_identity: String,
+    pub table_invalidation_identity: String,
+    pub table_namespace_identity: String,
+    pub table_namespace_version: String,
+    pub row_membership_identity: String,
+    pub row_membership_version: String,
+    pub row_order_identity: String,
+    pub row_order_version: String,
+    pub column_identity: String,
+    pub column_identity_version: String,
+    pub row_ids: Vec<TreeCalcTableRowId>,
+    pub column_ids: Vec<String>,
+}
+
+impl TreeCalcTableLifecycleVersionState {
+    #[must_use]
+    pub fn from_snapshot_projection(
+        snapshot: &TreeCalcTableNodeSnapshot,
+        projection: &TreeCalcTableNodeProjection,
+    ) -> Self {
+        Self {
+            table_node_id: snapshot.table_node_id,
+            table_id: snapshot.table_id.clone(),
+            table_name: snapshot.table_name.clone(),
+            display_path: snapshot.display_path.clone(),
+            canonical_path: snapshot.canonical_path.clone(),
+            workbook_scope_ref: snapshot.virtual_anchor.workbook_scope_ref.clone(),
+            sheet_scope_ref: snapshot.virtual_anchor.sheet_scope_ref.clone(),
+            table_range_ref: projection.table_descriptor.table_range_ref.clone(),
+            header_region_ref: projection.table_descriptor.header_region_ref.clone(),
+            totals_region_ref: projection.table_descriptor.totals_region_ref.clone(),
+            column_range_refs: projection
+                .table_descriptor
+                .columns
+                .iter()
+                .map(|column| format!("{}={}", column.column_id, column.column_range_ref))
+                .collect(),
+            virtual_anchor_identity: projection.virtual_anchor_identity.clone(),
+            virtual_anchor_token: projection.virtual_anchor_token.clone(),
+            table_context_identity: projection.table_context_identity.clone(),
+            table_invalidation_identity: projection.table_invalidation_identity.clone(),
+            table_namespace_identity: projection.table_namespace_identity.clone(),
+            table_namespace_version: snapshot.table_namespace_version.clone(),
+            row_membership_identity: projection.oxcalc_row_membership_identity.clone(),
+            row_membership_version: snapshot.row_membership_version.clone(),
+            row_order_identity: projection.oxcalc_row_order_identity.clone(),
+            row_order_version: snapshot.row_order_version.clone(),
+            column_identity: projection.oxcalc_column_identity.clone(),
+            column_identity_version: snapshot.column_identity_version.clone(),
+            row_ids: snapshot.rows.clone(),
+            column_ids: sorted_treecalc_table_columns(snapshot)
+                .map(|columns| columns.into_iter().map(|column| column.column_id).collect())
+                .unwrap_or_else(|_| {
+                    snapshot
+                        .columns
+                        .iter()
+                        .map(|column| column.column_id.clone())
+                        .collect()
+                }),
+        }
+    }
+
+    #[must_use]
+    pub fn identity_fragment(&self) -> String {
+        identity_record(
+            "treecalc.table_lifecycle.version_state.v1",
+            [
+                ("table_node_id", self.table_node_id.to_string()),
+                ("table_id", self.table_id.clone()),
+                ("table_name", self.table_name.clone()),
+                ("display_path", self.display_path.clone()),
+                ("canonical_path", self.canonical_path.clone()),
+                ("workbook_scope_ref", self.workbook_scope_ref.clone()),
+                ("sheet_scope_ref", self.sheet_scope_ref.clone()),
+                ("table_range_ref", self.table_range_ref.clone()),
+                (
+                    "header_region_ref",
+                    self.header_region_ref
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "totals_region_ref",
+                    self.totals_region_ref
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "column_range_refs",
+                    identity_list(self.column_range_refs.iter().cloned()),
+                ),
+                (
+                    "table_context_identity",
+                    self.table_context_identity.clone(),
+                ),
+                (
+                    "table_invalidation_identity",
+                    self.table_invalidation_identity.clone(),
+                ),
+                (
+                    "table_namespace_identity",
+                    self.table_namespace_identity.clone(),
+                ),
+                (
+                    "table_namespace_version",
+                    self.table_namespace_version.clone(),
+                ),
+                (
+                    "row_membership_identity",
+                    self.row_membership_identity.clone(),
+                ),
+                (
+                    "row_membership_version",
+                    self.row_membership_version.clone(),
+                ),
+                ("row_order_identity", self.row_order_identity.clone()),
+                ("row_order_version", self.row_order_version.clone()),
+                ("column_identity", self.column_identity.clone()),
+                (
+                    "column_identity_version",
+                    self.column_identity_version.clone(),
+                ),
+                (
+                    "virtual_anchor_identity",
+                    self.virtual_anchor_identity.clone(),
+                ),
+                ("virtual_anchor_token", self.virtual_anchor_token.clone()),
+                (
+                    "rows",
+                    identity_list(self.row_ids.iter().map(|row| row.0.clone())),
+                ),
+                ("columns", identity_list(self.column_ids.iter().cloned())),
+            ],
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableLifecycleCallbackPacket {
+    pub event_kind: TreeCalcTableLifecycleEventKind,
+    pub before_state: Option<TreeCalcTableLifecycleVersionState>,
+    pub after_state: Option<TreeCalcTableLifecycleVersionState>,
+    pub context_versions: TreeCalcTableLifecycleContextVersions,
+    pub owner_node_ids: Vec<TreeNodeId>,
+    pub source_reference_handles: Vec<String>,
+    pub changed_row_ids: Vec<TreeCalcTableRowId>,
+    pub changed_column_ids: Vec<String>,
+}
+
+impl TreeCalcTableLifecycleCallbackPacket {
+    #[must_use]
+    pub fn new(event_kind: TreeCalcTableLifecycleEventKind) -> Self {
+        Self {
+            event_kind,
+            before_state: None,
+            after_state: None,
+            context_versions: TreeCalcTableLifecycleContextVersions::default(),
+            owner_node_ids: Vec::new(),
+            source_reference_handles: Vec::new(),
+            changed_row_ids: Vec::new(),
+            changed_column_ids: Vec::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_before(mut self, state: TreeCalcTableLifecycleVersionState) -> Self {
+        self.before_state = Some(state);
+        self
+    }
+
+    #[must_use]
+    pub fn with_after(mut self, state: TreeCalcTableLifecycleVersionState) -> Self {
+        self.after_state = Some(state);
+        self
+    }
+
+    #[must_use]
+    pub fn with_owner_nodes(
+        mut self,
+        owner_node_ids: impl IntoIterator<Item = TreeNodeId>,
+    ) -> Self {
+        self.owner_node_ids = owner_node_ids.into_iter().collect();
+        self
+    }
+
+    #[must_use]
+    pub fn with_source_reference_handles(
+        mut self,
+        source_reference_handles: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.source_reference_handles = source_reference_handles
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        self
+    }
+
+    #[must_use]
+    pub fn with_changed_rows(
+        mut self,
+        changed_row_ids: impl IntoIterator<Item = TreeCalcTableRowId>,
+    ) -> Self {
+        self.changed_row_ids = changed_row_ids.into_iter().collect();
+        self
+    }
+
+    #[must_use]
+    pub fn with_changed_columns(
+        mut self,
+        changed_column_ids: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.changed_column_ids = changed_column_ids.into_iter().map(Into::into).collect();
+        self
+    }
+
+    #[must_use]
+    pub fn callback_identity(&self) -> String {
+        identity_record(
+            "treecalc.table_lifecycle.callback.v1",
+            [
+                ("event", self.event_kind.stable_id().to_string()),
+                (
+                    "before",
+                    self.before_state.as_ref().map_or_else(
+                        || "none".to_string(),
+                        TreeCalcTableLifecycleVersionState::identity_fragment,
+                    ),
+                ),
+                (
+                    "after",
+                    self.after_state.as_ref().map_or_else(
+                        || "none".to_string(),
+                        TreeCalcTableLifecycleVersionState::identity_fragment,
+                    ),
+                ),
+                ("context", self.context_versions.identity_fragment()),
+                (
+                    "owners",
+                    identity_list(self.owner_node_ids.iter().map(ToString::to_string)),
+                ),
+                (
+                    "source_reference_handles",
+                    identity_list(self.source_reference_handles.iter().cloned()),
+                ),
+                (
+                    "changed_rows",
+                    identity_list(self.changed_row_ids.iter().map(|row| row.0.clone())),
+                ),
+                (
+                    "changed_columns",
+                    identity_list(self.changed_column_ids.iter().cloned()),
+                ),
+            ],
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeCalcTableLifecycleContractDiagnostic {
+    MissingBeforeState {
+        event_kind: TreeCalcTableLifecycleEventKind,
+    },
+    MissingAfterState {
+        event_kind: TreeCalcTableLifecycleEventKind,
+    },
+    UnexpectedBeforeState {
+        event_kind: TreeCalcTableLifecycleEventKind,
+    },
+    UnexpectedAfterState {
+        event_kind: TreeCalcTableLifecycleEventKind,
+    },
+    TableNodeChangedAcrossLifecycle {
+        before: TreeNodeId,
+        after: TreeNodeId,
+    },
+    TableIdChangedAcrossLifecycle {
+        before: String,
+        after: String,
+    },
+    MissingOwnerNode {
+        event_kind: TreeCalcTableLifecycleEventKind,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableLifecycleContractReport {
+    pub callback_identity: String,
+    pub event_kind: TreeCalcTableLifecycleEventKind,
+    pub before_state: Option<TreeCalcTableLifecycleVersionState>,
+    pub after_state: Option<TreeCalcTableLifecycleVersionState>,
+    pub context_versions: TreeCalcTableLifecycleContextVersions,
+    pub changed_dependency_kinds: BTreeSet<DependencyDescriptorKind>,
+    pub invalidation_reasons: BTreeSet<InvalidationReasonKind>,
+    pub prepared_identity_inputs: BTreeSet<TreeCalcTablePreparedIdentityInput>,
+    pub invalidation_seeds: Vec<InvalidationSeed>,
+    pub source_reference_handles: Vec<String>,
+    pub changed_row_ids: Vec<TreeCalcTableRowId>,
+    pub changed_column_ids: Vec<String>,
+    pub diagnostics: Vec<TreeCalcTableLifecycleContractDiagnostic>,
+}
+
+#[must_use]
+pub fn classify_treecalc_table_lifecycle_callback(
+    packet: &TreeCalcTableLifecycleCallbackPacket,
+) -> TreeCalcTableLifecycleContractReport {
+    let diagnostics = validate_lifecycle_callback_packet(packet);
+    let (
+        changed_dependency_kinds,
+        invalidation_reasons,
+        mut prepared_identity_inputs,
+        invalidation_seeds,
+    ) = if let Some(scenario) = packet.event_kind.update_scenario() {
+        classify_treecalc_table_update_from_lifecycle_states(
+            scenario,
+            packet.before_state.as_ref(),
+            packet.after_state.as_ref(),
+            packet.owner_node_ids.clone(),
+        )
+    } else {
+        classify_table_create_lifecycle_impact(packet)
+    };
+    prepared_identity_inputs.extend(packet.context_versions.prepared_identity_inputs());
+
+    TreeCalcTableLifecycleContractReport {
+        callback_identity: packet.callback_identity(),
+        event_kind: packet.event_kind,
+        before_state: packet.before_state.clone(),
+        after_state: packet.after_state.clone(),
+        context_versions: packet.context_versions.clone(),
+        changed_dependency_kinds,
+        invalidation_reasons,
+        prepared_identity_inputs,
+        invalidation_seeds,
+        source_reference_handles: packet.source_reference_handles.clone(),
+        changed_row_ids: packet.changed_row_ids.clone(),
+        changed_column_ids: packet.changed_column_ids.clone(),
+        diagnostics,
+    }
+}
+
 #[must_use]
 pub fn classify_treecalc_table_update(
     scenario: TreeCalcTableUpdateScenarioKind,
@@ -2475,6 +2987,198 @@ pub fn classify_treecalc_table_update(
         prepared_identity_inputs,
         invalidation_seeds,
     }
+}
+
+fn classify_treecalc_table_update_from_lifecycle_states(
+    scenario: TreeCalcTableUpdateScenarioKind,
+    before: Option<&TreeCalcTableLifecycleVersionState>,
+    after: Option<&TreeCalcTableLifecycleVersionState>,
+    owner_node_ids: impl IntoIterator<Item = TreeNodeId>,
+) -> (
+    BTreeSet<DependencyDescriptorKind>,
+    BTreeSet<InvalidationReasonKind>,
+    BTreeSet<TreeCalcTablePreparedIdentityInput>,
+    Vec<InvalidationSeed>,
+) {
+    let mut changed_dependency_kinds = scenario_changed_dependency_kinds(scenario);
+    let mut invalidation_reasons = scenario_invalidation_reasons(scenario);
+    let mut prepared_identity_inputs = scenario_prepared_identity_inputs(scenario);
+
+    if let (Some(before), Some(after)) = (before, after) {
+        add_observed_lifecycle_state_changes(
+            before,
+            after,
+            &mut changed_dependency_kinds,
+            &mut invalidation_reasons,
+            &mut prepared_identity_inputs,
+        );
+    }
+
+    if matches!(scenario, TreeCalcTableUpdateScenarioKind::SaveReopen)
+        && before
+            .zip(after)
+            .is_some_and(|(before, after)| lifecycle_version_states_equal(before, after))
+    {
+        changed_dependency_kinds.clear();
+        invalidation_reasons.clear();
+        prepared_identity_inputs.clear();
+    }
+
+    let invalidation_seeds = owner_node_ids
+        .into_iter()
+        .flat_map(|node_id| {
+            invalidation_reasons
+                .iter()
+                .copied()
+                .map(move |reason| InvalidationSeed { node_id, reason })
+        })
+        .collect::<Vec<_>>();
+
+    (
+        changed_dependency_kinds,
+        invalidation_reasons,
+        prepared_identity_inputs,
+        invalidation_seeds,
+    )
+}
+
+fn classify_table_create_lifecycle_impact(
+    packet: &TreeCalcTableLifecycleCallbackPacket,
+) -> (
+    BTreeSet<DependencyDescriptorKind>,
+    BTreeSet<InvalidationReasonKind>,
+    BTreeSet<TreeCalcTablePreparedIdentityInput>,
+    Vec<InvalidationSeed>,
+) {
+    let changed_dependency_kinds = BTreeSet::from([
+        DependencyDescriptorKind::StructuredTableIdentity,
+        DependencyDescriptorKind::StructuredTableRowMembership,
+        DependencyDescriptorKind::StructuredTableRowOrder,
+        DependencyDescriptorKind::StructuredTableColumnIdentity,
+        DependencyDescriptorKind::StructuredTableHeaderText,
+        DependencyDescriptorKind::StructuredTableHeaderRegion,
+        DependencyDescriptorKind::StructuredTableDataRegion,
+        DependencyDescriptorKind::StructuredTableTotalsRegion,
+        DependencyDescriptorKind::StructuredTableCallerContext,
+        DependencyDescriptorKind::StructuredTableEnclosingTable,
+    ]);
+    let invalidation_reasons = BTreeSet::from([
+        InvalidationReasonKind::DependencyAdded,
+        InvalidationReasonKind::StructuredTableContextChanged,
+        InvalidationReasonKind::StructuredTableRowMembershipChanged,
+        InvalidationReasonKind::StructuredTableRowOrderChanged,
+        InvalidationReasonKind::StructuredTableColumnChanged,
+        InvalidationReasonKind::StructuredTableRegionChanged,
+        InvalidationReasonKind::StructuredTableCallerContextChanged,
+    ]);
+    let prepared_identity_inputs = BTreeSet::from([
+        TreeCalcTablePreparedIdentityInput::HostNamespaceVersion,
+        TreeCalcTablePreparedIdentityInput::StructureContextVersion,
+        TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+        TreeCalcTablePreparedIdentityInput::CallerContextIdentity,
+        TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
+    ]);
+    let invalidation_seeds = packet
+        .owner_node_ids
+        .iter()
+        .copied()
+        .flat_map(|node_id| {
+            invalidation_reasons
+                .iter()
+                .copied()
+                .map(move |reason| InvalidationSeed { node_id, reason })
+        })
+        .collect::<Vec<_>>();
+
+    (
+        changed_dependency_kinds,
+        invalidation_reasons,
+        prepared_identity_inputs,
+        invalidation_seeds,
+    )
+}
+
+fn validate_lifecycle_callback_packet(
+    packet: &TreeCalcTableLifecycleCallbackPacket,
+) -> Vec<TreeCalcTableLifecycleContractDiagnostic> {
+    let mut diagnostics = Vec::new();
+    match packet.event_kind {
+        TreeCalcTableLifecycleEventKind::TableCreate => {
+            if packet.before_state.is_some() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::UnexpectedBeforeState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+            if packet.after_state.is_none() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::MissingAfterState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+        }
+        TreeCalcTableLifecycleEventKind::TableDelete => {
+            if packet.before_state.is_none() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::MissingBeforeState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+            if packet.after_state.is_some() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::UnexpectedAfterState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+        }
+        _ => {
+            if packet.before_state.is_none() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::MissingBeforeState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+            if packet.after_state.is_none() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::MissingAfterState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+        }
+    }
+
+    if let (Some(before), Some(after)) = (&packet.before_state, &packet.after_state) {
+        if before.table_node_id != after.table_node_id {
+            diagnostics.push(
+                TreeCalcTableLifecycleContractDiagnostic::TableNodeChangedAcrossLifecycle {
+                    before: before.table_node_id,
+                    after: after.table_node_id,
+                },
+            );
+        }
+        if before.table_id != after.table_id {
+            diagnostics.push(
+                TreeCalcTableLifecycleContractDiagnostic::TableIdChangedAcrossLifecycle {
+                    before: before.table_id.clone(),
+                    after: after.table_id.clone(),
+                },
+            );
+        }
+    }
+
+    if packet.owner_node_ids.is_empty() {
+        diagnostics.push(TreeCalcTableLifecycleContractDiagnostic::MissingOwnerNode {
+            event_kind: packet.event_kind,
+        });
+    }
+
+    diagnostics
 }
 
 #[must_use]
@@ -2741,6 +3445,76 @@ fn add_observed_table_identity_changes(
     }
 }
 
+fn add_observed_lifecycle_state_changes(
+    before: &TreeCalcTableLifecycleVersionState,
+    after: &TreeCalcTableLifecycleVersionState,
+    changed_dependency_kinds: &mut BTreeSet<DependencyDescriptorKind>,
+    invalidation_reasons: &mut BTreeSet<InvalidationReasonKind>,
+    prepared_identity_inputs: &mut BTreeSet<TreeCalcTablePreparedIdentityInput>,
+) {
+    if before.table_context_identity != after.table_context_identity {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableIdentity);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableContextChanged);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::TableContextIdentity);
+    }
+    if before.row_membership_identity != after.row_membership_identity
+        || before.row_membership_version != after.row_membership_version
+    {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableRowMembership);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRowMembershipChanged);
+    }
+    if before.row_order_identity != after.row_order_identity
+        || before.row_order_version != after.row_order_version
+    {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableRowOrder);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRowOrderChanged);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::CallerContextIdentity);
+    }
+    if before.column_identity != after.column_identity
+        || before.column_identity_version != after.column_identity_version
+    {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableColumnIdentity);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableColumnChanged);
+    }
+    if before.virtual_anchor_identity != after.virtual_anchor_identity {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableDataRegion);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableHeaderRegion);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableTotalsRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
+    }
+    if before.table_range_ref != after.table_range_ref {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableDataRegion);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableHeaderRegion);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableTotalsRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
+    }
+    if before.header_region_ref != after.header_region_ref {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableHeaderRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
+    }
+    if before.totals_region_ref != after.totals_region_ref {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableTotalsRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
+    }
+    if before.column_range_refs != after.column_range_refs {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableDataRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
+    }
+    if before.table_namespace_identity != after.table_namespace_identity
+        || before.table_namespace_version != after.table_namespace_version
+    {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableEnclosingTable);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableContextChanged);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+    }
+    if before.table_invalidation_identity != after.table_invalidation_identity {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableDataRegion);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableTotalsRegion);
+        prepared_identity_inputs
+            .insert(TreeCalcTablePreparedIdentityInput::StructureContextVersion);
+    }
+}
+
 fn table_projection_identities_equal(
     before: &TreeCalcTableNodeProjection,
     after: &TreeCalcTableNodeProjection,
@@ -2749,6 +3523,13 @@ fn table_projection_identities_equal(
         && before.table_invalidation_identity == after.table_invalidation_identity
         && before.context_packet.table_context_identity
             == after.context_packet.table_context_identity
+}
+
+fn lifecycle_version_states_equal(
+    before: &TreeCalcTableLifecycleVersionState,
+    after: &TreeCalcTableLifecycleVersionState,
+) -> bool {
+    before.identity_fragment() == after.identity_fragment()
 }
 
 impl SparseRangeReader for TreeCalcTableSparseReader {
@@ -5388,6 +6169,424 @@ mod tests {
                 TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
             ],
         );
+    }
+
+    #[test]
+    fn table_lifecycle_callback_matrix_covers_full_w056_update_set() {
+        let owner = TreeNodeId(30);
+        let baseline_snapshot = runtime_treecalc_table_snapshot();
+        let baseline_projection = project_treecalc_table_node_snapshot(&baseline_snapshot).unwrap();
+        let baseline_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &baseline_snapshot,
+            &baseline_projection,
+        );
+        let context_inputs =
+            TreeCalcTableLifecycleContextVersions::default().prepared_identity_inputs();
+
+        let exercise = |scenario: TreeCalcTableUpdateScenarioKind,
+                        after_snapshot: Option<TreeCalcTableNodeSnapshot>| {
+            let after_projection = after_snapshot
+                .as_ref()
+                .map(project_treecalc_table_node_snapshot)
+                .transpose()
+                .unwrap();
+            let after_state = after_snapshot.as_ref().zip(after_projection.as_ref()).map(
+                |(snapshot, projection)| {
+                    TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+                        snapshot, projection,
+                    )
+                },
+            );
+            let expected = classify_treecalc_table_update(
+                scenario,
+                Some(&baseline_projection),
+                after_projection.as_ref(),
+                [owner],
+                ["structured-ref:amount".to_string()],
+            );
+            let mut packet = TreeCalcTableLifecycleCallbackPacket::new(scenario.into())
+                .with_before(baseline_state.clone())
+                .with_owner_nodes([owner])
+                .with_source_reference_handles(["structured-ref:amount"]);
+            if let Some(after_state) = after_state {
+                packet = packet.with_after(after_state);
+            }
+            let report = classify_treecalc_table_lifecycle_callback(&packet);
+            let mut expected_inputs = expected.prepared_identity_inputs.clone();
+            expected_inputs.extend(context_inputs.iter().copied());
+
+            assert!(
+                report.diagnostics.is_empty(),
+                "{scenario:?}: unexpected diagnostics {:?}",
+                report.diagnostics
+            );
+            assert_eq!(
+                report.source_reference_handles,
+                expected.source_reference_handles
+            );
+            assert!(
+                expected
+                    .changed_dependency_kinds
+                    .is_subset(&report.changed_dependency_kinds),
+                "{scenario:?}: expected dependency kinds {:?}, got {:?}",
+                expected.changed_dependency_kinds,
+                report.changed_dependency_kinds
+            );
+            assert!(
+                expected
+                    .invalidation_reasons
+                    .is_subset(&report.invalidation_reasons),
+                "{scenario:?}: expected invalidation reasons {:?}, got {:?}",
+                expected.invalidation_reasons,
+                report.invalidation_reasons
+            );
+            assert!(
+                expected_inputs.is_subset(&report.prepared_identity_inputs),
+                "{scenario:?}: expected prepared inputs {expected_inputs:?}, got {:?}",
+                report.prepared_identity_inputs
+            );
+            assert!(
+                report
+                    .invalidation_seeds
+                    .iter()
+                    .all(|seed| seed.node_id == owner),
+                "{scenario:?}: invalidation seeds used the wrong owner"
+            );
+        };
+
+        exercise(
+            TreeCalcTableUpdateScenarioKind::BodyCellEdit,
+            Some(baseline_snapshot.clone()),
+        );
+
+        let mut body_formula = baseline_snapshot.clone();
+        body_formula.columns[2].body_metadata =
+            TreeCalcTableColumnBodyMetadata::Formula(TreeCalcTableFormulaMetadata {
+                formula_artifact_id: "formula:body:tax".to_string(),
+                bind_artifact_id: Some("bind:body:tax:v2".to_string()),
+                formula_text_version: "v2".to_string(),
+            });
+        exercise(
+            TreeCalcTableUpdateScenarioKind::BodyFormulaEdit,
+            Some(body_formula),
+        );
+
+        let mut row_insert = baseline_snapshot.clone();
+        row_insert
+            .rows
+            .push(TreeCalcTableRowId("row:south".to_string()));
+        row_insert.row_membership_version = "row-membership:v2".to_string();
+        row_insert.row_order_version = "row-order:v2".to_string();
+        exercise(TreeCalcTableUpdateScenarioKind::RowInsert, Some(row_insert));
+
+        let mut row_delete = baseline_snapshot.clone();
+        row_delete.rows.pop();
+        row_delete.row_membership_version = "row-membership:v3".to_string();
+        row_delete.row_order_version = "row-order:v3".to_string();
+        exercise(TreeCalcTableUpdateScenarioKind::RowDelete, Some(row_delete));
+
+        let mut row_reorder = baseline_snapshot.clone();
+        row_reorder.rows.reverse();
+        row_reorder.row_order_version = "row-order:v4".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::RowReorder,
+            Some(row_reorder),
+        );
+
+        let mut column_insert = baseline_snapshot.clone();
+        column_insert.columns.push(TreeCalcTableColumnSnapshot {
+            column_id: "col:discount".to_string(),
+            column_name: "Discount".to_string(),
+            ordinal: 4,
+            body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+            totals_metadata: None,
+        });
+        column_insert.column_identity_version = "columns:v2".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::ColumnInsert,
+            Some(column_insert),
+        );
+
+        let mut column_delete = baseline_snapshot.clone();
+        column_delete
+            .columns
+            .retain(|column| column.column_id != "col:tax");
+        column_delete.column_identity_version = "columns:v3".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::ColumnDelete,
+            Some(column_delete),
+        );
+
+        let mut column_reorder = baseline_snapshot.clone();
+        column_reorder.columns[0].ordinal = 3;
+        column_reorder.columns[2].ordinal = 2;
+        column_reorder.column_identity_version = "columns:v4".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::ColumnReorder,
+            Some(column_reorder),
+        );
+
+        let mut column_rename = baseline_snapshot.clone();
+        column_rename.columns[0].column_name = "GrossAmount".to_string();
+        column_rename.column_identity_version = "columns:v5".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::ColumnRename,
+            Some(column_rename.clone()),
+        );
+        exercise(
+            TreeCalcTableUpdateScenarioKind::HeaderTextEdit,
+            Some(column_rename),
+        );
+
+        let mut totals_toggle = baseline_snapshot.clone();
+        totals_toggle.totals_row_present = false;
+        exercise(
+            TreeCalcTableUpdateScenarioKind::TotalsRowToggle,
+            Some(totals_toggle),
+        );
+
+        let mut totals_formula = baseline_snapshot.clone();
+        totals_formula.columns[0].totals_metadata = Some(TreeCalcTableFormulaMetadata {
+            formula_artifact_id: "formula:totals:amount".to_string(),
+            bind_artifact_id: Some("bind:totals:amount:v2".to_string()),
+            formula_text_version: "v2".to_string(),
+        });
+        exercise(
+            TreeCalcTableUpdateScenarioKind::TotalsFormulaEdit,
+            Some(totals_formula),
+        );
+
+        let mut table_rename = baseline_snapshot.clone();
+        table_rename.table_name = "SalesRenamed".to_string();
+        table_rename.table_namespace_version = "namespace:v2".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::TableRename,
+            Some(table_rename),
+        );
+
+        let mut table_move = baseline_snapshot.clone();
+        table_move.virtual_anchor.start_col = 5;
+        exercise(TreeCalcTableUpdateScenarioKind::TableMove, Some(table_move));
+
+        exercise(TreeCalcTableUpdateScenarioKind::TableDelete, None);
+
+        exercise(
+            TreeCalcTableUpdateScenarioKind::SaveReopen,
+            Some(baseline_snapshot.clone()),
+        );
+
+        let mut structural_rebind = baseline_snapshot;
+        structural_rebind.canonical_path = "Root/Archive/SalesTable".to_string();
+        structural_rebind.table_namespace_version = "namespace:v3".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::StructuralRebind,
+            Some(structural_rebind),
+        );
+    }
+
+    #[test]
+    fn table_lifecycle_callback_contract_reports_versions_handles_and_invalidations() {
+        let owner = TreeNodeId(30);
+        let baseline_snapshot = runtime_treecalc_table_snapshot();
+        let baseline = project_treecalc_table_node_snapshot(&baseline_snapshot).unwrap();
+        let before_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &baseline_snapshot,
+            &baseline,
+        );
+
+        let mut row_reorder = baseline_snapshot.clone();
+        row_reorder.rows.reverse();
+        row_reorder.row_order_version = "row-order:v4".to_string();
+        let row_reorder_projection = project_treecalc_table_node_snapshot(&row_reorder).unwrap();
+        let after_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &row_reorder,
+            &row_reorder_projection,
+        );
+
+        let report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(TreeCalcTableLifecycleEventKind::RowReorder)
+                .with_before(before_state.clone())
+                .with_after(after_state.clone())
+                .with_owner_nodes([owner])
+                .with_source_reference_handles(["structured-ref:amount"])
+                .with_changed_rows([
+                    TreeCalcTableRowId("row:east".to_string()),
+                    TreeCalcTableRowId("row:west".to_string()),
+                ]),
+        );
+
+        assert!(report.diagnostics.is_empty());
+        assert_eq!(
+            report.event_kind,
+            TreeCalcTableLifecycleEventKind::RowReorder
+        );
+        assert_eq!(
+            report.before_state.as_ref().unwrap().table_node_id,
+            TreeNodeId(20)
+        );
+        assert_eq!(
+            report.after_state.as_ref().unwrap().row_order_version,
+            "row-order:v4"
+        );
+        assert_eq!(report.source_reference_handles, ["structured-ref:amount"]);
+        assert!(report.changed_row_ids.iter().any(|row| row.0 == "row:east"));
+        assert!(
+            report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableRowOrder)
+        );
+        assert!(
+            report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableCallerContext)
+        );
+        assert!(
+            report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuredTableRowOrderChanged)
+        );
+        assert!(
+            report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::CallerContextIdentity)
+        );
+        assert!(report.invalidation_seeds.iter().any(|seed| {
+            seed.node_id == owner
+                && seed.reason == InvalidationReasonKind::StructuredTableRowOrderChanged
+        }));
+        assert!(
+            report
+                .callback_identity
+                .starts_with("treecalc.table_lifecycle.callback.v1")
+        );
+        assert_eq!(
+            before_state.table_context_identity,
+            baseline.table_context_identity
+        );
+    }
+
+    #[test]
+    fn table_lifecycle_contract_covers_create_delete_and_stable_id_diagnostics() {
+        let owner = TreeNodeId(30);
+        let baseline_snapshot = runtime_treecalc_table_snapshot();
+        let baseline = project_treecalc_table_node_snapshot(&baseline_snapshot).unwrap();
+        let baseline_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &baseline_snapshot,
+            &baseline,
+        );
+
+        let create_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::TableCreate,
+            )
+            .with_after(baseline_state.clone())
+            .with_owner_nodes([owner])
+            .with_changed_rows(baseline_snapshot.rows.clone())
+            .with_changed_columns(["col:amount", "col:region", "col:tax"]),
+        );
+        assert!(create_report.diagnostics.is_empty());
+        assert!(
+            create_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableIdentity)
+        );
+        assert!(
+            create_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableEnclosingTable)
+        );
+        assert!(
+            create_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyAdded)
+        );
+        assert!(
+            create_report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+        );
+        assert!(
+            create_report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::StructureContextVersion)
+        );
+
+        let delete_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::TableDelete,
+            )
+            .with_before(baseline_state.clone())
+            .with_owner_nodes([owner])
+            .with_source_reference_handles(["structured-ref:amount"]),
+        );
+        assert!(delete_report.diagnostics.is_empty());
+        assert!(
+            delete_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuralRebindRequired)
+        );
+        assert!(
+            delete_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableDataRegion)
+        );
+
+        let mut reopen_with_new_row_order_identity = baseline_state.clone();
+        reopen_with_new_row_order_identity.row_order_identity =
+            "treecalc.table.row_order:reopen-observed".to_string();
+        let save_reopen_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(TreeCalcTableLifecycleEventKind::SaveReopen)
+                .with_before(baseline_state.clone())
+                .with_after(reopen_with_new_row_order_identity)
+                .with_owner_nodes([owner]),
+        );
+        assert!(
+            save_reopen_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableRowOrder)
+        );
+        assert!(
+            save_reopen_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuredTableRowOrderChanged)
+        );
+
+        let mut wrong_id_snapshot = baseline_snapshot;
+        wrong_id_snapshot.table_id = "tree-table:sales-recreated".to_string();
+        let wrong_id_projection = project_treecalc_table_node_snapshot(&wrong_id_snapshot).unwrap();
+        let wrong_id_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &wrong_id_snapshot,
+            &wrong_id_projection,
+        );
+        let wrong_id_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::TableRename,
+            )
+            .with_before(baseline_state.clone())
+            .with_after(wrong_id_state)
+            .with_owner_nodes([owner]),
+        );
+        assert!(wrong_id_report.diagnostics.contains(
+            &TreeCalcTableLifecycleContractDiagnostic::TableIdChangedAcrossLifecycle {
+                before: "tree-table:sales".to_string(),
+                after: "tree-table:sales-recreated".to_string(),
+            }
+        ));
+
+        let malformed_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(TreeCalcTableLifecycleEventKind::TableMove)
+                .with_before(baseline_state),
+        );
+        assert!(malformed_report.diagnostics.contains(
+            &TreeCalcTableLifecycleContractDiagnostic::MissingAfterState {
+                event_kind: TreeCalcTableLifecycleEventKind::TableMove,
+            }
+        ));
+        assert!(malformed_report.diagnostics.contains(
+            &TreeCalcTableLifecycleContractDiagnostic::MissingOwnerNode {
+                event_kind: TreeCalcTableLifecycleEventKind::TableMove,
+            }
+        ));
     }
 
     #[test]

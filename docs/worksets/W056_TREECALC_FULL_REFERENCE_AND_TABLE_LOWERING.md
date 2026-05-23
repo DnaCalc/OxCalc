@@ -422,6 +422,79 @@ Known counterpart anchors at creation time:
 5. OxReplay `oxreplay-p1w.3` is the current matched TreeCalc/Excel table
    comparison lane consumed by `calc-4vs8.37`.
 
+`calc-4vs8.35` implemented contract:
+
+The table lifecycle boundary is now represented in
+`src/oxcalc-core/src/structured_table.rs` by
+`TreeCalcTableLifecycleCallbackPacket`,
+`TreeCalcTableLifecycleVersionState`,
+`TreeCalcTableLifecycleContextVersions`, and
+`classify_treecalc_table_lifecycle_callback`. This is the OxCalc/DnaTreeCalc
+callback contract for node-associated table state transitions; it is not an
+OxFml table semantic surface.
+
+The callback packet names the lifecycle event, optional before/after version
+states, context versions, owner node ids, source host-reference handles, and
+changed row/column ids. The event set covers table create/delete, body
+value/formula edits, row insert/delete/reorder, column insert/delete/reorder,
+column rename, header text edit, totals toggle/formula edit, table rename/move,
+save/reopen, and structural rebind. Create is after-only, delete is
+before-only, ordinary updates are before/after, and malformed packet shapes emit
+typed diagnostics.
+
+`TreeCalcTableLifecycleVersionState` carries the stable table/node/row/column
+identity inputs DnaTreeCalc and OxCalc must preserve across callbacks:
+`table_node_id`, `table_id`, display/canonical path, virtual workbook and sheet
+scope refs, table range/header/totals/data-region refs, virtual anchor
+identity/token, table context identity, table invalidation identity, table
+namespace identity/version, row membership/order identities and versions, column
+identity/version, stable row ids, and stable column ids.
+`TreeCalcTableLifecycleContextVersions` contributes host namespace, structure
+context, registry snapshot, and resolution-rule identity fragments.
+
+The classifier turns a packet into the OxCalc-owned product facts used by the
+dependency graph and prepared/cache invalidation:
+
+1. changed dependency kinds, including row membership/order, column identity,
+   header text, table regions, caller row context, and structural rebind facts,
+2. invalidation reasons for value changes, row/column/header/totals changes,
+   table rename/move/delete, save/reopen, and structural rebind,
+3. prepared identity inputs for host namespace, structure context, table
+   context, caller context, resolution rule, registry snapshot when relevant,
+   and structural rebind,
+4. invalidation seed identities that keep OxCalc table lifecycle facts
+   correlated to source host-reference handles without exposing TreeCalc
+   semantics to OxFml or OxFunc,
+5. typed diagnostics for missing or unexpected before/after states, missing
+   owner node, and stable table-node/table-id violations.
+
+Executable scope:
+
+1. `table_lifecycle_callback_matrix_covers_full_w056_update_set` exercises the
+   callback packet path for body edits, formula edits, row insert/delete/reorder,
+   column insert/delete/reorder/rename, header edit, totals toggle/formula edit,
+   table rename/move/delete, save/reopen, and structural rebind,
+2. focused structured-table tests cover row-order lifecycle invalidation,
+   create/delete lifecycle packet shape, source host-reference handle
+   preservation, changed row/column ids, prepared identity inputs, invalidation
+   seed generation, callback identity, and stable-id diagnostics,
+3. save/reopen is part of the event and scenario set; the engine-side
+   classifier can leave readers stable when no table version/input changed,
+   while still carrying host namespace, structure context, registry snapshot,
+   and resolution-rule context-version identity for retained replay and
+   prepared/cache invalidation,
+4. DnaTreeCalc counterpart work remains anchored under `dtc-z0i.5` and its
+   successor residuals: DnaTreeCalc must call this packet boundary from the real
+   table product lifecycle rather than adding local formula parsing or private
+   table invalidation semantics.
+
+Non-claim:
+
+This contract completes the OxCalc side of the table lifecycle callback/version
+policy for W056. It does not by itself promote the full table topic: function
+breadth remains under `calc-4vs8.36`, retained matched replay/value-wire intake
+under `calc-4vs8.37`, and final product promotion under `calc-4vs8.38`.
+
 Promotion rule:
 
 The second-pass table beads may promote the table topic only if the architecture

@@ -266,9 +266,13 @@ OxReplay.
 
 That closes the `calc-4vs8.29` Excel update-oracle intake blocker. The final
 `calc-4vs8.26` audit no longer depends on missing retained Excel update breadth;
-it must now decide the table-scope closure claim against the remaining shared
-value-wire/matched-scenario limitations without treating those limitations as
-TreeCalc table semantics.
+OxReplay commit `7e21a6f` closes `oxreplay-p1w.3` with matched TreeCalc/Excel
+table diff/explain evidence under
+`../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/` and
+`../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.
+The residual shared `comparison_value` helper replacement remains
+`BLK-REPLAY-003`, but it is a final shared-value implementation cleanup rather
+than a TreeCalc table semantic or matched-scenario closure blocker.
 
 The architecture rule for all of these beads is strict: OxCalc/DnaTreeCalc own
 TreeCalc table meaning and structural identity; OxFml owns generic structured
@@ -329,6 +333,14 @@ Evidence:
    `../OxReplay/docs/test-runs/oxxlplay-seam-xlplay_table_update_oracle_001-baseline/`
    and admits `table_update_oracle` as opaque exact JSON through
    `table_update_oracle_json_exact`.
+6. OxReplay closes matched TreeCalc/Excel table comparison mechanics at
+   `../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/`
+   with retained diff/explain baselines at
+   `../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.
+   The retained diff is equivalent across `comparison_value`,
+   `effective_display_text`, `execution_outcome`, `table_slice`,
+   `table_update_oracle`, `dependency_evidence`, `invalidation_evidence`, and
+   `retained_artifact_ref`.
 
 Known exclusions and non-table residuals:
 
@@ -342,10 +354,10 @@ Known exclusions and non-table residuals:
    model state.
 3. OxXlPlay retains `table_move` as typed unavailability for this oracle slice.
    OxCalc owns TreeCalc table move/rebind semantics and tests them locally.
-4. OxReplay `oxreplay-p1w.3` remains open for matched TreeCalc/Excel scenario
-   mapping and the shared top-level `comparison_value` wire helper/exclusion.
-   That is a shared value-replay seam, not TreeCalc table parsing, lowering,
-   dependency, or invalidation behavior.
+4. OxReplay `oxreplay-p1w.3` is closed for matched TreeCalc/Excel table
+   comparison mechanics. The remaining `BLK-REPLAY-003` shared
+   `comparison_value` helper replacement is a value-wire implementation cleanup,
+   not TreeCalc table parsing, lowering, dependency, or invalidation behavior.
 
 Formal status:
 
@@ -378,10 +390,10 @@ Additional W056 beads:
    evidence for range/table-consuming functions through opaque sparse
    references, with typed exclusions where a function needs richer host context.
 4. `calc-4vs8.37` — matched TreeCalc/Excel table replay and value-wire intake.
-   This consumes OxReplay matched-scenario evidence, shared `comparison_value`
-   envelope admission or typed exclusion, `execution_outcome` class identity,
-   and table diff/explain baselines without parsing private TreeCalc or Excel
-   strings.
+   This consumes OxReplay matched-scenario evidence, local `comparison_value`
+   comparator evidence with the shared-helper replacement retained as
+   `BLK-REPLAY-003`, `execution_outcome` class identity, and table
+   diff/explain baselines without parsing private TreeCalc or Excel strings.
 5. `calc-4vs8.38` — final table-topic product promotion audit. This promotes
    table support only after the first slice plus the second-pass table beads
    have evidence, repo-local checks, fresh-eyes review, and explicit exclusions.
@@ -419,7 +431,7 @@ Known counterpart anchors at creation time:
 4. OxXlPlay `oxxlplay-4nd` remains the support parent for WorkbookConstructionSpec,
    table observation, and update-oracle evidence after its first children
    supplied retained table fixtures.
-5. OxReplay `oxreplay-p1w.3` is the current matched TreeCalc/Excel table
+5. OxReplay `oxreplay-p1w.3` is the closed matched TreeCalc/Excel table
    comparison lane consumed by `calc-4vs8.37`.
 
 `calc-4vs8.35` implemented contract:
@@ -550,6 +562,50 @@ This closes OxCalc's W056 function-breadth intake and coordination contract. It
 does not close OxFunc W093 implementation for the pending groups, dynamic-array
 spill semantics, row-hidden/filter context, metadata disclosure policy, native
 CALL policy, or final table promotion.
+
+`calc-4vs8.37` implemented intake:
+
+OxCalc now consumes OxReplay commit `7e21a6f`, which closes `oxreplay-p1w.3`
+for the matched TreeCalc/Excel table comparison scope. The retained matched
+bundle lives at
+`../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/`, with
+regenerated diff/explain baselines at
+`../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.
+
+Consumed replay families:
+
+1. `comparison_value`: equivalent through OxReplay's local typed comparator
+   seam for the retained scalar value (`6` versus `6.0`). The final replacement
+   with an OxFunc-owned replay-wire helper remains `BLK-REPLAY-003` and is not
+   treated as TreeCalc table semantics.
+2. `effective_display_text`: equivalent retained display text (`$6.00`) without
+   widening OxCalc display policy.
+3. `execution_outcome`: equivalent typed accepted/evaluation outcome with
+   `class_id = accepted:value`.
+4. `table_slice`: exact retained table slice comparison over declared payloads;
+   OxReplay does not parse TreeCalc structured-reference text or Excel formulas.
+5. `table_update_oracle`: exact opaque retained oracle payload comparison
+   through `table_update_oracle_json_exact`.
+6. `dependency_evidence` and `invalidation_evidence`: explicit typed
+   non-comparable/observation-limit lanes where Excel COM does not publish the
+   internal graph or invalidation event order. OxCalc keeps ownership of
+   TreeCalc dependency and invalidation facts.
+7. `retained_artifact_ref`: exact retained artifact reference comparison tying
+   the matched replay to the DnaTreeCalc producer, OxXlPlay oracle, and
+   OxReplay intake baselines.
+
+The retained `diff.json` reports `equivalent: true` with no mismatches; the
+retained `explain.json` reports equivalent scenarios. This closes the OxCalc
+side of the matched replay/value-wire intake for `calc-4vs8.37` without
+creating a private adapter bridge or moving replay comparison policy into
+OxCalc runtime semantics.
+
+Non-claim:
+
+This closes the matched table replay/evidence intake only. It does not close
+the final table-topic promotion audit (`calc-4vs8.38`), the OxFunc-owned
+shared value helper replacement, or the remaining non-table W056 reference
+spine.
 
 Promotion rule:
 
@@ -1366,11 +1422,11 @@ LiveOxCalc/OxCalc (`e59c6f1`, `a5f7b65`, `b59b2fb`, `8eba3cb`), OxXlPlay
 produced retained Excel table observation/update artifacts (`6c0f53e`,
 `8176223`, `c3a4c88`), and OxReplay recorded retained-artifact intake,
 comparison-policy, and refreshed update-oracle evidence (`a195815`, `b341f8b`,
-`e6de7a4`, `c387bc9`, `9e4c503`, `16791fb`). The audit filed and then consumed
-`calc-4vs8.27`, `calc-4vs8.28`, and `calc-4vs8.29`; final table closure now
-depends on the audit verdict itself, including whether the remaining shared
-`comparison_value` wire limitation is outside table semantics or a closure
-blocker.
+`e6de7a4`, `c387bc9`, `9e4c503`, `16791fb`, `7e21a6f`). The audit filed and
+then consumed `calc-4vs8.27`, `calc-4vs8.28`, `calc-4vs8.29`, and
+`calc-4vs8.37`; final table closure now depends on the audit verdict itself.
+The remaining shared `comparison_value` helper replacement is tracked as
+`BLK-REPLAY-003` outside TreeCalc table semantics.
 `calc-4vs8.31` adds focused Rust coverage for reference literal arrays and
 dynamic carrier intake: `ReferenceLiteralArrayV1` lowers to membership and
 member-value descriptors while preserving authored order and duplicates,

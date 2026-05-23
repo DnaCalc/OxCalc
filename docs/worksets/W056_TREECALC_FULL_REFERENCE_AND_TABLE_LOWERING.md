@@ -290,6 +290,31 @@ OxXlPlay Excel observation, OxReplay retained comparison, and final table seam
 audit remain in `calc-4vs8.24` through `calc-4vs8.26` and their cross-repo
 counterparts.
 
+Implementation note for `calc-4vs8.24`: OxCalc now has the first executable
+row-context runtime surface for TreeCalc table formulas in
+`src/oxcalc-core/src/structured_table.rs`.
+`evaluate_treecalc_table_column_formula_rows` evaluates one authored formula
+text per data row by supplying OxFml with the generic virtual table catalog,
+enclosing table ref, and row-specific `caller_table_region`. It uses the
+`TreeCalcTableSparseReader` from `calc-4vs8.23` to build sparse reference
+bindings and current-row scalar cell bindings, then invokes OxFml/OxFunc
+without asking DnaTreeCalc to emulate `#This Row` semantics. The runtime report
+records row id, row offset, primary virtual locus, caller-context identity,
+prepared formula key, dispatch skeleton key, registry snapshot identity,
+host formula context, and structured-reference bind handles for each row.
+
+`evaluate_treecalc_table_totals_formula` covers the first totals-row formula
+path by using the totals virtual locus and a generic totals caller region.
+Explicit table column aggregates such as `SUM(path[Col])` flow through the same
+sparse `ReferenceLike` carrier path. Current-row references in the totals
+region are typed rejects rather than silently coerced to a data row.
+
+This is row-context formula runtime for the declared table-formula slice, not
+full table closure. It does not yet perform dependency/invalidation scenario
+closure for row/column/header/totals edits, retained DnaTreeCalc corpus
+activation, or OxReplay/OxXlPlay comparison; those remain in `calc-4vs8.25`
+and `calc-4vs8.26`.
+
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
 The third W056 tranche adds the first OxCalc-owned typed projection over the

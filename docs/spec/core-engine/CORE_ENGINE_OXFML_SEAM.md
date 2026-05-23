@@ -305,6 +305,14 @@ single cell. The seam must preserve that carrier without introducing
 TreeCalc-specific `EvalValue` variants, without making OxFml parse TreeCalc
 paths, and without making OxFunc inspect TreeCalc table selectors.
 
+For table column formulas, OxCalc supplies the same authored formula text to
+OxFml once per row with a row-specific generic `caller_table_region` and
+caller-context identity. OxFml owns the structured-reference row-context
+binding; DnaTreeCalc does not calculate `#This Row` locally. OxCalc owns the
+table row/column values, sparse bindings, virtual primary locus, and
+invalidation identity. A totals-row formula uses the totals caller region; a
+current-row reference in that region remains a typed reject.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

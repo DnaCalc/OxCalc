@@ -10,15 +10,20 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use oxfml_core::binding::{AreaRef, CellRef, StructuredResolvedRef};
 use oxfml_core::consumer::runtime::{
+    RuntimeEnvironment, RuntimeFormulaRequest, RuntimeHostFormulaContext,
     RuntimeSparseReferenceCell, RuntimeSparseReferenceValuesBinding,
 };
 pub use oxfml_core::interface::{
     TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
 };
 use oxfml_core::{
-    StructuredReferenceBindDiagnosticLink, StructuredReferenceBindRecord,
-    StructuredReferenceSelectedRegion, StructuredSectionKind, syntax::token::TextSpan,
+    EvaluationBackend, StructuredReferenceBindDiagnosticLink, StructuredReferenceBindRecord,
+    StructuredReferenceSelectedRegion, StructuredSectionKind,
+    seam::Locus,
+    source::{FormulaSourceRecord, StructureContextVersion},
+    syntax::token::TextSpan,
 };
+use oxfunc_core::registry::builtin_registry;
 use oxfunc_core::value::{
     ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
 };
@@ -1877,6 +1882,475 @@ impl TreeCalcTableSparseReader {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableFormulaRuntimeContext {
+    pub dialect_id: String,
+    pub capability_profile_id: String,
+    pub resolution_rule_version: String,
+    pub host_namespace_version: Option<String>,
+    pub structure_context_version: String,
+    pub registry_snapshot_identity: Option<String>,
+}
+
+impl Default for TreeCalcTableFormulaRuntimeContext {
+    fn default() -> Self {
+        Self {
+            dialect_id: "oxcalc.treecalc-v1".to_string(),
+            capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            host_namespace_version: Some("treecalc-host-namespace:v1".to_string()),
+            structure_context_version: "treecalc-structure:v1".to_string(),
+            registry_snapshot_identity: Some(builtin_registry().snapshot_identity().stable_key()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcTableColumnFormulaRuntimeRequest {
+    pub target_column_id: String,
+    pub formula_stable_id: String,
+    pub formula_text_version: u64,
+    pub formula_text: String,
+    pub values: Vec<TreeCalcTableSparseValue>,
+    pub runtime_context: TreeCalcTableFormulaRuntimeContext,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcTableFormulaRuntimeReport {
+    pub table_id: String,
+    pub target_column_id: String,
+    pub formula_stable_id: String,
+    pub formula_text_version: u64,
+    pub formula_text: String,
+    pub table_context_identity: String,
+    pub cell_results: Vec<TreeCalcTableFormulaRuntimeCellResult>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcTableFormulaRuntimeCellResult {
+    pub row_id: Option<TreeCalcTableRowId>,
+    pub row_offset: Option<u32>,
+    pub region_kind: TableRegionKind,
+    pub caller_context_id: String,
+    pub primary_locus: Locus,
+    pub value: EvalValue,
+    pub prepared_formula_key: String,
+    pub dispatch_skeleton_key: String,
+    pub plan_template_key: String,
+    pub registry_snapshot_identity: Option<String>,
+    pub host_formula_context: RuntimeHostFormulaContext,
+    pub structured_reference_handles: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TreeCalcTableFormulaRuntimeError {
+    ProjectionSnapshotMismatch {
+        projection_table_id: String,
+        snapshot_table_id: String,
+    },
+    MissingTargetColumn {
+        column_id: String,
+    },
+    TargetColumnBodyNotFormula {
+        column_id: String,
+    },
+    TargetColumnTotalsNotFormula {
+        column_id: String,
+    },
+    MissingTargetColumnRange {
+        column_id: String,
+    },
+    InvalidTargetColumnRange {
+        column_id: String,
+        range_ref: String,
+    },
+    TotalsRowAbsent,
+    PrebindDiagnostics {
+        row_id: Option<TreeCalcTableRowId>,
+        diagnostics: Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+    },
+    SparseReader {
+        row_id: Option<TreeCalcTableRowId>,
+        error: TreeCalcTableSparseReaderError,
+    },
+    RuntimeExecution {
+        row_id: Option<TreeCalcTableRowId>,
+        detail: String,
+    },
+    RuntimeDiagnostics {
+        row_id: Option<TreeCalcTableRowId>,
+        syntax_count: usize,
+        bind_count: usize,
+    },
+}
+
+pub fn evaluate_treecalc_table_column_formula_rows(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+) -> Result<TreeCalcTableFormulaRuntimeReport, TreeCalcTableFormulaRuntimeError> {
+    ensure_formula_projection_matches_snapshot(snapshot, projection)?;
+    ensure_body_formula_column(snapshot, &request.target_column_id)?;
+
+    let cell_results = snapshot
+        .rows
+        .iter()
+        .enumerate()
+        .map(|(row_index, row_id)| {
+            let row_offset = u32::try_from(row_index).map_err(|_| {
+                TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+                    column_id: request.target_column_id.clone(),
+                    range_ref: "row offset overflow".to_string(),
+                }
+            })?;
+            evaluate_treecalc_table_formula_at_region(
+                snapshot,
+                projection,
+                request,
+                TreeCalcTableFormulaRuntimeRegion::Data {
+                    row_id: row_id.clone(),
+                    row_offset,
+                },
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(TreeCalcTableFormulaRuntimeReport {
+        table_id: projection.table_id.clone(),
+        target_column_id: request.target_column_id.clone(),
+        formula_stable_id: request.formula_stable_id.clone(),
+        formula_text_version: request.formula_text_version,
+        formula_text: request.formula_text.clone(),
+        table_context_identity: projection.table_context_identity.clone(),
+        cell_results,
+    })
+}
+
+pub fn evaluate_treecalc_table_totals_formula(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+) -> Result<TreeCalcTableFormulaRuntimeCellResult, TreeCalcTableFormulaRuntimeError> {
+    ensure_formula_projection_matches_snapshot(snapshot, projection)?;
+    ensure_totals_formula_column(snapshot, &request.target_column_id)?;
+    if !snapshot.totals_row_present {
+        return Err(TreeCalcTableFormulaRuntimeError::TotalsRowAbsent);
+    }
+    evaluate_treecalc_table_formula_at_region(
+        snapshot,
+        projection,
+        request,
+        TreeCalcTableFormulaRuntimeRegion::Totals,
+    )
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TreeCalcTableFormulaRuntimeRegion {
+    Data {
+        row_id: TreeCalcTableRowId,
+        row_offset: u32,
+    },
+    Totals,
+}
+
+impl TreeCalcTableFormulaRuntimeRegion {
+    fn row_id(&self) -> Option<TreeCalcTableRowId> {
+        match self {
+            Self::Data { row_id, .. } => Some(row_id.clone()),
+            Self::Totals => None,
+        }
+    }
+
+    fn row_offset(&self) -> Option<u32> {
+        match self {
+            Self::Data { row_offset, .. } => Some(*row_offset),
+            Self::Totals => None,
+        }
+    }
+
+    fn region_kind(&self) -> TableRegionKind {
+        match self {
+            Self::Data { .. } => TableRegionKind::Data,
+            Self::Totals => TableRegionKind::Totals,
+        }
+    }
+
+    fn caller_region(&self, table_id: &str) -> TableCallerRegion {
+        TableCallerRegion {
+            table_id: table_id.to_string(),
+            region_kind: self.region_kind(),
+            data_row_offset: self.row_offset(),
+        }
+    }
+}
+
+fn ensure_formula_projection_matches_snapshot(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+) -> Result<(), TreeCalcTableFormulaRuntimeError> {
+    if projection.table_id == snapshot.table_id {
+        Ok(())
+    } else {
+        Err(
+            TreeCalcTableFormulaRuntimeError::ProjectionSnapshotMismatch {
+                projection_table_id: projection.table_id.clone(),
+                snapshot_table_id: snapshot.table_id.clone(),
+            },
+        )
+    }
+}
+
+fn ensure_body_formula_column(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    column_id: &str,
+) -> Result<(), TreeCalcTableFormulaRuntimeError> {
+    let column = snapshot
+        .columns
+        .iter()
+        .find(|column| column.column_id == column_id)
+        .ok_or_else(|| TreeCalcTableFormulaRuntimeError::MissingTargetColumn {
+            column_id: column_id.to_string(),
+        })?;
+    match column.body_metadata {
+        TreeCalcTableColumnBodyMetadata::Formula(_) => Ok(()),
+        TreeCalcTableColumnBodyMetadata::ConstantCells => Err(
+            TreeCalcTableFormulaRuntimeError::TargetColumnBodyNotFormula {
+                column_id: column_id.to_string(),
+            },
+        ),
+    }
+}
+
+fn ensure_totals_formula_column(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    column_id: &str,
+) -> Result<(), TreeCalcTableFormulaRuntimeError> {
+    let column = snapshot
+        .columns
+        .iter()
+        .find(|column| column.column_id == column_id)
+        .ok_or_else(|| TreeCalcTableFormulaRuntimeError::MissingTargetColumn {
+            column_id: column_id.to_string(),
+        })?;
+    if column.totals_metadata.is_some() {
+        Ok(())
+    } else {
+        Err(
+            TreeCalcTableFormulaRuntimeError::TargetColumnTotalsNotFormula {
+                column_id: column_id.to_string(),
+            },
+        )
+    }
+}
+
+fn evaluate_treecalc_table_formula_at_region(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+    region: TreeCalcTableFormulaRuntimeRegion,
+) -> Result<TreeCalcTableFormulaRuntimeCellResult, TreeCalcTableFormulaRuntimeError> {
+    let caller_region = region.caller_region(&projection.table_id);
+    let row_id = region.row_id();
+    let primary_locus =
+        treecalc_table_formula_primary_locus(projection, &request.target_column_id, &region)?;
+    let prebound = prebind_treecalc_table_structured_references(
+        &request.formula_text,
+        std::slice::from_ref(projection),
+        Some(TableRef {
+            table_id: projection.table_id.clone(),
+        }),
+        Some(caller_region.clone()),
+    );
+    let diagnostics = prebound
+        .iter()
+        .flat_map(|prebind| prebind.diagnostics.clone())
+        .collect::<Vec<_>>();
+    if !diagnostics.is_empty() {
+        return Err(TreeCalcTableFormulaRuntimeError::PrebindDiagnostics {
+            row_id,
+            diagnostics,
+        });
+    }
+
+    let mut scalar_cell_values = BTreeMap::new();
+    let mut sparse_reference_value_bindings = Vec::new();
+    for prebind in &prebound {
+        let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+            snapshot,
+            projection,
+            &prebind.bind_record,
+            Some(&caller_region),
+            request.values.clone(),
+        )
+        .map_err(|error| TreeCalcTableFormulaRuntimeError::SparseReader {
+            row_id: row_id.clone(),
+            error,
+        })?;
+        let runtime_binding = reader.runtime_binding();
+        scalar_cell_values.extend(runtime_binding.scalar_cell_values);
+        sparse_reference_value_bindings.push(runtime_binding.sparse_reference_values);
+    }
+
+    let caller_context_id =
+        treecalc_table_formula_caller_context_id(projection, &request.target_column_id, &region);
+    let host_formula_context = RuntimeHostFormulaContext {
+        dialect_id: request.runtime_context.dialect_id.clone(),
+        capability_profile_id: request.runtime_context.capability_profile_id.clone(),
+        resolution_rule_version: request.runtime_context.resolution_rule_version.clone(),
+        host_namespace_version: request.runtime_context.host_namespace_version.clone(),
+        registry_snapshot_identity: request.runtime_context.registry_snapshot_identity.clone(),
+        structure_context_version: Some(request.runtime_context.structure_context_version.clone()),
+        caller_context_identity: Some(caller_context_id.clone()),
+        table_context_identity: Some(projection.table_context_identity.clone()),
+    };
+    let result = RuntimeEnvironment::new()
+        .with_structure_context_version(StructureContextVersion(
+            request.runtime_context.structure_context_version.clone(),
+        ))
+        .with_primary_locus(primary_locus.clone())
+        .with_caller_position(primary_locus.row, primary_locus.col)
+        .with_table_context(
+            vec![projection.table_descriptor.clone()],
+            Some(TableRef {
+                table_id: projection.table_id.clone(),
+            }),
+            Some(caller_region),
+        )
+        .with_host_formula_context(host_formula_context.clone())
+        .with_cell_values(scalar_cell_values)
+        .with_sparse_reference_value_bindings(sparse_reference_value_bindings)
+        .with_function_registry(builtin_registry())
+        .execute(
+            RuntimeFormulaRequest::new(
+                FormulaSourceRecord::new(
+                    request.formula_stable_id.clone(),
+                    request.formula_text_version,
+                    request.formula_text.clone(),
+                ),
+                oxfml_core::interface::TypedContextQueryBundle::default(),
+            )
+            .with_backend(EvaluationBackend::OxFuncBacked),
+        )
+        .map_err(
+            |detail| TreeCalcTableFormulaRuntimeError::RuntimeExecution {
+                row_id: row_id.clone(),
+                detail,
+            },
+        )?;
+    if !result.syntax_diagnostics.is_empty() || !result.bind_diagnostics.is_empty() {
+        return Err(TreeCalcTableFormulaRuntimeError::RuntimeDiagnostics {
+            row_id,
+            syntax_count: result.syntax_diagnostics.len(),
+            bind_count: result.bind_diagnostics.len(),
+        });
+    }
+
+    Ok(TreeCalcTableFormulaRuntimeCellResult {
+        row_id,
+        row_offset: region.row_offset(),
+        region_kind: region.region_kind(),
+        caller_context_id,
+        primary_locus,
+        value: result.evaluation.oxfunc_value,
+        prepared_formula_key: result.prepared_formula_identity.prepared_formula_key,
+        dispatch_skeleton_key: result
+            .prepared_formula_identity
+            .plan_template
+            .dispatch_skeleton_key,
+        plan_template_key: result
+            .prepared_formula_identity
+            .plan_template
+            .plan_template_key,
+        registry_snapshot_identity: result.prepared_formula_identity.registry_snapshot_identity,
+        host_formula_context,
+        structured_reference_handles: result
+            .structured_reference_bind_records
+            .into_iter()
+            .map(|record| record.bind_record_handle)
+            .collect(),
+    })
+}
+
+fn treecalc_table_formula_primary_locus(
+    projection: &TreeCalcTableNodeProjection,
+    target_column_id: &str,
+    region: &TreeCalcTableFormulaRuntimeRegion,
+) -> Result<Locus, TreeCalcTableFormulaRuntimeError> {
+    let column = projection
+        .table_descriptor
+        .columns
+        .iter()
+        .find(|column| column.column_id == target_column_id)
+        .ok_or_else(|| TreeCalcTableFormulaRuntimeError::MissingTargetColumn {
+            column_id: target_column_id.to_string(),
+        })?;
+    let column_range = parse_local_a1_range(&column.column_range_ref).ok_or_else(|| {
+        TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+            column_id: target_column_id.to_string(),
+            range_ref: column.column_range_ref.clone(),
+        }
+    })?;
+    let row = match region {
+        TreeCalcTableFormulaRuntimeRegion::Data { row_offset, .. } => column_range
+            .top_row
+            .checked_add(*row_offset)
+            .ok_or_else(
+                || TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+                    column_id: target_column_id.to_string(),
+                    range_ref: column.column_range_ref.clone(),
+                },
+            )?,
+        TreeCalcTableFormulaRuntimeRegion::Totals => table_totals_row(&projection.table_descriptor)
+            .map_err(
+                |_| TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+                    column_id: target_column_id.to_string(),
+                    range_ref: projection
+                        .table_descriptor
+                        .totals_region_ref
+                        .clone()
+                        .unwrap_or_default(),
+                },
+            )?
+            .ok_or(TreeCalcTableFormulaRuntimeError::TotalsRowAbsent)?,
+    };
+    Ok(Locus {
+        sheet_id: projection.table_descriptor.sheet_scope_ref.clone(),
+        row,
+        col: column_range.left_col,
+    })
+}
+
+fn treecalc_table_formula_caller_context_id(
+    projection: &TreeCalcTableNodeProjection,
+    target_column_id: &str,
+    region: &TreeCalcTableFormulaRuntimeRegion,
+) -> String {
+    match region {
+        TreeCalcTableFormulaRuntimeRegion::Data { row_id, row_offset } => identity_record(
+            "treecalc.table_formula_caller.v1",
+            [
+                ("table_id", projection.table_id.clone()),
+                ("target_column_id", target_column_id.to_string()),
+                ("row_order", projection.row_order_identity.clone()),
+                ("table_context", projection.table_context_identity.clone()),
+                ("region", "data".to_string()),
+                ("row_id", row_id.0.clone()),
+                ("row_offset", row_offset.to_string()),
+            ],
+        ),
+        TreeCalcTableFormulaRuntimeRegion::Totals => identity_record(
+            "treecalc.table_formula_caller.v1",
+            [
+                ("table_id", projection.table_id.clone()),
+                ("target_column_id", target_column_id.to_string()),
+                ("row_order", projection.row_order_identity.clone()),
+                ("table_context", projection.table_context_identity.clone()),
+                ("region", "totals".to_string()),
+            ],
+        ),
+    }
+}
+
 impl SparseRangeReader for TreeCalcTableSparseReader {
     fn reader_identity(&self) -> &SparseReaderIdentity {
         &self.identity
@@ -2376,7 +2850,6 @@ impl StructuredTableReferenceIntake {
             selected_column_ids: record.selected_column_ids.clone(),
             selected_regions,
             uses_this_row: record.uses_this_row
-                || record.caller_context_dependent
                 || record
                     .selected_sections
                     .contains(&StructuredSectionKind::ThisRow),
@@ -3203,7 +3676,7 @@ fn table_context_identity(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use oxfml_core::{
         EvaluationBackend, StructuredReferenceBindDiagnosticLink,
@@ -4033,6 +4506,203 @@ mod tests {
         );
     }
 
+    #[test]
+    fn table_column_formula_runtime_evaluates_same_text_per_data_row() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: "col:tax".to_string(),
+            formula_stable_id: "formula:body:tax".to_string(),
+            formula_text_version: 1,
+            formula_text: "=[@Amount]/10".to_string(),
+            values: table_formula_amount_values(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+
+        let report = evaluate_treecalc_table_column_formula_rows(&snapshot, &projection, &request)
+            .expect("table body formula rows should evaluate");
+
+        assert_eq!(report.cell_results.len(), 3);
+        assert_eq!(
+            report
+                .cell_results
+                .iter()
+                .map(|cell| cell.value.clone())
+                .collect::<Vec<_>>(),
+            vec![
+                EvalValue::Number(1.0),
+                EvalValue::Number(2.0),
+                EvalValue::Number(3.0)
+            ]
+        );
+        assert_eq!(report.formula_stable_id, "formula:body:tax");
+        assert_eq!(report.formula_text, "=[@Amount]/10");
+        assert_eq!(
+            report.table_context_identity,
+            projection.table_context_identity
+        );
+        assert_eq!(
+            report
+                .cell_results
+                .iter()
+                .map(|cell| cell.primary_locus.clone())
+                .collect::<Vec<_>>(),
+            vec![
+                Locus {
+                    sheet_id: "sheet:default".to_string(),
+                    row: 4,
+                    col: 4,
+                },
+                Locus {
+                    sheet_id: "sheet:default".to_string(),
+                    row: 5,
+                    col: 4,
+                },
+                Locus {
+                    sheet_id: "sheet:default".to_string(),
+                    row: 6,
+                    col: 4,
+                },
+            ]
+        );
+
+        let prepared_keys = report
+            .cell_results
+            .iter()
+            .map(|cell| cell.prepared_formula_key.as_str())
+            .collect::<BTreeSet<_>>();
+        let dispatch_keys = report
+            .cell_results
+            .iter()
+            .map(|cell| cell.dispatch_skeleton_key.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            prepared_keys.len(),
+            3,
+            "caller row context must invalidate per-row prepared identity"
+        );
+        assert_eq!(
+            dispatch_keys.len(),
+            1,
+            "the same formula text should keep a reusable dispatch skeleton"
+        );
+        for cell in &report.cell_results {
+            assert_eq!(cell.host_formula_context.dialect_id, "oxcalc.treecalc-v1");
+            assert_eq!(
+                cell.host_formula_context.capability_profile_id,
+                "host-capabilities:treecalc-v1"
+            );
+            assert_eq!(
+                cell.host_formula_context.resolution_rule_version,
+                "treecalc-host-resolution:v1"
+            );
+            assert_eq!(
+                cell.host_formula_context.table_context_identity.as_deref(),
+                Some(report.table_context_identity.as_str())
+            );
+            assert_eq!(
+                cell.host_formula_context.caller_context_identity.as_deref(),
+                Some(cell.caller_context_id.as_str())
+            );
+            assert!(cell.registry_snapshot_identity.is_some());
+            assert_eq!(cell.structured_reference_handles.len(), 1);
+        }
+    }
+
+    #[test]
+    fn table_totals_formula_runtime_uses_sparse_column_reference() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: "col:amount".to_string(),
+            formula_stable_id: "formula:totals:amount".to_string(),
+            formula_text_version: 1,
+            formula_text: "=SUM(SalesTable[Amount])".to_string(),
+            values: table_formula_amount_values(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+
+        let result = evaluate_treecalc_table_totals_formula(&snapshot, &projection, &request)
+            .expect("totals formula should evaluate");
+
+        assert_eq!(result.value, EvalValue::Number(60.0));
+        assert_eq!(result.region_kind, TableRegionKind::Totals);
+        assert_eq!(result.row_id, None);
+        assert_eq!(result.row_offset, None);
+        assert_eq!(
+            result.primary_locus,
+            Locus {
+                sheet_id: "sheet:default".to_string(),
+                row: 7,
+                col: 3,
+            }
+        );
+        assert!(
+            result
+                .host_formula_context
+                .caller_context_identity
+                .as_deref()
+                .is_some_and(|identity| identity.contains("region=6:totals"))
+        );
+        assert_eq!(result.structured_reference_handles.len(), 1);
+    }
+
+    #[test]
+    fn table_totals_formula_runtime_rejects_this_row_outside_data_region() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: "col:amount".to_string(),
+            formula_stable_id: "formula:totals:amount".to_string(),
+            formula_text_version: 1,
+            formula_text: "=[@Amount]".to_string(),
+            values: table_formula_amount_values(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+
+        let error = evaluate_treecalc_table_totals_formula(&snapshot, &projection, &request)
+            .expect_err("current-row reference outside data region should be rejected");
+
+        assert_eq!(
+            error,
+            TreeCalcTableFormulaRuntimeError::SparseReader {
+                row_id: None,
+                error: TreeCalcTableSparseReaderError::CallerRegionNotData {
+                    region_kind: TableRegionKind::Totals
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn table_current_row_reader_requires_caller_context() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let reference = StructuredTableReferenceIntake::explicit_table(
+            "structured-ref:this-row",
+            "tree-table:sales",
+        )
+        .with_selected_columns(["col:amount".to_string()])
+        .with_this_row();
+
+        let error = TreeCalcTableSparseReader::from_reference_intake(
+            &snapshot,
+            &projection,
+            &reference,
+            None,
+            table_formula_amount_values(),
+            "SalesTable[@Amount]",
+            "structured-ref:this-row",
+            None,
+        )
+        .expect_err("current-row sparse reader needs caller context");
+
+        assert_eq!(
+            error,
+            TreeCalcTableSparseReaderError::MissingCallerTableRegion
+        );
+    }
+
     fn amount_column_values() -> Vec<TreeCalcTableSparseValue> {
         vec![
             TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
@@ -4041,6 +4711,14 @@ mod tests {
                 "col:amount",
                 EvalValue::Text(ExcelText::from_interop_assignment("")),
             ),
+        ]
+    }
+
+    fn table_formula_amount_values() -> Vec<TreeCalcTableSparseValue> {
+        vec![
+            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(10.0)),
+            TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(20.0)),
+            TreeCalcTableSparseValue::data("row:north", "col:amount", EvalValue::Number(30.0)),
         ]
     }
 

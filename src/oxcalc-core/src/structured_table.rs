@@ -3930,6 +3930,7 @@ fn lowering_from_facts(
                 .or_else(|| Some(request.reference.reference_handle.clone())),
             owner_node_id: request.owner_node_id,
             target_node_id: None,
+            workspace_target: None,
             kind: fact.kind.descriptor_kind(),
             carrier_detail: fact.identity.clone().unwrap_or_else(|| fact.detail.clone()),
             tree_reference_collection: None,

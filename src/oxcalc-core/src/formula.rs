@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind,
-    TreeReferenceCollectionDependency, TreeReferenceCollectionFamily,
+    TreeReferenceCollectionDependency, TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::structural::{BindArtifactId, FormulaArtifactId, StructuralSnapshot, TreeNodeId};
 
@@ -38,6 +38,14 @@ pub enum TreeReference {
         tail_segments: Vec<String>,
     },
     HostSensitive {
+        carrier_id: String,
+        detail: String,
+    },
+    CrossWorkspaceResolved {
+        workspace_handle: String,
+        target_node_id: TreeNodeId,
+        target_node_handle: String,
+        availability_version: String,
         carrier_id: String,
         detail: String,
     },
@@ -599,6 +607,20 @@ pub struct TreeCalcWorkspaceHostPathBaseResolution {
     pub local_resolution_layer: TreeCalcHostPathBaseResolutionLayer,
     pub availability_packet: TreeCalcCrossWorkspaceAvailabilityPacket,
     pub resolution_identity: String,
+}
+
+impl TreeCalcWorkspaceHostPathBaseResolution {
+    #[must_use]
+    pub fn to_workspace_qualified_reference(&self, carrier_id: impl Into<String>) -> TreeReference {
+        TreeReference::CrossWorkspaceResolved {
+            workspace_handle: self.workspace_handle.clone(),
+            target_node_id: self.base_node_id,
+            target_node_handle: self.base_node_handle.clone(),
+            availability_version: self.availability_packet.availability_version.clone(),
+            carrier_id: carrier_id.into(),
+            detail: self.resolution_identity.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -2605,8 +2627,8 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         },
         TreeReferenceImplementationInput {
             variant: Variant::CrossWorkspaceReference,
-            status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsWorkspaceQualifiedCarrier),
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::HostReferenceHandle,
             namespace_identity_need: Namespace::CrossWorkspaceAvailabilityVersion,
@@ -2616,8 +2638,8 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
                 Invalidates::StructuralRebindRequired,
                 Invalidates::ExternallyInvalidated,
             ],
-            successor_bead: Some("calc-4vs8.30"),
-            evidence_note: "calc-4vs8.30 adds a typed workspace provider/alias resolution packet with availability-version identity; workspace-qualified carriers and receiving-side corpus activation remain W056 evidence work",
+            successor_bead: Some("calc-8tox"),
+            evidence_note: "calc-8tox adds typed workspace-qualified carriers and reverse-edge facts over the calc-4vs8.30 provider/alias packet; receiving-side corpus activation remains W056 evidence work",
         },
         TreeReferenceImplementationInput {
             variant: Variant::RecursiveSelector,
@@ -2905,6 +2927,7 @@ fn lower_reference(
 
     let kind = reference.descriptor_kind();
     let target_node_id = reference.resolve_target(snapshot, binding.owner_node_id);
+    let workspace_target = reference.workspace_target();
     let carrier_detail = reference.carrier_detail();
     let requires_rebind_on_structural_change = reference.requires_rebind_on_structural_change();
 
@@ -2916,6 +2939,7 @@ fn lower_reference(
             .map(|token| format!("oxcalc_source_token:{token}")),
         owner_node_id: binding.owner_node_id,
         target_node_id,
+        workspace_target,
         kind,
         carrier_detail,
         requires_rebind_on_structural_change,
@@ -2944,6 +2968,7 @@ fn lower_reference_collection(
                 source_reference_handle: Some(children.host_ref_handle.clone()),
                 owner_node_id: binding.owner_node_id,
                 target_node_id: None,
+                workspace_target: None,
                 kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
                 carrier_detail: collection_dependency.carrier_detail(),
                 tree_reference_collection: Some(collection_dependency),
@@ -2956,6 +2981,7 @@ fn lower_reference_collection(
                     source_reference_handle: Some(children.host_ref_handle.clone()),
                     owner_node_id: binding.owner_node_id,
                     target_node_id: Some(member_node_id),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
                     carrier_detail: format!(
                         "treecalc_children_v1_member:handle={}:ordinal={member_index}:target={member_node_id}",
@@ -2980,6 +3006,7 @@ fn lower_reference_collection(
                 source_reference_handle: Some(collection.host_ref_handle.clone()),
                 owner_node_id: binding.owner_node_id,
                 target_node_id: None,
+                workspace_target: None,
                 kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
                 carrier_detail: collection_dependency.carrier_detail(),
                 tree_reference_collection: Some(collection_dependency),
@@ -2992,6 +3019,7 @@ fn lower_reference_collection(
                     source_reference_handle: Some(collection.host_ref_handle.clone()),
                     owner_node_id: binding.owner_node_id,
                     target_node_id: Some(member_node_id),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
                     carrier_detail: format!(
                         "treecalc_ordered_selector_v1_member:family={}:handle={}:ordinal={member_index}:target={member_node_id}",
@@ -3064,6 +3092,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => self.record_named_reference(reference),
             TreeReference::Unresolved { .. } => self.record_unresolved_reference(reference),
             TreeReference::HostSensitive { .. } => {
@@ -3093,6 +3122,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => {
                 let _ = self.record_named_reference(reference);
             }
@@ -3197,6 +3227,9 @@ impl TreeReference {
             },
             TreeReference::SiblingOffset { .. } => TreeReferenceInventoryVariant::SiblingOffset,
             TreeReference::HostSensitive { .. } => TreeReferenceInventoryVariant::HostSensitive,
+            TreeReference::CrossWorkspaceResolved { .. } => {
+                TreeReferenceInventoryVariant::CrossWorkspaceReference
+            }
             TreeReference::CapabilitySensitive { .. } => {
                 TreeReferenceInventoryVariant::CapabilitySensitive
             }
@@ -3229,6 +3262,7 @@ impl TreeReference {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. }
             | TreeReference::Unresolved { .. } => TreeReferenceCarrierClass::FormulaReference,
         }
@@ -3274,11 +3308,31 @@ impl TreeReference {
                 })
             }
             TreeReference::HostSensitive { .. }
+            | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::CapabilitySensitive { .. }
             | TreeReference::ShapeTopology { .. }
             | TreeReference::Unresolved { .. } => None,
             TreeReference::DynamicPotential { .. } => None,
             TreeReference::DynamicResolved { target_node_id, .. } => Some(*target_node_id),
+        }
+    }
+
+    #[must_use]
+    pub fn workspace_target(&self) -> Option<WorkspaceQualifiedTarget> {
+        match self {
+            TreeReference::CrossWorkspaceResolved {
+                workspace_handle,
+                target_node_id,
+                target_node_handle,
+                availability_version,
+                ..
+            } => Some(WorkspaceQualifiedTarget {
+                workspace_handle: workspace_handle.clone(),
+                target_node_id: *target_node_id,
+                target_node_handle: target_node_handle.clone(),
+                availability_version: availability_version.clone(),
+            }),
+            _ => None,
         }
     }
 
@@ -3295,6 +3349,7 @@ impl TreeReference {
                 DependencyDescriptorKind::RelativeBound
             }
             TreeReference::HostSensitive { .. } => DependencyDescriptorKind::HostSensitive,
+            TreeReference::CrossWorkspaceResolved { .. } => DependencyDescriptorKind::HostSensitive,
             TreeReference::CapabilitySensitive { .. } => {
                 DependencyDescriptorKind::CapabilitySensitive
             }
@@ -3313,6 +3368,7 @@ impl TreeReference {
             TreeReference::RelativePath { .. }
                 | TreeReference::SiblingOffset { .. }
                 | TreeReference::HostSensitive { .. }
+                | TreeReference::CrossWorkspaceResolved { .. }
                 | TreeReference::CapabilitySensitive { .. }
                 | TreeReference::ShapeTopology { .. }
                 | TreeReference::DynamicResolved { .. }
@@ -3363,6 +3419,16 @@ impl TreeReference {
             TreeReference::HostSensitive { carrier_id, detail } => {
                 format!("host_sensitive:{carrier_id}:{detail}")
             }
+            TreeReference::CrossWorkspaceResolved {
+                workspace_handle,
+                target_node_id,
+                target_node_handle,
+                availability_version,
+                carrier_id,
+                detail,
+            } => format!(
+                "cross_workspace_resolved:{carrier_id}:workspace={workspace_handle};target={target_node_id};target_handle={target_node_handle};availability={availability_version};{detail}"
+            ),
             TreeReference::CapabilitySensitive { carrier_id, detail } => {
                 format!("capability_sensitive:{carrier_id}:{detail}")
             }
@@ -3393,6 +3459,7 @@ mod tests {
         TreeReferenceCollectionFamily,
     };
     use crate::structural::{StructuralNode, StructuralNodeKind, StructuralSnapshotId};
+    use crate::tree_reference_rebind::w056_reference_dependency_surface;
 
     use super::*;
 
@@ -3852,6 +3919,86 @@ mod tests {
             availability_packet
                 .prepared_identity_component()
                 .contains("status=Unavailable")
+        );
+    }
+
+    #[test]
+    fn workspace_qualified_reference_preserves_external_target_identity() {
+        let accounts = snapshot();
+        let projections = projections_snapshot();
+        let mut registry = TreeCalcWorkspaceResolutionRegistry::with_current_workspace(
+            "treecalc-workspace:accounts",
+            &accounts,
+            "treecalc-cross-workspace-availability:v1:accounts:loaded",
+        );
+        registry.add_workspace(
+            "treecalc-workspace:projections",
+            &projections,
+            "treecalc-cross-workspace-availability:v1:projections:loaded",
+        );
+        registry.add_alias("projections", "treecalc-workspace:projections");
+
+        let resolution =
+            resolve_treecalc_workspace_host_path_base(&registry, "[projections]Branch1.MyNode")
+                .expect("cross-workspace base resolution");
+        let reference = resolution.to_workspace_qualified_reference("carrier:xws:projections");
+        assert_eq!(
+            reference.inventory_variant(),
+            TreeReferenceInventoryVariant::CrossWorkspaceReference
+        );
+        assert_eq!(
+            reference.descriptor_kind(),
+            DependencyDescriptorKind::HostSensitive
+        );
+
+        let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:xws".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:xws".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=TREE_REF_4_0",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_4_0",
+                    reference,
+                )],
+            ),
+        }]);
+        let descriptors = catalog.to_dependency_descriptors(&accounts);
+        assert_eq!(descriptors.len(), 1);
+        let descriptor = &descriptors[0];
+        assert_eq!(descriptor.target_node_id, None);
+        let target = descriptor
+            .workspace_target
+            .as_ref()
+            .expect("workspace-qualified target");
+        assert_eq!(target.workspace_handle, "treecalc-workspace:projections");
+        assert_eq!(target.target_node_id, TreeNodeId(102));
+        assert_eq!(
+            target.target_node_handle,
+            "treecalc-workspace:projections#node:102"
+        );
+        assert_eq!(
+            target.availability_version,
+            "treecalc-cross-workspace-availability:v1:projections:loaded"
+        );
+
+        let graph = DependencyGraph::build(&accounts, &descriptors);
+        assert!(graph.diagnostics.is_empty());
+        assert!(graph.reverse_edges.is_empty());
+        let external_edges = graph
+            .workspace_reverse_edges
+            .get("treecalc-workspace:projections#node:102")
+            .expect("workspace reverse edge");
+        assert_eq!(external_edges.len(), 1);
+        assert_eq!(external_edges[0].target, *target);
+
+        let surface = w056_reference_dependency_surface(&graph);
+        assert_eq!(surface.context_reverse_edges.len(), 0);
+        assert_eq!(surface.workspace_target_reverse_edges.len(), 1);
+        assert_eq!(surface.workspace_target_reverse_edges[0].target, *target);
+        assert_eq!(
+            surface.descriptor_facts[0].workspace_target.as_ref(),
+            Some(target)
         );
     }
 
@@ -4456,6 +4603,25 @@ mod tests {
                 .contains(&InvalidationReasonKind::StructuredTableContextChanged)
         );
 
+        let cross_workspace = tree_reference_implementation_input(
+            TreeReferenceInventoryVariant::CrossWorkspaceReference,
+        )
+        .expect("cross-workspace inventory");
+        assert_eq!(cross_workspace.blocker, None);
+        assert_eq!(
+            cross_workspace.status,
+            TreeReferenceInventoryStatus::AdmittedImplementationInput
+        );
+        assert_eq!(
+            cross_workspace.namespace_identity_need,
+            NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion
+        );
+        assert!(
+            cross_workspace
+                .evidence_note
+                .contains("workspace-qualified carriers")
+        );
+
         let bare_name = tree_reference_implementation_input(
             TreeReferenceInventoryVariant::BareNameOrCallableReference,
         )
@@ -4536,6 +4702,22 @@ mod tests {
                 HostReferenceCorrelationNeed::SourceTokenToFormalReference,
                 NamespaceIdentityNeed::HostNamespaceVersion,
                 CallerContextIdentityNeed::SiblingPosition,
+            ),
+            (
+                TreeReference::CrossWorkspaceResolved {
+                    workspace_handle: "treecalc-workspace:projections".to_string(),
+                    target_node_id: TreeNodeId(102),
+                    target_node_handle: "treecalc-workspace:projections#node:102".to_string(),
+                    availability_version:
+                        "treecalc-cross-workspace-availability:v1:projections:loaded".to_string(),
+                    carrier_id: "carrier:xws".to_string(),
+                    detail: "resolved".to_string(),
+                },
+                TreeReferenceInventoryVariant::CrossWorkspaceReference,
+                TreeReferenceInventoryStatus::AdmittedImplementationInput,
+                HostReferenceCorrelationNeed::HostReferenceHandle,
+                NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+                CallerContextIdentityNeed::None,
             ),
             (
                 TreeReference::DynamicPotential {

@@ -413,6 +413,7 @@ mod tests {
             source_reference_handle: None,
             owner_node_id: TreeNodeId(4),
             target_node_id: Some(TreeNodeId(2)),
+            workspace_target: None,
             kind: DependencyDescriptorKind::StaticDirect,
             carrier_detail: "report reads price".to_string(),
             tree_reference_collection: None,

@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationReasonKind,
+    WorkspaceQualifiedTarget,
 };
 use crate::formula::{
     CallerContextIdentityNeed, NamespaceIdentityNeed, TreeReferenceImplementationInput,
@@ -37,6 +38,7 @@ pub struct ReferenceDependencyDescriptorFact {
     pub owner_node_id: TreeNodeId,
     pub source_reference_handle: Option<String>,
     pub target_node_id: Option<TreeNodeId>,
+    pub workspace_target: Option<WorkspaceQualifiedTarget>,
     pub kind: DependencyDescriptorKind,
     pub role: ReferenceDescriptorFactRole,
     pub namespace_identity_need: NamespaceIdentityNeed,
@@ -52,6 +54,16 @@ pub struct ReferenceTargetReverseEdgeFact {
     pub descriptor_id: String,
     pub owner_node_id: TreeNodeId,
     pub target_node_id: TreeNodeId,
+    pub kind: DependencyDescriptorKind,
+    pub source_reference_handle: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReferenceWorkspaceTargetReverseEdgeFact {
+    pub edge_id: String,
+    pub descriptor_id: String,
+    pub owner_node_id: TreeNodeId,
+    pub target: WorkspaceQualifiedTarget,
     pub kind: DependencyDescriptorKind,
     pub source_reference_handle: Option<String>,
 }
@@ -88,6 +100,7 @@ pub struct DynamicRebindFact {
 pub struct W056ReferenceDependencySurface {
     pub descriptor_facts: Vec<ReferenceDependencyDescriptorFact>,
     pub target_reverse_edges: Vec<ReferenceTargetReverseEdgeFact>,
+    pub workspace_target_reverse_edges: Vec<ReferenceWorkspaceTargetReverseEdgeFact>,
     pub context_reverse_edges: Vec<ReferenceContextReverseEdgeFact>,
     pub prepared_identity_facts: Vec<PreparedIdentityInvalidationFact>,
     pub dynamic_rebind_facts: Vec<DynamicRebindFact>,
@@ -144,9 +157,30 @@ pub fn w056_reference_dependency_surface(
         .collect::<Vec<_>>();
     target_reverse_edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
 
+    let mut workspace_target_reverse_edges = graph
+        .workspace_reverse_edges
+        .values()
+        .flatten()
+        .filter_map(|edge| {
+            let descriptor =
+                descriptor_by_id.get(&(edge.owner_node_id, edge.descriptor_id.as_str()))?;
+            Some(ReferenceWorkspaceTargetReverseEdgeFact {
+                edge_id: edge.edge_id.clone(),
+                descriptor_id: edge.descriptor_id.clone(),
+                owner_node_id: edge.owner_node_id,
+                target: edge.target.clone(),
+                kind: edge.kind,
+                source_reference_handle: descriptor.source_reference_handle.clone(),
+            })
+        })
+        .collect::<Vec<_>>();
+    workspace_target_reverse_edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
+
     let mut context_reverse_edges = descriptors
         .iter()
-        .filter(|descriptor| descriptor.target_node_id.is_none())
+        .filter(|descriptor| {
+            descriptor.target_node_id.is_none() && descriptor.workspace_target.is_none()
+        })
         .map(|descriptor| ReferenceContextReverseEdgeFact {
             context_edge_id: format!(
                 "context:{}:{}",
@@ -207,6 +241,7 @@ pub fn w056_reference_dependency_surface(
     W056ReferenceDependencySurface {
         descriptor_facts,
         target_reverse_edges,
+        workspace_target_reverse_edges,
         context_reverse_edges,
         prepared_identity_facts,
         dynamic_rebind_facts,
@@ -220,7 +255,14 @@ pub fn reference_dependency_descriptor_fact(
     descriptor: &DependencyDescriptor,
 ) -> ReferenceDependencyDescriptorFact {
     let (namespace_identity_need, caller_context_identity_need) =
-        descriptor_identity_needs(descriptor.kind);
+        if descriptor.workspace_target.is_some() {
+            (
+                NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+                CallerContextIdentityNeed::None,
+            )
+        } else {
+            descriptor_identity_needs(descriptor.kind)
+        };
     let invalidation_facts = descriptor_invalidation_facts(descriptor);
     let prepared_identity_invalidates = descriptor.requires_rebind_on_structural_change
         || namespace_identity_need != NamespaceIdentityNeed::None
@@ -234,6 +276,7 @@ pub fn reference_dependency_descriptor_fact(
         owner_node_id: descriptor.owner_node_id,
         source_reference_handle: descriptor.source_reference_handle.clone(),
         target_node_id: descriptor.target_node_id,
+        workspace_target: descriptor.workspace_target.clone(),
         kind: descriptor.kind,
         role: descriptor_role(descriptor),
         namespace_identity_need,
@@ -375,7 +418,7 @@ pub fn descriptor_invalidation_facts(
 }
 
 fn descriptor_role(descriptor: &DependencyDescriptor) -> ReferenceDescriptorFactRole {
-    if descriptor.target_node_id.is_some() {
+    if descriptor.target_node_id.is_some() || descriptor.workspace_target.is_some() {
         return ReferenceDescriptorFactRole::TargetReverseEdge;
     }
 
@@ -429,7 +472,7 @@ pub fn prepared_identity_needs_by_owner(
 #[cfg(test)]
 mod tests {
     use crate::dependency::{DependencyDescriptor, DependencyGraph};
-    use crate::formula::{TreeReferenceInventoryBlocker, TreeReferenceInventoryVariant};
+    use crate::formula::TreeReferenceInventoryVariant;
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
     };
@@ -500,6 +543,7 @@ mod tests {
             source_reference_handle: source_reference_handle.map(str::to_string),
             owner_node_id,
             target_node_id,
+            workspace_target: None,
             kind,
             carrier_detail: carrier_detail.to_string(),
             tree_reference_collection: None,
@@ -598,6 +642,49 @@ mod tests {
     }
 
     #[test]
+    fn surface_records_workspace_qualified_reverse_edges() {
+        let target = WorkspaceQualifiedTarget {
+            workspace_handle: "treecalc-workspace:projections".to_string(),
+            target_node_id: TreeNodeId(102),
+            target_node_handle: "treecalc-workspace:projections#node:102".to_string(),
+            availability_version: "treecalc-cross-workspace-availability:v1:projections:loaded"
+                .to_string(),
+        };
+        let descriptor = DependencyDescriptor {
+            descriptor_id: "dep:xws".to_string(),
+            source_reference_handle: Some("treecalc_reference_carrier:TREE_REF_4_0".to_string()),
+            owner_node_id: TreeNodeId(4),
+            target_node_id: None,
+            workspace_target: Some(target.clone()),
+            kind: DependencyDescriptorKind::HostSensitive,
+            carrier_detail: "cross_workspace_resolved:carrier:xws".to_string(),
+            tree_reference_collection: None,
+            requires_rebind_on_structural_change: true,
+        };
+        let graph = DependencyGraph::build(&snapshot(), &[descriptor]);
+        let surface = w056_reference_dependency_surface(&graph);
+
+        assert!(surface.target_reverse_edges.is_empty());
+        assert!(surface.context_reverse_edges.is_empty());
+        assert_eq!(surface.workspace_target_reverse_edges.len(), 1);
+        assert_eq!(surface.workspace_target_reverse_edges[0].target, target);
+        assert_eq!(
+            surface.descriptor_facts[0].workspace_target,
+            Some(target.clone())
+        );
+        assert_eq!(
+            surface.descriptor_facts[0].namespace_identity_need,
+            NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion
+        );
+        assert!(
+            prepared_identity_needs_by_owner(&surface)[&TreeNodeId(4)].contains(&(
+                NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+                CallerContextIdentityNeed::None
+            ))
+        );
+    }
+
+    #[test]
     fn dynamic_rebind_facts_distinguish_potential_and_resolved_edges() {
         let graph = DependencyGraph::build(
             &snapshot(),
@@ -646,24 +733,21 @@ mod tests {
     }
 
     #[test]
-    fn inventory_surface_keeps_cross_workspace_runtime_on_workspace_qualified_carrier() {
+    fn inventory_surface_admits_cross_workspace_workspace_qualified_carrier() {
         let graph = DependencyGraph::build(&snapshot(), &[]);
         let surface = w056_reference_dependency_surface(&graph);
 
         let cross_workspace = surface
-            .blocked_inventory_inputs
+            .admitted_inventory_inputs
             .iter()
             .find(|input| input.variant == TreeReferenceInventoryVariant::CrossWorkspaceReference)
-            .expect("cross-workspace inventory input should stay explicit");
+            .expect("cross-workspace inventory input should be admitted");
 
-        assert_eq!(
-            cross_workspace.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsWorkspaceQualifiedCarrier)
-        );
+        assert_eq!(cross_workspace.blocker, None);
         assert_eq!(
             cross_workspace.namespace_identity_need,
             NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion
         );
-        assert!(cross_workspace.evidence_note.contains("calc-4vs8.30"));
+        assert!(cross_workspace.evidence_note.contains("calc-8tox"));
     }
 }

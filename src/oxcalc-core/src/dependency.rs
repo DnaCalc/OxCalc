@@ -36,10 +36,19 @@ pub struct DependencyDescriptor {
     pub source_reference_handle: Option<String>,
     pub owner_node_id: TreeNodeId,
     pub target_node_id: Option<TreeNodeId>,
+    pub workspace_target: Option<WorkspaceQualifiedTarget>,
     pub kind: DependencyDescriptorKind,
     pub carrier_detail: String,
     pub tree_reference_collection: Option<TreeReferenceCollectionDependency>,
     pub requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WorkspaceQualifiedTarget {
+    pub workspace_handle: String,
+    pub target_node_id: TreeNodeId,
+    pub target_node_handle: String,
+    pub availability_version: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -173,6 +182,15 @@ pub struct DependencyEdge {
     pub kind: DependencyDescriptorKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceQualifiedDependencyEdge {
+    pub edge_id: String,
+    pub descriptor_id: String,
+    pub owner_node_id: TreeNodeId,
+    pub target: WorkspaceQualifiedTarget,
+    pub kind: DependencyDescriptorKind,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DependencyDiagnosticKind {
     MissingOwner,
@@ -197,6 +215,7 @@ pub struct DependencyGraph {
     pub descriptors_by_owner: BTreeMap<TreeNodeId, Vec<DependencyDescriptor>>,
     pub edges_by_owner: BTreeMap<TreeNodeId, Vec<DependencyEdge>>,
     pub reverse_edges: BTreeMap<TreeNodeId, Vec<DependencyEdge>>,
+    pub workspace_reverse_edges: BTreeMap<String, Vec<WorkspaceQualifiedDependencyEdge>>,
     pub cycle_groups: Vec<Vec<TreeNodeId>>,
     pub diagnostics: Vec<DependencyDiagnostic>,
 }
@@ -248,6 +267,8 @@ impl DependencyGraph {
     pub fn build(snapshot: &StructuralSnapshot, descriptors: &[DependencyDescriptor]) -> Self {
         let mut descriptors_by_owner = BTreeMap::<TreeNodeId, Vec<DependencyDescriptor>>::new();
         let mut edges_by_owner = BTreeMap::<TreeNodeId, Vec<DependencyEdge>>::new();
+        let mut workspace_reverse_edges =
+            BTreeMap::<String, Vec<WorkspaceQualifiedDependencyEdge>>::new();
         let mut diagnostics = Vec::new();
 
         for descriptor in descriptors {
@@ -265,6 +286,26 @@ impl DependencyGraph {
                         descriptor.owner_node_id
                     ),
                 });
+                continue;
+            }
+
+            if let Some(target) = &descriptor.workspace_target {
+                let edge = WorkspaceQualifiedDependencyEdge {
+                    edge_id: format!(
+                        "xdep:{}:{}:{}",
+                        descriptor.owner_node_id.0,
+                        target.target_node_handle,
+                        descriptor.descriptor_id
+                    ),
+                    descriptor_id: descriptor.descriptor_id.clone(),
+                    owner_node_id: descriptor.owner_node_id,
+                    target: target.clone(),
+                    kind: descriptor.kind,
+                };
+                workspace_reverse_edges
+                    .entry(target.target_node_handle.clone())
+                    .or_default()
+                    .push(edge);
                 continue;
             }
 
@@ -355,6 +396,9 @@ impl DependencyGraph {
         for edges in reverse_edges.values_mut() {
             edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
         }
+        for edges in workspace_reverse_edges.values_mut() {
+            edges.sort_by(|left, right| left.edge_id.cmp(&right.edge_id));
+        }
 
         let cycle_groups = find_cycle_groups(snapshot, &edges_by_owner);
 
@@ -363,6 +407,7 @@ impl DependencyGraph {
             descriptors_by_owner,
             edges_by_owner,
             reverse_edges,
+            workspace_reverse_edges,
             cycle_groups,
             diagnostics,
         }
@@ -649,6 +694,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(2),
                     target_node_id: Some(TreeNodeId(3)),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "A->B".to_string(),
                     tree_reference_collection: None,
@@ -659,6 +705,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(3),
                     target_node_id: Some(TreeNodeId(2)),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::RelativeBound,
                     carrier_detail: "B->A".to_string(),
                     tree_reference_collection: None,
@@ -669,6 +716,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(4),
                     target_node_id: None,
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::Unresolved,
                     carrier_detail: "relative sibling lookup".to_string(),
                     tree_reference_collection: None,
@@ -702,6 +750,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(2),
                     target_node_id: Some(TreeNodeId(3)),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "A->B".to_string(),
                     tree_reference_collection: None,
@@ -712,6 +761,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(3),
                     target_node_id: Some(TreeNodeId(2)),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::RelativeBound,
                     carrier_detail: "B->A".to_string(),
                     tree_reference_collection: None,
@@ -722,6 +772,7 @@ mod tests {
                     source_reference_handle: None,
                     owner_node_id: TreeNodeId(4),
                     target_node_id: Some(TreeNodeId(2)),
+                    workspace_target: None,
                     kind: DependencyDescriptorKind::StaticDirect,
                     carrier_detail: "C->A".to_string(),
                     tree_reference_collection: None,
@@ -756,6 +807,7 @@ mod tests {
                 source_reference_handle: None,
                 owner_node_id: TreeNodeId(4),
                 target_node_id: Some(TreeNodeId(2)),
+                workspace_target: None,
                 kind: DependencyDescriptorKind::StaticDirect,
                 carrier_detail: "C->A".to_string(),
                 tree_reference_collection: None,

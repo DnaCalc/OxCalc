@@ -36,7 +36,7 @@ use crate::coordinator::{
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
     InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
-    TreeReferenceCollectionFamily,
+    TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{
     CallerContextIdentityNeed, NamespaceIdentityNeed, TreeFormula, TreeFormulaCatalog,
@@ -2227,7 +2227,8 @@ struct ResidualCarrier {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SyntheticReferenceBinding {
     token: String,
-    target_node_id: TreeNodeId,
+    local_target_node_id: Option<TreeNodeId>,
+    workspace_target: Option<WorkspaceQualifiedTarget>,
     kind: DependencyDescriptorKind,
     carrier_detail: String,
     requires_rebind_on_structural_change: bool,
@@ -2294,11 +2295,14 @@ fn prepare_oxfml_formula(
         bind_visible_structure_context_version(snapshot, environment_context);
     let w056_prepared_identity_requirements =
         w056_prepared_identity_requirements_for_translated(&translated);
+    let cross_workspace_availability_versions =
+        cross_workspace_availability_versions_for_translated(&translated);
     let host_formula_context = w056_runtime_host_formula_context(
         binding.owner_node_id,
         &structure_context_version.0,
         environment_context,
         &w056_prepared_identity_requirements,
+        &cross_workspace_availability_versions,
     );
     let empty_working_values = BTreeMap::new();
     let mut prepare_environment =
@@ -2823,7 +2827,14 @@ fn w056_prepared_identity_requirements_for_translated(
     let mut requirements = BTreeSet::new();
 
     for reference in &translated.reference_bindings {
-        requirements.insert(descriptor_identity_needs(reference.kind));
+        if reference.workspace_target.is_some() {
+            requirements.insert((
+                NamespaceIdentityNeed::CrossWorkspaceAvailabilityVersion,
+                CallerContextIdentityNeed::None,
+            ));
+        } else {
+            requirements.insert(descriptor_identity_needs(reference.kind));
+        }
     }
     for unresolved in &translated.unresolved_bindings {
         requirements.insert(descriptor_identity_needs(unresolved.kind));
@@ -2843,6 +2854,24 @@ fn w056_prepared_identity_requirements_for_translated(
     }
 
     requirements.into_iter().collect()
+}
+
+fn cross_workspace_availability_versions_for_translated(
+    translated: &TranslatedFormula,
+) -> Vec<String> {
+    translated
+        .reference_bindings
+        .iter()
+        .filter_map(|reference| reference.workspace_target.as_ref())
+        .map(|target| {
+            format!(
+                "workspace={};target={};availability={}",
+                target.workspace_handle, target.target_node_handle, target.availability_version
+            )
+        })
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<DependencyDescriptor> {
@@ -2906,6 +2935,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                 source_reference_handle,
                 owner_node_id: prepared.binding.owner_node_id,
                 target_node_id: None,
+                workspace_target: None,
                 kind,
                 carrier_detail: format!(
                     "oxfml_formal_reference:{}:{}",
@@ -2970,6 +3000,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                 source_reference_handle: Some(collection.host_ref_handle.clone()),
                 owner_node_id: prepared.binding.owner_node_id,
                 target_node_id: None,
+                workspace_target: None,
                 kind: DependencyDescriptorKind::TreeReferenceCollectionMembership,
                 carrier_detail: collection.collection_dependency.carrier_detail(),
                 tree_reference_collection: Some(collection.collection_dependency.clone()),
@@ -2992,6 +3023,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                         source_reference_handle: Some(collection.host_ref_handle.clone()),
                         owner_node_id: prepared.binding.owner_node_id,
                         target_node_id: Some(member_node_id),
+                        workspace_target: None,
                         kind: DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
                         carrier_detail: collection_member_carrier_detail(
                             collection,
@@ -3014,6 +3046,7 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             source_reference_handle: Some(runtime_fact_reference_handle(residual)),
             owner_node_id: prepared.binding.owner_node_id,
             target_node_id: None,
+            workspace_target: None,
             kind: residual.kind.dependency_descriptor_kind(),
             carrier_detail: format!("residual:{}:{}", residual.carrier_id, residual.detail),
             tree_reference_collection: None,
@@ -3077,7 +3110,8 @@ fn dependency_descriptor_from_bound_reference(
         descriptor_id,
         source_reference_handle,
         owner_node_id: prepared.binding.owner_node_id,
-        target_node_id: Some(reference.target_node_id),
+        target_node_id: reference.local_target_node_id,
+        workspace_target: reference.workspace_target.clone(),
         kind: reference.kind,
         carrier_detail: reference.carrier_detail.clone(),
         tree_reference_collection: None,
@@ -3096,6 +3130,7 @@ fn dependency_descriptor_from_unresolved_binding(
         source_reference_handle,
         owner_node_id: prepared.binding.owner_node_id,
         target_node_id: None,
+        workspace_target: None,
         kind: unresolved.kind,
         carrier_detail: unresolved.carrier_detail.clone(),
         tree_reference_collection: None,
@@ -3307,11 +3342,7 @@ fn formal_input_bindings_for_runtime(
                     .map_or(descriptor_with_prefix, |reference| {
                         reference.reference_descriptor.clone()
                     }),
-                binding: DefinedNameBinding::Value(
-                    working_values
-                        .get(&reference.target_node_id)
-                        .map_or(EvalValue::Number(0.0), |value| string_to_eval_value(value)),
-                ),
+                binding: runtime_binding_for_reference(reference, working_values),
             }
         })
         .chain(translated.collection_bindings.iter().map(|collection| {
@@ -3342,6 +3373,27 @@ fn formal_input_bindings_for_runtime(
             }
         }))
         .collect::<Vec<_>>()
+}
+
+fn runtime_binding_for_reference(
+    reference: &SyntheticReferenceBinding,
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> DefinedNameBinding {
+    if let Some(workspace_target) = &reference.workspace_target {
+        return DefinedNameBinding::Reference(ReferenceLike {
+            kind: ReferenceKind::ThreeD,
+            target: workspace_target.target_node_handle.clone(),
+        });
+    }
+
+    match reference.local_target_node_id {
+        Some(target_node_id) => DefinedNameBinding::Value(
+            working_values
+                .get(&target_node_id)
+                .map_or(EvalValue::Number(0.0), |value| string_to_eval_value(value)),
+        ),
+        None => DefinedNameBinding::Value(EvalValue::Error(WorksheetErrorCode::Ref)),
+    }
 }
 
 fn sparse_reference_value_bindings_for_runtime(
@@ -3515,12 +3567,17 @@ fn treecalc_host_formula_context(
     structure_context_version: &str,
     environment_context: &LocalTreeCalcEnvironmentContext,
     requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+    cross_workspace_availability_versions: &[String],
 ) -> RuntimeHostFormulaContext {
     RuntimeHostFormulaContext {
         dialect_id: "oxcalc.treecalc-v1".to_string(),
         capability_profile_id: effective_treecalc_capability_profile_id(environment_context),
         resolution_rule_version: environment_context.resolution_rule_version.clone(),
-        host_namespace_version: w056_host_namespace_identity(environment_context, requirements),
+        host_namespace_version: w056_host_namespace_identity(
+            environment_context,
+            requirements,
+            cross_workspace_availability_versions,
+        ),
         registry_snapshot_identity: environment_context
             .oxfunc_bridge_metadata
             .semantic_kernel_metadata_version
@@ -3564,6 +3621,7 @@ fn w056_runtime_host_formula_context(
     structure_context_version: &str,
     environment_context: &LocalTreeCalcEnvironmentContext,
     requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+    cross_workspace_availability_versions: &[String],
 ) -> Option<RuntimeHostFormulaContext> {
     w056_requirements_need_public_host_context(requirements).then(|| {
         treecalc_host_formula_context(
@@ -3571,6 +3629,7 @@ fn w056_runtime_host_formula_context(
             structure_context_version,
             environment_context,
             requirements,
+            cross_workspace_availability_versions,
         )
     })
 }
@@ -3607,6 +3666,7 @@ fn w056_requires_caller_context(
 fn w056_host_namespace_identity(
     environment_context: &LocalTreeCalcEnvironmentContext,
     requirements: &[(NamespaceIdentityNeed, CallerContextIdentityNeed)],
+    cross_workspace_availability_versions: &[String],
 ) -> Option<String> {
     if w056_requires_namespace(requirements, NamespaceIdentityNeed::HostNamespaceVersion)
         || w056_requires_namespace(requirements, NamespaceIdentityNeed::ResolutionRuleVersion)
@@ -3618,6 +3678,10 @@ fn w056_host_namespace_identity(
         let mut identity = environment_context.host_namespace_version.clone();
         if let Some(version) = &environment_context.cross_workspace_availability_version {
             identity.push_str("|cross_workspace_availability_version=");
+            identity.push_str(version);
+        }
+        for version in cross_workspace_availability_versions {
+            identity.push_str("|cross_workspace_target_availability=");
             identity.push_str(version);
         }
         Some(identity)
@@ -4163,6 +4227,16 @@ impl FormulaCarrierProjectionState<'_> {
                     reference.carrier_detail(),
                     reference.requires_rebind_on_structural_change(),
                 ),
+            crate::formula::TreeReference::CrossWorkspaceResolved { .. } => self
+                .bind_workspace_target(
+                    carrier.source_token.clone(),
+                    reference
+                        .workspace_target()
+                        .expect("cross-workspace reference must carry workspace target"),
+                    reference.descriptor_kind(),
+                    reference.carrier_detail(),
+                    reference.requires_rebind_on_structural_change(),
+                ),
             crate::formula::TreeReference::ProjectionPath { .. }
             | crate::formula::TreeReference::RelativePath { .. }
             | crate::formula::TreeReference::SiblingOffset { .. } => {
@@ -4243,7 +4317,27 @@ impl FormulaCarrierProjectionState<'_> {
         let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
         self.reference_bindings.push(SyntheticReferenceBinding {
             token,
-            target_node_id,
+            local_target_node_id: Some(target_node_id),
+            workspace_target: None,
+            kind,
+            carrier_detail,
+            requires_rebind_on_structural_change,
+        });
+    }
+
+    fn bind_workspace_target(
+        &mut self,
+        source_token: Option<String>,
+        workspace_target: WorkspaceQualifiedTarget,
+        kind: DependencyDescriptorKind,
+        carrier_detail: String,
+        requires_rebind_on_structural_change: bool,
+    ) {
+        let token = source_token.unwrap_or_else(|| self.next_fallback_token("TREE_REF"));
+        self.reference_bindings.push(SyntheticReferenceBinding {
+            token,
+            local_target_node_id: None,
+            workspace_target: Some(workspace_target),
             kind,
             carrier_detail,
             requires_rebind_on_structural_change,
@@ -6217,6 +6311,10 @@ mod tests {
             "structure:v1",
             &context,
             &requirements,
+            &[
+                "workspace=projections;target=node:102;availability=workspace-availability:v3"
+                    .to_string(),
+            ],
         )
         .expect("table/cross-workspace needs should use public host context");
 
@@ -6230,6 +6328,105 @@ mod tests {
                 .as_deref()
                 .is_some_and(|identity| identity
                     .contains("cross_workspace_availability_version=workspace-availability:v3"))
+        );
+        assert!(
+            host_context
+                .host_namespace_version
+                .as_deref()
+                .is_some_and(|identity| identity.contains(
+                    "cross_workspace_target_availability=workspace=projections;target=node:102;availability=workspace-availability:v3"
+                ))
+        );
+    }
+
+    #[test]
+    fn workspace_qualified_runtime_binding_does_not_read_local_node_id_collision() {
+        let structural_snapshot = snapshot();
+        let expression = TreeFormula::opaque_oxfml(
+            "=TREE_REF_4_0",
+            [TreeFormulaReferenceCarrier::named(
+                "TREE_REF_4_0",
+                TreeReference::CrossWorkspaceResolved {
+                    workspace_handle: "treecalc-workspace:projections".to_string(),
+                    target_node_id: TreeNodeId(102),
+                    target_node_handle: "treecalc-workspace:projections#node:102".to_string(),
+                    availability_version:
+                        "treecalc-cross-workspace-availability:v1:projections:loaded".to_string(),
+                    carrier_id: "carrier:xws:projections".to_string(),
+                    detail: "cross_workspace_resolution:v1:projections".to_string(),
+                },
+            )],
+        );
+        let translated = project_opaque_formula(&structural_snapshot, TreeNodeId(4), &expression);
+        assert_eq!(translated.reference_bindings.len(), 1);
+        assert_eq!(translated.reference_bindings[0].local_target_node_id, None);
+
+        let formal_inputs = formal_input_bindings_for_runtime(
+            &translated,
+            &BTreeMap::from([(TreeNodeId(102), "999".to_string())]),
+            None,
+        );
+        assert_eq!(formal_inputs.len(), 1);
+        match &formal_inputs[0].binding {
+            DefinedNameBinding::Reference(reference) => {
+                assert_eq!(reference.kind, ReferenceKind::ThreeD);
+                assert_eq!(reference.target, "treecalc-workspace:projections#node:102");
+            }
+            other => panic!("expected workspace-qualified ReferenceLike binding, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workspace_qualified_availability_version_enters_prepared_identity_from_carrier() {
+        let structural_snapshot = snapshot();
+        let binding_for_version = |version: &str| TreeFormulaBinding {
+            owner_node_id: TreeNodeId(4),
+            formula_artifact_id: FormulaArtifactId("formula:xws".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:xws".to_string())),
+            expression: TreeFormula::opaque_oxfml(
+                "=TREE_REF_4_0",
+                [TreeFormulaReferenceCarrier::named(
+                    "TREE_REF_4_0",
+                    TreeReference::CrossWorkspaceResolved {
+                        workspace_handle: "treecalc-workspace:projections".to_string(),
+                        target_node_id: TreeNodeId(102),
+                        target_node_handle: "treecalc-workspace:projections#node:102".to_string(),
+                        availability_version: version.to_string(),
+                        carrier_id: "carrier:xws:projections".to_string(),
+                        detail: "cross_workspace_resolution:v1:projections".to_string(),
+                    },
+                )],
+            ),
+        };
+
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding_for_version("treecalc-cross-workspace-availability:v1:projections:loaded"),
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("first workspace-qualified formula should prepare");
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding_for_version("treecalc-cross-workspace-availability:v2:projections:loaded"),
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .expect("second workspace-qualified formula should prepare");
+
+        let host_context = first
+            .runtime_prepared_identity
+            .host_formula_context
+            .as_ref()
+            .expect("workspace-qualified reference should require host context");
+        let namespace_identity = host_context
+            .host_namespace_version
+            .as_deref()
+            .expect("workspace-qualified reference should project namespace identity");
+        assert!(namespace_identity.contains(
+            "cross_workspace_target_availability=workspace=treecalc-workspace:projections;target=treecalc-workspace:projections#node:102;availability=treecalc-cross-workspace-availability:v1:projections:loaded"
+        ));
+        assert_ne!(
+            first.runtime_prepared_identity.prepared_formula_key,
+            second.runtime_prepared_identity.prepared_formula_key
         );
     }
 

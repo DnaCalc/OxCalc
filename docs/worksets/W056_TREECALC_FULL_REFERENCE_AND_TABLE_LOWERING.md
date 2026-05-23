@@ -11,12 +11,17 @@ Initial successor beads:
 1. `calc-4vs8.1` — TreeReference variant inventory and host-reference correlation.
 2. `calc-4vs8.2` — structured table dependency lowering.
 3. `calc-4vs8.3` — dependency invalidation and dynamic rebind widening.
-4. `calc-4vs8.21` through `calc-4vs8.26` — node-associated
+4. `calc-4vs8.21` through `calc-4vs8.29` — first node-associated
    TreeCalc table completion spine: table-node snapshot projection,
    TreeCalc table-path structured-reference prebind, table reference readers,
-   per-row column-formula runtime, update/invalidation scenarios, and retained
-   evidence closure.
-5. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
+   per-row column-formula runtime, update/invalidation scenarios, retained
+   TreeCalc/OxReplay evidence, and Excel update-oracle intake for the declared
+   table slice.
+5. `calc-4vs8.34` through `calc-4vs8.38` — second-pass table product-promotion
+   spine: full-scope closure map, lifecycle/callback contract freeze,
+   structured-table `ReferenceLike` function breadth, matched TreeCalc/Excel
+   replay/value-wire intake, and final table-topic promotion audit.
+6. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
    non-table reference completion spine: cross-workspace provider/alias
    semantics, workspace-qualified carriers, reference literals/dynamic
    carriers, W074 callable/name intake, and retained non-table corpus evidence.
@@ -349,10 +354,89 @@ not close the broader W056 reference runtime, W074 name/call precedence,
 cross-workspace references, raw ordered-selector syntax, or the remaining
 DnaTreeCalc W004/W005 non-table reference corpus.
 
+## 4B.3. Second-Pass Table Product Promotion Spine
+
+The first node-associated table spine proves the architecture and the declared
+table slice. It is not the whole long-term table topic. Full product promotion
+needs a second pass that freezes the table lifecycle contract and compares the
+retained TreeCalc/Excel table evidence without moving semantics into the wrong
+repo.
+
+Additional W056 beads:
+
+1. `calc-4vs8.34` — table full-product closure map and ownership audit. This
+   audits the closed table slice against the intended long-term product table
+   support and records the authoritative remaining table plan across OxCalc,
+   DnaTreeCalc, OxFml, OxFunc, OxXlPlay, and OxReplay.
+2. `calc-4vs8.35` — table lifecycle callback contract and version policy. This
+   freezes the OxCalc-owned input/callback surface for table create/delete,
+   rename/move, row and column edits, header/totals/body/formula edits,
+   save/reopen identity, structural rebind, version bumps, dependency facts,
+   diagnostics, and prepared-identity contributions.
+3. `calc-4vs8.36` — structured-table `ReferenceLike` function breadth intake.
+   This widens beyond the first aggregate proof by coordinating OxFunc/OxFml
+   evidence for range/table-consuming functions through opaque sparse
+   references, with typed exclusions where a function needs richer host context.
+4. `calc-4vs8.37` — matched TreeCalc/Excel table replay and value-wire intake.
+   This consumes OxReplay matched-scenario evidence, shared `comparison_value`
+   envelope admission or typed exclusion, `execution_outcome` class identity,
+   and table diff/explain baselines without parsing private TreeCalc or Excel
+   strings.
+5. `calc-4vs8.38` — final table-topic product promotion audit. This promotes
+   table support only after the first slice plus the second-pass table beads
+   have evidence, repo-local checks, fresh-eyes review, and explicit exclusions.
+
+Systematic cross-repo sequence:
+
+1. OxCalc executes `calc-4vs8.34` first, reconciling this workset, the workset
+   register, active worklist, and open blocker text so the remaining table plan
+   is visible and does not reopen closed scoped work.
+2. OxCalc then executes `calc-4vs8.35`, keeping TreeCalc table lifecycle meaning
+   in OxCalc/DnaTreeCalc and passing only generic table context to OxFml.
+3. OxFunc/OxFml execute or reconcile the structured-table `ReferenceLike`
+   breadth behind `calc-4vs8.36`; OxFunc owns function semantics and must not
+   inspect TreeCalc table selectors.
+4. DnaTreeCalc keeps table corpus/product evidence on the real
+   LiveOxCalc/OxCalc bridge, including persistence, structural updates, and
+   retained artifacts, without adding formula parsing.
+5. OxXlPlay supplies Excel observation only; capture limits remain typed
+   observation facts and do not become OxCalc runtime semantics.
+6. OxReplay closes the matched table comparison/value-wire lane consumed by
+   `calc-4vs8.37`, comparing declared retained payloads only.
+7. OxCalc executes `calc-4vs8.38` as the final table-topic audit and keeps any
+   remaining non-table W056 blockers under the non-table spine.
+
+Known counterpart anchors at creation time:
+
+1. DnaTreeCalc `dtc-z0i.5` remains the table structured-reference bridge
+   activation parent after `dtc-z0i.5.1` through `dtc-z0i.5.4` supplied the
+   first table corpus, update, and retained-artifact slices.
+2. OxFml `fml-ds0.12` is the closed generic W056 structured-reference packet
+   coverage slice; broader W036 table formula semantics and non-table W074
+   name/call precedence remain separate.
+3. OxFunc `oxf-ypq2.15` and `oxf-ypq2.16` are the current structured-table
+   sparse-reader/function-classification lanes that feed `calc-4vs8.36`.
+4. OxXlPlay `oxxlplay-4nd` remains the support parent for WorkbookConstructionSpec,
+   table observation, and update-oracle evidence after its first children
+   supplied retained table fixtures.
+5. OxReplay `oxreplay-p1w.3` is the current matched TreeCalc/Excel table
+   comparison lane consumed by `calc-4vs8.37`.
+
+Promotion rule:
+
+The second-pass table beads may promote the table topic only if the architecture
+still has one owner for each concern: OxCalc/DnaTreeCalc for TreeCalc table
+identity and lifecycle, OxFml for generic structured-reference binding, OxFunc
+for function semantics over opaque carriers, OxXlPlay for Excel observation,
+and OxReplay for retained comparison. Any private bridge, string parser, or
+duplicated semantic mirror blocks promotion.
+
 ## 4C. Non-Table Reference Completion Spine
 
-After `calc-4vs8.26`, the table slice is no longer the active W056 blocker.
-The remaining W056 work is the non-table reference runtime and evidence spine.
+After `calc-4vs8.26`, the first table slice is no longer the active W056
+blocker. The remaining work now splits into the second-pass table
+product-promotion spine above and the non-table reference runtime/evidence spine
+below.
 
 New execution beads:
 
@@ -383,10 +467,12 @@ New execution beads:
    literals/arrays, dynamic references, cross-workspace references, and
    node-as-function/lambda-valued nodes.
 
-The broad blocker `calc-4vs8.5` now tracks these non-table surfaces only. It no
-longer lists node-associated table lowering, DnaTreeCalc table corpus residuals,
-OxXlPlay table update oracles, or OxReplay table-update-oracle policy as open
-W056 table blockers.
+The broad blocker `calc-4vs8.5` now tracks the remaining non-table/upstream
+W056 reference closure gap. It no longer treats the first node-associated table
+slice, DnaTreeCalc table corpus residuals, OxXlPlay table update oracles, or
+OxReplay table-update-oracle policy as missing packet/lowering blockers.
+Second-pass full table promotion is not closed by narrowing `calc-4vs8.5`; it
+belongs to `calc-4vs8.34` through `calc-4vs8.38`.
 
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.

@@ -21,9 +21,9 @@ The active calculation-model line has moved from W050 execution to successor pla
 
 Current next engineering move:
 
-1. Continue W056 from the closed W051 first scope: widen the implemented `ChildrenV1` carrier and sparse/reference-reader path into the remaining TreeCalc reference families, table packet lowering, and retained bridge evidence.
+1. Continue W056 from the closed W051 first scope: widen the implemented `ChildrenV1` carrier and sparse/reference-reader path into the remaining TreeCalc reference families, complete the second-pass table product-promotion lane, and retain bridge/replay evidence.
 2. Keep built-in/UDF/defined-name/defined-name-`LAMBDA` name/call precedence blocked on OxFml `W074-CALC005` oracle evidence; map TreeCalc host names and lambda-valued nodes to the closest Excel defined-name lane until that evidence justifies an explicit extension.
-3. Treat the active DnaTreeCalc free-standing and qualified children corpus slice as first bridge evidence only; full W004/W005 reference and table corpus activation remains W056 scope.
+3. Treat the active DnaTreeCalc free-standing and qualified children corpus slice as first bridge evidence only; full W004/W005 reference activation remains W056 scope, and table promotion now runs through `calc-4vs8.34` through `calc-4vs8.38` rather than through the already-closed first table slice.
 4. Keep fixture-only reader scaffolding and any `treecalc_eager_values_fallback.v1` materialization clearly separated from production sparse range and reference-preserving reference-collection authority.
 
 ## Active Truth Surfaces

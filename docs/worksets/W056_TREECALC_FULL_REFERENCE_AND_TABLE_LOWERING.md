@@ -1011,7 +1011,8 @@ mutation.
 
 Still open:
 
-1. `calc-4vs8.48` must close the full table `ReferenceLike` reader surface.
+1. `calc-4vs8.48` is closed for the full table `ReferenceLike` reader
+   surface.
 2. `calc-4vs8.49` must close row-context formula/prepared identity behavior.
 3. `calc-4vs8.50` must close dependency and invalidation matrices for all
    table lifecycle updates.
@@ -1100,6 +1101,72 @@ Still open:
 3. OxFunc counterpart beads must close the admitted-pending wider function
    groups before those functions can be claimed as fully implemented product
    behavior over table references.
+
+## 4B.8. `calc-4vs8.49` Table Formula Row Context And Prepared Identity
+
+Product status:
+
+OxCalc now has an executable row-context formula runtime and replay-visible
+prepared-identity fact surface for node-associated table formulas. One authored
+formula text is evaluated per data row by first asking OxFml to parse and bind
+the structured references against the generic virtual table catalog, enclosing
+table ref, and row-specific `caller_table_region`; OxCalc then uses those
+public `StructuredReferenceBindRecord` packets to supply sparse
+`ReferenceLike` bindings and scalar current-row bindings. The row-context
+runtime path does not use OxCalc's older table-path prebind scanner and does
+not teach OxFml TreeCalc table semantics.
+
+Implemented runtime scope:
+
+1. table column formulas reuse one authored formula text across all data rows,
+2. each data-row execution carries a row-specific caller-context identity,
+3. omitted/current-row references resolve through the generic enclosing table
+   and caller data-row packet,
+4. totals-row formulas execute at the totals virtual locus,
+5. current-row references in totals context are typed rejects,
+6. the dispatch skeleton remains stable for the same formula text while
+   prepared formula keys vary by caller/table/context identity,
+7. the runtime result exposes `TreeCalcTableFormulaPreparedIdentityFacts` for
+   replay and cache-invalidation correlation.
+
+Prepared/cache identity facts:
+
+`TreeCalcTableFormulaPreparedIdentityFacts` records the OxCalc/OxFml prepared
+identity inputs that matter for table formulas: dialect id, capability profile
+id, resolution rule version, host namespace version, table namespace version,
+structure context version, table context identity, caller context id,
+host-supplied registry snapshot identity, runtime function-registry snapshot
+identity, capability overlay identity, prepared formula key, dispatch skeleton
+key, and plan-template key.
+
+Update evidence covered by this bead:
+
+Focused runtime tests prove that prepared identity changes for host namespace,
+structure context, resolution rule, capability profile, actual OxFunc registry
+snapshot mutation through UDF registration, capability overlay, table namespace
+rename, row reorder, row insert, row delete, and caller row movement. The same
+formula text continues to reuse the dispatch skeleton where only the
+caller/table context changes. The existing totals-row tests prove totals-region
+execution and reject `#This Row` outside the data region.
+
+Explicit non-claim:
+
+LET/LAMBDA lexical variables, callable locals, captures, and returned lambdas
+remain OxFml-internal behavior. This OxCalc bead does not add host-side LET or
+LAMBDA semantics and does not require a host namespace for DnaOneCalc ordinary
+single-formula execution. The DnaOneCalc/OxFml no-host LET/LAMBDA guardrail
+remains a cross-repo W074/DnaOneCalc evidence lane.
+
+Still open:
+
+1. `calc-4vs8.50` must close the complete table dependency/invalidation
+   matrix using the prepared-identity fact surface.
+2. `calc-4vs8.51` must activate DnaTreeCalc table corpus cases through the real
+   bridge.
+3. `calc-4vs8.52` and `calc-4vs8.53` must supply retained Excel/replay table
+   evidence.
+4. Bare host-name/callable precedence and lambda-valued TreeCalc nodes remain
+   W074-gated; they are not frozen by this table-formula row-context closure.
 
 `calc-4vs8.36` implemented intake:
 

@@ -363,6 +363,28 @@ functions are admitted only through generic reader/context lanes and OxFunc
 counterpart beads; non-contiguous column unions and context-sensitive functions
 remain typed successor lanes rather than eager-materialized shortcuts.
 
+Current row-context formula realization:
+
+OxCalc evaluates node-table column formulas by reusing one authored formula
+text across rows and asking OxFml to parse/bind that text against row-specific
+generic table context, not TreeCalc-specific grammar rules. OxCalc consumes the
+public `StructuredReferenceBindRecord` packets produced by OxFml to attach
+sparse `ReferenceLike` bindings and current-row scalar bindings. Each row
+execution carries a `caller_table_region`, a virtual primary locus, and a
+caller-context identity. Totals-row formulas use the totals virtual locus;
+`#This Row` in a totals context is a typed reject.
+
+For replay and cache invalidation, table formula results expose
+`TreeCalcTableFormulaPreparedIdentityFacts`: dialect id, capability profile id,
+resolution rule version, host namespace version, table namespace version,
+structure context version, table context identity, caller context id, host and
+function registry snapshot identities, capability overlay identity, prepared
+formula key, dispatch skeleton key, and plan-template key. Row movement, row
+insert/delete, table namespace rename, host namespace, structure context,
+resolution rule, capability profile, actual OxFunc registry snapshot changes,
+and capability overlays are prepared identity inputs; the reusable dispatch
+skeleton is not treated as proof that caller/table identity can be ignored.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

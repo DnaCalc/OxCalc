@@ -327,10 +327,29 @@ successor lanes until the required generic context exists.
 For table column formulas, OxCalc supplies the same authored formula text to
 OxFml once per row with a row-specific generic `caller_table_region` and
 caller-context identity. OxFml owns the structured-reference row-context
-binding; DnaTreeCalc does not calculate `#This Row` locally. OxCalc owns the
-table row/column values, sparse bindings, virtual primary locus, and
-invalidation identity. A totals-row formula uses the totals caller region; a
-current-row reference in that region remains a typed reject.
+binding and returns public `StructuredReferenceBindRecord` packets; DnaTreeCalc
+does not calculate `#This Row` locally. OxCalc owns the table row/column
+values, sparse bindings, virtual primary locus, and invalidation identity. A
+totals-row formula uses the totals caller region; a current-row reference in
+that region remains a typed reject.
+
+OxCalc records row-context prepared-identity facts for this seam as
+`TreeCalcTableFormulaPreparedIdentityFacts`. The fact packet includes dialect,
+capability profile, resolution rule, host namespace, table namespace,
+structure context, table context, caller context, host registry snapshot,
+runtime function-registry snapshot, capability overlay, prepared formula key,
+dispatch skeleton key, and plan-template key. OxFml remains responsible for
+producing the prepared formula identity from generic inputs; OxCalc only
+correlates those generic identity inputs with table lifecycle and caller-row
+facts that it owns. Actual OxFunc registry snapshot changes and capability
+overlays are treated as identity inputs through the generic runtime registry
+view, not through a TreeCalc-specific function path.
+
+LET/LAMBDA lexical variables, callable locals, captures, and returned lambdas
+remain OxFml-internal even when a host such as DnaOneCalc supplies no host
+namespace. OxCalc table row-context work must not create a parallel host-side
+LET/LAMBDA resolver; it only supplies generic table and caller context for
+structured-reference binding.
 
 For table edits, OxCalc owns the dependency and invalidation interpretation.
 Body value edits invalidate table data/value facts without changing prepared

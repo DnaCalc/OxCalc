@@ -298,6 +298,35 @@ policy as typed generic inputs where needed. OxFunc must not inspect TreeCalc
 selectors, and dense eager materialization cannot be used as table-reference
 closure evidence.
 
+### 3.10 W056 Whole-System Node-Table Architecture Rule
+
+The controlling W056 node-table map is recorded in
+`docs/worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md` Section
+4B.3. This host contract consumes that map as normative for the OxCalcTree
+boundary.
+
+The architectural rule is:
+
+1. DnaTreeCalc owns product table state, editing, persistence, and corpus
+   activation.
+2. OxCalc owns calculation custody for node tables: virtual Excel-anchor
+   projection, table catalog resolution, dependency facts, invalidation,
+   dynamic rebind, caller context, sparse readers, and prepared identity.
+3. OxFml owns generic formula and structured-reference parsing/binding against
+   `TableDescriptor`, enclosing table, and `caller_table_region` packets only.
+4. OxFunc owns function semantics over scalar/array/reference inputs and
+   registry mutation. Table references remain opaque `ReferenceLike` or
+   reader-backed values.
+5. OxXlPlay observes Excel ListObject behavior; OxReplay compares declared
+   retained payloads; neither repo defines TreeCalc table semantics.
+6. DnaOneCalc ordinary single-formula use remains no-host-reference; future
+   VBA/XLL function admission flows through OxFunc/OxFml registry surfaces.
+
+No consumer of this contract may close table behavior by adding a private
+bridge, parsing another repo's formula strings, mirroring another repo's
+precedence rules, materializing table references eagerly, or asking OxFml/
+OxFunc to learn TreeCalc table selectors.
+
 ## 4. Consumer Layers
 The intended OxCalc public shape for TreeCalc-style hosts now has two layers.
 

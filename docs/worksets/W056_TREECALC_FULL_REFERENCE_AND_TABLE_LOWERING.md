@@ -577,6 +577,183 @@ residual beads. It must not close the full intended table topic until these
 beads are either closed with evidence or explicitly converted into
 user-accepted typed exclusions.
 
+## 4B.3. Whole-System Node-Table Architecture Map
+
+This section is the controlling architecture map for `calc-4vs8.44`. Later
+table beads may refine details, but they must preserve this ownership shape.
+
+Desired end state:
+
+1. DnaTreeCalc exposes a table as product state attached to a TreeCalc node.
+   It owns user-facing creation, editing, persistence, shell/skin behavior,
+   corpus activation, and retained producer artifacts.
+2. OxCalc is the table semantic custodian for calculation. It owns table
+   identity, virtual Excel-anchor projection, catalog lookup, row/column
+   membership, dependency edges, invalidation, dynamic rebind, caller context,
+   sparse readers, and prepared/cache identity inputs.
+3. OxFml sees an ordinary Excel-shaped table environment: a generic
+   `TableDescriptor` catalog, optional enclosing table, optional
+   `caller_table_region`, generic structured-reference bind packets, source
+   spans/tokens, diagnostics, and opaque identity tokens. It owns formula
+   grammar, parse/bind, `LET`/`LAMBDA` lexical scope, structured-reference
+   normalization, and W074 name/call evidence.
+4. OxFunc sees scalars, arrays, or opaque `ReferenceLike`/reader-backed
+   references. It owns function semantics, UDF registration, capability
+   overlays, and registry snapshot identity. It never inspects TreeCalc table
+   selectors, table paths, row ids, or column ids.
+5. OxXlPlay observes the nearest Excel ListObject behavior by constructing
+   ordinary workbooks with anchored tables. It records observed values,
+   formulas, class ids, and typed COM capture limits; it does not define
+   OxCalc invalidation semantics.
+6. OxReplay validates and compares declared retained payloads. It may normalize
+   and explain table evidence, but it does not parse TreeCalc formulas, infer
+   Excel private dependency graphs, or replace the producing repo's authority.
+7. DnaOneCalc remains the no-host-reference guardrail. Ordinary single-formula
+   use still requires no table catalog or host resolver; `LET`/`LAMBDA`
+   locals/callables remain OxFml-internal. Future VBA/XLL UDFs enter through
+   OxFunc/OxFml registry surfaces, not DnaOneCalc-local function mirrors.
+8. OxVba participates only by supplying future VBA/XLL discovery metadata that
+   can feed OxFunc registration requests. It does not own table-reference
+   semantics.
+
+Architecture value:
+
+1. the same generic OxFml/OxFunc path serves worksheet-like tables, TreeCalc
+   node tables, DnaOneCalc no-host formulas, and future registered UDFs,
+2. TreeCalc structural meaning stays where structural edits are visible, in
+   DnaTreeCalc/OxCalc,
+3. Excel compatibility can be observed through OxXlPlay without copying Excel
+   private internals into OxCalc,
+4. replay comparison receives declared facts from producers instead of
+   reconstructing semantics from strings,
+5. later table breadth adds facts to typed interfaces rather than creating
+   table-only side channels.
+
+Interface flow:
+
+1. DnaTreeCalc sends OxCalc a node-table snapshot or lifecycle callback packet.
+   The packet carries product identities and edits: table node, table id/name,
+   row ids/order, column ids/order, formulas, totals/header state, persistence
+   identity, and changed rows/columns.
+2. OxCalc projects that snapshot into two records:
+   - a TreeCalc-owned projection record retaining node paths, row/column ids,
+     formula metadata, table namespace version, table invalidation identity,
+     workspace availability, and lifecycle versions,
+   - a generic OxFml table context containing table id/name, virtual
+     workbook/sheet/range, header/data/totals region refs, column descriptors,
+     opaque row membership/order tokens, enclosing table ref, and optional
+     `caller_table_region`.
+3. OxFml parses and binds formula text against only the generic context. It
+   returns generic host-reference and structured-reference bind records with
+   exact source spans/tokens, stable handles, selected sections/regions/
+   columns, effective table identity, caller-context dependency, typed
+   diagnostics, and replay identity.
+4. OxCalc lowers those bind records into TreeCalc table selections. It creates
+   dependency descriptors, reverse/context edges, invalidation facts, dynamic
+   rebind facts, and sparse `ReferenceLike` readers keyed to stable handles and
+   reader identities.
+5. OxFunc evaluates function calls over the scalar/array/reference inputs it is
+   given. If a function needs additional generic context, such as hidden-row,
+   filter, spill, metadata, or volatile reference policy, that requirement is
+   a typed OxFunc/OxFml/OxCalc interface fact, not a TreeCalc branch.
+6. OxCalc publishes accepted results through its coordinator and emits retained
+   evidence. OxReplay validates/diffs/explains declared payloads. OxXlPlay
+   supplies Excel-observed comparison artifacts where Excel can state behavior.
+
+Required typed interfaces:
+
+1. `TreeCalcTableNodeSnapshot` and lifecycle callback packets describe product
+   table state and edits from DnaTreeCalc to OxCalc.
+2. `TreeCalcTableNodeProjection` and virtual-anchor identity describe how
+   OxCalc maps node tables into Excel-shaped table context.
+3. The table catalog resolver returns stable handles, opaque selectors,
+   resolution layer, shape hint, effective table identity, virtual anchor
+   identity, caller-context dependency/id, namespace versions, workspace
+   availability version, and typed diagnostics.
+4. OxFml structured-reference bind records preserve source spans/tokens,
+   selected regions/sections/columns, effective table identity, diagnostics,
+   caller-context dependency, and replay identity.
+5. Table sparse readers expose `declared_extent`, `defined_cardinality`,
+   `defined_iter`, `read_at(coord) -> Defined(EvalValue) | Blank`,
+   `contains(coord)`, and stable `reader_identity`.
+6. Prepared/cache identity includes host namespace version, table namespace
+   version, structure context version, table context identity, caller context
+   identity, registry snapshot identity, capability profile identity,
+   resolution rule version, workspace availability version, and dynamic selector
+   identity where relevant.
+7. Retained evidence records table slices, values, display/outcome facts,
+   dependency/invalidation facts, source preservation, prepared identity,
+   function reference admission, Excel observations, and typed projection gaps.
+
+Update and rebind lifecycle:
+
+1. Body value edits invalidate value dependencies and affected readers but do
+   not change table namespace or prepared identity unless a formula-visible
+   context fact changes.
+2. Formula edits invalidate affected prepared callables, registry-sensitive
+   bindings where applicable, and the published values that depend on them.
+3. Row insert/delete/reorder changes row membership/order versions, reader
+   identity where traversal shape changes, and caller-row identity for affected
+   per-row formulas.
+4. Column insert/delete/reorder/rename changes column identity/order/header
+   facts, structured-reference binding outcomes, and any prepared formulas that
+   selected those columns by name or range.
+5. Header edits change header text dependencies and may change structured
+   reference binding if they alter canonical column identity.
+6. Totals toggle/edit changes totals-region identity and totals formula/value
+   dependencies; current-row references in totals context remain typed rejects.
+7. Table rename/path change changes table namespace facts and invalidates
+   prepared identities that relied on table lookup, without forcing OxFml to
+   know TreeCalc paths.
+8. Table move or virtual anchor movement changes virtual workbook/sheet/range
+   identity and invalidates any prepared or replay artifact whose observable
+   structured-reference meaning depends on the anchor.
+9. Table delete, node delete, workspace close, or unavailable workspace
+   transitions produce typed unavailable/deleted diagnostics and release old
+   membership/value/context dependencies.
+10. Dynamic table references and `INDIRECT`-style selectors rebind through
+   OxCalc dynamic-reference facts. If the dynamic target would require
+   unsupported structured-reference parsing or ambiguous name/call precedence,
+   the outcome is a typed exclusion or W074-gated blocker, not local inference.
+11. Save/reopen must preserve stable logical table identity where the product
+   model says the table is the same object. If persistence changes a version or
+   anchor identity, the change must be replay-visible and invalidate prepared
+   identity deterministically.
+
+Hard non-goals:
+
+1. no `EvalValue::Table` variant as a shortcut for table objects,
+2. no OxFml parser branch for TreeCalc table paths,
+3. no OxFunc branch that inspects TreeCalc table selectors or row/column ids,
+4. no DnaTreeCalc formula parser or dependency classifier,
+5. no OxReplay comparison rule that derives semantics by parsing producer
+   private strings,
+6. no eager materialization as closure evidence for reference-preserving table
+   behavior,
+7. no DnaOneCalc host resolver requirement for ordinary single-formula use,
+8. no private adapters between repos when a typed public packet or handoff is
+   missing.
+
+Promotion gates from this map:
+
+1. `calc-4vs8.45` may specify virtual-anchor identity only within the
+   projection and identity rules above.
+2. `calc-4vs8.46` may widen generic OxFml packet facts, but cannot ask OxFml to
+   parse TreeCalc table paths.
+3. `calc-4vs8.47` owns resolver and namespace facts, with final bare name/call
+   precedence still W074-gated.
+4. `calc-4vs8.48` and `calc-4vs8.49` must prove reference-preserving readers
+   and row-context prepared identity through generic OxFml/OxFunc inputs.
+5. `calc-4vs8.50` owns invalidation facts; Excel observation may inform cases
+   but does not replace OxCalc dependency semantics.
+6. `calc-4vs8.51`, `calc-4vs8.52`, and `calc-4vs8.53` provide product corpus,
+   Excel observation, and retained comparison evidence respectively.
+7. `calc-4vs8.54` keeps future UDF/VBA/XLL work registry-backed and opaque.
+8. `calc-4vs8.55` owns the cross-repo handoff/dependency graph so downstream
+   repos do not bridge around missing contracts.
+9. `calc-4vs8.56` owns dynamic table rebind, including `INDIRECT`-style cases,
+   under this same generic host-reference and sparse-reader model.
+
 `calc-4vs8.35` implemented contract:
 
 The table lifecycle boundary is now represented in

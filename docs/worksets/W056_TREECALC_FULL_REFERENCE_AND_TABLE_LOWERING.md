@@ -242,6 +242,20 @@ currently a typed projection exclusion because the current generic OxFml
 `TableDescriptor` requires parseable data-column A1 area refs; W056 table
 reader and OxFml packet widening must settle that before full table closure.
 
+Implementation note for `calc-4vs8.22`: OxCalc now has a first public
+TreeCalc table-path structured-reference prebind surface in
+`src/oxcalc-core/src/structured_table.rs`.
+`prebind_treecalc_table_structured_references` scans authored TreeCalc formula
+text only for table-path host-reference tokens and produces generic OxFml
+`StructuredReferenceBindRecord` packets. The packet preserves the original
+`source_span_utf8`, exact `source_token_text`, path span/token, structured-tail
+span/token, stable host reference handle, resolved `table_node_id`/`table_id`,
+selector payload, caller-context dependency flag, typed diagnostics, and replay
+identity. It covers `path[Col]`, `path[@Col]`, section/column composites such
+as `path[[#Headers],[Col]]`, omitted current-row forms such as `[@Col]`, and
+diagnostics for unknown table paths or columns. This is a host-hook prebind
+surface, not a TreeCalc formula parser and not an OxFml TreeCalc branch.
+
 ## 4C. `calc-4vs8.3` Dependency, Invalidation, And Rebind Surface
 
 The third W056 tranche adds the first OxCalc-owned typed projection over the

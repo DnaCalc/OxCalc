@@ -7,11 +7,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+pub use oxfml_core::interface::{
+    TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
+};
 use oxfml_core::{
-    StructuredReferenceBindRecord, StructuredSectionKind,
-    interface::{
-        TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
-    },
+    StructuredReferenceBindDiagnosticLink, StructuredReferenceBindRecord,
+    StructuredReferenceSelectedRegion, StructuredSectionKind, syntax::token::TextSpan,
 };
 
 use crate::dependency::{DependencyDescriptor, DependencyDescriptorKind};
@@ -696,6 +697,590 @@ impl StructuredTableContextPacket {
             .map(|table| (table.table_id.as_str(), table))
             .collect()
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableStructuredReferencePrebind {
+    pub source_span_utf8: TextSpan,
+    pub source_token_text: String,
+    pub path_span_utf8: Option<TextSpan>,
+    pub path_token_text: Option<String>,
+    pub structured_tail_span_utf8: TextSpan,
+    pub structured_tail_token_text: String,
+    pub host_ref_handle: String,
+    pub resolved_table_node_id: Option<TreeNodeId>,
+    pub resolved_table_id: Option<String>,
+    pub selector_payload: TreeCalcTableStructuredSelectorPayload,
+    pub caller_context_dependency: bool,
+    pub replay_identity: String,
+    pub bind_record: StructuredReferenceBindRecord,
+    pub diagnostics: Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableStructuredSelectorPayload {
+    pub table_path_token: Option<String>,
+    pub selected_column_ids: Vec<String>,
+    pub selected_sections: Vec<StructuredSectionKind>,
+    pub uses_this_row: bool,
+    pub omitted_table_name: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableStructuredReferenceDiagnostic {
+    pub diagnostic_code: String,
+    pub message: String,
+    pub source_span_utf8: TextSpan,
+}
+
+pub fn prebind_treecalc_table_structured_references(
+    source_text: &str,
+    table_projections: &[TreeCalcTableNodeProjection],
+    enclosing_table_ref: Option<TableRef>,
+    caller_table_region: Option<TableCallerRegion>,
+) -> Vec<TreeCalcTableStructuredReferencePrebind> {
+    let table_lookup = treecalc_table_path_lookup(table_projections);
+    let mut results = Vec::new();
+    let mut cursor = 0;
+
+    while let Some(relative_open) = source_text[cursor..].find('[') {
+        let open = cursor + relative_open;
+        if is_nested_structured_tail_open(source_text, open) {
+            cursor = open + 1;
+            continue;
+        }
+        let Some(close) = matching_structured_tail_close(source_text, open) else {
+            break;
+        };
+        let path_start = treecalc_table_path_token_start(source_text, open);
+        let path_token = source_text[path_start..open].trim();
+        let source_start = if path_token.is_empty() {
+            open
+        } else {
+            path_start
+        };
+        let source_span = TextSpan::new(source_start, close + 1 - source_start);
+        let tail_span = TextSpan::new(open, close + 1 - open);
+        let source_token_text = source_text[source_span.start..source_span.end()].to_string();
+        let tail_token_text = source_text[tail_span.start..tail_span.end()].to_string();
+
+        if path_token.is_empty() && !tail_supports_omitted_table_name(&tail_token_text) {
+            cursor = close + 1;
+            continue;
+        }
+
+        let projection = (!path_token.is_empty())
+            .then(|| table_lookup.get(path_token))
+            .flatten()
+            .copied();
+        let mut diagnostics = Vec::new();
+        let (table_id, table_name, table_node_id, descriptor) = if let Some(projection) = projection
+        {
+            (
+                Some(projection.table_id.clone()),
+                Some(projection.table_descriptor.table_name.clone()),
+                Some(projection.table_node_id),
+                Some(&projection.table_descriptor),
+            )
+        } else if path_token.is_empty() {
+            let descriptor = enclosing_table_ref
+                .as_ref()
+                .and_then(|table_ref| {
+                    table_projections
+                        .iter()
+                        .find(|projection| projection.table_id == table_ref.table_id)
+                })
+                .map(|projection| &projection.table_descriptor);
+            if descriptor.is_none() {
+                diagnostics.push(treecalc_table_structured_diagnostic(
+                    "treecalc.table.omitted_without_caller_context",
+                    "omitted table structured reference has no enclosing table context",
+                    source_span,
+                ));
+            }
+            (
+                enclosing_table_ref
+                    .as_ref()
+                    .map(|table_ref| table_ref.table_id.clone()),
+                descriptor.map(|descriptor| descriptor.table_name.clone()),
+                table_projections
+                    .iter()
+                    .find(|projection| {
+                        enclosing_table_ref
+                            .as_ref()
+                            .is_some_and(|table_ref| projection.table_id == table_ref.table_id)
+                    })
+                    .map(|projection| projection.table_node_id),
+                descriptor,
+            )
+        } else {
+            diagnostics.push(treecalc_table_structured_diagnostic(
+                "treecalc.table.path_not_table",
+                format!("TreeCalc path token '{path_token}' does not resolve to a table node"),
+                TextSpan::new(path_start, open - path_start),
+            ));
+            (None, None, None, None)
+        };
+
+        let parsed_selector =
+            parse_treecalc_structured_tail(&tail_token_text, descriptor, tail_span);
+        diagnostics.extend(parsed_selector.diagnostics);
+
+        let caller_context_dependency =
+            parsed_selector.uses_this_row || path_token.is_empty() || caller_table_region.is_some();
+        let host_ref_handle = treecalc_table_structured_host_ref_handle(source_span);
+        let replay_identity = treecalc_table_structured_replay_identity(
+            &host_ref_handle,
+            &source_token_text,
+            table_id.as_deref(),
+            &parsed_selector.selected_column_ids,
+            &parsed_selector.selected_sections,
+            parsed_selector.uses_this_row,
+        );
+        let selector_payload = TreeCalcTableStructuredSelectorPayload {
+            table_path_token: (!path_token.is_empty()).then(|| path_token.to_string()),
+            selected_column_ids: parsed_selector.selected_column_ids.clone(),
+            selected_sections: parsed_selector.selected_sections.clone(),
+            uses_this_row: parsed_selector.uses_this_row,
+            omitted_table_name: path_token.is_empty(),
+        };
+
+        let bind_diagnostics = diagnostics
+            .iter()
+            .map(|diagnostic| StructuredReferenceBindDiagnosticLink {
+                diagnostic_code: diagnostic.diagnostic_code.clone(),
+                message: diagnostic.message.clone(),
+                source_span_utf8: diagnostic.source_span_utf8,
+            })
+            .collect::<Vec<_>>();
+        let bind_record = StructuredReferenceBindRecord {
+            bind_record_handle: host_ref_handle.clone(),
+            source_span_utf8: source_span,
+            source_token_text: source_token_text.clone(),
+            explicit_table_name: (!path_token.is_empty()).then(|| path_token.to_string()),
+            omitted_table_name: path_token.is_empty(),
+            effective_table_id: table_id.clone(),
+            effective_table_name: table_name,
+            selected_column_ids: parsed_selector.selected_column_ids.clone(),
+            selected_sections: parsed_selector.selected_sections.clone(),
+            selected_regions: parsed_selector.selected_regions,
+            uses_this_row: parsed_selector.uses_this_row,
+            caller_context_dependent: caller_context_dependency,
+            resolved_reference: None,
+            diagnostics: bind_diagnostics,
+        };
+
+        results.push(TreeCalcTableStructuredReferencePrebind {
+            source_span_utf8: source_span,
+            source_token_text,
+            path_span_utf8: (!path_token.is_empty())
+                .then(|| TextSpan::new(path_start, open - path_start)),
+            path_token_text: (!path_token.is_empty()).then(|| path_token.to_string()),
+            structured_tail_span_utf8: tail_span,
+            structured_tail_token_text: tail_token_text,
+            host_ref_handle,
+            resolved_table_node_id: table_node_id,
+            resolved_table_id: table_id,
+            selector_payload,
+            caller_context_dependency,
+            replay_identity,
+            bind_record,
+            diagnostics,
+        });
+
+        cursor = close + 1;
+    }
+
+    results
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedTreeCalcStructuredTail {
+    selected_column_ids: Vec<String>,
+    selected_sections: Vec<StructuredSectionKind>,
+    selected_regions: Vec<StructuredReferenceSelectedRegion>,
+    uses_this_row: bool,
+    diagnostics: Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+}
+
+fn treecalc_table_path_lookup(
+    table_projections: &[TreeCalcTableNodeProjection],
+) -> BTreeMap<String, &TreeCalcTableNodeProjection> {
+    let mut lookup = BTreeMap::new();
+    for projection in table_projections {
+        for token in treecalc_table_path_tokens(projection) {
+            lookup.entry(token).or_insert(projection);
+        }
+    }
+    lookup
+}
+
+fn treecalc_table_path_tokens(projection: &TreeCalcTableNodeProjection) -> BTreeSet<String> {
+    let mut tokens = BTreeSet::new();
+    tokens.insert(projection.display_path.clone());
+    tokens.insert(projection.canonical_path.clone());
+    tokens.insert(projection.table_descriptor.table_name.clone());
+    tokens.insert(bracket_escape_treecalc_path(
+        &projection.table_descriptor.table_name,
+    ));
+    tokens.insert(bracket_escape_treecalc_path(&projection.canonical_path));
+    tokens.insert(bracket_escape_treecalc_path(&projection.display_path));
+    tokens
+}
+
+fn bracket_escape_treecalc_path(path: &str) -> String {
+    path.split('.')
+        .map(|segment| {
+            if segment
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+            {
+                segment.to_string()
+            } else {
+                format!("[{}]", segment.replace(']', "]]"))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+fn is_nested_structured_tail_open(source_text: &str, open: usize) -> bool {
+    open > 0
+        && source_text
+            .as_bytes()
+            .get(open - 1)
+            .is_some_and(|byte| matches!(byte, b'[' | b','))
+}
+
+fn matching_structured_tail_close(source_text: &str, open: usize) -> Option<usize> {
+    let bytes = source_text.as_bytes();
+    let mut depth = 0usize;
+    let mut index = open;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'[' => {
+                depth += 1;
+                index += 1;
+            }
+            b']' => {
+                let run_start = index;
+                while index < bytes.len() && bytes[index] == b']' {
+                    index += 1;
+                }
+                let run_len = index - run_start;
+                let after_run = bytes.get(index).copied();
+                let structural_close = run_len == 1
+                    || after_run.is_none()
+                    || after_run.is_some_and(|byte| !byte.is_ascii_alphanumeric() && byte != b'_');
+                if !structural_close {
+                    continue;
+                }
+                let closers = run_len.min(depth);
+                depth = depth.saturating_sub(closers);
+                if depth == 0 {
+                    return Some(run_start + run_len - 1);
+                }
+            }
+            _ => index += 1,
+        }
+    }
+    None
+}
+
+fn treecalc_table_path_token_start(source_text: &str, open: usize) -> usize {
+    let bytes = source_text.as_bytes();
+    let mut start = open;
+    while start > 0 {
+        let byte = bytes[start - 1];
+        if matches!(
+            byte,
+            b'=' | b'+'
+                | b'-'
+                | b'*'
+                | b'/'
+                | b'^'
+                | b'&'
+                | b'('
+                | b')'
+                | b','
+                | b'{'
+                | b'}'
+                | b' '
+                | b'\t'
+                | b'\r'
+                | b'\n'
+        ) {
+            break;
+        }
+        start -= 1;
+    }
+    start
+}
+
+fn tail_supports_omitted_table_name(tail_token_text: &str) -> bool {
+    let content = tail_token_text
+        .strip_prefix('[')
+        .and_then(|text| text.strip_suffix(']'))
+        .unwrap_or(tail_token_text)
+        .trim();
+    content.starts_with('@') || content.starts_with("[@")
+}
+
+fn parse_treecalc_structured_tail(
+    tail_token_text: &str,
+    table: Option<&TableDescriptor>,
+    tail_span: TextSpan,
+) -> ParsedTreeCalcStructuredTail {
+    let content = tail_token_text
+        .strip_prefix('[')
+        .and_then(|text| text.strip_suffix(']'))
+        .unwrap_or(tail_token_text);
+    let mut selected_column_ids = Vec::new();
+    let mut selected_sections = Vec::new();
+    let mut uses_this_row = false;
+    let mut diagnostics = Vec::new();
+
+    for part in split_structured_tail_parts(content) {
+        let part = unwrap_structured_tail_part(part.trim());
+        if part.is_empty() {
+            continue;
+        }
+        if let Some(section) = parse_structured_section(part) {
+            selected_sections.push(section);
+            if section == StructuredSectionKind::ThisRow {
+                uses_this_row = true;
+            }
+            continue;
+        }
+        if let Some(column_name) = part.strip_prefix('@') {
+            uses_this_row = true;
+            push_unique_section(&mut selected_sections, StructuredSectionKind::ThisRow);
+            resolve_treecalc_structured_column(
+                column_name,
+                table,
+                tail_span,
+                &mut selected_column_ids,
+                &mut diagnostics,
+            );
+            continue;
+        }
+        resolve_treecalc_structured_column(
+            part,
+            table,
+            tail_span,
+            &mut selected_column_ids,
+            &mut diagnostics,
+        );
+    }
+
+    if selected_sections.is_empty() {
+        selected_sections.push(if uses_this_row {
+            StructuredSectionKind::ThisRow
+        } else {
+            StructuredSectionKind::Data
+        });
+    }
+    selected_sections.sort_by_key(|section| structured_section_sort_key(*section));
+    selected_sections.dedup();
+    selected_column_ids.sort();
+    selected_column_ids.dedup();
+    let selected_regions = selected_sections
+        .iter()
+        .map(|section_kind| StructuredReferenceSelectedRegion {
+            section_kind: *section_kind,
+            region_ref: structured_region_ref(table, *section_kind),
+            column_range_refs: selected_column_ids
+                .iter()
+                .filter_map(|column_id| {
+                    table.and_then(|descriptor| {
+                        descriptor
+                            .columns
+                            .iter()
+                            .find(|column| &column.column_id == column_id)
+                            .map(|column| column.column_range_ref.clone())
+                    })
+                })
+                .collect(),
+        })
+        .collect();
+
+    ParsedTreeCalcStructuredTail {
+        selected_column_ids,
+        selected_sections,
+        selected_regions,
+        uses_this_row,
+        diagnostics,
+    }
+}
+
+fn split_structured_tail_parts(content: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0usize;
+    let mut start = 0usize;
+    let bytes = content.as_bytes();
+    let mut index = 0usize;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'[' => {
+                depth += 1;
+                index += 1;
+            }
+            b']' => {
+                let run_start = index;
+                while index < bytes.len() && bytes[index] == b']' {
+                    index += 1;
+                }
+                let run_len = index - run_start;
+                let after_run = bytes.get(index).copied();
+                let structural_close = run_len == 1
+                    || after_run.is_none()
+                    || after_run.is_some_and(|byte| !byte.is_ascii_alphanumeric() && byte != b'_');
+                if structural_close {
+                    depth = depth.saturating_sub(run_len.min(depth));
+                }
+            }
+            b',' if depth == 0 => {
+                parts.push(&content[start..index]);
+                start = index + 1;
+                index += 1;
+            }
+            _ => index += 1,
+        }
+    }
+    parts.push(&content[start..]);
+    parts
+}
+
+fn unwrap_structured_tail_part(part: &str) -> &str {
+    if part.starts_with('[')
+        && part.ends_with(']')
+        && matching_structured_tail_close(part, 0) == Some(part.len() - 1)
+    {
+        &part[1..part.len() - 1]
+    } else {
+        part
+    }
+}
+
+fn parse_structured_section(part: &str) -> Option<StructuredSectionKind> {
+    match part.to_ascii_lowercase().as_str() {
+        "#all" => Some(StructuredSectionKind::All),
+        "#data" => Some(StructuredSectionKind::Data),
+        "#headers" => Some(StructuredSectionKind::Headers),
+        "#totals" => Some(StructuredSectionKind::Totals),
+        "#this row" | "@" => Some(StructuredSectionKind::ThisRow),
+        _ => None,
+    }
+}
+
+fn push_unique_section(sections: &mut Vec<StructuredSectionKind>, section: StructuredSectionKind) {
+    if !sections.contains(&section) {
+        sections.push(section);
+    }
+}
+
+fn resolve_treecalc_structured_column(
+    column_name: &str,
+    table: Option<&TableDescriptor>,
+    tail_span: TextSpan,
+    selected_column_ids: &mut Vec<String>,
+    diagnostics: &mut Vec<TreeCalcTableStructuredReferenceDiagnostic>,
+) {
+    let Some(table) = table else {
+        return;
+    };
+    let normalized = column_name.replace("]]", "]").trim().to_ascii_uppercase();
+    if let Some(column) = table.columns.iter().find(|column| {
+        column.column_id.eq_ignore_ascii_case(&normalized)
+            || column.column_name.to_ascii_uppercase() == normalized
+    }) {
+        selected_column_ids.push(column.column_id.clone());
+    } else {
+        diagnostics.push(treecalc_table_structured_diagnostic(
+            "treecalc.table.unknown_column",
+            format!(
+                "structured reference column '{}' is not present in table '{}'",
+                column_name, table.table_name
+            ),
+            tail_span,
+        ));
+    }
+}
+
+fn structured_region_ref(
+    table: Option<&TableDescriptor>,
+    section_kind: StructuredSectionKind,
+) -> Option<String> {
+    let table = table?;
+    match section_kind {
+        StructuredSectionKind::All => Some(table.table_range_ref.clone()),
+        StructuredSectionKind::Data | StructuredSectionKind::ThisRow => None,
+        StructuredSectionKind::Headers => table.header_region_ref.clone(),
+        StructuredSectionKind::Totals => table.totals_region_ref.clone(),
+    }
+}
+
+fn structured_section_sort_key(section: StructuredSectionKind) -> u8 {
+    match section {
+        StructuredSectionKind::All => 0,
+        StructuredSectionKind::Headers => 1,
+        StructuredSectionKind::Data => 2,
+        StructuredSectionKind::Totals => 3,
+        StructuredSectionKind::ThisRow => 4,
+    }
+}
+
+fn treecalc_table_structured_diagnostic(
+    diagnostic_code: impl Into<String>,
+    message: impl Into<String>,
+    source_span_utf8: TextSpan,
+) -> TreeCalcTableStructuredReferenceDiagnostic {
+    TreeCalcTableStructuredReferenceDiagnostic {
+        diagnostic_code: diagnostic_code.into(),
+        message: message.into(),
+        source_span_utf8,
+    }
+}
+
+fn treecalc_table_structured_host_ref_handle(source_span: TextSpan) -> String {
+    identity_record(
+        "treecalc.structured_table_ref.handle.v1",
+        [
+            ("start", source_span.start.to_string()),
+            ("len", source_span.len.to_string()),
+        ],
+    )
+}
+
+fn treecalc_table_structured_replay_identity(
+    host_ref_handle: &str,
+    source_token_text: &str,
+    table_id: Option<&str>,
+    selected_column_ids: &[String],
+    selected_sections: &[StructuredSectionKind],
+    uses_this_row: bool,
+) -> String {
+    identity_record(
+        "treecalc.structured_table_ref.replay.v1",
+        [
+            ("handle", host_ref_handle.to_string()),
+            ("source", source_token_text.to_string()),
+            ("table_id", table_id.unwrap_or("none").to_string()),
+            (
+                "columns",
+                identity_list(selected_column_ids.iter().cloned()),
+            ),
+            (
+                "sections",
+                identity_list(
+                    selected_sections
+                        .iter()
+                        .map(|section| format!("{section:?}")),
+                ),
+            ),
+            ("uses_this_row", uses_this_row.to_string()),
+        ],
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -2098,6 +2683,155 @@ mod tests {
                 start_row: 0,
                 start_col: 2
             }
+        );
+    }
+
+    #[test]
+    fn prebinds_treecalc_table_path_structured_references_with_source_preservation() {
+        let projection = project_treecalc_table_node_snapshot(&treecalc_table_snapshot()).unwrap();
+        let source = "=SUM(SalesTable[Amount])+SalesTable[[#Headers],[Tax]]+SalesTable[@Tax]";
+        let prebound =
+            prebind_treecalc_table_structured_references(source, &[projection], None, None);
+
+        assert_eq!(prebound.len(), 3);
+        assert_eq!(prebound[0].source_token_text, "SalesTable[Amount]");
+        assert_eq!(prebound[0].source_span_utf8, TextSpan::new(5, 18));
+        assert_eq!(
+            prebound[0].bind_record.source_span_utf8,
+            prebound[0].source_span_utf8
+        );
+        assert_eq!(
+            prebound[0].bind_record.source_token_text,
+            prebound[0].source_token_text
+        );
+        assert_eq!(
+            prebound[0].bind_record.bind_record_handle,
+            prebound[0].host_ref_handle
+        );
+        assert_eq!(prebound[0].path_span_utf8, Some(TextSpan::new(5, 10)));
+        assert_eq!(prebound[0].structured_tail_span_utf8, TextSpan::new(15, 8));
+        assert_eq!(prebound[0].path_token_text.as_deref(), Some("SalesTable"));
+        assert_eq!(
+            prebound[0].structured_tail_token_text,
+            "[Amount]".to_string()
+        );
+        assert_eq!(prebound[0].resolved_table_node_id, Some(TreeNodeId(20)));
+        assert_eq!(
+            prebound[0].resolved_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        assert_eq!(
+            prebound[0].bind_record.selected_column_ids,
+            vec!["col:amount"]
+        );
+        assert_eq!(
+            prebound[0].bind_record.selected_sections,
+            vec![StructuredSectionKind::Data]
+        );
+        assert!(!prebound[0].caller_context_dependency);
+        assert!(prebound[0].diagnostics.is_empty());
+
+        assert_eq!(
+            prebound[1].source_token_text,
+            "SalesTable[[#Headers],[Tax]]"
+        );
+        assert_eq!(prebound[1].bind_record.selected_column_ids, vec!["col:tax"]);
+        assert_eq!(
+            prebound[1].bind_record.selected_sections,
+            vec![StructuredSectionKind::Headers]
+        );
+        assert_eq!(
+            prebound[1].bind_record.selected_regions[0]
+                .region_ref
+                .as_deref(),
+            Some("B3:D3")
+        );
+
+        assert_eq!(prebound[2].source_token_text, "SalesTable[@Tax]");
+        assert_eq!(
+            prebound[2].bind_record.selected_sections,
+            vec![StructuredSectionKind::ThisRow]
+        );
+        assert_eq!(prebound[2].bind_record.selected_column_ids, vec!["col:tax"]);
+        assert!(prebound[2].bind_record.uses_this_row);
+        assert!(prebound[2].caller_context_dependency);
+        assert!(prebound[2].replay_identity.contains("SalesTable[@Tax]"));
+    }
+
+    #[test]
+    fn prebinds_bracket_escaped_table_and_column_names_with_closing_brackets() {
+        let mut snapshot = treecalc_table_snapshot();
+        snapshot.display_path = "Sales]Table".to_string();
+        snapshot.canonical_path = "Sales]Table".to_string();
+        snapshot.table_name = "Sales]Table".to_string();
+        snapshot.columns[2].column_name = "Tax]Rate".to_string();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let source = "=SUM([Sales]]Table][[Tax]]Rate]])";
+        let prebound =
+            prebind_treecalc_table_structured_references(source, &[projection], None, None);
+
+        assert_eq!(prebound.len(), 1);
+        assert_eq!(prebound[0].source_token_text, "[Sales]]Table][[Tax]]Rate]]");
+        assert_eq!(
+            prebound[0].path_token_text.as_deref(),
+            Some("[Sales]]Table]")
+        );
+        assert_eq!(prebound[0].structured_tail_token_text, "[[Tax]]Rate]]");
+        assert_eq!(prebound[0].bind_record.selected_column_ids, vec!["col:tax"]);
+        assert!(prebound[0].diagnostics.is_empty());
+        assert_eq!(
+            prebound[0].bind_record.source_span_utf8,
+            prebound[0].source_span_utf8
+        );
+        assert_eq!(
+            prebound[0].bind_record.bind_record_handle,
+            prebound[0].host_ref_handle
+        );
+    }
+
+    #[test]
+    fn prebinds_omitted_table_refs_and_reports_table_path_diagnostics() {
+        let projection = project_treecalc_table_node_snapshot(&treecalc_table_snapshot()).unwrap();
+        let omitted = prebind_treecalc_table_structured_references(
+            "=[@Tax]",
+            std::slice::from_ref(&projection),
+            Some(TableRef {
+                table_id: "tree-table:sales".to_string(),
+            }),
+            Some(TableCallerRegion {
+                table_id: "tree-table:sales".to_string(),
+                region_kind: TableRegionKind::Data,
+                data_row_offset: Some(1),
+            }),
+        );
+        assert_eq!(omitted.len(), 1);
+        assert_eq!(omitted[0].source_token_text, "[@Tax]");
+        assert_eq!(
+            omitted[0].resolved_table_id.as_deref(),
+            Some("tree-table:sales")
+        );
+        assert!(omitted[0].selector_payload.omitted_table_name);
+        assert!(omitted[0].caller_context_dependency);
+        assert_eq!(omitted[0].bind_record.selected_column_ids, vec!["col:tax"]);
+
+        let diagnostic = prebind_treecalc_table_structured_references(
+            "=NotTable[Amount]+SalesTable[Missing]",
+            &[projection],
+            None,
+            None,
+        );
+        assert_eq!(diagnostic.len(), 2);
+        assert_eq!(
+            diagnostic[0].diagnostics[0].diagnostic_code,
+            "treecalc.table.path_not_table"
+        );
+        assert_eq!(
+            diagnostic[1].diagnostics[0].diagnostic_code,
+            "treecalc.table.unknown_column"
+        );
+        assert_eq!(
+            diagnostic[1].bind_record.diagnostics[0].diagnostic_code,
+            "treecalc.table.unknown_column"
         );
     }
 

@@ -286,6 +286,16 @@ OxFml must bind structured-reference grammar against the generic descriptor
 catalog only; it must not learn TreeCalc node paths, row ids, column formula
 metadata, or table invalidation semantics.
 
+For TreeCalc-authored table-path syntax, OxCalc supplies a host-hook prebind
+surface before OxFml sees the generic structured-reference packet. The host
+hook recognizes only table path tokens against OxCalc/DnaTreeCalc table-node
+projections and emits a generic `StructuredReferenceBindRecord` preserving the
+original TreeCalc source span, exact source token, path token/span,
+structured-tail token/span, stable host reference handle, selector payload,
+caller-context dependency, typed diagnostics, and replay identity. OxFml still
+receives only the generic descriptor/catalog result; it does not parse
+TreeCalc paths or table-node metadata.
+
 ## 11. Stage-1 Versus Later-Stage Seam Pressure
 
 ### 11.1 Stage 1

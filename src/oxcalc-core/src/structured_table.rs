@@ -18,7 +18,7 @@ pub use oxfml_core::interface::{
 };
 use oxfml_core::{
     EvaluationBackend, StructuredReferenceBindDiagnosticLink, StructuredReferenceBindRecord,
-    StructuredReferenceSelectedRegion, StructuredSectionKind,
+    StructuredReferenceSelectedRegion, StructuredReferenceSourceTokenKind, StructuredSectionKind,
     seam::Locus,
     source::{FormulaSourceRecord, StructureContextVersion},
     syntax::token::TextSpan,
@@ -727,6 +727,7 @@ impl StructuredTableContextPacket {
 pub struct TreeCalcTableStructuredReferencePrebind {
     pub source_span_utf8: TextSpan,
     pub source_token_text: String,
+    pub source_token_kind: StructuredReferenceSourceTokenKind,
     pub path_span_utf8: Option<TextSpan>,
     pub path_token_text: Option<String>,
     pub structured_tail_span_utf8: TextSpan,
@@ -881,6 +882,7 @@ pub fn prebind_treecalc_table_structured_references(
             bind_record_handle: host_ref_handle.clone(),
             source_span_utf8: source_span,
             source_token_text: source_token_text.clone(),
+            source_token_kind: StructuredReferenceSourceTokenKind::StructuredReference,
             explicit_table_name: (!path_token.is_empty()).then(|| path_token.to_string()),
             omitted_table_name: path_token.is_empty(),
             effective_table_id: table_id.clone(),
@@ -897,6 +899,7 @@ pub fn prebind_treecalc_table_structured_references(
         results.push(TreeCalcTableStructuredReferencePrebind {
             source_span_utf8: source_span,
             source_token_text,
+            source_token_kind: StructuredReferenceSourceTokenKind::StructuredReference,
             path_span_utf8: (!path_token.is_empty())
                 .then(|| TextSpan::new(path_start, open - path_start)),
             path_token_text: (!path_token.is_empty()).then(|| path_token.to_string()),
@@ -4319,6 +4322,7 @@ pub enum StructuredTableRegionSelection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructuredTableReferenceIntake {
     pub reference_handle: String,
+    pub source_token_kind: StructuredReferenceSourceTokenKind,
     pub effective_table_ref: Option<TableRef>,
     pub explicit_table_ref: Option<TableRef>,
     pub uses_omitted_table_name: bool,
@@ -4349,6 +4353,7 @@ impl StructuredTableReferenceIntake {
         let table_id = table_id.into();
         Self {
             reference_handle: reference_handle.into(),
+            source_token_kind: StructuredReferenceSourceTokenKind::StructuredReference,
             explicit_table_ref: Some(TableRef {
                 table_id: table_id.clone(),
             }),
@@ -4364,6 +4369,7 @@ impl StructuredTableReferenceIntake {
     pub fn omitted_table_name(reference_handle: impl Into<String>) -> Self {
         Self {
             reference_handle: reference_handle.into(),
+            source_token_kind: StructuredReferenceSourceTokenKind::StructuredReference,
             effective_table_ref: None,
             explicit_table_ref: None,
             uses_omitted_table_name: true,
@@ -4424,6 +4430,7 @@ impl StructuredTableReferenceIntake {
 
         Ok(Self {
             reference_handle: record.bind_record_handle.clone(),
+            source_token_kind: record.source_token_kind,
             effective_table_ref: Some(TableRef {
                 table_id: effective_table_id.clone(),
             }),
@@ -5926,6 +5933,14 @@ mod tests {
             prebound[0].source_token_text
         );
         assert_eq!(
+            prebound[0].source_token_kind,
+            StructuredReferenceSourceTokenKind::StructuredReference
+        );
+        assert_eq!(
+            prebound[0].bind_record.source_token_kind,
+            prebound[0].source_token_kind
+        );
+        assert_eq!(
             prebound[0].bind_record.bind_record_handle,
             prebound[0].host_ref_handle
         );
@@ -5969,6 +5984,10 @@ mod tests {
         );
 
         assert_eq!(prebound[2].source_token_text, "SalesTable[@Tax]");
+        assert_eq!(
+            prebound[2].bind_record.source_token_kind,
+            StructuredReferenceSourceTokenKind::StructuredReference
+        );
         assert_eq!(
             prebound[2].bind_record.selected_sections,
             vec![StructuredSectionKind::ThisRow]
@@ -6027,6 +6046,10 @@ mod tests {
         );
         assert_eq!(omitted.len(), 1);
         assert_eq!(omitted[0].source_token_text, "[@Tax]");
+        assert_eq!(
+            omitted[0].source_token_kind,
+            StructuredReferenceSourceTokenKind::StructuredReference
+        );
         assert_eq!(
             omitted[0].resolved_table_id.as_deref(),
             Some("tree-table:sales")
@@ -7756,6 +7779,7 @@ mod tests {
             bind_record_handle: bind_record_handle.to_string(),
             source_span_utf8: TextSpan::new(1, source_token_text.len()),
             source_token_text: source_token_text.to_string(),
+            source_token_kind: StructuredReferenceSourceTokenKind::StructuredReference,
             explicit_table_name: explicit_table_name.map(str::to_string),
             omitted_table_name,
             effective_table_id: Some("table:sales".to_string()),
@@ -8024,6 +8048,10 @@ mod tests {
             Some(TableRef {
                 table_id: "table:sales".to_string()
             })
+        );
+        assert_eq!(
+            request.reference.source_token_kind,
+            StructuredReferenceSourceTokenKind::StructuredReference
         );
         assert_eq!(
             request.source_reference_handle.as_deref(),

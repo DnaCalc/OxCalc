@@ -526,8 +526,8 @@ the final W056 table audit.
 3. `calc-4vs8.46` — generic structured-reference packet contract for node
    tables. This keeps OxFml responsible for generic structured-reference
    parsing/binding and requires exact source spans/tokens, selected sections/
-   regions/columns, effective table identity, diagnostics, caller-context
-   dependency, and replay identity without TreeCalc semantics.
+   token kinds, regions/columns, effective table identity, diagnostics,
+   caller-context dependency, and replay identity without TreeCalc semantics.
 4. `calc-4vs8.47` — table catalog resolver and namespace versioning. This
    covers table names, node paths, workspace aliases, root/workspace anchors,
    omitted-table row context, unavailable workspace/table states, table/name
@@ -881,6 +881,65 @@ policy for W056. It does not by itself promote the full table topic: function
 breadth remains under `calc-4vs8.36`, retained matched replay/value-wire intake
 under `calc-4vs8.37`, and final product promotion under `calc-4vs8.38`.
 
+## 4B.5. `calc-4vs8.46` Generic Structured-Reference Packet Contract
+
+Product status:
+
+OxCalc can now consume and emit the W056 node-table structured-reference packet
+shape without formula-text parsing. The consumed packet is still the public
+OxFml `StructuredReferenceBindRecord`; TreeCalc table-path ownership stays in
+OxCalc/DnaTreeCalc, while OxFml owns generic structured-reference parsing,
+section/column selection, source-token preservation, diagnostics, and runtime/
+replay projection.
+
+Required packet facts:
+
+1. stable `bind_record_handle`,
+2. exact `source_span_utf8` over the authored formula text,
+3. exact `source_token_text`,
+4. typed `source_token_kind` preserving structured-reference token
+   classification,
+5. explicit-table versus omitted-table facts,
+6. effective table id/name when binding succeeds,
+7. selected column ids, selected section qualifiers, and selected region
+   descriptors,
+8. `uses_this_row` and `caller_context_dependent`,
+9. optional generic resolved-reference descriptor,
+10. typed diagnostic links for recognized bind failures.
+
+OxCalc-specific node-table prebind facts:
+
+1. path span/token and structured-tail span/token are preserved separately from
+   the generic source token,
+2. table path tokens resolve only against OxCalc/DnaTreeCalc
+   `TreeCalcTableNodeProjection` values,
+3. `host_ref_handle`, `selector_payload`, caller-context dependency, and
+   replay identity are OxCalc-owned and correlate back to the generic bind
+   record,
+4. `StructuredTableReferenceIntake` stores the generic `source_token_kind` so
+   dependency lowering and sparse readers can preserve token classification
+   without re-reading formula text.
+
+Counterpart evidence:
+
+1. OxFml `fml-ds0.16` adds the public typed
+   `StructuredReferenceSourceTokenKind` field and asserts it for explicit,
+   omitted, zero-row, diagnostic, and runtime/replay structured-reference
+   packets.
+2. OxCalc focused tests assert that TreeCalc table prebinds and
+   `StructuredTableDependencyLoweringRequest::from_oxfml_bind_record` preserve
+   `source_token_kind = StructuredReference`.
+
+Non-goals:
+
+1. OxFml does not parse TreeCalc table paths, table lifecycle, row identity,
+   column identity, or invalidation semantics.
+2. OxCalc does not reimplement OxFml's structured-reference grammar. It only
+   recognizes TreeCalc table path prefixes and forwards the structured tail
+   through the generic packet shape.
+3. Bare host names, table-name collisions, and callable/lambda-valued host
+   nodes remain in the W074 name/call precedence evidence lane.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust
@@ -1144,10 +1203,11 @@ TreeCalc table-path structured-reference prebind surface in
 `prebind_treecalc_table_structured_references` scans authored TreeCalc formula
 text only for table-path host-reference tokens and produces generic OxFml
 `StructuredReferenceBindRecord` packets. The packet preserves the original
-`source_span_utf8`, exact `source_token_text`, path span/token, structured-tail
-span/token, stable host reference handle, resolved `table_node_id`/`table_id`,
-selector payload, caller-context dependency flag, typed diagnostics, and replay
-identity. It covers `path[Col]`, `path[@Col]`, section/column composites such
+`source_span_utf8`, exact `source_token_text`, typed `source_token_kind`, path
+span/token, structured-tail span/token, stable host reference handle, resolved
+`table_node_id`/`table_id`, selector payload, caller-context dependency flag,
+typed diagnostics, and replay identity. It covers `path[Col]`, `path[@Col]`,
+section/column composites such
 as `path[[#Headers],[Col]]`, omitted current-row forms such as `[@Col]`, and
 diagnostics for unknown table paths or columns. This is a host-hook prebind
 surface, not a TreeCalc formula parser and not an OxFml TreeCalc branch.

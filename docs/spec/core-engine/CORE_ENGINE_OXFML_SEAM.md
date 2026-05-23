@@ -301,11 +301,11 @@ For TreeCalc-authored table-path syntax, OxCalc supplies a host-hook prebind
 surface before OxFml sees the generic structured-reference packet. The host
 hook recognizes only table path tokens against OxCalc/DnaTreeCalc table-node
 projections and emits a generic `StructuredReferenceBindRecord` preserving the
-original TreeCalc source span, exact source token, path token/span,
-structured-tail token/span, stable host reference handle, selector payload,
-caller-context dependency, typed diagnostics, and replay identity. OxFml still
-receives only the generic descriptor/catalog result; it does not parse
-TreeCalc paths or table-node metadata.
+original TreeCalc source span, exact source token, typed source token kind,
+path token/span, structured-tail token/span, stable host reference handle,
+selector payload, caller-context dependency, typed diagnostics, and replay
+identity. OxFml still receives only the generic descriptor/catalog result; it
+does not parse TreeCalc paths or table-node metadata.
 
 At runtime, OxCalc lowers the resolved structured-reference packet to a sparse
 table reader and public OxFml sparse-reference value binding keyed by the

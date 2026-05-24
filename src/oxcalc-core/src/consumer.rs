@@ -164,6 +164,19 @@ pub struct OxCalcTreeWorkspaceView {
     pub diagnostics: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeWorkspaceSnapshot {
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub root_node_id: TreeNodeId,
+    pub structural_snapshot: StructuralSnapshot,
+    pub formula_texts: BTreeMap<TreeNodeId, String>,
+    pub formula_text_versions: BTreeMap<TreeNodeId, u64>,
+    pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    pub table_state_version: u64,
+    pub seeded_published_values: BTreeMap<TreeNodeId, String>,
+}
+
 #[derive(Debug, Error)]
 pub enum OxCalcTreeContextError {
     #[error("workspace '{workspace_id}' already exists")]
@@ -186,6 +199,8 @@ pub enum OxCalcTreeContextError {
     TableBindRecordIntake {
         error: StructuredTableBindRecordIntakeError,
     },
+    #[error("invalid OxCalc tree workspace snapshot: {detail}")]
+    InvalidWorkspaceSnapshot { detail: String },
 }
 
 #[derive(Debug, Clone)]
@@ -608,6 +623,54 @@ impl OxCalcTreeContext {
         Ok(classify_treecalc_dynamic_table_rebind(&request))
     }
 
+    pub fn export_workspace_snapshot(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(OxCalcTreeWorkspaceSnapshot {
+            workspace_id: state.workspace_id.clone(),
+            root_node_id: state.root_node_id,
+            structural_snapshot: state.snapshot.clone(),
+            formula_texts: state.formula_texts.clone(),
+            formula_text_versions: state.formula_text_versions.clone(),
+            table_snapshots: state.table_snapshots.clone(),
+            deleted_table_facts: state.deleted_table_facts.clone(),
+            table_state_version: state.table_state_version,
+            seeded_published_values: state.seeded_published_values.clone(),
+        })
+    }
+
+    pub fn import_workspace_snapshot(
+        &mut self,
+        snapshot: OxCalcTreeWorkspaceSnapshot,
+    ) -> Result<OxCalcTreeWorkspaceId, OxCalcTreeContextError> {
+        if self.workspaces.contains_key(&snapshot.workspace_id) {
+            return Err(OxCalcTreeContextError::DuplicateWorkspace {
+                workspace_id: snapshot.workspace_id.as_str().to_string(),
+            });
+        }
+        validate_workspace_snapshot(&snapshot)?;
+
+        let workspace_id = snapshot.workspace_id.clone();
+        let structural_snapshot = snapshot.structural_snapshot;
+        let state = OxCalcTreeWorkspaceState {
+            workspace_id: workspace_id.clone(),
+            root_node_id: snapshot.root_node_id,
+            snapshot: structural_snapshot,
+            formula_texts: snapshot.formula_texts,
+            formula_text_versions: snapshot.formula_text_versions,
+            table_snapshots: snapshot.table_snapshots,
+            deleted_table_facts: snapshot.deleted_table_facts,
+            table_state_version: snapshot.table_state_version,
+            seeded_published_values: snapshot.seeded_published_values,
+            last_result: None,
+        };
+        self.advance_allocators_past_state(&state);
+        self.workspaces.insert(workspace_id.clone(), state);
+        Ok(workspace_id)
+    }
+
     pub fn recalculate(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -718,6 +781,15 @@ impl OxCalcTreeContext {
 
     fn advance_candidate_index(&mut self) {
         self.next_candidate_index += 1;
+    }
+
+    fn advance_allocators_past_state(&mut self, state: &OxCalcTreeWorkspaceState) {
+        if let Some(max_node_id) = state.snapshot.nodes().keys().map(|node_id| node_id.0).max() {
+            self.next_node_id = self.next_node_id.max(max_node_id + 1);
+        }
+        self.next_snapshot_id = self
+            .next_snapshot_id
+            .max(state.snapshot.snapshot_id().0 + 1);
     }
 
     fn workspace(
@@ -853,6 +925,93 @@ impl OxCalcTreeContext {
             )),
         }
     }
+}
+
+fn validate_workspace_snapshot(
+    snapshot: &OxCalcTreeWorkspaceSnapshot,
+) -> Result<(), OxCalcTreeContextError> {
+    if snapshot.structural_snapshot.root_node_id() != snapshot.root_node_id {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "root_node_id {} does not match structural snapshot root {}",
+                snapshot.root_node_id,
+                snapshot.structural_snapshot.root_node_id()
+            ),
+        });
+    }
+    if snapshot
+        .structural_snapshot
+        .try_get_node(snapshot.root_node_id)
+        .is_none()
+    {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!("root node {} is missing", snapshot.root_node_id),
+        });
+    }
+
+    let structural_node_ids = snapshot
+        .structural_snapshot
+        .nodes()
+        .keys()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let formula_text_node_ids = snapshot
+        .formula_texts
+        .keys()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let formula_version_node_ids = snapshot
+        .formula_text_versions
+        .keys()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    if formula_text_node_ids != structural_node_ids {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "formula_texts keys {:?} do not match structural node ids {:?}",
+                formula_text_node_ids, structural_node_ids
+            ),
+        });
+    }
+    if formula_version_node_ids != structural_node_ids {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "formula_text_versions keys {:?} do not match structural node ids {:?}",
+                formula_version_node_ids, structural_node_ids
+            ),
+        });
+    }
+
+    for node_id in snapshot
+        .formula_texts
+        .keys()
+        .chain(snapshot.formula_text_versions.keys())
+        .chain(snapshot.table_snapshots.keys())
+        .chain(snapshot.seeded_published_values.keys())
+    {
+        if snapshot
+            .structural_snapshot
+            .try_get_node(*node_id)
+            .is_none()
+        {
+            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!("node-scoped snapshot data references unknown node {node_id}"),
+            });
+        }
+    }
+
+    for (node_id, table_snapshot) in &snapshot.table_snapshots {
+        if table_snapshot.table_node_id != *node_id {
+            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!(
+                    "table snapshot for node {node_id} declares table_node_id {}",
+                    table_snapshot.table_node_id
+                ),
+            });
+        }
+    }
+
+    Ok(())
 }
 
 fn node_kind_for_formula_text(formula_text: &str) -> StructuralNodeKind {
@@ -1988,6 +2147,137 @@ mod tests {
             &crate::structured_table::TreeCalcTablePreparedIdentityInput::TableContextIdentity
         ));
         assert!(report.oxfml_generic_bind_packet_available);
+    }
+
+    #[test]
+    fn treecalc_context_export_import_preserves_identity_and_recalc_state() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:persist"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+        context
+            .set_node_table(&workspace_id, sales_id, sales_table_snapshot(sales_id))
+            .unwrap();
+
+        let first_result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            first_result.published_values.get(&a_id),
+            Some(&"3".to_string())
+        );
+        assert_eq!(
+            first_result.published_values.get(&b_id),
+            Some(&"4".to_string())
+        );
+        let table_before = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .unwrap();
+
+        let snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(snapshot.workspace_id, workspace_id);
+        assert_eq!(snapshot.root_node_id, TreeNodeId(1));
+        assert_eq!(
+            snapshot.formula_texts.get(&a_id).map(String::as_str),
+            Some("=3")
+        );
+        assert_eq!(
+            snapshot.formula_texts.get(&b_id).map(String::as_str),
+            Some("=A+1")
+        );
+        assert_eq!(
+            snapshot
+                .table_snapshots
+                .get(&sales_id)
+                .map(|table| table.table_id.as_str()),
+            Some("table:sales")
+        );
+        assert_eq!(
+            snapshot.seeded_published_values.get(&b_id),
+            Some(&"4".to_string())
+        );
+
+        let mut imported_context = OxCalcTreeContext::default();
+        let imported_workspace_id = imported_context
+            .import_workspace_snapshot(snapshot)
+            .unwrap();
+        assert_eq!(imported_workspace_id, workspace_id);
+
+        let imported_b_before_recalc = imported_context
+            .node_view(&imported_workspace_id, b_id)
+            .unwrap();
+        assert_eq!(imported_b_before_recalc.value_text.as_deref(), Some("4"));
+
+        let table_after_import = imported_context
+            .table_view(&imported_workspace_id, sales_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(table_after_import.table_id, table_before.table_id);
+        assert_eq!(
+            table_after_import.projection.table_context_identity,
+            table_before.projection.table_context_identity
+        );
+        assert_eq!(
+            table_after_import.snapshot.table_namespace_version,
+            table_before.snapshot.table_namespace_version
+        );
+
+        let imported_result = imported_context
+            .recalculate(&imported_workspace_id)
+            .unwrap();
+        assert_eq!(imported_result.run_state, OxCalcTreeRunState::VerifiedClean);
+        assert_eq!(
+            imported_result.published_values.get(&a_id),
+            Some(&"3".to_string())
+        );
+        assert_eq!(
+            imported_result.published_values.get(&b_id),
+            Some(&"4".to_string())
+        );
+
+        let c_id = imported_context
+            .add_node(
+                &imported_workspace_id,
+                OxCalcTreeNodeCreate::new("C", "=B+1"),
+            )
+            .unwrap();
+        assert_eq!(c_id, TreeNodeId(5));
+        let final_result = imported_context
+            .recalculate(&imported_workspace_id)
+            .unwrap();
+        assert_eq!(
+            final_result.published_values.get(&c_id),
+            Some(&"5".to_string())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_import_rejects_snapshots_missing_formula_truth() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:invalid-import"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let mut snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        snapshot.formula_texts.remove(&a_id);
+
+        let err = OxCalcTreeContext::default()
+            .import_workspace_snapshot(snapshot)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+        ));
     }
 
     #[test]

@@ -515,13 +515,17 @@ It owns:
 2. canonical node ids, symbols, formula text, and structural relations,
 3. OxCalc-owned formula binding/catalog construction,
 4. seeded and last-published values,
-5. the latest calculation outcome used by read views.
+5. node-associated table snapshots and normalized table views,
+6. export/import of OxCalc-owned workspace snapshots for host save/reopen,
+7. the latest calculation outcome used by read views.
 
 Working meaning:
 1. hosts mutate structure and formula text through typed context calls,
 2. hosts read stable node/workspace views from OxCalc,
-3. hosts do not construct formula catalogs or reference carriers,
-4. raw formula text is interpreted by OxCalc/OxFml through the TreeCalc host
+3. hosts export and import OxCalc-owned workspace snapshots instead of
+   rebuilding private structure, formula, table, or value maps,
+4. hosts do not construct formula catalogs or reference carriers,
+5. raw formula text is interpreted by OxCalc/OxFml through the TreeCalc host
    context.
 
 ### 6.3 Context-owned recalc configuration
@@ -631,9 +635,10 @@ No second seam layer rule:
 1. create a workspace,
 2. add, rename, move, reorder, delete, and edit nodes,
 3. set, clear, resolve, lower, classify, and read node-associated tables,
-4. recalculate a workspace,
-5. read workspace, node, and table views,
-6. configure host capability/runtime policy through context options.
+4. export and import OxCalc-owned workspace snapshots for save/reopen,
+5. recalculate a workspace,
+6. read workspace, node, and table views,
+7. configure host capability/runtime policy through context options.
 
 The committed widening direction is additive context operations:
 1. edit-batch calls,

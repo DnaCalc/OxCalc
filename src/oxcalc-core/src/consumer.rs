@@ -2,15 +2,25 @@
 
 //! Consumer-facing OxCalc runtime contract for tree-substrate hosts.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
+use oxfml_core::{
+    BindContext, BindRequest, FormulaSourceRecord, ParseRequest, bind_formula, parse_formula,
+    project_red_view,
+};
 use thiserror::Error;
 
 use crate::coordinator::{AcceptedCandidateResult, PublicationBundle, RejectDetail, RuntimeEffect};
 use crate::dependency::{DependencyGraph, InvalidationClosure};
-use crate::formula::TreeFormulaCatalog;
+use crate::formula::{
+    TreeCalcFormulaTextPrebindError, TreeFormulaBinding, TreeFormulaCatalog,
+    TreeFormulaReferenceCarrier, TreeReference, prebind_treecalc_formula_text,
+};
 use crate::recalc::{NodeCalcState, OverlayEntry};
-use crate::structural::{StructuralSnapshot, TreeNodeId};
+use crate::structural::{
+    BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
+    StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
+};
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
@@ -61,6 +71,745 @@ pub struct OxCalcTreeRecalcResult {
 pub enum OxCalcTreeRuntimeError {
     #[error(transparent)]
     Runtime(#[from] LocalTreeCalcError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OxCalcTreeWorkspaceId(pub String);
+
+impl OxCalcTreeWorkspaceId {
+    #[must_use]
+    pub fn new(workspace_id: impl Into<String>) -> Self {
+        Self(workspace_id.into())
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeWorkspaceCreate {
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub root_symbol: String,
+}
+
+impl OxCalcTreeWorkspaceCreate {
+    #[must_use]
+    pub fn new(workspace_id: impl Into<String>) -> Self {
+        Self {
+            workspace_id: OxCalcTreeWorkspaceId::new(workspace_id),
+            root_symbol: "Root".to_string(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_root_symbol(mut self, root_symbol: impl Into<String>) -> Self {
+        self.root_symbol = root_symbol.into();
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeNodeCreate {
+    pub parent_node_id: Option<TreeNodeId>,
+    pub symbol: String,
+    pub formula_text: String,
+}
+
+impl OxCalcTreeNodeCreate {
+    #[must_use]
+    pub fn new(symbol: impl Into<String>, formula_text: impl Into<String>) -> Self {
+        Self {
+            parent_node_id: None,
+            symbol: symbol.into(),
+            formula_text: formula_text.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn under(mut self, parent_node_id: TreeNodeId) -> Self {
+        self.parent_node_id = Some(parent_node_id);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeNodeView {
+    pub node_id: TreeNodeId,
+    pub symbol: String,
+    pub canonical_path: String,
+    pub display_path: String,
+    pub formula_text: String,
+    pub value_text: Option<String>,
+    pub calc_state: Option<NodeCalcState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeWorkspaceView {
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub root_node_id: TreeNodeId,
+    pub snapshot_id: StructuralSnapshotId,
+    pub nodes: Vec<OxCalcTreeNodeView>,
+    pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Error)]
+pub enum OxCalcTreeContextError {
+    #[error("workspace '{workspace_id}' already exists")]
+    DuplicateWorkspace { workspace_id: String },
+    #[error("unknown workspace '{workspace_id}'")]
+    UnknownWorkspace { workspace_id: String },
+    #[error("node {node_id} has no parent and cannot be reordered")]
+    CannotReorderRoot { node_id: TreeNodeId },
+    #[error(transparent)]
+    Structural(#[from] StructuralError),
+    #[error(transparent)]
+    FormulaPrebind(#[from] TreeCalcFormulaTextPrebindError),
+    #[error(transparent)]
+    Runtime(#[from] OxCalcTreeRuntimeError),
+}
+
+#[derive(Debug, Clone)]
+struct OxCalcTreeWorkspaceState {
+    workspace_id: OxCalcTreeWorkspaceId,
+    root_node_id: TreeNodeId,
+    snapshot: StructuralSnapshot,
+    formula_texts: BTreeMap<TreeNodeId, String>,
+    formula_text_versions: BTreeMap<TreeNodeId, u64>,
+    seeded_published_values: BTreeMap<TreeNodeId, String>,
+    last_result: Option<OxCalcTreeRecalcResult>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OxCalcTreeContext {
+    environment: OxCalcTreeEnvironment,
+    workspaces: BTreeMap<OxCalcTreeWorkspaceId, OxCalcTreeWorkspaceState>,
+    next_node_id: u64,
+    next_snapshot_id: u64,
+    next_candidate_index: u64,
+}
+
+impl Default for OxCalcTreeContext {
+    fn default() -> Self {
+        Self::new(OxCalcTreeEnvironment::default())
+    }
+}
+
+impl OxCalcTreeContext {
+    #[must_use]
+    pub fn new(environment: OxCalcTreeEnvironment) -> Self {
+        Self {
+            environment,
+            workspaces: BTreeMap::new(),
+            next_node_id: 1,
+            next_snapshot_id: 1,
+            next_candidate_index: 1,
+        }
+    }
+
+    #[must_use]
+    pub fn environment(&self) -> &OxCalcTreeEnvironment {
+        &self.environment
+    }
+
+    pub fn create_workspace(
+        &mut self,
+        request: OxCalcTreeWorkspaceCreate,
+    ) -> Result<OxCalcTreeWorkspaceId, OxCalcTreeContextError> {
+        if self.workspaces.contains_key(&request.workspace_id) {
+            return Err(OxCalcTreeContextError::DuplicateWorkspace {
+                workspace_id: request.workspace_id.0,
+            });
+        }
+
+        let root_node_id = self.next_node_id();
+        let snapshot_id = self.next_snapshot_id();
+        let root = StructuralNode {
+            node_id: root_node_id,
+            kind: StructuralNodeKind::Root,
+            symbol: request.root_symbol,
+            parent_id: None,
+            child_ids: Vec::new(),
+            formula_artifact_id: None,
+            bind_artifact_id: None,
+            constant_value: None,
+        };
+        let snapshot = StructuralSnapshot::create(snapshot_id, root_node_id, [root])?;
+        let workspace_id = request.workspace_id;
+        let state = OxCalcTreeWorkspaceState {
+            workspace_id: workspace_id.clone(),
+            root_node_id,
+            snapshot,
+            formula_texts: BTreeMap::from([(root_node_id, String::new())]),
+            formula_text_versions: BTreeMap::from([(root_node_id, 1)]),
+            seeded_published_values: BTreeMap::new(),
+            last_result: None,
+        };
+        self.workspaces.insert(workspace_id.clone(), state);
+        self.advance_node_id();
+        self.advance_snapshot_id();
+        Ok(workspace_id)
+    }
+
+    pub fn add_node(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        request: OxCalcTreeNodeCreate,
+    ) -> Result<TreeNodeId, OxCalcTreeContextError> {
+        let node_id = self.next_node_id();
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let parent_id = request.parent_node_id.unwrap_or(state.root_node_id);
+            let version = 1;
+            let node = StructuralNode {
+                node_id,
+                kind: node_kind_for_formula_text(&request.formula_text),
+                symbol: request.symbol,
+                parent_id: Some(parent_id),
+                child_ids: Vec::new(),
+                formula_artifact_id: formula_artifact_id_for(
+                    state.workspace_id.as_str(),
+                    node_id,
+                    version,
+                    &request.formula_text,
+                ),
+                bind_artifact_id: bind_artifact_id_for(
+                    state.workspace_id.as_str(),
+                    node_id,
+                    version,
+                    &request.formula_text,
+                ),
+                constant_value: constant_value_for_formula_text(&request.formula_text),
+            };
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::InsertNode {
+                    node,
+                    parent_id,
+                    index: None,
+                },
+            )?;
+            state.snapshot = outcome.snapshot;
+            state.formula_text_versions.insert(node_id, version);
+            state.formula_texts.insert(node_id, request.formula_text);
+            state.last_result = None;
+        }
+        self.advance_node_id();
+        self.advance_snapshot_id();
+        Ok(node_id)
+    }
+
+    pub fn set_node_formula_text(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        formula_text: impl Into<String>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let formula_text = formula_text.into();
+        let attachment_snapshot_id = self.next_snapshot_id();
+        let value_snapshot_id = self.next_snapshot_id_after(1);
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let version = state
+                .formula_text_versions
+                .get(&node_id)
+                .copied()
+                .unwrap_or_default()
+                + 1;
+            let attachment = state.snapshot.apply_edit(
+                attachment_snapshot_id,
+                StructuralEdit::ReplaceFormulaAttachment {
+                    node_id,
+                    formula_artifact_id: formula_artifact_id_for(
+                        state.workspace_id.as_str(),
+                        node_id,
+                        version,
+                        &formula_text,
+                    ),
+                    bind_artifact_id: bind_artifact_id_for(
+                        state.workspace_id.as_str(),
+                        node_id,
+                        version,
+                        &formula_text,
+                    ),
+                },
+            )?;
+            let value = attachment.snapshot.apply_edit(
+                value_snapshot_id,
+                StructuralEdit::SetConstantValue {
+                    node_id,
+                    constant_value: constant_value_for_formula_text(&formula_text),
+                },
+            )?;
+            state.snapshot = value.snapshot;
+            state.formula_text_versions.insert(node_id, version);
+            state.formula_texts.insert(node_id, formula_text);
+            state.last_result = None;
+        }
+        self.advance_snapshot_id_by(2);
+        Ok(())
+    }
+
+    pub fn rename_node(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        new_symbol: impl Into<String>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::RenameNode {
+                    node_id,
+                    new_symbol: new_symbol.into(),
+                },
+            )?;
+            state.snapshot = outcome.snapshot;
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(())
+    }
+
+    pub fn move_node(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        new_parent_id: TreeNodeId,
+        new_index: Option<usize>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::MoveNode {
+                    node_id,
+                    new_parent_id,
+                    new_index,
+                },
+            )?;
+            state.snapshot = outcome.snapshot;
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(())
+    }
+
+    pub fn reorder_node(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        new_index: usize,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let parent_id = self
+            .workspace(workspace_id)?
+            .snapshot
+            .parent_id_of(node_id)
+            .ok_or(OxCalcTreeContextError::CannotReorderRoot { node_id })?;
+        self.move_node(workspace_id, node_id, parent_id, Some(new_index))
+    }
+
+    pub fn delete_node(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let outcome = state
+                .snapshot
+                .apply_edit(snapshot_id, StructuralEdit::RemoveNode { node_id })?;
+            for removed_node_id in &outcome.affected_node_ids {
+                state.formula_texts.remove(removed_node_id);
+                state.formula_text_versions.remove(removed_node_id);
+                state.seeded_published_values.remove(removed_node_id);
+            }
+            state.snapshot = outcome.snapshot;
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(())
+    }
+
+    pub fn recalculate(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<OxCalcTreeRecalcResult, OxCalcTreeContextError> {
+        let candidate_index = self.next_candidate_index();
+        let state = self.workspace(workspace_id)?;
+        let catalog_build = build_context_formula_catalog(state)?;
+        let document = OxCalcTreeDocument {
+            structural_snapshot: state.snapshot.clone(),
+            formula_catalog: catalog_build.catalog,
+            seeded_published_values: state.seeded_published_values.clone(),
+        };
+        let snapshot_id = state.snapshot.snapshot_id();
+        let facade = OxCalcTreeRuntimeFacade::new(self.environment.clone());
+        let mut result = facade.execute(
+            document,
+            OxCalcTreeRecalcRequest {
+                candidate_result_id: format!(
+                    "candidate:{}:{}",
+                    workspace_id.as_str(),
+                    candidate_index
+                ),
+                publication_id: format!(
+                    "publication:{}:{}",
+                    workspace_id.as_str(),
+                    candidate_index
+                ),
+                compatibility_basis: format!("snapshot:{}", snapshot_id.0),
+                artifact_token_basis: format!("snapshot:{}", snapshot_id.0),
+            },
+        )?;
+        result.diagnostics.extend(catalog_build.diagnostics);
+        let state = self.workspace_mut(workspace_id)?;
+        state.seeded_published_values = result.published_values.clone();
+        state.last_result = Some(result.clone());
+        self.advance_candidate_index();
+        Ok(result)
+    }
+
+    pub fn workspace_view(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<OxCalcTreeWorkspaceView, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let nodes = state
+            .snapshot
+            .nodes()
+            .values()
+            .map(|node| node_view_from_state(state, node))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(OxCalcTreeWorkspaceView {
+            workspace_id: workspace_id.clone(),
+            root_node_id: state.root_node_id,
+            snapshot_id: state.snapshot.snapshot_id(),
+            nodes,
+            diagnostics: state
+                .last_result
+                .as_ref()
+                .map_or_else(Vec::new, |result| result.diagnostics.clone()),
+        })
+    }
+
+    pub fn node_view(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<OxCalcTreeNodeView, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let node = state
+            .snapshot
+            .try_get_node(node_id)
+            .ok_or(StructuralError::UnknownNode { node_id })?;
+        node_view_from_state(state, node)
+    }
+
+    fn next_node_id(&self) -> TreeNodeId {
+        TreeNodeId(self.next_node_id)
+    }
+
+    fn advance_node_id(&mut self) {
+        self.next_node_id += 1;
+    }
+
+    fn next_snapshot_id(&self) -> StructuralSnapshotId {
+        self.next_snapshot_id_after(0)
+    }
+
+    fn next_snapshot_id_after(&self, offset: u64) -> StructuralSnapshotId {
+        StructuralSnapshotId(self.next_snapshot_id + offset)
+    }
+
+    fn advance_snapshot_id(&mut self) {
+        self.advance_snapshot_id_by(1);
+    }
+
+    fn advance_snapshot_id_by(&mut self, count: u64) {
+        self.next_snapshot_id += count;
+    }
+
+    fn next_candidate_index(&self) -> u64 {
+        self.next_candidate_index
+    }
+
+    fn advance_candidate_index(&mut self) {
+        self.next_candidate_index += 1;
+    }
+
+    fn workspace(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<&OxCalcTreeWorkspaceState, OxCalcTreeContextError> {
+        self.workspaces
+            .get(workspace_id)
+            .ok_or_else(|| OxCalcTreeContextError::UnknownWorkspace {
+                workspace_id: workspace_id.as_str().to_string(),
+            })
+    }
+
+    fn workspace_mut(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<&mut OxCalcTreeWorkspaceState, OxCalcTreeContextError> {
+        self.workspaces.get_mut(workspace_id).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownWorkspace {
+                workspace_id: workspace_id.as_str().to_string(),
+            }
+        })
+    }
+}
+
+fn node_kind_for_formula_text(formula_text: &str) -> StructuralNodeKind {
+    if is_formula_text(formula_text) {
+        StructuralNodeKind::Calculation
+    } else if formula_text.is_empty() {
+        StructuralNodeKind::Container
+    } else {
+        StructuralNodeKind::Constant
+    }
+}
+
+fn formula_artifact_id_for(
+    workspace_id: &str,
+    node_id: TreeNodeId,
+    formula_text_version: u64,
+    formula_text: &str,
+) -> Option<FormulaArtifactId> {
+    is_formula_text(formula_text).then(|| {
+        FormulaArtifactId(format!(
+            "formula:{}:{}:v{}",
+            workspace_id, node_id.0, formula_text_version
+        ))
+    })
+}
+
+fn bind_artifact_id_for(
+    workspace_id: &str,
+    node_id: TreeNodeId,
+    formula_text_version: u64,
+    formula_text: &str,
+) -> Option<BindArtifactId> {
+    is_formula_text(formula_text).then(|| {
+        BindArtifactId(format!(
+            "bind:{}:{}:v{}",
+            workspace_id, node_id.0, formula_text_version
+        ))
+    })
+}
+
+fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
+    (!is_formula_text(formula_text) && !formula_text.is_empty()).then(|| formula_text.to_string())
+}
+
+fn is_formula_text(formula_text: &str) -> bool {
+    formula_text.trim_start().starts_with('=')
+}
+
+struct ContextFormulaCatalogBuild {
+    catalog: TreeFormulaCatalog,
+    diagnostics: Vec<String>,
+}
+
+fn build_context_formula_catalog(
+    state: &OxCalcTreeWorkspaceState,
+) -> Result<ContextFormulaCatalogBuild, OxCalcTreeContextError> {
+    let symbol_index = unique_symbols_by_name(&state.snapshot);
+    let mut bindings = Vec::new();
+    let mut diagnostics = Vec::new();
+
+    for (owner_node_id, formula_text) in &state.formula_texts {
+        if !is_formula_text(formula_text) {
+            continue;
+        }
+        let version = state
+            .formula_text_versions
+            .get(owner_node_id)
+            .copied()
+            .unwrap_or(1);
+        let mut expression = prebind_treecalc_formula_text(*owner_node_id, formula_text)?;
+        let resolution = direct_name_carriers_from_oxfml_probe(
+            state.workspace_id.as_str(),
+            formula_text,
+            *owner_node_id,
+            &state.snapshot,
+            &symbol_index,
+        )?;
+        expression
+            .reference_carriers
+            .extend(resolution.carriers.into_iter());
+        diagnostics.extend(
+            resolution
+                .diagnostics
+                .into_iter()
+                .map(|diagnostic| format!("treecalc_context_host_name_resolution:{diagnostic}")),
+        );
+        bindings.push(TreeFormulaBinding {
+            owner_node_id: *owner_node_id,
+            formula_artifact_id: FormulaArtifactId(format!(
+                "formula:{}:{}:v{}",
+                state.workspace_id.as_str(),
+                owner_node_id.0,
+                version
+            )),
+            bind_artifact_id: Some(BindArtifactId(format!(
+                "bind:{}:{}:v{}",
+                state.workspace_id.as_str(),
+                owner_node_id.0,
+                version
+            ))),
+            expression,
+        });
+    }
+
+    Ok(ContextFormulaCatalogBuild {
+        catalog: TreeFormulaCatalog::new(bindings),
+        diagnostics,
+    })
+}
+
+struct ContextSymbolIndex {
+    unique: BTreeMap<String, TreeNodeId>,
+    ambiguous: BTreeSet<String>,
+}
+
+fn unique_symbols_by_name(snapshot: &StructuralSnapshot) -> ContextSymbolIndex {
+    let mut unique = BTreeMap::new();
+    let mut ambiguous = BTreeSet::new();
+    for node in snapshot.nodes().values() {
+        if node.node_id == snapshot.root_node_id() {
+            continue;
+        }
+        if unique
+            .insert(node.symbol.clone(), node.node_id)
+            .is_some_and(|existing| existing != node.node_id)
+        {
+            ambiguous.insert(node.symbol.clone());
+        }
+    }
+    for symbol in &ambiguous {
+        unique.remove(symbol);
+    }
+    ContextSymbolIndex { unique, ambiguous }
+}
+
+struct ContextNameCarrierResolution {
+    carriers: Vec<TreeFormulaReferenceCarrier>,
+    diagnostics: Vec<String>,
+}
+
+fn direct_name_carriers_from_oxfml_probe(
+    workspace_id: &str,
+    formula_text: &str,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+    symbol_index: &ContextSymbolIndex,
+) -> Result<ContextNameCarrierResolution, OxCalcTreeContextError> {
+    // OxFml owns formula syntax and lexical scope; OxCalc only resolves names that
+    // OxFml exposes as unresolved host candidates.
+    let unresolved_names =
+        oxfml_unresolved_name_candidates(workspace_id, owner_node_id, formula_text);
+    let mut carriers = Vec::new();
+    let mut diagnostics = Vec::new();
+    for token in unresolved_names {
+        let token = token
+            .strip_prefix("name:")
+            .unwrap_or(token.as_str())
+            .to_string();
+        if symbol_index.ambiguous.contains(&token) {
+            diagnostics.push(format!("ambiguous_host_name:{token}:owner={owner_node_id}"));
+            continue;
+        }
+        let Some(target_node_id) = symbol_index.unique.get(&token).copied() else {
+            diagnostics.push(format!(
+                "unresolved_host_name:{token}:owner={owner_node_id}"
+            ));
+            continue;
+        };
+        if target_node_id == owner_node_id || snapshot.try_get_node(target_node_id).is_none() {
+            diagnostics.push(format!(
+                "unresolved_host_name:{token}:owner={owner_node_id}"
+            ));
+            continue;
+        }
+        carriers.push(TreeFormulaReferenceCarrier::named(
+            token,
+            TreeReference::DirectNode { target_node_id },
+        ));
+    }
+    Ok(ContextNameCarrierResolution {
+        carriers,
+        diagnostics,
+    })
+}
+
+fn oxfml_unresolved_name_candidates(
+    workspace_id: &str,
+    owner_node_id: TreeNodeId,
+    formula_text: &str,
+) -> Vec<String> {
+    let source = FormulaSourceRecord::new(
+        format!("treecalc-context-probe:{workspace_id}:{}", owner_node_id.0),
+        owner_node_id.0,
+        formula_text,
+    );
+    let parse = parse_formula(ParseRequest {
+        source: source.clone(),
+    });
+    let red_projection = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+    let bind = bind_formula(BindRequest {
+        source: source.clone(),
+        green_tree: parse.green_tree,
+        red_projection,
+        context: BindContext {
+            formula_token: source.formula_token(),
+            ..BindContext::default()
+        },
+    });
+    bind.bound_formula
+        .unresolved_references
+        .into_iter()
+        .map(|reference| reference.source_text)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn node_view_from_state(
+    state: &OxCalcTreeWorkspaceState,
+    node: &StructuralNode,
+) -> Result<OxCalcTreeNodeView, OxCalcTreeContextError> {
+    let canonical_path = state.snapshot.get_projection_path(node.node_id)?;
+    Ok(OxCalcTreeNodeView {
+        node_id: node.node_id,
+        symbol: node.symbol.clone(),
+        display_path: canonical_path.clone(),
+        canonical_path,
+        formula_text: state
+            .formula_texts
+            .get(&node.node_id)
+            .cloned()
+            .unwrap_or_default(),
+        value_text: state
+            .last_result
+            .as_ref()
+            .and_then(|result| result.published_values.get(&node.node_id))
+            .cloned()
+            .or_else(|| state.seeded_published_values.get(&node.node_id).cloned())
+            .or_else(|| node.constant_value.clone()),
+        calc_state: state
+            .last_result
+            .as_ref()
+            .and_then(|result| result.node_states.get(&node.node_id))
+            .copied(),
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -372,6 +1121,149 @@ mod tests {
 
     fn fixture_formula(owner_node_id: TreeNodeId, ast: FixtureFormulaAst) -> TreeFormula {
         ast.to_tree_formula(owner_node_id)
+    }
+
+    #[test]
+    fn treecalc_context_direct_workspace_api_evaluates_bare_name_formula() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:direct"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&a_id), Some(&"3".to_string()));
+        assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
+
+        let a_view = context.node_view(&workspace_id, a_id).unwrap();
+        let b_view = context.node_view(&workspace_id, b_id).unwrap();
+        assert_eq!(a_view.canonical_path, "Root/A");
+        assert_eq!(a_view.formula_text, "=3");
+        assert_eq!(a_view.value_text.as_deref(), Some("3"));
+        assert_eq!(b_view.canonical_path, "Root/B");
+        assert_eq!(b_view.formula_text, "=A+1");
+        assert_eq!(b_view.value_text.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn treecalc_context_failed_edits_do_not_consume_stable_node_ids() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ids"))
+            .unwrap();
+        let missing_workspace = OxCalcTreeWorkspaceId::new("workspace:missing");
+
+        assert!(
+            context
+                .add_node(&missing_workspace, OxCalcTreeNodeCreate::new("Lost", "=1"))
+                .is_err()
+        );
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=1"))
+            .unwrap();
+        assert_eq!(a_id, TreeNodeId(2));
+
+        assert!(
+            context
+                .add_node(
+                    &workspace_id,
+                    OxCalcTreeNodeCreate::new("Bad", "=2").under(TreeNodeId(999))
+                )
+                .is_err()
+        );
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        assert_eq!(b_id, TreeNodeId(3));
+    }
+
+    #[test]
+    fn treecalc_context_uses_oxfml_scope_when_resolving_host_name_candidates() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:lexical"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=99"))
+            .unwrap();
+        let b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=LET(A,1,A+1)"),
+            )
+            .unwrap();
+        let c_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C", "=LAMBDA(A,A+1)(3)"),
+            )
+            .unwrap();
+        let d_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("D", "=LET(F,LAMBDA(A,A+1),F(3))"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&a_id), Some(&"99".to_string()));
+        assert_eq!(result.published_values.get(&b_id), Some(&"2".to_string()));
+        assert_eq!(result.published_values.get(&c_id), Some(&"4".to_string()));
+        assert_eq!(result.published_values.get(&d_id), Some(&"4".to_string()));
+        for node_id in [b_id, c_id, d_id] {
+            assert!(
+                result
+                    .dependency_graph
+                    .edges_by_owner
+                    .get(&node_id)
+                    .is_none_or(Vec::is_empty),
+                "OxCalc must not add a host-name dependency for an OxFml lexical binding"
+            );
+        }
+    }
+
+    #[test]
+    fn treecalc_context_reports_ambiguous_host_names_from_oxcalc_namespace() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ambiguous"))
+            .unwrap();
+        let p_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("P", ""))
+            .unwrap();
+        let q_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Q", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=1").under(p_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=2").under(q_id),
+            )
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains("treecalc_context_host_name_resolution:ambiguous_host_name:A")
+        }));
     }
 
     #[test]

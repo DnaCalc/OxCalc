@@ -2123,6 +2123,76 @@ OxCalc implementation keeps the table-associated node model, virtual Excel
 anchor, generic OxFml packet, dependency lowering, sparse reader, runtime
 binding, and OxFunc aggregate path on one typed abstraction chain.
 
+## 4B.19. `calc-4vs8.59` Lifecycle Update And Invalidation Matrix
+
+Product status:
+
+OxCalc now has fifth-pass executable evidence for the node-table lifecycle
+matrix over the same table snapshot, projection, lifecycle callback,
+dependency-lowering, sparse-reader, prepared-identity, and dynamic-rebind
+surfaces used by the rest of W056.
+
+Executable evidence:
+
+1. `TreeCalcTableUpdateScenarioKind::ALL` and
+   `TreeCalcTableUpdateScenarioKind::stable_id()` provide a stable update
+   scenario inventory for retained evidence and handoff correlation.
+2. Existing matrix tests continue to cover body cell edit, body formula edit,
+   row insert/delete/reorder, column insert/delete/reorder/rename, header text
+   edit, totals toggle/edit, table rename/move/delete/resize, node
+   rename/move/delete, save/reopen, workspace open/close, workspace alias
+   mutation, function-registry snapshot mutation, and structural rebind.
+3. New focused Rust test:
+   `table_lifecycle_boundary_matrix_states_identity_stability` in
+   `src/oxcalc-core/src/structured_table.rs`.
+4. That test adds explicit boundary evidence for first-row insert, last-row
+   delete, empty-body transition, virtual-anchor movement, cross-workspace
+   availability-version movement, caller-row movement, and dynamic selector
+   rebind.
+
+Identity results:
+
+1. First-row insert keeps the stable reader id but changes the source and
+   snapshot identities because the declared table-reference extent changes; it
+   invalidates row membership, row order, caller-context, and table-context
+   prepared identity inputs.
+2. Last-row delete changes row membership/order and reader snapshot identity,
+   and shrinks the declared reader extent.
+3. Empty-body transition stays reference-preserving through the zero-row
+   `ReferenceLike` structured carrier, with table-context identity invalidated
+   rather than materializing a dense empty value array.
+4. Virtual-anchor movement changes the reference target/range and region
+   dependency facts through `TableMove`.
+5. Cross-workspace availability-version movement is host-sensitive and enters
+   prepared identity through host namespace and resolution-rule inputs.
+6. Caller-row movement changes `caller_context_id` and prepared formula key
+   while preserving the dispatch skeleton for the same formula text.
+7. Dynamic current-row table references rebind on row-order lifecycle changes
+   through caller-row dependency facts, row-order invalidation, and
+   caller-context prepared identity.
+
+Cross-repo evidence classification:
+
+1. DnaTreeCalc remains owner of actual product table operations and UI /
+   persistence lifecycle evidence. Existing retained table artifacts cover the
+   structured-reference, empty-body, lifecycle, and dynamic/cross-workspace
+   table producer slices, but parent bead-state residue is still reconciled
+   under `calc-4vs8.62`.
+2. OxReplay remains owner of retained comparison. Current retained batches
+   admit the declared DnaTreeCalc and OxXlPlay table artifacts, while older
+   Excel internals such as dependency graph, dirty-set, event ordering, modal
+   save/reopen, and clipboard-mediated table move remain typed unavailable or
+   producer-capture limits, not inferred OxCalc semantics.
+3. OxFml continues to own prepared identity inputs and generic structured
+   bind records; OxCalc's lifecycle facts do not become OxFml table semantics.
+
+Still open:
+
+`calc-4vs8.60` must revalidate ReferenceLike/function/UDF and DnaOneCalc
+guardrails, `calc-4vs8.61` must converge retained replay/value-wire evidence,
+`calc-4vs8.62` must reconcile cross-repo bead state, and `calc-4vs8.63` must
+perform the final table completion audit.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

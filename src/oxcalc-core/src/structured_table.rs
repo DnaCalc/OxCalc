@@ -3881,6 +3881,67 @@ pub enum TreeCalcTableUpdateScenarioKind {
     StructuralRebind,
 }
 
+impl TreeCalcTableUpdateScenarioKind {
+    pub const ALL: [Self; 25] = [
+        Self::BodyCellEdit,
+        Self::BodyFormulaEdit,
+        Self::RowInsert,
+        Self::RowDelete,
+        Self::RowReorder,
+        Self::ColumnInsert,
+        Self::ColumnDelete,
+        Self::ColumnReorder,
+        Self::ColumnRename,
+        Self::HeaderTextEdit,
+        Self::TotalsRowToggle,
+        Self::TotalsFormulaEdit,
+        Self::TableRename,
+        Self::TableMove,
+        Self::TableDelete,
+        Self::TableResize,
+        Self::NodeRename,
+        Self::NodeMove,
+        Self::NodeDelete,
+        Self::SaveReopen,
+        Self::WorkspaceOpen,
+        Self::WorkspaceClose,
+        Self::WorkspaceAliasMutation,
+        Self::FunctionRegistrySnapshotMutation,
+        Self::StructuralRebind,
+    ];
+
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::BodyCellEdit => "body_cell_edit",
+            Self::BodyFormulaEdit => "body_formula_edit",
+            Self::RowInsert => "row_insert",
+            Self::RowDelete => "row_delete",
+            Self::RowReorder => "row_reorder",
+            Self::ColumnInsert => "column_insert",
+            Self::ColumnDelete => "column_delete",
+            Self::ColumnReorder => "column_reorder",
+            Self::ColumnRename => "column_rename",
+            Self::HeaderTextEdit => "header_text_edit",
+            Self::TotalsRowToggle => "totals_row_toggle",
+            Self::TotalsFormulaEdit => "totals_formula_edit",
+            Self::TableRename => "table_rename",
+            Self::TableMove => "table_move",
+            Self::TableDelete => "table_delete",
+            Self::TableResize => "table_resize",
+            Self::NodeRename => "node_rename",
+            Self::NodeMove => "node_move",
+            Self::NodeDelete => "node_delete",
+            Self::SaveReopen => "save_reopen",
+            Self::WorkspaceOpen => "workspace_open",
+            Self::WorkspaceClose => "workspace_close",
+            Self::WorkspaceAliasMutation => "workspace_alias_mutation",
+            Self::FunctionRegistrySnapshotMutation => "function_registry_snapshot_mutation",
+            Self::StructuralRebind => "structural_rebind",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TreeCalcTablePreparedIdentityInput {
     HostNamespaceVersion,
@@ -10514,6 +10575,290 @@ mod tests {
                 TreeCalcTablePreparedIdentityInput::TableContextIdentity,
                 TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
             ],
+        );
+    }
+
+    #[test]
+    fn table_lifecycle_boundary_matrix_states_identity_stability() {
+        let owner = TreeNodeId(30);
+        let baseline_snapshot = runtime_treecalc_table_snapshot();
+        let baseline = project_treecalc_table_node_snapshot(&baseline_snapshot).unwrap();
+        let baseline_state = TreeCalcTableLifecycleVersionState::from_snapshot_projection(
+            &baseline_snapshot,
+            &baseline,
+        );
+        let amount_reader = |snapshot: &TreeCalcTableNodeSnapshot,
+                             projection: &TreeCalcTableNodeProjection,
+                             values: Vec<TreeCalcTableSparseValue>| {
+            let prebound = prebind_treecalc_table_structured_references(
+                "=SUM(SalesTable[Amount])",
+                std::slice::from_ref(projection),
+                None,
+                None,
+            );
+            TreeCalcTableSparseReader::from_oxfml_bind_record(
+                snapshot,
+                projection,
+                &prebound[0].bind_record,
+                None,
+                values,
+            )
+            .expect("amount column reader should build for lifecycle boundary case")
+        };
+        let baseline_reader = amount_reader(&baseline_snapshot, &baseline, amount_column_values());
+
+        let stable_update_ids = TreeCalcTableUpdateScenarioKind::ALL
+            .iter()
+            .map(|scenario| scenario.stable_id())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            stable_update_ids.len(),
+            TreeCalcTableUpdateScenarioKind::ALL.len(),
+            "update scenario stable ids must be unique for retained evidence"
+        );
+
+        let mut first_row_insert = baseline_snapshot.clone();
+        first_row_insert
+            .rows
+            .insert(0, TreeCalcTableRowId("row:south".to_string()));
+        first_row_insert.row_membership_version = "row-membership:first-insert".to_string();
+        first_row_insert.row_order_version = "row-order:first-insert".to_string();
+        let first_row_insert_projection =
+            project_treecalc_table_node_snapshot(&first_row_insert).unwrap();
+        let first_row_reader = amount_reader(&first_row_insert, &first_row_insert_projection, {
+            let mut values = table_formula_amount_values();
+            values.push(TreeCalcTableSparseValue::data(
+                "row:south",
+                "col:amount",
+                EvalValue::Number(40.0),
+            ));
+            values
+        });
+        let first_row_impact = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::RowInsert,
+            Some(&baseline),
+            Some(&first_row_insert_projection),
+            [owner],
+            ["structured-ref:amount".to_string()],
+        );
+        assert!(
+            first_row_impact
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableRowMembership)
+        );
+        assert!(
+            first_row_impact
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableRowOrder)
+        );
+        assert!(
+            first_row_impact
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::CallerContextIdentity)
+        );
+        assert_eq!(
+            baseline_reader.reader_identity().reader_id,
+            first_row_reader.reader_identity().reader_id
+        );
+        assert_ne!(
+            baseline_reader.reader_identity().source_identity,
+            first_row_reader.reader_identity().source_identity
+        );
+        assert_ne!(
+            baseline_reader.reader_identity().snapshot_identity,
+            first_row_reader.reader_identity().snapshot_identity
+        );
+        assert_eq!(first_row_reader.declared_extent().row_count, 4);
+
+        let mut last_row_delete = baseline_snapshot.clone();
+        last_row_delete.rows.pop();
+        last_row_delete.row_membership_version = "row-membership:last-delete".to_string();
+        last_row_delete.row_order_version = "row-order:last-delete".to_string();
+        let last_row_delete_projection =
+            project_treecalc_table_node_snapshot(&last_row_delete).unwrap();
+        let last_row_reader = amount_reader(
+            &last_row_delete,
+            &last_row_delete_projection,
+            amount_column_values(),
+        );
+        let last_row_impact = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::RowDelete,
+            Some(&baseline),
+            Some(&last_row_delete_projection),
+            [owner],
+            ["structured-ref:amount".to_string()],
+        );
+        assert!(
+            last_row_impact
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuredTableRowMembershipChanged)
+        );
+        assert_eq!(last_row_reader.declared_extent().row_count, 2);
+        assert_ne!(
+            baseline_reader.reader_identity().snapshot_identity,
+            last_row_reader.reader_identity().snapshot_identity
+        );
+
+        let mut empty_body = baseline_snapshot.clone();
+        empty_body.rows.clear();
+        empty_body.row_membership_version = "row-membership:empty".to_string();
+        empty_body.row_order_version = "row-order:empty".to_string();
+        let empty_body_projection = project_treecalc_table_node_snapshot(&empty_body).unwrap();
+        let empty_reader = amount_reader(
+            &empty_body,
+            &empty_body_projection,
+            Vec::<TreeCalcTableSparseValue>::new(),
+        );
+        let empty_body_impact = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::RowDelete,
+            Some(&baseline),
+            Some(&empty_body_projection),
+            [owner],
+            ["structured-ref:amount".to_string()],
+        );
+        assert_eq!(empty_reader.declared_extent().row_count, 0);
+        assert_eq!(empty_reader.defined_cardinality(), 0);
+        assert_eq!(
+            empty_reader.reference(),
+            &ReferenceLike::new(
+                ReferenceKind::Structured,
+                "empty-structured:sheet:default:Data:col:amount:1"
+            )
+        );
+        assert!(
+            empty_body_impact
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::TableContextIdentity)
+        );
+
+        let mut virtual_anchor_move = baseline_snapshot.clone();
+        virtual_anchor_move.virtual_anchor.start_row = 13;
+        let virtual_anchor_projection =
+            project_treecalc_table_node_snapshot(&virtual_anchor_move).unwrap();
+        let moved_anchor_reader = amount_reader(
+            &virtual_anchor_move,
+            &virtual_anchor_projection,
+            amount_column_values(),
+        );
+        let anchor_impact = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::TableMove,
+            Some(&baseline),
+            Some(&virtual_anchor_projection),
+            [owner],
+            ["structured-ref:amount".to_string()],
+        );
+        assert_eq!(
+            moved_anchor_reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "C14:C16")
+        );
+        assert!(
+            anchor_impact
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableDataRegion)
+        );
+        assert!(
+            anchor_impact
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::TableContextIdentity)
+        );
+
+        let mut availability_state = baseline_state.clone();
+        availability_state.workspace_availability_version =
+            "treecalc-workspace-availability:v2".to_string();
+        let availability_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::StructuralRebind,
+            )
+            .with_before(baseline_state.clone())
+            .with_after(availability_state)
+            .with_owner_nodes([owner])
+            .with_source_reference_handles(["structured-ref:amount"]),
+        );
+        assert!(availability_report.diagnostics.is_empty());
+        assert!(
+            availability_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::HostSensitive)
+        );
+        assert!(
+            availability_report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+        );
+        assert!(
+            availability_report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion)
+        );
+
+        let base_report = evaluate_treecalc_table_column_formula_rows(
+            &baseline_snapshot,
+            &baseline,
+            &tax_formula_runtime_request(
+                "=[@Amount]/10",
+                table_formula_amount_values(),
+                TreeCalcTableFormulaRuntimeContext::default(),
+            ),
+        )
+        .expect("baseline current-row formula should evaluate");
+        let inserted_report = evaluate_treecalc_table_column_formula_rows(
+            &first_row_insert,
+            &first_row_insert_projection,
+            &tax_formula_runtime_request(
+                "=[@Amount]/10",
+                {
+                    let mut values = table_formula_amount_values();
+                    values.push(TreeCalcTableSparseValue::data(
+                        "row:south",
+                        "col:amount",
+                        EvalValue::Number(40.0),
+                    ));
+                    values
+                },
+                TreeCalcTableFormulaRuntimeContext::default(),
+            ),
+        )
+        .expect("first-row insert current-row formula should evaluate");
+        let base_east = table_formula_cell_for_row(&base_report, "row:east");
+        let inserted_east = table_formula_cell_for_row(&inserted_report, "row:east");
+        assert_eq!(base_east.row_offset, Some(1));
+        assert_eq!(inserted_east.row_offset, Some(2));
+        assert_ne!(base_east.caller_context_id, inserted_east.caller_context_id);
+        assert_ne!(
+            base_east.prepared_formula_key,
+            inserted_east.prepared_formula_key
+        );
+        assert_eq!(
+            base_east.dispatch_skeleton_key,
+            inserted_east.dispatch_skeleton_key
+        );
+
+        let dynamic_current_row =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                target_kind: TreeCalcDynamicTableReferenceTargetKind::CurrentRow,
+                cause: TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::RowReorder,
+                ),
+                caller_context_id: Some("caller:row-east".to_string()),
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::CurrentRow,
+                    TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                )
+            });
+        assert!(
+            dynamic_current_row
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::CallerRowContext)
+        );
+        assert!(
+            dynamic_current_row
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuredTableRowOrderChanged)
+        );
+        assert!(
+            dynamic_current_row
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::CallerContextIdentity)
         );
     }
 

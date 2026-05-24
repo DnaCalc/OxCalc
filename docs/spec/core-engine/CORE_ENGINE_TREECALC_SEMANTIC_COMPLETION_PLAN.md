@@ -572,7 +572,7 @@ This decomposition is the intended line-of-sight sequence after the current repl
 
 Current host-contract interpretation:
 1. `W025` through `W031` now widen the engine beneath the OxCalc-owned TreeCalc-first consumer contract in `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`,
-2. actual runtime consumers should prefer that explicit `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` object set over local proving-floor engine types,
+2. actual runtime consumers should prefer that explicit `OxCalcTreeContextOptions` / `OxCalcTreeContext` / `OxCalcTreeContext recalculation configuration` / `OxCalcTreeCalculationOutcome` / `OxCalcTreeContext` object set over local proving-floor engine types,
 3. narrower seam-intake, dependency-preparation, replay, and assurance details remain packetized below that host-facing contract until later widening closes them honestly.
 
 Current W026 packet floor under this plan:
@@ -613,7 +613,7 @@ Current W027 packet floor under this plan:
      - `DependencyRemoved`
      - `DependencyReclassified`
 3. this floor is already reachable in both host-facing and replay-facing surfaces:
-   - direct host-facing reachability on `OxCalcTreeRecalcResult`
+   - direct host-facing reachability on `OxCalcTreeCalculationOutcome`
    - emitted `dependency_graph.json`, now including explicit descriptor identity records
    - emitted `invalidation_closure.json`
    - emitted `post_edit/invalidation_seeds.json`

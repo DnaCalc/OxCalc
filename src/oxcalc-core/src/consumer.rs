@@ -32,21 +32,6 @@ use crate::treecalc::{
     LocalTreeCalcSchedulingPolicy,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OxCalcTreeDocument {
-    pub structural_snapshot: StructuralSnapshot,
-    pub formula_catalog: TreeFormulaCatalog,
-    pub seeded_published_values: BTreeMap<TreeNodeId, String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OxCalcTreeRecalcRequest {
-    pub candidate_result_id: String,
-    pub publication_id: String,
-    pub compatibility_basis: String,
-    pub artifact_token_basis: String,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OxCalcTreeRunState {
     Published,
@@ -55,7 +40,7 @@ pub enum OxCalcTreeRunState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OxCalcTreeRecalcResult {
+pub struct OxCalcTreeCalculationOutcome {
     pub run_state: OxCalcTreeRunState,
     pub dependency_graph: DependencyGraph,
     pub invalidation_closure: InvalidationClosure,
@@ -70,12 +55,6 @@ pub struct OxCalcTreeRecalcResult {
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
-}
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum OxCalcTreeRuntimeError {
-    #[error(transparent)]
-    Runtime(#[from] LocalTreeCalcError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -172,7 +151,7 @@ pub enum OxCalcTreeContextError {
     #[error(transparent)]
     FormulaPrebind(#[from] TreeCalcFormulaTextPrebindError),
     #[error(transparent)]
-    Runtime(#[from] OxCalcTreeRuntimeError),
+    Runtime(#[from] LocalTreeCalcError),
 }
 
 #[derive(Debug, Clone)]
@@ -183,12 +162,12 @@ struct OxCalcTreeWorkspaceState {
     formula_texts: BTreeMap<TreeNodeId, String>,
     formula_text_versions: BTreeMap<TreeNodeId, u64>,
     seeded_published_values: BTreeMap<TreeNodeId, String>,
-    last_result: Option<OxCalcTreeRecalcResult>,
+    last_result: Option<OxCalcTreeCalculationOutcome>,
 }
 
 #[derive(Debug, Clone)]
 pub struct OxCalcTreeContext {
-    environment: OxCalcTreeEnvironment,
+    options: OxCalcTreeContextOptions,
     workspaces: BTreeMap<OxCalcTreeWorkspaceId, OxCalcTreeWorkspaceState>,
     next_node_id: u64,
     next_snapshot_id: u64,
@@ -197,15 +176,15 @@ pub struct OxCalcTreeContext {
 
 impl Default for OxCalcTreeContext {
     fn default() -> Self {
-        Self::new(OxCalcTreeEnvironment::default())
+        Self::new(OxCalcTreeContextOptions::default())
     }
 }
 
 impl OxCalcTreeContext {
     #[must_use]
-    pub fn new(environment: OxCalcTreeEnvironment) -> Self {
+    pub fn new(options: OxCalcTreeContextOptions) -> Self {
         Self {
-            environment,
+            options,
             workspaces: BTreeMap::new(),
             next_node_id: 1,
             next_snapshot_id: 1,
@@ -214,8 +193,8 @@ impl OxCalcTreeContext {
     }
 
     #[must_use]
-    pub fn environment(&self) -> &OxCalcTreeEnvironment {
-        &self.environment
+    pub fn options(&self) -> &OxCalcTreeContextOptions {
+        &self.options
     }
 
     pub fn create_workspace(
@@ -445,34 +424,26 @@ impl OxCalcTreeContext {
     pub fn recalculate(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<OxCalcTreeRecalcResult, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCalculationOutcome, OxCalcTreeContextError> {
         let candidate_index = self.next_candidate_index();
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state)?;
-        let document = OxCalcTreeDocument {
+        let snapshot_id = state.snapshot.snapshot_id();
+        let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
             structural_snapshot: state.snapshot.clone(),
             formula_catalog: catalog_build.catalog,
             seeded_published_values: state.seeded_published_values.clone(),
-        };
-        let snapshot_id = state.snapshot.snapshot_id();
-        let facade = OxCalcTreeRuntimeFacade::new(self.environment.clone());
-        let mut result = facade.execute(
-            document,
-            OxCalcTreeRecalcRequest {
-                candidate_result_id: format!(
-                    "candidate:{}:{}",
-                    workspace_id.as_str(),
-                    candidate_index
-                ),
-                publication_id: format!(
-                    "publication:{}:{}",
-                    workspace_id.as_str(),
-                    candidate_index
-                ),
-                compatibility_basis: format!("snapshot:{}", snapshot_id.0),
-                artifact_token_basis: format!("snapshot:{}", snapshot_id.0),
-            },
-        )?;
+            seeded_published_runtime_effects: Vec::new(),
+            invalidation_seeds: Vec::new(),
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
+            publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
+            compatibility_basis: format!("snapshot:{}", snapshot_id.0),
+            artifact_token_basis: format!("snapshot:{}", snapshot_id.0),
+            environment_context: self.options.runtime_context(),
+        })?;
+        let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
+        result.diagnostics.extend(self.options.diagnostics());
         result.diagnostics.extend(catalog_build.diagnostics);
         let state = self.workspace_mut(workspace_id)?;
         state.seeded_published_values = result.published_values.clone();
@@ -1215,14 +1186,14 @@ impl Default for OxCalcTreeRuntimePolicy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OxCalcTreeEnvironment {
+pub struct OxCalcTreeContextOptions {
     pub runtime_lane: OxCalcTreeRuntimeLane,
     pub session_id: Option<String>,
     pub host_capabilities: OxCalcTreeHostCapabilitySnapshot,
     pub runtime_policy: OxCalcTreeRuntimePolicy,
 }
 
-impl Default for OxCalcTreeEnvironment {
+impl Default for OxCalcTreeContextOptions {
     fn default() -> Self {
         Self {
             runtime_lane: OxCalcTreeRuntimeLane::LocalSequentialTreeCalc,
@@ -1233,7 +1204,7 @@ impl Default for OxCalcTreeEnvironment {
     }
 }
 
-impl OxCalcTreeEnvironment {
+impl OxCalcTreeContextOptions {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -1293,91 +1264,47 @@ impl OxCalcTreeEnvironment {
         let session_id = self.session_id.as_deref().unwrap_or("none");
         vec![
             format!(
-                "oxcalc_tree_environment_runtime_lane:{}",
+                "oxcalc_tree_context_options_runtime_lane:{}",
                 self.runtime_lane.as_diagnostic_value()
             ),
-            format!("oxcalc_tree_environment_session_id:{session_id}"),
+            format!("oxcalc_tree_context_options_session_id:{session_id}"),
             format!(
-                "oxcalc_tree_environment_capability_profile_id:{}",
+                "oxcalc_tree_context_options_capability_profile_id:{}",
                 self.host_capabilities.capability_profile_id
             ),
             format!(
-                "oxcalc_tree_environment_capability_dynamic_dependency:{}",
+                "oxcalc_tree_context_options_capability_dynamic_dependency:{}",
                 self.host_capabilities.dynamic_dependency_effects
             ),
             format!(
-                "oxcalc_tree_environment_capability_execution_restriction:{}",
+                "oxcalc_tree_context_options_capability_execution_restriction:{}",
                 self.host_capabilities.execution_restriction_effects
             ),
             format!(
-                "oxcalc_tree_environment_capability_sensitive:{}",
+                "oxcalc_tree_context_options_capability_sensitive:{}",
                 self.host_capabilities.capability_sensitive_effects
             ),
             format!(
-                "oxcalc_tree_environment_capability_shape_topology:{}",
+                "oxcalc_tree_context_options_capability_shape_topology:{}",
                 self.host_capabilities.shape_topology_effects
             ),
             format!(
-                "oxcalc_tree_environment_runtime_policy_id:{}",
+                "oxcalc_tree_context_options_runtime_policy_id:{}",
                 self.runtime_policy.policy_id
             ),
             format!(
-                "oxcalc_tree_environment_project_runtime_effect_overlays:{}",
+                "oxcalc_tree_context_options_project_runtime_effect_overlays:{}",
                 self.runtime_policy.project_runtime_effect_overlays
             ),
             format!(
-                "oxcalc_tree_environment_derivation_trace_enabled:{}",
+                "oxcalc_tree_context_options_derivation_trace_enabled:{}",
                 self.runtime_policy.derivation_trace_enabled
             ),
             format!(
-                "oxcalc_tree_environment_scheduling_policy:{}",
+                "oxcalc_tree_context_options_scheduling_policy:{}",
                 self.runtime_policy.scheduling_policy.diagnostic_name()
             ),
         ]
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct OxCalcTreeRuntimeFacade {
-    environment: OxCalcTreeEnvironment,
-    engine: LocalTreeCalcEngine,
-}
-
-impl OxCalcTreeRuntimeFacade {
-    #[must_use]
-    pub fn new(environment: OxCalcTreeEnvironment) -> Self {
-        Self {
-            environment,
-            engine: LocalTreeCalcEngine,
-        }
-    }
-
-    #[must_use]
-    pub fn environment(&self) -> &OxCalcTreeEnvironment {
-        &self.environment
-    }
-
-    pub fn execute(
-        &self,
-        document: OxCalcTreeDocument,
-        request: OxCalcTreeRecalcRequest,
-    ) -> Result<OxCalcTreeRecalcResult, OxCalcTreeRuntimeError> {
-        let artifacts = self.engine.execute(LocalTreeCalcInput {
-            structural_snapshot: document.structural_snapshot,
-            formula_catalog: document.formula_catalog,
-            seeded_published_values: document.seeded_published_values,
-            seeded_published_runtime_effects: Vec::new(),
-            invalidation_seeds: Vec::new(),
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: request.candidate_result_id,
-            publication_id: request.publication_id,
-            compatibility_basis: request.compatibility_basis,
-            artifact_token_basis: request.artifact_token_basis,
-            environment_context: self.environment.runtime_context(),
-        })?;
-        let mut result = OxCalcTreeRecalcResult::from(artifacts);
-        result.diagnostics.extend(self.environment.diagnostics());
-        Ok(result)
     }
 }
 
@@ -1391,7 +1318,7 @@ impl From<LocalTreeCalcRunState> for OxCalcTreeRunState {
     }
 }
 
-impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeRecalcResult {
+impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
     fn from(value: LocalTreeCalcRunArtifacts) -> Self {
         Self {
             run_state: value.result_state.into(),
@@ -1761,9 +1688,44 @@ mod tests {
         }));
     }
 
+    fn run_local_engine_fixture(
+        options: OxCalcTreeContextOptions,
+        formula_catalog: TreeFormulaCatalog,
+        seeded_published_values: BTreeMap<TreeNodeId, String>,
+        run_suffix: &str,
+    ) -> OxCalcTreeCalculationOutcome {
+        let artifacts = LocalTreeCalcEngine
+            .execute(LocalTreeCalcInput {
+                structural_snapshot: snapshot(),
+                formula_catalog,
+                seeded_published_values,
+                seeded_published_runtime_effects: Vec::new(),
+                invalidation_seeds: Vec::new(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: format!("candidate:{run_suffix}"),
+                publication_id: format!("publication:{run_suffix}"),
+                compatibility_basis: "snapshot:1".to_string(),
+                artifact_token_basis: "snapshot:1".to_string(),
+                environment_context: options.runtime_context(),
+            })
+            .unwrap();
+        let mut outcome = OxCalcTreeCalculationOutcome::from(artifacts);
+        outcome.diagnostics.extend(options.diagnostics());
+        outcome
+    }
+
+    fn fixture_catalog(expression: TreeFormula) -> TreeFormulaCatalog {
+        TreeFormulaCatalog::new([TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression,
+        }])
+    }
+
     #[test]
-    fn treecalc_environment_carries_non_narrow_consumer_inputs() {
-        let environment = OxCalcTreeEnvironment::new()
+    fn treecalc_context_options_carry_non_narrow_consumer_inputs() {
+        let options = OxCalcTreeContextOptions::new()
             .with_session_id("session:tree-host")
             .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                 capability_profile_id: "capability-profile:tree-host".to_string(),
@@ -1779,43 +1741,25 @@ mod tests {
                 derivation_trace_enabled: false,
                 scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
             });
-        let facade = OxCalcTreeRuntimeFacade::new(environment.clone());
 
-        assert_eq!(facade.environment(), &environment);
         assert_eq!(
-            facade.environment().runtime_lane,
+            options.runtime_lane,
             OxCalcTreeRuntimeLane::LocalSequentialTreeCalc
         );
+        assert_eq!(options.session_id.as_deref(), Some("session:tree-host"));
         assert_eq!(
-            facade.environment().session_id.as_deref(),
-            Some("session:tree-host")
-        );
-        assert_eq!(
-            facade.environment().host_capabilities.capability_profile_id,
+            options.host_capabilities.capability_profile_id,
             "capability-profile:tree-host"
         );
-        assert!(
-            facade
-                .environment()
-                .host_capabilities
-                .capability_sensitive_effects
-        );
-        assert!(
-            facade
-                .environment()
-                .host_capabilities
-                .shape_topology_effects
-        );
-        assert_eq!(
-            facade.environment().runtime_policy.policy_id,
-            "runtime-policy:tree-host"
-        );
+        assert!(options.host_capabilities.capability_sensitive_effects);
+        assert!(options.host_capabilities.shape_topology_effects);
+        assert_eq!(options.runtime_policy.policy_id, "runtime-policy:tree-host");
     }
 
     #[test]
-    fn treecalc_runtime_facade_projects_environment_diagnostics() {
-        let facade = OxCalcTreeRuntimeFacade::new(
-            OxCalcTreeEnvironment::new()
+    fn treecalc_context_options_project_runtime_diagnostics() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new()
                 .with_session_id("session:diagnostic")
                 .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                     capability_profile_id: "capability-profile:diagnostic".to_string(),
@@ -1831,59 +1775,41 @@ mod tests {
                     derivation_trace_enabled: false,
                     scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
                 }),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Literal {
+                    value: "7".to_string(),
+                },
+            )),
+            BTreeMap::new(),
+            "diagnostic",
         );
 
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Literal {
-                                value: "7".to_string(),
-                            },
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:environment".to_string(),
-                    publication_id: "pub:environment".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
-
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic == "oxcalc_tree_environment_runtime_lane:local_sequential_treecalc"
+            diagnostic == "oxcalc_tree_context_options_runtime_lane:local_sequential_treecalc"
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic == "oxcalc_tree_environment_session_id:session:diagnostic"
+            diagnostic == "oxcalc_tree_context_options_session_id:session:diagnostic"
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic
-                == "oxcalc_tree_environment_capability_profile_id:capability-profile:diagnostic"
+                == "oxcalc_tree_context_options_capability_profile_id:capability-profile:diagnostic"
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic == "oxcalc_tree_environment_capability_sensitive:true"
+            diagnostic == "oxcalc_tree_context_options_capability_sensitive:true"
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic == "oxcalc_tree_environment_capability_shape_topology:false"
+            diagnostic == "oxcalc_tree_context_options_capability_shape_topology:false"
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic == "oxcalc_tree_environment_runtime_policy_id:runtime-policy:diagnostic"
+            diagnostic == "oxcalc_tree_context_options_runtime_policy_id:runtime-policy:diagnostic"
         }));
     }
 
     #[test]
-    fn treecalc_runtime_derived_effects_use_environment_context() {
-        let facade = OxCalcTreeRuntimeFacade::new(
-            OxCalcTreeEnvironment::new()
+    fn treecalc_runtime_derived_effects_use_context_options() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new()
                 .with_session_id("session:runtime-effects")
                 .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                     capability_profile_id: "capability-profile:runtime-effects".to_string(),
@@ -1899,34 +1825,16 @@ mod tests {
                     derivation_trace_enabled: false,
                     scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
                 }),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic".to_string(),
+                    detail: "late_bound_projection".to_string(),
+                }),
+            )),
+            BTreeMap::new(),
+            "runtime-effects",
         );
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
-                                carrier_id: "carrier:dynamic".to_string(),
-                                detail: "late_bound_projection".to_string(),
-                            }),
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:environment-runtime".to_string(),
-                    publication_id: "pub:environment-runtime".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.publication_bundle.is_none());
@@ -1976,34 +1884,18 @@ mod tests {
 
     #[test]
     fn treecalc_runtime_overlay_projection_is_explicit_on_publish_and_verified_clean() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-        let document = OxCalcTreeDocument {
-            structural_snapshot: snapshot(),
-            formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                owner_node_id: TreeNodeId(3),
-                formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                expression: fixture_formula(
-                    TreeNodeId(3),
-                    FixtureFormulaAst::Literal {
-                        value: "7".to_string(),
-                    },
-                ),
-            }]),
-            seeded_published_values: BTreeMap::new(),
-        };
-
-        let published = facade
-            .execute(
-                document.clone(),
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:publish-overlay-projection".to_string(),
-                    publication_id: "pub:publish-overlay-projection".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+        let catalog = fixture_catalog(fixture_formula(
+            TreeNodeId(3),
+            FixtureFormulaAst::Literal {
+                value: "7".to_string(),
+            },
+        ));
+        let published = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            catalog.clone(),
+            BTreeMap::new(),
+            "publish-overlay-projection",
+        );
 
         assert_eq!(published.run_state, OxCalcTreeRunState::Published);
         assert!(published.runtime_effect_overlays.is_empty());
@@ -2019,20 +1911,12 @@ mod tests {
                 .any(|diagnostic| { diagnostic == "runtime_effect_overlay_projection_count:0" })
         );
 
-        let verified_clean = facade
-            .execute(
-                OxCalcTreeDocument {
-                    seeded_published_values: BTreeMap::from([(TreeNodeId(3), "7".to_string())]),
-                    ..document
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:verified-clean-overlay-projection".to_string(),
-                    publication_id: "pub:verified-clean-overlay-projection".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+        let verified_clean = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            catalog,
+            BTreeMap::from([(TreeNodeId(3), "7".to_string())]),
+            "verified-clean-overlay-projection",
+        );
 
         assert_eq!(verified_clean.run_state, OxCalcTreeRunState::VerifiedClean);
         assert!(verified_clean.runtime_effect_overlays.is_empty());
@@ -2051,42 +1935,24 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_runtime_facade_executes_published_run() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Binary {
-                                op: FixtureFormulaBinaryOp::Add,
-                                left: Box::new(FixtureFormulaAst::Reference(
-                                    TreeReference::DirectNode {
-                                        target_node_id: TreeNodeId(2),
-                                    },
-                                )),
-                                right: Box::new(FixtureFormulaAst::Literal {
-                                    value: "3".to_string(),
-                                }),
-                            },
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
+    fn direct_context_runtime_path_executes_published_run() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Binary {
+                    op: FixtureFormulaBinaryOp::Add,
+                    left: Box::new(FixtureFormulaAst::Reference(TreeReference::DirectNode {
+                        target_node_id: TreeNodeId(2),
+                    })),
+                    right: Box::new(FixtureFormulaAst::Literal {
+                        value: "3".to_string(),
+                    }),
                 },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:consumer".to_string(),
-                    publication_id: "pub:consumer".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+            )),
+            BTreeMap::new(),
+            "consumer",
+        );
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values[&TreeNodeId(3)], "5");
@@ -2094,35 +1960,19 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_runtime_facade_exposes_execution_restriction_family_directly() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Reference(TreeReference::HostSensitive {
-                                carrier_id: "carrier:host".to_string(),
-                                detail: "active_selection".to_string(),
-                            }),
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:host".to_string(),
-                    publication_id: "pub:host".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+    fn direct_context_result_exposes_execution_restriction_family_directly() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::HostSensitive {
+                    carrier_id: "carrier:host".to_string(),
+                    detail: "active_selection".to_string(),
+                }),
+            )),
+            BTreeMap::new(),
+            "host",
+        );
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.publication_bundle.is_none());
@@ -2143,35 +1993,19 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_runtime_facade_exposes_capability_sensitive_family_directly() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Reference(TreeReference::CapabilitySensitive {
-                                carrier_id: "carrier:capability".to_string(),
-                                detail: "host_function_availability".to_string(),
-                            }),
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:capability".to_string(),
-                    publication_id: "pub:capability".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+    fn direct_context_result_exposes_capability_sensitive_family_directly() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::CapabilitySensitive {
+                    carrier_id: "carrier:capability".to_string(),
+                    detail: "host_function_availability".to_string(),
+                }),
+            )),
+            BTreeMap::new(),
+            "capability",
+        );
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.publication_bundle.is_none());
@@ -2194,35 +2028,19 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_runtime_facade_exposes_shape_topology_family_directly() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Reference(TreeReference::ShapeTopology {
-                                carrier_id: "carrier:shape".to_string(),
-                                detail: "range_shape_projection".to_string(),
-                            }),
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:shape".to_string(),
-                    publication_id: "pub:shape".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+    fn direct_context_result_exposes_shape_topology_family_directly() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::ShapeTopology {
+                    carrier_id: "carrier:shape".to_string(),
+                    detail: "range_shape_projection".to_string(),
+                }),
+            )),
+            BTreeMap::new(),
+            "shape",
+        );
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.publication_bundle.is_none());
@@ -2239,35 +2057,19 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_runtime_facade_exposes_dynamic_dependency_family_directly() {
-        let facade = OxCalcTreeRuntimeFacade::new(OxCalcTreeEnvironment::new());
-
-        let result = facade
-            .execute(
-                OxCalcTreeDocument {
-                    structural_snapshot: snapshot(),
-                    formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                        owner_node_id: TreeNodeId(3),
-                        formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                        bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                        expression: fixture_formula(
-                            TreeNodeId(3),
-                            FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
-                                carrier_id: "carrier:dynamic".to_string(),
-                                detail: "late_bound_projection".to_string(),
-                            }),
-                        ),
-                    }]),
-                    seeded_published_values: BTreeMap::new(),
-                },
-                OxCalcTreeRecalcRequest {
-                    candidate_result_id: "cand:dynamic".to_string(),
-                    publication_id: "pub:dynamic".to_string(),
-                    compatibility_basis: "snapshot:1".to_string(),
-                    artifact_token_basis: "snapshot:1".to_string(),
-                },
-            )
-            .unwrap();
+    fn direct_context_result_exposes_dynamic_dependency_family_directly() {
+        let result = run_local_engine_fixture(
+            OxCalcTreeContextOptions::new(),
+            fixture_catalog(fixture_formula(
+                TreeNodeId(3),
+                FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
+                    carrier_id: "carrier:dynamic".to_string(),
+                    detail: "late_bound_projection".to_string(),
+                }),
+            )),
+            BTreeMap::new(),
+            "dynamic",
+        );
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert_eq!(

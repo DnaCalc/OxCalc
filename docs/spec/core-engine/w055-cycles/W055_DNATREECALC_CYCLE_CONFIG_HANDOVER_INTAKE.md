@@ -30,13 +30,13 @@ configuration field.
 
 Current facts:
 
-1. `OxCalcTreeRecalcRequest` carries `candidate_result_id`,
+1. `OxCalcTreeContext recalculation configuration` carries `candidate_result_id`,
    `publication_id`, `compatibility_basis`, and `artifact_token_basis`.
 2. `OxCalcTreeHostCapabilitySnapshot` carries `capability_profile_id` and
    runtime-effect booleans, but no cycle profile or iteration bounds.
 3. `OxCalcTreeRuntimePolicy` controls diagnostics, overlays, derivation traces,
    and scheduling policy, but no cycle semantics.
-4. `OxCalcTreeRecalcResult` exposes reject detail, dependency graph,
+4. `OxCalcTreeCalculationOutcome` exposes reject detail, dependency graph,
    invalidation closure, evaluation order, published values, node states, and
    string diagnostics, but no typed cycle diagnostic records.
 
@@ -54,7 +54,7 @@ The exact contract packet is:
 W055 carries the cycle profile and iterative bounds as structured per-recalc
 input on:
 
-`OxCalcTreeRecalcRequest.cycle_config`
+`OxCalcTreeContext recalculation configuration.cycle_config`
 
 Rationale:
 
@@ -120,7 +120,7 @@ Terminal classification must at least distinguish:
 W055 must also decide whether non-iterative rejection and nonnumeric/error
 iteration rejection are represented as terminal states or as reject reasons. The
 contract packet records the target answer: both paths must be typed and directly
-reachable from `OxCalcTreeRecalcResult.cycle_diagnostics`.
+reachable from `OxCalcTreeCalculationOutcome.cycle_diagnostics`.
 
 ## 5. Coverage Label
 
@@ -152,8 +152,8 @@ Not covered by that label:
 ## 6. DnaTreeCalc W002 Disposition
 
 DnaTreeCalc W002 should keep iterative cycle corpus cases pending until W055
-lands `OxCalcTreeRecalcRequest.cycle_config` and
-`OxCalcTreeRecalcResult.cycle_diagnostics`.
+lands `OxCalcTreeContext recalculation configuration.cycle_config` and
+`OxCalcTreeCalculationOutcome.cycle_diagnostics`.
 
 A narrow non-iterative cycle smoke may be used only as a transitional facade
 observation if it does not claim the final production cycle contract. The

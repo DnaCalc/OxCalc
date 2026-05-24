@@ -21,13 +21,13 @@ The production cycle configuration belongs on the per-recalc request.
 
 The exact host-facing field is:
 
-`OxCalcTreeRecalcRequest.cycle_config`
+`OxCalcTreeContext recalculation configuration.cycle_config`
 
 It must not be encoded in `compatibility_basis`.
 
 Placement rules:
 
-1. `OxCalcTreeRecalcRequest.cycle_config` carries selected cycle semantics for
+1. `OxCalcTreeContext recalculation configuration.cycle_config` carries selected cycle semantics for
    the current run.
 2. `OxCalcTreeHostCapabilitySnapshot.capability_profile_id` remains host
    capability identity; it does not select cycle behavior.
@@ -38,7 +38,7 @@ Placement rules:
 
 ## 3. Request Shape
 
-W055 extends `OxCalcTreeRecalcRequest` with:
+W055 extends `OxCalcTreeContext recalculation configuration` with:
 
 ```rust
 pub cycle_config: Option<OxCalcTreeCycleConfig>
@@ -88,7 +88,7 @@ not be silently lowered to `cycle.non_iterative_stage1`.
 
 ## 4. Result Shape
 
-W055 extends `OxCalcTreeRecalcResult` with:
+W055 extends `OxCalcTreeCalculationOutcome` with:
 
 ```rust
 pub cycle_diagnostics: Vec<OxCalcTreeCycleDiagnostic>
@@ -198,9 +198,9 @@ Forbidden label:
 W055 satisfies the DnaTreeCalc handover only when:
 
 1. DnaTreeCalc can submit `cycle_profile_id`, `maximum_iterations`, and
-   `maximum_change` through `OxCalcTreeRecalcRequest.cycle_config`;
+   `maximum_change` through `OxCalcTreeContext recalculation configuration.cycle_config`;
 2. DnaTreeCalc can read typed cycle diagnostics from
-   `OxCalcTreeRecalcResult.cycle_diagnostics`;
+   `OxCalcTreeCalculationOutcome.cycle_diagnostics`;
 3. a non-iterative circular-reference case exposes a `Worksheet.CircularReference`
    equivalent and a no-publication reject;
 4. an iterative covered-surface case exposes terminal classification,

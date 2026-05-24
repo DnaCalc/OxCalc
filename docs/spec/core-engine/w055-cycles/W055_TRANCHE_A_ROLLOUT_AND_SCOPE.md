@@ -84,9 +84,9 @@ Current W055 disposition:
 
 1. the current `compatibility_basis` fixture path is not the final production
    cycle config API,
-2. the production field is `OxCalcTreeRecalcRequest.cycle_config`,
+2. the production field is `OxCalcTreeContext recalculation configuration.cycle_config`,
 3. typed cycle diagnostics must be directly reachable from
-   `OxCalcTreeRecalcResult.cycle_diagnostics`,
+   `OxCalcTreeCalculationOutcome.cycle_diagnostics`,
 4. DnaTreeCalc iterative cycle corpus cases stay pending until that implementation
    lands.
 

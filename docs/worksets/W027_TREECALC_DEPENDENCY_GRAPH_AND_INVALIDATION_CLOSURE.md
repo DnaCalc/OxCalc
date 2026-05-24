@@ -82,7 +82,7 @@ Current realized dependency substrate:
 5. cycle-sensitive state is no longer implicit:
    - cycle groups are computed during graph build
    - cycle members surface as `CycleBlocked` in invalidation closure where applicable
-6. the host-facing TreeCalc contract already exposes this floor directly on `OxCalcTreeRecalcResult` through:
+6. the host-facing TreeCalc contract already exposes this floor directly on `OxCalcTreeCalculationOutcome` through:
    - `dependency_graph`
    - `invalidation_closure`
 7. deterministic artifact evidence for this floor already exists in the local TreeCalc runner and checked-in baseline through:

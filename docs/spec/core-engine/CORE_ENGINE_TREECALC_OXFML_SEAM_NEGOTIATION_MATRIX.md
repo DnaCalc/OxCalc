@@ -342,7 +342,7 @@ W026 is now no longer just a residual topic ledger. The first executed packet fl
      - `DynamicDependency`
      - `ExecutionRestriction`
    - `CapabilitySensitive` remains admitted but unexercised
-   - current family reachability is now explicit on `OxCalcTreeRecalcResult`, `result.json`, and `explain.json`
+   - current family reachability is now explicit on `OxCalcTreeCalculationOutcome`, `result.json`, and `explain.json`
 3. Sequence 3 publication/topology breadth:
    - `value_delta` is the only currently published consequence family
    - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences

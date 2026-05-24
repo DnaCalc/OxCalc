@@ -16,7 +16,7 @@ This packet now operates beneath the landed `OxCalcTree` host-facing consumer co
 3. candidate-result, reject-context, and runtime-derived fact categories that the TreeCalc path needs from OxFml
 4. explicit local resolution of what OxCalc consumes versus what OxFml continues to own semantically
 5. explicit narrowing of any residual seam uncertainty before engine implementation proceeds
-6. explicit placement of the consumed-now TreeCalc seam facts beneath the `OxCalcTreeEnvironment` / `OxCalcTreeDocument` / `OxCalcTreeRecalcRequest` / `OxCalcTreeRecalcResult` / `OxCalcTreeRuntimeFacade` contract so hosts do not need to reach into proving-floor engine types to understand W026 truth
+6. explicit placement of the consumed-now TreeCalc seam facts beneath the `OxCalcTreeContextOptions` / `OxCalcTreeContext` / `OxCalcTreeContext recalculation configuration` / `OxCalcTreeCalculationOutcome` / `OxCalcTreeContext` contract so hosts do not need to reach into proving-floor engine types to understand W026 truth
 7. explicit incorporation of the current runtime-derived effect family split where the local engine already distinguishes dynamic-dependency versus execution-restriction facts
 
 ### Out of scope
@@ -149,7 +149,7 @@ Current local carriage rule:
 1. `formula_stable_id` and `formula_token` are explicit in the current TreeCalc `PreparedOxfmlFormula` intake and in the deterministic minimal upstream-host packet
 2. `bind_artifact_id` is explicit in the TreeCalc formula binding and now explicit in the deterministic minimal upstream-host packet when present
 3. `structure_context_version` is explicit in both bind-context construction and runtime-environment construction
-4. `compatibility_basis` and `artifact_token_basis` remain explicit at the `OxCalcTreeRecalcRequest` and `LocalTreeCalcInput` boundary rather than being hidden ambient state
+4. `compatibility_basis` and `artifact_token_basis` remain explicit at the `OxCalcTreeContext recalculation configuration` and `LocalTreeCalcInput` boundary rather than being hidden ambient state
 
 Interpretation rule:
 1. this packet is the required identity and compatibility floor for the first W026 closed subset
@@ -266,14 +266,14 @@ Exit condition:
 For the current TreeCalc-first runtime floor, W026 now treats the candidate/reject/correlation packet as a narrow local coordinator packet rather than as the full broader Stage 1 consequence universe.
 
 Consumed-now correlation floor:
-1. `candidate_result_id` is the primary stable correlation identifier and is explicit at the `OxCalcTreeRecalcRequest`, `AcceptedCandidateResult`, `PublicationBundle`, and `RejectDetail` surfaces
+1. `candidate_result_id` is the primary stable correlation identifier and is explicit at the `OxCalcTreeContext recalculation configuration`, `AcceptedCandidateResult`, `PublicationBundle`, and `RejectDetail` surfaces
 2. `publication_id` is explicit in the current TreeCalc request and publication consequence path, and remains the current publish-side consequence identifier for this lane
 3. `structural_snapshot_id`, `compatibility_basis`, and `artifact_token_basis` remain explicit on `AcceptedCandidateResult` and are part of the current local candidate correlation packet
 
 Consumed-now consequence reachability:
-1. accepted work is reachable through `candidate_result: Option<AcceptedCandidateResult>` on `OxCalcTreeRecalcResult`
-2. published work is reachable through `publication_bundle: Option<PublicationBundle>` on `OxCalcTreeRecalcResult`
-3. rejected work is reachable through `reject_detail: Option<RejectDetail>` on `OxCalcTreeRecalcResult`
+1. accepted work is reachable through `candidate_result: Option<AcceptedCandidateResult>` on `OxCalcTreeCalculationOutcome`
+2. published work is reachable through `publication_bundle: Option<PublicationBundle>` on `OxCalcTreeCalculationOutcome`
+3. rejected work is reachable through `reject_detail: Option<RejectDetail>` on `OxCalcTreeCalculationOutcome`
 4. the current local replay/explain path also preserves `candidate_result_id`, `publication_id`, and typed `reject_detail.kind` in emitted TreeCalc artifacts
 
 Current typed reject floor:
@@ -291,8 +291,8 @@ Explicit current absences:
 4. W026 therefore closes this item by recording those fields as explicit current absences rather than carrying them as implied present-soon packet members
 
 Current local carriage rule:
-1. `candidate_result_id` enters through `OxCalcTreeRecalcRequest` and flows into accepted, published, and rejected local coordinator consequences
-2. `publication_id` enters through `OxCalcTreeRecalcRequest` and flows only into the publish-success consequence path
+1. `candidate_result_id` enters through `OxCalcTreeContext recalculation configuration` and flows into accepted, published, and rejected local coordinator consequences
+2. `publication_id` enters through `OxCalcTreeContext recalculation configuration` and flows only into the publish-success consequence path
 3. `reject_detail` currently carries `candidate_result_id`, `kind`, and freeform `detail`, with no separate stable reject record identity
 4. the current local TreeCalc floor therefore supports candidate/publication/reject correlation, but not a broader commit-attempt or reject-record identity split
 
@@ -354,7 +354,7 @@ Non-assumption rule:
 3. W026 does not collapse execution-restriction and capability-sensitive meaning into the same claim merely because both families currently project to the same local overlay kind when present
 
 Current local carriage rule:
-1. `RuntimeEffect.family` is explicit on `OxCalcTreeRecalcResult`, `AcceptedCandidateResult`, `PublicationBundle.published_runtime_effects`, local trace events, and emitted TreeCalc result/explain/runtime-effect artifacts
+1. `RuntimeEffect.family` is explicit on `OxCalcTreeCalculationOutcome`, `AcceptedCandidateResult`, `PublicationBundle.published_runtime_effects`, local trace events, and emitted TreeCalc result/explain/runtime-effect artifacts
 2. `runtime_effect_overlay_kind` currently preserves `DynamicDependency` as `OverlayKind::DynamicDependency` and preserves `ExecutionRestriction` plus `CapabilitySensitive` as `OverlayKind::ExecutionRestriction`
 3. W026 treats that overlay projection as sufficient for the current local floor because the source runtime-effect family remains explicit and replay-visible even where overlay kinds are narrower than runtime-effect families
 
@@ -372,8 +372,8 @@ Interpretation rule:
 For the current TreeCalc-first runtime floor, W026 now locks the reachability rule for emitted runtime-derived families so hosts do not need to inspect unrelated local internals to understand the active runtime-effect packet.
 
 Host-facing reachability floor:
-1. `OxCalcTreeRecalcResult.runtime_effects` is a required direct carrier for all emitted runtime-derived families in the current TreeCalc-first lane
-2. `OxCalcTreeRecalcResult.runtime_effect_overlays` is a required direct carrier for the overlay projection of those same emitted runtime-derived families
+1. `OxCalcTreeCalculationOutcome.runtime_effects` is a required direct carrier for all emitted runtime-derived families in the current TreeCalc-first lane
+2. `OxCalcTreeCalculationOutcome.runtime_effect_overlays` is a required direct carrier for the overlay projection of those same emitted runtime-derived families
 3. where a run reaches accepted-candidate or publication state, runtime-derived families also remain directly reachable through `AcceptedCandidateResult.runtime_effects` and `PublicationBundle.published_runtime_effects`, but hosts must not be forced to depend on those optional consequence objects just to observe the base runtime-derived packet
 
 Replay-visible artifact floor:
@@ -387,12 +387,12 @@ Below-contract allowance rule:
 3. local trace-event packaging remains supporting evidence for W026, not the required host-facing carrier for this item
 
 Interpretation rule:
-1. a TreeCalc-style host must be able to learn the emitted runtime-derived family split from `OxCalcTreeRecalcResult` directly, without drilling into `LocalTreeCalcRunArtifacts`, trace events, or other narrower local internals
+1. a TreeCalc-style host must be able to learn the emitted runtime-derived family split from `OxCalcTreeCalculationOutcome` directly, without drilling into `LocalTreeCalcRunArtifacts`, trace events, or other narrower local internals
 2. overlay kinds remain narrower than runtime-derived families in the current lane, so overlay observation alone is insufficient; the source runtime-effect family must stay explicitly reachable beside the overlay projection
 3. later seam widening may add more direct runtime-derived carriers, but it does not reopen this item unless the current direct reachability floor becomes false in live code
 
 Evidence for the current local floor:
-1. `consumer.rs` now proves the ordinary `OxCalcTreeRuntimeFacade` surfaces `ExecutionRestriction` and `DynamicDependency` directly on `OxCalcTreeRecalcResult.runtime_effects` together with the corresponding overlay kinds on `OxCalcTreeRecalcResult.runtime_effect_overlays`
+1. `consumer.rs` now proves the ordinary `OxCalcTreeContext` surfaces `ExecutionRestriction` and `DynamicDependency` directly on `OxCalcTreeCalculationOutcome.runtime_effects` together with the corresponding overlay kinds on `OxCalcTreeCalculationOutcome.runtime_effect_overlays`
 2. `treecalc_runner.rs` now checks `result.json` for direct runtime-effect and overlay artifact reachability and checks `explain.json` for direct embedded runtime-effect family plus overlay visibility in both the host-sensitive and dynamic-reference cases
 3. no current host-facing or replay-facing closure claim depends on unexercised `CapabilitySensitive` or `ShapeTopology` emission, and W026 now records that explicitly rather than leaving it implicit
 
@@ -512,7 +512,7 @@ Current topology rule:
 
 Evidence for the current local floor:
 1. `treecalc.rs` routes host-sensitive execution-restriction failure through `reject_run` before publication and returns `publication_bundle: None`
-2. `consumer.rs` now tests the ordinary `OxCalcTreeRuntimeFacade` host-sensitive execution-restriction case and asserts that the result is rejected with no publication bundle
+2. `consumer.rs` now tests the ordinary `OxCalcTreeContext` host-sensitive execution-restriction case and asserts that the result is rejected with no publication bundle
 3. `treecalc_runner.rs` now emits explicit execution-restriction interaction classification in both `result.json` and `explain.json` and tests the checked host-sensitive reject fixture for `rejected_no_publication`, `publication_sensitive_consequence = false`, and `topology_sensitive_consequence = false`
 
 ## Explicit W026 Closure Work List
@@ -529,7 +529,7 @@ This is the full W026 closure list. No scope growth is expected beyond these ite
 6. `[closed] Document update` Lock the candidate/reject/correlation packet. Closed in `Sequence 2A: Candidate, Reject, And Correlation Packet`; W026 now names the exact consumed-now correlation and consequence identifiers for the TreeCalc-first lane, records `commit_attempt_id`, `reject_record_id`, and `fence_snapshot_ref` as explicit current absences rather than implied members, and locks the first-phase typed reject floor as a required typed carrier rather than generic failure text.
 7. `[closed] Document update + code review and update` Close the distinction between canonical OxFml object families and local OxCalc projection labels. Closed in `Sequence 2B: Canonical OxFml Families Versus OxCalc Projection Labels`; W026 now names the current canonical-family alignments versus OxCalc-local labels, and TreeCalc-emitted artifacts now carry explicit ownership markers so local reject and runtime-effect labels do not masquerade as canonical OxFml names.
 8. `[closed] Document update + code review and update` Lock the semantic minimum runtime-derived packet. Closed in `Sequence 2C: Semantic Minimum Runtime-Derived Packet`; W026 now names the exact emitted dynamic-dependency and execution-restriction families, records capability-sensitive runtime effects as an explicit current absence, keeps the non-assumption about a not-yet-frozen merged OxFml carrier explicit, and backs the emitted family split with checked TreeCalc artifact evidence.
-9. `[closed] Document update + code review and update` Close the runtime-effect and overlay reachability rule. Closed in `Sequence 2D: Runtime-Effect And Overlay Reachability Rule`; W026 now names the exact host-facing and replay-facing reachability floor for emitted runtime-derived families, states which admitted but unexercised families may stay below the current host-facing contract, and backs that rule with direct `OxCalcTreeRecalcResult` plus `result.json` and `explain.json` evidence.
+9. `[closed] Document update + code review and update` Close the runtime-effect and overlay reachability rule. Closed in `Sequence 2D: Runtime-Effect And Overlay Reachability Rule`; W026 now names the exact host-facing and replay-facing reachability floor for emitted runtime-derived families, states which admitted but unexercised families may stay below the current host-facing contract, and backs that rule with direct `OxCalcTreeCalculationOutcome` plus `result.json` and `explain.json` evidence.
 10. `[closed] Document update + code review and update` Close the W026-to-W029 boundary. Closed in `Sequence 2E: W026-To-W029 Boundary Rule`; W026 now explicitly stops at current runtime-derived transport and reachability truth for the emitted TreeCalc-first subset, W029 now explicitly owns broader runtime-derived family realization and overlay closure beneath that floor, and the local TreeCalc runtime comments now reflect the same split.
 
 ### Group C: Sequence 3 Publication And Topology Consequence Breadth
@@ -538,7 +538,7 @@ This is the full W026 closure list. No scope growth is expected beyond these ite
 13. `[closed] Document update + code review and update` Close the execution-restriction versus publication/topology interaction rule. Closed in `Sequence 3C: Execution-Restriction Versus Publication/Topology Interaction Rule`; W026 now states that the current execution-restriction floor is runtime-effect-plus-typed-no-publish context rather than a published consequence family, and the host-facing plus replay-facing evidence surfaces now represent that rule explicitly.
 
 ### Group D: Host-Facing Contract And Canonical Packet Sync
-14. `[closed] Document update` Close the `OxCalcTree` contract reachability wording for W026. Closed in `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`; the host-facing contract now names the exact W026 facts that must remain directly reachable from `OxCalcTreeRecalcResult`, the narrower W026 seam facts that may remain below the host-facing contract for now, and the explicit rule that W026 does not authorize a second host-facing OxCalc seam layer.
+14. `[closed] Document update` Close the `OxCalcTree` contract reachability wording for W026. Closed in `CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`; the host-facing contract now names the exact W026 facts that must remain directly reachable from `OxCalcTreeCalculationOutcome`, the narrower W026 seam facts that may remain below the host-facing contract for now, and the explicit rule that W026 does not authorize a second host-facing OxCalc seam layer.
 15. `[closed] Document update` Synchronize the canonical packet text across the W026 authority set. Closed in `CORE_ENGINE_OXFML_SEAM.md`, `CORE_ENGINE_TREECALC_OXFML_SEAM_NEGOTIATION_MATRIX.md`, `CORE_ENGINE_TREECALC_SEMANTIC_COMPLETION_PLAN.md`, and `NOTES_FOR_OXFML.md`; those authority and companion docs now all state the same executed Sequence 1 / Sequence 2 / Sequence 3 packet floor, the same explicit current absences, and the same `canonical but narrower` rule for breadth beyond that first floor.
 
 ### Group E: Evidence, Handoff Decision, And W026 Closure
@@ -562,7 +562,7 @@ Current deterministic exercised evidence for the executed W026 floor is now:
      - `treecalc.rs` proves relative-reference rename pressure becomes rebind-required while direct-only move pressure remains recalc-only
 2. Sequence 2 candidate/reject/runtime-derived transport:
    - host-facing consumer evidence:
-     - `consumer.rs` proves `ExecutionRestriction` and `DynamicDependency` are directly reachable on `OxCalcTreeRecalcResult`, with no publication bundle on the execution-restriction reject path
+     - `consumer.rs` proves `ExecutionRestriction` and `DynamicDependency` are directly reachable on `OxCalcTreeCalculationOutcome`, with no publication bundle on the execution-restriction reject path
    - replay/explain artifact evidence:
      - `treecalc_runner.rs` proves `candidate_result_id`, `publication_id`, typed reject kind, and the current absence of later correlation ids on the local artifact floor
      - `treecalc_runner.rs` proves emitted `ExecutionRestriction` and `DynamicDependency` runtime-effect families on checked host-sensitive and dynamic-reference fixture cases

@@ -1566,7 +1566,7 @@ Product status:
 OxCalc has consumed the DnaTreeCalc table activation floor for W056, and
 `calc-4vs8.51` is closed for the table corpus/bridge intake. DnaTreeCalc has
 active node-table corpus slices and retained producer artifacts that run through
-`LiveOxCalcTreeBridge` and OxCalc's public table-projection/resolution APIs
+`OxCalcTreeContext` and OxCalc's public table-projection/resolution APIs
 rather than local formula parsing, including the previously missing
 empty-body, lifecycle, and dynamic/cross-workspace table routes.
 
@@ -1864,7 +1864,7 @@ Prior closed support:
    column, section, current-row, cross-workspace, renamed/moved/deleted,
    unavailable, volatile, and unsupported runtime-parse targets,
 7. DnaTreeCalc table corpus and retained producer activation through
-   `LiveOxCalcTreeBridge`, covering structured references, empty-body tables,
+   `OxCalcTreeContext`, covering structured references, empty-body tables,
    lifecycle events, dynamic/cross-workspace table refs, update artifacts, and
    retained replay bundles,
 8. OxXlPlay retained Excel ListObject/workbook construction observations and
@@ -2024,7 +2024,7 @@ Current-state classification:
 
 | Area | Owner | Current state | Evidence | Gap or next bead |
 | --- | --- | --- | --- | --- |
-| Table-as-node product model and bridge activation | DnaTreeCalc | Implemented/evidenced for structured references, empty bodies, lifecycle, and dynamic/cross-workspace table cases through `LiveOxCalcTreeBridge`; no DnaTreeCalc formula parser is claimed. | DnaTreeCalc `dtc-z0i.5.5`, `dtc-z0i.5.6.1`, `dtc-z0i.5.7`, `dtc-z0i.7.1`; active table corpus and retained runs under `../DnaTreeCalc/docs/test-runs/`. | Bead-state residue remains: DnaTreeCalc parent `dtc-z0i.5` and `dtc-z0i.5.6` are still open even though the retained child evidence exists. Reconcile under `calc-4vs8.62`, not by adding an OxCalc-side shim. |
+| Table-as-node product model and bridge activation | DnaTreeCalc | Implemented/evidenced for structured references, empty bodies, lifecycle, and dynamic/cross-workspace table cases through `OxCalcTreeContext`; no DnaTreeCalc formula parser is claimed. | DnaTreeCalc `dtc-z0i.5.5`, `dtc-z0i.5.6.1`, `dtc-z0i.5.7`, `dtc-z0i.7.1`; active table corpus and retained runs under `../DnaTreeCalc/docs/test-runs/`. | Bead-state residue remains: DnaTreeCalc parent `dtc-z0i.5` and `dtc-z0i.5.6` are still open even though the retained child evidence exists. Reconcile under `calc-4vs8.62`, not by adding an OxCalc-side shim. |
 | Table custody, virtual anchor, catalog resolver, sparse readers, prepared identity, dependency/invalidation, dynamic rebind | OxCalc | Implemented/evidenced in typed Rust surfaces. `EvalValue` remains free of table-specific variants; table values travel through sparse/reference-reader surfaces. | `src/oxcalc-core/src/structured_table.rs` defines `TreeCalcTableNodeSnapshot`, `TreeCalcTableNodeProjection`, `resolve_treecalc_table_catalog_reference`, `TreeCalcTableSparseReader`, `TreeCalcTableFormulaPreparedIdentityFacts`, `TreeCalcTableUpdateScenarioKind`, `TreeCalcTableLifecycleEventKind`, and `classify_treecalc_dynamic_table_rebind`; closing beads `calc-4vs8.45` through `.56` record focused and full `oxcalc-core` checks. | Run the anti-shim consolidation sweep in `calc-4vs8.58` and lifecycle matrix verification in `calc-4vs8.59` before reaffirming the table claim. |
 | Generic structured-reference packets and table prepared identity | OxFml | Implemented/evidenced for W056 table needs without TreeCalc semantics. | OxFml `fml-ds0.12`, `.13`, `.15`, `.16`; W074 name-call handoff `fml-ds0.6.5`. | Broader W036/table-language work remains outside this W056 hardening unless live evidence exposes a missing generic packet fact. Keep under watch in `calc-4vs8.62`. |
 | Opaque `ReferenceLike` function behavior | OxFunc | Implemented/evidenced for first aggregate group and widened/classified reference-visible structured-table function families through generic resolver APIs. | OxFunc `oxf-ypq2.13`, `.15`, `.16`. | Broader W093 formula-call registry migration `oxf-ypq2.12` remains open. It is not table-specific today, but `calc-4vs8.60` must verify table formulas still invalidate on registry/capability changes and do not require TreeCalc selector inspection. |

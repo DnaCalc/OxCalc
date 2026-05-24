@@ -1066,7 +1066,7 @@ Current executed OxCalc read is:
      - `ExecutionRestriction`
    - `CapabilitySensitive` remains admitted but unexercised
 4. those emitted runtime-derived families are now directly reachable in OxCalc on:
-   - `OxCalcTreeRecalcResult`
+   - `OxCalcTreeCalculationOutcome`
    - emitted `result.json`
    - emitted `explain.json`
 5. Sequence 3 publication/topology breadth is now explicit on the current first floor:

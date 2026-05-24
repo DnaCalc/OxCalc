@@ -33,7 +33,7 @@ Current TreeCalc refresh state:
 
 | W008 assumption or action | Current TreeCalc authority | Refreshed by W030? | Residual candidate |
 |---|---|---:|---|
-| Candidate result remains distinct from publication (`A5` versus `A7`) | `OxCalcTreeRecalcResult` exposes optional accepted candidate, optional publication bundle, run state, diagnostics, and emitted result artifacts. | yes, for W030 local sequential corpus | Broader evaluator-backed candidate identity breadth remains tied to later OxFml seam widening if new candidate families appear. |
+| Candidate result remains distinct from publication (`A5` versus `A7`) | `OxCalcTreeCalculationOutcome` exposes optional accepted candidate, optional publication bundle, run state, diagnostics, and emitted result artifacts. | yes, for W030 local sequential corpus | Broader evaluator-backed candidate identity breadth remains tied to later OxFml seam widening if new candidate families appear. |
 | Reject preserves published view (`A6`, `S2`) | W030 rejected cases emit reject detail and no published-value mutation in per-case result/published-values artifacts. | yes, for covered reject families | Provider-failure/callable-publication remain watch lanes per OxFml notes until coordinator-visible evidence exists. |
 | Atomic publication (`A7`, `S1`) | Published cases emit stable result and published-values artifacts through the coordinator-owned publication path. | yes, for single-run local sequential corpus | Multi-node atomic bundle stress beyond current corpus remains successor assurance work, not W031 inventory closure. |
 | Verified clean without synthetic publication (`A3b`) | W030 includes one `verified_clean` case with no expectation mismatch. | yes, for first local equality surface | Equality breadth for future richer values/formats remains residual. |
@@ -86,7 +86,7 @@ Current TreeCalc refresh state:
 
 | Semantic-plan clause | Current authority after W030 | Refresh state | Residual candidate |
 |---|---|---|---|
-| Structural/formula substrate (`TS-1`) | W025/W030 fixture corpus and `OxCalcTreeDocument` surface. | refreshed for local corpus | Broader node taxonomy remains future. |
+| Structural/formula substrate (`TS-1`) | W025/W030 fixture corpus and `OxCalcTreeContext` surface. | refreshed for local corpus | Broader node taxonomy remains future. |
 | Bind/reference intake (`TS-2`) | W026 first consumed-seam floor and current local reference subset. | partial | Broader caller-context/table/host-sensitive breadth remains watch/residual. |
 | Dependency graph/invalidation (`TS-3`) | W027 dependency graph, invalidation closure, and W030 emitted artifacts. | refreshed for covered families | Stronger cross-host dependency identity only if later evidence demands it. |
 | Candidate-result intake (`TS-4`) | W028 candidate/reject/publication floor plus W030 baseline. | refreshed for local sequential floor | Broader evaluator-produced family breadth remains later. |
@@ -97,11 +97,11 @@ Current TreeCalc refresh state:
 ## 8. OxCalcTree Contract Inventory
 
 Current refreshed clauses from the host-facing contract:
-1. `OxCalcTreeEnvironment` is a real context object and may affect diagnostics/overlay projection without changing candidate acceptance or publication authority.
-2. `OxCalcTreeDocument` carries structural snapshot, formula catalog, and seeded published values.
-3. `OxCalcTreeRecalcRequest` carries candidate/publication identity and compatibility/artifact-token basis.
-4. `OxCalcTreeRecalcResult` directly exposes result state, dependency graph, invalidation closure, evaluation order, runtime effects, runtime-effect overlays, candidate result, publication bundle, reject detail, published values, node states, and diagnostics.
-5. `OxCalcTreeRuntimeFacade` is the current ordinary one-shot execution service.
+1. `OxCalcTreeContextOptions` is a real context object and may affect diagnostics/overlay projection without changing candidate acceptance or publication authority.
+2. `OxCalcTreeContext` carries structural snapshot, formula catalog, and seeded published values.
+3. `OxCalcTreeContext recalculation configuration` carries candidate/publication identity and compatibility/artifact-token basis.
+4. `OxCalcTreeCalculationOutcome` directly exposes result state, dependency graph, invalidation closure, evaluation order, runtime effects, runtime-effect overlays, candidate result, publication bundle, reject detail, published values, node states, and diagnostics.
+5. `OxCalcTreeContext` is the current ordinary one-shot execution service.
 
 Residual contract candidates:
 1. broader caller-context and address-mode carriage beyond the current subset,

@@ -100,8 +100,8 @@ Current disposition:
 
 1. `compatibility_basis` may describe fixture provenance, but it is not the
    final cycle config API,
-2. the production input field is `OxCalcTreeRecalcRequest.cycle_config`,
-3. the production result field is `OxCalcTreeRecalcResult.cycle_diagnostics`,
+2. the production input field is `OxCalcTreeContext recalculation configuration.cycle_config`,
+3. the production result field is `OxCalcTreeCalculationOutcome.cycle_diagnostics`,
 4. DnaTreeCalc iterative cycle corpus cases should stay pending until the typed
    implementation and acceptance evidence land.
 

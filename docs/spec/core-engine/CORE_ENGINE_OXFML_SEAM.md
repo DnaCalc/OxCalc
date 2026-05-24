@@ -817,7 +817,7 @@ The current executed OxCalc floor is now:
      - `DynamicDependency`
      - `ExecutionRestriction`
    - `CapabilitySensitive` remains admitted but currently unexercised
-   - those emitted families are now directly reachable on `OxCalcTreeRecalcResult` and in emitted `result.json` / `explain.json`
+   - those emitted families are now directly reachable on `OxCalcTreeCalculationOutcome` and in emitted `result.json` / `explain.json`
 3. Sequence 3 publication/topology breadth:
    - `value_delta` is the only currently published consequence family on the first local TreeCalc floor
    - `shape_delta`, `topology_delta`, optional `format_delta`, and optional `display_delta` remain explicit current absences rather than silent members of `value_delta`
@@ -1424,7 +1424,7 @@ Current mapping:
 3. When enabled, TreeCalc sends `EvaluationTraceMode::PreparedCalls` through
    `RuntimeFormulaRequest::with_trace_mode` and records
    `DerivationTraceRecord` in `LocalTreeCalcRunArtifacts` and
-   `OxCalcTreeRecalcResult`.
+   `OxCalcTreeCalculationOutcome`.
 4. The record carries schema id
    `oxcalc.derivation_trace.invoke_outcome.v1`, owner/formula identity,
    template selection (`prepared_formula_key`, `shape_key`,

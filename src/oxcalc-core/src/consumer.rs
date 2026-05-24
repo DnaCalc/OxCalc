@@ -5,8 +5,8 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use oxfml_core::{
-    BindContext, BindRequest, FormulaSourceRecord, ParseRequest, bind_formula, parse_formula,
-    project_red_view,
+    BindContext, BindRequest, FormulaSourceRecord, ParseRequest, StructuredReferenceBindRecord,
+    bind_formula, parse_formula, project_red_view,
 };
 use thiserror::Error;
 
@@ -25,6 +25,18 @@ use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
     StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
+};
+use crate::structured_table::{
+    StructuredTableBindRecordIntakeError, StructuredTableContextPacket,
+    StructuredTableDependencyLowering, StructuredTableDependencyLoweringRequest,
+    StructuredTableReferenceIntake, TableCallerRegion, TableRef, TreeCalcDynamicTableRebindReport,
+    TreeCalcDynamicTableRebindRequest, TreeCalcTableCatalogResolution,
+    TreeCalcTableCatalogResolveRequest, TreeCalcTableCatalogResolverContext,
+    TreeCalcTableCatalogWorkspace, TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory,
+    TreeCalcTableLifecycleContextVersions, TreeCalcTableNodeProjection, TreeCalcTableNodeSnapshot,
+    TreeCalcTableProjectionError, classify_treecalc_dynamic_table_rebind,
+    inventory_treecalc_table_dependency_facts, lower_structured_table_dependencies,
+    project_treecalc_table_node_snapshot, resolve_treecalc_table_catalog_reference,
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
@@ -127,6 +139,19 @@ pub struct OxCalcTreeNodeView {
     pub formula_text: String,
     pub value_text: Option<String>,
     pub calc_state: Option<NodeCalcState>,
+    pub table: Option<OxCalcTreeTableView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeTableView {
+    pub table_node_id: TreeNodeId,
+    pub table_id: String,
+    pub table_name: String,
+    pub display_path: String,
+    pub canonical_path: String,
+    pub snapshot: TreeCalcTableNodeSnapshot,
+    pub projection: TreeCalcTableNodeProjection,
+    pub dependency_inventory: TreeCalcTableDependencyInventory,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,6 +160,7 @@ pub struct OxCalcTreeWorkspaceView {
     pub root_node_id: TreeNodeId,
     pub snapshot_id: StructuralSnapshotId,
     pub nodes: Vec<OxCalcTreeNodeView>,
+    pub tables: Vec<OxCalcTreeTableView>,
     pub diagnostics: Vec<String>,
 }
 
@@ -152,6 +178,14 @@ pub enum OxCalcTreeContextError {
     FormulaPrebind(#[from] TreeCalcFormulaTextPrebindError),
     #[error(transparent)]
     Runtime(#[from] LocalTreeCalcError),
+    #[error("invalid TreeCalc table snapshot: {error:?}")]
+    TableProjection { error: TreeCalcTableProjectionError },
+    #[error(
+        "invalid OxFml structured-reference bind record for TreeCalc table lowering: {error:?}"
+    )]
+    TableBindRecordIntake {
+        error: StructuredTableBindRecordIntakeError,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -161,6 +195,9 @@ struct OxCalcTreeWorkspaceState {
     snapshot: StructuralSnapshot,
     formula_texts: BTreeMap<TreeNodeId, String>,
     formula_text_versions: BTreeMap<TreeNodeId, u64>,
+    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    table_state_version: u64,
     seeded_published_values: BTreeMap<TreeNodeId, String>,
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
@@ -227,6 +264,9 @@ impl OxCalcTreeContext {
             snapshot,
             formula_texts: BTreeMap::from([(root_node_id, String::new())]),
             formula_text_versions: BTreeMap::from([(root_node_id, 1)]),
+            table_snapshots: BTreeMap::new(),
+            deleted_table_facts: Vec::new(),
+            table_state_version: 1,
             seeded_published_values: BTreeMap::new(),
             last_result: None,
         };
@@ -413,12 +453,159 @@ impl OxCalcTreeContext {
                 state.formula_texts.remove(removed_node_id);
                 state.formula_text_versions.remove(removed_node_id);
                 state.seeded_published_values.remove(removed_node_id);
+                if let Some(snapshot) = state.table_snapshots.remove(removed_node_id) {
+                    let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
+                    state.deleted_table_facts.push(deleted);
+                    state.table_state_version += 1;
+                }
             }
             state.snapshot = outcome.snapshot;
             state.last_result = None;
         }
         self.advance_snapshot_id();
         Ok(())
+    }
+
+    pub fn set_node_table(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        snapshot: TreeCalcTableNodeSnapshot,
+    ) -> Result<OxCalcTreeTableView, OxCalcTreeContextError> {
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            state
+                .snapshot
+                .try_get_node(node_id)
+                .ok_or(StructuralError::UnknownNode { node_id })?;
+            let next_table_state_version = state.table_state_version + 1;
+            let normalized = normalize_context_table_snapshot_with_version(
+                state,
+                node_id,
+                &snapshot,
+                next_table_state_version,
+            )?;
+            project_treecalc_table_node_snapshot(&normalized)
+                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+            state.table_snapshots.insert(node_id, snapshot);
+            state.table_state_version = next_table_state_version;
+            state.last_result = None;
+        }
+        self.table_view(workspace_id, node_id)?
+            .ok_or(StructuralError::UnknownNode { node_id }.into())
+    }
+
+    pub fn clear_node_table(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<Option<TreeCalcTableNodeSnapshot>, OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        let Some(snapshot) = state.table_snapshots.remove(&node_id) else {
+            return Ok(None);
+        };
+        let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
+        state.deleted_table_facts.push(deleted);
+        state.table_state_version += 1;
+        state.last_result = None;
+        Ok(Some(snapshot))
+    }
+
+    pub fn table_view(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<Option<OxCalcTreeTableView>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        state
+            .table_snapshots
+            .get(&node_id)
+            .map(|snapshot| self.table_view_from_snapshot(state, node_id, snapshot))
+            .transpose()
+    }
+
+    pub fn workspace_table_views(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        self.table_views_for_state(state)
+    }
+
+    pub fn table_context_packet(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        enclosing_table_ref: Option<TableRef>,
+        caller_table_region: Option<TableCallerRegion>,
+    ) -> Result<StructuredTableContextPacket, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let projections = self.table_projections_for_state(state)?;
+        Ok(StructuredTableContextPacket::from_oxfml_table_packet(
+            projections
+                .into_iter()
+                .map(|projection| projection.table_descriptor)
+                .collect(),
+            enclosing_table_ref,
+            caller_table_region,
+        ))
+    }
+
+    pub fn resolve_table_reference(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        request: &TreeCalcTableCatalogResolveRequest,
+    ) -> Result<TreeCalcTableCatalogResolution, OxCalcTreeContextError> {
+        let context = self.table_catalog_resolver_context(workspace_id)?;
+        Ok(resolve_treecalc_table_catalog_reference(&context, request))
+    }
+
+    pub fn lower_table_reference(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        owner_node_id: TreeNodeId,
+        reference: StructuredTableReferenceIntake,
+        enclosing_table_ref: Option<TableRef>,
+        caller_table_region: Option<TableCallerRegion>,
+    ) -> Result<StructuredTableDependencyLowering, OxCalcTreeContextError> {
+        let context_packet =
+            self.table_context_packet(workspace_id, enclosing_table_ref, caller_table_region)?;
+        Ok(lower_structured_table_dependencies(
+            &StructuredTableDependencyLoweringRequest {
+                owner_node_id,
+                source_reference_handle: Some(reference.reference_handle.clone()),
+                context_packet,
+                reference,
+            },
+        ))
+    }
+
+    pub fn lower_table_bind_record(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        owner_node_id: TreeNodeId,
+        record: &StructuredReferenceBindRecord,
+        enclosing_table_ref: Option<TableRef>,
+        caller_table_region: Option<TableCallerRegion>,
+    ) -> Result<StructuredTableDependencyLowering, OxCalcTreeContextError> {
+        let context_packet =
+            self.table_context_packet(workspace_id, enclosing_table_ref, caller_table_region)?;
+        let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            owner_node_id,
+            context_packet,
+            record,
+        )
+        .map_err(|error| OxCalcTreeContextError::TableBindRecordIntake { error })?;
+        Ok(lower_structured_table_dependencies(&request))
+    }
+
+    pub fn classify_dynamic_table_rebind(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        mut request: TreeCalcDynamicTableRebindRequest,
+    ) -> Result<TreeCalcDynamicTableRebindReport, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        request.context_versions = self.table_lifecycle_context_versions(state);
+        Ok(classify_treecalc_dynamic_table_rebind(&request))
     }
 
     pub fn recalculate(
@@ -461,13 +648,21 @@ impl OxCalcTreeContext {
             .snapshot
             .nodes()
             .values()
-            .map(|node| node_view_from_state(state, node))
+            .map(|node| {
+                let table = state
+                    .table_snapshots
+                    .get(&node.node_id)
+                    .map(|snapshot| self.table_view_from_snapshot(state, node.node_id, snapshot))
+                    .transpose()?;
+                node_view_from_state(state, node, table)
+            })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(OxCalcTreeWorkspaceView {
             workspace_id: workspace_id.clone(),
             root_node_id: state.root_node_id,
             snapshot_id: state.snapshot.snapshot_id(),
             nodes,
+            tables: self.table_views_for_state(state)?,
             diagnostics: state
                 .last_result
                 .as_ref()
@@ -485,7 +680,12 @@ impl OxCalcTreeContext {
             .snapshot
             .try_get_node(node_id)
             .ok_or(StructuralError::UnknownNode { node_id })?;
-        node_view_from_state(state, node)
+        let table = state
+            .table_snapshots
+            .get(&node_id)
+            .map(|snapshot| self.table_view_from_snapshot(state, node_id, snapshot))
+            .transpose()?;
+        node_view_from_state(state, node, table)
     }
 
     fn next_node_id(&self) -> TreeNodeId {
@@ -541,6 +741,118 @@ impl OxCalcTreeContext {
             }
         })
     }
+
+    fn table_views_for_state(
+        &self,
+        state: &OxCalcTreeWorkspaceState,
+    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcTreeContextError> {
+        state
+            .table_snapshots
+            .iter()
+            .map(|(node_id, snapshot)| self.table_view_from_snapshot(state, *node_id, snapshot))
+            .collect()
+    }
+
+    fn table_projections_for_state(
+        &self,
+        state: &OxCalcTreeWorkspaceState,
+    ) -> Result<Vec<TreeCalcTableNodeProjection>, OxCalcTreeContextError> {
+        state
+            .table_snapshots
+            .iter()
+            .map(|(node_id, snapshot)| {
+                let normalized = normalize_context_table_snapshot(state, *node_id, snapshot)?;
+                project_treecalc_table_node_snapshot(&normalized)
+                    .map_err(|error| OxCalcTreeContextError::TableProjection { error })
+            })
+            .collect()
+    }
+
+    fn table_view_from_snapshot(
+        &self,
+        state: &OxCalcTreeWorkspaceState,
+        node_id: TreeNodeId,
+        snapshot: &TreeCalcTableNodeSnapshot,
+    ) -> Result<OxCalcTreeTableView, OxCalcTreeContextError> {
+        let normalized = normalize_context_table_snapshot(state, node_id, snapshot)?;
+        let projection = project_treecalc_table_node_snapshot(&normalized)
+            .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+        let dependency_inventory = inventory_treecalc_table_dependency_facts(
+            &normalized,
+            &projection,
+            &self.table_lifecycle_context_versions(state),
+            None,
+            false,
+        );
+        Ok(OxCalcTreeTableView {
+            table_node_id: normalized.table_node_id,
+            table_id: normalized.table_id.clone(),
+            table_name: normalized.table_name.clone(),
+            display_path: normalized.display_path.clone(),
+            canonical_path: normalized.canonical_path.clone(),
+            snapshot: normalized,
+            projection,
+            dependency_inventory,
+        })
+    }
+
+    fn table_catalog_resolver_context(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<TreeCalcTableCatalogResolverContext, OxCalcTreeContextError> {
+        let current_state = self.workspace(workspace_id)?;
+        let mut context = TreeCalcTableCatalogResolverContext::for_current_workspace(
+            workspace_id.as_str(),
+            self.table_projections_for_state(current_state)?,
+        );
+        let versions = self.table_lifecycle_context_versions(current_state);
+        context.host_namespace_version = versions
+            .host_namespace_version
+            .clone()
+            .unwrap_or_else(|| "treecalc-host-namespace:v1".to_string());
+        context.structure_context_version = versions.structure_context_version;
+        context.resolution_rule_version = versions.resolution_rule_version;
+
+        for (other_workspace_id, other_state) in &self.workspaces {
+            if other_workspace_id == workspace_id {
+                continue;
+            }
+            context = context.with_workspace(TreeCalcTableCatalogWorkspace::available_current(
+                other_workspace_id.as_str(),
+                self.table_projections_for_state(other_state)?,
+            ));
+        }
+
+        for state in self.workspaces.values() {
+            for deleted_table in &state.deleted_table_facts {
+                context = context.with_deleted_table(deleted_table.clone());
+            }
+        }
+
+        Ok(context)
+    }
+
+    fn table_lifecycle_context_versions(
+        &self,
+        state: &OxCalcTreeWorkspaceState,
+    ) -> TreeCalcTableLifecycleContextVersions {
+        let runtime_context = self.options.runtime_context();
+        TreeCalcTableLifecycleContextVersions {
+            host_namespace_version: Some(runtime_context.host_namespace_version),
+            structure_context_version: context_structure_version(state),
+            registry_snapshot_identity: runtime_context.arg_preparation_profile_version,
+            resolution_rule_version: runtime_context.resolution_rule_version,
+            workspace_availability_version: Some(format!(
+                "treecalc-workspace-availability:v1:{}:available",
+                state.workspace_id.as_str()
+            )),
+            workspace_alias_version: Some(format!(
+                "treecalc-workspace-alias:v1:{}:{}",
+                state.workspace_id.as_str(),
+                state.snapshot.snapshot_id().0
+            )),
+        }
+    }
 }
 
 fn node_kind_for_formula_text(formula_text: &str) -> StructuralNodeKind {
@@ -551,6 +863,91 @@ fn node_kind_for_formula_text(formula_text: &str) -> StructuralNodeKind {
     } else {
         StructuralNodeKind::Constant
     }
+}
+
+fn normalize_context_table_snapshot(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+    normalize_context_table_snapshot_with_version(
+        state,
+        node_id,
+        snapshot,
+        state.table_state_version,
+    )
+}
+
+fn normalize_context_table_snapshot_with_version(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    snapshot: &TreeCalcTableNodeSnapshot,
+    table_state_version: u64,
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+    let canonical_path = state.snapshot.get_projection_path(node_id)?;
+    let mut normalized = snapshot.clone();
+    normalized.table_node_id = node_id;
+    normalized.display_path = canonical_path.clone();
+    normalized.canonical_path = canonical_path;
+    normalized.table_namespace_version =
+        context_table_namespace_version(state, node_id, table_state_version);
+    if normalized.row_membership_version.is_empty() {
+        normalized.row_membership_version = format!(
+            "treecalc-table-row-membership:v1:{}:{}",
+            state.workspace_id.as_str(),
+            node_id.0
+        );
+    }
+    if normalized.row_order_version.is_empty() {
+        normalized.row_order_version = format!(
+            "treecalc-table-row-order:v1:{}:{}",
+            state.workspace_id.as_str(),
+            node_id.0
+        );
+    }
+    if normalized.column_identity_version.is_empty() {
+        normalized.column_identity_version = format!(
+            "treecalc-table-columns:v1:{}:{}",
+            state.workspace_id.as_str(),
+            node_id.0
+        );
+    }
+    Ok(normalized)
+}
+
+fn deleted_table_fact_from_snapshot(
+    state: &OxCalcTreeWorkspaceState,
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> TreeCalcTableDeletedFact {
+    TreeCalcTableDeletedFact {
+        workspace_handle: state.workspace_id.as_str().to_string(),
+        table_id: snapshot.table_id.clone(),
+        selector_token_text: snapshot.table_name.clone(),
+        table_namespace_version: snapshot.table_namespace_version.clone(),
+    }
+}
+
+fn context_structure_version(state: &OxCalcTreeWorkspaceState) -> String {
+    format!(
+        "treecalc-structure:v1:{}:snapshot={}:tables={}",
+        state.workspace_id.as_str(),
+        state.snapshot.snapshot_id().0,
+        state.table_state_version
+    )
+}
+
+fn context_table_namespace_version(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    table_state_version: u64,
+) -> String {
+    format!(
+        "treecalc-table-namespace:v1:{}:{}:snapshot={}:tables={}",
+        state.workspace_id.as_str(),
+        node_id.0,
+        state.snapshot.snapshot_id().0,
+        table_state_version
+    )
 }
 
 fn formula_artifact_id_for(
@@ -1102,6 +1499,7 @@ fn oxfml_context_bind_probe(
 fn node_view_from_state(
     state: &OxCalcTreeWorkspaceState,
     node: &StructuralNode,
+    table: Option<OxCalcTreeTableView>,
 ) -> Result<OxCalcTreeNodeView, OxCalcTreeContextError> {
     let canonical_path = state.snapshot.get_projection_path(node.node_id)?;
     Ok(OxCalcTreeNodeView {
@@ -1126,6 +1524,7 @@ fn node_view_from_state(
             .as_ref()
             .and_then(|result| result.node_states.get(&node.node_id))
             .copied(),
+        table,
     })
 }
 
@@ -1351,6 +1750,12 @@ mod tests {
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshot,
         StructuralSnapshotId,
     };
+    use crate::structured_table::{
+        StructuredTableDependencyFactKind, StructuredTableRegionSelection,
+        TreeCalcDynamicTableRebindCause, TreeCalcDynamicTableRebindStatus,
+        TreeCalcDynamicTableReferenceTargetKind, TreeCalcTableColumnBodyMetadata,
+        TreeCalcTableColumnSnapshot, TreeCalcTableRowId, TreeCalcTableVirtualAnchor,
+    };
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -1396,6 +1801,39 @@ mod tests {
         ast.to_tree_formula(owner_node_id)
     }
 
+    fn sales_table_snapshot(table_node_id: TreeNodeId) -> TreeCalcTableNodeSnapshot {
+        TreeCalcTableNodeSnapshot {
+            table_node_id,
+            table_id: "table:sales".to_string(),
+            table_name: "SalesTable".to_string(),
+            display_path: "stale/display/path".to_string(),
+            canonical_path: "stale/canonical/path".to_string(),
+            virtual_anchor: TreeCalcTableVirtualAnchor {
+                workbook_scope_ref: "Book1".to_string(),
+                sheet_scope_ref: "Sheet1".to_string(),
+                start_row: 1,
+                start_col: 1,
+            },
+            rows: vec![
+                TreeCalcTableRowId("row:1".to_string()),
+                TreeCalcTableRowId("row:2".to_string()),
+            ],
+            columns: vec![TreeCalcTableColumnSnapshot {
+                column_id: "table:sales:col:amount".to_string(),
+                column_name: "Amount".to_string(),
+                ordinal: 1,
+                body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+                totals_metadata: None,
+            }],
+            header_row_present: true,
+            totals_row_present: false,
+            table_namespace_version: "host-supplied-namespace-should-not-win".to_string(),
+            row_membership_version: "rows:v1".to_string(),
+            row_order_version: "row-order:v1".to_string(),
+            column_identity_version: "columns:v1".to_string(),
+        }
+    }
+
     #[test]
     fn treecalc_context_direct_workspace_api_evaluates_bare_name_formula() {
         let mut context = OxCalcTreeContext::default();
@@ -1423,6 +1861,133 @@ mod tests {
         assert_eq!(b_view.canonical_path, "Root/B");
         assert_eq!(b_view.formula_text, "=A+1");
         assert_eq!(b_view.value_text.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn treecalc_context_owns_node_table_lifecycle_and_views() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:tables"))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+
+        let view = context
+            .set_node_table(&workspace_id, sales_id, sales_table_snapshot(sales_id))
+            .unwrap();
+
+        assert_eq!(view.table_node_id, sales_id);
+        assert_eq!(view.table_id, "table:sales");
+        assert_eq!(view.canonical_path, "Root/Sales");
+        assert_eq!(view.snapshot.canonical_path, "Root/Sales");
+        assert_ne!(
+            view.snapshot.table_namespace_version,
+            "host-supplied-namespace-should-not-win"
+        );
+        assert!(
+            view.projection
+                .table_context_identity
+                .contains("treecalc.table_context.v1")
+        );
+        assert!(
+            view.dependency_inventory
+                .facts
+                .iter()
+                .any(|fact| fact.kind == StructuredTableDependencyFactKind::RowMembership)
+        );
+
+        let node_view = context.node_view(&workspace_id, sales_id).unwrap();
+        assert_eq!(
+            node_view
+                .table
+                .as_ref()
+                .map(|table| table.table_id.as_str()),
+            Some("table:sales")
+        );
+        let workspace_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(workspace_view.tables.len(), 1);
+
+        let removed = context.clear_node_table(&workspace_id, sales_id).unwrap();
+        assert_eq!(
+            removed.map(|snapshot| snapshot.table_id),
+            Some("table:sales".to_string())
+        );
+        assert!(
+            context
+                .table_view(&workspace_id, sales_id)
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn treecalc_context_routes_table_catalog_lowering_and_dynamic_rebind() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:table-routing"))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+        context
+            .set_node_table(&workspace_id, sales_id, sales_table_snapshot(sales_id))
+            .unwrap();
+
+        let resolved = context
+            .resolve_table_reference(
+                &workspace_id,
+                &TreeCalcTableCatalogResolveRequest::table_name_or_path("SalesTable"),
+            )
+            .unwrap();
+        assert_eq!(resolved.effective_table_id.as_deref(), Some("table:sales"));
+        assert_eq!(resolved.table_node_id, Some(sales_id));
+        assert!(resolved.diagnostics.is_empty());
+
+        let lowering = context
+            .lower_table_reference(
+                &workspace_id,
+                sales_id,
+                StructuredTableReferenceIntake::explicit_table("hostref:table:1", "table:sales")
+                    .with_selected_columns(["table:sales:col:amount".to_string()])
+                    .with_selected_regions([StructuredTableRegionSelection::Data]),
+                None,
+                None,
+            )
+            .unwrap();
+        let lowered_kinds = lowering
+            .facts
+            .iter()
+            .map(|fact| fact.kind)
+            .collect::<std::collections::BTreeSet<_>>();
+        assert!(lowered_kinds.contains(&StructuredTableDependencyFactKind::RowMembership));
+        assert!(lowered_kinds.contains(&StructuredTableDependencyFactKind::DataRegion));
+
+        let report = context
+            .classify_dynamic_table_rebind(
+                &workspace_id,
+                TreeCalcDynamicTableRebindRequest {
+                    selector_handle: resolved.table_reference_handle.clone(),
+                    selector_identity: resolved.opaque_selector.clone(),
+                    source_reference_handle: Some("hostref:table:1".to_string()),
+                    target_kind: TreeCalcDynamicTableReferenceTargetKind::Column,
+                    cause: TreeCalcDynamicTableRebindCause::SelectorTextChanged,
+                    before_resolved_table_identity: resolved.virtual_anchor_identity.clone(),
+                    after_resolved_table_identity: None,
+                    caller_context_id: None,
+                    context_versions: TreeCalcTableLifecycleContextVersions::default(),
+                    oxfml_structured_bind_packet_available: true,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            report.status,
+            TreeCalcDynamicTableRebindStatus::RebindRequired
+        );
+        assert!(report.prepared_identity_inputs.contains(
+            &crate::structured_table::TreeCalcTablePreparedIdentityInput::TableContextIdentity
+        ));
+        assert!(report.oxfml_generic_bind_packet_available);
     }
 
     #[test]

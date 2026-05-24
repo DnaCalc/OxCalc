@@ -241,16 +241,22 @@ representable by the current generic `TableDescriptor` because OxFml's current
 range parser expects parseable A1 area refs for column data ranges. That is a
 W056 widening target rather than a silent fallback.
 
-### 3.8 W056 Table Lifecycle Callback Boundary
+### 3.8 W056 Table Custody Boundary
 
-Node-associated table lifecycle callbacks stay on the OxCalc/DnaTreeCalc side
-of the boundary. DnaTreeCalc supplies a
-`TreeCalcTableLifecycleCallbackPacket`-shaped update packet whenever the table
-product lifecycle changes: create/delete, rename/move, body value/formula edit,
-row insert/delete/reorder, column insert/delete/reorder/rename, header text
-edit, totals toggle/formula edit, table resize, node rename/move/delete,
-workspace open/close, workspace alias mutation, function registry snapshot
-mutation, save/reopen, or structural rebind.
+Node-associated table lifecycle is context state owned by OxCalc. Product code
+sets, clears, and reads table state through `OxCalcTreeContext`, which stores
+the node-associated `TreeCalcTableNodeSnapshot`, derives the canonical/display
+path from the current structural snapshot, derives the table namespace and
+structure-context versions, and exposes typed `OxCalcTreeTableView` values.
+DnaTreeCalc does not construct semantic rebind packets, call table classifiers,
+or preserve private table catalog state outside the context.
+
+The direct context table surface covers create/delete, rename/move, body
+value/formula edit, row insert/delete/reorder, column insert/delete/reorder/
+rename, header text edit, totals toggle/formula edit, table resize, node
+rename/move/delete, workspace open/close, workspace alias mutation, function
+registry snapshot mutation, save/reopen, and structural rebind as OxCalc-owned
+state transitions and typed classification outcomes.
 
 The packet carries the event kind, before/after
 `TreeCalcTableLifecycleVersionState` values where the event shape requires
@@ -265,14 +271,15 @@ Context versions include the host namespace, structure context, registry
 snapshot, resolution-rule, workspace availability, and workspace alias inputs
 used for prepared/cache invalidation.
 
-OxCalc classifies that packet with
-`classify_treecalc_table_lifecycle_callback`. The report is the only table
-lifecycle interpretation product consumers should depend on: changed dependency
-kinds, invalidation reasons, prepared-identity inputs, invalidation seed
-identities, changed rows/columns, source handles, and typed diagnostics. Stable
-`table_node_id` and `table_id` violations are diagnostics because they indicate
-that DnaTreeCalc is sending a new table identity through an update event instead
-of a create/delete or structural rebind.
+OxCalc exposes table projection, catalog lookup, generic structured-reference
+dependency lowering, and dynamic table rebind classification through
+`OxCalcTreeContext`. The report data is the only table lifecycle
+interpretation product consumers should depend on: changed dependency kinds,
+invalidation reasons, prepared-identity inputs, invalidation seed identities,
+changed rows/columns, source handles, and typed diagnostics. Stable
+`table_node_id` and `table_id` violations remain OxCalc diagnostics because
+they indicate a table identity transition that must be represented as a
+create/delete or structural rebind, not a host-side semantic workaround.
 
 `StructuredTableDependencyFactKind` is the replay-facing fact inventory for
 this contract. It covers table identity, row membership/order/value, column
@@ -623,9 +630,10 @@ No second seam layer rule:
 `OxCalcTreeContext` exposes ordinary host-facing operations:
 1. create a workspace,
 2. add, rename, move, reorder, delete, and edit nodes,
-3. recalculate a workspace,
-4. read workspace and node views,
-5. configure host capability/runtime policy through context options.
+3. set, clear, resolve, lower, classify, and read node-associated tables,
+4. recalculate a workspace,
+5. read workspace, node, and table views,
+6. configure host capability/runtime policy through context options.
 
 The committed widening direction is additive context operations:
 1. edit-batch calls,
@@ -665,8 +673,8 @@ Current implementation boundary:
 ### 6.7 System Of Record And Host Sync Contract
 System-of-record ownership is split as follows:
 1. OxCalc owns the canonical calculation tree structure inside the engine handle,
-2. OxCalc owns dependency descriptors, invalidation, publication, pinned views, runtime overlays, and calc-state derived from that structure,
-3. DNA TreeCalc owns product workspace state, UI/view state, skin state, persistence policy, command grouping, and edit orchestration,
+2. OxCalc owns canonical node formula text, node-associated table state, dependency descriptors, invalidation, publication, pinned views, runtime overlays, and calc-state derived from that structure,
+3. DNA TreeCalc owns UI/view state, skin state, edit buffers, file/workflow commands, command grouping, and edit orchestration,
 4. OxFml owns formula parse/bind/evaluator meanings consumed through the OxCalc-supplied host formula context,
 5. OxFunc owns worksheet value/function semantics.
 
@@ -757,15 +765,19 @@ underlying local runtime exists in `src/oxcalc-core/src/treecalc.rs`;
 `StructuralSnapshot` successor edits and coordinator candidate/publication/
 reject/pin primitives exist in `src/oxcalc-core/src/structural.rs` and
 `src/oxcalc-core/src/coordinator.rs`; W051 records OxCalc custody of the
-TreeCalc model for reference-collection resolution.
+TreeCalc model for reference-collection resolution. `OxCalcTreeContext` also
+owns the first direct node-table lifecycle surface: `set_node_table`,
+`clear_node_table`, `table_view`, `workspace_table_views`,
+`table_context_packet`, `resolve_table_reference`, `lower_table_reference`,
+`lower_table_bind_record`, and `classify_dynamic_table_rebind`.
 
-Still open: table custody through the context, edit-to-version and undo/redo
-surface, pending/completion-token API, explicit cancellation and steppable
-recalc, executor injection, Stage 2 concurrency/GPU/async execution,
-end-to-end W051 generic host-context/reference-array execution evidence, W054
-retention policy, W053 partitioned concurrency, W056 full TreeCalc
-reference/table-lowering scope, and closure of the remaining W026 residual
-lanes.
+Still open: edit-to-version and undo/redo surface, pending/completion-token
+API, explicit cancellation and steppable recalc, executor injection, Stage 2
+concurrency/GPU/async execution, end-to-end W051 generic host-context/
+reference-array execution evidence, W054 retention policy, W053 partitioned
+concurrency, DnaTreeCalc migration off its bridge modules, full W056
+reference/table-lowering product closure, and closure of the remaining W026
+residual lanes.
 
 Formal status: no new proof claim. Existing state/snapshot and coordinator
 docs define the pinned-reader, no-torn-view, reject-is-no-publish, and

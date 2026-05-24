@@ -22,7 +22,7 @@ The active calculation-model line has moved from W050 execution to successor pla
 Current next engineering move:
 
 1. Continue W056 from the closed W051 first scope: keep the promoted node-associated table topic stable while widening the implemented `ChildrenV1` carrier and sparse/reference-reader path into the remaining non-table TreeCalc reference families, and retain bridge/replay evidence.
-2. Keep built-in/UDF/defined-name/defined-name-`LAMBDA` name/call precedence blocked on OxFml `W074-CALC005` oracle evidence; map TreeCalc host names and lambda-valued nodes to the closest Excel defined-name lane until that evidence justifies an explicit extension.
+2. Consume the closed OxFml `W074-CALC005` W051/W056 handoff for current TreeCalc host-name mapping: value host names use the Excel defined-name value lane, lambda-valued host nodes use the defined-name-`LAMBDA` lane, built-ins keep the call-callee frontier, and any future product extension that lets TreeCalc host names override built-in calls needs new explicit evidence.
 3. Treat the active DnaTreeCalc free-standing and qualified children corpus slice as first bridge evidence only; full W004/W005 non-table reference activation remains W056 scope, while the declared node-associated table topic is promoted through `calc-4vs8.34` through `calc-4vs8.38` and full intended table support is tracked by the third-pass `calc-4vs8.39` through `calc-4vs8.43` completion spine.
 4. Keep fixture-only reader scaffolding and any `treecalc_eager_values_fallback.v1` materialization clearly separated from production sparse range and reference-preserving reference-collection authority.
 

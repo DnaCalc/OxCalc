@@ -194,7 +194,11 @@ This inventory is implementation input, not a completed full-reference product
 claim. Structured table references are explicitly routed to W056 bead
 `calc-4vs8.2`; dependency/reverse-edge, dynamic rebind, namespace, and
 caller-context widening are routed to `calc-4vs8.3`; bare name/callable
-references remain gated on OxFml W074-CALC005 evidence.
+references consume the OxFml W074-CALC005 current mapping rule: TreeCalc host
+value names follow the Excel defined-name value lane, TreeCalc lambda-valued
+nodes follow the defined-name-`LAMBDA` lane, and built-ins keep the
+call-callee frontier unless a future versioned extension is separately
+evidenced.
 
 `calc-4vs8.3` adds the first typed dependency/rebind projection in
 `src/oxcalc-core/src/tree_reference_rebind.rs`. That surface preserves target

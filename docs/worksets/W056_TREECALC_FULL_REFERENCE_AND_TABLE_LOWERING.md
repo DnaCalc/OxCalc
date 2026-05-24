@@ -143,10 +143,14 @@ W056 beads. In particular:
    `calc-4vs8.2`, `calc-4vs8.4`, and `calc-4vs8.9`,
 2. dependency/reverse-edge, dynamic rebind, namespace, and caller-context
    widening continues in `calc-4vs8.3`,
-3. formula-call registry-view admission and capability-denied runtime
-   classification have landed in OxFml W074 `fml-ds0.7`; final bare
-   name/callable precedence remains blocked on the broader W074 Excel oracle
-   matrix,
+3. formula-call registry-view admission, capability-denied runtime
+   classification, host-name runtime/replay binding, and the current
+   W051/W056 name/call freeze have landed in OxFml W074. OxCalc consumes
+   `HANDOFF_CALC_005_W074_NAME_CALL_FREEZE.md` from OxFml commit `4a55709`:
+   TreeCalc host value names map to the Excel defined-name value lane,
+   lambda-valued host nodes map to the defined-name-`LAMBDA` lane, and
+   built-ins keep the ordinary call-callee frontier unless a future
+   versioned extension is separately evidenced,
 4. cross-workspace now has the versioned workspace availability/degradation
    packet, provider/alias resolver shape, and workspace-qualified carrier/
    dependency facts; DnaTreeCalc/OxReplay corpus activation remains open.
@@ -742,8 +746,9 @@ Promotion gates from this map:
    projection and identity rules above.
 2. `calc-4vs8.46` may widen generic OxFml packet facts, but cannot ask OxFml to
    parse TreeCalc table paths.
-3. `calc-4vs8.47` owns resolver and namespace facts, with final bare name/call
-   precedence still W074-gated.
+3. `calc-4vs8.47` owns resolver and namespace facts, consuming the current
+   W074 host-name mapping while leaving any future built-in-call override as a
+   separate versioned extension.
 4. `calc-4vs8.48` and `calc-4vs8.49` must prove reference-preserving readers
    and row-context prepared identity through generic OxFml/OxFunc inputs.
 5. `calc-4vs8.50` owns invalidation facts; Excel observation may inform cases
@@ -1224,9 +1229,11 @@ Explicit non-claim:
 
 This closes the OxCalc dependency/invalidation contract. It does not activate
 DnaTreeCalc corpus cases, does not provide Excel ListObject oracle evidence,
-does not close OxReplay retained comparison artifacts, and does not freeze
-bare host-name/callable precedence. Those remain with `calc-4vs8.51`,
-`calc-4vs8.52`, `calc-4vs8.53`, and OxFml W074 respectively.
+does not close OxReplay retained comparison artifacts, and does not admit a
+TreeCalc override of Excel built-in call-callee resolution. The DnaTreeCalc,
+Excel, and replay evidence lanes remain with `calc-4vs8.51`, `calc-4vs8.52`,
+and `calc-4vs8.53`; the current W074 host-name mapping is consumed by
+`calc-4vs8.32`.
 
 ## 4B.10. `calc-4vs8.56` Dynamic Table Rebind And `INDIRECT`
 
@@ -1305,7 +1312,7 @@ Counterpart map:
 | `DnaTreeCalc` | `dtc-z0i.5` plus `dtc-z0i.5.1` through `.5.6`; `dtc-z0i.7` for broader dynamic/cross-workspace activation | Add or extend W004/W056 beads for dynamic table `INDIRECT`, cross-workspace table references, unavailable/deleted table targets, empty-body retained artifacts, lifecycle callback retained artifacts, and full namespace/anchor/workspace table pairing through `LiveOxCalcTreeBridge` only. |
 | `OxXlPlay` | `oxxlplay-4nd` plus `.1` through `.5` observation packs | Add a successor only where W056 needs Excel black-box evidence for structured-table `INDIRECT` or dynamic structured-reference forms; keep dependency/invalidation internals typed unavailable. |
 | `OxReplay` | `oxreplay-p1w` family and in-progress `oxreplay-qb9` | Keep retained comparison open for empty-body transitions, lifecycle callback artifacts, full namespace/anchor/workspace pairing, dynamic table cases, and any paired Excel observations; compare declared payloads only. |
-| `OxFml` | `fml-ds0.12`, `.13`, `.14`, `.15`; broader `fml-ds0.6.4` | Preserve generic structured-reference and dynamic/host packets; do not parse TreeCalc dynamic selector strings; keep non-table name/call freeze blocked on W074 evidence. |
+| `OxFml` | `fml-ds0.12`, `.13`, `.14`, `.15`; `fml-ds0.6.4`, `.5`, and parent `.6` | Preserve generic structured-reference and dynamic/host packets; do not parse TreeCalc dynamic selector strings; current W051/W056 host-name mapping is frozen through the W074 handoff, while future TreeCalc built-in-call override behavior remains a new evidence/versioning lane. |
 | `OxFunc` | `oxf-fcdz`; `oxf-ypq2.13` through `.16`; open `oxf-ypq2.12` | Preserve opaque `ReferenceLike` behavior; finish W093 registry-backed formula-call lookup before UDF invalidation is frozen for table formulas. |
 | `DnaOneCalc` | no W056 table-specific bead required | Preserve no-host single-formula execution and OxFml-internal LET/LAMBDA lexical references; future VBA/XLL UDFs go through registry surfaces. |
 | `OxVba` | no W056 table-specific bead required | Feed VBA/XLL discovery metadata into OxFunc W093 descriptors without TreeCalc table-selector semantics. |
@@ -1319,7 +1326,8 @@ Promotion gates:
    typed capture limits for the comparable table lanes,
 3. no retained-evidence closure until OxReplay validates/replays/diffs/explains
    declared payloads without parsing producer-private strings,
-4. no name/call freeze until W074 non-table oracle evidence lands,
+4. no future name/call extension beyond the W074 W051/W056 handoff without new
+   oracle evidence and a versioned rule change,
 5. no UDF invalidation freeze until W093 registry snapshot/change-set and
    formula-call lookup are stable,
 6. no DnaOneCalc regression: ordinary single-formula use requires no host table
@@ -1423,7 +1431,7 @@ Consumed counterpart anchors:
 | `OxFunc` | `oxf-ypq2.13`, `oxf-ypq2.15`, `oxf-ypq2.16` | Structured-table `ReferenceLike` values are opaque to functions; first aggregates and widened range-taking lanes consume generic resolver/reader APIs only. |
 | `OxFunc` | open `oxf-ypq2.12` | Formula-call registry lookup migration remains open; W056 cannot freeze UDF invalidation or name/call behavior until this is reconciled with OxFml. |
 | `OxFml` | `fml-ds0.11`, `fml-ds0.13` | Registered-external split and table-context prepared identity are acknowledged on the formula side. Descriptor-only `REGISTER.ID`/`CALL` is adjacent state; ordinary worksheet-visible UDFs use the registry path. |
-| `OxFml` | open `fml-ds0.6.4` | Name/call freeze remains blocked for broad built-in/UDF/defined-name/defined-name-`LAMBDA` collisions. |
+| `OxFml` | `fml-ds0.6.4`, `.5`, and parent `.6` | Current W051/W056 host-name mapping is frozen for TreeCalc consumption; no built-in-call override is admitted without future evidence. |
 | `DnaOneCalc` | ready `dno-7vt4.1`, `.4`, `.5`, `.7`, `.9`; epic `dno-srj` | Future VBA/XLL support is already a DnaOneCalc extension lane. Ordinary single-formula execution still needs no host table namespace or host-reference resolver. |
 | `OxVba` | `WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md`; ready `bd-sg5h` | OxVba owns VBA project/procedure discovery and host-UDF descriptor facts; those facts must be transformed into OxFunc registration requests, not consumed as TreeCalc table semantics. |
 
@@ -1467,9 +1475,10 @@ Still open:
 
 1. W056 table closure cannot freeze UDF invalidation until OxFunc W093
    `oxf-ypq2.12` and related OxFml registry lookup paths are reconciled.
-2. W056 cannot freeze name/call precedence for UDFs, built-ins, defined names,
-   or defined-name `LAMBDA` values until OxFml W074 `fml-ds0.6.4` and its
-   freeze audit land.
+2. W056 has consumed the current W074 W051/W056 name/call freeze for TreeCalc
+   host value names and lambda-valued nodes. It does not admit a TreeCalc
+   override of built-in call-callee resolution; that remains a future explicit
+   extension lane if product evidence justifies it.
 3. No new OxCalc table-specific blocker is needed for OxVba or DnaOneCalc at
    this time; their existing extension lanes are sufficient unless a future
    UDF API intentionally exposes reference metadata beyond generic
@@ -1769,12 +1778,14 @@ New execution beads:
    literals, ordered/duplicate-preserving reference arrays, scalar/reference
    rejection behavior, dynamic `INDIRECT`/CTRO-style rebind, and prepared
    identity inputs.
-4. `calc-4vs8.32` — callable host-name and W074 precedence intake. This remains
-   blocked on OxFml W074 evidence for built-in/UDF/defined-name/
-   defined-name-LAMBDA/table-name/lexical/host-reference precedence and
-   namespace mutation invalidation. TreeCalc host names and lambda-valued nodes
-   stay mapped to the closest Excel defined-name lane until W074 justifies an
-   explicit extension.
+4. `calc-4vs8.32` — callable host-name and W074 precedence intake. This
+   consumes the closed OxFml W074 handoff for the current W051/W056 mapping:
+   TreeCalc host value names map to the Excel defined-name value lane,
+   lambda-valued host nodes map to the defined-name-`LAMBDA` lane, explicit
+   host references bypass ordinary name/call ambiguity through the generic
+   host hook, built-ins keep the call-callee frontier, and namespace/context/
+   registry identities remain prepared-identity inputs. It does not add an
+   OxCalc private precedence mirror or admit built-in call overrides.
 5. `calc-4vs8.33` — full non-table reference corpus and retained evidence
    intake. This consumes DnaTreeCalc/OxReplay evidence for walk-up, dotted
    descent, anchors, aliases, escaping/canonicalization, meta accessors,
@@ -2096,12 +2107,12 @@ registered-external reconciliation tranche:
 
 Current non-claim:
 
-This intake does not freeze name/call precedence. OxFml W074 still owns the
-formula-call registry lookup migration, broad cache-invalidation evidence,
-host namespace mutation invalidation, and Excel-oracle-backed precedence rows
-for built-in/UDF/defined-name/defined-name-`LAMBDA` collisions. TreeCalc bare
-host names and lambda-valued host nodes therefore remain mapped to the closest
-Excel defined-name lane until that evidence lands.
+This intake did not itself freeze name/call precedence. OxFml W074 still owns
+broader bind/editor cache migration and any future product extension that
+changes the current rule. The current W051/W056 host-name rule is now consumed
+by `calc-4vs8.32`: TreeCalc host values follow the Excel defined-name value
+lane, lambda-valued host nodes follow the defined-name-`LAMBDA` lane, and
+built-ins keep the call-callee frontier.
 
 ## 4H. `calc-4vs8.16` Ordered Selector Traversal Resolver
 
@@ -2221,10 +2232,11 @@ for explicit host-path base tokens:
 Current non-claim:
 
 This does not activate the DnaTreeCalc `references/cross-workspace` corpus,
-does not define bare host-name/call precedence, and does not add dynamic
-`INDIRECT` cross-workspace rebind. The workspace-qualified carrier/dependency
-path is consumed by `calc-8tox`; dynamic/callable/evidence closure remains under
-`calc-4vs8.31`, `calc-4vs8.32`, and `calc-4vs8.33`.
+does not activate bare host-name/callable corpus evidence, and does not add
+dynamic `INDIRECT` cross-workspace rebind. The workspace-qualified
+carrier/dependency path is consumed by `calc-8tox`; the current W074 callable
+mapping is consumed by `calc-4vs8.32`; dynamic and retained evidence closure
+remains under `calc-4vs8.31` and `calc-4vs8.33`.
 
 ## 4J.2. `calc-8tox` Workspace-Qualified Cross-Workspace Carrier
 
@@ -2259,9 +2271,10 @@ runtime carrier and dependency surface:
 
 Current non-claim:
 
-This is still not DnaTreeCalc corpus activation, retained replay evidence,
-dynamic `INDIRECT` cross-workspace rebind, or W074 name/call precedence. Those
-remain under the open W056 successor beads.
+This is still not DnaTreeCalc corpus activation, retained replay evidence, or
+dynamic `INDIRECT` cross-workspace rebind. Current W074 host-name mapping is
+consumed by `calc-4vs8.32`; remaining corpus/replay/dynamic work stays under
+the open W056 successor beads.
 
 ## 4J.3. `calc-4vs8.31` Reference Literal Arrays And Dynamic Carrier Intake
 
@@ -2299,9 +2312,10 @@ carrier while preserving existing dynamic-reference behavior:
 Current non-claim:
 
 This is not DnaTreeCalc corpus activation for reference literals, dynamic
-`INDIRECT` end-to-end product evidence, cross-workspace dynamic rebind, or W074
-name/call precedence. Those remain under `calc-4vs8.32`, `calc-4vs8.33`, and
-the narrowed `calc-4vs8.5` blocker.
+`INDIRECT` end-to-end product evidence, or cross-workspace dynamic rebind. The
+current W074 host-name mapping is consumed by `calc-4vs8.32`; remaining
+corpus/replay/dynamic work stays under `calc-4vs8.33` and the narrowed
+`calc-4vs8.5` blocker.
 
 ## 4K. `calc-4vs8.19` OxFml Host Namespace Invalidation Intake
 
@@ -2319,10 +2333,11 @@ prepared-identity blocker:
 
 Current non-claim:
 
-This does not freeze bare host-name resolution, callable TreeCalc host nodes,
-workbook/sheet/UDF/defined-name precedence, or broader formula-call registry
-lookup/cache invalidation. Those remain under OxFml W074 and the open
-`calc-4vs8.5` blocker.
+This did not by itself freeze bare host-name resolution, callable TreeCalc host
+nodes, workbook/sheet/UDF/defined-name precedence, or broader formula-call
+registry lookup/cache invalidation. The current W051/W056 host-name mapping is
+now consumed by `calc-4vs8.32`; broader bind/editor cache migration remains
+non-blocking OxFml work unless a future TreeCalc extension needs a new rule.
 
 ## 4L. `calc-4vs8.20` DnaTreeCalc Structural Traversal Activation Intake
 
@@ -2338,10 +2353,9 @@ corpus blocker for the explicit structural path/traversal slice:
 
 Current non-claim:
 
-This does not close W004/W005 non-table corpus activation, bare host-name/
-dotted formula binding, dynamic/cross-workspace references,
-node-as-function/lambda-valued nodes, or retained OxReplay evidence for
-non-table references.
+This does not close W004/W005 non-table corpus activation for host-name/dotted
+formula binding, dynamic/cross-workspace references, node-as-function/
+lambda-valued nodes, or retained OxReplay evidence for non-table references.
 
 ## 5. Closure Gate
 
@@ -2370,7 +2384,10 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 Product status: table-topic promoted for the declared node-associated TreeCalc
 table scope; broader W056 remains in progress for non-table references,
-W004/W005 corpus activation, and W074-dependent name/call behavior. W051 is
+W004/W005 corpus activation, dynamic/cross-workspace product evidence, and
+retained non-table replay evidence. Current W074 host-name mapping is consumed
+for W051/W056; future TreeCalc built-in-call override behavior remains a new
+evidence/versioning lane. W051 is
 closed for the first OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -2404,8 +2421,9 @@ OxFml host-reference bind packet shape explicit by reporting ordered-selector
 family hints separately from `ChildrenV1`. `calc-4vs8.15` records the
 cross-repo W093/W074 registered-external reconciliation intake: OxFunc source
 mapping, registered-external split, and JavaScript custom-function metadata
-mapping are no longer W056 upstream packet blockers, while W074 name/call and
-cache-invalidation evidence remains open. `calc-4vs8.16` adds an OxCalc-owned
+mapping are no longer W056 upstream packet blockers. Current W074 host-name
+mapping is now consumed by `calc-4vs8.32`; broader bind/editor cache migration
+remains non-blocking OxFml work. `calc-4vs8.16` adds an OxCalc-owned
 ordered-selector traversal resolver and replayable traversal-bound policy for
 resolved base nodes, so sibling/preceding/following/ancestor/recursive
 membership no longer has to be supplied by a host repo once the base node is
@@ -2491,8 +2509,9 @@ diagnostic-bearing unresolved records map into OxCalc table lowering without
 formula-text parsing. Omitted table-name packets preserve OxFml's bound
 effective table id as the lowering target and separately validate the enclosing
 table context, surfacing a typed blocker if those packet facts disagree.
-OxFml commit `9269421` narrows W074 table-name collision evidence but does not
-freeze TreeCalc bare name/callable precedence.
+OxFml commit `9269421` narrowed W074 table-name collision evidence; the later
+OxFml `4a55709` handoff now freezes the current W051/W056 TreeCalc host-name
+mapping consumed by `calc-4vs8.32`.
 `calc-4vs8.12` adds focused Rust tests proving ordered selector collections
 lower to `TreeReferenceCollectionMembership` plus member-value descriptors,
 preserve host-reference handles and ordered member ids, enter W056 inventory as
@@ -2585,19 +2604,31 @@ section+column and multi-column forms, escaped column names, typed diagnostics,
 source span/token preservation, effective table identity, selected
 columns/sections/regions, sparse `ReferenceLike` runtime use, and replay
 projection. This removes W056 table packet coverage as an upstream blocker;
-broader W036 table formula semantics and non-table W074 name/call precedence
-remain separate.
+broader W036 table formula semantics remain separate, while the current
+non-table W074 name/call mapping is consumed below.
 
-Still open: W074 final non-table name/call precedence evidence, W074
-formula-call registry lookup and cache-invalidation migration, bare host-name
-and callable host-node precedence,
-exercised OxFml host-reference packets beyond the admitted
+OxFml `fml-ds0.6.4`, `fml-ds0.6.5`, and parent `fml-ds0.6` at commits
+`f6811f4` and `4a55709` close the W074 name/call freeze needed by W056's
+current TreeCalc host-name mapping. OxCalc consumes the handoff at
+`../OxFml/docs/handoffs/HANDOFF_CALC_005_W074_NAME_CALL_FREEZE.md`: host value
+names follow the Excel defined-name value lane, lambda-valued host nodes follow
+the defined-name-`LAMBDA` lane, registered UDFs remain callable-only unless
+shadowed by a visible host/defined-name lane, lexical LET/LAMBDA names remain
+OxFml-internal, sheet/workspace/caller context and namespace versions are
+identity inputs, and explicit TreeCalc references/structured table packets stay
+on their generic host-hook lanes. This closes `calc-4vs8.32` as an upstream
+W056 intake item, but it does not close full non-table corpus activation,
+dynamic/cross-workspace retained evidence, or any future extension that would
+let TreeCalc host names override Excel built-in calls.
+
+Still open: exercised OxFml host-reference packets beyond the admitted
 children/table/ordered-selector/cross-workspace/reference-literal-array
 slices, DnaTreeCalc activation for the remaining W004/W005 non-table reference
 suite, broader end-to-end scenarios, and retained evidence intake. The
 provider/alias/first-position `!` packet shape, workspace-qualified carrier
-path, reference-literal array carrier path, and generic structured-reference
-table packet coverage are no longer missing, but blocker `calc-4vs8.5` remains
-open for the remaining full-W056 non-table closure scope.
+path, reference-literal array carrier path, generic structured-reference table
+packet coverage, and current W074 W051/W056 host-name mapping are no longer
+missing, but blocker `calc-4vs8.5` remains open for the remaining full-W056
+non-table closure scope.
 
 Formal status: no proof claim.

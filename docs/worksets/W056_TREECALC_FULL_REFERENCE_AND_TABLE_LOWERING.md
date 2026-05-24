@@ -34,11 +34,12 @@ Initial successor beads:
    activation, OxXlPlay oracle construction, OxReplay retained evidence,
    UDF/VBA/XLL impact, cross-repo handoff coordination, and dynamic table
    reference rebind/`INDIRECT` semantics.
-8. `calc-4vs8.57` through `calc-4vs8.63` — fifth-pass node-table hardening
+8. `calc-4vs8.57` through `calc-4vs8.63` — completed fifth-pass node-table
+   hardening
    spine: current-state architecture revalidation, abstraction consolidation,
    lifecycle execution matrix, ReferenceLike/function/UDF integration closure,
    oracle/replay/value-wire convergence, cross-repo rollout reconciliation,
-   and a final completion audit before the table topic is carried into parent
+   and final completion audit before the table topic is carried into parent
    W056 closure.
 9. `calc-4vs8.30` through `calc-4vs8.33`, plus `calc-8tox` — remaining
    non-table reference completion spine: cross-workspace provider/alias
@@ -2438,6 +2439,99 @@ branch. Where a repo still has open adjacent work, the inventory classifies it
 as parent reconciliation, future extension, or non-table adjacent work rather
 than hiding it inside the W056 table semantic claim.
 
+## 4B.23. `calc-4vs8.63` Final Node-Table Completion Audit
+
+Product status:
+
+The node-associated TreeCalc table topic is complete for the declared W056
+table slice after the fifth-pass hardening spine. A table attached to a
+DnaTreeCalc node can be projected by OxCalc as the host-owned equivalent of an
+Excel table anchored at a stable virtual cell: OxFml supplies generic
+structured-reference packets and source preservation, OxCalc owns the table
+namespace/resolver/readers/dependencies/invalidation/caller context, OxFunc
+sees only opaque `ReferenceLike` carriers or typed function rejections, and
+DnaTreeCalc/OxXlPlay/OxReplay provide producer/oracle/replay evidence.
+
+Supported table scope:
+
+1. Structured-reference packets and projections for `path[Col]`,
+   `path[@Col]`, `[#Headers]`, `[#Data]`, `[#Totals]`, `[#All]`, composite
+   ranges, omitted table names, caller-row context, escaped names, and
+   multi-column ranges.
+2. Sparse `ReferenceLike` readers for data body, headers, totals,
+   all-sections, current row, single-row tables, empty data bodies, and
+   sparse traversal without `EvalValue::Table` or dense/eager closure
+   evidence.
+3. OxCalc-owned table dependency and invalidation facts for row membership,
+   row order, column identity, header text, data region, totals region, caller
+   row context, namespace version, structure context version, and registry
+   snapshot identity.
+4. Per-row column formulas, totals formulas, first aggregate and
+   reference-visible function groups, typed exclusions for functions that need
+   extra host context, and the current host-UDF boundary metadata.
+5. Table create/delete/rename/move/reorder, stable virtual anchors,
+   same-node table lookup, dynamic table references, `INDIRECT`-style table
+   targets, workspace aliases, unavailable workspace degradation, and stable
+   save/reopen identity.
+6. Retained TreeCalc/OxCalc/OxXlPlay/OxReplay evidence for table slices,
+   `comparison_value`, effective display text, execution outcome, dependency
+   evidence, invalidation evidence, and table update observations.
+7. DnaOneCalc ordinary single-formula use remains explicitly non-impact:
+   no host table namespace is required, and LET/LAMBDA lexical references stay
+   inside OxFml.
+
+Executable evidence:
+
+1. New Rust inventory `TREECALC_TABLE_FINAL_AUDIT_ITEMS` in
+   `src/oxcalc-core/src/structured_table.rs` records the final audit status
+   for table packets, readers, dependencies, functions/UDF boundary, dynamic
+   rebind, replay/oracle value wire, DnaTreeCalc parent reconciliation,
+   DnaOneCalc no-host guardrail, future VBA/XLL descriptors, and broader
+   non-table W056 work.
+2. New focused test
+   `table_final_audit_marks_node_table_complete_without_parent_w056_overclaim`
+   asserts that every table audit item has evidence anchors, no item allows
+   dense/eager materialization, private formula parsing, or TreeCalc-specific
+   OxFml/OxFunc branches, and only the explicit non-table W056 spine blocks
+   parent W056 closure.
+3. The final audit consumes the closed hardening beads:
+   `calc-4vs8.57` architecture revalidation, `calc-4vs8.58` abstraction
+   consolidation, `calc-4vs8.59` lifecycle execution matrix,
+   `calc-4vs8.60` function/UDF boundary closure, `calc-4vs8.61`
+   oracle/replay/value-wire convergence, and `calc-4vs8.62` cross-repo
+   rollout reconciliation.
+
+Still open:
+
+1. Parent W056 remains open for non-table reference work: broad W004/W005
+   activation, bare host-name/callable lanes, node-as-function, dynamic
+   non-table references, cross-workspace non-table references, and retained
+   non-table replay evidence.
+2. DnaTreeCalc parent beads `dtc-z0i.5.6` and `dtc-z0i.5` need repo-local
+   close-or-narrow graph hygiene after its unrelated bead-state dirt around
+   `dtc-z0i.8` is reconciled. This does not block the OxCalc table semantic
+   claim because the table child evidence is already linked.
+3. OxFunc `oxf-ypq2.12` remains a broader formula-call registry migration
+   item. It becomes table-blocking only if a later product claim admits table
+   references into UDF callbacks beyond the current typed boundary.
+4. OxReplay `BLK-REPLAY-003` remains shared `comparison_value` helper cleanup.
+   It must not create an OxCalc-local value adapter and does not reopen table
+   semantics.
+5. Excel dependency graph, dirty-set, and event-order internals remain typed
+   unavailable. OxCalc-owned invalidation facts are not inferred from Excel.
+6. Full cross-producer namespace/anchor/workspace pairing remains a retained
+   evidence projection gap. The admitted OxCalc dynamic table runtime behavior
+   remains supported.
+
+Formal/proof status:
+
+This bead is an executable audit and coordination closure, not a new formal
+model proof. It narrows table status for parent W056 by separating completed
+node-table behavior from remaining non-table reference work. Any future table
+extension that changes grammar, name/call precedence, UDF callback semantics,
+or dynamic table host capabilities needs a new versioned packet/registry lane
+and fresh evidence before it can amend this audit.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion
@@ -3066,17 +3160,18 @@ W056 closes only for a declared full-reference/table-lowering scope when:
 
 ## 6. Status
 
-Product status: node-associated TreeCalc table support has prior implementation
-and retained-evidence closure through the W056 table spines up to
-`calc-4vs8.56`, but it now has an active fifth-pass hardening gate
-`calc-4vs8.57` through `calc-4vs8.63` before the table claim is carried into
-parent W056 closure. `calc-4vs8.63` will either reaffirm full intended
-node-table support with current evidence or leave exact blockers. Broader W056
-also remains in progress for non-table references, W004/W005 non-table corpus
-activation, dynamic/cross-workspace non-table product evidence, and retained
-non-table replay evidence. Current W074 host-name mapping is consumed for
-W051/W056; future TreeCalc built-in-call override behavior remains a new
-evidence/versioning lane. W051 is
+Product status: node-associated TreeCalc table support is complete for the
+declared W056 table slice after the fifth-pass hardening gate
+`calc-4vs8.57` through `calc-4vs8.63`. The table claim covers generic OxFml
+structured-reference packets, OxCalc-owned table namespace/resolver/readers/
+dependency/invalidation/caller-context facts, opaque OxFunc `ReferenceLike`
+function consumption or typed exclusions, DnaTreeCalc producer evidence,
+OxXlPlay Excel observation, OxReplay retained comparison, and DnaOneCalc
+no-host non-impact. Broader W056 remains in progress for non-table references,
+W004/W005 non-table corpus activation, dynamic/cross-workspace non-table
+product evidence, and retained non-table replay evidence. Current W074
+host-name mapping is consumed for W051/W056; future TreeCalc built-in-call
+override behavior remains a new evidence/versioning lane. W051 is
 closed for the first OxCalc `ChildrenV1` carrier pattern; W056 now has a typed Rust
 implementation-input inventory for the broader reference family, a first
 structured table-context dependency-lowering surface for the current generic
@@ -3146,11 +3241,11 @@ namespace/anchor/workspace semantics, virtual anchor identity, full
 invalidation scenarios, DnaTreeCalc activation, OxXlPlay oracle construction,
 OxReplay retained evidence, UDF/VBA/XLL impact, cross-repo rollout
 coordination, and dynamic table reference rebind/`INDIRECT` semantics. This
-evidence is now guarded by the active hardening spine `calc-4vs8.57` through
-`calc-4vs8.63`, which must revalidate the intended node-associated TreeCalc
-table feature without adding TreeCalc semantics to OxFml/OxFunc. It is still
-not a full-reference W056 closure claim because the hardening gate and the
-non-table reference suite remain open.
+evidence has now passed the `calc-4vs8.57` through `calc-4vs8.63` hardening
+spine, which revalidates the intended node-associated TreeCalc table feature
+without adding TreeCalc semantics to OxFml/OxFunc. It is still not a
+full-reference W056 closure claim because the non-table reference suite remains
+open.
 
 Evidence: W051 focused tests cover the first carrier's local membership/member
 value dependency descriptors, reference-preserving formal input binding,

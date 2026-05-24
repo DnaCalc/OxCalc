@@ -3247,6 +3247,242 @@ pub fn treecalc_table_cross_repo_rollout_lane(
         .find(|lane| lane.lane_id == lane_id)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcTableFinalAuditStatus {
+    SupportedByExecutableEvidence,
+    SupportedWithTypedProjectionGap,
+    OpenParentReconciliation,
+    ExplicitNonImpact,
+    FutureExtensionTracked,
+    ParentW056NonTableRemaining,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeCalcTableFinalAuditItem {
+    pub item_id: &'static str,
+    pub status: TreeCalcTableFinalAuditStatus,
+    pub product_scope: &'static str,
+    pub evidence_anchors: &'static [&'static str],
+    pub still_open: &'static str,
+    pub parent_w056_implication: &'static str,
+    pub blocks_node_table_completion: bool,
+    pub blocks_parent_w056_completion: bool,
+    pub dense_or_eager_materialization_allowed: bool,
+    pub private_formula_parsing_allowed: bool,
+    pub oxfml_or_oxfunc_treecalc_branch_allowed: bool,
+}
+
+pub const TREECALC_TABLE_FINAL_AUDIT_ITEMS: &[TreeCalcTableFinalAuditItem] = &[
+    TreeCalcTableFinalAuditItem {
+        item_id: "structured_reference_packets_and_projection",
+        status: TreeCalcTableFinalAuditStatus::SupportedByExecutableEvidence,
+        product_scope: "node-associated table packets and projections for path[Col], path[@Col], #Headers, #Data, #Totals, #All, composite refs, omitted table names, caller row context, escaped names, and multi-column ranges",
+        evidence_anchors: &[
+            "calc-4vs8.44",
+            "calc-4vs8.46",
+            "calc-4vs8.57",
+            "fml-ds0.12",
+            "fml-ds0.13",
+            "fml-ds0.15",
+            "fml-ds0.16",
+        ],
+        still_open: "none for the declared W056 table packet and projection slice",
+        parent_w056_implication: "carries the generic OxFml packet contract into parent W056 table status without giving OxCalc formula grammar ownership",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "sparse_reference_readers_and_value_transport",
+        status: TreeCalcTableFinalAuditStatus::SupportedByExecutableEvidence,
+        product_scope: "table ReferenceLike readers for data body, headers, totals, all-sections, current row, single-row, empty-body, and sparse range traversal",
+        evidence_anchors: &[
+            "calc-4vs8.47",
+            "calc-4vs8.48",
+            "calc-4vs8.58",
+            "calc-4vs8.60",
+        ],
+        still_open: "none for declared table readers; eager value fallback remains outside closure evidence",
+        parent_w056_implication: "keeps EvalValue free of TreeCalc/table variants and preserves reference identity through the first aggregate/function path",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "dependency_invalidation_lifecycle_and_identity",
+        status: TreeCalcTableFinalAuditStatus::SupportedByExecutableEvidence,
+        product_scope: "row membership, row order, column identity, header text, data region, totals region, caller row context, namespace version, structure context, and registry snapshot invalidation facts",
+        evidence_anchors: &[
+            "calc-4vs8.49",
+            "calc-4vs8.50",
+            "calc-4vs8.53",
+            "calc-4vs8.59",
+            "calc-4vs8.61",
+        ],
+        still_open: "none for OxCalc-owned table lifecycle facts; Excel internal dirty-set/event-order facts are typed unavailable",
+        parent_w056_implication: "lets parent W056 distinguish OxCalc-owned invalidation from black-box Excel observation",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "table_formulas_functions_and_udf_boundary",
+        status: TreeCalcTableFinalAuditStatus::SupportedByExecutableEvidence,
+        product_scope: "per-row column formulas, totals formulas, first aggregate/reference-visible function groups, typed exclusions for context-needing functions, and host-UDF boundary metadata",
+        evidence_anchors: &[
+            "calc-4vs8.23",
+            "calc-4vs8.36",
+            "calc-4vs8.60",
+            "oxf-ypq2.13",
+            "oxf-ypq2.15",
+            "oxf-ypq2.16",
+        ],
+        still_open: "broader formula-call registry migration oxf-ypq2.12 remains adjacent unless a future table UDF argument contract depends on it",
+        parent_w056_implication: "current table function support is closed through opaque references; future UDF expansion must version through OxFunc/OxFml registry surfaces",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "dynamic_table_rebind_namespace_anchor_workspace",
+        status: TreeCalcTableFinalAuditStatus::SupportedWithTypedProjectionGap,
+        product_scope: "table create/delete/rename/move/reorder, stable virtual anchors, same-node table lookup, dynamic table references, INDIRECT-style table targets, workspace aliases, unavailable workspace degradation, and stable save/reopen identity",
+        evidence_anchors: &[
+            "calc-4vs8.52",
+            "calc-4vs8.54",
+            "calc-4vs8.56",
+            "calc-4vs8.59",
+            "calc-4vs8.61",
+            "dtc-z0i.7.1",
+        ],
+        still_open: "full cross-producer namespace/anchor/workspace pairing remains a typed retained-evidence projection gap, not an OxCalc runtime semantic gap",
+        parent_w056_implication: "parent W056 can carry the admitted dynamic table rebind behavior while keeping broader cross-producer evidence pairing explicit",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "oracle_replay_and_value_wire",
+        status: TreeCalcTableFinalAuditStatus::SupportedWithTypedProjectionGap,
+        product_scope: "retained TreeCalc, OxCalc, OxXlPlay, and OxReplay evidence for table slices, comparison_value, effective display, execution outcome, dependency evidence, invalidation evidence, and table update observations",
+        evidence_anchors: &[
+            "calc-4vs8.61",
+            "oxxlplay-4nd.1",
+            "oxxlplay-4nd.2",
+            "oxxlplay-4nd.3",
+            "oxxlplay-4nd.4",
+            "oxxlplay-4nd.5",
+            "oxreplay-qb9",
+            "oxreplay-p1w.3",
+        ],
+        still_open: "BLK-REPLAY-003 remains shared comparison_value helper cleanup; legacy Excel artifacts may lack execution_outcome.class_id; Excel dependency internals remain unavailable",
+        parent_w056_implication: "retained table evidence is sufficient for the declared table slice, with non-semantic projection gaps named before parent closure",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "dnatreecalc_product_activation_parent_reconciliation",
+        status: TreeCalcTableFinalAuditStatus::OpenParentReconciliation,
+        product_scope: "DnaTreeCalc table product corpus, lifecycle bridge, empty-body behavior, dynamic/cross-workspace table artifacts, and retained producer evidence through LiveOxCalcTreeBridge",
+        evidence_anchors: &[
+            "dtc-z0i.5.1",
+            "dtc-z0i.5.2",
+            "dtc-z0i.5.3",
+            "dtc-z0i.5.4",
+            "dtc-z0i.5.5",
+            "dtc-z0i.5.6.1",
+            "dtc-z0i.5.7",
+            "dtc-z0i.5.8",
+            "dtc-z0i.7.1",
+        ],
+        still_open: "DnaTreeCalc parent beads dtc-z0i.5.6 and dtc-z0i.5 need repo-local close-or-narrow graph hygiene after unrelated bead-state dirt is reconciled",
+        parent_w056_implication: "does not block the OxCalc table semantic claim, but remains visible before broad DnaTreeCalc W004/W005 reporting",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "dnaonecalc_no_host_formula_guardrail",
+        status: TreeCalcTableFinalAuditStatus::ExplicitNonImpact,
+        product_scope: "ordinary DnaOneCalc single-formula execution with OxFml-internal LET/LAMBDA lexical references and no host table namespace",
+        evidence_anchors: &[
+            "dno-rl7u",
+            "dno-7vt4.1",
+            "dno-7vt4.4",
+            "dno-7vt4.5",
+            "dno-7vt4.7",
+            "dno-7vt4.9",
+        ],
+        still_open: "future VBA/XLL UDF registration remains registry-backed work and must not make ordinary formulas depend on host table references",
+        parent_w056_implication: "records that table host context remains consumer-optional and does not regress no-host formula use",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "vba_xll_udf_descriptor_future_extension",
+        status: TreeCalcTableFinalAuditStatus::FutureExtensionTracked,
+        product_scope: "future VBA/XLL discovery metadata that can feed OxFunc registration without exposing TreeCalc table selectors",
+        evidence_anchors: &[
+            "bd-sg5h",
+            "docs/worksets/WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md",
+        ],
+        still_open: "future descriptors must be transformed into OxFunc registration requests and W093 snapshot/change-set updates",
+        parent_w056_implication: "not part of current node-table support, but prevents future UDF work from bypassing the registry-owned lane",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: false,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+    TreeCalcTableFinalAuditItem {
+        item_id: "parent_w056_non_table_reference_spine",
+        status: TreeCalcTableFinalAuditStatus::ParentW056NonTableRemaining,
+        product_scope: "non-table W056 reference families: broad W004/W005 activation, bare host-name/callable lanes, node-as-function, dynamic non-table references, cross-workspace non-table references, and retained non-table replay evidence",
+        evidence_anchors: &[
+            "calc-4vs8.30",
+            "calc-8tox",
+            "calc-4vs8.31",
+            "calc-4vs8.32",
+            "calc-4vs8.33",
+            "calc-4vs8.5",
+        ],
+        still_open: "parent W056 remains open for non-table reference closure even after the node-table topic is complete",
+        parent_w056_implication: "prevents broad W056 closure, but does not reopen the node-associated table topic",
+        blocks_node_table_completion: false,
+        blocks_parent_w056_completion: true,
+        dense_or_eager_materialization_allowed: false,
+        private_formula_parsing_allowed: false,
+        oxfml_or_oxfunc_treecalc_branch_allowed: false,
+    },
+];
+
+#[must_use]
+pub fn treecalc_table_final_audit_item(
+    item_id: &str,
+) -> Option<&'static TreeCalcTableFinalAuditItem> {
+    TREECALC_TABLE_FINAL_AUDIT_ITEMS
+        .iter()
+        .find(|item| item.item_id == item_id)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct TreeCalcTableSparseSlot {
     coord: SparseCellCoord,
@@ -10261,6 +10497,151 @@ mod tests {
             TreeCalcTableRolloutLaneStatus::ExplicitNonImpact
         );
         assert!(onecalc.residual_action.contains("ordinary formulas"));
+    }
+
+    #[test]
+    fn table_final_audit_marks_node_table_complete_without_parent_w056_overclaim() {
+        let mut item_ids = BTreeSet::new();
+        let mut statuses = BTreeSet::new();
+        let mut evidence_anchors = BTreeSet::new();
+
+        for item in TREECALC_TABLE_FINAL_AUDIT_ITEMS {
+            assert!(
+                item_ids.insert(item.item_id),
+                "duplicate audit item {}",
+                item.item_id
+            );
+            statuses.insert(item.status);
+            evidence_anchors.extend(item.evidence_anchors.iter().copied());
+
+            assert!(
+                !item.product_scope.is_empty()
+                    && !item.still_open.is_empty()
+                    && !item.parent_w056_implication.is_empty(),
+                "{} must have product scope, residual status, and parent-W056 implication",
+                item.item_id
+            );
+            assert!(
+                !item.evidence_anchors.is_empty(),
+                "{} must cite executable or retained evidence",
+                item.item_id
+            );
+            assert!(
+                !item.blocks_node_table_completion,
+                "{} should not remain a node-table blocker after the hardening spine",
+                item.item_id
+            );
+            assert!(
+                !item.dense_or_eager_materialization_allowed,
+                "{} would let dense/eager materialization close table behavior",
+                item.item_id
+            );
+            assert!(
+                !item.private_formula_parsing_allowed,
+                "{} would allow host-side formula parsing",
+                item.item_id
+            );
+            assert!(
+                !item.oxfml_or_oxfunc_treecalc_branch_allowed,
+                "{} would allow TreeCalc-specific OxFml/OxFunc branches",
+                item.item_id
+            );
+
+            if item.status == TreeCalcTableFinalAuditStatus::ParentW056NonTableRemaining {
+                assert!(item.blocks_parent_w056_completion);
+                assert!(item.product_scope.contains("non-table W056 reference"));
+            } else {
+                assert!(
+                    !item.blocks_parent_w056_completion,
+                    "{} should not block parent W056 completion unless it is the explicit non-table spine",
+                    item.item_id
+                );
+            }
+        }
+
+        for required_status in [
+            TreeCalcTableFinalAuditStatus::SupportedByExecutableEvidence,
+            TreeCalcTableFinalAuditStatus::SupportedWithTypedProjectionGap,
+            TreeCalcTableFinalAuditStatus::OpenParentReconciliation,
+            TreeCalcTableFinalAuditStatus::ExplicitNonImpact,
+            TreeCalcTableFinalAuditStatus::FutureExtensionTracked,
+            TreeCalcTableFinalAuditStatus::ParentW056NonTableRemaining,
+        ] {
+            assert!(
+                statuses.contains(&required_status),
+                "missing audit status {required_status:?}"
+            );
+        }
+
+        for required_item in [
+            "structured_reference_packets_and_projection",
+            "sparse_reference_readers_and_value_transport",
+            "dependency_invalidation_lifecycle_and_identity",
+            "table_formulas_functions_and_udf_boundary",
+            "dynamic_table_rebind_namespace_anchor_workspace",
+            "oracle_replay_and_value_wire",
+            "dnatreecalc_product_activation_parent_reconciliation",
+            "dnaonecalc_no_host_formula_guardrail",
+            "vba_xll_udf_descriptor_future_extension",
+            "parent_w056_non_table_reference_spine",
+        ] {
+            assert!(
+                item_ids.contains(required_item),
+                "missing final audit item {required_item}"
+            );
+        }
+
+        for required_anchor in [
+            "calc-4vs8.57",
+            "calc-4vs8.58",
+            "calc-4vs8.59",
+            "calc-4vs8.60",
+            "calc-4vs8.61",
+            "oxreplay-p1w.3",
+            "oxxlplay-4nd.5",
+            "dtc-z0i.7.1",
+            "dno-rl7u",
+        ] {
+            assert!(
+                evidence_anchors.contains(required_anchor),
+                "missing final audit evidence anchor {required_anchor}"
+            );
+        }
+
+        let packets =
+            treecalc_table_final_audit_item("structured_reference_packets_and_projection")
+                .expect("structured-reference packet item should exist");
+        assert!(packets.product_scope.contains("path[Col]"));
+        assert!(packets.product_scope.contains("path[@Col]"));
+        assert!(packets.product_scope.contains("#Totals"));
+
+        let dynamic =
+            treecalc_table_final_audit_item("dynamic_table_rebind_namespace_anchor_workspace")
+                .expect("dynamic table audit item should exist");
+        assert_eq!(
+            dynamic.status,
+            TreeCalcTableFinalAuditStatus::SupportedWithTypedProjectionGap
+        );
+        assert!(dynamic.still_open.contains("cross-producer"));
+        assert!(!dynamic.blocks_node_table_completion);
+
+        let replay = treecalc_table_final_audit_item("oracle_replay_and_value_wire")
+            .expect("replay audit item should exist");
+        assert_eq!(
+            replay.status,
+            TreeCalcTableFinalAuditStatus::SupportedWithTypedProjectionGap
+        );
+        assert!(replay.still_open.contains("BLK-REPLAY-003"));
+        assert!(!replay.blocks_node_table_completion);
+
+        let parent = treecalc_table_final_audit_item("parent_w056_non_table_reference_spine")
+            .expect("parent W056 audit item should exist");
+        assert_eq!(
+            parent.status,
+            TreeCalcTableFinalAuditStatus::ParentW056NonTableRemaining
+        );
+        assert!(parent.blocks_parent_w056_completion);
+        assert!(!parent.blocks_node_table_completion);
     }
 
     #[test]

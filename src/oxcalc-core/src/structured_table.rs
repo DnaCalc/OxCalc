@@ -3054,6 +3054,199 @@ pub fn treecalc_table_replay_evidence_lane(
         .find(|lane| lane.lane_id == lane_id)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcTableRolloutLaneStatus {
+    ClosedEvidence,
+    OpenParentReconciliation,
+    OpenAdjacentNonBlocking,
+    ExplicitNonImpact,
+    FutureExtensionTracked,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeCalcTableCrossRepoRolloutLane {
+    pub lane_id: &'static str,
+    pub repo: &'static str,
+    pub promotion_order: u8,
+    pub status: TreeCalcTableRolloutLaneStatus,
+    pub responsibility: &'static str,
+    pub counterpart_anchors: &'static [&'static str],
+    pub evidence_obligation: &'static str,
+    pub residual_action: &'static str,
+    pub blocks_w056_table_semantic_claim: bool,
+    pub producer_private_string_parsing_allowed: bool,
+    pub semantic_mirror_allowed: bool,
+}
+
+pub const TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES: &[TreeCalcTableCrossRepoRolloutLane] = &[
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxfml_generic_table_packets_and_name_call_lanes",
+        repo: "OxFml",
+        promotion_order: 10,
+        status: TreeCalcTableRolloutLaneStatus::ClosedEvidence,
+        responsibility: "structured-reference grammar, generic bind packets, prepared identity inputs, lexical scope, and current W051/W056 name-call handoff",
+        counterpart_anchors: &[
+            "fml-ds0.12",
+            "fml-ds0.13",
+            "fml-ds0.15",
+            "fml-ds0.16",
+            "fml-ds0.6.5",
+        ],
+        evidence_obligation: "OxFml supplies generic table packets and W074 host-name mapping without TreeCalc semantics",
+        residual_action: "Broader W036/W074 table-language or name-call extensions require new versioned evidence before OxCalc consumes them",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxfunc_opaque_reference_and_registry_lanes",
+        repo: "OxFunc",
+        promotion_order: 20,
+        status: TreeCalcTableRolloutLaneStatus::OpenAdjacentNonBlocking,
+        responsibility: "function semantics, opaque ReferenceLike admission, registry mutation, capability overlays, and typed rejection outcomes",
+        counterpart_anchors: &["oxf-ypq2.13", "oxf-ypq2.15", "oxf-ypq2.16", "oxf-ypq2.12"],
+        evidence_obligation: "Closed table-specific aggregate and reference-visible lanes consume generic resolver APIs and do not inspect TreeCalc selectors",
+        residual_action: "Keep oxf-ypq2.12 as broader formula-call registry migration; it is adjacent unless future table UDF admission depends on it",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxcalc_table_custody_runtime_and_hardening",
+        repo: "OxCalc",
+        promotion_order: 30,
+        status: TreeCalcTableRolloutLaneStatus::ClosedEvidence,
+        responsibility: "table custody, virtual anchors, resolver, sparse readers, dependency and invalidation facts, dynamic rebind, namespace and caller identity",
+        counterpart_anchors: &[
+            "calc-4vs8.57",
+            "calc-4vs8.58",
+            "calc-4vs8.59",
+            "calc-4vs8.60",
+            "calc-4vs8.61",
+        ],
+        evidence_obligation: "OxCalc proves the typed table path without EvalValue::Table, eager materialization, or duplicated grammar",
+        residual_action: "Proceed to calc-4vs8.63 final audit after rollout reconciliation",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "dnatreecalc_table_product_corpus_and_parent_reconciliation",
+        repo: "DnaTreeCalc",
+        promotion_order: 40,
+        status: TreeCalcTableRolloutLaneStatus::OpenParentReconciliation,
+        responsibility: "product table-node model, corpus activation, table operations, persistence, UX evidence, and LiveOxCalc bridge activation",
+        counterpart_anchors: &[
+            "dtc-z0i.5",
+            "dtc-z0i.5.1",
+            "dtc-z0i.5.2",
+            "dtc-z0i.5.3",
+            "dtc-z0i.5.4",
+            "dtc-z0i.5.5",
+            "dtc-z0i.5.6",
+            "dtc-z0i.5.6.1",
+            "dtc-z0i.5.7",
+            "dtc-z0i.5.8",
+            "dtc-z0i.7.1",
+        ],
+        evidence_obligation: "Closed child beads provide table structured-reference, empty-body, lifecycle, retained artifact, and dynamic/cross-workspace evidence through LiveOxCalcTreeBridge",
+        residual_action: "Close or narrow DnaTreeCalc parent beads dtc-z0i.5.6 and dtc-z0i.5 in DnaTreeCalc once its unrelated dirty bead state is reconciled",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxxlplay_excel_listobject_observation",
+        repo: "OxXlPlay",
+        promotion_order: 40,
+        status: TreeCalcTableRolloutLaneStatus::ClosedEvidence,
+        responsibility: "Excel workbook/table construction and black-box ListObject observations",
+        counterpart_anchors: &[
+            "oxxlplay-4nd.1",
+            "oxxlplay-4nd.2",
+            "oxxlplay-4nd.3",
+            "oxxlplay-4nd.4",
+            "oxxlplay-4nd.5",
+        ],
+        evidence_obligation: "OxXlPlay supplies retained workbook construction, table construction, and table update oracle observations with typed unavailable Excel internals",
+        residual_action: "Add new OxXlPlay observation beads only for future dynamic table Excel-comparable extensions not admitted in W056",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxreplay_retained_comparison_and_value_wire",
+        repo: "OxReplay",
+        promotion_order: 50,
+        status: TreeCalcTableRolloutLaneStatus::OpenAdjacentNonBlocking,
+        responsibility: "retained validation, replay, diff, explain, adapter capability evidence, and value-wire governance",
+        counterpart_anchors: &["oxreplay-qb9", "oxreplay-p1w.3", "BLK-REPLAY-003"],
+        evidence_obligation: "OxReplay compares declared table payloads and matched TreeCalc/Excel table views without producer-private parsing",
+        residual_action: "Keep BLK-REPLAY-003 as shared comparison_value helper cleanup; it must not create an OxCalc value adapter",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "dnaonecalc_no_host_guardrail_and_future_udf_consumption",
+        repo: "DnaOneCalc",
+        promotion_order: 60,
+        status: TreeCalcTableRolloutLaneStatus::ExplicitNonImpact,
+        responsibility: "no-host single-formula guardrails, OxFml-internal LET/LAMBDA lexical references, and future registry-backed UDF consumption",
+        counterpart_anchors: &[
+            "dno-rl7u",
+            "dno-7vt4.1",
+            "dno-7vt4.4",
+            "dno-7vt4.5",
+            "dno-7vt4.7",
+            "dno-7vt4.9",
+        ],
+        evidence_obligation: "Ordinary DnaOneCalc formulas require no host table namespace; future VBA/XLL UDFs use OxFunc/OxFml registry surfaces",
+        residual_action: "Continue WS-15 future UDF work without introducing table host-reference requirements for ordinary formulas",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "oxvba_udf_descriptor_metadata_future_extension",
+        repo: "OxVba",
+        promotion_order: 70,
+        status: TreeCalcTableRolloutLaneStatus::FutureExtensionTracked,
+        responsibility: "VBA/XLL source discovery metadata and host-UDF descriptors for future OxFunc registration requests",
+        counterpart_anchors: &[
+            "bd-sg5h",
+            "docs/worksets/WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md",
+        ],
+        evidence_obligation: "OxVba supplies descriptor facts only; it does not receive TreeCalc table selectors or own function/name precedence",
+        residual_action: "Transform future descriptors into OxFunc registration requests; do not bypass W093 registry snapshots or TreeCalc table opacity",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+    TreeCalcTableCrossRepoRolloutLane {
+        lane_id: "ide_visual_foundation_impact_scan",
+        repo: "OxIde/DnaOxIde/DnaVisiCalc/Foundation",
+        promotion_order: 80,
+        status: TreeCalcTableRolloutLaneStatus::ExplicitNonImpact,
+        responsibility: "impact-scan-only consumers and doctrine references",
+        counterpart_anchors: &["impact-scan:no direct W056 node-table seam found"],
+        evidence_obligation: "No direct interface dependency found for this W056 table hardening spine",
+        residual_action: "Open a repo-local bead only if a future UI, visual, doctrine, or shared-interface dependency appears",
+        blocks_w056_table_semantic_claim: false,
+        producer_private_string_parsing_allowed: false,
+        semantic_mirror_allowed: false,
+    },
+];
+
+#[must_use]
+pub fn treecalc_table_cross_repo_rollout_lane(
+    lane_id: &str,
+) -> Option<&'static TreeCalcTableCrossRepoRolloutLane> {
+    TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES
+        .iter()
+        .find(|lane| lane.lane_id == lane_id)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct TreeCalcTableSparseSlot {
     coord: SparseCellCoord,
@@ -9932,6 +10125,142 @@ mod tests {
             TreeCalcTableReplayEvidenceStatus::TypedProjectionGap
         );
         assert!(namespace_pairing.blocker_id.is_none());
+    }
+
+    #[test]
+    fn table_cross_repo_rollout_inventory_records_counterparts_and_seam_rules() {
+        let mut lane_ids = BTreeSet::new();
+        let mut repos = BTreeSet::new();
+        for lane in TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES {
+            assert!(
+                lane_ids.insert(lane.lane_id),
+                "duplicate lane {}",
+                lane.lane_id
+            );
+            repos.insert(lane.repo);
+            assert!(
+                !lane.counterpart_anchors.is_empty(),
+                "{} must cite counterpart beads, handoffs, or non-impact anchor",
+                lane.lane_id
+            );
+            assert!(
+                !lane.responsibility.is_empty() && !lane.evidence_obligation.is_empty(),
+                "{} must state owner responsibility and evidence obligation",
+                lane.lane_id
+            );
+            assert!(
+                !lane.producer_private_string_parsing_allowed,
+                "{} would allow producer-private parsing",
+                lane.lane_id
+            );
+            assert!(
+                !lane.semantic_mirror_allowed,
+                "{} would allow a semantic mirror or bridge",
+                lane.lane_id
+            );
+            if !matches!(
+                lane.status,
+                TreeCalcTableRolloutLaneStatus::ClosedEvidence
+                    | TreeCalcTableRolloutLaneStatus::ExplicitNonImpact
+            ) {
+                assert!(
+                    !lane.blocks_w056_table_semantic_claim,
+                    "{} should not become a hidden semantic blocker without an exact bead",
+                    lane.lane_id
+                );
+                assert!(
+                    !lane.residual_action.is_empty(),
+                    "{} must record its residual action",
+                    lane.lane_id
+                );
+            }
+        }
+
+        for required_repo in [
+            "OxFml",
+            "OxFunc",
+            "OxCalc",
+            "DnaTreeCalc",
+            "OxXlPlay",
+            "OxReplay",
+            "DnaOneCalc",
+            "OxVba",
+            "OxIde/DnaOxIde/DnaVisiCalc/Foundation",
+        ] {
+            assert!(
+                repos.contains(required_repo),
+                "missing repo lane {required_repo}"
+            );
+        }
+
+        let order = |lane_id| {
+            treecalc_table_cross_repo_rollout_lane(lane_id)
+                .expect("lane should exist")
+                .promotion_order
+        };
+        assert!(
+            order("oxfml_generic_table_packets_and_name_call_lanes")
+                < order("oxcalc_table_custody_runtime_and_hardening")
+        );
+        assert!(
+            order("oxfunc_opaque_reference_and_registry_lanes")
+                < order("oxcalc_table_custody_runtime_and_hardening")
+        );
+        assert!(
+            order("oxcalc_table_custody_runtime_and_hardening")
+                < order("dnatreecalc_table_product_corpus_and_parent_reconciliation")
+        );
+        assert!(
+            order("dnatreecalc_table_product_corpus_and_parent_reconciliation")
+                < order("oxreplay_retained_comparison_and_value_wire")
+        );
+        assert!(
+            order("oxxlplay_excel_listobject_observation")
+                < order("oxreplay_retained_comparison_and_value_wire")
+        );
+
+        let dnatreecalc = treecalc_table_cross_repo_rollout_lane(
+            "dnatreecalc_table_product_corpus_and_parent_reconciliation",
+        )
+        .expect("DnaTreeCalc rollout lane should exist");
+        assert_eq!(
+            dnatreecalc.status,
+            TreeCalcTableRolloutLaneStatus::OpenParentReconciliation
+        );
+        assert!(!dnatreecalc.blocks_w056_table_semantic_claim);
+        assert!(dnatreecalc.counterpart_anchors.contains(&"dtc-z0i.5.6.1"));
+        assert!(dnatreecalc.counterpart_anchors.contains(&"dtc-z0i.5"));
+        assert!(dnatreecalc.residual_action.contains("parent beads"));
+
+        let oxfunc =
+            treecalc_table_cross_repo_rollout_lane("oxfunc_opaque_reference_and_registry_lanes")
+                .expect("OxFunc rollout lane should exist");
+        assert_eq!(
+            oxfunc.status,
+            TreeCalcTableRolloutLaneStatus::OpenAdjacentNonBlocking
+        );
+        assert!(oxfunc.counterpart_anchors.contains(&"oxf-ypq2.12"));
+        assert!(!oxfunc.blocks_w056_table_semantic_claim);
+
+        let oxreplay =
+            treecalc_table_cross_repo_rollout_lane("oxreplay_retained_comparison_and_value_wire")
+                .expect("OxReplay rollout lane should exist");
+        assert_eq!(
+            oxreplay.status,
+            TreeCalcTableRolloutLaneStatus::OpenAdjacentNonBlocking
+        );
+        assert!(oxreplay.counterpart_anchors.contains(&"BLK-REPLAY-003"));
+        assert!(!oxreplay.blocks_w056_table_semantic_claim);
+
+        let onecalc = treecalc_table_cross_repo_rollout_lane(
+            "dnaonecalc_no_host_guardrail_and_future_udf_consumption",
+        )
+        .expect("DnaOneCalc rollout lane should exist");
+        assert_eq!(
+            onecalc.status,
+            TreeCalcTableRolloutLaneStatus::ExplicitNonImpact
+        );
+        assert!(onecalc.residual_action.contains("ordinary formulas"));
     }
 
     #[test]

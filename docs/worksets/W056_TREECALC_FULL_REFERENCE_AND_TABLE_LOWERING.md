@@ -2366,6 +2366,78 @@ runtime and invalidation facts it owns; OxReplay keeps comparison governance;
 OxXlPlay keeps Excel observation; DnaTreeCalc keeps product table producer
 artifacts.
 
+## 4B.22. `calc-4vs8.62` Cross-Repo Rollout Bead Reconciliation
+
+Product status:
+
+OxCalc now has an executable cross-repo rollout inventory for the W056
+node-associated table hardening spine. The inventory links each affected repo
+to its responsibility, counterpart beads or non-impact anchor, promotion order,
+evidence obligation, residual action, and seam guardrails. This is coordination
+evidence, not a substitute for another repo's local bead truth.
+
+Executable evidence:
+
+1. New Rust inventory
+   `TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES` in
+   `src/oxcalc-core/src/structured_table.rs` records the cross-repo rollout
+   graph.
+2. New focused test
+   `table_cross_repo_rollout_inventory_records_counterparts_and_seam_rules`
+   asserts that every affected repo has a lane, each lane has counterpart
+   anchors or explicit non-impact rationale, dependency order is recorded, and
+   no lane allows producer-private parsing or semantic mirrors.
+3. The test pins the important residuals: DnaTreeCalc parent-bead
+   reconciliation is open but not a table semantic blocker; OxFunc
+   `oxf-ypq2.12` is adjacent unless future table UDF admission depends on it;
+   OxReplay `BLK-REPLAY-003` remains value-wire cleanup and must not create an
+   OxCalc value adapter.
+
+Rollout lanes:
+
+| Repo | Status | Counterpart anchors | W056 reading |
+| --- | --- | --- | --- |
+| `OxFml` | Closed evidence | `fml-ds0.12`, `.13`, `.15`, `.16`, `.6.5` | Generic structured-reference packets, table prepared identity, zero-row packets, token-kind preservation, and current W051/W056 name-call handoff are available without TreeCalc semantics. Future W036/W074 extensions need new versioned evidence. |
+| `OxFunc` | Open adjacent non-blocking | `oxf-ypq2.13`, `.15`, `.16`, open `.12` | Opaque structured-table `ReferenceLike` behavior is evidenced for W056 table functions. Broader formula-call registry migration remains W093-adjacent, not a current table semantic blocker. |
+| `OxCalc` | Closed evidence | `calc-4vs8.57` through `.61` | Table custody, virtual anchors, resolver, readers, lifecycle matrix, UDF boundary, and replay/value-wire convergence are now hardened for the declared table scope. |
+| `DnaTreeCalc` | Open parent reconciliation | `dtc-z0i.5.1` through `.5.8`, `dtc-z0i.7.1`, open parents `dtc-z0i.5.6` and `dtc-z0i.5` | The child evidence needed by OxCalc exists for structured refs, empty bodies, lifecycle, retained artifacts, and dynamic/cross-workspace table cases. The open parents are bead-graph hygiene and should be closed or narrowed in DnaTreeCalc after its unrelated dirty bead state is reconciled. |
+| `OxXlPlay` | Closed evidence | `oxxlplay-4nd.1` through `.5` | Excel workbook construction, standalone table construction, table update oracle, residual empty-body/boundary observations, and explicit unavailable Excel internals are retained. |
+| `OxReplay` | Open adjacent non-blocking | `oxreplay-qb9`, `oxreplay-p1w.3`, `BLK-REPLAY-003` | Retained table comparison and matched TreeCalc/Excel table mechanics are evidenced over declared payloads. `BLK-REPLAY-003` remains shared `comparison_value` helper cleanup, not TreeCalc table semantics. |
+| `DnaOneCalc` | Explicit non-impact | `dno-rl7u`, WS-15 beads `dno-7vt4.1`, `.4`, `.5`, `.7`, `.9` | Ordinary single-formula execution still requires no host table namespace; future VBA/XLL UDF work remains registry-backed through OxFunc/OxFml. |
+| `OxVba` | Future extension tracked | `bd-sg5h`, `WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md` | VBA/XLL discovery supplies descriptor metadata for future registration requests only. It does not receive TreeCalc table selectors or own name/function precedence. |
+| `OxIde` / `DnaOxIde` / `DnaVisiCalc` / `Foundation` | Explicit non-impact | impact scan | No direct W056 node-table seam was found. Open local beads only if a future UI, visual, doctrine, or shared-interface dependency appears. |
+
+Dependency order:
+
+1. OxFml and OxFunc generic packet/function contracts must stay ahead of OxCalc
+   runtime closure.
+2. OxCalc runtime closure must stay ahead of DnaTreeCalc table producer
+   activation.
+3. DnaTreeCalc producer artifacts and OxXlPlay observations must stay ahead of
+   OxReplay retained comparison.
+4. DnaOneCalc and OxVba remain registry/future-UDF consumers, not table
+   semantic owners.
+
+Residual actions:
+
+1. DnaTreeCalc should close or narrow `dtc-z0i.5.6` and `dtc-z0i.5` in its own
+   repo once its unrelated dirty bead-state change around `dtc-z0i.8` is
+   reconciled. OxCalc does not edit that bead file from this bead.
+2. OxFunc `oxf-ypq2.12` remains broader W093 formula-call registry migration.
+   It becomes table-blocking only if a later product claim admits table
+   references into UDF callbacks beyond the current typed boundary.
+3. OxReplay `BLK-REPLAY-003` remains value-wire helper cleanup and must not
+   create an OxCalc-local comparison adapter.
+
+Coordinator seam review:
+
+No rollout lane requires a private bridge, parsing another repo's private
+strings, duplicated structured-reference grammar, duplicated name/call
+precedence, eager table materialization, or a TreeCalc-specific OxFml/OxFunc
+branch. Where a repo still has open adjacent work, the inventory classifies it
+as parent reconciliation, future extension, or non-table adjacent work rather
+than hiding it inside the W056 table semantic claim.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

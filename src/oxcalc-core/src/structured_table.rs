@@ -2819,6 +2819,241 @@ pub fn treecalc_structured_table_function_admission(
         })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcTableReplayEvidenceStatus {
+    RetainedEvidenceAvailable,
+    TypedProjectionGap,
+    TypedUnavailable,
+    BlockedUpstream,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TreeCalcTableReplayEvidenceLane {
+    pub lane_id: &'static str,
+    pub owner_repo: &'static str,
+    pub status: TreeCalcTableReplayEvidenceStatus,
+    pub retained_artifacts_or_beads: &'static [&'static str],
+    pub view_families: &'static [&'static str],
+    pub value_wire_field: Option<&'static str>,
+    pub blocker_id: Option<&'static str>,
+    pub closure_role: &'static str,
+    pub producer_private_string_parsing_allowed: bool,
+    pub excel_internal_inference_allowed: bool,
+}
+
+pub const TREECALC_TABLE_REPLAY_EVIDENCE_LANES: &[TreeCalcTableReplayEvidenceLane] = &[
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "dnatreecalc_retained_table_producer_views",
+        owner_repo: "DnaTreeCalc",
+        status: TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable,
+        retained_artifacts_or_beads: &[
+            "dtc-z0i.5.5",
+            "dtc-z0i.5.6.1",
+            "dtc-z0i.5.7",
+            "dtc-z0i.7.1",
+            "../DnaTreeCalc/docs/test-runs/w056-table-structured-references-001/",
+            "../DnaTreeCalc/docs/test-runs/w056-table-empty-body-001/",
+            "../DnaTreeCalc/docs/test-runs/w056-table-lifecycle-001/",
+            "../DnaTreeCalc/docs/test-runs/w056-table-dynamic-cross-workspace-001/",
+        ],
+        view_families: &[
+            "table_slice",
+            "per_node_value",
+            "effective_display_text",
+            "execution_outcome",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "retained_artifact_ref",
+            "dynamic_table_rebind",
+        ],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: None,
+        closure_role: "producer-owned table node, bridge, value, display, dependency, invalidation, lifecycle, and dynamic table evidence through LiveOxCalcTreeBridge",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "oxcalc_runtime_packet_and_identity_facts",
+        owner_repo: "OxCalc",
+        status: TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable,
+        retained_artifacts_or_beads: &[
+            "calc-4vs8.58",
+            "calc-4vs8.59",
+            "calc-4vs8.60",
+            "src/oxcalc-core/src/structured_table.rs",
+        ],
+        view_families: &[
+            "source_preservation",
+            "prepared_identity",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "lifecycle_update",
+            "dynamic_table_rebind",
+            "sparse_reference_binding",
+            "registry_snapshot_identity",
+        ],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: None,
+        closure_role: "OxCalc-owned table custody, virtual anchor, dependency, invalidation, sparse reader, prepared identity, and registry/capability identity facts",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "oxxlplay_excel_listobject_oracle_views",
+        owner_repo: "OxXlPlay",
+        status: TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable,
+        retained_artifacts_or_beads: &[
+            "oxxlplay-4nd.1",
+            "oxxlplay-4nd.2",
+            "oxxlplay-4nd.3",
+            "oxxlplay-4nd.4",
+            "oxxlplay-4nd.5",
+            "../OxXlPlay/states/excel/xlplay_workbook_construction_spec_001/",
+            "../OxXlPlay/states/excel/xlplay_table_construction_basic_001/",
+            "../OxXlPlay/states/excel/xlplay_table_update_oracle_001/",
+        ],
+        view_families: &[
+            "table_slice",
+            "comparison_value",
+            "effective_display_text",
+            "execution_outcome",
+            "table_update_oracle",
+        ],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: None,
+        closure_role: "clean-room Excel ListObject construction and before/after observation; dependency internals stay unavailable",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "oxreplay_third_pass_table_intake",
+        owner_repo: "OxReplay",
+        status: TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable,
+        retained_artifacts_or_beads: &[
+            "oxreplay-qb9",
+            "../OxReplay/docs/test-corpus/bundles/host_rollout_w056_table_third_pass_001/",
+            "../OxReplay/docs/test-runs/w007-w056-table-third-pass-intake-baseline/",
+        ],
+        view_families: &[
+            "validate_bundle",
+            "replay",
+            "diff",
+            "explain",
+            "table_slice",
+            "comparison_value",
+            "effective_display_text",
+            "execution_outcome",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "retained_artifact_ref",
+        ],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: None,
+        closure_role: "retained validation/replay/diff/explain intake over declared DnaTreeCalc and OxXlPlay table payloads",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "oxreplay_matched_treecalc_excel_table_views",
+        owner_repo: "OxReplay",
+        status: TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable,
+        retained_artifacts_or_beads: &[
+            "oxreplay-p1w.3",
+            "../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/",
+            "../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/",
+        ],
+        view_families: &[
+            "comparison_value",
+            "effective_display_text",
+            "execution_outcome",
+            "table_slice",
+            "table_update_oracle",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "retained_artifact_ref",
+        ],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: None,
+        closure_role: "matched TreeCalc/Excel replay mechanics over declared normalized payloads; no semantic inference from formulas or Excel internals",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "comparison_value_helper_replacement",
+        owner_repo: "OxFunc/OxReplay",
+        status: TreeCalcTableReplayEvidenceStatus::BlockedUpstream,
+        retained_artifacts_or_beads: &["BLK-REPLAY-003"],
+        view_families: &["comparison_value"],
+        value_wire_field: Some("comparison_value"),
+        blocker_id: Some("BLK-REPLAY-003"),
+        closure_role: "future shared OxFunc-owned replay value helper replacement; current local comparator is not TreeCalc table semantics",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "excel_dependency_dirty_event_order_internals",
+        owner_repo: "OxXlPlay/OxReplay/OxCalc",
+        status: TreeCalcTableReplayEvidenceStatus::TypedUnavailable,
+        retained_artifacts_or_beads: &[
+            "../OxXlPlay/states/excel/xlplay_table_update_oracle_001/bridge.json",
+            "../OxXlPlay/states/excel/xlplay_table_update_oracle_001/views/table-update-oracle.json",
+        ],
+        view_families: &["dependency_evidence", "invalidation_evidence"],
+        value_wire_field: None,
+        blocker_id: None,
+        closure_role: "Excel COM does not expose dependency graph, dirty-set, or event-order internals; OxCalc facts remain host-owned and are not inferred from Excel",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "legacy_outcome_class_projection_gap",
+        owner_repo: "OxXlPlay/OxReplay",
+        status: TreeCalcTableReplayEvidenceStatus::TypedProjectionGap,
+        retained_artifacts_or_beads: &[
+            "../OxXlPlay/states/excel/xlplay_structured_reference_workbook_001/",
+            "../OxXlPlay/states/excel/xlplay_workbook_construction_spec_001/",
+            "../OxXlPlay/states/excel/xlplay_table_construction_basic_001/",
+            "../OxXlPlay/states/excel/xlplay_table_update_oracle_001/",
+        ],
+        view_families: &["execution_outcome"],
+        value_wire_field: None,
+        blocker_id: None,
+        closure_role: "older retained Excel table artifacts may lack execution_outcome.class_id; table_update_oracle carries class_id and the gap is projection metadata, not table semantics",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+    TreeCalcTableReplayEvidenceLane {
+        lane_id: "namespace_anchor_workspace_cross_producer_pairing",
+        owner_repo: "DnaTreeCalc/OxXlPlay/OxReplay",
+        status: TreeCalcTableReplayEvidenceStatus::TypedProjectionGap,
+        retained_artifacts_or_beads: &[
+            "../DnaTreeCalc/docs/test-runs/w056-table-dynamic-cross-workspace-001/",
+            "../OxReplay/docs/test-corpus/bundles/host_rollout_w056_table_third_pass_001/",
+            "../OxReplay/docs/test-runs/w007-w056-table-third-pass-intake-baseline/",
+        ],
+        view_families: &[
+            "dynamic_table_rebind",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "retained_artifact_ref",
+        ],
+        value_wire_field: None,
+        blocker_id: None,
+        closure_role: "dynamic/cross-workspace table evidence exists, but full namespace/anchor/workspace cross-producer pairing remains a final-audit projection gap",
+        producer_private_string_parsing_allowed: false,
+        excel_internal_inference_allowed: false,
+    },
+];
+
+#[must_use]
+pub fn treecalc_table_replay_evidence_lane(
+    lane_id: &str,
+) -> Option<&'static TreeCalcTableReplayEvidenceLane> {
+    TREECALC_TABLE_REPLAY_EVIDENCE_LANES
+        .iter()
+        .find(|lane| lane.lane_id == lane_id)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct TreeCalcTableSparseSlot {
     coord: SparseCellCoord,
@@ -9569,6 +9804,134 @@ mod tests {
         assert!(call.required_context.contains(
             &TreeCalcStructuredTableFunctionContextRequirement::ExternalNativeInvocationPolicy
         ));
+    }
+
+    #[test]
+    fn table_replay_evidence_inventory_converges_oracle_and_value_wire_lanes() {
+        let mut lane_ids = BTreeSet::new();
+        let mut view_families = BTreeSet::new();
+        for lane in TREECALC_TABLE_REPLAY_EVIDENCE_LANES {
+            assert!(
+                lane_ids.insert(lane.lane_id),
+                "duplicate lane {}",
+                lane.lane_id
+            );
+            assert!(
+                !lane.retained_artifacts_or_beads.is_empty(),
+                "{} must cite retained artifacts, beads, or exact blockers",
+                lane.lane_id
+            );
+            assert!(
+                !lane.view_families.is_empty(),
+                "{} must name replay/comparison view families",
+                lane.lane_id
+            );
+            assert!(
+                !lane.producer_private_string_parsing_allowed,
+                "{} would allow private producer formula parsing",
+                lane.lane_id
+            );
+            assert!(
+                !lane.excel_internal_inference_allowed,
+                "{} would allow Excel-internal dependency inference",
+                lane.lane_id
+            );
+            view_families.extend(lane.view_families.iter().copied());
+        }
+
+        for required_lane in [
+            "dnatreecalc_retained_table_producer_views",
+            "oxcalc_runtime_packet_and_identity_facts",
+            "oxxlplay_excel_listobject_oracle_views",
+            "oxreplay_third_pass_table_intake",
+            "oxreplay_matched_treecalc_excel_table_views",
+            "comparison_value_helper_replacement",
+            "excel_dependency_dirty_event_order_internals",
+            "legacy_outcome_class_projection_gap",
+            "namespace_anchor_workspace_cross_producer_pairing",
+        ] {
+            assert!(
+                lane_ids.contains(required_lane),
+                "missing lane {required_lane}"
+            );
+        }
+
+        for required_family in [
+            "table_slice",
+            "per_node_value",
+            "comparison_value",
+            "effective_display_text",
+            "execution_outcome",
+            "table_update_oracle",
+            "dependency_evidence",
+            "invalidation_evidence",
+            "retained_artifact_ref",
+            "source_preservation",
+            "prepared_identity",
+            "dynamic_table_rebind",
+            "registry_snapshot_identity",
+        ] {
+            assert!(
+                view_families.contains(required_family),
+                "missing replay/view family {required_family}"
+            );
+        }
+
+        let matched =
+            treecalc_table_replay_evidence_lane("oxreplay_matched_treecalc_excel_table_views")
+                .expect("matched TreeCalc/Excel lane should exist");
+        assert_eq!(
+            matched.status,
+            TreeCalcTableReplayEvidenceStatus::RetainedEvidenceAvailable
+        );
+        assert_eq!(matched.value_wire_field, Some("comparison_value"));
+        assert!(
+            matched
+                .retained_artifacts_or_beads
+                .iter()
+                .any(|artifact| artifact.contains("host_rollout_matched_table_001"))
+        );
+
+        let value_wire_blocker =
+            treecalc_table_replay_evidence_lane("comparison_value_helper_replacement")
+                .expect("value-wire blocker lane should exist");
+        assert_eq!(
+            value_wire_blocker.status,
+            TreeCalcTableReplayEvidenceStatus::BlockedUpstream
+        );
+        assert_eq!(value_wire_blocker.blocker_id, Some("BLK-REPLAY-003"));
+        assert_eq!(
+            value_wire_blocker.value_wire_field,
+            Some("comparison_value")
+        );
+
+        let excel_internals =
+            treecalc_table_replay_evidence_lane("excel_dependency_dirty_event_order_internals")
+                .expect("Excel internals typed-unavailable lane should exist");
+        assert_eq!(
+            excel_internals.status,
+            TreeCalcTableReplayEvidenceStatus::TypedUnavailable
+        );
+        assert!(
+            excel_internals
+                .view_families
+                .contains(&"dependency_evidence")
+        );
+        assert!(
+            excel_internals
+                .closure_role
+                .contains("not inferred from Excel")
+        );
+
+        let namespace_pairing = treecalc_table_replay_evidence_lane(
+            "namespace_anchor_workspace_cross_producer_pairing",
+        )
+        .expect("namespace/anchor/workspace projection gap should exist");
+        assert_eq!(
+            namespace_pairing.status,
+            TreeCalcTableReplayEvidenceStatus::TypedProjectionGap
+        );
+        assert!(namespace_pairing.blocker_id.is_none());
     }
 
     #[test]

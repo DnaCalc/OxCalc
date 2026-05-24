@@ -2268,6 +2268,104 @@ desired carrier or returns a typed rejection. The W056 table lane can proceed
 because first aggregate behavior, registry/capability invalidation inputs, and
 the non-shim UDF boundary are now explicit.
 
+## 4B.21. `calc-4vs8.61` Oracle Replay And Value-Wire Convergence Gate
+
+Product status:
+
+OxCalc now has an executable W056 node-table replay/oracle convergence
+inventory. It ties the table runtime facts in OxCalc to retained DnaTreeCalc
+producer artifacts, OxXlPlay Excel ListObject observations, and OxReplay
+validate/replay/diff/explain evidence without moving comparison policy into
+OxCalc and without allowing private formula-string parsing or Excel-internal
+dependency inference.
+
+Executable evidence:
+
+1. New Rust inventory
+   `TREECALC_TABLE_REPLAY_EVIDENCE_LANES` in
+   `src/oxcalc-core/src/structured_table.rs` records the retained evidence
+   lanes, owner repo, artifacts/beads, replay view families, value-wire field,
+   blockers, typed projection gaps, and non-inference rules.
+2. New focused test
+   `table_replay_evidence_inventory_converges_oracle_and_value_wire_lanes`
+   asserts that all required lanes are present and that no lane allows
+   producer-private structured-reference/formula parsing or Excel-internal
+   dependency inference.
+3. The required lane set covers DnaTreeCalc table producer views, OxCalc
+   runtime packet and prepared-identity facts, OxXlPlay Excel ListObject
+   oracle views, OxReplay third-pass intake, OxReplay matched TreeCalc/Excel
+   comparison, the `comparison_value` helper replacement blocker,
+   Excel dependency/dirty/event-order typed unavailability, legacy
+   `execution_outcome.class_id` projection gaps, and namespace/anchor/workspace
+   cross-producer pairing gaps.
+4. The required view-family set covers `table_slice`, `per_node_value`,
+   `comparison_value`, `effective_display_text`, `execution_outcome`,
+   `table_update_oracle`, `dependency_evidence`, `invalidation_evidence`,
+   `retained_artifact_ref`, `source_preservation`, `prepared_identity`,
+   `dynamic_table_rebind`, and `registry_snapshot_identity`.
+
+Consumed evidence:
+
+1. DnaTreeCalc retained table producer artifacts:
+   `../DnaTreeCalc/docs/test-runs/w056-table-structured-references-001/`,
+   `../DnaTreeCalc/docs/test-runs/w056-table-empty-body-001/`,
+   `../DnaTreeCalc/docs/test-runs/w056-table-lifecycle-001/`, and
+   `../DnaTreeCalc/docs/test-runs/w056-table-dynamic-cross-workspace-001/`.
+2. OxCalc executable table runtime evidence from `calc-4vs8.58`,
+   `calc-4vs8.59`, and `calc-4vs8.60`: source preservation, prepared identity,
+   dependency/invalidation, lifecycle update, dynamic rebind, sparse
+   reference binding, and registry/capability identity.
+3. OxXlPlay retained Excel observation artifacts:
+   `../OxXlPlay/states/excel/xlplay_workbook_construction_spec_001/`,
+   `../OxXlPlay/states/excel/xlplay_table_construction_basic_001/`, and
+   `../OxXlPlay/states/excel/xlplay_table_update_oracle_001/`.
+4. OxReplay retained comparison artifacts:
+   `../OxReplay/docs/test-corpus/bundles/host_rollout_w056_table_third_pass_001/`,
+   `../OxReplay/docs/test-runs/w007-w056-table-third-pass-intake-baseline/`,
+   `../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/`,
+   and
+   `../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.
+
+Convergence result:
+
+The table evidence path is now explicit:
+
+1. DnaTreeCalc publishes declared table-node producer views through the real
+   bridge.
+2. OxCalc publishes runtime packet, source, dependency, invalidation,
+   lifecycle, dynamic rebind, prepared identity, and registry/capability facts.
+3. OxXlPlay observes the nearest Excel ListObject behavior as black-box
+   workbook/table evidence.
+4. OxReplay validates, replays, diffs, and explains declared retained payloads.
+
+The convergence inventory treats `comparison_value` as the shared value-wire
+field for comparable outputs, but keeps `BLK-REPLAY-003` active for replacing
+OxReplay's local comparator seam with an OxFunc-owned replay helper. That
+blocker is not TreeCalc table semantics and is not an excuse to add an
+OxCalc-local value adapter.
+
+Typed gaps:
+
+1. Excel dependency graph, dirty-set, and invalidation event-order internals
+   remain typed unavailable. OxCalc may compare before/after observable outputs
+   and declared table-update oracle payloads, but it must not infer Excel's
+   internal dependency graph.
+2. Older OxXlPlay structured/workbook/table-construction retained artifacts may
+   lack `execution_outcome.class_id`; `xlplay_table_update_oracle_001` carries
+   that class id. This is projection metadata, not a table semantic gap.
+3. Dynamic/cross-workspace namespace, anchor, and workspace evidence exists,
+   but full cross-producer namespace/anchor/workspace pairing remains a final
+   audit projection gap for `calc-4vs8.63`.
+
+Ownership result:
+
+No replay/oracle lane introduced a private bridge, a producer-private formula
+parser, a TreeCalc-specific OxFml/OxFunc branch, dense/eager table
+materialization, or Excel-internal inference. OxCalc keeps only the typed
+runtime and invalidation facts it owns; OxReplay keeps comparison governance;
+OxXlPlay keeps Excel observation; DnaTreeCalc keeps product table producer
+artifacts.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

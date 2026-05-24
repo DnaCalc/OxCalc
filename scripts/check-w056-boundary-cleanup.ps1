@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $pattern = "OxCalcTreeEnvironment|OxCalcTreeDocument|OxCalcTreeRecalcRequest|OxCalcTreeRecalcResult|OxCalcTreeRuntimeFacade|LiveOxCalcTreeBridge|OxCalcTreeBridge|TreeRecalcRequest|TreeRecalcResult|PreparedFormulaCatalog|PreparedFormulaReferenceCarrier"
-$hits = & rg -n $pattern @Roots -S 2>$null
+$hits = & rg -n $pattern @Roots -S --no-messages
 
 if ($LASTEXITCODE -eq 1) {
     Write-Host "W056 boundary cleanup guard passed."

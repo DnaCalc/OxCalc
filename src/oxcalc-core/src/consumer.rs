@@ -333,6 +333,7 @@ impl OxCalcTreeContext {
             state.snapshot = outcome.snapshot;
             state.formula_text_versions.insert(node_id, version);
             state.formula_texts.insert(node_id, request.formula_text);
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.advance_node_id();
@@ -385,6 +386,7 @@ impl OxCalcTreeContext {
             state.snapshot = value.snapshot;
             state.formula_text_versions.insert(node_id, version);
             state.formula_texts.insert(node_id, formula_text);
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id_by(2);
@@ -408,6 +410,7 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = outcome.snapshot;
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -433,6 +436,7 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = outcome.snapshot;
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -475,6 +479,7 @@ impl OxCalcTreeContext {
                 }
             }
             state.snapshot = outcome.snapshot;
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -504,6 +509,7 @@ impl OxCalcTreeContext {
                 .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
             state.table_snapshots.insert(node_id, snapshot);
             state.table_state_version = next_table_state_version;
+            state.seeded_published_values.clear();
             state.last_result = None;
         }
         self.table_view(workspace_id, node_id)?
@@ -522,6 +528,7 @@ impl OxCalcTreeContext {
         let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
         state.deleted_table_facts.push(deleted);
         state.table_state_version += 1;
+        state.seeded_published_values.clear();
         state.last_result = None;
         Ok(Some(snapshot))
     }
@@ -2020,6 +2027,30 @@ mod tests {
         assert_eq!(b_view.canonical_path, "Root/B");
         assert_eq!(b_view.formula_text, "=A+1");
         assert_eq!(b_view.value_text.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn treecalc_context_formula_edit_recalculates_dependents() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:edit"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=4")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&a_id), Some(&"4".to_string()));
+        assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
     }
 
     #[test]

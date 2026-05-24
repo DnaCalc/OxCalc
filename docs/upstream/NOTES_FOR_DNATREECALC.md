@@ -114,3 +114,38 @@ DnaTreeCalc integration should:
    resolver that computes those member sets or DnaTreeCalc corpus activation.
 3. How DnaTreeCalc wants to display typed prebind diagnostics for unsupported
    selectors and structured table references.
+
+## 7. W056 Table Rollout Coordination
+
+OxCalc has filed `HANDOFF-CALC-006` for the cross-repo W056 node-associated
+table rollout.
+
+Current OxCalc floor for DnaTreeCalc table activation:
+
+1. table-node snapshots project to virtual Excel table descriptors,
+2. table catalog resolution emits stable handles, namespace versions, effective
+   table identity, virtual anchors, caller-context facts, and typed diagnostics,
+3. structured-reference packets lower into sparse `ReferenceLike` readers for
+   table, column, section, current-row, empty-body, and composite selections,
+4. lifecycle/update packets classify row/column/header/totals/value/table/node/
+   workspace/registry mutations into OxCalc-owned dependency and invalidation
+   facts,
+5. dynamic table rebind packets classify table, column, section, current-row,
+   cross-workspace, renamed/moved/deleted, unavailable, unsupported runtime
+   parse, and non-table dynamic selector cases.
+
+DnaTreeCalc should add or extend local W004/W056 beads so the remaining product
+activation covers:
+
+1. dynamic table `INDIRECT` and selector-driven table references,
+2. cross-workspace table references and unavailable workspace diagnostics,
+3. renamed/moved/deleted table targets and same-table selector changes,
+4. empty-body retained artifacts and first-row/last-row transitions,
+5. lifecycle callback retained artifacts,
+6. full namespace/anchor/workspace table pairing for OxReplay intake.
+
+The integration rule remains unchanged: DnaTreeCalc supplies product table
+state and host-owned resolution facts through public OxCalc packets. It should
+not parse TreeCalc formula text, reconstruct private source-span keys, mirror
+OxCalc dependency/invalidation classification, or materialize eager table
+values as closure evidence.

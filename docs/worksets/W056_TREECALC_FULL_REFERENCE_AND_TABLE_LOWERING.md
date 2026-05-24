@@ -1288,6 +1288,49 @@ Still open:
    typed-host-context lane; this bead closes the OxCalc dynamic table rebind
    contract and typed exclusion surface.
 
+## 4B.11. `calc-4vs8.55` Cross-Repo Table Rollout Coordination
+
+Product status:
+
+`HANDOFF-CALC-006` now records the W056 table rollout map for the affected
+repos. It is a coordination packet, not behavior evidence. The packet names the
+repo-local counterpart beads already observed, the exact residual beads or
+extensions still required, and the promotion gates that prevent downstream
+repos from inventing private adapters.
+
+Counterpart map:
+
+| Repo | Existing anchor | Required next table work |
+|---|---|---|
+| `DnaTreeCalc` | `dtc-z0i.5` plus `dtc-z0i.5.1` through `.5.6`; `dtc-z0i.7` for broader dynamic/cross-workspace activation | Add or extend W004/W056 beads for dynamic table `INDIRECT`, cross-workspace table references, unavailable/deleted table targets, empty-body retained artifacts, lifecycle callback retained artifacts, and full namespace/anchor/workspace table pairing through `LiveOxCalcTreeBridge` only. |
+| `OxXlPlay` | `oxxlplay-4nd` plus `.1` through `.5` observation packs | Add a successor only where W056 needs Excel black-box evidence for structured-table `INDIRECT` or dynamic structured-reference forms; keep dependency/invalidation internals typed unavailable. |
+| `OxReplay` | `oxreplay-p1w` family and in-progress `oxreplay-qb9` | Keep retained comparison open for empty-body transitions, lifecycle callback artifacts, full namespace/anchor/workspace pairing, dynamic table cases, and any paired Excel observations; compare declared payloads only. |
+| `OxFml` | `fml-ds0.12`, `.13`, `.14`, `.15`; broader `fml-ds0.6.4` | Preserve generic structured-reference and dynamic/host packets; do not parse TreeCalc dynamic selector strings; keep non-table name/call freeze blocked on W074 evidence. |
+| `OxFunc` | `oxf-fcdz`; `oxf-ypq2.13` through `.16`; open `oxf-ypq2.12` | Preserve opaque `ReferenceLike` behavior; finish W093 registry-backed formula-call lookup before UDF invalidation is frozen for table formulas. |
+| `DnaOneCalc` | no W056 table-specific bead required | Preserve no-host single-formula execution and OxFml-internal LET/LAMBDA lexical references; future VBA/XLL UDFs go through registry surfaces. |
+| `OxVba` | no W056 table-specific bead required | Feed VBA/XLL discovery metadata into OxFunc W093 descriptors without TreeCalc table-selector semantics. |
+| `OxIde` / `DnaOxIde` / `DnaVisiCalc` / `Foundation` | impact-scan only | No W056 table-rollout bead is required unless a future UI, doctrine, replay-pack, or shared-interface dependency is discovered. |
+
+Promotion gates:
+
+1. no W056 table product closure until DnaTreeCalc has active corpus and
+   retained artifacts for the admitted full table scope or typed exclusions,
+2. no Excel-comparable closure until OxXlPlay has retained observations or
+   typed capture limits for the comparable table lanes,
+3. no retained-evidence closure until OxReplay validates/replays/diffs/explains
+   declared payloads without parsing producer-private strings,
+4. no name/call freeze until W074 non-table oracle evidence lands,
+5. no UDF invalidation freeze until W093 registry snapshot/change-set and
+   formula-call lookup are stable,
+6. no DnaOneCalc regression: ordinary single-formula use requires no host table
+   namespace or host-reference resolver.
+
+Still open:
+
+This coordination bead does not close the dependent execution beads:
+`calc-4vs8.51`, `calc-4vs8.52`, `calc-4vs8.53`, `calc-4vs8.54`, or final audit
+`calc-4vs8.43`.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

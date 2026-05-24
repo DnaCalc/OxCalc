@@ -2936,16 +2936,16 @@ pub fn tree_reference_implementation_inputs() -> Vec<TreeReferenceImplementation
         },
         TreeReferenceImplementationInput {
             variant: Variant::BareNameOrCallableReference,
-            status: Status::TypedExclusion,
-            blocker: Some(Blocker::NeedsOxFmlNameCallPrecedenceEvidence),
+            status: Status::AdmittedImplementationInput,
+            blocker: None,
             carrier_class: Some(TreeReferenceCarrierClass::FormulaReference),
             host_reference_correlation: Correlation::SourceTokenToFormalReference,
             namespace_identity_need: Namespace::HostNamespaceVersion,
             caller_context_identity_need: Caller::CallerNode,
             dependency_facts: vec![Dep::Unresolved],
             invalidation_facts: vec![Invalidates::StructuralRebindRequired],
-            successor_bead: None,
-            evidence_note: "bare names and callables stay gated on OxFml W074-CALC005 precedence evidence",
+            successor_bead: Some("calc-4vs8.32"),
+            evidence_note: "calc-4vs8.32 consumes the closed OxFml W074 handoff: host values map to the defined-name lane and lambda-valued host nodes map to the defined-name-LAMBDA lane without an OxCalc precedence mirror",
         },
     ]
 }
@@ -2957,6 +2957,376 @@ pub fn tree_reference_implementation_input(
     tree_reference_implementation_inputs()
         .into_iter()
         .find(|input| input.variant == variant)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum W056NonTableReferenceEvidenceStatus {
+    ProductGreen,
+    ActiveBridgeSliceGreen,
+    OxCalcImplementedBridgePending,
+    CorpusAuthoredRunnerPending,
+    RetainedReplayPending,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct W056NonTableReferenceCategory {
+    pub category_id: &'static str,
+    pub reference_family: &'static str,
+    pub examples: &'static [&'static str],
+    pub spec_anchor: &'static str,
+    pub expected_outcome_contract: &'static str,
+    pub corpus_or_suite: &'static [&'static str],
+    pub runnable_suite_command: &'static str,
+    pub oxcalc_status: &'static str,
+    pub dnatreecalc_status: &'static str,
+    pub replay_status: &'static str,
+    pub current_test_result: &'static str,
+    pub evidence_status: W056NonTableReferenceEvidenceStatus,
+    pub specification_is_sufficient_for_cases: bool,
+    pub blocks_w056_non_table_closure: bool,
+}
+
+pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] = &[
+    W056NonTableReferenceCategory {
+        category_id: "children_collection",
+        reference_family: "children collection references",
+        examples: &["@CHILDREN", ".*", "base.@CHILDREN", "base.*"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5/§3.5b/§3.7; OxCalc W051/W056 ChildrenV1",
+        expected_outcome_contract: "ordered regular children only, meta children excluded, stable membership/order dependency facts, sparse ReferenceLike values",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/children-raw-active.json",
+            "oxcalc-core treecalc::children_collection_sum_uses_generic_host_context_and_sparse_reference_values",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_children_corpus -- --nocapture",
+        oxcalc_status: "implemented and green as ChildrenV1",
+        dnatreecalc_status: "active bridge slice",
+        replay_status: "no retained non-table replay requirement yet",
+        current_test_result: "green in prior DnaTreeCalc active runner and OxCalc W051 tests",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ProductGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: false,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "walkup_dotted_descent",
+        reference_family: "bare walk-up and dotted descent",
+        examples: &["Margin", "Q1.Margin", "A.B.C"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.2/§3.7; references/walkup",
+        expected_outcome_contract: "nearest lexical scope wins, then dotted child descent from the resolved base; unresolved names emit typed diagnostics",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/walkup.json",
+            "src/dnatreecalc-host/tests/active_walkup_corpus.rs",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge -- --nocapture",
+        oxcalc_status: "RelativePath carriers and dependency lowering exist",
+        dnatreecalc_status: "active typed-carrier bridge slice; raw formula text for =A+3-style walk-up remains pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "green active walk-up runner; product closure still partial",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "ancestor_root_anchors",
+        reference_family: "ancestor and root/current-workspace anchors",
+        examples: &["^.Rate", "^^.Year", "[]Sheet1.Margin", "[]"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.1/§3.2/§3.7; references/anchors",
+        expected_outcome_contract: "fixed-depth ancestor navigation or workspace-root absolute lookup with #REF!/unresolved diagnostics on invalid use",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/anchors.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "ancestor RelativePath carriers exist; full raw anchor bridge activation pending",
+        dnatreecalc_status: "corpus authored, pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active bridge runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "workspace_alias_bang_syntax",
+        reference_family: "workspace selectors, aliases, and first-position !",
+        examples: &[
+            "[projections]Branch1.MyNode",
+            "Sheet1!Foo",
+            "[ws][Branch X].MyNode",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.1/§3.3; calc-4vs8.30",
+        expected_outcome_contract: "alias-first workspace resolution, first-position ! as sheet separator only, unavailable workspace diagnostics and availability-version identity",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/cross-workspace.json",
+            "oxcalc-core formula::workspace_host_path_base_resolver_uses_aliases_availability_and_rooted_paths",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture",
+        oxcalc_status: "provider/alias packet and workspace-qualified carrier implemented",
+        dnatreecalc_status: "active typed cross-workspace bridge slice",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "active runner command available; retained evidence still open",
+        evidence_status: W056NonTableReferenceEvidenceStatus::RetainedReplayPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "escaping_canonicalization_case",
+        reference_family: "bracket escaping, case-insensitive lookup, canonical display paths",
+        examples: &["[Sales Q1].Margin", "[][Sales Q1].Margin", "sales.margin"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.3/§3.4; references/escaping",
+        expected_outcome_contract: "escaped segments preserve literal names, lookup is case-insensitive, output reports canonical display paths and ambiguity diagnostics",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/escaping.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "structural path base resolver covers bracketed path segments for admitted selector bases",
+        dnatreecalc_status: "corpus authored, pending raw bridge runner",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active bridge runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "meta_invisibility_accessors",
+        reference_family: "meta-node invisibility and @ accessors",
+        examples: &[
+            "@NAME",
+            "ref.@INDEX",
+            "ref.@PARENT",
+            "hidden meta child lookup",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §2/§3.5/§6 item 9; references/meta-nodes",
+        expected_outcome_contract: "meta-effective subtrees are invisible to formula resolution and positional operators; accessors return typed metadata or #REF!",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/meta-nodes.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "requires full metadata-aware structural snapshot activation",
+        dnatreecalc_status: "corpus authored, pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active bridge runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "sibling_single_navigation",
+        reference_family: "single sibling navigation",
+        examples: &["@PREV.Net", "@NEXT.Margin", "ref.@PREV"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5/§3.5b/§3.7; references/sibling-offsets",
+        expected_outcome_contract: "previous/next regular sibling lookup by sibling order with meta nodes skipped and #REF! on out-of-range",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/sibling-offsets.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "SiblingOffset carrier and dependency lowering exist",
+        dnatreecalc_status: "corpus authored, pending bridge activation",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active bridge runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::OxCalcImplementedBridgePending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "ordered_set_selectors",
+        reference_family: "ordered sibling and ancestor set selectors",
+        examples: &["@PRECEDING", "@FOLLOWING", "@ANCESTORS"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5/§3.5b/§3.7; references/ordered-raw-active and references/set-membership",
+        expected_outcome_contract: "ordered reference collections preserve defined traversal order, exclude meta-effective nodes, and carry membership/order/member-value dependency facts",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/ordered-raw-active.json",
+            "../DnaTreeCalc/docs/test-corpus/references/set-membership.json",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_ordered_corpus -- --nocapture",
+        oxcalc_status: "resolved ordered selector carriers, traversal resolver, and bounds implemented",
+        dnatreecalc_status: "active ordered raw slice; broad set-membership corpus pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "green active ordered slice in prior checks; full family pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "recursive_descent",
+        reference_family: "recursive descent",
+        examples: &["**.Margin", "Base.**.Margin"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5b/§3.6/§3.7; references/ordered-raw-active",
+        expected_outcome_contract: "stable depth-first preorder descendant traversal, optional tail filtering, traversal-bound diagnostics, and membership/order facts",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/ordered-raw-active.json",
+            "oxcalc-core formula::ordered_selector_traversal_resolver_projects_structural_membership",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_ordered_corpus -- --nocapture",
+        oxcalc_status: "recursive ordered selector carrier and traversal-bound resolver implemented",
+        dnatreecalc_status: "active focused recursive slice; broader set-membership corpus pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "green active slice in prior checks; full family pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "reference_literals_arrays",
+        reference_family: "reference literals and reference arrays",
+        examples: &["{A, C, A}", "{A, 1}", "array-valued node reference"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5b/§6 item 4; references/literals, references/literals-active, arrays/array-references",
+        expected_outcome_contract: "reference-only literals preserve authored order and duplicates; mixed scalar/reference arrays are typed rejections until a generic mixing contract exists",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/literals-active.json",
+            "../DnaTreeCalc/docs/test-corpus/references/literals.json",
+            "../DnaTreeCalc/docs/test-corpus/arrays/array-references.json",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_reference_literal_array_corpus_executes_through_live_oxcalc_bridge -- --nocapture",
+        oxcalc_status: "ReferenceLiteralArrayV1 implemented; mixed arrays typed excluded",
+        dnatreecalc_status: "active prepared-carrier slice; broad raw literal and array references pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "active literal slice green in prior checks; broad raw suite pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "dynamic_indirect_ctro",
+        reference_family: "dynamic INDIRECT and CTRO references",
+        examples: &[
+            "INDIRECT(\"Sheet1!Foo\")",
+            "INDIRECT(selector_node)",
+            "dynamic target switch",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §4/§6 item 7/§10.3; dynamic-references/indirect",
+        expected_outcome_contract: "runtime string/path resolution activates, releases, or rejects dynamic dependency facts atomically with prepared identity and diagnostics",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/dynamic-references/indirect.json",
+            "oxcalc-core treecalc dynamic dependency tests",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_dynamic_indirect_corpus_executes_through_oxcalc_dynamic_carriers -- --nocapture",
+        oxcalc_status: "DynamicPotential and DynamicResolved carriers/facts implemented",
+        dnatreecalc_status: "active typed dynamic carrier slice; raw INDIRECT parse breadth pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "active dynamic runner passed in the calc-4vs8.64 pass; retained evidence still open",
+        evidence_status: W056NonTableReferenceEvidenceStatus::RetainedReplayPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "cross_workspace_runtime",
+        reference_family: "cross-workspace runtime references",
+        examples: &[
+            "[accounts]Revenue",
+            "[Other.xlsx]Sheet1!Foo",
+            "[projections]Branch1.MyNode",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.3/§10.4; references/cross-workspace; calc-8tox",
+        expected_outcome_contract: "loaded external workspaces resolve live-latest through opaque workspace-qualified handles; unavailable workspaces fail without stale values",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/cross-workspace.json",
+            "oxcalc-core workspace_qualified_runtime_binding_does_not_read_local_node_id_collision",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture",
+        oxcalc_status: "workspace-qualified carriers, reverse edges, and prepared identity implemented",
+        dnatreecalc_status: "active typed cross-workspace slice",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "active cross-workspace runner passed in the calc-4vs8.64 pass; retained evidence still open",
+        evidence_status: W056NonTableReferenceEvidenceStatus::RetainedReplayPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "bare_host_names_defined_name_lane",
+        reference_family: "bare host names through the defined-name lane",
+        examples: &["=Revenue", "=Margin + 1", "=My.Region.Sales"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.2/§3.9; OxFml W074 handoff consumed by calc-4vs8.32",
+        expected_outcome_contract: "TreeCalc host values map to the Excel defined-name value lane with source span/token, namespace version, caller context, diagnostics, and replay identity",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/walkup.json",
+            "OxFml fml-ds0.6.3/fml-ds0.6.5 runtime host-name tests",
+        ],
+        runnable_suite_command: "cargo test -p oxcalc-core w056_inventory_names_admitted_reference_inputs_and_typed_exclusions -- --nocapture",
+        oxcalc_status: "W074 handoff consumed; no OxCalc private precedence mirror",
+        dnatreecalc_status: "raw formula host-name bridge activation pending beyond typed walk-up carriers",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "OxFml/OxCalc intake green; DnaTreeCalc raw runner pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::OxCalcImplementedBridgePending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "node_as_function_lambda",
+        reference_family: "node-as-function and lambda-valued host nodes",
+        examples: &["Doubler(5)", "My.Node(1, 2)", "^.Rate(x)"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.8/§3.9; references/node-functions",
+        expected_outcome_contract: "single-reference lambda-valued nodes are callable through the defined-name-LAMBDA lane; set-valued callees reject",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/node-functions.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "current mapping admitted by calc-4vs8.32; runtime product activation pending",
+        dnatreecalc_status: "corpus authored; dtc-z0i.8 in progress",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active lambda-node runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "profile_gating",
+        reference_family: "TreeCalc capability profile gating",
+        examples: &[
+            "treecalc-v1 accepts @ANCESTORS",
+            "strict-excel rejects .*/^/[ws]",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §4; profiles/gating",
+        expected_outcome_contract: "TreeCalc-only syntax is admitted only under host-capabilities:treecalc-v1 and rejected under host-capabilities:strict-excel",
+        corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/profiles/gating.json"],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "capability-profile identity participates in prepared identity; full parser gate is OxFml/OxCalc integration work",
+        dnatreecalc_status: "corpus authored, pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active bridge runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "structural_edit_rebind",
+        reference_family: "structural edit rebind and propagation",
+        examples: &[
+            "rename target",
+            "move target",
+            "delete target",
+            "reorder siblings",
+        ],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §8a; structural-edits/propagation; OxCalc structural invalidation tests",
+        expected_outcome_contract: "edits classify as value-only recalculation, rebind-required, unresolved, or propagation prompt with replay-visible invalidation facts",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/structural-edits/propagation.json",
+            "oxcalc-core structural_invalidation_seeds_mark_relative_reference_rebind_after_rename",
+        ],
+        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        oxcalc_status: "structural rebind facts implemented for current carriers",
+        dnatreecalc_status: "corpus authored, pending propagation runner",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "validator green; no active structural-edit corpus runner",
+        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+    W056NonTableReferenceCategory {
+        category_id: "unresolved_diagnostics_self_reference",
+        reference_family: "unresolved, invalid, and self-reference diagnostics",
+        examples: &["MissingName", "[]", "self reference through walk-up"],
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.2/§3.5b/§7; references/walkup and references/syntax",
+        expected_outcome_contract: "unresolved references do not silently bind; invalid naked navigation and self-reference produce typed diagnostics/cycle outcomes",
+        corpus_or_suite: &[
+            "../DnaTreeCalc/docs/test-corpus/references/walkup.json",
+            "../DnaTreeCalc/docs/test-corpus/references/syntax.json",
+        ],
+        runnable_suite_command: "cargo test -p dnatreecalc-host active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge -- --nocapture",
+        oxcalc_status: "unresolved descriptors and cycle diagnostics exist",
+        dnatreecalc_status: "walk-up active slice covers unresolved/self-reference; broader syntax pending",
+        replay_status: "retained non-table replay missing",
+        current_test_result: "green active walk-up diagnostics; broad syntax runner pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        specification_is_sufficient_for_cases: true,
+        blocks_w056_non_table_closure: true,
+    },
+];
+
+#[must_use]
+pub fn w056_non_table_reference_category(
+    category_id: &str,
+) -> Option<&'static W056NonTableReferenceCategory> {
+    W056_NON_TABLE_REFERENCE_CATEGORIES
+        .iter()
+        .find(|category| category.category_id == category_id)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -4923,10 +5293,13 @@ mod tests {
             TreeReferenceInventoryVariant::BareNameOrCallableReference,
         )
         .expect("bare name inventory");
+        assert_eq!(bare_name.blocker, None);
         assert_eq!(
-            bare_name.blocker,
-            Some(TreeReferenceInventoryBlocker::NeedsOxFmlNameCallPrecedenceEvidence)
+            bare_name.status,
+            TreeReferenceInventoryStatus::AdmittedImplementationInput
         );
+        assert_eq!(bare_name.successor_bead, Some("calc-4vs8.32"));
+        assert!(bare_name.evidence_note.contains("W074 handoff"));
 
         let mixed_array =
             tree_reference_implementation_input(TreeReferenceInventoryVariant::MixedReferenceArray)
@@ -4934,6 +5307,127 @@ mod tests {
         assert_eq!(
             mixed_array.blocker,
             Some(TreeReferenceInventoryBlocker::NeedsReferenceOnlyArrayCarrier)
+        );
+    }
+
+    #[test]
+    fn w056_non_table_reference_category_matrix_is_complete_and_runnable() {
+        let mut category_ids = BTreeSet::new();
+        let mut statuses = BTreeSet::new();
+        for category in W056_NON_TABLE_REFERENCE_CATEGORIES {
+            assert!(
+                category_ids.insert(category.category_id),
+                "duplicate category {}",
+                category.category_id
+            );
+            statuses.insert(category.evidence_status);
+            assert!(
+                !category.reference_family.is_empty()
+                    && !category.examples.is_empty()
+                    && !category.spec_anchor.is_empty()
+                    && !category.expected_outcome_contract.is_empty(),
+                "{} needs enough descriptive detail for expected-outcome tests",
+                category.category_id
+            );
+            assert!(
+                category.specification_is_sufficient_for_cases,
+                "{} is not yet specified well enough to write cases",
+                category.category_id
+            );
+            assert!(
+                !category.corpus_or_suite.is_empty() && !category.runnable_suite_command.is_empty(),
+                "{} needs a runnable corpus or test-suite command",
+                category.category_id
+            );
+            assert!(
+                !category.oxcalc_status.is_empty()
+                    && !category.dnatreecalc_status.is_empty()
+                    && !category.replay_status.is_empty()
+                    && !category.current_test_result.is_empty(),
+                "{} needs current cross-repo status and test-result text",
+                category.category_id
+            );
+        }
+
+        for required in [
+            "children_collection",
+            "walkup_dotted_descent",
+            "ancestor_root_anchors",
+            "workspace_alias_bang_syntax",
+            "escaping_canonicalization_case",
+            "meta_invisibility_accessors",
+            "sibling_single_navigation",
+            "ordered_set_selectors",
+            "recursive_descent",
+            "reference_literals_arrays",
+            "dynamic_indirect_ctro",
+            "cross_workspace_runtime",
+            "bare_host_names_defined_name_lane",
+            "node_as_function_lambda",
+            "profile_gating",
+            "structural_edit_rebind",
+            "unresolved_diagnostics_self_reference",
+        ] {
+            assert!(
+                category_ids.contains(required),
+                "missing category {required}"
+            );
+        }
+
+        for required_status in [
+            W056NonTableReferenceEvidenceStatus::ProductGreen,
+            W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+            W056NonTableReferenceEvidenceStatus::OxCalcImplementedBridgePending,
+            W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+            W056NonTableReferenceEvidenceStatus::RetainedReplayPending,
+        ] {
+            assert!(
+                statuses.contains(&required_status),
+                "missing status {required_status:?}"
+            );
+        }
+
+        let bare = w056_non_table_reference_category("bare_host_names_defined_name_lane")
+            .expect("bare host-name category");
+        assert!(bare.oxcalc_status.contains("W074 handoff consumed"));
+        assert!(bare.blocks_w056_non_table_closure);
+
+        let children =
+            w056_non_table_reference_category("children_collection").expect("children category");
+        assert_eq!(
+            children.evidence_status,
+            W056NonTableReferenceEvidenceStatus::ProductGreen
+        );
+        assert!(!children.blocks_w056_non_table_closure);
+
+        let blockers = W056_NON_TABLE_REFERENCE_CATEGORIES
+            .iter()
+            .filter(|category| category.blocks_w056_non_table_closure)
+            .count();
+        assert!(blockers > 0, "parent W056 should not be overclaimed");
+    }
+
+    #[test]
+    #[ignore = "red/green W056 full non-table closure gate; run explicitly after activating retained evidence"]
+    fn w056_non_table_reference_resolution_full_scope_red_green_gate() {
+        let blockers = W056_NON_TABLE_REFERENCE_CATEGORIES
+            .iter()
+            .filter(|category| category.blocks_w056_non_table_closure)
+            .map(|category| {
+                format!(
+                    "{} [{}]: {} / {}",
+                    category.category_id,
+                    category.reference_family,
+                    category.dnatreecalc_status,
+                    category.replay_status
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert!(
+            blockers.is_empty(),
+            "W056 non-table reference closure still has red categories:\n{}",
+            blockers.join("\n")
         );
     }
 

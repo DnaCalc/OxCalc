@@ -2576,6 +2576,90 @@ slice, second-pass table promotion, DnaTreeCalc table corpus residuals,
 OxXlPlay table update oracles, OxReplay table-update-oracle policy, or matched
 TreeCalc/Excel table replay evidence as missing packet/lowering blockers.
 
+### 4C.1. `calc-4vs8.64` Non-Table Reference Category Matrix And Red/Green Suite
+
+Product status:
+
+OxCalc now has an executable coordinator matrix for the full non-table
+TreeCalc reference-resolution surface. The matrix is not a closure claim: it
+records which categories are fully green, which have active bridge slices, and
+which still need DnaTreeCalc runner activation or retained non-table replay
+evidence. The table topic remains out of scope here because it is closed for
+the declared W056 table slice.
+
+Executable surface:
+
+1. `W056_NON_TABLE_REFERENCE_CATEGORIES` in
+   `src/oxcalc-core/src/formula.rs` records the category id, examples,
+   spec anchor, expected-outcome contract, corpus/test-suite anchors, runnable
+   command, OxCalc status, DnaTreeCalc status, replay status, and current test
+   result.
+2. `w056_non_table_reference_category_matrix_is_complete_and_runnable` is the
+   normal green inventory check. It fails if a category lacks enough
+   descriptive detail to write expected-outcome cases, lacks a runnable suite
+   command, or hides parent-W056 blockers.
+3. `w056_non_table_reference_resolution_full_scope_red_green_gate` is an
+   ignored red/green closure gate. It is intentionally runnable and currently
+   red until every category stops blocking W056 non-table closure:
+   `cargo test -p oxcalc-core w056_non_table_reference_resolution_full_scope_red_green_gate -- --ignored --nocapture`.
+
+Reference matrix:
+
+| Category | Examples | Spec/test suite | Current status and result | Remaining closure work |
+| --- | --- | --- | --- | --- |
+| Children collection | `@CHILDREN`, `.*`, `base.@CHILDREN`, `base.*` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/children-raw-active`; OxCalc W051/W056 ChildrenV1 tests | Product green for the declared `ChildrenV1` path. Prior DnaTreeCalc active runner and OxCalc tests are green. | None for this category. |
+| Bare walk-up and dotted descent | `Margin`, `Q1.Margin`, `A.B.C` | `CORE_MODEL_SPEC.md` §3.2/§3.7; DnaTreeCalc `references/walkup`; OxCalc `RelativePath` carriers | Active typed-carrier bridge slice is green: `active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge` passed in this pass. | Raw formula text walk-up/dotted binding and retained non-table replay. |
+| Ancestor/root anchors | `^.Rate`, `^^.Year`, `[]Sheet1.Margin`, `[]` | `CORE_MODEL_SPEC.md` §3.1/§3.2/§3.7; DnaTreeCalc `references/anchors` | Corpus is authored and validator-green; no active bridge runner yet. OxCalc ancestor carriers exist. | Activate through real bridge; retain replay evidence. |
+| Workspace aliases and `!` syntax | `[projections]Branch1.MyNode`, `Sheet1!Foo`, `[ws][Branch X].MyNode` | `CORE_MODEL_SPEC.md` §3.1/§3.3; DnaTreeCalc `references/cross-workspace`; OxCalc `calc-4vs8.30`/`calc-8tox` | OxCalc provider/alias packet and workspace-qualified carrier are implemented. DnaTreeCalc has an active typed slice; retained non-table replay is missing. | Run/retain cross-workspace evidence through OxReplay. |
+| Escaping, canonicalization, case | `[Sales Q1].Margin`, `[][Sales Q1].Margin`, `sales.margin` | `CORE_MODEL_SPEC.md` §3.3/§3.4; DnaTreeCalc `references/escaping` | Corpus is authored and validator-green; OxCalc path resolver covers bracketed segments only in admitted selector-base paths. | Raw bridge activation and canonical-path retained evidence. |
+| Meta invisibility and accessors | `@NAME`, `ref.@INDEX`, `ref.@PARENT`, hidden meta lookup | `CORE_MODEL_SPEC.md` §2/§3.5/§6 item 9; DnaTreeCalc `references/meta-nodes` | Corpus is authored and validator-green; metadata-aware bridge activation is pending. | Active runner over meta-effective structural snapshots. |
+| Single sibling navigation | `@PREV.Net`, `@NEXT.Margin`, `ref.@PREV` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/sibling-offsets` | OxCalc `SiblingOffset` carrier exists; corpus is authored and validator-green. | DnaTreeCalc bridge runner and replay evidence. |
+| Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active` plus pending `references/set-membership` | Focused active ordered slice is green from prior checks; broad set-membership corpus remains pending. | Activate full set-membership family and retain evidence. |
+| Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active`; OxCalc traversal tests | Focused recursive slice and OxCalc traversal bounds exist; broader recursive family remains pending. | Full recursive corpus activation and retained replay. |
+| Reference literals and arrays | `{A, C, A}`, `{A, 1}`, array-valued node reference | `CORE_MODEL_SPEC.md` §3.5b/§6 item 4; DnaTreeCalc `references/literals-active`, `references/literals`, `arrays/array-references` | Active prepared `ReferenceLiteralArrayV1` slice is green from prior checks; broad raw literal and array-reference suites remain pending. | Raw literal/array parsing and retained evidence. |
+| Dynamic `INDIRECT` and CTRO | `INDIRECT("Sheet1!Foo")`, `INDIRECT(selector_node)`, dynamic target switch | `CORE_MODEL_SPEC.md` §4/§6 item 7/§10.3; DnaTreeCalc `dynamic-references/indirect`; OxCalc dynamic carrier tests | OxCalc `DynamicPotential`/`DynamicResolved` facts exist. DnaTreeCalc active command exists; retained non-table replay is missing. | Raw dynamic formula breadth and retained dynamic evidence. |
+| Cross-workspace runtime refs | `[accounts]Revenue`, `[Other.xlsx]Sheet1!Foo` | `CORE_MODEL_SPEC.md` §3.3/§10.4; DnaTreeCalc `references/cross-workspace`; OxCalc workspace-qualified carrier tests | OxCalc preserves external workspace handles and DnaTreeCalc has active typed carrier coverage; retained non-table replay is missing. | Retained replay and cross-producer evidence. |
+| Bare host names | `=Revenue`, `=Margin + 1`, `=My.Region.Sales` | `CORE_MODEL_SPEC.md` §3.2/§3.9; OxFml W074 handoff consumed by `calc-4vs8.32` | Current mapping is admitted: host values use the defined-name value lane. OxCalc inventory was updated from stale W074-blocked wording. | DnaTreeCalc raw formula host-name runner and retained evidence. |
+| Node-as-function / lambda-valued nodes | `Doubler(5)`, `My.Node(1, 2)`, `^.Rate(x)` | `CORE_MODEL_SPEC.md` §3.8/§3.9; DnaTreeCalc `references/node-functions` | Corpus is authored and validator-green; `dtc-z0i.8` is in progress. W074 mapping is closed for the current defined-name-LAMBDA lane. | Active lambda-node bridge runner and retained evidence. |
+| Profile gating | `treecalc-v1` accepts `@ANCESTORS`; `strict-excel` rejects TreeCalc syntax | `CORE_MODEL_SPEC.md` §4; DnaTreeCalc `profiles/gating` | Corpus is authored and validator-green; no active bridge runner yet. | Parser/binder profile runner and strict-Excel rejection evidence. |
+| Structural-edit rebind | rename, move, delete, reorder siblings | `CORE_MODEL_SPEC.md` §8a; DnaTreeCalc `structural-edits/propagation`; OxCalc structural invalidation tests | OxCalc has structural rebind facts for current carriers; DnaTreeCalc corpus is pending. | Active edit runner, propagation UX evidence, retained invalidation evidence. |
+| Unresolved/invalid/self-reference diagnostics | `MissingName`, naked `[]`, self-reference through walk-up | `CORE_MODEL_SPEC.md` §3.2/§3.5b/§7; DnaTreeCalc `references/walkup` and `references/syntax` | Active walk-up runner covers unresolved/self-reference diagnostics; broad syntax corpus remains pending. | Full syntax/diagnostic runner and retained evidence. |
+
+Specification clarity pass:
+
+Every category above has enough spec and corpus detail to write expected-outcome
+examples now: concrete syntax examples, scope/caller rules, success or rejection
+outcomes, and the owning runner path are identified. The current gap is not
+missing descriptive specification; it is activation and retained evidence for
+the pending or partial categories.
+
+Current check results observed in this pass:
+
+1. DnaTreeCalc corpus validator: 46 files, 15 workspaces, 212 cases, 92 active
+   and 120 pending; passed.
+2. DnaTreeCalc active walk-up runner:
+   `cargo test -p dnatreecalc-host active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge -- --nocapture`;
+   passed.
+3. DnaTreeCalc active dynamic runner:
+   `cargo test -p dnatreecalc-host active_dynamic_indirect_corpus_executes_through_oxcalc_dynamic_carriers -- --nocapture`;
+   passed.
+4. DnaTreeCalc active cross-workspace runner:
+   `cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture`;
+   passed.
+5. DnaTreeCalc active-runner sweep:
+   `cargo test -p dnatreecalc-host active_ -- --nocapture`;
+   passed. This includes the active non-table children, walk-up, ordered,
+   literal, dynamic, and cross-workspace slices, plus the already-closed table
+   active runners.
+6. OxCalc matrix inventory:
+   `cargo test -p oxcalc-core w056_non_table_reference_category_matrix_is_complete_and_runnable -- --nocapture`;
+   passed.
+7. OxCalc red/green closure gate:
+   `cargo test -p oxcalc-core w056_non_table_reference_resolution_full_scope_red_green_gate -- --ignored --nocapture`;
+   failed as intended, listing every still-red non-table category. The test is
+   ignored by default so normal verification remains green while the full-scope
+   red/green target stays executable.
+
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.
 `TreeCalcTableNodeSnapshot` preserves the TreeCalc-owned node identity,

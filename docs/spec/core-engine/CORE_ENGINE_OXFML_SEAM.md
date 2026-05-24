@@ -354,10 +354,11 @@ structured-reference binding.
 For table edits, OxCalc owns the dependency and invalidation interpretation.
 Body value edits invalidate table data/value facts without changing prepared
 identity; row membership/order, column/header, table region, totals, rename,
-move, delete, and structural rebind scenarios map to typed OxCalc invalidation
-reasons and prepared-identity inputs. OxFml only sees the resulting generic
-table context, caller context, sparse bindings, and structured-reference
-diagnostics.
+move, delete, resize, node rename/move/delete, workspace open/close, workspace
+alias mutation, function registry snapshot mutation, save/reopen, and
+structural rebind scenarios map to typed OxCalc invalidation reasons and
+prepared-identity inputs. OxFml only sees the resulting generic table context,
+caller context, sparse bindings, and structured-reference diagnostics.
 
 The concrete W056 table lifecycle callback contract is OxCalc/DnaTreeCalc-owned:
 `TreeCalcTableLifecycleCallbackPacket` records the event kind, before/after
@@ -368,6 +369,16 @@ and typed diagnostics. That report may refresh the generic table context,
 caller context, sparse bindings, and prepared identity tokens sent through this
 seam, but OxFml must not inspect table lifecycle events, TreeCalc row/column
 ids, table-node paths, or table invalidation semantics.
+
+The replay-facing dependency inventory is also OxCalc-owned. It names table
+identity, row membership/order/value, column identity/order, header and data
+regions, totals region/value/formula metadata, caller-row context, omitted
+table-name enclosing context, virtual anchor/range, workspace availability,
+and function registry snapshot facts. OxFml may preserve source spans/tokens
+and structured-reference bind records, but it must not derive or reinterpret
+these TreeCalc table facts. The registry snapshot fact is conditional on
+OxCalc/OxFunc evidence that a table formula calls registered functions; OxFml
+does not infer it from table syntax.
 
 The current W056 resolver implementation adds an OxCalc-only table catalog
 resolution surface before the OxFml seam. `TreeCalcTableCatalogResolution`

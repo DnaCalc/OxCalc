@@ -544,8 +544,10 @@ the final W056 table audit.
 7. `calc-4vs8.50` — complete table dependency and invalidation matrix. This
    covers row/column/header/totals/data/caller-row/anchor/workspace/function
    dependencies and every intended table update: value/formula edits,
-   row/column insert/delete/reorder, renames, totals toggles, table move/delete,
-   node move/delete, save/reopen, workspace availability, and structural rebind.
+   row/column insert/delete/reorder, renames, totals toggles, table
+   rename/move/delete/resize, node rename/move/delete, save/reopen, workspace
+   open/close, alias mutation, registry snapshot mutation, and structural
+   rebind.
 8. `calc-4vs8.51` — DnaTreeCalc full node-table corpus and bridge activation.
    This is the product activation lane for persistence, UX-relevant table
    interactions, path-qualified references, omitted/current-row forms, escaped
@@ -1013,8 +1015,8 @@ Still open:
 
 1. `calc-4vs8.48` is closed for the full table `ReferenceLike` reader
    surface.
-2. `calc-4vs8.49` must close row-context formula/prepared identity behavior.
-3. `calc-4vs8.50` must close dependency and invalidation matrices for all
+2. `calc-4vs8.49` is closed for row-context formula/prepared identity behavior.
+3. `calc-4vs8.50` is closed for dependency and invalidation matrices for all
    table lifecycle updates.
 4. Bare host-name/callable precedence remains OxFml W074-gated; this resolver
    records adjacency diagnostics but does not freeze precedence.
@@ -1095,8 +1097,9 @@ first aggregate group through OxFml/OxFunc sparse bindings.
 
 Still open:
 
-1. `calc-4vs8.49` must close table formula row-context and prepared identity.
-2. `calc-4vs8.50` must close the complete table dependency/invalidation
+1. `calc-4vs8.49` is closed for table formula row-context and prepared
+   identity.
+2. `calc-4vs8.50` is closed for the complete table dependency/invalidation
    matrix.
 3. OxFunc counterpart beads must close the admitted-pending wider function
    groups before those functions can be claimed as fully implemented product
@@ -1159,7 +1162,7 @@ remains a cross-repo W074/DnaOneCalc evidence lane.
 
 Still open:
 
-1. `calc-4vs8.50` must close the complete table dependency/invalidation
+1. `calc-4vs8.50` is closed for the complete table dependency/invalidation
    matrix using the prepared-identity fact surface.
 2. `calc-4vs8.51` must activate DnaTreeCalc table corpus cases through the real
    bridge.
@@ -1167,6 +1170,63 @@ Still open:
    evidence.
 4. Bare host-name/callable precedence and lambda-valued TreeCalc nodes remain
    W074-gated; they are not frozen by this table-formula row-context closure.
+
+## 4B.9. `calc-4vs8.50` Complete Table Dependency And Invalidation Matrix
+
+Product status:
+
+OxCalc now has an explicit W056 table dependency/invalidation matrix for
+node-associated tables. The matrix is OxCalc-owned and replay-visible: it
+correlates source structured-reference handles and table lifecycle callbacks
+to dependency fact kinds, invalidation reasons, prepared-identity inputs, and
+typed lifecycle diagnostics without moving table semantics into OxFml.
+
+Implemented dependency fact surface:
+
+`StructuredTableDependencyFactKind` now covers table identity, row membership,
+row order, row value, column identity, column order, header text, header
+region, data region, totals region, totals value, totals formula metadata,
+caller row context, omitted-table enclosing context, virtual anchor/range,
+workspace availability, and function registry snapshot dependency. Generic
+structured-reference lowering emits the facts available from OxFml's public
+table packet; `inventory_treecalc_table_dependency_facts` supplies the full
+OxCalc replay inventory from the TreeCalc table snapshot/projection plus
+lifecycle context versions. The function-registry snapshot fact is included
+only when the caller supplies registered-function dependency evidence for the
+table formula path; constant-only and registry-independent table scenarios do
+not get that fact.
+
+Implemented update matrix:
+
+`TreeCalcTableUpdateScenarioKind` and
+`TreeCalcTableLifecycleEventKind` now explicitly cover body value edit, body
+formula edit, row insert/delete/reorder, column insert/delete/reorder/rename,
+header text edit, totals toggle/formula edit, table rename/move/delete/resize,
+node rename/move/delete, save/reopen, workspace open/close, workspace alias
+mutation, function registry snapshot mutation, and structural rebind. The
+classifier distinguishes stable save/reopen from identity-changing
+save/reopen, records workspace/alias versions in lifecycle identity, and keeps
+registry snapshot mutation as a prepared-identity/capability-sensitive input
+rather than a TreeCalc-specific function branch.
+
+Evidence:
+
+Focused Rust tests cover the full update matrix, lifecycle callback matrix,
+stable save/reopen suppression, delete/open/close event shapes, workspace alias
+identity changes, registry snapshot prepared-identity invalidation, the full
+dependency inventory fact surface, conditional omission of registry facts,
+host-sensitive workspace availability classification, and graph-safe
+context-only table descriptors. The table formula prepared-identity tests from
+`calc-4vs8.49` remain the runtime evidence that actual OxFunc registry and
+capability-overlay mutations flow through generic prepared identity.
+
+Explicit non-claim:
+
+This closes the OxCalc dependency/invalidation contract. It does not activate
+DnaTreeCalc corpus cases, does not provide Excel ListObject oracle evidence,
+does not close OxReplay retained comparison artifacts, and does not freeze
+bare host-name/callable precedence. Those remain with `calc-4vs8.51`,
+`calc-4vs8.52`, `calc-4vs8.53`, and OxFml W074 respectively.
 
 `calc-4vs8.36` implemented intake:
 

@@ -244,7 +244,9 @@ of the boundary. DnaTreeCalc supplies a
 `TreeCalcTableLifecycleCallbackPacket`-shaped update packet whenever the table
 product lifecycle changes: create/delete, rename/move, body value/formula edit,
 row insert/delete/reorder, column insert/delete/reorder/rename, header text
-edit, totals toggle/formula edit, save/reopen, or structural rebind.
+edit, totals toggle/formula edit, table resize, node rename/move/delete,
+workspace open/close, workspace alias mutation, function registry snapshot
+mutation, save/reopen, or structural rebind.
 
 The packet carries the event kind, before/after
 `TreeCalcTableLifecycleVersionState` values where the event shape requires
@@ -253,9 +255,11 @@ changed row/column ids. The version state names the stable table/node/row/column
 handles plus the virtual workbook/sheet/anchor identities, table context
 identity, table invalidation identity, table range/header/totals/data-region
 refs, table namespace version, row membership/order versions, and column
-identity version. Context versions include the host namespace, structure
-context, registry snapshot, and resolution-rule inputs used for prepared/cache
-invalidation.
+identity version. It also carries workspace availability and workspace alias
+versions so workspace open/close and alias mutation are replay-visible.
+Context versions include the host namespace, structure context, registry
+snapshot, resolution-rule, workspace availability, and workspace alias inputs
+used for prepared/cache invalidation.
 
 OxCalc classifies that packet with
 `classify_treecalc_table_lifecycle_callback`. The report is the only table
@@ -265,6 +269,18 @@ identities, changed rows/columns, source handles, and typed diagnostics. Stable
 `table_node_id` and `table_id` violations are diagnostics because they indicate
 that DnaTreeCalc is sending a new table identity through an update event instead
 of a create/delete or structural rebind.
+
+`StructuredTableDependencyFactKind` is the replay-facing fact inventory for
+this contract. It covers table identity, row membership/order/value, column
+identity/order, header text/region, data region, totals region/value/formula
+metadata, caller row context, omitted-table enclosing context, virtual
+anchor/range, workspace availability, and function registry snapshot
+dependency. Generic structured-reference lowering emits the facts available
+from OxFml's public table packet; OxCalc's table snapshot/projection inventory
+supplies the full product facts for replay and invalidation evidence. The
+function registry snapshot fact is conditional: it is present when the table
+formula path has registered-function dependency evidence and absent for
+constant-only or registry-independent table scenarios.
 
 OxFml receives none of this lifecycle meaning. After OxCalc classifies the
 callback, OxFml only sees the resulting generic table descriptor catalog,

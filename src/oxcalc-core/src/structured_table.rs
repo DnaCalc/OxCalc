@@ -1580,6 +1580,33 @@ fn treecalc_table_totals_metadata_identity(
     )
 }
 
+fn treecalc_table_workspace_availability_version(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_workspace_availability.v1",
+        [
+            (
+                "workbook",
+                snapshot.virtual_anchor.workbook_scope_ref.clone(),
+            ),
+            ("sheet", snapshot.virtual_anchor.sheet_scope_ref.clone()),
+        ],
+    )
+}
+
+fn treecalc_table_workspace_alias_version(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_workspace_alias.v1",
+        [
+            (
+                "workbook",
+                snapshot.virtual_anchor.workbook_scope_ref.clone(),
+            ),
+            ("canonical_path", snapshot.canonical_path.clone()),
+            ("namespace", snapshot.table_namespace_version.clone()),
+        ],
+    )
+}
+
 fn identity_record<const N: usize>(kind: &str, fields: [(&str, String); N]) -> String {
     let mut result = String::from(kind);
     for (name, value) in fields {
@@ -3842,7 +3869,15 @@ pub enum TreeCalcTableUpdateScenarioKind {
     TableRename,
     TableMove,
     TableDelete,
+    TableResize,
+    NodeRename,
+    NodeMove,
+    NodeDelete,
     SaveReopen,
+    WorkspaceOpen,
+    WorkspaceClose,
+    WorkspaceAliasMutation,
+    FunctionRegistrySnapshotMutation,
     StructuralRebind,
 }
 
@@ -3911,7 +3946,15 @@ pub enum TreeCalcTableLifecycleEventKind {
     TableRename,
     TableMove,
     TableDelete,
+    TableResize,
+    NodeRename,
+    NodeMove,
+    NodeDelete,
     SaveReopen,
+    WorkspaceOpen,
+    WorkspaceClose,
+    WorkspaceAliasMutation,
+    FunctionRegistrySnapshotMutation,
     StructuralRebind,
 }
 
@@ -3935,7 +3978,17 @@ impl TreeCalcTableLifecycleEventKind {
             Self::TableRename => TreeCalcTableUpdateScenarioKind::TableRename,
             Self::TableMove => TreeCalcTableUpdateScenarioKind::TableMove,
             Self::TableDelete => TreeCalcTableUpdateScenarioKind::TableDelete,
+            Self::TableResize => TreeCalcTableUpdateScenarioKind::TableResize,
+            Self::NodeRename => TreeCalcTableUpdateScenarioKind::NodeRename,
+            Self::NodeMove => TreeCalcTableUpdateScenarioKind::NodeMove,
+            Self::NodeDelete => TreeCalcTableUpdateScenarioKind::NodeDelete,
             Self::SaveReopen => TreeCalcTableUpdateScenarioKind::SaveReopen,
+            Self::WorkspaceOpen => TreeCalcTableUpdateScenarioKind::WorkspaceOpen,
+            Self::WorkspaceClose => TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+            Self::WorkspaceAliasMutation => TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation,
+            Self::FunctionRegistrySnapshotMutation => {
+                TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation
+            }
             Self::StructuralRebind => TreeCalcTableUpdateScenarioKind::StructuralRebind,
         })
     }
@@ -3959,7 +4012,15 @@ impl TreeCalcTableLifecycleEventKind {
             Self::TableRename => "table_rename",
             Self::TableMove => "table_move",
             Self::TableDelete => "table_delete",
+            Self::TableResize => "table_resize",
+            Self::NodeRename => "node_rename",
+            Self::NodeMove => "node_move",
+            Self::NodeDelete => "node_delete",
             Self::SaveReopen => "save_reopen",
+            Self::WorkspaceOpen => "workspace_open",
+            Self::WorkspaceClose => "workspace_close",
+            Self::WorkspaceAliasMutation => "workspace_alias_mutation",
+            Self::FunctionRegistrySnapshotMutation => "function_registry_snapshot_mutation",
             Self::StructuralRebind => "structural_rebind",
         }
     }
@@ -3983,7 +4044,17 @@ impl From<TreeCalcTableUpdateScenarioKind> for TreeCalcTableLifecycleEventKind {
             TreeCalcTableUpdateScenarioKind::TableRename => Self::TableRename,
             TreeCalcTableUpdateScenarioKind::TableMove => Self::TableMove,
             TreeCalcTableUpdateScenarioKind::TableDelete => Self::TableDelete,
+            TreeCalcTableUpdateScenarioKind::TableResize => Self::TableResize,
+            TreeCalcTableUpdateScenarioKind::NodeRename => Self::NodeRename,
+            TreeCalcTableUpdateScenarioKind::NodeMove => Self::NodeMove,
+            TreeCalcTableUpdateScenarioKind::NodeDelete => Self::NodeDelete,
             TreeCalcTableUpdateScenarioKind::SaveReopen => Self::SaveReopen,
+            TreeCalcTableUpdateScenarioKind::WorkspaceOpen => Self::WorkspaceOpen,
+            TreeCalcTableUpdateScenarioKind::WorkspaceClose => Self::WorkspaceClose,
+            TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation => Self::WorkspaceAliasMutation,
+            TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation => {
+                Self::FunctionRegistrySnapshotMutation
+            }
             TreeCalcTableUpdateScenarioKind::StructuralRebind => Self::StructuralRebind,
         }
     }
@@ -3995,6 +4066,8 @@ pub struct TreeCalcTableLifecycleContextVersions {
     pub structure_context_version: String,
     pub registry_snapshot_identity: String,
     pub resolution_rule_version: String,
+    pub workspace_availability_version: Option<String>,
+    pub workspace_alias_version: Option<String>,
 }
 
 impl Default for TreeCalcTableLifecycleContextVersions {
@@ -4004,6 +4077,8 @@ impl Default for TreeCalcTableLifecycleContextVersions {
             structure_context_version: "treecalc-structure:v1".to_string(),
             registry_snapshot_identity: "oxfunc-registry:default".to_string(),
             resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            workspace_availability_version: Some("treecalc-workspace-availability:v1".to_string()),
+            workspace_alias_version: Some("treecalc-workspace-alias:v1".to_string()),
         }
     }
 }
@@ -4032,6 +4107,18 @@ impl TreeCalcTableLifecycleContextVersions {
                     "resolution_rule_version",
                     self.resolution_rule_version.clone(),
                 ),
+                (
+                    "workspace_availability_version",
+                    self.workspace_availability_version
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
+                (
+                    "workspace_alias_version",
+                    self.workspace_alias_version
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
+                ),
             ],
         )
     }
@@ -4043,7 +4130,10 @@ impl TreeCalcTableLifecycleContextVersions {
             TreeCalcTablePreparedIdentityInput::RegistrySnapshotIdentity,
             TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
         ]);
-        if self.host_namespace_version.is_some() {
+        if self.host_namespace_version.is_some()
+            || self.workspace_availability_version.is_some()
+            || self.workspace_alias_version.is_some()
+        {
             inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
         }
         inputs
@@ -4069,6 +4159,8 @@ pub struct TreeCalcTableLifecycleVersionState {
     pub table_invalidation_identity: String,
     pub table_namespace_identity: String,
     pub table_namespace_version: String,
+    pub workspace_availability_version: String,
+    pub workspace_alias_version: String,
     pub row_membership_identity: String,
     pub row_membership_version: String,
     pub row_order_identity: String,
@@ -4108,6 +4200,8 @@ impl TreeCalcTableLifecycleVersionState {
             table_invalidation_identity: projection.table_invalidation_identity.clone(),
             table_namespace_identity: projection.table_namespace_identity.clone(),
             table_namespace_version: snapshot.table_namespace_version.clone(),
+            workspace_availability_version: treecalc_table_workspace_availability_version(snapshot),
+            workspace_alias_version: treecalc_table_workspace_alias_version(snapshot),
             row_membership_identity: projection.oxcalc_row_membership_identity.clone(),
             row_membership_version: snapshot.row_membership_version.clone(),
             row_order_identity: projection.oxcalc_row_order_identity.clone(),
@@ -4171,6 +4265,14 @@ impl TreeCalcTableLifecycleVersionState {
                 (
                     "table_namespace_version",
                     self.table_namespace_version.clone(),
+                ),
+                (
+                    "workspace_availability_version",
+                    self.workspace_availability_version.clone(),
+                ),
+                (
+                    "workspace_alias_version",
+                    self.workspace_alias_version.clone(),
                 ),
                 (
                     "row_membership_identity",
@@ -4591,7 +4693,9 @@ fn validate_lifecycle_callback_packet(
                 );
             }
         }
-        TreeCalcTableLifecycleEventKind::TableDelete => {
+        TreeCalcTableLifecycleEventKind::TableDelete
+        | TreeCalcTableLifecycleEventKind::NodeDelete
+        | TreeCalcTableLifecycleEventKind::WorkspaceClose => {
             if packet.before_state.is_none() {
                 diagnostics.push(
                     TreeCalcTableLifecycleContractDiagnostic::MissingBeforeState {
@@ -4602,6 +4706,22 @@ fn validate_lifecycle_callback_packet(
             if packet.after_state.is_some() {
                 diagnostics.push(
                     TreeCalcTableLifecycleContractDiagnostic::UnexpectedAfterState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+        }
+        TreeCalcTableLifecycleEventKind::WorkspaceOpen => {
+            if packet.before_state.is_some() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::UnexpectedBeforeState {
+                        event_kind: packet.event_kind,
+                    },
+                );
+            }
+            if packet.after_state.is_none() {
+                diagnostics.push(
+                    TreeCalcTableLifecycleContractDiagnostic::MissingAfterState {
                         event_kind: packet.event_kind,
                     },
                 );
@@ -4723,16 +4843,16 @@ fn scenario_changed_dependency_kinds(
             Kind::StructuredTableColumnIdentity,
             Kind::StructuredTableIdentity,
         ],
-        TreeCalcTableUpdateScenarioKind::RowInsert | TreeCalcTableUpdateScenarioKind::RowDelete => {
-            &[
-                Kind::StructuredTableRowMembership,
-                Kind::StructuredTableRowOrder,
-                Kind::StructuredTableDataRegion,
-                Kind::StructuredTableTotalsRegion,
-                Kind::StructuredTableCallerContext,
-                Kind::StructuredTableIdentity,
-            ]
-        }
+        TreeCalcTableUpdateScenarioKind::RowInsert
+        | TreeCalcTableUpdateScenarioKind::RowDelete
+        | TreeCalcTableUpdateScenarioKind::TableResize => &[
+            Kind::StructuredTableRowMembership,
+            Kind::StructuredTableRowOrder,
+            Kind::StructuredTableDataRegion,
+            Kind::StructuredTableTotalsRegion,
+            Kind::StructuredTableCallerContext,
+            Kind::StructuredTableIdentity,
+        ],
         TreeCalcTableUpdateScenarioKind::RowReorder => &[
             Kind::StructuredTableRowOrder,
             Kind::StructuredTableCallerContext,
@@ -4756,17 +4876,24 @@ fn scenario_changed_dependency_kinds(
             Kind::StructuredTableIdentity,
         ],
         TreeCalcTableUpdateScenarioKind::TableRename
+        | TreeCalcTableUpdateScenarioKind::NodeRename
+        | TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation
         | TreeCalcTableUpdateScenarioKind::StructuralRebind => &[
             Kind::StructuredTableIdentity,
             Kind::StructuredTableEnclosingTable,
         ],
-        TreeCalcTableUpdateScenarioKind::TableMove => &[
-            Kind::StructuredTableIdentity,
-            Kind::StructuredTableHeaderRegion,
-            Kind::StructuredTableDataRegion,
-            Kind::StructuredTableTotalsRegion,
-        ],
-        TreeCalcTableUpdateScenarioKind::TableDelete => &[
+        TreeCalcTableUpdateScenarioKind::TableMove | TreeCalcTableUpdateScenarioKind::NodeMove => {
+            &[
+                Kind::StructuredTableIdentity,
+                Kind::StructuredTableHeaderRegion,
+                Kind::StructuredTableDataRegion,
+                Kind::StructuredTableTotalsRegion,
+                Kind::StructuredTableEnclosingTable,
+            ]
+        }
+        TreeCalcTableUpdateScenarioKind::TableDelete
+        | TreeCalcTableUpdateScenarioKind::NodeDelete
+        | TreeCalcTableUpdateScenarioKind::WorkspaceClose => &[
             Kind::StructuredTableIdentity,
             Kind::StructuredTableRowMembership,
             Kind::StructuredTableRowOrder,
@@ -4778,6 +4905,14 @@ fn scenario_changed_dependency_kinds(
             Kind::StructuredTableCallerContext,
             Kind::StructuredTableEnclosingTable,
         ],
+        TreeCalcTableUpdateScenarioKind::WorkspaceOpen => &[
+            Kind::HostSensitive,
+            Kind::StructuredTableIdentity,
+            Kind::StructuredTableEnclosingTable,
+        ],
+        TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation => {
+            &[Kind::CapabilitySensitive]
+        }
         TreeCalcTableUpdateScenarioKind::SaveReopen => &[],
     };
     kinds.iter().copied().collect()
@@ -4793,15 +4928,15 @@ fn scenario_invalidation_reasons(
             Reason::StructuredTableRegionChanged,
             Reason::StructuredTableContextChanged,
         ],
-        TreeCalcTableUpdateScenarioKind::RowInsert | TreeCalcTableUpdateScenarioKind::RowDelete => {
-            &[
-                Reason::StructuredTableRowMembershipChanged,
-                Reason::StructuredTableRowOrderChanged,
-                Reason::StructuredTableRegionChanged,
-                Reason::StructuredTableCallerContextChanged,
-                Reason::StructuredTableContextChanged,
-            ]
-        }
+        TreeCalcTableUpdateScenarioKind::RowInsert
+        | TreeCalcTableUpdateScenarioKind::RowDelete
+        | TreeCalcTableUpdateScenarioKind::TableResize => &[
+            Reason::StructuredTableRowMembershipChanged,
+            Reason::StructuredTableRowOrderChanged,
+            Reason::StructuredTableRegionChanged,
+            Reason::StructuredTableCallerContextChanged,
+            Reason::StructuredTableContextChanged,
+        ],
         TreeCalcTableUpdateScenarioKind::RowReorder => &[
             Reason::StructuredTableRowOrderChanged,
             Reason::StructuredTableCallerContextChanged,
@@ -4823,11 +4958,26 @@ fn scenario_invalidation_reasons(
         ],
         TreeCalcTableUpdateScenarioKind::TableRename
         | TreeCalcTableUpdateScenarioKind::TableMove
+        | TreeCalcTableUpdateScenarioKind::NodeRename
+        | TreeCalcTableUpdateScenarioKind::NodeMove
+        | TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation
         | TreeCalcTableUpdateScenarioKind::StructuralRebind => &[
             Reason::StructuredTableContextChanged,
             Reason::StructuralRebindRequired,
         ],
-        TreeCalcTableUpdateScenarioKind::TableDelete => &[Reason::StructuralRebindRequired],
+        TreeCalcTableUpdateScenarioKind::TableDelete
+        | TreeCalcTableUpdateScenarioKind::NodeDelete
+        | TreeCalcTableUpdateScenarioKind::WorkspaceClose => {
+            &[Reason::DependencyRemoved, Reason::StructuralRebindRequired]
+        }
+        TreeCalcTableUpdateScenarioKind::WorkspaceOpen => &[
+            Reason::DependencyAdded,
+            Reason::StructuredTableContextChanged,
+            Reason::StructuralRebindRequired,
+        ],
+        TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation => {
+            &[Reason::DependencyReclassified]
+        }
         TreeCalcTableUpdateScenarioKind::SaveReopen => &[],
     };
     reasons.iter().copied().collect()
@@ -4844,7 +4994,8 @@ fn scenario_prepared_identity_inputs(
         }
         TreeCalcTableUpdateScenarioKind::RowInsert
         | TreeCalcTableUpdateScenarioKind::RowDelete
-        | TreeCalcTableUpdateScenarioKind::RowReorder => {
+        | TreeCalcTableUpdateScenarioKind::RowReorder
+        | TreeCalcTableUpdateScenarioKind::TableResize => {
             &[Input::TableContextIdentity, Input::CallerContextIdentity]
         }
         TreeCalcTableUpdateScenarioKind::ColumnInsert
@@ -4856,12 +5007,21 @@ fn scenario_prepared_identity_inputs(
         | TreeCalcTableUpdateScenarioKind::TotalsFormulaEdit
         | TreeCalcTableUpdateScenarioKind::TableMove => &[Input::TableContextIdentity],
         TreeCalcTableUpdateScenarioKind::TableRename
+        | TreeCalcTableUpdateScenarioKind::NodeRename
+        | TreeCalcTableUpdateScenarioKind::NodeMove
+        | TreeCalcTableUpdateScenarioKind::NodeDelete
+        | TreeCalcTableUpdateScenarioKind::WorkspaceOpen
+        | TreeCalcTableUpdateScenarioKind::WorkspaceClose
+        | TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation
         | TreeCalcTableUpdateScenarioKind::StructuralRebind
         | TreeCalcTableUpdateScenarioKind::TableDelete => &[
             Input::HostNamespaceVersion,
             Input::TableContextIdentity,
             Input::ResolutionRuleVersion,
         ],
+        TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation => {
+            &[Input::RegistrySnapshotIdentity]
+        }
         TreeCalcTableUpdateScenarioKind::SaveReopen => &[],
     };
     inputs.iter().copied().collect()
@@ -4979,9 +5139,26 @@ fn add_observed_lifecycle_state_changes(
         invalidation_reasons.insert(InvalidationReasonKind::StructuredTableContextChanged);
         prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
     }
+    if before.workspace_availability_version != after.workspace_availability_version {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::HostSensitive);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableEnclosingTable);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableContextChanged);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuralRebindRequired);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion);
+    }
+    if before.workspace_alias_version != after.workspace_alias_version {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::HostSensitive);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableEnclosingTable);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableContextChanged);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuralRebindRequired);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion);
+    }
     if before.table_invalidation_identity != after.table_invalidation_identity {
         changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableDataRegion);
         changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableTotalsRegion);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuredTableRegionChanged);
         prepared_identity_inputs
             .insert(TreeCalcTablePreparedIdentityInput::StructureContextVersion);
     }
@@ -5627,13 +5804,20 @@ pub enum StructuredTableDependencyFactKind {
     TableIdentity,
     RowMembership,
     RowOrder,
+    RowValue,
     ColumnIdentity,
+    ColumnOrder,
     HeaderText,
     HeaderRegion,
     DataRegion,
     TotalsRegion,
+    TotalsValue,
+    TotalsFormula,
     CallerRowContext,
     OmittedTableNameEnclosingTable,
+    VirtualAnchorRange,
+    WorkspaceAvailability,
+    FunctionRegistrySnapshot,
 }
 
 impl StructuredTableDependencyFactKind {
@@ -5643,15 +5827,22 @@ impl StructuredTableDependencyFactKind {
             Self::TableIdentity => DependencyDescriptorKind::StructuredTableIdentity,
             Self::RowMembership => DependencyDescriptorKind::StructuredTableRowMembership,
             Self::RowOrder => DependencyDescriptorKind::StructuredTableRowOrder,
+            Self::RowValue => DependencyDescriptorKind::StructuredTableDataRegion,
             Self::ColumnIdentity => DependencyDescriptorKind::StructuredTableColumnIdentity,
+            Self::ColumnOrder => DependencyDescriptorKind::StructuredTableColumnIdentity,
             Self::HeaderText => DependencyDescriptorKind::StructuredTableHeaderText,
             Self::HeaderRegion => DependencyDescriptorKind::StructuredTableHeaderRegion,
             Self::DataRegion => DependencyDescriptorKind::StructuredTableDataRegion,
             Self::TotalsRegion => DependencyDescriptorKind::StructuredTableTotalsRegion,
+            Self::TotalsValue => DependencyDescriptorKind::StructuredTableTotalsRegion,
+            Self::TotalsFormula => DependencyDescriptorKind::StructuredTableTotalsRegion,
             Self::CallerRowContext => DependencyDescriptorKind::StructuredTableCallerContext,
             Self::OmittedTableNameEnclosingTable => {
                 DependencyDescriptorKind::StructuredTableEnclosingTable
             }
+            Self::VirtualAnchorRange => DependencyDescriptorKind::StructuredTableIdentity,
+            Self::WorkspaceAvailability => DependencyDescriptorKind::HostSensitive,
+            Self::FunctionRegistrySnapshot => DependencyDescriptorKind::CapabilitySensitive,
         }
     }
 }
@@ -5750,6 +5941,19 @@ impl StructuredTableDependencyLowering {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcTableDependencyInventory {
+    pub table_context_identity: String,
+    pub table_invalidation_identity: String,
+    pub table_namespace_version: String,
+    pub structure_context_version: String,
+    pub host_namespace_version: Option<String>,
+    pub workspace_availability_version: Option<String>,
+    pub workspace_alias_version: Option<String>,
+    pub registry_snapshot_identity: String,
+    pub facts: Vec<StructuredTableDependencyFact>,
+}
+
 #[must_use]
 pub fn lower_structured_table_dependencies(
     request: &StructuredTableDependencyLoweringRequest,
@@ -5781,6 +5985,7 @@ pub fn lower_structured_table_dependencies(
     };
 
     push_table_identity(request, table, &mut facts);
+    push_virtual_anchor_range_fact(request, table, &mut facts);
     push_row_membership_and_order_facts(request, table, &mut facts);
     push_column_facts(request, table, &mut facts);
     push_region_facts(request, table, &mut facts);
@@ -5788,6 +5993,253 @@ pub fn lower_structured_table_dependencies(
     push_enclosing_table_fact(request, table, &mut facts);
 
     lowering_from_facts(request, facts)
+}
+
+#[must_use]
+pub fn inventory_treecalc_table_dependency_facts(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    context_versions: &TreeCalcTableLifecycleContextVersions,
+    caller_context_id: Option<&str>,
+    include_function_registry_snapshot: bool,
+) -> TreeCalcTableDependencyInventory {
+    let mut facts = Vec::new();
+    let table_id = projection.table_id.clone();
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::TableIdentity,
+        "table_identity",
+        None,
+        projection.table_context_identity.clone(),
+        "table identity covers stable table id, namespace token, anchor token, and generic table packet"
+            .to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::VirtualAnchorRange,
+        "virtual_anchor_range",
+        None,
+        projection.virtual_anchor_identity.clone(),
+        format!(
+            "virtual anchor/range covers workbook={}, sheet={}, range={}",
+            projection.table_descriptor.workbook_scope_ref,
+            projection.table_descriptor.sheet_scope_ref,
+            projection.table_descriptor.table_range_ref
+        ),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::WorkspaceAvailability,
+        "workspace_availability",
+        None,
+        context_versions
+            .workspace_availability_version
+            .clone()
+            .unwrap_or_else(|| treecalc_table_workspace_availability_version(snapshot)),
+        "workspace availability is host-owned and enters prepared identity through host namespace context"
+            .to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::RowMembership,
+        "row_membership",
+        None,
+        projection.oxcalc_row_membership_identity.clone(),
+        "row membership is an OxCalc table fact, not an OxFml semantic".to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::RowOrder,
+        "row_order",
+        None,
+        projection.oxcalc_row_order_identity.clone(),
+        "row order is tracked separately from row membership for caller-row invalidation"
+            .to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::RowValue,
+        "row_value",
+        None,
+        projection.body_metadata_identity.clone(),
+        "row value changes include data cells and body formula metadata for selected columns"
+            .to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::ColumnIdentity,
+        "column_identity",
+        None,
+        projection.oxcalc_column_identity.clone(),
+        "column identity covers stable ids, header names, and column ranges".to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::ColumnOrder,
+        "column_order",
+        None,
+        identity_list(snapshot.columns.iter().map(|column| {
+            identity_record(
+                "treecalc.table_column_order_item",
+                [
+                    ("column_id", column.column_id.clone()),
+                    ("ordinal", column.ordinal.to_string()),
+                ],
+            )
+        })),
+        "column order is an explicit invalidation fact because structured references preserve display order"
+            .to_string(),
+    );
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::HeaderText,
+        "header_text",
+        None,
+        identity_list(snapshot.columns.iter().map(|column| {
+            identity_record(
+                "treecalc.table_header_text_item",
+                [
+                    ("column_id", column.column_id.clone()),
+                    ("text", column.column_name.clone()),
+                ],
+            )
+        })),
+        "header text changes can rebind structured references by displayed column name".to_string(),
+    );
+    if let Some(header_region_ref) = projection.table_descriptor.header_region_ref.as_ref() {
+        push_inventory_fact(
+            &mut facts,
+            snapshot,
+            StructuredTableDependencyFactKind::HeaderRegion,
+            "header_region",
+            None,
+            header_region_ref.clone(),
+            "header region is replay-visible for #Headers references".to_string(),
+        );
+    }
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::DataRegion,
+        "data_region",
+        None,
+        identity_list(
+            projection
+                .table_descriptor
+                .columns
+                .iter()
+                .map(|column| column.column_range_ref.clone()),
+        ),
+        "data region is replay-visible for data and current-row references".to_string(),
+    );
+    if let Some(totals_region_ref) = projection.table_descriptor.totals_region_ref.as_ref() {
+        push_inventory_fact(
+            &mut facts,
+            snapshot,
+            StructuredTableDependencyFactKind::TotalsRegion,
+            "totals_region",
+            None,
+            totals_region_ref.clone(),
+            "totals region is replay-visible for #Totals references".to_string(),
+        );
+        push_inventory_fact(
+            &mut facts,
+            snapshot,
+            StructuredTableDependencyFactKind::TotalsValue,
+            "totals_value",
+            None,
+            totals_region_ref.clone(),
+            "totals values are invalidated by totals row edits and totals formula output changes"
+                .to_string(),
+        );
+    }
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::TotalsFormula,
+        "totals_formula",
+        None,
+        projection.totals_metadata_identity.clone(),
+        "totals formula metadata is OxCalc-owned and feeds structure-context/prepared identity"
+            .to_string(),
+    );
+    if let Some(caller_context_id) = caller_context_id {
+        push_inventory_fact(
+            &mut facts,
+            snapshot,
+            StructuredTableDependencyFactKind::CallerRowContext,
+            "caller_row_context",
+            None,
+            caller_context_id.to_string(),
+            "caller-row context is required for [@Col] and omitted current-row forms".to_string(),
+        );
+    }
+    push_inventory_fact(
+        &mut facts,
+        snapshot,
+        StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable,
+        "omitted_table_enclosing_context",
+        None,
+        table_id,
+        "omitted table-name forms depend on the caller's enclosing table context".to_string(),
+    );
+    if include_function_registry_snapshot {
+        push_inventory_fact(
+            &mut facts,
+            snapshot,
+            StructuredTableDependencyFactKind::FunctionRegistrySnapshot,
+            "function_registry_snapshot",
+            None,
+            context_versions.registry_snapshot_identity.clone(),
+            "registered-function calls invalidate prepared table formulas through the OxFunc registry snapshot"
+                .to_string(),
+        );
+    }
+
+    TreeCalcTableDependencyInventory {
+        table_context_identity: projection.table_context_identity.clone(),
+        table_invalidation_identity: projection.table_invalidation_identity.clone(),
+        table_namespace_version: projection.table_namespace_version.clone(),
+        structure_context_version: context_versions.structure_context_version.clone(),
+        host_namespace_version: context_versions.host_namespace_version.clone(),
+        workspace_availability_version: context_versions.workspace_availability_version.clone(),
+        workspace_alias_version: context_versions.workspace_alias_version.clone(),
+        registry_snapshot_identity: context_versions.registry_snapshot_identity.clone(),
+        facts,
+    }
+}
+
+fn push_inventory_fact(
+    facts: &mut Vec<StructuredTableDependencyFact>,
+    snapshot: &TreeCalcTableNodeSnapshot,
+    kind: StructuredTableDependencyFactKind,
+    suffix: &str,
+    column_id: Option<String>,
+    identity: String,
+    detail: String,
+) {
+    facts.push(StructuredTableDependencyFact::lowered(
+        format!(
+            "inventory:table_node:{}:{}:{}",
+            snapshot.table_node_id.0,
+            suffix,
+            sanitize_identifier(&identity)
+        ),
+        kind,
+        snapshot.table_id.clone(),
+        column_id,
+        identity,
+        detail,
+    ));
 }
 
 fn resolved_table_id(request: &StructuredTableDependencyLoweringRequest) -> Option<String> {
@@ -5837,6 +6289,25 @@ fn push_table_identity(
             table.table_range_ref
         ),
         "table identity, scope, and range are supplied by table_catalog".to_string(),
+    ));
+}
+
+fn push_virtual_anchor_range_fact(
+    request: &StructuredTableDependencyLoweringRequest,
+    table: &TableDescriptor,
+    facts: &mut Vec<StructuredTableDependencyFact>,
+) {
+    facts.push(StructuredTableDependencyFact::lowered(
+        fact_id(request, "virtual_anchor_range", &table.table_id),
+        StructuredTableDependencyFactKind::VirtualAnchorRange,
+        table.table_id.clone(),
+        None,
+        format!(
+            "table_virtual_anchor_range:v1:table={};workbook={};sheet={};range={}",
+            table.table_id, table.workbook_scope_ref, table.sheet_scope_ref, table.table_range_ref
+        ),
+        "virtual Excel anchor/range is supplied by table_catalog scope and range fields"
+            .to_string(),
     ));
 }
 
@@ -5922,6 +6393,30 @@ fn push_column_facts(
                 column.column_range_ref
             ),
             "column id, text, ordinal, and data range are supplied by table_catalog".to_string(),
+        ));
+    }
+
+    let selected_columns = selected_columns_or_all(request, table);
+    if !selected_columns.is_empty() {
+        let order_identity = identity_list(selected_columns.iter().map(|column| {
+            identity_record(
+                "table_column_order_item",
+                [
+                    ("column_id", column.column_id.clone()),
+                    ("ordinal", column.ordinal.to_string()),
+                ],
+            )
+        }));
+        facts.push(StructuredTableDependencyFact::lowered(
+            fact_id(request, "column_order", &table.table_id),
+            StructuredTableDependencyFactKind::ColumnOrder,
+            table.table_id.clone(),
+            None,
+            format!(
+                "table_column_order:v1:table={};columns={order_identity}",
+                table.table_id
+            ),
+            "column order is supplied by TableColumnDescriptor.ordinal".to_string(),
         ));
     }
 }
@@ -6017,6 +6512,26 @@ fn push_region_facts(
             ),
             "data region identity is preserved as supplied column_range_ref values".to_string(),
         ));
+        let row_membership = table
+            .row_membership_identity
+            .as_deref()
+            .unwrap_or("missing-row-membership");
+        let row_order = table
+            .row_order_identity
+            .as_deref()
+            .unwrap_or("missing-row-order");
+        facts.push(StructuredTableDependencyFact::lowered(
+            fact_id(request, "row_value", &table.table_id),
+            StructuredTableDependencyFactKind::RowValue,
+            table.table_id.clone(),
+            None,
+            format!(
+                "table_row_value:v1:table={};row_membership={row_membership};row_order={row_order};columns={ranges}",
+                table.table_id
+            ),
+            "row value dependency is bounded by selected data ranges plus stable row membership/order identities"
+                .to_string(),
+        ));
     }
 
     if selects_totals || (selects_all && table.totals_row_present) {
@@ -6040,6 +6555,18 @@ fn push_region_facts(
                     table.table_id
                 ),
                 "exact totals row region identity is supplied by the OxFml TableDescriptor"
+                    .to_string(),
+            ));
+            facts.push(StructuredTableDependencyFact::lowered(
+                fact_id(request, "totals_value", totals_region_ref),
+                StructuredTableDependencyFactKind::TotalsValue,
+                table.table_id.clone(),
+                None,
+                format!(
+                    "table_totals_value:v1:table={};region={totals_region_ref}",
+                    table.table_id
+                ),
+                "totals value dependency is supplied by the exact totals row region identity"
                     .to_string(),
             ));
         } else {
@@ -9256,7 +9783,10 @@ mod tests {
                 InvalidationReasonKind::StructuredTableRegionChanged,
                 InvalidationReasonKind::StructuredTableContextChanged,
             ],
-            [TreeCalcTablePreparedIdentityInput::TableContextIdentity],
+            [
+                TreeCalcTablePreparedIdentityInput::StructureContextVersion,
+                TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+            ],
         );
 
         let mut totals_formula = baseline_snapshot.clone();
@@ -9315,6 +9845,70 @@ mod tests {
             [TreeCalcTablePreparedIdentityInput::TableContextIdentity],
         );
 
+        let mut table_resize = table_move.clone();
+        table_resize
+            .rows
+            .push(TreeCalcTableRowId("row:south".to_string()));
+        table_resize.row_membership_version = "row-membership:resize".to_string();
+        table_resize.row_order_version = "row-order:resize".to_string();
+        let table_resize_projection = project_treecalc_table_node_snapshot(&table_resize).unwrap();
+        assert_update_has(
+            TreeCalcTableUpdateScenarioKind::TableResize,
+            &baseline,
+            Some(&table_resize_projection),
+            [
+                InvalidationReasonKind::StructuredTableRowMembershipChanged,
+                InvalidationReasonKind::StructuredTableRowOrderChanged,
+                InvalidationReasonKind::StructuredTableRegionChanged,
+                InvalidationReasonKind::StructuredTableCallerContextChanged,
+                InvalidationReasonKind::StructuredTableContextChanged,
+            ],
+            [
+                TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+                TreeCalcTablePreparedIdentityInput::CallerContextIdentity,
+            ],
+        );
+
+        let mut node_rename = baseline_snapshot.clone();
+        node_rename.display_path = "Sales Node".to_string();
+        node_rename.canonical_path = "Root/Sales Node".to_string();
+        node_rename.table_namespace_version = "namespace:node-rename".to_string();
+        let node_rename_projection = project_treecalc_table_node_snapshot(&node_rename).unwrap();
+        assert_update_has(
+            TreeCalcTableUpdateScenarioKind::NodeRename,
+            &baseline,
+            Some(&node_rename_projection),
+            [
+                InvalidationReasonKind::StructuredTableContextChanged,
+                InvalidationReasonKind::StructuralRebindRequired,
+            ],
+            [
+                TreeCalcTablePreparedIdentityInput::HostNamespaceVersion,
+                TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+                TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
+            ],
+        );
+
+        let mut node_move = baseline_snapshot.clone();
+        node_move.canonical_path = "Root/Archive/SalesTable".to_string();
+        node_move.virtual_anchor.sheet_scope_ref = "treecalc-virtual-sheet:archive".to_string();
+        let node_move_projection = project_treecalc_table_node_snapshot(&node_move).unwrap();
+        assert_update_has(
+            TreeCalcTableUpdateScenarioKind::NodeMove,
+            &baseline,
+            Some(&node_move_projection),
+            [
+                InvalidationReasonKind::StructuredTableContextChanged,
+                InvalidationReasonKind::StructuredTableRegionChanged,
+                InvalidationReasonKind::StructuralRebindRequired,
+            ],
+            [
+                TreeCalcTablePreparedIdentityInput::HostNamespaceVersion,
+                TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+                TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
+            ],
+        );
+
         let delete = classify_treecalc_table_update(
             TreeCalcTableUpdateScenarioKind::TableDelete,
             Some(&baseline),
@@ -9333,6 +9927,24 @@ mod tests {
                 .contains(&DependencyDescriptorKind::StructuredTableDataRegion)
         );
 
+        let node_delete = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::NodeDelete,
+            Some(&baseline),
+            None,
+            [owner],
+            source_handles(),
+        );
+        assert!(
+            node_delete
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyRemoved)
+        );
+        assert!(
+            node_delete
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+        );
+
         let save_reopen = classify_treecalc_table_update(
             TreeCalcTableUpdateScenarioKind::SaveReopen,
             Some(&baseline),
@@ -9343,6 +9955,78 @@ mod tests {
         assert!(save_reopen.changed_dependency_kinds.is_empty());
         assert!(save_reopen.invalidation_reasons.is_empty());
         assert!(save_reopen.invalidation_seeds.is_empty());
+
+        let workspace_open = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::WorkspaceOpen,
+            None,
+            Some(&baseline),
+            [owner],
+            source_handles(),
+        );
+        assert!(
+            workspace_open
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::HostSensitive)
+        );
+        assert!(
+            workspace_open
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyAdded)
+        );
+        assert!(
+            workspace_open
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+        );
+
+        let workspace_close = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+            Some(&baseline),
+            None,
+            [owner],
+            source_handles(),
+        );
+        assert!(
+            workspace_close
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyRemoved)
+        );
+
+        let workspace_alias = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::WorkspaceAliasMutation,
+            Some(&baseline),
+            Some(&baseline),
+            [owner],
+            source_handles(),
+        );
+        assert!(
+            workspace_alias
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuralRebindRequired)
+        );
+        assert!(
+            workspace_alias
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+        );
+
+        let registry_mutation = classify_treecalc_table_update(
+            TreeCalcTableUpdateScenarioKind::FunctionRegistrySnapshotMutation,
+            Some(&baseline),
+            Some(&baseline),
+            [owner],
+            source_handles(),
+        );
+        assert!(
+            registry_mutation
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::CapabilitySensitive)
+        );
+        assert!(
+            registry_mutation
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::RegistrySnapshotIdentity)
+        );
 
         let mut structural_rebind = baseline_snapshot;
         structural_rebind.canonical_path = "Root/Archive/SalesTable".to_string();
@@ -9426,18 +10110,25 @@ mod tests {
                 expected.changed_dependency_kinds,
                 report.changed_dependency_kinds
             );
-            assert!(
-                expected
-                    .invalidation_reasons
-                    .is_subset(&report.invalidation_reasons),
-                "{scenario:?}: expected invalidation reasons {:?}, got {:?}",
-                expected.invalidation_reasons,
-                report.invalidation_reasons
-            );
-            assert!(
-                expected_inputs.is_subset(&report.prepared_identity_inputs),
-                "{scenario:?}: expected prepared inputs {expected_inputs:?}, got {:?}",
-                report.prepared_identity_inputs
+            if expected.invalidation_reasons.is_empty() {
+                assert!(
+                    report.invalidation_reasons.is_empty(),
+                    "{scenario:?}: expected stable lifecycle with no invalidation reasons, got {:?}",
+                    report.invalidation_reasons
+                );
+            } else {
+                assert!(
+                    expected
+                        .invalidation_reasons
+                        .is_subset(&report.invalidation_reasons),
+                    "{scenario:?}: expected invalidation reasons {:?}, got {:?}",
+                    expected.invalidation_reasons,
+                    report.invalidation_reasons
+                );
+            }
+            assert_eq!(
+                report.prepared_identity_inputs, expected_inputs,
+                "{scenario:?}: prepared identity input set drifted"
             );
             assert!(
                 report
@@ -9562,11 +10253,120 @@ mod tests {
         table_move.virtual_anchor.start_col = 5;
         exercise(TreeCalcTableUpdateScenarioKind::TableMove, Some(table_move));
 
+        let mut table_resize = baseline_snapshot.clone();
+        table_resize
+            .rows
+            .push(TreeCalcTableRowId("row:south".to_string()));
+        table_resize.row_membership_version = "row-membership:resize".to_string();
+        table_resize.row_order_version = "row-order:resize".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::TableResize,
+            Some(table_resize),
+        );
+
+        let mut node_rename = baseline_snapshot.clone();
+        node_rename.display_path = "Sales Node".to_string();
+        node_rename.canonical_path = "Root/Sales Node".to_string();
+        node_rename.table_namespace_version = "namespace:node-rename".to_string();
+        exercise(
+            TreeCalcTableUpdateScenarioKind::NodeRename,
+            Some(node_rename),
+        );
+
+        let mut node_move = baseline_snapshot.clone();
+        node_move.canonical_path = "Root/Archive/SalesTable".to_string();
+        node_move.virtual_anchor.sheet_scope_ref = "treecalc-virtual-sheet:archive".to_string();
+        exercise(TreeCalcTableUpdateScenarioKind::NodeMove, Some(node_move));
+
         exercise(TreeCalcTableUpdateScenarioKind::TableDelete, None);
+        exercise(TreeCalcTableUpdateScenarioKind::NodeDelete, None);
 
         exercise(
             TreeCalcTableUpdateScenarioKind::SaveReopen,
             Some(baseline_snapshot.clone()),
+        );
+
+        let workspace_open_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::WorkspaceOpen,
+            )
+            .with_after(baseline_state.clone())
+            .with_owner_nodes([owner])
+            .with_source_reference_handles(["structured-ref:amount"]),
+        );
+        assert!(workspace_open_report.diagnostics.is_empty());
+        assert!(
+            workspace_open_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyAdded)
+        );
+        assert!(
+            workspace_open_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::HostSensitive)
+        );
+
+        let workspace_close_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::WorkspaceClose,
+            )
+            .with_before(baseline_state.clone())
+            .with_owner_nodes([owner])
+            .with_source_reference_handles(["structured-ref:amount"]),
+        );
+        assert!(workspace_close_report.diagnostics.is_empty());
+        assert!(
+            workspace_close_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyRemoved)
+        );
+
+        let mut alias_state = baseline_state.clone();
+        alias_state.workspace_alias_version = "treecalc-workspace-alias:v2".to_string();
+        let alias_report = classify_treecalc_table_lifecycle_callback(
+            &TreeCalcTableLifecycleCallbackPacket::new(
+                TreeCalcTableLifecycleEventKind::WorkspaceAliasMutation,
+            )
+            .with_before(baseline_state.clone())
+            .with_after(alias_state)
+            .with_owner_nodes([owner])
+            .with_source_reference_handles(["structured-ref:amount"]),
+        );
+        assert!(alias_report.diagnostics.is_empty());
+        assert!(
+            alias_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::HostSensitive)
+        );
+        assert!(
+            alias_report
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuralRebindRequired)
+        );
+
+        let mut registry_versions = TreeCalcTableLifecycleContextVersions::default();
+        registry_versions.registry_snapshot_identity = "oxfunc-registry:udf:v2".to_string();
+        let registry_report =
+            classify_treecalc_table_lifecycle_callback(&TreeCalcTableLifecycleCallbackPacket {
+                context_versions: registry_versions,
+                ..TreeCalcTableLifecycleCallbackPacket::new(
+                    TreeCalcTableLifecycleEventKind::FunctionRegistrySnapshotMutation,
+                )
+                .with_before(baseline_state.clone())
+                .with_after(baseline_state.clone())
+                .with_owner_nodes([owner])
+                .with_source_reference_handles(["structured-ref:amount"])
+            });
+        assert!(registry_report.diagnostics.is_empty());
+        assert!(
+            registry_report
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::CapabilitySensitive)
+        );
+        assert!(
+            registry_report
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::RegistrySnapshotIdentity)
         );
 
         let mut structural_rebind = baseline_snapshot;
@@ -9929,13 +10729,13 @@ mod tests {
             .into_iter()
             .collect::<BTreeSet<_>>();
         assert!(
-            expected_reasons.is_subset(&impact.invalidation_reasons),
-            "{scenario:?}: expected reasons {expected_reasons:?}, got {:?}",
+            impact.invalidation_reasons == expected_reasons,
+            "{scenario:?}: expected exact reasons {expected_reasons:?}, got {:?}",
             impact.invalidation_reasons
         );
         assert!(
-            expected_identity_inputs.is_subset(&impact.prepared_identity_inputs),
-            "{scenario:?}: expected identity inputs {expected_identity_inputs:?}, got {:?}",
+            impact.prepared_identity_inputs == expected_identity_inputs,
+            "{scenario:?}: expected exact identity inputs {expected_identity_inputs:?}, got {:?}",
             impact.prepared_identity_inputs
         );
         assert!(
@@ -9951,6 +10751,15 @@ mod tests {
         baseline: &TreeCalcTableNodeProjection,
         changed: &TreeCalcTableNodeProjection,
     ) {
+        let expected_identity_inputs = match scenario {
+            TreeCalcTableUpdateScenarioKind::ColumnInsert
+            | TreeCalcTableUpdateScenarioKind::ColumnDelete
+            | TreeCalcTableUpdateScenarioKind::ColumnReorder => vec![
+                TreeCalcTablePreparedIdentityInput::StructureContextVersion,
+                TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+            ],
+            _ => vec![TreeCalcTablePreparedIdentityInput::TableContextIdentity],
+        };
         assert_update_has(
             scenario,
             baseline,
@@ -9960,7 +10769,7 @@ mod tests {
                 InvalidationReasonKind::StructuredTableRegionChanged,
                 InvalidationReasonKind::StructuredTableContextChanged,
             ],
-            [TreeCalcTablePreparedIdentityInput::TableContextIdentity],
+            expected_identity_inputs,
         );
     }
 
@@ -10211,7 +11020,17 @@ mod tests {
             None
         )));
         assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::RowValue,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
             StructuredTableDependencyFactKind::ColumnIdentity,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::ColumnOrder,
             StructuredTableDependencyFactStatus::Lowered,
             None
         )));
@@ -10236,12 +11055,22 @@ mod tests {
             None
         )));
         assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::TotalsValue,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
             StructuredTableDependencyFactKind::CallerRowContext,
             StructuredTableDependencyFactStatus::Lowered,
             None
         )));
         assert!(kinds.contains(&(
             StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable,
+            StructuredTableDependencyFactStatus::Lowered,
+            None
+        )));
+        assert!(kinds.contains(&(
+            StructuredTableDependencyFactKind::VirtualAnchorRange,
             StructuredTableDependencyFactStatus::Lowered,
             None
         )));
@@ -10284,9 +11113,19 @@ mod tests {
             details_by_kind[&DependencyDescriptorKind::StructuredTableHeaderRegion],
             "table_header_region:v1:table=table:sales;region=A1:C1"
         );
-        assert_eq!(
-            details_by_kind[&DependencyDescriptorKind::StructuredTableTotalsRegion],
-            "table_totals_region:v1:table=table:sales;region=A5:C5"
+        assert!(
+            lowering
+                .descriptors
+                .iter()
+                .any(|descriptor| descriptor.carrier_detail
+                    == "table_totals_region:v1:table=table:sales;region=A5:C5")
+        );
+        assert!(
+            lowering
+                .descriptors
+                .iter()
+                .any(|descriptor| descriptor.carrier_detail
+                    == "table_totals_value:v1:table=table:sales;region=A5:C5")
         );
         assert!(
             lowering
@@ -10306,6 +11145,92 @@ mod tests {
                 .iter()
                 .all(|descriptor| descriptor.target_node_id.is_none()
                     && descriptor.requires_rebind_on_structural_change)
+        );
+    }
+
+    #[test]
+    fn treecalc_table_dependency_inventory_covers_full_w056_fact_surface() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let mut context_versions = TreeCalcTableLifecycleContextVersions::default();
+        context_versions.registry_snapshot_identity = "oxfunc-registry:udf:v2".to_string();
+        context_versions.workspace_availability_version =
+            Some("treecalc-workspace-availability:v2".to_string());
+        context_versions.workspace_alias_version =
+            Some("treecalc-workspace-alias:alias-v2".to_string());
+
+        let inventory = inventory_treecalc_table_dependency_facts(
+            &snapshot,
+            &projection,
+            &context_versions,
+            Some("caller-context:row-east"),
+            true,
+        );
+        let kinds = inventory
+            .facts
+            .iter()
+            .map(|fact| fact.kind)
+            .collect::<BTreeSet<_>>();
+
+        for kind in [
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::RowMembership,
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactKind::RowValue,
+            StructuredTableDependencyFactKind::ColumnIdentity,
+            StructuredTableDependencyFactKind::ColumnOrder,
+            StructuredTableDependencyFactKind::HeaderText,
+            StructuredTableDependencyFactKind::HeaderRegion,
+            StructuredTableDependencyFactKind::DataRegion,
+            StructuredTableDependencyFactKind::TotalsRegion,
+            StructuredTableDependencyFactKind::TotalsValue,
+            StructuredTableDependencyFactKind::TotalsFormula,
+            StructuredTableDependencyFactKind::CallerRowContext,
+            StructuredTableDependencyFactKind::OmittedTableNameEnclosingTable,
+            StructuredTableDependencyFactKind::VirtualAnchorRange,
+            StructuredTableDependencyFactKind::WorkspaceAvailability,
+            StructuredTableDependencyFactKind::FunctionRegistrySnapshot,
+        ] {
+            assert!(kinds.contains(&kind), "inventory missing {kind:?}");
+        }
+
+        assert_eq!(
+            inventory.registry_snapshot_identity,
+            "oxfunc-registry:udf:v2"
+        );
+        assert_eq!(
+            inventory.workspace_availability_version.as_deref(),
+            Some("treecalc-workspace-availability:v2")
+        );
+        assert!(inventory.facts.iter().any(|fact| {
+            fact.kind == StructuredTableDependencyFactKind::TotalsFormula
+                && fact
+                    .identity
+                    .as_deref()
+                    .is_some_and(|identity| identity.contains("formula:totals:amount"))
+        }));
+        assert!(
+            inventory
+                .facts
+                .iter()
+                .all(|fact| fact.status == StructuredTableDependencyFactStatus::Lowered)
+        );
+
+        let no_registry_inventory = inventory_treecalc_table_dependency_facts(
+            &snapshot,
+            &projection,
+            &context_versions,
+            Some("caller-context:row-east"),
+            false,
+        );
+        assert!(
+            !no_registry_inventory.facts.iter().any(
+                |fact| fact.kind == StructuredTableDependencyFactKind::FunctionRegistrySnapshot
+            )
+        );
+        assert_eq!(
+            StructuredTableDependencyFactKind::WorkspaceAvailability.descriptor_kind(),
+            DependencyDescriptorKind::HostSensitive
         );
     }
 
@@ -10387,7 +11312,7 @@ mod tests {
 
         assert!(graph.diagnostics.is_empty());
         assert_eq!(graph.edges_by_owner.len(), 0);
-        assert_eq!(graph.descriptors_by_owner[&TreeNodeId(10)].len(), 5);
+        assert_eq!(graph.descriptors_by_owner[&TreeNodeId(10)].len(), 8);
     }
 
     #[test]

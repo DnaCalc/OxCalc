@@ -2060,6 +2060,69 @@ spine. The current gaps map to:
    open DnaTreeCalc table parent beads,
 6. `calc-4vs8.63` for the final table status audit.
 
+## 4B.18. `calc-4vs8.58` Node-Table Abstraction And Anti-Shim Sweep
+
+Product status:
+
+The OxCalc node-associated table path now has a focused anti-shim regression
+covering the intended single route from a TreeCalc table node to formula
+execution:
+
+1. TreeCalc-owned table data enters OxCalc as `TreeCalcTableNodeSnapshot`.
+2. `project_treecalc_table_node_snapshot` produces the generic OxFml-facing
+   virtual Excel table packet (`TableDescriptor` inside
+   `StructuredTableContextPacket`) plus OxCalc-only namespace, anchor,
+   row-membership, row-order, column, body, totals, and invalidation
+   identities.
+3. `prebind_treecalc_table_structured_references` preserves source span,
+   exact token text, token kind, host-reference handle, table path token,
+   structured tail token, caller-context dependency, selector payload, replay
+   identity, and typed diagnostics while producing a public
+   `StructuredReferenceBindRecord`.
+4. `StructuredTableDependencyLoweringRequest::from_oxfml_bind_record` and
+   `lower_structured_table_dependencies` consume that same bind record and
+   generic table context packet to produce OxCalc-owned dependency descriptors
+   keyed by the source reference handle.
+5. `TreeCalcTableSparseReader::from_oxfml_bind_record` consumes the same bind
+   record and table projection to create the sparse/reference-reader surface
+   used by runtime.
+6. `RuntimeEnvironment` receives the generic table context and sparse
+   reference values, and the aggregate executes through OxFml/OxFunc without
+   exposing TreeCalc selectors to OxFunc.
+
+Evidence:
+
+1. New focused Rust test:
+   `node_table_path_uses_shared_packet_reader_dependency_and_runtime_surfaces`
+   in `src/oxcalc-core/src/structured_table.rs`.
+2. The test proves the `SalesTable[Amount]` path preserves source-token facts,
+   lowers row membership, row order, column identity, and data-region
+   descriptors from the same source reference handle, creates a
+   `ReferenceLike` sparse reader over the virtual Excel range, executes
+   `SUM(SalesTable[Amount])` through the OxFml/OxFunc runtime, and confirms
+   the `SUM` lane remains `SparseReferenceLike` with no TreeCalc selector
+   visibility and no eager-materialization closure evidence.
+
+Still open:
+
+1. `calc-4vs8.59` must execute the lifecycle/update matrix over the same
+   abstractions and record invalidation evidence for edits, row/column
+   mutation, namespace movement, delete/unavailable cases, save/reopen, and
+   registry/capability changes.
+2. `calc-4vs8.60` must revalidate function/UDF integration and the DnaOneCalc
+   no-host guardrail against the table formula path.
+3. `calc-4vs8.61` through `.63` still own replay/value-wire convergence,
+   cross-repo bead reconciliation, and the final scoped table completion audit.
+
+Architecture result:
+
+No new table-specific `EvalValue` variant, dense/eager materialization route,
+private structured-reference parser in DnaTreeCalc, TreeCalc branch in OxFml,
+or TreeCalc selector inspection in OxFunc was added for this bead. The current
+OxCalc implementation keeps the table-associated node model, virtual Excel
+anchor, generic OxFml packet, dependency lowering, sparse reader, runtime
+binding, and OxFunc aggregate path on one typed abstraction chain.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

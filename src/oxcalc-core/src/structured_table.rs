@@ -9107,6 +9107,126 @@ mod tests {
     }
 
     #[test]
+    fn node_table_path_uses_shared_packet_reader_dependency_and_runtime_surfaces() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let source = "=SUM(SalesTable[Amount])";
+        let prebound = prebind_treecalc_table_structured_references(
+            source,
+            std::slice::from_ref(&projection),
+            None,
+            None,
+        );
+
+        assert_eq!(prebound.len(), 1);
+        let record = &prebound[0].bind_record;
+        assert_eq!(record.source_token_text, "SalesTable[Amount]");
+        assert_eq!(record.source_span_utf8, prebound[0].source_span_utf8);
+        assert_eq!(record.bind_record_handle, prebound[0].host_ref_handle);
+        assert_eq!(
+            record.effective_table_id.as_deref(),
+            Some(projection.table_id.as_str())
+        );
+        assert_eq!(record.selected_column_ids, vec!["col:amount"]);
+        assert_eq!(record.selected_sections, vec![StructuredSectionKind::Data]);
+        assert!(record.diagnostics.is_empty());
+
+        let lowering_request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
+            TreeNodeId(200),
+            projection.context_packet.clone(),
+            record,
+        )
+        .expect("OxCalc table dependency lowering should consume the public bind record");
+        let lowering = lower_structured_table_dependencies(&lowering_request);
+        assert!(lowering.blocked_facts().is_empty());
+        assert_eq!(
+            lowering.table_context_identity.as_str(),
+            projection.context_packet.table_context_identity.as_str()
+        );
+        assert!(
+            lowering.descriptors.iter().all(|descriptor| {
+                descriptor.source_reference_handle.as_deref()
+                    == Some(record.bind_record_handle.as_str())
+                    && descriptor.target_node_id.is_none()
+                    && descriptor.tree_reference_collection.is_none()
+            }),
+            "table dependency descriptors must stay on generic structured-table handles"
+        );
+        for kind in [
+            DependencyDescriptorKind::StructuredTableRowMembership,
+            DependencyDescriptorKind::StructuredTableRowOrder,
+            DependencyDescriptorKind::StructuredTableColumnIdentity,
+            DependencyDescriptorKind::StructuredTableDataRegion,
+        ] {
+            assert!(
+                lowering
+                    .descriptors
+                    .iter()
+                    .any(|descriptor| descriptor.kind == kind),
+                "missing dependency descriptor {kind:?}"
+            );
+        }
+
+        let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+            &snapshot,
+            &projection,
+            record,
+            None,
+            amount_column_values(),
+        )
+        .expect("shared table sparse reader should consume the public bind record");
+        assert_eq!(
+            reader.reference(),
+            &ReferenceLike::new(ReferenceKind::Area, "C4:C6")
+        );
+        assert_eq!(reader.defined_cardinality(), 2);
+        let runtime_binding = reader.runtime_binding();
+        assert_eq!(runtime_binding.reference, reader.reference().clone());
+        assert_eq!(
+            runtime_binding.sparse_reference_values.declared_rows,
+            reader.declared_extent().row_count as usize
+        );
+        assert_eq!(
+            runtime_binding.sparse_reference_values.defined_cells.len(),
+            reader.defined_cardinality()
+        );
+        assert!(
+            runtime_binding
+                .sparse_reference_values
+                .reader_identity
+                .as_deref()
+                .is_some_and(|identity| identity.contains(&reader.reader_identity().reader_id))
+        );
+
+        let result = RuntimeEnvironment::new()
+            .with_primary_locus(table_primary_locus(&projection.table_descriptor))
+            .with_table_context(vec![projection.table_descriptor.clone()], None, None)
+            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
+            .execute(
+                RuntimeFormulaRequest::new(
+                    FormulaSourceRecord::new("runtime:w056-node-table-anti-shim", 1, source),
+                    TypedContextQueryBundle::default(),
+                )
+                .with_backend(EvaluationBackend::OxFuncBacked),
+            )
+            .expect("table reference should execute through OxFml/OxFunc sparse bindings");
+
+        assert_eq!(result.evaluation.oxfunc_value, EvalValue::Number(3.0));
+        assert_eq!(result.structured_reference_bind_records.len(), 1);
+        assert_eq!(
+            result.structured_reference_bind_records[0].source_token_text,
+            record.source_token_text
+        );
+        let sum_admission = treecalc_structured_table_function_admission("SUM").unwrap();
+        assert_eq!(
+            sum_admission.carrier_mode,
+            TreeCalcStructuredTableFunctionCarrierMode::SparseReferenceLike
+        );
+        assert!(!sum_admission.treecalc_selector_visible_to_oxfunc);
+        assert!(!sum_admission.eager_materialization_closure_allowed);
+    }
+
+    #[test]
     fn structured_table_function_breadth_inventory_keeps_table_refs_opaque() {
         let mut seen = BTreeSet::new();
         for admission in TREECALC_STRUCTURED_TABLE_FUNCTION_ADMISSION_INVENTORY {

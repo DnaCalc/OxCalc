@@ -1173,22 +1173,26 @@ fn build_context_formula_catalog(
             .get(owner_node_id)
             .copied()
             .unwrap_or(1);
-        let reference_literal_prebind =
-            context_reference_literal_array_prebind(state, *owner_node_id, formula_text);
+        let raw_treecalc_reference_prebind =
+            context_raw_treecalc_reference_prebind(state, *owner_node_id, formula_text);
         let (prebind_context, prebind_diagnostics) = context_prebind_resolution(
             state,
             *owner_node_id,
-            reference_literal_prebind.source_text.as_str(),
+            raw_treecalc_reference_prebind.source_text.as_str(),
         );
         let mut expression = prebind_treecalc_formula_text_with_context(
             *owner_node_id,
-            reference_literal_prebind.source_text.as_str(),
+            raw_treecalc_reference_prebind.source_text.as_str(),
             &prebind_context,
         )?;
         expression
             .reference_carriers
-            .extend(reference_literal_prebind.carriers.into_iter());
+            .extend(raw_treecalc_reference_prebind.carriers.into_iter());
         let prebound_treecalc_spans = prebound_treecalc_source_spans(&expression);
+        let prebound_treecalc_spans = prebound_treecalc_spans
+            .into_iter()
+            .chain(raw_treecalc_reference_prebind.source_spans.into_iter())
+            .collect::<Vec<_>>();
         diagnostics.extend(
             prebind_diagnostics
                 .into_iter()
@@ -1334,18 +1338,20 @@ fn context_prebind_resolution(
     )
 }
 
-struct ContextReferenceLiteralArrayPrebind {
+struct ContextRawTreecalcReferencePrebind {
     source_text: String,
     carriers: Vec<TreeFormulaReferenceCarrier>,
+    source_spans: Vec<(usize, usize)>,
 }
 
-fn context_reference_literal_array_prebind(
+fn context_raw_treecalc_reference_prebind(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
     formula_text: &str,
-) -> ContextReferenceLiteralArrayPrebind {
+) -> ContextRawTreecalcReferencePrebind {
     let mut rewritten = String::with_capacity(formula_text.len());
     let mut carriers = Vec::new();
+    let mut source_spans = Vec::new();
     let mut cursor = 0;
     let mut index = 0;
     let mut in_string = false;
@@ -1388,6 +1394,7 @@ fn context_reference_literal_array_prebind(
             rewritten.push_str(&formula_text[cursor..index]);
             rewritten.push_str(&neutral_token);
             cursor = end_byte;
+            source_spans.push((index, end_byte));
 
             let elements = member_node_ids
                 .iter()
@@ -1411,20 +1418,43 @@ fn context_reference_literal_array_prebind(
             continue;
         }
 
+        if current == '@'
+            && previous_char_allows_treecalc_navigation(formula_text, index)
+            && let Some((offset, token_end, tail_segments)) =
+                parse_sibling_navigation_token(formula_text, index)
+        {
+            let neutral_token = format!("TREE_SIBLING_REF_{}_{}", owner_node_id.0, carriers.len());
+            rewritten.push_str(&formula_text[cursor..index]);
+            rewritten.push_str(&neutral_token);
+            cursor = token_end;
+            source_spans.push((index, token_end));
+            carriers.push(TreeFormulaReferenceCarrier::named(
+                neutral_token,
+                TreeReference::SiblingOffset {
+                    offset,
+                    tail_segments,
+                },
+            ));
+            index = token_end;
+            continue;
+        }
+
         index += current.len_utf8();
     }
 
     if carriers.is_empty() {
-        return ContextReferenceLiteralArrayPrebind {
+        return ContextRawTreecalcReferencePrebind {
             source_text: formula_text.to_string(),
             carriers,
+            source_spans,
         };
     }
 
     rewritten.push_str(&formula_text[cursor..]);
-    ContextReferenceLiteralArrayPrebind {
+    ContextRawTreecalcReferencePrebind {
         source_text: rewritten,
         carriers,
+        source_spans,
     }
 }
 
@@ -1481,6 +1511,83 @@ fn is_reference_literal_member_token(element: &str) -> bool {
         return false;
     }
     chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.'))
+}
+
+fn parse_sibling_navigation_token(
+    formula_text: &str,
+    start_byte: usize,
+) -> Option<(isize, usize, Vec<String>)> {
+    let (offset, keyword_len) = if formula_text[start_byte..].starts_with("@PREV") {
+        (-1, "@PREV".len())
+    } else if formula_text[start_byte..].starts_with("@NEXT") {
+        (1, "@NEXT".len())
+    } else {
+        return None;
+    };
+    let mut end = start_byte + keyword_len;
+    if formula_text[end..].starts_with('.') {
+        let (tail_end, tail_segments) = parse_sibling_navigation_tail(formula_text, end + 1)?;
+        end = tail_end;
+        if next_char_continues_treecalc_navigation(formula_text, end) {
+            return None;
+        }
+        return Some((offset, end, tail_segments));
+    }
+    if next_char_continues_treecalc_navigation(formula_text, end) {
+        return None;
+    }
+    Some((offset, end, Vec::new()))
+}
+
+fn parse_sibling_navigation_tail(
+    formula_text: &str,
+    mut index: usize,
+) -> Option<(usize, Vec<String>)> {
+    let mut segments = Vec::new();
+    loop {
+        let segment_start = index;
+        let first = formula_text[index..].chars().next()?;
+        if !(first.is_ascii_alphabetic() || first == '_') {
+            return None;
+        }
+        index += first.len_utf8();
+        while let Some(current) = formula_text[index..].chars().next() {
+            if current.is_ascii_alphanumeric() || current == '_' {
+                index += current.len_utf8();
+            } else {
+                break;
+            }
+        }
+        segments.push(formula_text[segment_start..index].to_string());
+        if !formula_text[index..].starts_with('.') {
+            break;
+        }
+        index += 1;
+    }
+    Some((index, segments))
+}
+
+fn previous_char_allows_treecalc_navigation(source_text: &str, end_byte: usize) -> bool {
+    previous_non_whitespace_char(source_text, end_byte)
+        .is_none_or(|ch| !is_context_treecalc_navigation_tail_char(ch))
+}
+
+fn next_char_continues_treecalc_navigation(source_text: &str, start_byte: usize) -> bool {
+    source_text[start_byte..]
+        .chars()
+        .next()
+        .is_some_and(is_context_treecalc_navigation_tail_char)
+}
+
+fn previous_non_whitespace_char(source_text: &str, end_byte: usize) -> Option<char> {
+    source_text[..end_byte]
+        .chars()
+        .rev()
+        .find(|ch| !ch.is_whitespace())
+}
+
+fn is_context_treecalc_navigation_tail_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '@' | '.')
 }
 
 fn context_qualified_children_base_resolution(
@@ -2698,6 +2805,119 @@ mod tests {
                         handle
                             .starts_with("treecalc-hostref:v1:reference_literal_array:raw_literal:")
                     })
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_raw_sibling_navigation_resolves_prev_next_tail() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:raw-sibling"))
+            .unwrap();
+        let year_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Y2005", ""))
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "=SUM({Bonus})+@NEXT.Margin+2").under(year_id),
+            )
+            .unwrap();
+        let q2_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q2", "=@PREV.Net+1").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Net", "=7").under(q1_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Bonus", "=1").under(q1_id),
+            )
+            .unwrap();
+        let q2_margin_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "=11").under(q2_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&q1_id), Some(&"14".to_string()));
+        assert_eq!(result.published_values.get(&q2_id), Some(&"8".to_string()));
+        assert!(result.diagnostics.iter().all(|diagnostic| {
+            !diagnostic.contains("unresolved_host_name:Net")
+                && !diagnostic.contains("unresolved_host_name:Margin")
+        }));
+
+        let q1_descriptors = result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&q1_id)
+            .expect("Q1 should have sibling descriptor");
+        assert!(q1_descriptors.iter().any(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::RelativeBound
+                && descriptor.target_node_id == Some(q2_margin_id)
+                && descriptor.carrier_detail == "sibling_offset:1:Margin"
+                && descriptor.requires_rebind_on_structural_change
+        }));
+
+        let q2_descriptors = result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&q2_id)
+            .expect("Q2 should have sibling descriptor");
+        assert!(q2_descriptors.iter().any(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::RelativeBound
+                && descriptor.carrier_detail == "sibling_offset:-1:Net"
+                && descriptor.requires_rebind_on_structural_change
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_raw_sibling_navigation_out_of_range_is_typed_relative_bound() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:raw-sibling-out-of-range",
+            ))
+            .unwrap();
+        let year_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Y2005", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "=1").under(year_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=@NEXT").under(year_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        let descriptors = result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&total_id)
+            .expect("out-of-range sibling should still record a descriptor");
+        assert!(descriptors.iter().any(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::RelativeBound
+                && descriptor.target_node_id.is_none()
+                && descriptor.carrier_detail == "sibling_offset:1:"
+                && descriptor.requires_rebind_on_structural_change
         }));
     }
 

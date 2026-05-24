@@ -1228,6 +1228,66 @@ does not close OxReplay retained comparison artifacts, and does not freeze
 bare host-name/callable precedence. Those remain with `calc-4vs8.51`,
 `calc-4vs8.52`, `calc-4vs8.53`, and OxFml W074 respectively.
 
+## 4B.10. `calc-4vs8.56` Dynamic Table Rebind And `INDIRECT`
+
+Product status:
+
+OxCalc now has an explicit dynamic table rebind lane for W056. Dynamic
+references that resolve to node-associated tables no longer disappear into the
+generic non-table dynamic-reference bucket: `TreeCalcDynamicTableRebindRequest`
+and `classify_treecalc_dynamic_table_rebind` classify table, column, section,
+current-row, and cross-workspace table targets into OxCalc-owned dependency
+facts, invalidation reasons, prepared-identity inputs, typed diagnostics, and
+rebind status.
+
+Implemented dynamic target scope:
+
+1. whole table targets depend on table identity, row membership/order, column
+   identity, and data region facts,
+2. column targets additionally preserve column/data-region invalidation,
+3. section targets preserve header/data/totals region invalidation,
+4. current-row targets require caller-context identity and reject without it,
+5. cross-workspace table targets are host-sensitive, carry workspace
+   availability dependency, and still retain normal table content dependencies
+   for row membership/order, column identity, and data region facts,
+6. table rename/move/delete, node delete, workspace close, and stable
+   save/reopen use the same table lifecycle scenario vocabulary as
+   `calc-4vs8.50`,
+7. `INDIRECT`/volatile selector churn is represented as dynamic dependency
+   activation/release/reclassification plus table-context and dynamic-selector
+   prepared identity.
+
+Typed exclusions:
+
+Runtime parsing of TreeCalc structured-reference text is not admitted as a
+shortcut. When a dynamic selector would require runtime parsing of
+TreeCalc-specific structured-reference syntax, OxCalc reports
+`UnsupportedRuntimeStructuredReferenceParsing`; OxFml must instead provide a
+generic structured-reference bind packet, or the dynamic table reference stays
+a typed exclusion. Dynamic targets that are not tables are likewise typed
+excluded from table `ReferenceLike` lowering.
+
+Evidence:
+
+Focused Rust tests cover table/column/current-row/cross-workspace dynamic
+targets, stable save/reopen suppression, table rename/move/delete, node delete,
+workspace close/unavailable target handling, missing current-row caller context,
+unsupported runtime structured-reference parsing, dynamic non-table target
+exclusion, cross-workspace table content dependency retention, and same-table
+selector changes that still require selector-identity prepared/cache
+invalidation. The report keeps generic OxFml bind-packet availability and
+OxFunc opaque-reference admission explicit so the seam cannot be closed by
+TreeCalc-specific OxFml/OxFunc branches or eager materialization.
+
+Still open:
+
+1. DnaTreeCalc dynamic table corpus activation remains with `calc-4vs8.51`.
+2. Excel observation and retained comparison evidence remain with
+   `calc-4vs8.52` and `calc-4vs8.53`.
+3. Wider function implementation for `INDIRECT` remains an OxFunc/OxFml
+   typed-host-context lane; this bead closes the OxCalc dynamic table rebind
+   contract and typed exclusion surface.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

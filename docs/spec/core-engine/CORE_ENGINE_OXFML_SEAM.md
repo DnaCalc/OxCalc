@@ -380,6 +380,16 @@ these TreeCalc table facts. The registry snapshot fact is conditional on
 OxCalc/OxFunc evidence that a table formula calls registered functions; OxFml
 does not infer it from table syntax.
 
+Dynamic table references follow the same rule. OxFml may carry generic dynamic
+reference packets, generic structured-reference bind records, source spans,
+and diagnostics, but OxCalc owns `INDIRECT`-style table rebind classification:
+selector churn, volatile re-evaluation, table lifecycle changes, current-row
+caller-context changes, cross-workspace availability, deleted/unavailable
+targets, selector-identity prepared/cache invalidation, and typed exclusions.
+A dynamic selector that would require runtime TreeCalc structured-reference
+parsing is not a request for OxFml to hardcode TreeCalc syntax; it remains a
+typed exclusion until the host supplies a generic bind packet.
+
 The current W056 resolver implementation adds an OxCalc-only table catalog
 resolution surface before the OxFml seam. `TreeCalcTableCatalogResolution`
 records the stable table-reference handle, opaque selector, resolution layer,

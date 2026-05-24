@@ -282,6 +282,22 @@ function registry snapshot fact is conditional: it is present when the table
 formula path has registered-function dependency evidence and absent for
 constant-only or registry-independent table scenarios.
 
+Dynamic references that resolve to node-associated tables use the same
+ownership boundary. `TreeCalcDynamicTableRebindRequest` is an OxCalc-owned
+classification input for `INDIRECT`-style selector churn, dynamic function
+results, volatile re-evaluation, table lifecycle events, current-row targets,
+and cross-workspace table targets. The resulting report names table dependency
+facts, dynamic dependency activation/release/reclassification, table lifecycle
+invalidation reasons, prepared-identity inputs, and typed exclusions. Dynamic
+selector identity is an explicit prepared/cache identity input even when a
+selector change rebinds to the same physical table. Cross-workspace dynamic
+table targets add workspace availability sensitivity without dropping normal
+table row, column, and data-region dependencies. OxFml must supply generic
+structured-reference bind packets for dynamic table targets; OxCalc does not
+ask OxFml to parse TreeCalc syntax at runtime. Unsupported runtime
+structured-reference parsing and non-table dynamic targets remain typed
+exclusions rather than fallback eager materialization.
+
 OxFml receives none of this lifecycle meaning. After OxCalc classifies the
 callback, OxFml only sees the resulting generic table descriptor catalog,
 structured-reference packets, caller table region, sparse reference bindings,

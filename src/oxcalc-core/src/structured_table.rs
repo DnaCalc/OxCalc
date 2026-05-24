@@ -3887,6 +3887,7 @@ pub enum TreeCalcTablePreparedIdentityInput {
     StructureContextVersion,
     TableContextIdentity,
     CallerContextIdentity,
+    DynamicSelectorIdentity,
     RegistrySnapshotIdentity,
     ResolutionRuleVersion,
 }
@@ -6240,6 +6241,352 @@ fn push_inventory_fact(
         identity,
         detail,
     ));
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcDynamicTableReferenceTargetKind {
+    Table,
+    Column,
+    Section,
+    CurrentRow,
+    CrossWorkspaceTable,
+}
+
+impl TreeCalcDynamicTableReferenceTargetKind {
+    #[must_use]
+    pub const fn stable_id(self) -> &'static str {
+        match self {
+            Self::Table => "table",
+            Self::Column => "column",
+            Self::Section => "section",
+            Self::CurrentRow => "current_row",
+            Self::CrossWorkspaceTable => "cross_workspace_table",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeCalcDynamicTableRebindCause {
+    SelectorTextChanged,
+    DynamicFunctionResultChanged,
+    VolatileReevaluation,
+    TableLifecycle(TreeCalcTableUpdateScenarioKind),
+    UnsupportedRuntimeStructuredReferenceParsing,
+    DynamicTargetNotTable,
+}
+
+impl TreeCalcDynamicTableRebindCause {
+    #[must_use]
+    pub fn stable_id(&self) -> &'static str {
+        match self {
+            Self::SelectorTextChanged => "selector_text_changed",
+            Self::DynamicFunctionResultChanged => "dynamic_function_result_changed",
+            Self::VolatileReevaluation => "volatile_reevaluation",
+            Self::TableLifecycle(scenario) => {
+                TreeCalcTableLifecycleEventKind::from(*scenario).stable_id()
+            }
+            Self::UnsupportedRuntimeStructuredReferenceParsing => {
+                "unsupported_runtime_structured_reference_parsing"
+            }
+            Self::DynamicTargetNotTable => "dynamic_target_not_table",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcDynamicTableRebindStatus {
+    ReferencePreserving,
+    RebindRequired,
+    DeletedTarget,
+    UnavailableTarget,
+    TypedExclusion,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeCalcDynamicTableRebindDiagnosticKind {
+    MissingCallerContext,
+    UnsupportedRuntimeStructuredReferenceParsing,
+    DynamicTargetNotTable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcDynamicTableRebindDiagnostic {
+    pub kind: TreeCalcDynamicTableRebindDiagnosticKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcDynamicTableRebindRequest {
+    pub selector_handle: String,
+    pub selector_identity: String,
+    pub source_reference_handle: Option<String>,
+    pub target_kind: TreeCalcDynamicTableReferenceTargetKind,
+    pub cause: TreeCalcDynamicTableRebindCause,
+    pub before_resolved_table_identity: Option<String>,
+    pub after_resolved_table_identity: Option<String>,
+    pub caller_context_id: Option<String>,
+    pub context_versions: TreeCalcTableLifecycleContextVersions,
+    pub oxfml_structured_bind_packet_available: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcDynamicTableRebindReport {
+    pub dynamic_rebind_identity: String,
+    pub selector_handle: String,
+    pub selector_identity: String,
+    pub source_reference_handle: Option<String>,
+    pub target_kind: TreeCalcDynamicTableReferenceTargetKind,
+    pub cause: TreeCalcDynamicTableRebindCause,
+    pub status: TreeCalcDynamicTableRebindStatus,
+    pub dependency_fact_kinds: BTreeSet<StructuredTableDependencyFactKind>,
+    pub changed_dependency_kinds: BTreeSet<DependencyDescriptorKind>,
+    pub invalidation_reasons: BTreeSet<InvalidationReasonKind>,
+    pub prepared_identity_inputs: BTreeSet<TreeCalcTablePreparedIdentityInput>,
+    pub diagnostics: Vec<TreeCalcDynamicTableRebindDiagnostic>,
+    pub oxfml_generic_bind_packet_available: bool,
+    pub oxfunc_opaque_reference_admitted: bool,
+}
+
+#[must_use]
+pub fn classify_treecalc_dynamic_table_rebind(
+    request: &TreeCalcDynamicTableRebindRequest,
+) -> TreeCalcDynamicTableRebindReport {
+    let mut dependency_fact_kinds = dynamic_table_target_fact_kinds(request.target_kind);
+    let mut changed_dependency_kinds = dependency_fact_kinds
+        .iter()
+        .map(|kind| kind.descriptor_kind())
+        .collect::<BTreeSet<_>>();
+    changed_dependency_kinds.insert(DependencyDescriptorKind::DynamicPotential);
+
+    let mut invalidation_reasons = BTreeSet::from([
+        InvalidationReasonKind::DynamicDependencyActivated,
+        InvalidationReasonKind::DynamicDependencyReleased,
+        InvalidationReasonKind::DynamicDependencyReclassified,
+    ]);
+    let mut prepared_identity_inputs = BTreeSet::from([
+        TreeCalcTablePreparedIdentityInput::DynamicSelectorIdentity,
+        TreeCalcTablePreparedIdentityInput::StructureContextVersion,
+        TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion,
+        TreeCalcTablePreparedIdentityInput::TableContextIdentity,
+    ]);
+    if request.context_versions.host_namespace_version.is_some()
+        || request
+            .context_versions
+            .workspace_availability_version
+            .is_some()
+        || request.context_versions.workspace_alias_version.is_some()
+        || matches!(
+            request.target_kind,
+            TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable
+        )
+    {
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+    }
+
+    let mut diagnostics = Vec::new();
+    match &request.cause {
+        TreeCalcDynamicTableRebindCause::TableLifecycle(scenario) => {
+            changed_dependency_kinds.extend(scenario_changed_dependency_kinds(*scenario));
+            invalidation_reasons.extend(scenario_invalidation_reasons(*scenario));
+            prepared_identity_inputs.extend(scenario_prepared_identity_inputs(*scenario));
+        }
+        TreeCalcDynamicTableRebindCause::UnsupportedRuntimeStructuredReferenceParsing => {
+            changed_dependency_kinds.insert(DependencyDescriptorKind::Unresolved);
+            invalidation_reasons.insert(InvalidationReasonKind::StructuralRebindRequired);
+            diagnostics.push(TreeCalcDynamicTableRebindDiagnostic {
+                kind: TreeCalcDynamicTableRebindDiagnosticKind::UnsupportedRuntimeStructuredReferenceParsing,
+                detail: "dynamic selector would require runtime parsing of TreeCalc structured-reference syntax; OxFml must supply a generic bind packet or OxCalc must return a typed exclusion".to_string(),
+            });
+        }
+        TreeCalcDynamicTableRebindCause::DynamicTargetNotTable => {
+            changed_dependency_kinds.insert(DependencyDescriptorKind::Unresolved);
+            invalidation_reasons.insert(InvalidationReasonKind::DependencyReclassified);
+            diagnostics.push(TreeCalcDynamicTableRebindDiagnostic {
+                kind: TreeCalcDynamicTableRebindDiagnosticKind::DynamicTargetNotTable,
+                detail: "dynamic selector resolved to a non-table target; table ReferenceLike lowering is not admitted for this target".to_string(),
+            });
+        }
+        TreeCalcDynamicTableRebindCause::SelectorTextChanged
+        | TreeCalcDynamicTableRebindCause::DynamicFunctionResultChanged
+        | TreeCalcDynamicTableRebindCause::VolatileReevaluation => {}
+    }
+
+    if matches!(
+        request.target_kind,
+        TreeCalcDynamicTableReferenceTargetKind::CurrentRow
+    ) {
+        changed_dependency_kinds.insert(DependencyDescriptorKind::StructuredTableCallerContext);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::CallerContextIdentity);
+        if request.caller_context_id.is_none() {
+            diagnostics.push(TreeCalcDynamicTableRebindDiagnostic {
+                kind: TreeCalcDynamicTableRebindDiagnosticKind::MissingCallerContext,
+                detail:
+                    "dynamic current-row table reference requires caller_context_id and caller table region"
+                        .to_string(),
+            });
+        }
+    }
+
+    if matches!(
+        request.target_kind,
+        TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable
+    ) {
+        dependency_fact_kinds.insert(StructuredTableDependencyFactKind::WorkspaceAvailability);
+        changed_dependency_kinds.insert(DependencyDescriptorKind::HostSensitive);
+        invalidation_reasons.insert(InvalidationReasonKind::StructuralRebindRequired);
+        prepared_identity_inputs.insert(TreeCalcTablePreparedIdentityInput::HostNamespaceVersion);
+    }
+
+    if request.before_resolved_table_identity != request.after_resolved_table_identity {
+        invalidation_reasons.insert(InvalidationReasonKind::DynamicDependencyReclassified);
+    }
+
+    let status = dynamic_table_rebind_status(request, &diagnostics);
+    if matches!(
+        status,
+        TreeCalcDynamicTableRebindStatus::ReferencePreserving
+    ) {
+        changed_dependency_kinds.clear();
+        invalidation_reasons.clear();
+        prepared_identity_inputs.clear();
+    }
+    if matches!(status, TreeCalcDynamicTableRebindStatus::TypedExclusion) {
+        dependency_fact_kinds.clear();
+    }
+
+    TreeCalcDynamicTableRebindReport {
+        dynamic_rebind_identity: dynamic_table_rebind_identity(request),
+        selector_handle: request.selector_handle.clone(),
+        selector_identity: request.selector_identity.clone(),
+        source_reference_handle: request.source_reference_handle.clone(),
+        target_kind: request.target_kind,
+        cause: request.cause.clone(),
+        status,
+        dependency_fact_kinds,
+        changed_dependency_kinds,
+        invalidation_reasons,
+        prepared_identity_inputs,
+        diagnostics,
+        oxfml_generic_bind_packet_available: request.oxfml_structured_bind_packet_available,
+        oxfunc_opaque_reference_admitted: !matches!(
+            status,
+            TreeCalcDynamicTableRebindStatus::TypedExclusion
+        ),
+    }
+}
+
+fn dynamic_table_target_fact_kinds(
+    target_kind: TreeCalcDynamicTableReferenceTargetKind,
+) -> BTreeSet<StructuredTableDependencyFactKind> {
+    match target_kind {
+        TreeCalcDynamicTableReferenceTargetKind::Table => BTreeSet::from([
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::RowMembership,
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactKind::ColumnIdentity,
+            StructuredTableDependencyFactKind::DataRegion,
+        ]),
+        TreeCalcDynamicTableReferenceTargetKind::Column => BTreeSet::from([
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::RowMembership,
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactKind::ColumnIdentity,
+            StructuredTableDependencyFactKind::DataRegion,
+        ]),
+        TreeCalcDynamicTableReferenceTargetKind::Section => BTreeSet::from([
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::HeaderRegion,
+            StructuredTableDependencyFactKind::DataRegion,
+            StructuredTableDependencyFactKind::TotalsRegion,
+        ]),
+        TreeCalcDynamicTableReferenceTargetKind::CurrentRow => BTreeSet::from([
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactKind::DataRegion,
+            StructuredTableDependencyFactKind::CallerRowContext,
+        ]),
+        TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable => BTreeSet::from([
+            StructuredTableDependencyFactKind::TableIdentity,
+            StructuredTableDependencyFactKind::RowMembership,
+            StructuredTableDependencyFactKind::RowOrder,
+            StructuredTableDependencyFactKind::ColumnIdentity,
+            StructuredTableDependencyFactKind::DataRegion,
+            StructuredTableDependencyFactKind::WorkspaceAvailability,
+            StructuredTableDependencyFactKind::VirtualAnchorRange,
+        ]),
+    }
+}
+
+fn dynamic_table_rebind_status(
+    request: &TreeCalcDynamicTableRebindRequest,
+    diagnostics: &[TreeCalcDynamicTableRebindDiagnostic],
+) -> TreeCalcDynamicTableRebindStatus {
+    if !diagnostics.is_empty()
+        || !request.oxfml_structured_bind_packet_available
+        || matches!(
+            request.cause,
+            TreeCalcDynamicTableRebindCause::UnsupportedRuntimeStructuredReferenceParsing
+                | TreeCalcDynamicTableRebindCause::DynamicTargetNotTable
+        )
+    {
+        return TreeCalcDynamicTableRebindStatus::TypedExclusion;
+    }
+    match request.cause {
+        TreeCalcDynamicTableRebindCause::TableLifecycle(
+            TreeCalcTableUpdateScenarioKind::TableDelete
+            | TreeCalcTableUpdateScenarioKind::NodeDelete,
+        ) => TreeCalcDynamicTableRebindStatus::DeletedTarget,
+        TreeCalcDynamicTableRebindCause::TableLifecycle(
+            TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+        ) => TreeCalcDynamicTableRebindStatus::UnavailableTarget,
+        TreeCalcDynamicTableRebindCause::TableLifecycle(
+            TreeCalcTableUpdateScenarioKind::SaveReopen,
+        ) if request.before_resolved_table_identity == request.after_resolved_table_identity => {
+            TreeCalcDynamicTableRebindStatus::ReferencePreserving
+        }
+        _ => TreeCalcDynamicTableRebindStatus::RebindRequired,
+    }
+}
+
+fn dynamic_table_rebind_identity(request: &TreeCalcDynamicTableRebindRequest) -> String {
+    identity_record(
+        "treecalc.dynamic_table_rebind.v1",
+        [
+            ("selector_handle", request.selector_handle.clone()),
+            ("selector_identity", request.selector_identity.clone()),
+            (
+                "source_reference_handle",
+                request
+                    .source_reference_handle
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            ("target_kind", request.target_kind.stable_id().to_string()),
+            ("cause", request.cause.stable_id().to_string()),
+            (
+                "before",
+                request
+                    .before_resolved_table_identity
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "after",
+                request
+                    .after_resolved_table_identity
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            (
+                "caller_context_id",
+                request
+                    .caller_context_id
+                    .clone()
+                    .unwrap_or_else(|| "none".to_string()),
+            ),
+            ("context", request.context_versions.identity_fragment()),
+        ],
+    )
 }
 
 fn resolved_table_id(request: &StructuredTableDependencyLoweringRequest) -> Option<String> {
@@ -10773,6 +11120,24 @@ mod tests {
         );
     }
 
+    fn dynamic_table_rebind_request(
+        target_kind: TreeCalcDynamicTableReferenceTargetKind,
+        cause: TreeCalcDynamicTableRebindCause,
+    ) -> TreeCalcDynamicTableRebindRequest {
+        TreeCalcDynamicTableRebindRequest {
+            selector_handle: "dynamic-table-selector:1".to_string(),
+            selector_identity: "dynamic-selector:Sales[#Data]".to_string(),
+            source_reference_handle: Some("structured-ref:dynamic-table".to_string()),
+            target_kind,
+            cause,
+            before_resolved_table_identity: Some("tree-table:sales:v1".to_string()),
+            after_resolved_table_identity: Some("tree-table:sales:v2".to_string()),
+            caller_context_id: None,
+            context_versions: TreeCalcTableLifecycleContextVersions::default(),
+            oxfml_structured_bind_packet_available: true,
+        }
+    }
+
     fn amount_column_values() -> Vec<TreeCalcTableSparseValue> {
         vec![
             TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
@@ -11232,6 +11597,293 @@ mod tests {
             StructuredTableDependencyFactKind::WorkspaceAvailability.descriptor_kind(),
             DependencyDescriptorKind::HostSensitive
         );
+    }
+
+    #[test]
+    fn dynamic_table_rebind_covers_targets_and_stable_save_reopen() {
+        let column = classify_treecalc_dynamic_table_rebind(&dynamic_table_rebind_request(
+            TreeCalcDynamicTableReferenceTargetKind::Column,
+            TreeCalcDynamicTableRebindCause::SelectorTextChanged,
+        ));
+        assert_eq!(
+            column.status,
+            TreeCalcDynamicTableRebindStatus::RebindRequired
+        );
+        assert!(
+            column
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::ColumnIdentity)
+        );
+        assert!(
+            column
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::DynamicPotential)
+        );
+        assert!(
+            column
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableDataRegion)
+        );
+        assert!(
+            column
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DynamicDependencyActivated)
+        );
+        assert!(
+            column
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DynamicDependencyReleased)
+        );
+        assert!(
+            column
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::TableContextIdentity)
+        );
+        assert!(
+            column
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::DynamicSelectorIdentity)
+        );
+        assert!(
+            !column
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::CallerContextIdentity)
+        );
+        assert!(column.oxfml_generic_bind_packet_available);
+        assert!(column.oxfunc_opaque_reference_admitted);
+
+        let same_table_selector_changed =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                selector_identity: "dynamic-selector:Sales[Amount]".to_string(),
+                after_resolved_table_identity: Some("tree-table:sales:v1".to_string()),
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::Column,
+                    TreeCalcDynamicTableRebindCause::SelectorTextChanged,
+                )
+            });
+        assert_eq!(
+            same_table_selector_changed.status,
+            TreeCalcDynamicTableRebindStatus::RebindRequired
+        );
+        assert!(
+            same_table_selector_changed
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::DynamicSelectorIdentity)
+        );
+        assert_ne!(
+            column.dynamic_rebind_identity,
+            same_table_selector_changed.dynamic_rebind_identity
+        );
+
+        let current_row =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                target_kind: TreeCalcDynamicTableReferenceTargetKind::CurrentRow,
+                cause: TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::RowReorder,
+                ),
+                caller_context_id: Some("caller:row-east".to_string()),
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::CurrentRow,
+                    TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                )
+            });
+        assert_eq!(
+            current_row.status,
+            TreeCalcDynamicTableRebindStatus::RebindRequired
+        );
+        assert!(
+            current_row
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::CallerRowContext)
+        );
+        assert!(
+            current_row
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::StructuredTableRowOrderChanged)
+        );
+        assert!(
+            current_row
+                .prepared_identity_inputs
+                .contains(&TreeCalcTablePreparedIdentityInput::CallerContextIdentity)
+        );
+
+        let stable = classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+            cause: TreeCalcDynamicTableRebindCause::TableLifecycle(
+                TreeCalcTableUpdateScenarioKind::SaveReopen,
+            ),
+            after_resolved_table_identity: Some("tree-table:sales:v1".to_string()),
+            ..dynamic_table_rebind_request(
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+            )
+        });
+        assert_eq!(
+            stable.status,
+            TreeCalcDynamicTableRebindStatus::ReferencePreserving
+        );
+        assert!(stable.changed_dependency_kinds.is_empty());
+        assert!(stable.invalidation_reasons.is_empty());
+        assert!(stable.prepared_identity_inputs.is_empty());
+    }
+
+    #[test]
+    fn dynamic_table_rebind_covers_lifecycle_workspace_and_typed_exclusions() {
+        for (scenario, expected_status) in [
+            (
+                TreeCalcTableUpdateScenarioKind::TableRename,
+                TreeCalcDynamicTableRebindStatus::RebindRequired,
+            ),
+            (
+                TreeCalcTableUpdateScenarioKind::TableMove,
+                TreeCalcDynamicTableRebindStatus::RebindRequired,
+            ),
+            (
+                TreeCalcTableUpdateScenarioKind::TableDelete,
+                TreeCalcDynamicTableRebindStatus::DeletedTarget,
+            ),
+            (
+                TreeCalcTableUpdateScenarioKind::NodeDelete,
+                TreeCalcDynamicTableRebindStatus::DeletedTarget,
+            ),
+        ] {
+            let report =
+                classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                    cause: TreeCalcDynamicTableRebindCause::TableLifecycle(scenario),
+                    ..dynamic_table_rebind_request(
+                        TreeCalcDynamicTableReferenceTargetKind::Table,
+                        TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                    )
+                });
+            assert_eq!(report.status, expected_status, "{scenario:?}");
+            assert!(
+                report
+                    .prepared_identity_inputs
+                    .contains(&TreeCalcTablePreparedIdentityInput::HostNamespaceVersion)
+            );
+            assert!(
+                report
+                    .prepared_identity_inputs
+                    .contains(&TreeCalcTablePreparedIdentityInput::ResolutionRuleVersion)
+            );
+        }
+
+        let unavailable =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                target_kind: TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable,
+                cause: TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+                ),
+                after_resolved_table_identity: None,
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable,
+                    TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                )
+            });
+        assert_eq!(
+            unavailable.status,
+            TreeCalcDynamicTableRebindStatus::UnavailableTarget
+        );
+        assert!(
+            unavailable
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::WorkspaceAvailability)
+        );
+        assert!(
+            unavailable
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::RowMembership)
+        );
+        assert!(
+            unavailable
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::RowOrder)
+        );
+        assert!(
+            unavailable
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::ColumnIdentity)
+        );
+        assert!(
+            unavailable
+                .dependency_fact_kinds
+                .contains(&StructuredTableDependencyFactKind::DataRegion)
+        );
+        assert!(
+            unavailable
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::HostSensitive)
+        );
+        assert!(
+            unavailable
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableRowMembership)
+        );
+        assert!(
+            unavailable
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::StructuredTableDataRegion)
+        );
+        assert!(
+            unavailable
+                .invalidation_reasons
+                .contains(&InvalidationReasonKind::DependencyRemoved)
+        );
+
+        let unsupported =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                cause:
+                    TreeCalcDynamicTableRebindCause::UnsupportedRuntimeStructuredReferenceParsing,
+                oxfml_structured_bind_packet_available: false,
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::Section,
+                    TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                )
+            });
+        assert_eq!(
+            unsupported.status,
+            TreeCalcDynamicTableRebindStatus::TypedExclusion
+        );
+        assert!(unsupported.dependency_fact_kinds.is_empty());
+        assert!(!unsupported.oxfunc_opaque_reference_admitted);
+        assert!(unsupported.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind
+                == TreeCalcDynamicTableRebindDiagnosticKind::UnsupportedRuntimeStructuredReferenceParsing
+        }));
+
+        let non_table =
+            classify_treecalc_dynamic_table_rebind(&TreeCalcDynamicTableRebindRequest {
+                cause: TreeCalcDynamicTableRebindCause::DynamicTargetNotTable,
+                ..dynamic_table_rebind_request(
+                    TreeCalcDynamicTableReferenceTargetKind::Table,
+                    TreeCalcDynamicTableRebindCause::VolatileReevaluation,
+                )
+            });
+        assert_eq!(
+            non_table.status,
+            TreeCalcDynamicTableRebindStatus::TypedExclusion
+        );
+        assert!(non_table.dependency_fact_kinds.is_empty());
+        assert!(!non_table.oxfunc_opaque_reference_admitted);
+        assert!(
+            non_table
+                .changed_dependency_kinds
+                .contains(&DependencyDescriptorKind::Unresolved)
+        );
+        assert!(non_table.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == TreeCalcDynamicTableRebindDiagnosticKind::DynamicTargetNotTable
+        }));
+
+        let missing_caller = classify_treecalc_dynamic_table_rebind(&dynamic_table_rebind_request(
+            TreeCalcDynamicTableReferenceTargetKind::CurrentRow,
+            TreeCalcDynamicTableRebindCause::DynamicFunctionResultChanged,
+        ));
+        assert_eq!(
+            missing_caller.status,
+            TreeCalcDynamicTableRebindStatus::TypedExclusion
+        );
+        assert!(missing_caller.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == TreeCalcDynamicTableRebindDiagnosticKind::MissingCallerContext
+        }));
     }
 
     #[test]

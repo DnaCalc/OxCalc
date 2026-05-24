@@ -1387,6 +1387,94 @@ Still open:
 3. DnaTreeCalc product activation and retained producer artifacts remain with
    `calc-4vs8.51`.
 
+## 4B.13. `calc-4vs8.54` Table UDF, VBA, XLL, And Registry Impact
+
+Product status:
+
+OxCalc's W056 table runtime is compatible with future registered UDFs without
+adding an OxCalc-local function registry or a DnaTreeCalc/DnaOneCalc function
+mirror. Table formulas carry OxFunc registry snapshot identity and capability
+overlay identity as prepared/cache inputs; table reference arguments remain
+ordinary opaque `ReferenceLike` values backed by OxCalc readers; VBA/XLL source
+discovery remains metadata that feeds OxFunc registration descriptors.
+
+Current OxCalc evidence:
+
+1. `TreeCalcTableFormulaRuntimeContext` carries `function_registry`,
+   optional `registry_snapshot_identity`, and optional `capability_overlay`.
+2. `TreeCalcTableFormulaPreparedIdentityFacts` records both host-facing
+   `host_registry_snapshot_identity` and actual
+   `function_registry_snapshot_identity`, plus `capability_overlay_identity`.
+3. `table_formula_prepared_identity_facts_track_context_and_mutations` proves
+   table formula prepared identity changes when an XLL-shaped registered UDF
+   mutates the function registry snapshot or when a capability overlay changes.
+4. `treecalc_table_dependency_inventory_covers_full_w056_fact_surface` includes
+   `StructuredTableDependencyFactKind::FunctionRegistrySnapshot` when a table
+   formula can bind registered functions, and excludes it when the caller says
+   the formula has no registry-sensitive path.
+5. table lifecycle/update classification maps
+   `FunctionRegistrySnapshotMutation` to `CapabilitySensitive` dependency
+   change and `RegistrySnapshotIdentity` prepared identity input.
+
+Consumed counterpart anchors:
+
+| Repo | Anchor | W056 reading |
+|---|---|---|
+| `OxFunc` | `oxf-ypq2.13`, `oxf-ypq2.15`, `oxf-ypq2.16` | Structured-table `ReferenceLike` values are opaque to functions; first aggregates and widened range-taking lanes consume generic resolver/reader APIs only. |
+| `OxFunc` | open `oxf-ypq2.12` | Formula-call registry lookup migration remains open; W056 cannot freeze UDF invalidation or name/call behavior until this is reconciled with OxFml. |
+| `OxFml` | `fml-ds0.11`, `fml-ds0.13` | Registered-external split and table-context prepared identity are acknowledged on the formula side. Descriptor-only `REGISTER.ID`/`CALL` is adjacent state; ordinary worksheet-visible UDFs use the registry path. |
+| `OxFml` | open `fml-ds0.6.4` | Name/call freeze remains blocked for broad built-in/UDF/defined-name/defined-name-`LAMBDA` collisions. |
+| `DnaOneCalc` | ready `dno-7vt4.1`, `.4`, `.5`, `.7`, `.9`; epic `dno-srj` | Future VBA/XLL support is already a DnaOneCalc extension lane. Ordinary single-formula execution still needs no host table namespace or host-reference resolver. |
+| `OxVba` | `WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md`; ready `bd-sg5h` | OxVba owns VBA project/procedure discovery and host-UDF descriptor facts; those facts must be transformed into OxFunc registration requests, not consumed as TreeCalc table semantics. |
+
+Design decisions for table formulas and UDFs:
+
+1. A table formula that contains `MYUDF(Table1[Amount])`,
+   `MYUDF([@Amount])`, or `MYUDF(path[Amount])` binds the structured reference
+   through the generic OxFml table/host packet and OxCalc table resolver. The
+   UDF receives the resulting value/reference according to OxFunc's public
+   argument-preparation rules.
+2. OxFunc may admit a UDF parameter as reference-visible only through generic
+   `ReferenceLike`/resolver metadata. It may reject the call with typed
+   capability or argument-preparation diagnostics if the registered function
+   does not accept references. It must not inspect TreeCalc table ids,
+   selectors, node ids, virtual anchors, or source spans.
+3. OxCalc dependency facts stay structural: table membership, order, row value,
+   column identity, header/totals/data regions, caller row context, namespace,
+   registry snapshot identity, and capability overlay identity. OxCalc does not
+   own UDF execution semantics, parameter coercion, or native-call policy.
+4. DnaOneCalc uses the same OxFml/OxFunc registry path for future VBA/XLL UDFs
+   and keeps no-host single-formula formulas unchanged. LET/LAMBDA lexical
+   locals and callable locals remain OxFml-internal and do not become host
+   references.
+5. OxVba supplies source/procedure/invocation descriptors and capability facts.
+   It does not supply table selector semantics and does not bypass the OxFunc
+   registry snapshot/change-set lane.
+
+Update scenarios:
+
+| Scenario | Owner | Expected W056 behavior |
+|---|---|---|
+| UDF registered or unregistered | OxFunc registry, consumed by OxFml/OxCalc | Registry snapshot identity changes; any prepared table formula that could bind the name invalidates. |
+| UDF metadata changes but invocation target is unchanged | OxFunc/OxFml | Completion/help and bind metadata update through registry snapshot/change-set evidence; table dependency facts do not invent a local metadata cache. |
+| Capability overlay denies a UDF or reference argument | OxFunc/OxFml, reflected by OxCalc identity | Prepared identity includes overlay identity; evaluation returns typed capability/argument diagnostics through generic function surfaces. |
+| VBA project reload changes procedure catalog | OxVba produces descriptors, OxFunc owns registration | Registration requests mutate the OxFunc snapshot; OxCalc sees only registry identity and ordinary function diagnostics. |
+| XLL registration id changes | OxFunc/OxVba/XLL host adapter | Invocation target metadata changes through the registry/change-set lane; no TreeCalc selector is exposed to the native host. |
+| UDF receives `ReferenceLike` and later table rows reorder | OxCalc owns table dependency | Table membership/order invalidation refreshes the reference reader; UDF semantics are rerun only through normal formula evaluation. |
+| DnaOneCalc evaluates a single formula with LET/LAMBDA only | OxFml | No host table namespace or host resolver is required. Registry-backed UDF support is optional extension state. |
+
+Still open:
+
+1. W056 table closure cannot freeze UDF invalidation until OxFunc W093
+   `oxf-ypq2.12` and related OxFml registry lookup paths are reconciled.
+2. W056 cannot freeze name/call precedence for UDFs, built-ins, defined names,
+   or defined-name `LAMBDA` values until OxFml W074 `fml-ds0.6.4` and its
+   freeze audit land.
+3. No new OxCalc table-specific blocker is needed for OxVba or DnaOneCalc at
+   this time; their existing extension lanes are sufficient unless a future
+   UDF API intentionally exposes reference metadata beyond generic
+   `ReferenceLike` admission.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

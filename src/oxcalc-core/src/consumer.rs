@@ -2,7 +2,7 @@
 
 //! Consumer-facing OxCalc runtime contract for tree-substrate hosts.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, VecDeque};
 
 use oxfml_core::{
     BindContext, BindRequest, FormulaSourceRecord, ParseRequest, bind_formula, parse_formula,
@@ -13,8 +13,13 @@ use thiserror::Error;
 use crate::coordinator::{AcceptedCandidateResult, PublicationBundle, RejectDetail, RuntimeEffect};
 use crate::dependency::{DependencyGraph, InvalidationClosure};
 use crate::formula::{
-    TreeCalcFormulaTextPrebindError, TreeFormulaBinding, TreeFormulaCatalog,
-    TreeFormulaReferenceCarrier, TreeReference, prebind_treecalc_formula_text,
+    TreeCalcFormulaTextPrebindContext, TreeCalcFormulaTextPrebindError,
+    TreeCalcOrderedSelectorTraversalPolicy, TreeCalcQualifiedBaseResolutionLayer,
+    TreeCalcQualifiedChildrenBaseQuery, TreeCalcQualifiedChildrenBaseResolution,
+    TreeFormulaBinding, TreeFormulaCatalog, TreeFormulaHostNameBindPacket,
+    TreeFormulaReferenceCarrier, TreeReference, prebind_treecalc_formula_text_with_context,
+    treecalc_formula_text_ordered_selector_queries,
+    treecalc_formula_text_qualified_children_base_queries,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -621,7 +626,6 @@ struct ContextFormulaCatalogBuild {
 fn build_context_formula_catalog(
     state: &OxCalcTreeWorkspaceState,
 ) -> Result<ContextFormulaCatalogBuild, OxCalcTreeContextError> {
-    let symbol_index = unique_symbols_by_name(&state.snapshot);
     let mut bindings = Vec::new();
     let mut diagnostics = Vec::new();
 
@@ -634,13 +638,25 @@ fn build_context_formula_catalog(
             .get(owner_node_id)
             .copied()
             .unwrap_or(1);
-        let mut expression = prebind_treecalc_formula_text(*owner_node_id, formula_text)?;
+        let (prebind_context, prebind_diagnostics) =
+            context_prebind_resolution(state, *owner_node_id, formula_text);
+        let mut expression = prebind_treecalc_formula_text_with_context(
+            *owner_node_id,
+            formula_text,
+            &prebind_context,
+        )?;
+        let prebound_treecalc_spans = prebound_treecalc_source_spans(&expression);
+        diagnostics.extend(
+            prebind_diagnostics
+                .into_iter()
+                .map(|diagnostic| format!("treecalc_context_prebind_resolution:{diagnostic}")),
+        );
         let resolution = direct_name_carriers_from_oxfml_probe(
             state.workspace_id.as_str(),
             formula_text,
             *owner_node_id,
             &state.snapshot,
-            &symbol_index,
+            &prebound_treecalc_spans,
         )?;
         expression
             .reference_carriers
@@ -675,29 +691,128 @@ fn build_context_formula_catalog(
     })
 }
 
-struct ContextSymbolIndex {
-    unique: BTreeMap<String, TreeNodeId>,
-    ambiguous: BTreeSet<String>,
+fn prebound_treecalc_source_spans(expression: &crate::formula::TreeFormula) -> Vec<(usize, usize)> {
+    expression
+        .reference_carriers
+        .iter()
+        .filter_map(|carrier| match &carrier.reference {
+            TreeReference::ReferenceCollection(collection) => match collection {
+                crate::formula::TreeCalcReferenceCollection::ChildrenV1(children) => {
+                    children.source_span_utf8
+                }
+                crate::formula::TreeCalcReferenceCollection::ReferenceLiteralArrayV1(literal) => {
+                    literal.source_span_utf8()
+                }
+                crate::formula::TreeCalcReferenceCollection::OrderedSelectorV1(ordered) => {
+                    ordered.source_span_utf8
+                }
+            },
+            _ => None,
+        })
+        .collect()
 }
 
-fn unique_symbols_by_name(snapshot: &StructuralSnapshot) -> ContextSymbolIndex {
-    let mut unique = BTreeMap::new();
-    let mut ambiguous = BTreeSet::new();
-    for node in snapshot.nodes().values() {
-        if node.node_id == snapshot.root_node_id() {
-            continue;
-        }
-        if unique
-            .insert(node.symbol.clone(), node.node_id)
-            .is_some_and(|existing| existing != node.node_id)
-        {
-            ambiguous.insert(node.symbol.clone());
-        }
+fn context_prebind_resolution(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    formula_text: &str,
+) -> (TreeCalcFormulaTextPrebindContext, Vec<String>) {
+    let mut diagnostics = Vec::new();
+    let qualified_children_bases =
+        treecalc_formula_text_qualified_children_base_queries(owner_node_id, formula_text)
+            .into_iter()
+            .filter_map(|query| {
+                context_qualified_children_base_resolution(&query, owner_node_id, &state.snapshot)
+                    .map_err(|diagnostic| diagnostics.push(diagnostic))
+                    .ok()
+            })
+            .collect::<Vec<_>>();
+
+    let ordered_selector_resolutions =
+        treecalc_formula_text_ordered_selector_queries(owner_node_id, formula_text)
+            .into_iter()
+            .filter_map(|query| {
+                let base_resolution = query.base_token_text.as_deref().map_or(
+                    ContextHostNameResolution::Resolved(owner_node_id),
+                    |base_token_text| {
+                        resolve_context_host_name_token(
+                            base_token_text,
+                            owner_node_id,
+                            &state.snapshot,
+                        )
+                    },
+                );
+                let ContextHostNameResolution::Resolved(base_node_id) = base_resolution else {
+                    diagnostics.push(format!(
+                        "ordered_selector_unresolved:{}:{}-{}:{}",
+                        query.source_token_text,
+                        query.source_span_utf8.0,
+                        query.source_span_utf8.1,
+                        base_resolution.diagnostic_label()
+                    ));
+                    return None;
+                };
+
+                query
+                    .to_resolution_with_structural_traversal(
+                        &state.snapshot,
+                        base_node_id,
+                        TreeCalcOrderedSelectorTraversalPolicy::default(),
+                    )
+                    .map(|resolved| {
+                        diagnostics.extend(resolved.traversal.diagnostics.iter().map(
+                            |diagnostic| {
+                                format!(
+                                    "ordered_selector_traversal:{:?}:{}",
+                                    diagnostic.code, diagnostic.detail
+                                )
+                            },
+                        ));
+                        resolved.resolution
+                    })
+                    .map_err(|error| {
+                        diagnostics.push(format!(
+                            "ordered_selector_unresolved:{}:{}-{}:{error}",
+                            query.source_token_text,
+                            query.source_span_utf8.0,
+                            query.source_span_utf8.1
+                        ));
+                    })
+                    .ok()
+            })
+            .collect::<Vec<_>>();
+
+    (
+        TreeCalcFormulaTextPrebindContext {
+            qualified_children_bases,
+            ordered_selector_resolutions,
+        },
+        diagnostics,
+    )
+}
+
+fn context_qualified_children_base_resolution(
+    query: &TreeCalcQualifiedChildrenBaseQuery,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> Result<TreeCalcQualifiedChildrenBaseResolution, String> {
+    match resolve_context_host_name_token(&query.base_token_text, owner_node_id, snapshot) {
+        ContextHostNameResolution::Resolved(base_node_id) => Ok(query.to_resolution_with_layer(
+            base_node_id,
+            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath,
+            format!(
+                "treecalc-context-walkup-base:v1:token={};source={}-{};base={base_node_id}",
+                query.base_token_text, query.source_span_utf8.0, query.source_span_utf8.1
+            ),
+        )),
+        other => Err(format!(
+            "qualified_children_base_unresolved:{}:{}-{}:{}",
+            query.source_token_text,
+            query.source_span_utf8.0,
+            query.source_span_utf8.1,
+            other.diagnostic_label()
+        )),
     }
-    for symbol in &ambiguous {
-        unique.remove(symbol);
-    }
-    ContextSymbolIndex { unique, ambiguous }
 }
 
 struct ContextNameCarrierResolution {
@@ -705,44 +820,78 @@ struct ContextNameCarrierResolution {
     diagnostics: Vec<String>,
 }
 
+struct ContextOxfmlBindProbe {
+    unresolved_names: Vec<ContextSourceToken>,
+    function_calls: Vec<ContextFunctionCall>,
+    qualified_host_names: Vec<String>,
+    reference_literal_syntax_seen: bool,
+}
+
+struct ContextSourceToken {
+    source_text: String,
+    source_span_utf8: (usize, usize),
+}
+
+struct ContextFunctionCall {
+    function_name: String,
+    source_span_utf8: (usize, usize),
+}
+
 fn direct_name_carriers_from_oxfml_probe(
     workspace_id: &str,
     formula_text: &str,
     owner_node_id: TreeNodeId,
     snapshot: &StructuralSnapshot,
-    symbol_index: &ContextSymbolIndex,
+    prebound_treecalc_spans: &[(usize, usize)],
 ) -> Result<ContextNameCarrierResolution, OxCalcTreeContextError> {
     // OxFml owns formula syntax and lexical scope; OxCalc only resolves names that
     // OxFml exposes as unresolved host candidates.
-    let unresolved_names =
-        oxfml_unresolved_name_candidates(workspace_id, owner_node_id, formula_text);
+    let probe = oxfml_context_bind_probe(workspace_id, owner_node_id, formula_text);
     let mut carriers = Vec::new();
-    let mut diagnostics = Vec::new();
-    for token in unresolved_names {
-        let token = token
+    let mut diagnostics = typed_exclusion_diagnostics(&probe, snapshot, owner_node_id);
+    for candidate in probe.unresolved_names {
+        if source_span_is_inside_any(candidate.source_span_utf8, prebound_treecalc_spans) {
+            continue;
+        }
+        let token = candidate
+            .source_text
             .strip_prefix("name:")
-            .unwrap_or(token.as_str())
+            .unwrap_or(candidate.source_text.as_str())
             .to_string();
-        if symbol_index.ambiguous.contains(&token) {
-            diagnostics.push(format!("ambiguous_host_name:{token}:owner={owner_node_id}"));
-            continue;
-        }
-        let Some(target_node_id) = symbol_index.unique.get(&token).copied() else {
-            diagnostics.push(format!(
-                "unresolved_host_name:{token}:owner={owner_node_id}"
-            ));
-            continue;
+        let resolution = resolve_context_host_name_token(&token, owner_node_id, snapshot);
+        let target_node_id = match resolution {
+            ContextHostNameResolution::Resolved(target_node_id) => target_node_id,
+            ContextHostNameResolution::Ambiguous => {
+                diagnostics.push(format!("ambiguous_host_name:{token}:owner={owner_node_id}"));
+                continue;
+            }
+            ContextHostNameResolution::Unsupported(reason) => {
+                diagnostics.push(format!(
+                    "typed_exclusion:{reason}:{token}:owner={owner_node_id}"
+                ));
+                continue;
+            }
+            ContextHostNameResolution::Unresolved => {
+                diagnostics.push(format!(
+                    "unresolved_host_name:{token}:owner={owner_node_id}"
+                ));
+                continue;
+            }
         };
-        if target_node_id == owner_node_id || snapshot.try_get_node(target_node_id).is_none() {
-            diagnostics.push(format!(
-                "unresolved_host_name:{token}:owner={owner_node_id}"
-            ));
-            continue;
-        }
-        carriers.push(TreeFormulaReferenceCarrier::named(
-            token,
-            TreeReference::DirectNode { target_node_id },
-        ));
+        carriers.push(
+            TreeFormulaReferenceCarrier::named(
+                token.clone(),
+                TreeReference::DirectNode { target_node_id },
+            )
+            .with_host_name_bind(TreeFormulaHostNameBindPacket::direct_tree_node(
+                workspace_id,
+                owner_node_id,
+                target_node_id,
+                token,
+                candidate.source_span_utf8,
+                candidate.source_text,
+            )),
+        );
     }
     Ok(ContextNameCarrierResolution {
         carriers,
@@ -750,11 +899,159 @@ fn direct_name_carriers_from_oxfml_probe(
     })
 }
 
-fn oxfml_unresolved_name_candidates(
+fn source_span_is_inside_any(span: (usize, usize), spans: &[(usize, usize)]) -> bool {
+    spans
+        .iter()
+        .any(|ignored| span.0 >= ignored.0 && span.1 <= ignored.1)
+}
+
+enum ContextHostNameResolution {
+    Resolved(TreeNodeId),
+    Ambiguous,
+    Unsupported(&'static str),
+    Unresolved,
+}
+
+impl ContextHostNameResolution {
+    fn diagnostic_label(&self) -> &'static str {
+        match self {
+            Self::Resolved(_) => "resolved",
+            Self::Ambiguous => "ambiguous",
+            Self::Unsupported(reason) => reason,
+            Self::Unresolved => "unresolved",
+        }
+    }
+}
+
+fn resolve_context_host_name_token(
+    token: &str,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> ContextHostNameResolution {
+    if token.contains('[') || token.contains(']') {
+        return ContextHostNameResolution::Unsupported("bracket_escaped_host_path_pending");
+    }
+    if token.contains('!') {
+        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
+    }
+    let segments = token
+        .split('.')
+        .filter(|segment| !segment.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if segments.is_empty() {
+        return ContextHostNameResolution::Unresolved;
+    }
+
+    if snapshot
+        .try_get_node(snapshot.root_node_id())
+        .is_some_and(|root| root.symbol.eq_ignore_ascii_case(&segments[0]))
+    {
+        return snapshot
+            .try_resolve_descendant_path(snapshot.root_node_id(), &segments[1..])
+            .map_or(
+                ContextHostNameResolution::Unresolved,
+                ContextHostNameResolution::Resolved,
+            );
+    }
+
+    let base = match resolve_context_walkup_symbol(&segments[0], owner_node_id, snapshot) {
+        ContextHostNameResolution::Resolved(base_node_id) => base_node_id,
+        other => return other,
+    };
+    if segments.len() == 1 {
+        return ContextHostNameResolution::Resolved(base);
+    }
+    snapshot
+        .try_resolve_descendant_path(base, &segments[1..])
+        .map_or(
+            ContextHostNameResolution::Unresolved,
+            ContextHostNameResolution::Resolved,
+        )
+}
+
+fn resolve_context_walkup_symbol(
+    symbol: &str,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> ContextHostNameResolution {
+    let mut scope = Some(owner_node_id);
+    while let Some(scope_node_id) = scope {
+        match resolve_child_symbol_in_scope(symbol, scope_node_id, snapshot) {
+            ContextHostNameResolution::Unresolved => {
+                scope = snapshot.parent_id_of(scope_node_id);
+            }
+            other => return other,
+        }
+    }
+    ContextHostNameResolution::Unresolved
+}
+
+fn resolve_child_symbol_in_scope(
+    symbol: &str,
+    scope_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> ContextHostNameResolution {
+    let Some(scope_node) = snapshot.try_get_node(scope_node_id) else {
+        return ContextHostNameResolution::Unresolved;
+    };
+    let matches = scope_node
+        .child_ids
+        .iter()
+        .copied()
+        .filter(|child_id| {
+            snapshot
+                .try_get_node(*child_id)
+                .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
+        })
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [] => ContextHostNameResolution::Unresolved,
+        [node_id] => ContextHostNameResolution::Resolved(*node_id),
+        _ => ContextHostNameResolution::Ambiguous,
+    }
+}
+
+fn typed_exclusion_diagnostics(
+    probe: &ContextOxfmlBindProbe,
+    snapshot: &StructuralSnapshot,
+    owner_node_id: TreeNodeId,
+) -> Vec<String> {
+    let mut diagnostics = Vec::new();
+    for call in &probe.function_calls {
+        if call.function_name.eq_ignore_ascii_case("INDIRECT") {
+            diagnostics.push(format!(
+                "typed_exclusion:dynamic_indirect_raw_context_pending:{}:{}-{}:owner={owner_node_id}",
+                call.function_name, call.source_span_utf8.0, call.source_span_utf8.1
+            ));
+        } else if matches!(
+            resolve_context_host_name_token(&call.function_name, owner_node_id, snapshot),
+            ContextHostNameResolution::Resolved(_) | ContextHostNameResolution::Ambiguous
+        ) {
+            diagnostics.push(format!(
+                "typed_exclusion:node_as_function_w074_pending:{}:{}-{}:owner={owner_node_id}",
+                call.function_name, call.source_span_utf8.0, call.source_span_utf8.1
+            ));
+        }
+    }
+    for qualified in &probe.qualified_host_names {
+        diagnostics.push(format!(
+            "typed_exclusion:cross_workspace_host_name_pending:{qualified}:owner={owner_node_id}"
+        ));
+    }
+    if probe.reference_literal_syntax_seen {
+        diagnostics.push(format!(
+            "typed_exclusion:reference_literal_collection_raw_context_pending:owner={owner_node_id}"
+        ));
+    }
+    diagnostics
+}
+
+fn oxfml_context_bind_probe(
     workspace_id: &str,
     owner_node_id: TreeNodeId,
     formula_text: &str,
-) -> Vec<String> {
+) -> ContextOxfmlBindProbe {
     let source = FormulaSourceRecord::new(
         format!("treecalc-context-probe:{workspace_id}:{}", owner_node_id.0),
         owner_node_id.0,
@@ -773,13 +1070,62 @@ fn oxfml_unresolved_name_candidates(
             ..BindContext::default()
         },
     });
-    bind.bound_formula
+    let mut unresolved_spans_by_text = BTreeMap::<String, VecDeque<(usize, usize)>>::new();
+    for diagnostic in &bind.bound_formula.diagnostics {
+        if let Some(source_text) = diagnostic
+            .message
+            .strip_prefix("unresolved identifier '")
+            .and_then(|rest| rest.strip_suffix('\''))
+        {
+            unresolved_spans_by_text
+                .entry(source_text.to_string())
+                .or_default()
+                .push_back((diagnostic.span.start, diagnostic.span.end()));
+        }
+    }
+
+    let unresolved_names = bind
+        .bound_formula
         .unresolved_references
-        .into_iter()
-        .map(|reference| reference.source_text)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect()
+        .iter()
+        .map(|reference| ContextSourceToken {
+            source_text: reference.source_text.clone(),
+            source_span_utf8: unresolved_spans_by_text
+                .get_mut(&reference.source_text)
+                .and_then(VecDeque::pop_front)
+                .unwrap_or((0, reference.source_text.len())),
+        })
+        .collect::<Vec<_>>();
+    let function_calls = bind
+        .bound_formula
+        .function_call_sources
+        .iter()
+        .map(|call| ContextFunctionCall {
+            function_name: call.function_name.clone(),
+            source_span_utf8: (call.callee_span.start, call.callee_span.end()),
+        })
+        .collect::<Vec<_>>();
+    let qualified_host_names = bind
+        .bound_formula
+        .normalized_references
+        .iter()
+        .filter_map(|reference| match reference {
+            oxfml_core::NormalizedReference::Name(name) if name.name.contains('!') => {
+                Some(name.name.clone())
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    ContextOxfmlBindProbe {
+        reference_literal_syntax_seen: formula_text.contains('{')
+            && formula_text.contains('}')
+            && unresolved_names
+                .iter()
+                .any(|reference| formula_text.contains(&reference.source_text)),
+        unresolved_names,
+        function_calls,
+        qualified_host_names,
+    }
 }
 
 fn node_view_from_state(
@@ -1153,6 +1499,155 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_raw_dotted_name_uses_host_name_bind_result() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dotted"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Child", "=3").under(a_id),
+            )
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A.Child+1"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains("w056_host_name_bind_result:")
+                && diagnostic.contains("token=A.Child")
+                && diagnostic.contains("span=1-8")
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_resolves_bare_names_by_lexical_walkup() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:walkup"))
+            .unwrap();
+        let accounts_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Accounts", ""))
+            .unwrap();
+        let year_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Y2005", "").under(accounts_id),
+            )
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "=3").under(q1_id),
+            )
+            .unwrap();
+        let income_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Income", "=Sales+Margin").under(q1_id),
+            )
+            .unwrap();
+        let sales_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Sales", "=2").under(income_id),
+            )
+            .unwrap();
+        let deep_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Deep", "=Margin+1").under(sales_id),
+            )
+            .unwrap();
+        let dotted_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Dotted", "=Q1.Margin+1").under(year_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_values.get(&income_id),
+            Some(&"5".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&deep_id),
+            Some(&"4".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&dotted_id),
+            Some(&"4".to_string())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_records_typed_exclusions_for_blocked_raw_families() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:exclusions"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Dyn", "=INDIRECT(\"A\")"),
+            )
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Call", "=A()"))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Literal", "=SUM({A,A})"),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Cross", "=Remote!A"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        for expected in [
+            "typed_exclusion:dynamic_indirect_raw_context_pending",
+            "typed_exclusion:node_as_function_w074_pending",
+            "typed_exclusion:reference_literal_collection_raw_context_pending",
+            "typed_exclusion:cross_workspace_host_name_pending",
+        ] {
+            assert!(
+                result
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.contains(expected)),
+                "missing {expected} in {:?}",
+                result.diagnostics
+            );
+        }
+    }
+
+    #[test]
     fn treecalc_context_failed_edits_do_not_consume_stable_node_ids() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -1232,10 +1727,10 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_reports_ambiguous_host_names_from_oxcalc_namespace() {
+    fn treecalc_context_reports_unresolved_host_names_outside_walkup_scope() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ambiguous"))
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:unresolved"))
             .unwrap();
         let p_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("P", ""))
@@ -1262,7 +1757,7 @@ mod tests {
         let result = context.recalculate(&workspace_id).unwrap();
 
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic.contains("treecalc_context_host_name_resolution:ambiguous_host_name:A")
+            diagnostic.contains("treecalc_context_host_name_resolution:unresolved_host_name:A")
         }));
     }
 

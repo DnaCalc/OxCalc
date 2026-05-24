@@ -2998,10 +2998,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "oxcalc-core treecalc::children_collection_sum_uses_generic_host_context_and_sparse_reference_values",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_children_corpus -- --nocapture",
-        oxcalc_status: "implemented and green as ChildrenV1",
-        dnatreecalc_status: "active bridge slice",
+        oxcalc_status: "implemented and green as ChildrenV1, including direct OxCalcTreeContext raw @CHILDREN/.* product path",
+        dnatreecalc_status: "active bridge slice; direct OxCalcTreeContext migration pending",
         replay_status: "no retained non-table replay requirement yet",
-        current_test_result: "green in prior DnaTreeCalc active runner and OxCalc W051 tests",
+        current_test_result: "green in prior DnaTreeCalc active runner, OxCalc W051 tests, and direct-context raw children tests",
         evidence_status: W056NonTableReferenceEvidenceStatus::ProductGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: false,
@@ -3017,11 +3017,11 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "src/dnatreecalc-host/tests/active_walkup_corpus.rs",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge -- --nocapture",
-        oxcalc_status: "RelativePath carriers and dependency lowering exist",
-        dnatreecalc_status: "active typed-carrier bridge slice; raw formula text for =A+3-style walk-up remains pending",
+        oxcalc_status: "direct OxCalcTreeContext raw formula binding resolves bare walk-up and dotted descent through the host-name bind lane; RelativePath carriers still cover lower-level fixture paths",
+        dnatreecalc_status: "active typed-carrier bridge slice; direct OxCalcTreeContext corpus migration pending",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active walk-up runner; product closure still partial",
-        evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
+        current_test_result: "green active walk-up runner plus OxCalc direct-context walk-up/dotted test; product closure still waits for DnaTreeCalc direct-context activation",
+        evidence_status: W056NonTableReferenceEvidenceStatus::OxCalcImplementedBridgePending,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
     },
@@ -3128,10 +3128,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "../DnaTreeCalc/docs/test-corpus/references/set-membership.json",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_ordered_corpus -- --nocapture",
-        oxcalc_status: "resolved ordered selector carriers, traversal resolver, and bounds implemented",
-        dnatreecalc_status: "active ordered raw slice; broad set-membership corpus pending",
+        oxcalc_status: "resolved ordered selector carriers, traversal resolver, bounds, and direct OxCalcTreeContext raw @PRECEDING/@FOLLOWING/@ANCESTORS product path implemented",
+        dnatreecalc_status: "active ordered raw bridge slice; direct OxCalcTreeContext migration and broad set-membership corpus pending",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active ordered slice in prior checks; full family pending",
+        current_test_result: "green active ordered slice in prior checks plus direct-context ordered selector test; full family pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -3147,10 +3147,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "oxcalc-core formula::ordered_selector_traversal_resolver_projects_structural_membership",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_ordered_corpus -- --nocapture",
-        oxcalc_status: "recursive ordered selector carrier and traversal-bound resolver implemented",
-        dnatreecalc_status: "active focused recursive slice; broader set-membership corpus pending",
+        oxcalc_status: "recursive ordered selector carrier, traversal-bound resolver, and direct OxCalcTreeContext Base.**.tail product path implemented",
+        dnatreecalc_status: "active focused recursive bridge slice; direct OxCalcTreeContext migration and broader set-membership corpus pending",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active slice in prior checks; full family pending",
+        current_test_result: "green active slice in prior checks plus direct-context recursive selector test; full family pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -3167,8 +3167,8 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "../DnaTreeCalc/docs/test-corpus/arrays/array-references.json",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_reference_literal_array_corpus_executes_through_live_oxcalc_bridge -- --nocapture",
-        oxcalc_status: "ReferenceLiteralArrayV1 implemented; mixed arrays typed excluded",
-        dnatreecalc_status: "active prepared-carrier slice; broad raw literal and array references pending",
+        oxcalc_status: "ReferenceLiteralArrayV1 implemented; direct OxCalcTreeContext records raw reference-literal collection as a typed pending lane",
+        dnatreecalc_status: "active prepared-carrier slice; broad raw literal and array references pending direct context support",
         replay_status: "retained non-table replay missing",
         current_test_result: "active literal slice green in prior checks; broad raw suite pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::ActiveBridgeSliceGreen,
@@ -3190,7 +3190,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "oxcalc-core treecalc dynamic dependency tests",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_dynamic_indirect_corpus_executes_through_oxcalc_dynamic_carriers -- --nocapture",
-        oxcalc_status: "DynamicPotential and DynamicResolved carriers/facts implemented",
+        oxcalc_status: "DynamicPotential and DynamicResolved carriers/facts implemented; direct OxCalcTreeContext records raw INDIRECT as a typed pending lane",
         dnatreecalc_status: "active typed dynamic carrier slice; raw INDIRECT parse breadth pending",
         replay_status: "retained non-table replay missing",
         current_test_result: "active dynamic runner passed in the calc-4vs8.64 pass; retained evidence still open",
@@ -3213,7 +3213,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "oxcalc-core workspace_qualified_runtime_binding_does_not_read_local_node_id_collision",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture",
-        oxcalc_status: "workspace-qualified carriers, reverse edges, and prepared identity implemented",
+        oxcalc_status: "workspace-qualified carriers, reverse edges, and prepared identity implemented; direct OxCalcTreeContext records raw cross-workspace host names as typed pending",
         dnatreecalc_status: "active typed cross-workspace slice",
         replay_status: "retained non-table replay missing",
         current_test_result: "active cross-workspace runner passed in the calc-4vs8.64 pass; retained evidence still open",
@@ -3232,10 +3232,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "OxFml fml-ds0.6.3/fml-ds0.6.5 runtime host-name tests",
         ],
         runnable_suite_command: "cargo test -p oxcalc-core w056_inventory_names_admitted_reference_inputs_and_typed_exclusions -- --nocapture",
-        oxcalc_status: "W074 handoff consumed; no OxCalc private precedence mirror",
-        dnatreecalc_status: "raw formula host-name bridge activation pending beyond typed walk-up carriers",
+        oxcalc_status: "W074 handoff consumed; direct OxCalcTreeContext host-name bind lane maps TreeCalc names to the defined-name value lane with source token/span and replay identity; no OxCalc private precedence mirror",
+        dnatreecalc_status: "raw formula host-name direct-context activation pending beyond typed walk-up carriers",
         replay_status: "retained non-table replay missing",
-        current_test_result: "OxFml/OxCalc intake green; DnaTreeCalc raw runner pending",
+        current_test_result: "OxFml/OxCalc intake green and direct OxCalcTreeContext host-name tests green; DnaTreeCalc raw runner pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::OxCalcImplementedBridgePending,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -3248,7 +3248,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
         expected_outcome_contract: "single-reference lambda-valued nodes are callable through the defined-name-LAMBDA lane; set-valued callees reject",
         corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/references/node-functions.json"],
         runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
-        oxcalc_status: "current mapping admitted by calc-4vs8.32; runtime product activation pending",
+        oxcalc_status: "current mapping admitted by calc-4vs8.32; direct OxCalcTreeContext records callable host names as W074-blocked typed exclusions",
         dnatreecalc_status: "corpus authored; dtc-z0i.8 in progress",
         replay_status: "retained non-table replay missing",
         current_test_result: "validator green; no active lambda-node runner",
@@ -3333,6 +3333,8 @@ pub fn w056_non_table_reference_category(
 pub struct TreeFormulaReferenceCarrier {
     pub source_token: Option<String>,
     pub reference: TreeReference,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_name_bind: Option<TreeFormulaHostNameBindPacket>,
 }
 
 impl TreeFormulaReferenceCarrier {
@@ -3341,6 +3343,7 @@ impl TreeFormulaReferenceCarrier {
         Self {
             source_token: Some(source_token.into()),
             reference,
+            host_name_bind: None,
         }
     }
 
@@ -3349,6 +3352,60 @@ impl TreeFormulaReferenceCarrier {
         Self {
             source_token: None,
             reference,
+            host_name_bind: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_host_name_bind(mut self, bind: TreeFormulaHostNameBindPacket) -> Self {
+        self.host_name_bind = Some(bind);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeFormulaHostNameBindPacket {
+    pub host_name_handle: String,
+    pub canonical_name: String,
+    pub source_span_utf8: (usize, usize),
+    pub source_token_text: String,
+    pub resolution_layer: String,
+    pub binding_kind: String,
+    pub shape_hint: Option<String>,
+    pub caller_context_dependent: bool,
+    pub diagnostics: Vec<String>,
+    pub replay_identity_contribution: String,
+}
+
+impl TreeFormulaHostNameBindPacket {
+    #[must_use]
+    pub fn direct_tree_node(
+        workspace_id: &str,
+        owner_node_id: TreeNodeId,
+        target_node_id: TreeNodeId,
+        canonical_name: impl Into<String>,
+        source_span_utf8: (usize, usize),
+        source_token_text: impl Into<String>,
+    ) -> Self {
+        let canonical_name = canonical_name.into();
+        let source_token_text = source_token_text.into();
+        let host_name_handle = format!(
+            "treecalc-hostname:v1:workspace={workspace_id}:owner={}:target={}:name={}",
+            owner_node_id.0, target_node_id.0, canonical_name
+        );
+        Self {
+            replay_identity_contribution: format!(
+                "treecalc-host-name:v1:handle={host_name_handle};token={source_token_text}"
+            ),
+            host_name_handle,
+            canonical_name,
+            source_span_utf8,
+            source_token_text,
+            resolution_layer: "treecalc_host_name".to_string(),
+            binding_kind: "defined_name_value_like".to_string(),
+            shape_hint: Some("scalar_node_value".to_string()),
+            caller_context_dependent: false,
+            diagnostics: Vec::new(),
         }
     }
 }

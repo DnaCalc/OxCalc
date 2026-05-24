@@ -7353,11 +7353,13 @@ fn table_context_identity(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
     use std::collections::{BTreeMap, BTreeSet};
 
     use oxfml_core::{
-        EvaluationBackend, StructuredReferenceBindDiagnosticLink,
-        StructuredReferenceSelectedRegion,
+        EvaluationBackend, EvaluationTraceMode, HostFunctionInvocation, HostFunctionProvider,
+        HostFunctionProviderError, LibraryAvailabilityState, RegistrationSourceKind,
+        StructuredReferenceBindDiagnosticLink, StructuredReferenceSelectedRegion,
         consumer::runtime::{RuntimeEnvironment, RuntimeFormulaRequest},
         interface::{TableColumnDescriptor, TableRegionKind, TypedContextQueryBundle},
         seam::Locus,
@@ -9165,6 +9167,146 @@ mod tests {
             assert_eq!(result.evaluation.oxfunc_value, expected, "{formula}");
             assert_eq!(sparse_reference.target, "C4:C6");
         }
+    }
+
+    #[test]
+    fn table_current_row_reference_reaches_registry_backed_host_udf_boundary() {
+        let snapshot = runtime_treecalc_table_snapshot();
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let source = "=TABLE_IDENTITY_PROBE([@Amount])";
+        let caller_region = TableCallerRegion {
+            table_id: "tree-table:sales".to_string(),
+            region_kind: TableRegionKind::Data,
+            data_row_offset: Some(1),
+        };
+        let primary_locus = Locus {
+            sheet_id: "sheet:default".to_string(),
+            row: 5,
+            col: 4,
+        };
+        let prebound = prebind_treecalc_table_structured_references(
+            source,
+            std::slice::from_ref(&projection),
+            Some(TableRef {
+                table_id: projection.table_id.clone(),
+            }),
+            Some(caller_region.clone()),
+        );
+        assert_eq!(prebound.len(), 1);
+        assert_eq!(prebound[0].bind_record.source_token_text, "[@Amount]");
+
+        let reader = TreeCalcTableSparseReader::from_oxfml_bind_record(
+            &snapshot,
+            &projection,
+            &prebound[0].bind_record,
+            Some(&caller_region),
+            table_formula_amount_values(),
+        )
+        .expect("current-row table reader should build for UDF argument");
+        let runtime_binding = reader.runtime_binding();
+        assert_eq!(runtime_binding.reference.kind, ReferenceKind::A1);
+        assert_eq!(runtime_binding.reference.target, "C5");
+        assert_eq!(
+            runtime_binding.scalar_cell_values.get("C5"),
+            Some(&EvalValue::Number(20.0))
+        );
+
+        let function_registry = registry_with_host_callback_test_udf();
+        let registry_snapshot_identity = function_registry.snapshot_identity().stable_key();
+        let provider = RecordingTableUdfProvider::default();
+        let host_formula_context = RuntimeHostFormulaContext {
+            dialect_id: "oxcalc.treecalc-v1".to_string(),
+            capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            host_namespace_version: Some("treecalc-host-namespace:v1".to_string()),
+            registry_snapshot_identity: Some(registry_snapshot_identity.clone()),
+            structure_context_version: Some("treecalc-structure:v1".to_string()),
+            caller_context_identity: Some(treecalc_table_formula_caller_context_id(
+                &projection,
+                "col:tax",
+                &TreeCalcTableFormulaRuntimeRegion::Data {
+                    row_id: TreeCalcTableRowId("row:east".to_string()),
+                    row_offset: 1,
+                },
+            )),
+            table_context_identity: Some(projection.table_context_identity.clone()),
+        };
+
+        let result = RuntimeEnvironment::new()
+            .with_structure_context_version(StructureContextVersion(
+                "treecalc-structure:v1".to_string(),
+            ))
+            .with_primary_locus(primary_locus.clone())
+            .with_caller_position(primary_locus.row, primary_locus.col)
+            .with_table_context(
+                vec![projection.table_descriptor.clone()],
+                Some(TableRef {
+                    table_id: projection.table_id.clone(),
+                }),
+                Some(caller_region),
+            )
+            .with_host_formula_context(host_formula_context)
+            .with_cell_values(runtime_binding.scalar_cell_values)
+            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
+            .with_function_registry(&function_registry)
+            .execute(
+                RuntimeFormulaRequest::new(
+                    FormulaSourceRecord::new("runtime:w056-table-host-udf", 1, source),
+                    TypedContextQueryBundle::default().with_host_function_provider(Some(&provider)),
+                )
+                .with_backend(EvaluationBackend::OxFuncBacked)
+                .with_trace_mode(EvaluationTraceMode::PreparedCalls),
+            )
+            .expect("registry-backed host UDF should reach the OxFml host callback boundary");
+
+        assert_eq!(
+            result.evaluation.oxfunc_value,
+            EvalValue::Error(WorksheetErrorCode::Value)
+        );
+        assert_eq!(
+            result
+                .prepared_formula_identity
+                .registry_snapshot_identity
+                .as_deref(),
+            Some(registry_snapshot_identity.as_str())
+        );
+        assert_eq!(
+            result.structured_reference_bind_records[0].source_token_text,
+            "[@Amount]"
+        );
+        let invocation = provider
+            .invocations
+            .borrow()
+            .last()
+            .cloned()
+            .expect("host UDF provider should be invoked");
+        assert_eq!(invocation.function_name, "TABLE_IDENTITY_PROBE");
+        assert_eq!(
+            invocation.args,
+            vec![EvalValue::Error(WorksheetErrorCode::Value)]
+        );
+        let summary = result
+            .semantic_plan
+            .availability_summaries
+            .iter()
+            .find(|summary| {
+                summary
+                    .surface_name
+                    .eq_ignore_ascii_case("TABLE_IDENTITY_PROBE")
+            })
+            .expect("UDF should enter semantic availability through registry snapshot");
+        assert_eq!(
+            summary.registration_source_kind,
+            Some(RegistrationSourceKind::UserDefined)
+        );
+        assert_eq!(
+            summary.runtime_boundary_kind.as_deref(),
+            Some("vba_host_callback")
+        );
+        assert_eq!(
+            summary.runtime_capability_state,
+            Some(LibraryAvailabilityState::CatalogKnown)
+        );
     }
 
     #[test]
@@ -11696,6 +11838,51 @@ mod tests {
             "test UDF registration should mutate registry snapshot, got {result:?}"
         );
         registry
+    }
+
+    fn registry_with_host_callback_test_udf() -> FunctionRegistry {
+        let registry = registry_with_test_udf();
+        let mut entries = registry.iter().cloned().collect::<Vec<_>>();
+        let entry = entries
+            .iter_mut()
+            .find(|entry| {
+                entry
+                    .surface_name
+                    .eq_ignore_ascii_case("TABLE_IDENTITY_PROBE")
+            })
+            .expect("test UDF should be present in registry entries");
+        entry.registry_metadata.runtime_boundary_kind = Some("vba_host_callback".to_string());
+        entry.registry_metadata.interface_contract_ref =
+            Some("oxfml.host_function_provider.v1".to_string());
+        entry.registry_metadata.preparation_owner = Some("oxfunc-registry".to_string());
+        FunctionRegistry::try_from_entries(entries)
+            .expect("host-callback test registry entries should remain collision-free")
+    }
+
+    #[derive(Default)]
+    struct RecordingTableUdfProvider {
+        invocations: RefCell<Vec<HostFunctionInvocation>>,
+    }
+
+    impl HostFunctionProvider for RecordingTableUdfProvider {
+        fn invoke_host_function(
+            &self,
+            invocation: &HostFunctionInvocation,
+        ) -> Result<EvalValue, HostFunctionProviderError> {
+            self.invocations.borrow_mut().push(invocation.clone());
+            match invocation.args.as_slice() {
+                [EvalValue::Number(value)]
+                    if invocation
+                        .function_name
+                        .eq_ignore_ascii_case("TABLE_IDENTITY_PROBE") =>
+                {
+                    Ok(EvalValue::Number(*value))
+                }
+                _ => Err(HostFunctionProviderError::new(
+                    "unsupported table UDF test invocation",
+                )),
+            }
+        }
     }
 
     fn table_formula_cell_for_row<'a>(

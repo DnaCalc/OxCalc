@@ -2193,6 +2193,81 @@ guardrails, `calc-4vs8.61` must converge retained replay/value-wire evidence,
 `calc-4vs8.62` must reconcile cross-repo bead state, and `calc-4vs8.63` must
 perform the final table completion audit.
 
+## 4B.20. `calc-4vs8.60` ReferenceLike Function And UDF Integration Closure
+
+Product status:
+
+OxCalc's node-associated table implementation is revalidated for the first
+reference-preserving aggregate group and for generic registry-backed UDF
+boundary routing. `SUM`, `COUNT`, `COUNTA`, and `COUNTBLANK` execute over
+opaque structured-table sparse `ReferenceLike` bindings. A table current-row
+reference also reaches the OxFml registry-backed host-function callback lane
+through the generic function registry and typed host callback provider without
+OxFunc or OxFml inspecting TreeCalc table selectors.
+
+Executable evidence:
+
+1. Existing `table_sparse_runtime_bindings_feed_first_aggregate_group`
+   exercises `=SUM(SalesTable[Amount])`, `=COUNT(SalesTable[Amount])`,
+   `=COUNTA(SalesTable[Amount])`, and
+   `=COUNTBLANK(SalesTable[Amount])` through OxFml/OxFunc sparse
+   `ReferenceLike` bindings with no dense table materialization.
+2. Existing function-breadth inventory tests keep every admitted or blocked
+   range-taking family on generic carrier modes:
+   `SparseReferenceLike`, `ReferenceShapeOnly`,
+   `ResolverIndexedReference`, `MultiReferenceResolver`, typed dynamic-array
+   host context, or typed exclusion. All inventory rows assert no TreeCalc
+   selector visibility and no eager-materialization closure.
+3. New focused Rust test
+   `table_current_row_reference_reaches_registry_backed_host_udf_boundary` in
+   `src/oxcalc-core/src/structured_table.rs` builds a current-row
+   `[@Amount]` table reader, feeds its runtime binding into OxFml with a
+   registry-backed `TABLE_IDENTITY_PROBE` UDF entry, and confirms the call
+   reaches the generic `HostFunctionProvider` boundary as a user-defined
+   `vba_host_callback` availability lane.
+4. Existing
+   `table_formula_prepared_identity_facts_track_context_and_mutations` proves
+   table formula prepared identity changes on host namespace version,
+   structure context version, resolution-rule version, capability profile,
+   OxFunc registry snapshot identity, and capability overlay changes.
+
+Boundary result:
+
+The UDF boundary test deliberately records today's remaining generic blocker:
+the host callback receives the current-row structured-reference argument as a
+generic `#VALUE!` argument, not as a TreeCalc selector and not as an eagerly
+materialized table-specific value. This is the correct non-shim failure mode
+for the current W093/W074 state. Table UDF value/reference admission therefore
+remains blocked on the OxFml/OxFunc registry-backed host-callback
+argument-preparation lane, not on OxCalc table lowering.
+
+Cross-repo ownership:
+
+1. OxFunc owns the opaque `ReferenceLike` aggregate behavior and W093 registry
+   mutation/change-set semantics. Its table-specific evidence covers
+   `oxf-ypq2.13`, `.15`, and `.16`; broader formula-call registry migration
+   remains `oxf-ypq2.12`.
+2. OxFml owns formula-call binding, host callback invocation, W074 name/call
+   precedence evidence, and any future generic rule for whether a UDF receives
+   a structured reference as a scalar value, an opaque `ReferenceLike`, or a
+   typed rejection.
+3. DnaOneCalc remains non-impact for table host references. Ordinary
+   single-formula execution and LET/LAMBDA lexical variables/callables continue
+   to require no host namespace or table resolver; future VBA/XLL UDF support
+   must enter through the same OxFunc/OxFml registry surfaces.
+4. OxVba supplies future VBA/XLL discovery metadata only. It does not receive
+   TreeCalc table selectors, and it must not become a table-reference semantic
+   owner.
+
+Still open:
+
+`calc-4vs8.60` does not freeze UDF table-reference argument semantics. Product
+closure for UDFs consuming table references requires OxFml/OxFunc W093/W074
+evidence that the generic host-callback/reference-visible path admits the
+desired carrier or returns a typed rejection. The W056 table lane can proceed
+because first aggregate behavior, registry/capability invalidation inputs, and
+the non-shim UDF boundary are now explicit.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

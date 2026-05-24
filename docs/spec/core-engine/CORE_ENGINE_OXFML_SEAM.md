@@ -397,7 +397,7 @@ shape hint, effective table identity, virtual anchor identity, caller-context
 dependency/id, host namespace version, table namespace version, structure
 context version, resolution-rule version, workspace availability version, and
 typed diagnostics for same-node, omitted-caller, path-qualified,
-workspace-qualified, unavailable, deleted, ambiguous, and W074-gated adjacency
+workspace-qualified, unavailable, deleted, ambiguous, and W074-mapped adjacency
 cases. OxFml receives only the generic table context or structured-reference
 bind facts resulting from that resolution; it does not parse workspace aliases,
 TreeCalc paths, or table namespace strings.

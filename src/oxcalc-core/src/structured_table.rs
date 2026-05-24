@@ -447,10 +447,10 @@ pub enum TreeCalcTableCatalogDiagnosticCode {
     MissingCallerNodeContext,
     WorkspaceUnavailable,
     TableDeleted,
-    HostNameAdjacencyW074Gated,
-    FunctionNameAdjacencyW074Gated,
-    DefinedNameAdjacencyW074Gated,
-    LambdaValuedNodeAdjacencyW074Gated,
+    HostNameAdjacencyW074Mapping,
+    FunctionNameAdjacencyW074Mapping,
+    DefinedNameAdjacencyW074Mapping,
+    LambdaValuedNodeAdjacencyW074Mapping,
 }
 
 impl TreeCalcTableCatalogDiagnosticCode {
@@ -465,17 +465,17 @@ impl TreeCalcTableCatalogDiagnosticCode {
             Self::MissingCallerNodeContext => "treecalc.table_catalog.missing_caller_node_context",
             Self::WorkspaceUnavailable => "treecalc.table_catalog.workspace_unavailable",
             Self::TableDeleted => "treecalc.table_catalog.table_deleted",
-            Self::HostNameAdjacencyW074Gated => {
-                "treecalc.table_catalog.host_name_adjacency_w074_gated"
+            Self::HostNameAdjacencyW074Mapping => {
+                "treecalc.table_catalog.host_name_adjacency_w074_mapping"
             }
-            Self::FunctionNameAdjacencyW074Gated => {
-                "treecalc.table_catalog.function_name_adjacency_w074_gated"
+            Self::FunctionNameAdjacencyW074Mapping => {
+                "treecalc.table_catalog.function_name_adjacency_w074_mapping"
             }
-            Self::DefinedNameAdjacencyW074Gated => {
-                "treecalc.table_catalog.defined_name_adjacency_w074_gated"
+            Self::DefinedNameAdjacencyW074Mapping => {
+                "treecalc.table_catalog.defined_name_adjacency_w074_mapping"
             }
-            Self::LambdaValuedNodeAdjacencyW074Gated => {
-                "treecalc.table_catalog.lambda_valued_node_adjacency_w074_gated"
+            Self::LambdaValuedNodeAdjacencyW074Mapping => {
+                "treecalc.table_catalog.lambda_valued_node_adjacency_w074_mapping"
             }
         }
     }
@@ -1096,8 +1096,8 @@ fn treecalc_table_catalog_adjacency_diagnostics(
         selector_token_text,
     ) {
         diagnostics.push(treecalc_table_catalog_diagnostic(
-            TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Gated,
-            "explicit table selector is adjacent to a host name; final bare name/call precedence remains W074-gated".to_string(),
+            TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Mapping,
+            "explicit table selector is adjacent to a host name; current W074 mapping keeps table selectors on the explicit structured-reference lane".to_string(),
             request,
         ));
     }
@@ -1106,8 +1106,8 @@ fn treecalc_table_catalog_adjacency_diagnostics(
         selector_token_text,
     ) {
         diagnostics.push(treecalc_table_catalog_diagnostic(
-            TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Gated,
-            "explicit table selector is adjacent to a function name; final call precedence remains W074-gated".to_string(),
+            TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Mapping,
+            "explicit table selector is adjacent to a function name; current W074 mapping keeps built-ins on the ordinary call-callee lane".to_string(),
             request,
         ));
     }
@@ -1116,8 +1116,8 @@ fn treecalc_table_catalog_adjacency_diagnostics(
         selector_token_text,
     ) {
         diagnostics.push(treecalc_table_catalog_diagnostic(
-            TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Gated,
-            "explicit table selector is adjacent to a defined name; final name precedence remains W074-gated".to_string(),
+            TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Mapping,
+            "explicit table selector is adjacent to a defined name; current W074 mapping keeps explicit structured references distinct from bare names".to_string(),
             request,
         ));
     }
@@ -1126,8 +1126,8 @@ fn treecalc_table_catalog_adjacency_diagnostics(
         selector_token_text,
     ) {
         diagnostics.push(treecalc_table_catalog_diagnostic(
-            TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Gated,
-            "explicit table selector is adjacent to a lambda-valued host node; final callable precedence remains W074-gated".to_string(),
+            TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Mapping,
+            "explicit table selector is adjacent to a lambda-valued host node; current W074 mapping keeps lambda-valued host nodes on the defined-name-LAMBDA lane".to_string(),
             request,
         ));
     }
@@ -7829,7 +7829,7 @@ mod tests {
     }
 
     #[test]
-    fn table_catalog_resolver_reports_collisions_and_w074_gated_adjacency() {
+    fn table_catalog_resolver_reports_collisions_and_w074_mapping_adjacency() {
         let projection = projected_treecalc_table();
         let collision = project_treecalc_table_node_snapshot(&alternate_table_snapshot(
             31,
@@ -7881,19 +7881,20 @@ mod tests {
             .collect::<BTreeSet<_>>();
         assert!(
             diagnostic_codes
-                .contains(&TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Gated)
+                .contains(&TreeCalcTableCatalogDiagnosticCode::HostNameAdjacencyW074Mapping)
         );
         assert!(
             diagnostic_codes
-                .contains(&TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Gated)
+                .contains(&TreeCalcTableCatalogDiagnosticCode::FunctionNameAdjacencyW074Mapping)
         );
         assert!(
             diagnostic_codes
-                .contains(&TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Gated)
+                .contains(&TreeCalcTableCatalogDiagnosticCode::DefinedNameAdjacencyW074Mapping)
         );
         assert!(
-            diagnostic_codes
-                .contains(&TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Gated)
+            diagnostic_codes.contains(
+                &TreeCalcTableCatalogDiagnosticCode::LambdaValuedNodeAdjacencyW074Mapping
+            )
         );
     }
 

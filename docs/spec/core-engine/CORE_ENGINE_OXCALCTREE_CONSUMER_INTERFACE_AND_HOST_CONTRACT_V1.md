@@ -375,7 +375,7 @@ virtual anchor identity, caller-context dependency/id, host namespace version,
 table namespace version, structure-context version, resolution-rule version,
 workspace availability version, and typed diagnostics. Same-node,
 omitted-caller-table, current-root, workspace-qualified, unavailable-workspace,
-deleted-table, ambiguous-selector, and W074-gated adjacency cases are
+deleted-table, ambiguous-selector, and W074-mapped adjacency cases are
 represented explicitly.
 
 This resolver is not an OxFml grammar extension. OxFml still receives only the

@@ -480,8 +480,8 @@ left as prose caveats.
 4. `calc-4vs8.42` — table namespace, anchor collision, and workspace semantics.
    This closes the multi-table, table-name collision, virtual anchor movement,
    workspace-qualified table reference, alias/`!`, canonicalization, and
-   structured-reference source-preservation edge cases, deferring only those
-   name/call decisions that genuinely depend on W074.
+   structured-reference source-preservation edge cases while consuming the
+   current W074 host-name mapping without adding local precedence rules.
 5. `calc-4vs8.43` — full intended table support final audit. This promotes the
    whole table topic only after the third-pass residual beads and counterpart
    repo evidence are closed or have explicit user-accepted typed exclusions.
@@ -535,7 +535,7 @@ the final W056 table audit.
 4. `calc-4vs8.47` — table catalog resolver and namespace versioning. This
    covers table names, node paths, workspace aliases, root/workspace anchors,
    omitted-table row context, unavailable workspace/table states, table/name
-   collisions, and W074-gated name/call boundaries.
+   collisions, and W074-mapped name/call boundaries.
 5. `calc-4vs8.48` — full table `ReferenceLike` reader surface. This closes
    reference-preserving readers for whole table, data body, selected columns,
    multi-column ranges, headers, totals, `#All`, current row, omitted-table
@@ -720,7 +720,8 @@ Update and rebind lifecycle:
 10. Dynamic table references and `INDIRECT`-style selectors rebind through
    OxCalc dynamic-reference facts. If the dynamic target would require
    unsupported structured-reference parsing or ambiguous name/call precedence,
-   the outcome is a typed exclusion or W074-gated blocker, not local inference.
+   the outcome is a typed exclusion or a future versioned evidence lane, not
+   local inference.
 11. Save/reopen must preserve stable logical table identity where the product
    model says the table is the same object. If persistence changes a version or
    anchor identity, the change must be replay-visible and invalidate prepared
@@ -964,7 +965,7 @@ Implemented Rust surface:
    stable table id.
 2. `TreeCalcTableCatalogResolverContext` carries current workspace, table
    projections, workspace aliases, workspace availability, host namespace
-   version, structure-context version, resolution-rule version, W074-gated
+   version, structure-context version, resolution-rule version, W074-mapped
    namespace-adjacency facts, and deleted-table facts.
 3. `resolve_treecalc_table_catalog_reference` returns a
    `TreeCalcTableCatalogResolution` with stable table-reference handle, opaque
@@ -988,7 +989,7 @@ Covered lookup scenarios:
 7. unavailable workspace lookup,
 8. deleted table lookup,
 9. ambiguous table selector diagnostics,
-10. W074-gated adjacency diagnostics for host names, functions, defined names,
+10. W074-mapped adjacency diagnostics for host names, functions, defined names,
     and lambda-valued nodes.
 
 Identity and invalidation facts:
@@ -1012,7 +1013,7 @@ Focused Rust tests cover current workspace table lookup, same-node lookup,
 omitted caller-table lookup, current-root lookup, workspace alias lookup,
 direct workspace-qualified lookup, exact stable-table-id lookup, unavailable
 workspace diagnostics, deleted table diagnostics, table selector ambiguity,
-W074-gated namespace adjacency, bracket-escaped `!` tokens, caller-row
+W074-mapped namespace adjacency, bracket-escaped `!` tokens, caller-row
 invalidation under coarse caller ids, and handle changes after alias/namespace
 mutation.
 
@@ -1023,8 +1024,72 @@ Still open:
 2. `calc-4vs8.49` is closed for row-context formula/prepared identity behavior.
 3. `calc-4vs8.50` is closed for dependency and invalidation matrices for all
    table lifecycle updates.
-4. Bare host-name/callable precedence remains OxFml W074-gated; this resolver
-   records adjacency diagnostics but does not freeze precedence.
+4. Current bare host-name/callable precedence is consumed from the OxFml W074
+   handoff; this resolver records adjacency diagnostics and does not add a
+   local precedence mirror.
+
+## 4B.6A. `calc-4vs8.42` Table Namespace, Anchor, And Workspace Semantics
+
+Product status:
+
+OxCalc now closes the table namespace/anchor/workspace edge-case intake for
+the current W056 table scope. A node-associated TreeCalc table is exposed to
+OxFml as an Excel-shaped virtual table anchored in a workbook/sheet/range,
+while OxCalc keeps the table catalog, path/canonicalization, namespace
+versions, workspace availability, caller-table context, diagnostics, and
+prepared-identity facts.
+
+Implemented/evidenced scope:
+
+1. table catalog resolution covers same-workspace table names, canonical and
+   display path tokens, bracket-escaped table names, first-position `!`
+   current-workspace root lookup, workspace aliases, direct workspace handles,
+   same-node table lookup, omitted caller-table lookup, stable table ids,
+   unavailable workspaces, deleted tables, and ambiguous selectors;
+2. resolver outputs preserve stable table/reference handles, opaque selector
+   facts, resolution layer, shape hint, effective table id/node id, virtual
+   anchor identity, caller-context dependency/id, host namespace version, table
+   namespace version, structure-context version, resolution-rule version,
+   workspace availability version, diagnostics, and source span/token facts;
+3. virtual-anchor identity separates stable table identity from workbook/sheet
+   anchor movement, table path/namespace rename, row membership/order changes,
+   column identity changes, workspace alias changes, save/reopen preservation,
+   and explicit table movement;
+4. the table path lane remains distinct from bare host-name and callable lanes:
+   adjacency diagnostics now use W074-mapped codes/messages, explicit
+   structured references stay on the table packet path, built-ins keep the
+   call-callee frontier, and no OxCalc precedence mirror is introduced;
+5. OxXlPlay retained observations provide black-box Excel ListObject evidence
+   for table construction, updates, delete/save-reopen typed limits,
+   empty-body and row-boundary residuals, and name/anchor collision
+   availability; OxReplay and DnaTreeCalc retained evidence remain separate
+   closure gates where still open.
+
+Evidence:
+
+1. `calc-4vs8.47` closed the resolver/namespace implementation with focused
+   `table_catalog_resolver` tests.
+2. `calc-4vs8.45` closed virtual Excel-anchor identity and save/reopen
+   stability expectations.
+3. `calc-4vs8.50` closed dependency/invalidation coverage for table rename,
+   move, delete, node rename/move/delete, workspace open/close/alias mutation,
+   and structural rebind.
+4. `calc-4vs8.52` closed OxXlPlay retained Excel observation intake for table
+   namespace/anchor residuals and typed COM limits.
+5. `calc-4vs8.32` closed W074 intake for the current W051/W056 host-name
+   mapping, so `.42` no longer treats name/call as pending W074 work.
+
+Still open:
+
+This closes the OxCalc namespace/anchor/workspace semantics intake, not the
+final full-table audit. `calc-4vs8.43` still waits for all table support beads
+and counterpart evidence to be closed or typed out. The DnaTreeCalc retained
+lifecycle/dynamic/cross-workspace artifacts are now consumed through
+`calc-4vs8.51`, and retained comparison is consumed through `calc-4vs8.53`.
+Remaining final-audit risks include cross-producer namespace/anchor/workspace
+pairing, older OxXlPlay `execution_outcome.class_id` gaps, direct Excel
+dependency/invalidation internals, BLK-REPLAY-003 for the comparison-value
+wire helper, and any user-accepted typed exclusions needed by `calc-4vs8.43`.
 
 ## 4B.7. `calc-4vs8.48` Full Table `ReferenceLike` Reader Surface
 
@@ -1173,8 +1238,9 @@ Still open:
    bridge.
 3. `calc-4vs8.52` and `calc-4vs8.53` must supply retained Excel/replay table
    evidence.
-4. Bare host-name/callable precedence and lambda-valued TreeCalc nodes remain
-   W074-gated; they are not frozen by this table-formula row-context closure.
+4. Bare host-name/callable precedence and lambda-valued TreeCalc nodes consume
+   the current OxFml W074 handoff; they are not redefined by this table-formula
+   row-context closure.
 
 ## 4B.9. `calc-4vs8.50` Complete Table Dependency And Invalidation Matrix
 
@@ -1488,12 +1554,12 @@ Still open:
 
 Product status:
 
-OxCalc has identified the current DnaTreeCalc table activation floor for W056,
-but `calc-4vs8.51` remains open. DnaTreeCalc has active node-table corpus slices
-that run through `LiveOxCalcTreeBridge` and OxCalc's public
-table-projection/resolution APIs rather than local formula parsing, but retained
-artifact and dynamic/cross-workspace table routes still need explicit evidence
-before this intake bead can close.
+OxCalc has consumed the DnaTreeCalc table activation floor for W056, and
+`calc-4vs8.51` is closed for the table corpus/bridge intake. DnaTreeCalc has
+active node-table corpus slices and retained producer artifacts that run through
+`LiveOxCalcTreeBridge` and OxCalc's public table-projection/resolution APIs
+rather than local formula parsing, including the previously missing
+empty-body, lifecycle, and dynamic/cross-workspace table routes.
 
 Active DnaTreeCalc table corpus slices:
 
@@ -1515,14 +1581,12 @@ Consumed DnaTreeCalc anchors:
 
 | Anchor | OxCalc reading |
 |---|---|
-| `dtc-z0i.5` | Parent table structured-reference bridge activation remains open until all DnaTreeCalc-side table lanes and retained evidence close. |
+| `dtc-z0i.5` | Parent table structured-reference bridge activation has the table corpus/intake evidence needed by `calc-4vs8.51`; final product audit still decides whether any broader UX/persistence residuals matter. |
 | `dtc-z0i.5.1` through `.5.5` | Table model persistence, bridge table catalog projection, full table structured-reference corpus, table update retained artifacts, and lifecycle callback bridge acceptance are present as prior table anchors. |
-| `dtc-z0i.5.6` | Empty-body table corpus is active and has green focused bridge tests; the DnaTreeCalc bead remains open for retained OxReplay-facing empty-body artifact/intake evidence or an explicit narrowing to `oxreplay-qb9`. |
-| `dtc-z0i.5.6.1` | New explicit bead for empty-body retained artifacts and OxReplay intake. |
-| `dtc-z0i.5.7` | New explicit bead for table lifecycle retained artifacts over the callback acceptance lane. |
-| `dtc-z0i.5.8` | New explicit bead for refreshing the existing retained structured-reference artifact after OxCalc W056 enum widening. |
-| `dtc-z0i.7` | Dynamic, cross-workspace, profile-gated, and unavailable/deleted table reference activation remains broader W004 successor work. |
-| `dtc-z0i.7.1` | New explicit bead for table-specific dynamic/cross-workspace pending-to-active routes and retained evidence. |
+| `dtc-z0i.5.6` / `dtc-z0i.5.6.1` | Empty-body table corpus is active and retained empty-body artifacts/OxReplay intake closed at DnaTreeCalc commit `e7b22f3`. |
+| `dtc-z0i.5.7` | Table lifecycle active corpus and retained lifecycle replay closed at DnaTreeCalc commit `cdde775`. |
+| `dtc-z0i.5.8` | Retained structured-reference artifact refresh after OxCalc W056 enum widening closed at DnaTreeCalc commit `7ebaca4`. |
+| `dtc-z0i.7` / `dtc-z0i.7.1` | Dynamic, cross-workspace, profile-gated, and unavailable/deleted table reference routes have a table-specific active/retained slice closed at DnaTreeCalc commit `86fd0ba`; broader non-table W004 successor work remains separate. |
 | `dtc-osq.6`, `.7`, `.8` | W005 walk-up, save/reopen, and click-through skeleton evidence remain product-skeleton work and do not block OxCalc's table-intake bead unless a table UX/persistence path claims closure. |
 
 Current local evidence observed from DnaTreeCalc:
@@ -1537,30 +1601,23 @@ Current local evidence observed from DnaTreeCalc:
    the OxCalc W056 dynamic-selector prepared-identity input and the full table
    lifecycle/update scenario enum, keeping DnaTreeCalc compatible with the
    widened OxCalc table surface.
-5. DnaTreeCalc opened explicit follow-up beads `dtc-z0i.5.6.1`,
-   `dtc-z0i.5.7`, and `dtc-z0i.7.1` for the retained empty-body, retained
-   lifecycle, and table-specific dynamic/cross-workspace gaps identified by
-   fresh-eyes review.
+5. DnaTreeCalc closed the retained follow-up beads identified by fresh-eyes:
+   `dtc-z0i.5.6.1` at `e7b22f3`, `dtc-z0i.5.7` at `cdde775`, and
+   `dtc-z0i.7.1` at `86fd0ba`.
+6. OxReplay consumed the resulting third-pass producer batch through
+   `calc-4vs8.53` / `oxreplay-qb9`, with eight retained artifacts admitted and
+   validated without TreeCalc-private parsing.
 
 Still open:
 
-1. DnaTreeCalc W004 table product closure remains open on `dtc-z0i.5`,
-   `dtc-z0i.5.6`, `dtc-z0i.5.6.1`, `dtc-z0i.5.7`, and `dtc-z0i.7.1` until
-   retained empty-body/lifecycle/cross-workspace/dynamic producer evidence is
-   fully paired with OxReplay or explicitly typed out.
-2. Dynamic structured-table `INDIRECT`, unavailable/deleted table targets,
-   cross-workspace table availability, and profile-gated table references
-   remain successor activation under `dtc-z0i.7` and OxCalc/OxReplay gates.
-3. The W005 shell/save-reopen/click-through beads remain DnaTreeCalc product
+1. The W005 shell/save-reopen/click-through beads remain DnaTreeCalc product
    work. OxCalc must not use their partial status to claim full TreeCalc UI or
    persistence closure.
-4. OxReplay retained comparison and promotion evidence remains with
-   `calc-4vs8.53`.
-5. Therefore `calc-4vs8.51` is not closeable yet. Its next close gate is:
-   DnaTreeCalc retained structured-reference artifact refresh closed, explicit
-   empty-body/lifecycle/dynamic/cross-workspace beads present and linked, and
-   the remaining retained evidence either implemented or recorded as typed
-   blockers accepted by OxReplay/OxCalc.
+2. `calc-4vs8.43` still owns the final full-table audit, including
+   cross-producer namespace/anchor/workspace pairing, typed projection gaps,
+   OxXlPlay capture limits, and any user-accepted exclusions.
+3. Broader non-table W004/W005 reference activation remains outside this table
+   corpus/bridge intake.
 
 `calc-4vs8.36` implemented intake:
 

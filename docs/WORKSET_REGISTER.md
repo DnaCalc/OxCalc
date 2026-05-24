@@ -587,7 +587,7 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 2. depends_on:
    `W051`; OxFml `W074-CALC005` for name/call precedence where bare names or callables are involved; OxFml structured-reference/table packet work where table grammar/bind semantics are involved.
 3. parent_doctrine_and_spec_surfaces:
-   `docs/worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`, `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`, `docs/handoffs/HANDOFF_CALC_006_W056_TABLE_ROLLOUT_COORDINATION.md`, `docs/upstream/NOTES_FOR_OXFML.md`
+   `docs/worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`, `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/handoffs/HANDOFF_CALC_005_OXFML_HOST_CONTEXT_AND_NAMESPACE_RESOLUTION.md`, `docs/handoffs/HANDOFF_CALC_006_W056_TABLE_ROLLOUT_COORDINATION.md`, `docs/upstream/NOTES_FOR_OXFML.md`, `docs/upstream/NOTES_FOR_OXXLPLAY.md`
 4. upstream_dependencies:
    `OxFml` owns formula grammar, generic host-context consumption, structured-reference grammar/bind normalization, and W074 name/call evidence. `OxFunc` owns function semantics and reference/value argument admission. OxCalc owns TreeCalc model custody, reference resolution, dependency/invalidation lowering, host namespace versioning, caller context identity, and table dependency lowering.
 5. closure_condition:

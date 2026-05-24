@@ -1331,6 +1331,62 @@ This coordination bead does not close the dependent execution beads:
 `calc-4vs8.51`, `calc-4vs8.52`, `calc-4vs8.53`, `calc-4vs8.54`, or final audit
 `calc-4vs8.43`.
 
+## 4B.12. `calc-4vs8.52` OxXlPlay Excel Table Oracle Intake
+
+Product status:
+
+OxCalc has accepted the current OxXlPlay W009/W056 retained table observation
+floor for `calc-4vs8.52`. This is Excel black-box evidence intake, not an
+OxCalc semantic shortcut and not an OxXlPlay semantic claim.
+
+Observed OxXlPlay anchors:
+
+1. `oxxlplay-ze4` retained the first structured-reference workbook observation.
+2. `oxxlplay-4nd.1` retained the WorkbookConstructionSpec table-node equivalent
+   fixture.
+3. `oxxlplay-4nd.2` retained standalone table-construction evidence.
+4. `oxxlplay-4nd.3` retained table update oracle observations.
+5. `oxxlplay-4nd.4` added table-delete and save/reopen residual coverage.
+6. `oxxlplay-4nd.5` added third-pass residuals: empty data-body tables,
+   first-row insert, last-row delete, empty-table column rename, current-row
+   diagnostics, and multi-table/name/anchor collision availability.
+
+Retained artifact roots:
+
+1. `../OxXlPlay/states/excel/xlplay_structured_reference_workbook_001/`
+2. `../OxXlPlay/states/excel/xlplay_workbook_construction_spec_001/`
+3. `../OxXlPlay/states/excel/xlplay_table_construction_basic_001/`
+4. `../OxXlPlay/states/excel/xlplay_table_update_oracle_001/`
+
+Evidence scope:
+
+The retained observations cover ordinary Excel ListObject construction, table
+identity/ranges, headers, data bodies, totals rows, row-context formulas,
+composite structured-reference formulas, body/totals formulas, table resize,
+row/column insert/delete/reorder, header edit, table rename, accepted isolated
+table delete, explicit table-move capture rejection, explicit save/reopen
+capture rejection, empty-body observations, first/last row boundary updates,
+current-row absence diagnostics, and name/anchor collision availability.
+`execution_outcome.class_id` is present for the table update oracle family.
+
+Typed limits:
+
+Excel dependency graph, dirty-set, and invalidation event-order internals remain
+typed unavailable. OxCalc may use before/after observations and derived table
+slice deltas as oracle evidence, but it must not infer Excel internal dependency
+or invalidation semantics from those observations.
+
+Still open:
+
+1. Dynamic structured-reference or `INDIRECT` table observations are not part of
+   this close. If W056 later admits an Excel-comparable dynamic structured-table
+   lane rather than an OxCalc typed exclusion, OxXlPlay should add a successor
+   observation bead for that exact lane.
+2. OxReplay retained comparison over the DnaTreeCalc/OxXlPlay payloads remains
+   with `calc-4vs8.53`.
+3. DnaTreeCalc product activation and retained producer artifacts remain with
+   `calc-4vs8.51`.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

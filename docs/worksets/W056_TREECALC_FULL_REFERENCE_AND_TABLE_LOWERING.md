@@ -2001,6 +2001,65 @@ fixture-only readers, private formula parsing, mirrored structured-reference
 grammar, TreeCalc-specific OxFml/OxFunc branches, Excel-internal inference, or
 a DnaOneCalc no-host regression.
 
+## 4B.17. `calc-4vs8.57` Current-State Node-Table Gap Ledger
+
+This ledger is the `calc-4vs8.57` revalidation result. It maps the desired
+node-associated table architecture to the actual current repo state before the
+hardening implementation beads run.
+
+Reviewed inbound observations:
+
+1. OxFml `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md` sections 2E, 2F, 27, and
+   28 remain aligned with the W056 table plan: table objects are host/OxCalc
+   owned, OxFml owns generic structured-reference grammar/bind packets, and
+   W051/W056 TreeCalc host names map through the defined-name /
+   defined-name-`LAMBDA` lane.
+2. The current OxFml table-context packet is still the right first semantic
+   packet: `table_catalog`, `enclosing_table_ref`, and
+   `caller_table_region`, with stable table identity, range, column catalog,
+   header/totals presence, caller row, and prepared/replay identity facts.
+
+Current-state classification:
+
+| Area | Owner | Current state | Evidence | Gap or next bead |
+| --- | --- | --- | --- | --- |
+| Table-as-node product model and bridge activation | DnaTreeCalc | Implemented/evidenced for structured references, empty bodies, lifecycle, and dynamic/cross-workspace table cases through `LiveOxCalcTreeBridge`; no DnaTreeCalc formula parser is claimed. | DnaTreeCalc `dtc-z0i.5.5`, `dtc-z0i.5.6.1`, `dtc-z0i.5.7`, `dtc-z0i.7.1`; active table corpus and retained runs under `../DnaTreeCalc/docs/test-runs/`. | Bead-state residue remains: DnaTreeCalc parent `dtc-z0i.5` and `dtc-z0i.5.6` are still open even though the retained child evidence exists. Reconcile under `calc-4vs8.62`, not by adding an OxCalc-side shim. |
+| Table custody, virtual anchor, catalog resolver, sparse readers, prepared identity, dependency/invalidation, dynamic rebind | OxCalc | Implemented/evidenced in typed Rust surfaces. `EvalValue` remains free of table-specific variants; table values travel through sparse/reference-reader surfaces. | `src/oxcalc-core/src/structured_table.rs` defines `TreeCalcTableNodeSnapshot`, `TreeCalcTableNodeProjection`, `resolve_treecalc_table_catalog_reference`, `TreeCalcTableSparseReader`, `TreeCalcTableFormulaPreparedIdentityFacts`, `TreeCalcTableUpdateScenarioKind`, `TreeCalcTableLifecycleEventKind`, and `classify_treecalc_dynamic_table_rebind`; closing beads `calc-4vs8.45` through `.56` record focused and full `oxcalc-core` checks. | Run the anti-shim consolidation sweep in `calc-4vs8.58` and lifecycle matrix verification in `calc-4vs8.59` before reaffirming the table claim. |
+| Generic structured-reference packets and table prepared identity | OxFml | Implemented/evidenced for W056 table needs without TreeCalc semantics. | OxFml `fml-ds0.12`, `.13`, `.15`, `.16`; W074 name-call handoff `fml-ds0.6.5`. | Broader W036/table-language work remains outside this W056 hardening unless live evidence exposes a missing generic packet fact. Keep under watch in `calc-4vs8.62`. |
+| Opaque `ReferenceLike` function behavior | OxFunc | Implemented/evidenced for first aggregate group and widened/classified reference-visible structured-table function families through generic resolver APIs. | OxFunc `oxf-ypq2.13`, `.15`, `.16`. | Broader W093 formula-call registry migration `oxf-ypq2.12` remains open. It is not table-specific today, but `calc-4vs8.60` must verify table formulas still invalidate on registry/capability changes and do not require TreeCalc selector inspection. |
+| DnaOneCalc no-host reference guardrail and future UDF path | DnaOneCalc | No table-specific host-reference dependency found. Ordinary single-formula use stays on OxFml internals; future VBA UDF work remains a registry-backed WS-15 lane. | `../DnaOneCalc/src/dnaonecalc-host/tests/scenarios/runtime_metadata.rs` includes ordinary no-host and LET/LAMBDA local/callable/capture guardrails; `../DnaOneCalc/src/dnaonecalc-host/src/adapters/oxfml/live_bridge.rs` documents default OxFunc registry use and future `with_function_registry` shape; WS-15 beads own desktop VBA UDF work. | `calc-4vs8.60` must keep DnaOneCalc table work non-impact unless UDF registry behavior changes. Do not introduce a host namespace requirement for ordinary formulas. |
+| Excel ListObject observation | OxXlPlay | Implemented/evidenced as clean-room black-box observation, with explicit unavailable facts for Excel internals. | OxXlPlay `oxxlplay-4nd.1` through `.5`; retained `xlplay_workbook_construction_spec_001`, `xlplay_table_construction_basic_001`, and `xlplay_table_update_oracle_001`. | Excel dependency graph, dirty-set, event-order internals, modal table-move/save-reopen risks remain typed unavailable; `calc-4vs8.61` must preserve them as unavailable, not inferred. |
+| Retained replay comparison | OxReplay | Implemented/evidenced for declared retained payloads; comparison is over typed views, not producer-private strings. | OxReplay `oxreplay-qb9`; retained batch `docs/test-runs/w007-w056-table-third-pass-intake-baseline/`; matched table mechanics under `host_rollout_matched_table_001`. | `BLK-REPLAY-003` remains for the OxFunc-owned `comparison_value` replay-wire helper; full namespace/anchor/workspace cross-producer pairing and older OxXlPlay outcome gaps remain final-audit risks for `calc-4vs8.61`, not table semantic ownership. |
+| VBA/XLL discovery metadata and UDF registration pressure | OxVba / OxFunc / DnaOneCalc | No table-specific blocker found. VBA/XLL source discovery and UDF registration remain registry-seam work; table references should appear only as opaque references if later admitted to UDFs. | OxVba `WORKSET_2026-05-10_HOST_PROGRAM_DESIGN_AND_UDF_REWORK.md`; DnaOneCalc WS-15 open beads; OxFunc W093 registry contract surfaces. | Keep as impact-scan in `calc-4vs8.60` and `calc-4vs8.62`; do not add table-specific UDF branches. |
+
+Ownership drift scan:
+
+1. No current evidence requires OxFml to parse TreeCalc table paths or know
+   TreeCalc table lifecycle semantics.
+2. No current evidence requires OxFunc to inspect TreeCalc selectors or table
+   packets.
+3. No current evidence supports dense/eager materialization as table closure
+   evidence; table values remain sparse/reference-reader backed.
+4. No current evidence supports DnaTreeCalc-local formula parsing as a product
+   route. The corpus may declare packet modes/handles as fixture input, but
+   product formula meaning must continue through OxCalc/OxFml public packets.
+5. No current evidence lets OxReplay infer TreeCalc or Excel table semantics
+   from private strings. It compares declared producer payloads and records
+   typed projection gaps.
+
+Ledger consequence:
+
+No new W056 table bead is required beyond the existing fifth-pass hardening
+spine. The current gaps map to:
+
+1. `calc-4vs8.58` for the OxCalc abstraction and anti-shim sweep,
+2. `calc-4vs8.59` for lifecycle/update invalidation execution proof,
+3. `calc-4vs8.60` for function/UDF/no-host guardrail revalidation,
+4. `calc-4vs8.61` for replay/value-wire/oracle residuals,
+5. `calc-4vs8.62` for cross-repo bead-state reconciliation, especially the
+   open DnaTreeCalc table parent beads,
+6. `calc-4vs8.63` for the final table status audit.
+
 ## 4C. Non-Table Reference Completion Spine
 
 After `calc-4vs8.43`, the node-associated table topic has prior promotion

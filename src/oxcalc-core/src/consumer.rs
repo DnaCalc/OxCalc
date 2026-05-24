@@ -16,9 +16,10 @@ use crate::formula::{
     TreeCalcFormulaTextPrebindContext, TreeCalcFormulaTextPrebindError,
     TreeCalcOrderedSelectorTraversalPolicy, TreeCalcQualifiedBaseResolutionLayer,
     TreeCalcQualifiedChildrenBaseQuery, TreeCalcQualifiedChildrenBaseResolution,
-    TreeFormulaBinding, TreeFormulaCatalog, TreeFormulaHostNameBindPacket,
-    TreeFormulaReferenceCarrier, TreeReference, prebind_treecalc_formula_text_with_context,
-    treecalc_formula_text_ordered_selector_queries,
+    TreeCalcReferenceCollection, TreeCalcReferenceLiteralArrayCollection,
+    TreeCalcReferenceLiteralArrayElement, TreeFormulaBinding, TreeFormulaCatalog,
+    TreeFormulaHostNameBindPacket, TreeFormulaReferenceCarrier, TreeReference,
+    prebind_treecalc_formula_text_with_context, treecalc_formula_text_ordered_selector_queries,
     treecalc_formula_text_qualified_children_base_queries,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
@@ -1172,13 +1173,21 @@ fn build_context_formula_catalog(
             .get(owner_node_id)
             .copied()
             .unwrap_or(1);
-        let (prebind_context, prebind_diagnostics) =
-            context_prebind_resolution(state, *owner_node_id, formula_text);
+        let reference_literal_prebind =
+            context_reference_literal_array_prebind(state, *owner_node_id, formula_text);
+        let (prebind_context, prebind_diagnostics) = context_prebind_resolution(
+            state,
+            *owner_node_id,
+            reference_literal_prebind.source_text.as_str(),
+        );
         let mut expression = prebind_treecalc_formula_text_with_context(
             *owner_node_id,
-            formula_text,
+            reference_literal_prebind.source_text.as_str(),
             &prebind_context,
         )?;
+        expression
+            .reference_carriers
+            .extend(reference_literal_prebind.carriers.into_iter());
         let prebound_treecalc_spans = prebound_treecalc_source_spans(&expression);
         diagnostics.extend(
             prebind_diagnostics
@@ -1325,6 +1334,155 @@ fn context_prebind_resolution(
     )
 }
 
+struct ContextReferenceLiteralArrayPrebind {
+    source_text: String,
+    carriers: Vec<TreeFormulaReferenceCarrier>,
+}
+
+fn context_reference_literal_array_prebind(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    formula_text: &str,
+) -> ContextReferenceLiteralArrayPrebind {
+    let mut rewritten = String::with_capacity(formula_text.len());
+    let mut carriers = Vec::new();
+    let mut cursor = 0;
+    let mut index = 0;
+    let mut in_string = false;
+
+    while index < formula_text.len() {
+        let Some(current) = formula_text[index..].chars().next() else {
+            break;
+        };
+
+        if in_string {
+            if current == '"' {
+                let next_index = index + current.len_utf8();
+                if formula_text[next_index..].starts_with('"') {
+                    index = next_index + 1;
+                } else {
+                    in_string = false;
+                    index = next_index;
+                }
+            } else {
+                index += current.len_utf8();
+            }
+            continue;
+        }
+
+        if current == '"' {
+            in_string = true;
+            index += current.len_utf8();
+            continue;
+        }
+
+        if current == '{'
+            && let Some(end_byte) = reference_literal_array_end(formula_text, index)
+            && let Some(member_node_ids) = resolved_reference_literal_array_members(
+                &formula_text[index..end_byte],
+                owner_node_id,
+                &state.snapshot,
+            )
+        {
+            let neutral_token = format!("TREE_LITERAL_REF_{}_{}", owner_node_id.0, carriers.len());
+            rewritten.push_str(&formula_text[cursor..index]);
+            rewritten.push_str(&neutral_token);
+            cursor = end_byte;
+
+            let elements = member_node_ids
+                .iter()
+                .copied()
+                .map(TreeCalcReferenceLiteralArrayElement::ReferenceNode);
+            let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
+                format!("raw_literal:{}:{}", owner_node_id.0, carriers.len()),
+                owner_node_id,
+                formula_text[index..end_byte].to_string(),
+                elements,
+            )
+            .expect("resolved member list is non-empty and reference-only")
+            .with_source_span_utf8(index, end_byte);
+            carriers.push(TreeFormulaReferenceCarrier::named(
+                neutral_token,
+                TreeReference::ReferenceCollection(
+                    TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+                ),
+            ));
+            index = end_byte;
+            continue;
+        }
+
+        index += current.len_utf8();
+    }
+
+    if carriers.is_empty() {
+        return ContextReferenceLiteralArrayPrebind {
+            source_text: formula_text.to_string(),
+            carriers,
+        };
+    }
+
+    rewritten.push_str(&formula_text[cursor..]);
+    ContextReferenceLiteralArrayPrebind {
+        source_text: rewritten,
+        carriers,
+    }
+}
+
+fn reference_literal_array_end(formula_text: &str, start_byte: usize) -> Option<usize> {
+    let mut index = start_byte + 1;
+    while index < formula_text.len() {
+        let current = formula_text[index..].chars().next()?;
+        if current == '}' {
+            return Some(index + current.len_utf8());
+        }
+        if current == '{' || current == '"' {
+            return None;
+        }
+        index += current.len_utf8();
+    }
+    None
+}
+
+fn resolved_reference_literal_array_members(
+    source_token_text: &str,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> Option<Vec<TreeNodeId>> {
+    let body = source_token_text
+        .strip_prefix('{')?
+        .strip_suffix('}')?
+        .trim();
+    if body.is_empty() {
+        return None;
+    }
+
+    let mut member_node_ids = Vec::new();
+    for raw_element in body.split([',', ';']) {
+        let element = raw_element.trim();
+        if !is_reference_literal_member_token(element) {
+            return None;
+        }
+        let ContextHostNameResolution::Resolved(member_node_id) =
+            resolve_context_host_name_token(element, owner_node_id, snapshot)
+        else {
+            return None;
+        };
+        member_node_ids.push(member_node_id);
+    }
+    (!member_node_ids.is_empty()).then_some(member_node_ids)
+}
+
+fn is_reference_literal_member_token(element: &str) -> bool {
+    let mut chars = element.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
+    }
+    chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.'))
+}
+
 fn context_qualified_children_base_resolution(
     query: &TreeCalcQualifiedChildrenBaseQuery,
     owner_node_id: TreeNodeId,
@@ -1382,7 +1540,8 @@ fn direct_name_carriers_from_oxfml_probe(
     // OxFml exposes as unresolved host candidates.
     let probe = oxfml_context_bind_probe(workspace_id, owner_node_id, formula_text);
     let mut carriers = Vec::new();
-    let mut diagnostics = typed_exclusion_diagnostics(&probe, snapshot, owner_node_id);
+    let mut diagnostics =
+        typed_exclusion_diagnostics(&probe, snapshot, owner_node_id, prebound_treecalc_spans);
     for candidate in probe.unresolved_names {
         if source_span_is_inside_any(candidate.source_span_utf8, prebound_treecalc_spans) {
             continue;
@@ -1550,6 +1709,7 @@ fn typed_exclusion_diagnostics(
     probe: &ContextOxfmlBindProbe,
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
+    prebound_treecalc_spans: &[(usize, usize)],
 ) -> Vec<String> {
     let mut diagnostics = Vec::new();
     for call in &probe.function_calls {
@@ -1573,7 +1733,11 @@ fn typed_exclusion_diagnostics(
             "typed_exclusion:cross_workspace_host_name_pending:{qualified}:owner={owner_node_id}"
         ));
     }
-    if probe.reference_literal_syntax_seen {
+    if probe.reference_literal_syntax_seen
+        && probe.unresolved_names.iter().any(|reference| {
+            !source_span_is_inside_any(reference.source_span_utf8, prebound_treecalc_spans)
+        })
+    {
         diagnostics.push(format!(
             "typed_exclusion:reference_literal_collection_raw_context_pending:owner={owner_node_id}"
         ));
@@ -1908,6 +2072,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 mod tests {
     use super::*;
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
+    use crate::dependency::DependencyDescriptorKind;
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
     };
@@ -2431,7 +2596,7 @@ mod tests {
         context
             .add_node(
                 &workspace_id,
-                OxCalcTreeNodeCreate::new("Literal", "=SUM({A,A})"),
+                OxCalcTreeNodeCreate::new("Literal", "=SUM({A,1})"),
             )
             .unwrap();
         context
@@ -2458,6 +2623,82 @@ mod tests {
                 result.diagnostics
             );
         }
+    }
+
+    #[test]
+    fn treecalc_context_raw_reference_literal_array_preserves_order_duplicates() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:raw-reference-literal",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "=5"))
+            .unwrap();
+        let sum_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Sum", "=SUM({A,C,A})"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_values.get(&sum_id),
+            Some(&"11".to_string())
+        );
+        assert!(
+            result.diagnostics.iter().all(|diagnostic| !diagnostic
+                .contains("typed_exclusion:reference_literal_collection_raw_context_pending")),
+            "reference-only literal arrays should no longer be reported as pending: {:?}",
+            result.diagnostics
+        );
+
+        let edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&sum_id)
+            .expect("reference literal sum should have member-value edges");
+        assert_eq!(
+            edges
+                .iter()
+                .filter(|edge| edge.kind
+                    == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+                    && edge.target_node_id == a_id)
+                .count(),
+            2
+        );
+        assert_eq!(
+            edges
+                .iter()
+                .filter(|edge| edge.kind
+                    == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+                    && edge.target_node_id == c_id)
+                .count(),
+            1
+        );
+
+        let descriptors = result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&sum_id)
+            .expect("reference literal sum should have descriptors");
+        assert!(descriptors.iter().any(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMembership
+                && descriptor
+                    .source_reference_handle
+                    .as_deref()
+                    .is_some_and(|handle| {
+                        handle
+                            .starts_with("treecalc-hostref:v1:reference_literal_array:raw_literal:")
+                    })
+        }));
     }
 
     #[test]

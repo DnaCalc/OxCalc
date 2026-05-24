@@ -1475,6 +1475,84 @@ Still open:
    UDF API intentionally exposes reference metadata beyond generic
    `ReferenceLike` admission.
 
+## 4B.14. `calc-4vs8.51` DnaTreeCalc Node-Table Corpus And Bridge Intake
+
+Product status:
+
+OxCalc has identified the current DnaTreeCalc table activation floor for W056,
+but `calc-4vs8.51` remains open. DnaTreeCalc has active node-table corpus slices
+that run through `LiveOxCalcTreeBridge` and OxCalc's public
+table-projection/resolution APIs rather than local formula parsing, but retained
+artifact and dynamic/cross-workspace table routes still need explicit evidence
+before this intake bead can close.
+
+Active DnaTreeCalc table corpus slices:
+
+1. `tables/structured-references` has 13 active cases. The runner exercises
+   path-qualified table references, current-row references, headers/data/totals
+   sections, `#All`, escaped table and column names, table formula/totals
+   formula values, dependency lowering, update classification, retained
+   `SalesTable` replay producer views, and table context identity through the
+   real bridge.
+2. `tables/empty-body` has 8 active cases. The runner exercises headers-only
+   and headers+totals zero-row tables, `#Data`, `[Col]`, `#All`, `#Headers`,
+   `#Totals`, typed `[@Col]` caller-row diagnostics, first-row insert, and
+   last-row delete endpoints through the real bridge.
+3. The current full DnaTreeCalc corpus validator reports 43 files, 14
+   workspaces, 175 cases, and 35 active / 140 pending. The table slices above
+   are active; broader non-table W004 families remain intentionally pending.
+
+Consumed DnaTreeCalc anchors:
+
+| Anchor | OxCalc reading |
+|---|---|
+| `dtc-z0i.5` | Parent table structured-reference bridge activation remains open until all DnaTreeCalc-side table lanes and retained evidence close. |
+| `dtc-z0i.5.1` through `.5.5` | Table model persistence, bridge table catalog projection, full table structured-reference corpus, table update retained artifacts, and lifecycle callback bridge acceptance are present as prior table anchors. |
+| `dtc-z0i.5.6` | Empty-body table corpus is active and has green focused bridge tests; the DnaTreeCalc bead remains open for retained OxReplay-facing empty-body artifact/intake evidence or an explicit narrowing to `oxreplay-qb9`. |
+| `dtc-z0i.5.6.1` | New explicit bead for empty-body retained artifacts and OxReplay intake. |
+| `dtc-z0i.5.7` | New explicit bead for table lifecycle retained artifacts over the callback acceptance lane. |
+| `dtc-z0i.5.8` | New explicit bead for refreshing the existing retained structured-reference artifact after OxCalc W056 enum widening. |
+| `dtc-z0i.7` | Dynamic, cross-workspace, profile-gated, and unavailable/deleted table reference activation remains broader W004 successor work. |
+| `dtc-z0i.7.1` | New explicit bead for table-specific dynamic/cross-workspace pending-to-active routes and retained evidence. |
+| `dtc-osq.6`, `.7`, `.8` | W005 walk-up, save/reopen, and click-through skeleton evidence remain product-skeleton work and do not block OxCalc's table-intake bead unless a table UX/persistence path claims closure. |
+
+Current local evidence observed from DnaTreeCalc:
+
+1. `pwsh docs/test-corpus/tools/validate-corpus.ps1` passed with 43 files, 175
+   cases, and 35 active / 140 pending.
+2. `cargo test --workspace active_table_structured_reference_corpus_executes_through_oxcalc_table_path -- --nocapture`
+   passed.
+3. `cargo test --workspace active_empty_body_table_corpus_executes_through_oxcalc_table_path -- --nocapture`
+   passed.
+4. DnaTreeCalc commit `50374fe` updates retained-artifact id projection for
+   the OxCalc W056 dynamic-selector prepared-identity input and the full table
+   lifecycle/update scenario enum, keeping DnaTreeCalc compatible with the
+   widened OxCalc table surface.
+5. DnaTreeCalc opened explicit follow-up beads `dtc-z0i.5.6.1`,
+   `dtc-z0i.5.7`, and `dtc-z0i.7.1` for the retained empty-body, retained
+   lifecycle, and table-specific dynamic/cross-workspace gaps identified by
+   fresh-eyes review.
+
+Still open:
+
+1. DnaTreeCalc W004 table product closure remains open on `dtc-z0i.5`,
+   `dtc-z0i.5.6`, `dtc-z0i.5.6.1`, `dtc-z0i.5.7`, and `dtc-z0i.7.1` until
+   retained empty-body/lifecycle/cross-workspace/dynamic producer evidence is
+   fully paired with OxReplay or explicitly typed out.
+2. Dynamic structured-table `INDIRECT`, unavailable/deleted table targets,
+   cross-workspace table availability, and profile-gated table references
+   remain successor activation under `dtc-z0i.7` and OxCalc/OxReplay gates.
+3. The W005 shell/save-reopen/click-through beads remain DnaTreeCalc product
+   work. OxCalc must not use their partial status to claim full TreeCalc UI or
+   persistence closure.
+4. OxReplay retained comparison and promotion evidence remains with
+   `calc-4vs8.53`.
+5. Therefore `calc-4vs8.51` is not closeable yet. Its next close gate is:
+   DnaTreeCalc retained structured-reference artifact refresh closed, explicit
+   empty-body/lifecycle/dynamic/cross-workspace beads present and linked, and
+   the remaining retained evidence either implemented or recorded as typed
+   blockers accepted by OxReplay/OxCalc.
+
 `calc-4vs8.36` implemented intake:
 
 OxCalc now records the structured-table function breadth surface as typed Rust

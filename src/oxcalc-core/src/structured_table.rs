@@ -8,6 +8,8 @@
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
+use serde::{Deserialize, Serialize};
+
 use oxfml_core::binding::{
     AreaRef, BindContext, BindRequest, CellRef, StructuredResolvedRef, bind_formula,
 };
@@ -44,7 +46,7 @@ use crate::sparse_reader::{
 };
 use crate::structural::TreeNodeId;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableVirtualAnchor {
     pub workbook_scope_ref: String,
     pub sheet_scope_ref: String,
@@ -52,10 +54,10 @@ pub struct TreeCalcTableVirtualAnchor {
     pub start_col: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TreeCalcTableRowId(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableFormulaMetadata {
     pub formula_artifact_id: String,
     pub bind_artifact_id: Option<String>,
@@ -81,7 +83,7 @@ impl TreeCalcTableFormulaMetadata {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TreeCalcTableColumnBodyMetadata {
     ConstantCells,
     Formula(TreeCalcTableFormulaMetadata),
@@ -100,7 +102,7 @@ impl TreeCalcTableColumnBodyMetadata {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableColumnSnapshot {
     pub column_id: String,
     pub column_name: String,
@@ -109,7 +111,7 @@ pub struct TreeCalcTableColumnSnapshot {
     pub totals_metadata: Option<TreeCalcTableFormulaMetadata>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableNodeSnapshot {
     pub table_node_id: TreeNodeId,
     pub table_id: String,
@@ -539,7 +541,7 @@ impl TreeCalcTableCatalogWorkspace {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableDeletedFact {
     pub workspace_handle: String,
     pub table_id: String,

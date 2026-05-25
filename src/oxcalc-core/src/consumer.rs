@@ -9,6 +9,7 @@ use oxfml_core::{
     BindContext, BindRequest, FormulaSourceRecord, ParseRequest, StructuredReferenceBindRecord,
     bind_formula, parse_formula, project_red_view,
 };
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::coordinator::{AcceptedCandidateResult, PublicationBundle, RejectDetail, RuntimeEffect};
@@ -70,7 +71,7 @@ pub struct OxCalcTreeCalculationOutcome {
     pub diagnostics: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct OxCalcTreeWorkspaceId(pub String);
 
 impl OxCalcTreeWorkspaceId {
@@ -174,7 +175,7 @@ pub struct OxCalcTreeWorkspaceView {
     pub diagnostics: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OxCalcTreeWorkspaceSnapshot {
     pub workspace_id: OxCalcTreeWorkspaceId,
     pub root_node_id: TreeNodeId,
@@ -2890,9 +2891,29 @@ mod tests {
             Some(&"4".to_string())
         );
 
+        let serialized = serde_json::to_string_pretty(&snapshot).unwrap();
+        let reparsed: OxCalcTreeWorkspaceSnapshot = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(reparsed.workspace_id, workspace_id);
+        assert_eq!(reparsed.root_node_id, snapshot.root_node_id);
+        assert_eq!(
+            reparsed.formula_texts.get(&b_id).map(String::as_str),
+            Some("=A+1")
+        );
+        assert_eq!(
+            reparsed
+                .table_snapshots
+                .get(&sales_id)
+                .map(|table| table.table_id.as_str()),
+            Some("table:sales")
+        );
+        assert_eq!(
+            reparsed.seeded_published_values.get(&b_id),
+            Some(&"4".to_string())
+        );
+
         let mut imported_context = OxCalcTreeContext::default();
         let imported_workspace_id = imported_context
-            .import_workspace_snapshot(snapshot)
+            .import_workspace_snapshot(reparsed)
             .unwrap();
         assert_eq!(imported_workspace_id, workspace_id);
 

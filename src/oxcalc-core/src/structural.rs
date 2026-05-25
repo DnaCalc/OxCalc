@@ -44,7 +44,7 @@ impl Display for BindArtifactId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum StructuralNodeKind {
     Root,
     Container,
@@ -52,7 +52,7 @@ pub enum StructuralNodeKind {
     Constant,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructuralNode {
     pub node_id: TreeNodeId,
     pub kind: StructuralNodeKind,
@@ -197,7 +197,7 @@ pub enum StructuralError {
     UnknownNode { node_id: TreeNodeId },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructuralSnapshot {
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,

@@ -71,7 +71,7 @@ Required DnaTreeCalc follow-up:
 2. Add or extend retained artifacts for empty-body transitions, lifecycle
    callbacks, full namespace/anchor/workspace table pairing, and dynamic table
    selector cases so OxReplay can consume them without TreeCalc-private shims.
-3. Keep every case routed through LiveOxCalc/OxCalc public table projection,
+3. Keep every case routed through direct OxCalcTreeContext public table projection,
    structured-reference packet, sparse-reader, lifecycle, and dynamic rebind
    APIs. DnaTreeCalc must not parse formula text or reconstruct private span
    keys.

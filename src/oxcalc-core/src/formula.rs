@@ -1952,8 +1952,6 @@ pub enum W056NonTableReferenceEvidenceStatus {
     ProductGreen,
     DirectContextSliceGreen,
     DirectContextTypedPending,
-    CorpusAuthoredRunnerPending,
-    RetainedReplayPending,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2090,10 +2088,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "src/dnatreecalc-host/tests/active_meta_nodes_corpus.rs",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host --test active_meta_nodes_corpus -- --nocapture",
-        oxcalc_status: "direct OxCalcTreeContext owns is_meta state and hides meta-effective nodes from host-name lookup and sibling navigation for the active slice",
-        dnatreecalc_status: "focused active direct OxCalcTreeContext meta invisibility slice; metadata accessors pending",
+        oxcalc_status: "direct OxCalcTreeContext owns is_meta state, hides meta-effective nodes from host-name lookup and sibling navigation, and exposes current metadata accessors for the active slice",
+        dnatreecalc_status: "focused active direct OxCalcTreeContext meta invisibility/accessor slice; broader ordered selectors over meta-effective snapshots pending",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active meta-node direct-context runner; metadata accessor breadth pending",
+        current_test_result: "green active meta-node direct-context runner, including @PARENT, @NAME, @INDEX, and @FORMULA; broader meta snapshot/replay evidence pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -2288,14 +2286,15 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
         expected_outcome_contract: "edits classify as value-only recalculation, rebind-required, unresolved, or propagation prompt with replay-visible invalidation facts",
         corpus_or_suite: &[
             "../DnaTreeCalc/docs/test-corpus/structural-edits/propagation.json",
+            "src/dnatreecalc-host/tests/active_structural_edits_corpus.rs",
             "oxcalc-core structural_invalidation_seeds_mark_relative_reference_rebind_after_rename",
         ],
-        runnable_suite_command: "pwsh ../DnaTreeCalc/docs/test-corpus/tools/validate-corpus.ps1",
+        runnable_suite_command: "cargo test -p dnatreecalc-host --test active_structural_edits_corpus -- --nocapture",
         oxcalc_status: "structural rebind facts implemented for current carriers",
-        dnatreecalc_status: "corpus authored, pending propagation runner",
+        dnatreecalc_status: "active direct OxCalcTreeContext structural edit runner covers delete, rename propagation/no-propagation, move-out-of-scope, and insert-shadow consequences",
         replay_status: "retained non-table replay missing",
-        current_test_result: "validator green; no active structural-edit corpus runner",
-        evidence_status: W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
+        current_test_result: "green active structural-edit direct-context runner; retained invalidation/replay evidence still pending",
+        evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
     },
@@ -3978,7 +3977,6 @@ mod tests {
             W056NonTableReferenceEvidenceStatus::ProductGreen,
             W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
             W056NonTableReferenceEvidenceStatus::DirectContextTypedPending,
-            W056NonTableReferenceEvidenceStatus::CorpusAuthoredRunnerPending,
         ] {
             assert!(
                 statuses.contains(&required_status),

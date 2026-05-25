@@ -2611,7 +2611,7 @@ Reference matrix:
 | Ancestor/root anchors | `^`, `^.Rate`, `^^.Year`, `^^^`, `[]Sheet1.Margin`, `[]` | `CORE_MODEL_SPEC.md` §3.1/§3.2/§3.7; DnaTreeCalc `references/anchors-raw-active` plus pending `references/anchors` | Focused ancestor-anchor forms are green through OxFml repeated-prefix host-reference packets and OxCalc `RelativePath` resolver outputs. | Workspace-root anchors, sheet aliases, broader anchor corpus, and retained replay evidence. |
 | Workspace aliases and `!` syntax | `[projections]Branch1.MyNode`, `Sheet1!Foo`, `[ws][Branch X].MyNode` | `CORE_MODEL_SPEC.md` §3.1/§3.3; DnaTreeCalc `references/cross-workspace`; OxCalc `calc-4vs8.30`/`calc-8tox` | OxCalc provider/alias packet and workspace-qualified carrier are implemented. DnaTreeCalc has an active typed slice; retained non-table replay is missing. | Run/retain cross-workspace evidence through OxReplay. |
 | Escaping, canonicalization, case | `[Sales Q1]`, `[Foo'[Bar]`, `Region.[Net Revenue]`, `sales.margin` | `CORE_MODEL_SPEC.md` §3.3/§3.4; DnaTreeCalc `references/escaping-raw-active` plus pending `references/escaping` | Focused bracket-escaped path forms are green through OxFml escaped-path packets and OxCalc decoded-segment resolver outputs. Case-insensitive canonical lookup is covered by the active walk-up slice. | Full syntax/canonical display/profile coverage and retained evidence. |
-| Meta invisibility and accessors | `@NAME`, `ref.@INDEX`, `ref.@PARENT`, hidden meta lookup | `CORE_MODEL_SPEC.md` §2/§3.5/§6 item 9; DnaTreeCalc `references/meta-nodes` | Corpus is authored and validator-green; metadata-aware bridge activation is pending. | Active runner over meta-effective structural snapshots. |
+| Meta invisibility and accessors | hidden meta lookup, `@PREV` skipping meta sibling, future `@NAME`/`ref.@INDEX`/`ref.@PARENT` | `CORE_MODEL_SPEC.md` §2/§3.5/§6 item 9; DnaTreeCalc `references/meta-nodes` | Active meta-node slice is green through OxCalc context-owned `is_meta` state: host-name lookup hides meta-effective subtrees and active sibling navigation skips meta nodes. | Metadata accessor functions, broader ordered selectors over meta-effective snapshots, and retained evidence. |
 | Single sibling navigation | `@PREV.Net`, `@NEXT.Margin`, `ref.@PREV` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/sibling-offsets` | Focused `@PREV`/`@NEXT` tail forms and out-of-range descriptors are green through OxFml host-reference packets and OxCalc `SiblingOffset` carriers. | Qualified sibling forms such as `ref.@PREV` and retained replay. |
 | Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active` plus pending `references/set-membership` | Focused active ordered slice is green through OxFml host-reference packets, including qualified structural-base selectors. | Activate full set-membership family and retain evidence. |
 | Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active`; OxCalc traversal tests | Focused recursive-tail slice is green through OxFml host-reference packets carrying base and tail tokens into OxCalc traversal. | Full recursive corpus activation, traversal-bound policy, and retained replay. |
@@ -2634,8 +2634,8 @@ the pending or partial categories.
 
 Current check results observed in this pass:
 
-1. DnaTreeCalc corpus validator: 50 files, 16 workspaces, 229 cases, 119 active
-   and 110 pending; passed.
+1. DnaTreeCalc corpus validator: 50 files, 16 workspaces, 229 cases, 121 active
+   and 108 pending; passed.
 2. DnaTreeCalc active walk-up runner:
    `cargo test -q -p dnatreecalc-host --test active_walkup_corpus -- --nocapture`;
    passed for the focused non-cell-like raw host-name/dotted-descent slice.

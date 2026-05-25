@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::coordinator::{AcceptedCandidateResult, PublicationBundle, RejectDetail, RuntimeEffect};
-use crate::dependency::{DependencyGraph, InvalidationClosure};
+use crate::dependency::{
+    DependencyGraph, InvalidationClosure, InvalidationReasonKind, InvalidationSeed,
+};
 use crate::formula::{
     RelativeReferenceBase, TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
     TreeCalcOrderedSelectorReferenceCollection, TreeCalcOrderedSelectorTraversalPolicy,
@@ -216,6 +218,10 @@ pub enum OxCalcTreeContextError {
     },
     #[error("invalid OxCalc tree workspace snapshot: {detail}")]
     InvalidWorkspaceSnapshot { detail: String },
+    #[error("input value for node {node_id} may not be formula text")]
+    InputValueIsFormula { node_id: TreeNodeId },
+    #[error("node {node_id} is formula-backed; use set_node_formula_text for formula changes")]
+    InputValueOnFormulaNode { node_id: TreeNodeId },
 }
 
 #[derive(Debug, Clone)]
@@ -231,6 +237,7 @@ struct OxCalcTreeWorkspaceState {
     table_state_version: u64,
     seeded_published_values: BTreeMap<TreeNodeId, String>,
     seeded_published_runtime_effects: Vec<RuntimeEffect>,
+    pending_invalidation_seeds: Vec<InvalidationSeed>,
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
 
@@ -302,6 +309,7 @@ impl OxCalcTreeContext {
             table_state_version: 1,
             seeded_published_values: BTreeMap::new(),
             seeded_published_runtime_effects: Vec::new(),
+            pending_invalidation_seeds: Vec::new(),
             last_result: None,
         };
         self.workspaces.insert(workspace_id.clone(), state);
@@ -355,6 +363,7 @@ impl OxCalcTreeContext {
             if request.is_meta {
                 state.meta_node_ids.insert(node_id);
             }
+            state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -408,12 +417,66 @@ impl OxCalcTreeContext {
             )?;
             state.snapshot = value.snapshot;
             state.formula_text_versions.insert(node_id, version);
+            if !is_formula_text(&formula_text) {
+                state.seeded_published_values.remove(&node_id);
+            }
             state.formula_texts.insert(node_id, formula_text);
-            state.seeded_published_values.clear();
-            state.seeded_published_runtime_effects.clear();
+            push_pending_invalidation_seed(
+                state,
+                node_id,
+                InvalidationReasonKind::StructuralRecalcOnly,
+            );
             state.last_result = None;
         }
         self.advance_snapshot_id_by(2);
+        Ok(())
+    }
+
+    pub fn set_node_input_value(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        input_value: impl Into<String>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let input_value = input_value.into();
+        if is_formula_text(&input_value) {
+            return Err(OxCalcTreeContextError::InputValueIsFormula { node_id });
+        }
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            if state
+                .formula_texts
+                .get(&node_id)
+                .is_some_and(|formula_text| is_formula_text(formula_text))
+            {
+                return Err(OxCalcTreeContextError::InputValueOnFormulaNode { node_id });
+            }
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::SetConstantValue {
+                    node_id,
+                    constant_value: constant_value_for_formula_text(&input_value),
+                },
+            )?;
+            let version = state
+                .formula_text_versions
+                .get(&node_id)
+                .copied()
+                .unwrap_or_default()
+                + 1;
+            state.snapshot = outcome.snapshot;
+            state.formula_text_versions.insert(node_id, version);
+            state.formula_texts.insert(node_id, input_value);
+            state.seeded_published_values.remove(&node_id);
+            push_pending_invalidation_seed(
+                state,
+                node_id,
+                InvalidationReasonKind::UpstreamPublication,
+            );
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
         Ok(())
     }
 
@@ -434,6 +497,7 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = outcome.snapshot;
+            state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -461,6 +525,7 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = outcome.snapshot;
+            state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -500,6 +565,7 @@ impl OxCalcTreeContext {
                 state.meta_node_ids.remove(removed_node_id);
                 state.seeded_published_values.remove(removed_node_id);
                 state.seeded_published_runtime_effects.clear();
+                state.pending_invalidation_seeds.clear();
                 if let Some(snapshot) = state.table_snapshots.remove(removed_node_id) {
                     let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
                     state.deleted_table_facts.push(deleted);
@@ -507,6 +573,7 @@ impl OxCalcTreeContext {
                 }
             }
             state.snapshot = outcome.snapshot;
+            state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -538,6 +605,7 @@ impl OxCalcTreeContext {
                 .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
             state.table_snapshots.insert(node_id, snapshot);
             state.table_state_version = next_table_state_version;
+            state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -558,6 +626,7 @@ impl OxCalcTreeContext {
         let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
         state.deleted_table_facts.push(deleted);
         state.table_state_version += 1;
+        state.pending_invalidation_seeds.clear();
         state.seeded_published_values.clear();
         state.seeded_published_runtime_effects.clear();
         state.last_result = None;
@@ -706,6 +775,7 @@ impl OxCalcTreeContext {
             table_state_version: snapshot.table_state_version,
             seeded_published_values: snapshot.seeded_published_values,
             seeded_published_runtime_effects: snapshot.seeded_published_runtime_effects,
+            pending_invalidation_seeds: Vec::new(),
             last_result: None,
         };
         self.advance_allocators_past_state(&state);
@@ -728,7 +798,7 @@ impl OxCalcTreeContext {
             formula_catalog: catalog_build.catalog,
             seeded_published_values: state.seeded_published_values.clone(),
             seeded_published_runtime_effects: state.seeded_published_runtime_effects.clone(),
-            invalidation_seeds: Vec::new(),
+            invalidation_seeds: state.pending_invalidation_seeds.clone(),
             previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
             publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
@@ -742,6 +812,7 @@ impl OxCalcTreeContext {
         let state = self.workspace_mut(workspace_id)?;
         state.seeded_published_values = result.published_values.clone();
         state.seeded_published_runtime_effects = result.runtime_effects.clone();
+        state.pending_invalidation_seeds.clear();
         state.last_result = Some(result.clone());
         self.advance_candidate_index();
         Ok(result)
@@ -1189,6 +1260,17 @@ fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
 
 fn is_formula_text(formula_text: &str) -> bool {
     formula_text.trim_start().starts_with('=')
+}
+
+fn push_pending_invalidation_seed(
+    state: &mut OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    reason: InvalidationReasonKind,
+) {
+    let seed = InvalidationSeed { node_id, reason };
+    if !state.pending_invalidation_seeds.contains(&seed) {
+        state.pending_invalidation_seeds.push(seed);
+    }
 }
 
 struct ContextFormulaCatalogBuild {
@@ -2378,7 +2460,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 mod tests {
     use super::*;
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
-    use crate::dependency::DependencyDescriptorKind;
+    use crate::dependency::{DependencyDescriptorKind, InvalidationReasonKind};
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
     };
@@ -2522,6 +2604,94 @@ mod tests {
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values.get(&a_id), Some(&"4".to_string()));
         assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
+        assert!(
+            result
+                .invalidation_closure
+                .records
+                .get(&a_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::StructuralRecalcOnly))
+        );
+        assert!(
+            result
+                .invalidation_closure
+                .records
+                .get(&b_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::UpstreamPublication))
+        );
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("edge_value_cache_bypass:{a_id}:ExplicitInvalidationSeed")
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("edge_value_cache_bypass:{b_id}:UpstreamPublication")
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_input_value_update_recalculates_dependents_without_full_reset() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:input-value"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        context
+            .set_node_input_value(&workspace_id, a_id, "7")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&b_id), Some(&"8".to_string()));
+        assert_eq!(
+            context
+                .node_view(&workspace_id, a_id)
+                .unwrap()
+                .value_text
+                .as_deref(),
+            Some("7")
+        );
+        assert!(
+            result
+                .invalidation_closure
+                .records
+                .get(&a_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::UpstreamPublication))
+        );
+        assert!(
+            result
+                .invalidation_closure
+                .records
+                .get(&b_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::UpstreamPublication))
+        );
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("edge_value_cache_bypass:{b_id}:UpstreamPublication")
+        }));
+        assert!(matches!(
+            context
+                .set_node_input_value(&workspace_id, b_id, "9")
+                .unwrap_err(),
+            OxCalcTreeContextError::InputValueOnFormulaNode { .. }
+        ));
+        assert!(matches!(
+            context
+                .set_node_input_value(&workspace_id, a_id, "=9")
+                .unwrap_err(),
+            OxCalcTreeContextError::InputValueIsFormula { .. }
+        ));
     }
 
     #[test]
@@ -2957,16 +3127,16 @@ mod tests {
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:indirect"))
             .unwrap();
         let a_id = context
-            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=2"))
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "2"))
             .unwrap();
         context
-            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B1", "=4"))
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B1", "4"))
             .unwrap();
         let b2_id = context
-            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B2", "=5"))
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B2", "5"))
             .unwrap();
         let b3_id = context
-            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B3", "=6"))
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B3", "6"))
             .unwrap();
         let c_id = context
             .add_node(
@@ -3011,7 +3181,7 @@ mod tests {
         }));
 
         context
-            .set_node_formula_text(&workspace_id, b2_id, "=7")
+            .set_node_input_value(&workspace_id, b2_id, "7")
             .unwrap();
         let target_value_edit = context.recalculate(&workspace_id).unwrap();
         assert_eq!(
@@ -3024,9 +3194,23 @@ mod tests {
                 .iter()
                 .any(|diagnostic| { diagnostic.contains(&ctro_b2_diagnostic) })
         );
+        assert!(
+            target_value_edit
+                .invalidation_closure
+                .records
+                .get(&c_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::UpstreamPublication)),
+            "C should be invalidated through the published dynamic B2 overlay: {:?}",
+            target_value_edit.invalidation_closure
+        );
+        assert!(target_value_edit.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("edge_value_cache_bypass:{c_id}:UpstreamPublication")
+        }));
 
         context
-            .set_node_formula_text(&workspace_id, a_id, "=3")
+            .set_node_input_value(&workspace_id, a_id, "3")
             .unwrap();
         let selector_value_edit = context.recalculate(&workspace_id).unwrap();
         assert_eq!(
@@ -3040,6 +3224,12 @@ mod tests {
             .expect("C should keep static A and current dynamic target dependencies");
         assert!(switched_c_edges.iter().any(|edge| {
             edge.target_node_id == b3_id && edge.kind == DependencyDescriptorKind::DynamicPotential
+        }));
+        assert!(selector_value_edit.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains("dependency_shape_update:release_dynamic_dep")
+        }));
+        assert!(selector_value_edit.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains("dependency_shape_update:activate_dynamic_dep")
         }));
     }
 

@@ -528,8 +528,19 @@ impl LocalTreeCalcEngine {
             DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
         let published_dynamic_dependencies =
             dynamic_dependency_facts_from_runtime_effects(&input.seeded_published_runtime_effects);
-        let initial_dynamic_dependency_delta_owner_ids =
-            dynamic_dependency_delta_owner_ids(&published_dynamic_dependencies, &dependency_graph);
+        let published_dynamic_dependency_descriptors =
+            dynamic_dependency_descriptors_from_published_facts(&published_dynamic_dependencies);
+        let invalidation_dependency_graph = if published_dynamic_dependency_descriptors.is_empty() {
+            dependency_graph.clone()
+        } else {
+            let mut descriptors = dependency_descriptors.clone();
+            descriptors.extend(published_dynamic_dependency_descriptors.clone());
+            DependencyGraph::build(&input.structural_snapshot, &descriptors)
+        };
+        let initial_dynamic_dependency_delta_owner_ids = dynamic_dependency_delta_owner_ids(
+            &published_dynamic_dependencies,
+            &invalidation_dependency_graph,
+        );
         phase_timer.record_duration(
             "dependency_graph_build_and_cycle_scan",
             phase_start.elapsed(),
@@ -552,7 +563,7 @@ impl LocalTreeCalcEngine {
             invalidation_seeds = dedupe_invalidation_seeds(invalidation_seeds);
         }
         let invalidation_closure =
-            dependency_graph.derive_invalidation_closure(&invalidation_seeds);
+            invalidation_dependency_graph.derive_invalidation_closure(&invalidation_seeds);
         phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -604,7 +615,7 @@ impl LocalTreeCalcEngine {
         let mut derivation_traces = Vec::new();
         let scheduling_plan = plan_treecalc_schedule(
             &input.environment_context.scheduling_policy,
-            &dependency_graph,
+            &invalidation_dependency_graph,
             &invalidation_closure,
             &formula_owner_ids,
         );
@@ -621,7 +632,7 @@ impl LocalTreeCalcEngine {
                 .collect::<BTreeSet<_>>();
         let dynamic_dependency_shape_updates = dynamic_dependency_shape_updates_for_owners(
             &published_dynamic_dependencies,
-            &dependency_graph,
+            &invalidation_dependency_graph,
             Some(&scheduled_formula_owner_set),
         );
         let mut edge_value_cache = build_seeded_edge_value_cache(
@@ -646,7 +657,7 @@ impl LocalTreeCalcEngine {
 
         let phase_start = Instant::now();
         let evaluation_order_result =
-            topological_formula_order(&dependency_graph, &scheduled_formula_owner_ids);
+            topological_formula_order(&invalidation_dependency_graph, &scheduled_formula_owner_ids);
         phase_timer.record_duration("topological_formula_order", phase_start.elapsed());
         let evaluation_order = match evaluation_order_result {
             Ok(order) => order,
@@ -674,7 +685,7 @@ impl LocalTreeCalcEngine {
                     &input,
                     &mut coordinator,
                     &mut recalc_tracker,
-                    dependency_graph,
+                    invalidation_dependency_graph,
                     invalidation_closure,
                     Vec::new(),
                     Vec::new(),
@@ -702,7 +713,7 @@ impl LocalTreeCalcEngine {
                 &input,
                 &mut coordinator,
                 &mut recalc_tracker,
-                dependency_graph,
+                invalidation_dependency_graph,
                 invalidation_closure,
                 evaluation_order,
                 Vec::new(),
@@ -717,35 +728,31 @@ impl LocalTreeCalcEngine {
         }
 
         let phase_start = Instant::now();
-        let incompatible_dependency =
-            dependency_graph
-                .diagnostics
-                .iter()
-                .find_map(|diagnostic| match diagnostic.kind {
-                    crate::dependency::DependencyDiagnosticKind::MissingOwner
-                    | crate::dependency::DependencyDiagnosticKind::MissingTarget => {
-                        dependency_descriptor_owners
-                            .get(&diagnostic.descriptor_id)
-                            .copied()
-                            .filter(|owner_node_id| {
-                                scheduled_formula_owner_set.contains(owner_node_id)
-                            })
-                            .map(|owner_node_id| {
-                                (
-                                    owner_node_id,
-                                    format!("{:?}: {}", diagnostic.kind, diagnostic.detail),
-                                )
-                            })
-                    }
-                    _ => None,
-                });
+        let incompatible_dependency = invalidation_dependency_graph.diagnostics.iter().find_map(
+            |diagnostic| match diagnostic.kind {
+                crate::dependency::DependencyDiagnosticKind::MissingOwner
+                | crate::dependency::DependencyDiagnosticKind::MissingTarget => {
+                    dependency_descriptor_owners
+                        .get(&diagnostic.descriptor_id)
+                        .copied()
+                        .filter(|owner_node_id| scheduled_formula_owner_set.contains(owner_node_id))
+                        .map(|owner_node_id| {
+                            (
+                                owner_node_id,
+                                format!("{:?}: {}", diagnostic.kind, diagnostic.detail),
+                            )
+                        })
+                }
+                _ => None,
+            },
+        );
         phase_timer.record_duration("dependency_diagnostic_reject_scan", phase_start.elapsed());
         if let Some((node_id, detail)) = incompatible_dependency {
             return reject_run(
                 &input,
                 &mut coordinator,
                 &mut recalc_tracker,
-                dependency_graph,
+                invalidation_dependency_graph,
                 invalidation_closure,
                 evaluation_order,
                 Vec::new(),
@@ -906,13 +913,29 @@ impl LocalTreeCalcEngine {
             dynamic_dependency_descriptors_from_reference_text_resolutions(
                 &runtime_dynamic_reference_resolutions,
             );
-        let effective_dependency_graph = if runtime_dynamic_dependency_descriptors.is_empty() {
-            dependency_graph
-        } else {
-            let mut effective_descriptors = dependency_descriptors.clone();
-            effective_descriptors.extend(runtime_dynamic_dependency_descriptors);
-            DependencyGraph::build(&input.structural_snapshot, &effective_descriptors)
-        };
+        let runtime_dynamic_dependency_owner_ids = runtime_dynamic_reference_resolutions
+            .iter()
+            .map(|resolution| resolution.owner_node_id)
+            .collect::<BTreeSet<_>>();
+        let current_declared_dynamic_dependency_owner_ids = dependency_descriptors
+            .iter()
+            .filter(|descriptor| descriptor.kind == DependencyDescriptorKind::DynamicPotential)
+            .map(|descriptor| descriptor.owner_node_id)
+            .collect::<BTreeSet<_>>();
+        let mut effective_descriptors = dependency_descriptors.clone();
+        effective_descriptors.extend(
+            published_dynamic_dependency_descriptors
+                .iter()
+                .filter(|descriptor| {
+                    !runtime_dynamic_dependency_owner_ids.contains(&descriptor.owner_node_id)
+                        && !current_declared_dynamic_dependency_owner_ids
+                            .contains(&descriptor.owner_node_id)
+                })
+                .cloned(),
+        );
+        effective_descriptors.extend(runtime_dynamic_dependency_descriptors);
+        let effective_dependency_graph =
+            DependencyGraph::build(&input.structural_snapshot, &effective_descriptors);
         let effective_dynamic_dependency_shape_updates =
             dynamic_dependency_shape_updates_for_owners(
                 &published_dynamic_dependencies,
@@ -1804,6 +1827,32 @@ fn dynamic_dependency_descriptors_from_reference_text_resolutions(
                 tree_reference_collection: None,
                 requires_rebind_on_structural_change: false,
             }
+        })
+        .collect()
+}
+
+fn dynamic_dependency_descriptors_from_published_facts(
+    facts: &[DynamicDependencyFact],
+) -> Vec<DependencyDescriptor> {
+    facts
+        .iter()
+        .enumerate()
+        .map(|(index, fact)| DependencyDescriptor {
+            descriptor_id: format!(
+                "published_ctro_dynamic_ref:{}:{}:{}",
+                fact.owner_node_id.0, fact.target_node_id.0, index
+            ),
+            source_reference_handle: Some(format!(
+                "published_reference_text:{}:{}:{}",
+                fact.owner_node_id.0, fact.target_node_id.0, index
+            )),
+            owner_node_id: fact.owner_node_id,
+            target_node_id: Some(fact.target_node_id),
+            workspace_target: None,
+            kind: DependencyDescriptorKind::DynamicPotential,
+            carrier_detail: fact.identity.clone(),
+            tree_reference_collection: None,
+            requires_rebind_on_structural_change: false,
         })
         .collect()
 }

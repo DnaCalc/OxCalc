@@ -4,13 +4,14 @@
 
 use std::collections::BTreeMap;
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::structural::{
     PinnedStructuralView, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RuntimeEffectFamily {
     DynamicDependency,
     ExecutionRestriction,
@@ -18,7 +19,7 @@ pub enum RuntimeEffectFamily {
     ShapeTopology,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeEffect {
     pub kind: String,
     pub family: RuntimeEffectFamily,

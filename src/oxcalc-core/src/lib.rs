@@ -24,6 +24,7 @@ pub mod stream_semantics;
 pub mod structural;
 pub mod structured_table;
 pub mod tree_reference_rebind;
+pub(crate) mod tree_reference_resolution;
 pub mod treecalc;
 pub mod treecalc_fixture;
 pub mod treecalc_runner;

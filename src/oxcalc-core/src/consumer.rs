@@ -21,7 +21,7 @@ use crate::formula::{
     TreeCalcReferenceLiteralArrayElement, TreeFormula, TreeFormulaBinding, TreeFormulaCatalog,
     TreeFormulaHostNameBindPacket, TreeFormulaHostValue, TreeFormulaHostValueBinding,
     TreeFormulaReferenceCarrier, TreeReference, resolve_treecalc_ordered_selector_traversal,
-    split_treecalc_host_path_token, treecalc_host_reference_carrier_from_syntax_match,
+    treecalc_host_reference_carrier_from_syntax_match,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -39,6 +39,10 @@ use crate::structured_table::{
     TreeCalcTableProjectionError, classify_treecalc_dynamic_table_rebind,
     inventory_treecalc_table_dependency_facts, lower_structured_table_dependencies,
     project_treecalc_table_node_snapshot, resolve_treecalc_table_catalog_reference,
+};
+use crate::tree_reference_resolution::{
+    ContextHostNameResolution, is_meta_effective, resolve_context_host_name_token,
+    resolve_context_host_path_token,
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
@@ -187,6 +191,7 @@ pub struct OxCalcTreeWorkspaceSnapshot {
     pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     pub table_state_version: u64,
     pub seeded_published_values: BTreeMap<TreeNodeId, String>,
+    pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
 }
 
 #[derive(Debug, Error)]
@@ -225,6 +230,7 @@ struct OxCalcTreeWorkspaceState {
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
     seeded_published_values: BTreeMap<TreeNodeId, String>,
+    seeded_published_runtime_effects: Vec<RuntimeEffect>,
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
 
@@ -295,6 +301,7 @@ impl OxCalcTreeContext {
             deleted_table_facts: Vec::new(),
             table_state_version: 1,
             seeded_published_values: BTreeMap::new(),
+            seeded_published_runtime_effects: Vec::new(),
             last_result: None,
         };
         self.workspaces.insert(workspace_id.clone(), state);
@@ -349,6 +356,7 @@ impl OxCalcTreeContext {
                 state.meta_node_ids.insert(node_id);
             }
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_node_id();
@@ -402,6 +410,7 @@ impl OxCalcTreeContext {
             state.formula_text_versions.insert(node_id, version);
             state.formula_texts.insert(node_id, formula_text);
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id_by(2);
@@ -426,6 +435,7 @@ impl OxCalcTreeContext {
             )?;
             state.snapshot = outcome.snapshot;
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -452,6 +462,7 @@ impl OxCalcTreeContext {
             )?;
             state.snapshot = outcome.snapshot;
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -488,6 +499,7 @@ impl OxCalcTreeContext {
                 state.formula_text_versions.remove(removed_node_id);
                 state.meta_node_ids.remove(removed_node_id);
                 state.seeded_published_values.remove(removed_node_id);
+                state.seeded_published_runtime_effects.clear();
                 if let Some(snapshot) = state.table_snapshots.remove(removed_node_id) {
                     let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
                     state.deleted_table_facts.push(deleted);
@@ -496,6 +508,7 @@ impl OxCalcTreeContext {
             }
             state.snapshot = outcome.snapshot;
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -526,6 +539,7 @@ impl OxCalcTreeContext {
             state.table_snapshots.insert(node_id, snapshot);
             state.table_state_version = next_table_state_version;
             state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.table_view(workspace_id, node_id)?
@@ -545,6 +559,7 @@ impl OxCalcTreeContext {
         state.deleted_table_facts.push(deleted);
         state.table_state_version += 1;
         state.seeded_published_values.clear();
+        state.seeded_published_runtime_effects.clear();
         state.last_result = None;
         Ok(Some(snapshot))
     }
@@ -662,6 +677,7 @@ impl OxCalcTreeContext {
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
             seeded_published_values: state.seeded_published_values.clone(),
+            seeded_published_runtime_effects: state.seeded_published_runtime_effects.clone(),
         })
     }
 
@@ -689,6 +705,7 @@ impl OxCalcTreeContext {
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
             seeded_published_values: snapshot.seeded_published_values,
+            seeded_published_runtime_effects: snapshot.seeded_published_runtime_effects,
             last_result: None,
         };
         self.advance_allocators_past_state(&state);
@@ -710,7 +727,7 @@ impl OxCalcTreeContext {
             structural_snapshot: state.snapshot.clone(),
             formula_catalog: catalog_build.catalog,
             seeded_published_values: state.seeded_published_values.clone(),
-            seeded_published_runtime_effects: Vec::new(),
+            seeded_published_runtime_effects: state.seeded_published_runtime_effects.clone(),
             invalidation_seeds: Vec::new(),
             previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
@@ -724,6 +741,7 @@ impl OxCalcTreeContext {
         result.diagnostics.extend(catalog_build.diagnostics);
         let state = self.workspace_mut(workspace_id)?;
         state.seeded_published_values = result.published_values.clone();
+        state.seeded_published_runtime_effects = result.runtime_effects.clone();
         state.last_result = Some(result.clone());
         self.advance_candidate_index();
         Ok(result)
@@ -1990,172 +2008,6 @@ fn source_span_is_inside_any(span: (usize, usize), spans: &[(usize, usize)]) -> 
         .any(|ignored| span.0 >= ignored.0 && span.1 <= ignored.1)
 }
 
-enum ContextHostNameResolution {
-    Resolved(TreeNodeId),
-    Ambiguous,
-    Unsupported(&'static str),
-    Unresolved,
-}
-
-fn resolve_context_host_path_token(
-    token: &str,
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    if token.contains('!') {
-        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
-    }
-    let segments = match split_treecalc_host_path_token(token) {
-        Ok(segments) => segments,
-        Err(_) => {
-            return ContextHostNameResolution::Unsupported("invalid_bracket_escaped_host_path");
-        }
-    };
-    resolve_context_host_path_segments(&segments, owner_node_id, snapshot, meta_node_ids)
-}
-
-fn resolve_context_host_name_token(
-    token: &str,
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    if token.contains('[') || token.contains(']') {
-        return ContextHostNameResolution::Unsupported("bracket_escaped_host_path_pending");
-    }
-    if token.contains('!') {
-        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
-    }
-    let segments = token
-        .split('.')
-        .filter(|segment| !segment.is_empty())
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    resolve_context_host_path_segments(&segments, owner_node_id, snapshot, meta_node_ids)
-}
-
-fn resolve_context_host_path_segments(
-    segments: &[String],
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    if segments.is_empty() {
-        return ContextHostNameResolution::Unresolved;
-    }
-
-    if snapshot
-        .try_get_node(snapshot.root_node_id())
-        .is_some_and(|root| root.symbol.eq_ignore_ascii_case(&segments[0]))
-    {
-        return try_resolve_visible_descendant_path(
-            snapshot,
-            meta_node_ids,
-            snapshot.root_node_id(),
-            &segments[1..],
-        )
-        .map_or(
-            ContextHostNameResolution::Unresolved,
-            ContextHostNameResolution::Resolved,
-        );
-    }
-
-    let base =
-        match resolve_context_walkup_symbol(&segments[0], owner_node_id, snapshot, meta_node_ids) {
-            ContextHostNameResolution::Resolved(base_node_id) => base_node_id,
-            other => return other,
-        };
-    if segments.len() == 1 {
-        return ContextHostNameResolution::Resolved(base);
-    }
-    try_resolve_visible_descendant_path(snapshot, meta_node_ids, base, &segments[1..]).map_or(
-        ContextHostNameResolution::Unresolved,
-        ContextHostNameResolution::Resolved,
-    )
-}
-
-fn resolve_context_walkup_symbol(
-    symbol: &str,
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    let mut scope = Some(owner_node_id);
-    while let Some(scope_node_id) = scope {
-        match resolve_child_symbol_in_scope(symbol, scope_node_id, snapshot, meta_node_ids) {
-            ContextHostNameResolution::Unresolved => {
-                scope = snapshot.parent_id_of(scope_node_id);
-            }
-            other => return other,
-        }
-    }
-    ContextHostNameResolution::Unresolved
-}
-
-fn resolve_child_symbol_in_scope(
-    symbol: &str,
-    scope_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    let Some(scope_node) = snapshot.try_get_node(scope_node_id) else {
-        return ContextHostNameResolution::Unresolved;
-    };
-    let matches = scope_node
-        .child_ids
-        .iter()
-        .copied()
-        .filter(|child_id| {
-            snapshot
-                .try_get_node(*child_id)
-                .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
-                && !is_meta_effective(*child_id, snapshot, meta_node_ids)
-        })
-        .collect::<Vec<_>>();
-    match matches.as_slice() {
-        [] => ContextHostNameResolution::Unresolved,
-        [node_id] => ContextHostNameResolution::Resolved(*node_id),
-        _ => ContextHostNameResolution::Ambiguous,
-    }
-}
-
-fn try_resolve_visible_descendant_path(
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-    start_node_id: TreeNodeId,
-    path_segments: &[String],
-) -> Option<TreeNodeId> {
-    let mut cursor = Some(start_node_id);
-    for segment in path_segments {
-        cursor = cursor.and_then(|current| {
-            let parent = snapshot.try_get_node(current)?;
-            parent.child_ids.iter().copied().find(|child_id| {
-                snapshot
-                    .try_get_node(*child_id)
-                    .is_some_and(|child| child.symbol.eq_ignore_ascii_case(segment))
-                    && !is_meta_effective(*child_id, snapshot, meta_node_ids)
-            })
-        });
-    }
-    cursor
-}
-
-fn is_meta_effective(
-    node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> bool {
-    let mut cursor = Some(node_id);
-    while let Some(current) = cursor {
-        if meta_node_ids.contains(&current) {
-            return true;
-        }
-        cursor = snapshot.parent_id_of(current);
-    }
-    false
-}
-
 fn typed_exclusion_diagnostics(
     probe: &ContextOxfmlBindProbe,
     snapshot: &StructuralSnapshot,
@@ -2165,12 +2017,7 @@ fn typed_exclusion_diagnostics(
 ) -> Vec<String> {
     let mut diagnostics = Vec::new();
     for call in &probe.function_calls {
-        if call.function_name.eq_ignore_ascii_case("INDIRECT") {
-            diagnostics.push(format!(
-                "typed_exclusion:dynamic_indirect_raw_context_pending:{}:{}-{}:owner={owner_node_id}",
-                call.function_name, call.source_span_utf8.0, call.source_span_utf8.1
-            ));
-        } else if matches!(
+        if matches!(
             resolve_context_host_name_token(
                 &call.function_name,
                 owner_node_id,
@@ -2531,6 +2378,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 mod tests {
     use super::*;
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
+    use crate::dependency::DependencyDescriptorKind;
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
     };
@@ -3087,7 +2935,6 @@ mod tests {
         let result = context.recalculate(&workspace_id).unwrap();
 
         for expected in [
-            "typed_exclusion:dynamic_indirect_raw_context_pending",
             "typed_exclusion:node_as_function_w074_pending",
             "typed_exclusion:reference_literal_collection_raw_context_pending",
             "typed_exclusion:cross_workspace_host_name_pending",
@@ -3101,6 +2948,99 @@ mod tests {
                 result.diagnostics
             );
         }
+    }
+
+    #[test]
+    fn treecalc_context_indirect_resolves_reference_text_and_records_ctro_edge() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:indirect"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=2"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B1", "=4"))
+            .unwrap();
+        let b2_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B2", "=5"))
+            .unwrap();
+        let b3_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B3", "=6"))
+            .unwrap();
+        let c_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C", "=INDIRECT(\"B\"&A)"),
+            )
+            .unwrap();
+
+        let initial = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(initial.published_values.get(&c_id), Some(&"5".to_string()));
+        let ctro_b2_diagnostic =
+            format!("ctro_reference_text_resolution:owner={c_id};target={b2_id};text=B2");
+        assert!(
+            initial
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.contains(&ctro_b2_diagnostic) })
+        );
+        assert!(
+            !initial.diagnostics.iter().any(|diagnostic| diagnostic
+                .contains("typed_exclusion:dynamic_indirect_raw_context_pending")),
+            "INDIRECT should execute through the FEC reference-text resolver, not a typed exclusion: {:?}",
+            initial.diagnostics
+        );
+        let initial_c_edges = initial
+            .dependency_graph
+            .edges_by_owner
+            .get(&c_id)
+            .expect("C should have static and dynamic dependencies");
+        assert!(initial_c_edges.iter().any(|edge| {
+            edge.target_node_id == a_id && edge.kind == DependencyDescriptorKind::StaticDirect
+        }));
+        assert!(initial_c_edges.iter().any(|edge| {
+            edge.target_node_id == b2_id && edge.kind == DependencyDescriptorKind::DynamicPotential
+        }));
+        assert!(initial.runtime_effects.iter().any(|effect| {
+            effect.family == RuntimeEffectFamily::DynamicDependency
+                && effect.detail.contains(&format!("owner_node:{c_id}"))
+                && effect.detail.contains(&format!("target_node:{b2_id}"))
+        }));
+
+        context
+            .set_node_formula_text(&workspace_id, b2_id, "=7")
+            .unwrap();
+        let target_value_edit = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            target_value_edit.published_values.get(&c_id),
+            Some(&"7".to_string())
+        );
+        assert!(
+            target_value_edit
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.contains(&ctro_b2_diagnostic) })
+        );
+
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=3")
+            .unwrap();
+        let selector_value_edit = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            selector_value_edit.published_values.get(&c_id),
+            Some(&"6".to_string())
+        );
+        let switched_c_edges = selector_value_edit
+            .dependency_graph
+            .edges_by_owner
+            .get(&c_id)
+            .expect("C should keep static A and current dynamic target dependencies");
+        assert!(switched_c_edges.iter().any(|edge| {
+            edge.target_node_id == b3_id && edge.kind == DependencyDescriptorKind::DynamicPotential
+        }));
     }
 
     #[test]

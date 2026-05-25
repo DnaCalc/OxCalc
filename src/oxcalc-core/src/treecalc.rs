@@ -2,6 +2,7 @@
 
 //! Local sequential TreeCalc runtime facade.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
@@ -23,6 +24,10 @@ use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest}
 use oxfunc_core::host_info::{
     CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
     ResolvedWebImage,
+};
+use oxfunc_core::resolver::{
+    ReferenceTextResolutionError, ReferenceTextResolutionMode, ReferenceTextResolutionRequest,
+    ReferenceTextResolver,
 };
 use oxfunc_core::value::{
     ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
@@ -58,6 +63,9 @@ use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
 use crate::tree_reference_rebind::descriptor_identity_needs;
+use crate::tree_reference_resolution::{
+    ContextHostNameResolution, resolve_context_host_name_token,
+};
 use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
     EdgeValueCachePolicy, EdgeValueCacheStoreResult,
@@ -443,6 +451,18 @@ struct LocalFormulaEvaluationSuccess {
     value: String,
     diagnostics: Vec<String>,
     derivation_trace: Option<DerivationTraceRecord>,
+    dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TreeCalcRuntimeReferenceTextResolution {
+    owner_node_id: TreeNodeId,
+    target_node_id: TreeNodeId,
+    reference_text: String,
+    mode: ReferenceTextResolutionMode,
+    a1_style: Option<bool>,
+    caller_context: Option<oxfunc_core::resolver::CallerContext>,
+    reference_like: ReferenceLike,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -508,7 +528,7 @@ impl LocalTreeCalcEngine {
             DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
         let published_dynamic_dependencies =
             dynamic_dependency_facts_from_runtime_effects(&input.seeded_published_runtime_effects);
-        let dynamic_dependency_delta_owner_ids =
+        let initial_dynamic_dependency_delta_owner_ids =
             dynamic_dependency_delta_owner_ids(&published_dynamic_dependencies, &dependency_graph);
         phase_timer.record_duration(
             "dependency_graph_build_and_cycle_scan",
@@ -552,6 +572,7 @@ impl LocalTreeCalcEngine {
         let phase_start = Instant::now();
         let mut value_updates = BTreeMap::new();
         let mut runtime_effects = Vec::new();
+        let mut runtime_dynamic_reference_resolutions = Vec::new();
         let mut diagnostics = dependency_graph
             .diagnostics
             .iter()
@@ -593,10 +614,11 @@ impl LocalTreeCalcEngine {
             .iter()
             .copied()
             .collect::<BTreeSet<_>>();
-        let scheduled_dynamic_dependency_delta_owner_ids = dynamic_dependency_delta_owner_ids
-            .intersection(&scheduled_formula_owner_set)
-            .copied()
-            .collect::<BTreeSet<_>>();
+        let scheduled_dynamic_dependency_delta_owner_ids =
+            initial_dynamic_dependency_delta_owner_ids
+                .intersection(&scheduled_formula_owner_set)
+                .copied()
+                .collect::<BTreeSet<_>>();
         let dynamic_dependency_shape_updates = dynamic_dependency_shape_updates_for_owners(
             &published_dynamic_dependencies,
             &dependency_graph,
@@ -774,6 +796,8 @@ impl LocalTreeCalcEngine {
                         if let Some(derivation_trace) = success.derivation_trace {
                             derivation_traces.push(derivation_trace);
                         }
+                        runtime_dynamic_reference_resolutions
+                            .extend(success.dynamic_reference_resolutions);
                         success.value
                     }
                     Err(failure) => {
@@ -865,7 +889,46 @@ impl LocalTreeCalcEngine {
         }
         phase_timer.record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
 
-        if value_updates.is_empty() && dynamic_dependency_shape_updates.is_empty() {
+        diagnostics.extend(runtime_dynamic_reference_resolutions.iter().map(
+            |resolution| {
+                format!(
+                    "ctro_reference_text_resolution:owner={};target={};text={};mode={:?};a1_style={:?};reference={}",
+                    resolution.owner_node_id,
+                    resolution.target_node_id,
+                    resolution.reference_text,
+                    resolution.mode,
+                    resolution.a1_style,
+                    resolution.reference_like.target
+                )
+            },
+        ));
+        let runtime_dynamic_dependency_descriptors =
+            dynamic_dependency_descriptors_from_reference_text_resolutions(
+                &runtime_dynamic_reference_resolutions,
+            );
+        let effective_dependency_graph = if runtime_dynamic_dependency_descriptors.is_empty() {
+            dependency_graph
+        } else {
+            let mut effective_descriptors = dependency_descriptors.clone();
+            effective_descriptors.extend(runtime_dynamic_dependency_descriptors);
+            DependencyGraph::build(&input.structural_snapshot, &effective_descriptors)
+        };
+        let effective_dynamic_dependency_shape_updates =
+            dynamic_dependency_shape_updates_for_owners(
+                &published_dynamic_dependencies,
+                &effective_dependency_graph,
+                Some(&scheduled_formula_owner_set),
+            );
+        let effective_scheduled_dynamic_dependency_delta_owner_ids =
+            dynamic_dependency_delta_owner_ids(
+                &published_dynamic_dependencies,
+                &effective_dependency_graph,
+            )
+            .intersection(&scheduled_formula_owner_set)
+            .copied()
+            .collect::<BTreeSet<_>>();
+
+        if value_updates.is_empty() && effective_dynamic_dependency_shape_updates.is_empty() {
             let phase_start = Instant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
@@ -875,7 +938,7 @@ impl LocalTreeCalcEngine {
             let phase_timings_micros = phase_timer.finish();
             return Ok(LocalTreeCalcRunArtifacts {
                 result_state: LocalTreeCalcRunState::VerifiedClean,
-                dependency_graph,
+                dependency_graph: effective_dependency_graph,
                 invalidation_closure,
                 evaluation_order,
                 runtime_effects,
@@ -894,9 +957,11 @@ impl LocalTreeCalcEngine {
         }
 
         let phase_start = Instant::now();
-        runtime_effects.extend(dynamic_dependency_runtime_effects(&dependency_graph));
+        runtime_effects.extend(dynamic_dependency_runtime_effects(
+            &effective_dependency_graph,
+        ));
         diagnostics.extend(
-            dynamic_dependency_shape_updates
+            effective_dynamic_dependency_shape_updates
                 .iter()
                 .map(|update| format!("dependency_shape_update:{}", update.kind)),
         );
@@ -904,7 +969,7 @@ impl LocalTreeCalcEngine {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
             value_updates,
-            dependency_shape_updates: dynamic_dependency_shape_updates,
+            dependency_shape_updates: effective_dynamic_dependency_shape_updates,
             runtime_effects,
             diagnostic_events: diagnostics.clone(),
         };
@@ -917,7 +982,11 @@ impl LocalTreeCalcEngine {
             .value_updates
             .keys()
             .copied()
-            .chain(scheduled_dynamic_dependency_delta_owner_ids.iter().copied())
+            .chain(
+                effective_scheduled_dynamic_dependency_delta_owner_ids
+                    .iter()
+                    .copied(),
+            )
             .collect::<BTreeSet<_>>();
         for node_id in publish_ready_node_ids {
             recalc_tracker.publish_and_clear(node_id)?;
@@ -931,7 +1000,7 @@ impl LocalTreeCalcEngine {
 
         Ok(LocalTreeCalcRunArtifacts {
             result_state: LocalTreeCalcRunState::Published,
-            dependency_graph,
+            dependency_graph: effective_dependency_graph,
             invalidation_closure,
             evaluation_order,
             runtime_effects: local_candidate.runtime_effects.clone(),
@@ -1713,6 +1782,45 @@ fn dynamic_dependency_runtime_effects(dependency_graph: &DependencyGraph) -> Vec
         .collect()
 }
 
+fn dynamic_dependency_descriptors_from_reference_text_resolutions(
+    resolutions: &[TreeCalcRuntimeReferenceTextResolution],
+) -> Vec<DependencyDescriptor> {
+    resolutions
+        .iter()
+        .enumerate()
+        .map(|(index, resolution)| {
+            let handle = format!(
+                "reference_text:{}:{}:{}",
+                resolution.owner_node_id.0, resolution.target_node_id.0, index
+            );
+            DependencyDescriptor {
+                descriptor_id: format!("ctro_dynamic_ref:{handle}"),
+                source_reference_handle: Some(handle),
+                owner_node_id: resolution.owner_node_id,
+                target_node_id: Some(resolution.target_node_id),
+                workspace_target: None,
+                kind: DependencyDescriptorKind::DynamicPotential,
+                carrier_detail: dynamic_reference_text_carrier_detail(resolution),
+                tree_reference_collection: None,
+                requires_rebind_on_structural_change: false,
+            }
+        })
+        .collect()
+}
+
+fn dynamic_reference_text_carrier_detail(
+    resolution: &TreeCalcRuntimeReferenceTextResolution,
+) -> String {
+    format!(
+        "dynamic_resolved:node:{}:reference_text={};mode={:?};a1_style={:?};reference={}",
+        resolution.target_node_id,
+        resolution.reference_text,
+        resolution.mode,
+        resolution.a1_style,
+        resolution.reference_like.target
+    )
+}
+
 fn dynamic_dependency_facts_from_graph(
     dependency_graph: &DependencyGraph,
 ) -> Vec<DynamicDependencyFact> {
@@ -2287,6 +2395,7 @@ struct TranslatedFormula {
 struct PreparedOxfmlFormula {
     binding: crate::formula::TreeFormulaBinding,
     structural_snapshot: StructuralSnapshot,
+    meta_node_ids: BTreeSet<TreeNodeId>,
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
     semantic_plan: SemanticPlan,
@@ -2373,6 +2482,7 @@ fn prepare_oxfml_formula(
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
         structural_snapshot: snapshot.clone(),
+        meta_node_ids: environment_context.meta_node_ids.clone(),
         source,
         translated,
         bind_diagnostics: open
@@ -3336,26 +3446,29 @@ fn evaluate_with_oxfml_session(
     } else {
         EvaluationTraceMode::default()
     };
-    let run = match invoke_prepared_formula_via_session(prepared, working_values, trace_mode) {
-        Ok(run) => run,
-        Err(detail) => {
-            if let Some(failure) =
-                residual_evaluation_failure(prepared, vec![format!("oxfml_host_error:{detail}")])
-            {
-                return Err(failure);
+    let invoke_result =
+        match invoke_prepared_formula_via_session(prepared, working_values, trace_mode) {
+            Ok(run) => run,
+            Err(detail) => {
+                if let Some(failure) = residual_evaluation_failure(
+                    prepared,
+                    vec![format!("oxfml_host_error:{detail}")],
+                ) {
+                    return Err(failure);
+                }
+
+                return Err(LocalFormulaEvaluationFailure {
+                    error: LocalTreeCalcError::OxfmlHostFailure {
+                        owner_node_id: prepared.binding.owner_node_id,
+                        detail,
+                    },
+                    runtime_effects: Vec::new(),
+                    diagnostics: prepared.bind_diagnostics.clone(),
+                });
             }
+        };
 
-            return Err(LocalFormulaEvaluationFailure {
-                error: LocalTreeCalcError::OxfmlHostFailure {
-                    owner_node_id: prepared.binding.owner_node_id,
-                    detail,
-                },
-                runtime_effects: Vec::new(),
-                diagnostics: prepared.bind_diagnostics.clone(),
-            });
-        }
-    };
-
+    let run = &invoke_result.run;
     let returned_surface_diagnostics =
         oxfml_returned_value_surface_diagnostics(&run.returned_value_surface);
     let should_reject_residual = matches!(
@@ -3380,16 +3493,108 @@ fn evaluate_with_oxfml_session(
         return Err(failure);
     }
 
-    adapt_oxfml_runtime_candidate(prepared, &run, derivation_trace_enabled)
+    let mut success = adapt_oxfml_runtime_candidate(prepared, run, derivation_trace_enabled)?;
+    success.dynamic_reference_resolutions = invoke_result.dynamic_reference_resolutions;
+    Ok(success)
+}
+
+struct OxfmlSessionInvokeResult {
+    run: RuntimeFormulaResult,
+    dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
+}
+
+struct TreeCalcReferenceTextResolver<'a> {
+    structural_snapshot: &'a StructuralSnapshot,
+    meta_node_ids: &'a BTreeSet<TreeNodeId>,
+    owner_node_id: TreeNodeId,
+    resolutions: RefCell<Vec<TreeCalcRuntimeReferenceTextResolution>>,
+}
+
+impl<'a> TreeCalcReferenceTextResolver<'a> {
+    fn new(
+        structural_snapshot: &'a StructuralSnapshot,
+        meta_node_ids: &'a BTreeSet<TreeNodeId>,
+        owner_node_id: TreeNodeId,
+    ) -> Self {
+        Self {
+            structural_snapshot,
+            meta_node_ids,
+            owner_node_id,
+            resolutions: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn into_resolutions(self) -> Vec<TreeCalcRuntimeReferenceTextResolution> {
+        self.resolutions.into_inner()
+    }
+}
+
+impl ReferenceTextResolver for TreeCalcReferenceTextResolver<'_> {
+    fn resolve_reference_text(
+        &self,
+        request: &ReferenceTextResolutionRequest,
+    ) -> Result<ReferenceLike, ReferenceTextResolutionError> {
+        if request.mode != ReferenceTextResolutionMode::Indirect {
+            return Err(ReferenceTextResolutionError::Unsupported);
+        }
+        match resolve_context_host_name_token(
+            &request.text,
+            self.owner_node_id,
+            self.structural_snapshot,
+            self.meta_node_ids,
+        ) {
+            ContextHostNameResolution::Resolved(target_node_id) => {
+                let reference = ReferenceLike::new(
+                    ReferenceKind::Structured,
+                    treecalc_runtime_node_reference_target(target_node_id),
+                );
+                self.resolutions
+                    .borrow_mut()
+                    .push(TreeCalcRuntimeReferenceTextResolution {
+                        owner_node_id: self.owner_node_id,
+                        target_node_id,
+                        reference_text: request.text.clone(),
+                        mode: request.mode,
+                        a1_style: request.a1_style,
+                        caller_context: request.caller_context.clone(),
+                        reference_like: reference.clone(),
+                    });
+                Ok(reference)
+            }
+            ContextHostNameResolution::Ambiguous => {
+                Err(ReferenceTextResolutionError::ProviderFailure {
+                    detail: format!("ambiguous TreeCalc reference text '{}'", request.text),
+                })
+            }
+            ContextHostNameResolution::Unsupported(reason) => {
+                Err(ReferenceTextResolutionError::ProviderFailure {
+                    detail: format!(
+                        "unsupported TreeCalc reference text '{}': {reason}",
+                        request.text
+                    ),
+                })
+            }
+            ContextHostNameResolution::Unresolved => {
+                Err(ReferenceTextResolutionError::InvalidReferenceText {
+                    text: request.text.clone(),
+                })
+            }
+        }
+    }
 }
 
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
     trace_mode: EvaluationTraceMode,
-) -> Result<RuntimeFormulaResult, String> {
+) -> Result<OxfmlSessionInvokeResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
     let rtd_provider = TreeCalcRtdProvider;
+    let reference_text_resolver = TreeCalcReferenceTextResolver::new(
+        &prepared.structural_snapshot,
+        &prepared.meta_node_ids,
+        prepared.binding.owner_node_id,
+    );
     let host_info_required = prepared
         .translated
         .residuals
@@ -3408,14 +3613,19 @@ fn invoke_prepared_formula_via_session(
         None,
         None,
         None,
-    );
+    )
+    .with_reference_text_resolver(Some(&reference_text_resolver as &dyn ReferenceTextResolver));
     let request = RuntimeFormulaRequest::new(prepared.source.clone(), query_bundle)
         .with_backend(EvaluationBackend::OxFuncBacked)
         .with_trace_mode(trace_mode);
     let mut session =
         OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(prepared, working_values));
 
-    session.invoke(request).map_err(|error| error.to_string())
+    let run = session.invoke(request).map_err(|error| error.to_string())?;
+    Ok(OxfmlSessionInvokeResult {
+        run,
+        dynamic_reference_resolutions: reference_text_resolver.into_resolutions(),
+    })
 }
 
 fn build_treecalc_runtime_environment(
@@ -4157,6 +4367,7 @@ fn build_treecalc_runtime_environment_from_parts(
     let mut environment = RuntimeEnvironment::new()
         .with_structure_context_version(parts.structure_context_version)
         .with_caller_position(synthetic_cell_row(parts.owner_node_id), 1)
+        .with_cell_values(treecalc_runtime_node_cell_values(parts.working_values))
         .with_formal_input_bindings(formal_input_bindings)
         .with_host_name_bindings(host_name_bindings);
     if let Some(host_formula_context) = parts.host_formula_context {
@@ -4188,6 +4399,24 @@ fn build_treecalc_runtime_environment_from_parts(
         environment = environment.with_arg_admission_metadata_version(version.clone());
     }
     environment
+}
+
+fn treecalc_runtime_node_cell_values(
+    working_values: &BTreeMap<TreeNodeId, String>,
+) -> BTreeMap<String, EvalValue> {
+    working_values
+        .iter()
+        .map(|(node_id, value)| {
+            (
+                treecalc_runtime_node_reference_target(*node_id),
+                string_to_eval_value(value),
+            )
+        })
+        .collect()
+}
+
+fn treecalc_runtime_node_reference_target(node_id: TreeNodeId) -> String {
+    format!("treecalc.node:{}", node_id.0)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -4267,6 +4496,7 @@ fn adapt_oxfml_runtime_candidate(
                 value: candidate_value,
                 diagnostics,
                 derivation_trace,
+                dynamic_reference_resolutions: Vec::new(),
             })
         }
         oxfml_core::seam::AcceptDecision::Rejected(reject) => {

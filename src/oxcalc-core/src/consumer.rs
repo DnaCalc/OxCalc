@@ -704,6 +704,8 @@ impl OxCalcTreeContext {
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state)?;
         let snapshot_id = state.snapshot.snapshot_id();
+        let mut environment_context = self.options.runtime_context();
+        environment_context.meta_node_ids = state.meta_node_ids.clone();
         let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
             structural_snapshot: state.snapshot.clone(),
             formula_catalog: catalog_build.catalog,
@@ -715,7 +717,7 @@ impl OxCalcTreeContext {
             publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
             compatibility_basis: format!("snapshot:{}", snapshot_id.0),
             artifact_token_basis: format!("snapshot:{}", snapshot_id.0),
-            environment_context: self.options.runtime_context(),
+            environment_context,
         })?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
         result.diagnostics.extend(self.options.diagnostics());
@@ -1460,47 +1462,42 @@ fn context_reference_resolution_from_oxfml_match(
             ))
         }
         Some("sibling-prev" | "sibling-next") => {
-            if selector.base_token_text.is_some() {
-                diagnostics.push(format!(
-                    "typed_exclusion:qualified_sibling_offset_host_reference_packet_pending:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text
-                ));
-                return None;
-            }
             let offset = match selector.selector_family.as_deref() {
                 Some("sibling-prev") => -1,
                 Some("sibling-next") => 1,
                 _ => unreachable!("selector-family pattern is exhaustive"),
             };
+            let base_node_id = resolve_context_host_reference_base_node_id(
+                owner_node_id,
+                syntax_match,
+                snapshot,
+                meta_node_ids,
+                selector.base_token_text.as_deref(),
+                diagnostics,
+            )?;
             let tail_segments = selector
                 .tail_token_text
                 .as_deref()
                 .map(split_context_host_reference_tail_token)
                 .unwrap_or_default();
-            if let Some(target_node_id) = resolve_visible_sibling_offset_target(
-                snapshot,
-                meta_node_ids,
-                owner_node_id,
-                offset,
-                &tail_segments,
-            ) {
-                Some(ContextHostReferenceResolution::Reference(
-                    TreeFormulaReferenceCarrier::named(
-                        syntax_match.syntax_match_handle.clone(),
-                        TreeReference::DirectNode { target_node_id },
-                    ),
-                ))
+            let reference = if selector.base_token_text.is_some() {
+                TreeReference::QualifiedSiblingOffset {
+                    base_node_id,
+                    offset,
+                    tail_segments,
+                }
             } else {
-                Some(ContextHostReferenceResolution::Reference(
-                    TreeFormulaReferenceCarrier::named(
-                        syntax_match.syntax_match_handle.clone(),
-                        TreeReference::SiblingOffset {
-                            offset,
-                            tail_segments,
-                        },
-                    ),
-                ))
-            }
+                TreeReference::SiblingOffset {
+                    offset,
+                    tail_segments,
+                }
+            };
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    reference,
+                ),
+            ))
         }
         Some("reference-literal-array") => {
             let elements = resolve_context_reference_literal_array_elements(
@@ -2144,36 +2141,6 @@ fn try_resolve_visible_descendant_path(
     cursor
 }
 
-fn resolve_visible_sibling_offset_target(
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-    owner_node_id: TreeNodeId,
-    offset: isize,
-    tail_segments: &[String],
-) -> Option<TreeNodeId> {
-    let parent_id = snapshot.parent_id_of(owner_node_id)?;
-    let parent = snapshot.try_get_node(parent_id)?;
-    let visible_siblings = parent
-        .child_ids
-        .iter()
-        .copied()
-        .filter(|child_id| !is_meta_effective(*child_id, snapshot, meta_node_ids))
-        .collect::<Vec<_>>();
-    let owner_index = visible_siblings
-        .iter()
-        .position(|child_id| *child_id == owner_node_id)?;
-    let target_index = isize::try_from(owner_index)
-        .ok()?
-        .checked_add(offset)
-        .and_then(|index| usize::try_from(index).ok())?;
-    let sibling_node_id = *visible_siblings.get(target_index)?;
-    if tail_segments.is_empty() {
-        Some(sibling_node_id)
-    } else {
-        try_resolve_visible_descendant_path(snapshot, meta_node_ids, sibling_node_id, tail_segments)
-    }
-}
-
 fn is_meta_effective(
     node_id: TreeNodeId,
     snapshot: &StructuralSnapshot,
@@ -2462,6 +2429,7 @@ impl OxCalcTreeContextOptions {
             caller_context_identity_version: "treecalc-caller-context:v1".to_string(),
             table_context_identity: None,
             cross_workspace_availability_version: None,
+            meta_node_ids: BTreeSet::new(),
             arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
             oxfunc_bridge_metadata: Default::default(),
             dynamic_dependency_effects: self.host_capabilities.dynamic_dependency_effects,
@@ -3193,7 +3161,7 @@ mod tests {
                 OxCalcTreeNodeCreate::new("Q2", "=@PREV.Net+1").under(year_id),
             )
             .unwrap();
-        context
+        let q1_net_id = context
             .add_node(
                 &workspace_id,
                 OxCalcTreeNodeCreate::new("Net", "=7").under(q1_id),
@@ -3211,6 +3179,13 @@ mod tests {
                 OxCalcTreeNodeCreate::new("Margin", "=11").under(q2_id),
             )
             .unwrap();
+        let qualified_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Qualified", "=Q2.@PREV.Net+Q1.@NEXT.Margin")
+                    .under(year_id),
+            )
+            .unwrap();
 
         let result = context.recalculate(&workspace_id).unwrap();
 
@@ -3223,6 +3198,41 @@ mod tests {
         );
         assert_eq!(result.published_values.get(&q1_id), Some(&"14".to_string()));
         assert_eq!(result.published_values.get(&q2_id), Some(&"8".to_string()));
+        assert_eq!(
+            result.published_values.get(&qualified_id),
+            Some(&"18".to_string())
+        );
+        let qualified_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&qualified_id)
+            .expect("qualified sibling references should publish dependency edges");
+        assert!(
+            qualified_edges
+                .iter()
+                .any(|edge| edge.target_node_id == q1_net_id)
+        );
+        assert!(
+            qualified_edges
+                .iter()
+                .any(|edge| edge.target_node_id == q2_margin_id)
+        );
+        assert!(
+            result
+                .dependency_graph
+                .descriptors_by_owner
+                .get(&qualified_id)
+                .into_iter()
+                .flatten()
+                .any(|descriptor| descriptor
+                    .carrier_detail
+                    .contains("qualified_sibling_offset")),
+            "qualified sibling dependencies must stay rebind-sensitive: {:?}",
+            result
+                .dependency_graph
+                .descriptors_by_owner
+                .get(&qualified_id)
+        );
         assert_ne!(q1_id, q2_id);
         assert!(q2_margin_id.0 > 0);
     }

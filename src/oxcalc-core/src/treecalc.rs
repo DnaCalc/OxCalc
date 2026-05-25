@@ -95,6 +95,7 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub caller_context_identity_version: String,
     pub table_context_identity: Option<String>,
     pub cross_workspace_availability_version: Option<String>,
+    pub meta_node_ids: BTreeSet<TreeNodeId>,
     pub arg_preparation_profile_version: String,
     pub oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata,
     pub dynamic_dependency_effects: bool,
@@ -118,6 +119,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             caller_context_identity_version: "treecalc-caller-context:v1".to_string(),
             table_context_identity: None,
             cross_workspace_availability_version: None,
+            meta_node_ids: BTreeSet::new(),
             arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
             oxfunc_bridge_metadata: LocalTreeCalcOxFuncBridgeMetadata::default(),
             dynamic_dependency_effects: true,
@@ -2303,7 +2305,12 @@ fn prepare_oxfml_formula(
     binding: &crate::formula::TreeFormulaBinding,
     environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
-    let translated = project_opaque_formula(snapshot, binding.owner_node_id, &binding.expression);
+    let translated = project_opaque_formula(
+        snapshot,
+        binding.owner_node_id,
+        &binding.expression,
+        &environment_context.meta_node_ids,
+    );
     let source = FormulaSourceRecord::new(
         binding.formula_artifact_id.to_string(),
         binding.owner_node_id.0,
@@ -4577,10 +4584,12 @@ fn project_opaque_formula(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
     formula: &TreeFormula,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
 ) -> TranslatedFormula {
     let mut state = FormulaCarrierProjectionState {
         snapshot,
         owner_node_id,
+        meta_node_ids,
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
         collection_bindings: Vec::new(),
@@ -4607,6 +4616,7 @@ fn project_opaque_formula(
 struct FormulaCarrierProjectionState<'a> {
     snapshot: &'a StructuralSnapshot,
     owner_node_id: TreeNodeId,
+    meta_node_ids: &'a BTreeSet<TreeNodeId>,
     fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
@@ -4648,10 +4658,13 @@ impl FormulaCarrierProjectionState<'_> {
                 ),
             crate::formula::TreeReference::ProjectionPath { .. }
             | crate::formula::TreeReference::RelativePath { .. }
-            | crate::formula::TreeReference::SiblingOffset { .. } => {
-                if let Some(target_node_id) =
-                    reference.resolve_target(self.snapshot, self.owner_node_id)
-                {
+            | crate::formula::TreeReference::SiblingOffset { .. }
+            | crate::formula::TreeReference::QualifiedSiblingOffset { .. } => {
+                if let Some(target_node_id) = reference.resolve_target_with_meta_visibility(
+                    self.snapshot,
+                    self.owner_node_id,
+                    self.meta_node_ids,
+                ) {
                     self.bind_target(
                         carrier.source_token.clone(),
                         target_node_id,
@@ -6868,7 +6881,12 @@ mod tests {
                 },
             )],
         );
-        let translated = project_opaque_formula(&structural_snapshot, TreeNodeId(4), &expression);
+        let translated = project_opaque_formula(
+            &structural_snapshot,
+            TreeNodeId(4),
+            &expression,
+            &BTreeSet::new(),
+        );
         assert_eq!(translated.reference_bindings.len(), 1);
         assert_eq!(translated.reference_bindings[0].local_target_node_id, None);
 
@@ -8066,6 +8084,7 @@ mod tests {
             &structural_snapshot,
             binding.owner_node_id,
             &binding.expression,
+            &BTreeSet::new(),
         );
         let formal_inputs = formal_input_bindings_for_runtime(&translated, &BTreeMap::new(), None);
 

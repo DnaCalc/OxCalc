@@ -2,7 +2,7 @@
 
 //! TreeCalc-local formula and reference substrate.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use oxfml_core::consumer::runtime::RuntimeHostReferenceSyntaxMatch;
 use serde::ser::SerializeStruct;
@@ -36,6 +36,11 @@ pub enum TreeReference {
         path_segments: Vec<String>,
     },
     SiblingOffset {
+        offset: isize,
+        tail_segments: Vec<String>,
+    },
+    QualifiedSiblingOffset {
+        base_node_id: TreeNodeId,
         offset: isize,
         tail_segments: Vec<String>,
     },
@@ -444,6 +449,72 @@ fn format_tree_node_id_set(node_ids: &[TreeNodeId]) -> String {
         .map(|node_id| node_id.to_string())
         .collect::<Vec<_>>()
         .join(",")
+}
+
+fn resolve_visible_sibling_offset_target(
+    snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+    offset: isize,
+    tail_segments: &[String],
+) -> Option<TreeNodeId> {
+    let parent_id = snapshot.parent_id_of(base_node_id)?;
+    let parent = snapshot.try_get_node(parent_id)?;
+    let visible_siblings = parent
+        .child_ids
+        .iter()
+        .copied()
+        .filter(|child_id| !is_meta_effective(*child_id, snapshot, meta_node_ids))
+        .collect::<Vec<_>>();
+    let base_index = visible_siblings
+        .iter()
+        .position(|child_id| *child_id == base_node_id)?;
+    let target_index = isize::try_from(base_index)
+        .ok()?
+        .checked_add(offset)
+        .and_then(|index| usize::try_from(index).ok())?;
+    let sibling_node_id = *visible_siblings.get(target_index)?;
+    if tail_segments.is_empty() {
+        Some(sibling_node_id)
+    } else {
+        try_resolve_visible_descendant_path(snapshot, meta_node_ids, sibling_node_id, tail_segments)
+    }
+}
+
+fn try_resolve_visible_descendant_path(
+    snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    start_node_id: TreeNodeId,
+    path_segments: &[String],
+) -> Option<TreeNodeId> {
+    let mut cursor = Some(start_node_id);
+    for segment in path_segments {
+        cursor = cursor.and_then(|current| {
+            let parent = snapshot.try_get_node(current)?;
+            parent.child_ids.iter().copied().find(|child_id| {
+                snapshot
+                    .try_get_node(*child_id)
+                    .is_some_and(|child| child.symbol.eq_ignore_ascii_case(segment))
+                    && !is_meta_effective(*child_id, snapshot, meta_node_ids)
+            })
+        });
+    }
+    cursor
+}
+
+fn is_meta_effective(
+    node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+) -> bool {
+    let mut cursor = Some(node_id);
+    while let Some(current) = cursor {
+        if meta_node_ids.contains(&current) {
+            return true;
+        }
+        cursor = snapshot.parent_id_of(current);
+    }
+    false
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -2107,10 +2178,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "src/dnatreecalc-host/tests/active_sibling_offsets_corpus.rs",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host --test active_sibling_offsets_corpus -- --nocapture",
-        oxcalc_status: "SiblingOffset carrier and dependency lowering exist; direct OxCalcTreeContext raw @PREV/@NEXT product path implemented for focused tail forms and out-of-range relative-bound diagnostics",
-        dnatreecalc_status: "focused active direct OxCalcTreeContext sibling-offset slice; qualified sibling forms still pending",
+        oxcalc_status: "SiblingOffset and QualifiedSiblingOffset carrier/dependency lowering exist; direct OxCalcTreeContext raw @PREV/@NEXT and base.@PREV/base.@NEXT product paths are implemented for focused tail forms and out-of-range relative-bound diagnostics",
+        dnatreecalc_status: "active direct OxCalcTreeContext sibling-offset slice covers unqualified tail forms, qualified base tail forms, and out-of-range diagnostics",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active sibling-offset direct-context runner; qualified sibling breadth pending",
+        current_test_result: "green active sibling-offset direct-context runner plus OxCalc qualified sibling direct-context test; retained replay pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -2835,6 +2906,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::QualifiedSiblingOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => self.record_named_reference(reference),
             TreeReference::Unresolved { .. } => self.record_unresolved_reference(reference),
@@ -2865,6 +2937,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::QualifiedSiblingOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => {
                 let _ = self.record_named_reference(reference);
@@ -2971,7 +3044,9 @@ impl TreeReference {
                     TreeReferenceInventoryVariant::RelativePathAncestor
                 }
             },
-            TreeReference::SiblingOffset { .. } => TreeReferenceInventoryVariant::SiblingOffset,
+            TreeReference::SiblingOffset { .. } | TreeReference::QualifiedSiblingOffset { .. } => {
+                TreeReferenceInventoryVariant::SiblingOffset
+            }
             TreeReference::HostSensitive { .. } => TreeReferenceInventoryVariant::HostSensitive,
             TreeReference::CrossWorkspaceResolved { .. } => {
                 TreeReferenceInventoryVariant::CrossWorkspaceReference
@@ -3008,6 +3083,7 @@ impl TreeReference {
             | TreeReference::ProjectionPath { .. }
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
+            | TreeReference::QualifiedSiblingOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. }
             | TreeReference::Unresolved { .. } => TreeReferenceCarrierClass::FormulaReference,
@@ -3053,6 +3129,20 @@ impl TreeReference {
                     }
                 })
             }
+            TreeReference::QualifiedSiblingOffset {
+                base_node_id,
+                offset,
+                tail_segments,
+            } => {
+                let sibling_node_id = snapshot.try_resolve_sibling_offset(*base_node_id, *offset);
+                sibling_node_id.and_then(|sibling_node_id| {
+                    if tail_segments.is_empty() {
+                        Some(sibling_node_id)
+                    } else {
+                        snapshot.try_resolve_descendant_path(sibling_node_id, tail_segments)
+                    }
+                })
+            }
             TreeReference::HostSensitive { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::CapabilitySensitive { .. }
@@ -3060,6 +3150,38 @@ impl TreeReference {
             | TreeReference::Unresolved { .. } => None,
             TreeReference::DynamicPotential { .. } => None,
             TreeReference::DynamicResolved { target_node_id, .. } => Some(*target_node_id),
+        }
+    }
+
+    pub fn resolve_target_with_meta_visibility(
+        &self,
+        snapshot: &StructuralSnapshot,
+        owner_node_id: TreeNodeId,
+        meta_node_ids: &BTreeSet<TreeNodeId>,
+    ) -> Option<TreeNodeId> {
+        match self {
+            TreeReference::SiblingOffset {
+                offset,
+                tail_segments,
+            } => resolve_visible_sibling_offset_target(
+                snapshot,
+                meta_node_ids,
+                owner_node_id,
+                *offset,
+                tail_segments,
+            ),
+            TreeReference::QualifiedSiblingOffset {
+                base_node_id,
+                offset,
+                tail_segments,
+            } => resolve_visible_sibling_offset_target(
+                snapshot,
+                meta_node_ids,
+                *base_node_id,
+                *offset,
+                tail_segments,
+            ),
+            _ => self.resolve_target(snapshot, owner_node_id),
         }
     }
 
@@ -3091,7 +3213,9 @@ impl TreeReference {
             TreeReference::ReferenceCollection(_) => {
                 DependencyDescriptorKind::TreeReferenceCollectionMembership
             }
-            TreeReference::RelativePath { .. } | TreeReference::SiblingOffset { .. } => {
+            TreeReference::RelativePath { .. }
+            | TreeReference::SiblingOffset { .. }
+            | TreeReference::QualifiedSiblingOffset { .. } => {
                 DependencyDescriptorKind::RelativeBound
             }
             TreeReference::HostSensitive { .. } => DependencyDescriptorKind::HostSensitive,
@@ -3113,6 +3237,7 @@ impl TreeReference {
             self,
             TreeReference::RelativePath { .. }
                 | TreeReference::SiblingOffset { .. }
+                | TreeReference::QualifiedSiblingOffset { .. }
                 | TreeReference::HostSensitive { .. }
                 | TreeReference::CrossWorkspaceResolved { .. }
                 | TreeReference::CapabilitySensitive { .. }
@@ -3174,6 +3299,14 @@ impl TreeReference {
                 offset,
                 tail_segments,
             } => format!("sibling_offset:{offset}:{}", tail_segments.join("/")),
+            TreeReference::QualifiedSiblingOffset {
+                base_node_id,
+                offset,
+                tail_segments,
+            } => format!(
+                "qualified_sibling_offset:base={base_node_id};offset={offset}:{}",
+                tail_segments.join("/")
+            ),
             TreeReference::HostSensitive { carrier_id, detail } => {
                 format!("host_sensitive:{carrier_id}:{detail}")
             }

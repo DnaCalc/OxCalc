@@ -159,7 +159,7 @@ host-reference handle; they are not OxFml or OxFunc semantics.
 
 Current implementation status: OxCalc has implemented the local `ChildrenV1`
 carrier/dependency pattern and preserves the runtime formal input as an opaque
-structured `ReferenceLike`. The executable raw formula-text prebind slice
+structured `ReferenceLike`. The executable raw formula-text host-reference bind slice
 admits free-standing `@CHILDREN` and `.*`, whose base is the formula
 owner/caller context, and qualified `base.@CHILDREN` and `base.*` when the
 caller supplies an exact UTF-8-span-keyed resolved-base packet. That packet

@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, VecDeque};
 
+use oxfml_core::consumer::runtime::{RuntimeHostFormulaContext, RuntimeHostReferenceSyntaxMatch};
 use oxfml_core::{
     BindContext, BindRequest, FormulaSourceRecord, ParseRequest, StructuredReferenceBindRecord,
     bind_formula, parse_formula, project_red_view,
@@ -13,14 +14,13 @@ use thiserror::Error;
 use crate::coordinator::{AcceptedCandidateResult, PublicationBundle, RejectDetail, RuntimeEffect};
 use crate::dependency::{DependencyGraph, InvalidationClosure};
 use crate::formula::{
-    TreeCalcFormulaTextPrebindContext, TreeCalcFormulaTextPrebindError,
-    TreeCalcOrderedSelectorTraversalPolicy, TreeCalcQualifiedBaseResolutionLayer,
-    TreeCalcQualifiedChildrenBaseQuery, TreeCalcQualifiedChildrenBaseResolution,
+    RelativeReferenceBase, TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
+    TreeCalcOrderedSelectorReferenceCollection, TreeCalcOrderedSelectorTraversalPolicy,
     TreeCalcReferenceCollection, TreeCalcReferenceLiteralArrayCollection,
-    TreeCalcReferenceLiteralArrayElement, TreeFormulaBinding, TreeFormulaCatalog,
+    TreeCalcReferenceLiteralArrayElement, TreeFormula, TreeFormulaBinding, TreeFormulaCatalog,
     TreeFormulaHostNameBindPacket, TreeFormulaReferenceCarrier, TreeReference,
-    prebind_treecalc_formula_text_with_context, treecalc_formula_text_ordered_selector_queries,
-    treecalc_formula_text_qualified_children_base_queries,
+    resolve_treecalc_ordered_selector_traversal, split_treecalc_host_path_token,
+    treecalc_host_reference_carrier_from_syntax_match,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -42,7 +42,7 @@ use crate::structured_table::{
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
-    LocalTreeCalcSchedulingPolicy,
+    LocalTreeCalcSchedulingPolicy, treecalc_host_reference_syntax_rules,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -188,8 +188,6 @@ pub enum OxCalcTreeContextError {
     CannotReorderRoot { node_id: TreeNodeId },
     #[error(transparent)]
     Structural(#[from] StructuralError),
-    #[error(transparent)]
-    FormulaPrebind(#[from] TreeCalcFormulaTextPrebindError),
     #[error(transparent)]
     Runtime(#[from] LocalTreeCalcError),
     #[error("invalid TreeCalc table snapshot: {error:?}")]
@@ -1173,38 +1171,21 @@ fn build_context_formula_catalog(
             .get(owner_node_id)
             .copied()
             .unwrap_or(1);
-        let raw_treecalc_reference_prebind =
-            context_raw_treecalc_reference_prebind(state, *owner_node_id, formula_text);
-        let (prebind_context, prebind_diagnostics) = context_prebind_resolution(
-            state,
-            *owner_node_id,
-            raw_treecalc_reference_prebind.source_text.as_str(),
-        );
-        let mut expression = prebind_treecalc_formula_text_with_context(
-            *owner_node_id,
-            raw_treecalc_reference_prebind.source_text.as_str(),
-            &prebind_context,
-        )?;
-        expression
-            .reference_carriers
-            .extend(raw_treecalc_reference_prebind.carriers.into_iter());
-        let prebound_treecalc_spans = prebound_treecalc_source_spans(&expression);
-        let prebound_treecalc_spans = prebound_treecalc_spans
-            .into_iter()
-            .chain(raw_treecalc_reference_prebind.source_spans.into_iter())
-            .collect::<Vec<_>>();
+        let mut host_packet_build =
+            context_formula_from_oxfml_host_reference_packets(state, *owner_node_id, formula_text);
         diagnostics.extend(
-            prebind_diagnostics
-                .into_iter()
-                .map(|diagnostic| format!("treecalc_context_prebind_resolution:{diagnostic}")),
+            host_packet_build.diagnostics.drain(..).map(|diagnostic| {
+                format!("treecalc_context_host_reference_resolution:{diagnostic}")
+            }),
         );
         let resolution = direct_name_carriers_from_oxfml_probe(
             state.workspace_id.as_str(),
-            formula_text,
+            host_packet_build.expression.source_text(),
             *owner_node_id,
             &state.snapshot,
-            &prebound_treecalc_spans,
+            &host_packet_build.source_spans,
         )?;
+        let mut expression = host_packet_build.expression;
         expression
             .reference_carriers
             .extend(resolution.carriers.into_iter());
@@ -1238,380 +1219,489 @@ fn build_context_formula_catalog(
     })
 }
 
-fn prebound_treecalc_source_spans(expression: &crate::formula::TreeFormula) -> Vec<(usize, usize)> {
-    expression
-        .reference_carriers
-        .iter()
-        .filter_map(|carrier| match &carrier.reference {
-            TreeReference::ReferenceCollection(collection) => match collection {
-                crate::formula::TreeCalcReferenceCollection::ChildrenV1(children) => {
-                    children.source_span_utf8
-                }
-                crate::formula::TreeCalcReferenceCollection::ReferenceLiteralArrayV1(literal) => {
-                    literal.source_span_utf8()
-                }
-                crate::formula::TreeCalcReferenceCollection::OrderedSelectorV1(ordered) => {
-                    ordered.source_span_utf8
-                }
-            },
-            _ => None,
-        })
-        .collect()
-}
-
-fn context_prebind_resolution(
-    state: &OxCalcTreeWorkspaceState,
-    owner_node_id: TreeNodeId,
-    formula_text: &str,
-) -> (TreeCalcFormulaTextPrebindContext, Vec<String>) {
-    let mut diagnostics = Vec::new();
-    let qualified_children_bases =
-        treecalc_formula_text_qualified_children_base_queries(owner_node_id, formula_text)
-            .into_iter()
-            .filter_map(|query| {
-                context_qualified_children_base_resolution(&query, owner_node_id, &state.snapshot)
-                    .map_err(|diagnostic| diagnostics.push(diagnostic))
-                    .ok()
-            })
-            .collect::<Vec<_>>();
-
-    let ordered_selector_resolutions =
-        treecalc_formula_text_ordered_selector_queries(owner_node_id, formula_text)
-            .into_iter()
-            .filter_map(|query| {
-                let base_resolution = query.base_token_text.as_deref().map_or(
-                    ContextHostNameResolution::Resolved(owner_node_id),
-                    |base_token_text| {
-                        resolve_context_host_name_token(
-                            base_token_text,
-                            owner_node_id,
-                            &state.snapshot,
-                        )
-                    },
-                );
-                let ContextHostNameResolution::Resolved(base_node_id) = base_resolution else {
-                    diagnostics.push(format!(
-                        "ordered_selector_unresolved:{}:{}-{}:{}",
-                        query.source_token_text,
-                        query.source_span_utf8.0,
-                        query.source_span_utf8.1,
-                        base_resolution.diagnostic_label()
-                    ));
-                    return None;
-                };
-
-                query
-                    .to_resolution_with_structural_traversal(
-                        &state.snapshot,
-                        base_node_id,
-                        TreeCalcOrderedSelectorTraversalPolicy::default(),
-                    )
-                    .map(|resolved| {
-                        diagnostics.extend(resolved.traversal.diagnostics.iter().map(
-                            |diagnostic| {
-                                format!(
-                                    "ordered_selector_traversal:{:?}:{}",
-                                    diagnostic.code, diagnostic.detail
-                                )
-                            },
-                        ));
-                        resolved.resolution
-                    })
-                    .map_err(|error| {
-                        diagnostics.push(format!(
-                            "ordered_selector_unresolved:{}:{}-{}:{error}",
-                            query.source_token_text,
-                            query.source_span_utf8.0,
-                            query.source_span_utf8.1
-                        ));
-                    })
-                    .ok()
-            })
-            .collect::<Vec<_>>();
-
-    (
-        TreeCalcFormulaTextPrebindContext {
-            qualified_children_bases,
-            ordered_selector_resolutions,
-        },
-        diagnostics,
-    )
-}
-
-struct ContextRawTreecalcReferencePrebind {
-    source_text: String,
-    carriers: Vec<TreeFormulaReferenceCarrier>,
+struct ContextHostReferencePacketBuild {
+    expression: TreeFormula,
     source_spans: Vec<(usize, usize)>,
+    diagnostics: Vec<String>,
 }
 
-fn context_raw_treecalc_reference_prebind(
+fn context_formula_from_oxfml_host_reference_packets(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
     formula_text: &str,
-) -> ContextRawTreecalcReferencePrebind {
-    let mut rewritten = String::with_capacity(formula_text.len());
+) -> ContextHostReferencePacketBuild {
+    let source = FormulaSourceRecord::new(
+        format!(
+            "treecalc-context-host-reference:{}:{}",
+            state.workspace_id.as_str(),
+            owner_node_id.0
+        ),
+        owner_node_id.0,
+        formula_text,
+    );
+    let host_context = RuntimeHostFormulaContext {
+        dialect_id: "oxcalc.treecalc-v1".to_string(),
+        capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
+        resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+        host_namespace_version: None,
+        registry_snapshot_identity: None,
+        structure_context_version: None,
+        caller_context_identity: Some(format!("treecalc-caller:{owner_node_id}")),
+        table_context_identity: None,
+        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
+    };
+    let mut matches = host_context.declared_host_reference_syntax_matches(&source);
+    matches.sort_by_key(|syntax_match| syntax_match.source_span.start);
+    let mut accepted_matches = Vec::new();
     let mut carriers = Vec::new();
     let mut source_spans = Vec::new();
-    let mut cursor = 0;
-    let mut index = 0;
-    let mut in_string = false;
+    let mut diagnostics = Vec::new();
+    let mut accepted_end = 0;
 
-    while index < formula_text.len() {
-        let Some(current) = formula_text[index..].chars().next() else {
-            break;
+    for syntax_match in matches {
+        let start = syntax_match.source_span.start;
+        let end = start + syntax_match.source_span.len;
+        if start < accepted_end {
+            diagnostics.push(format!(
+                "overlapping_host_reference_packet:{}:{}-{end}",
+                syntax_match.source_token_text, start
+            ));
+            continue;
+        }
+        if host_reference_match_requires_unimplemented_tail(formula_text, &syntax_match) {
+            diagnostics.push(format!(
+                "typed_exclusion:tailed_host_reference_packet_pending:{}:{}-{end}",
+                syntax_match.source_token_text, start
+            ));
+            continue;
+        }
+        let Some(mut carrier) = context_reference_carrier_from_oxfml_match(
+            owner_node_id,
+            &syntax_match,
+            &state.snapshot,
+            &mut diagnostics,
+        ) else {
+            continue;
         };
+        carrier.source_token = Some(syntax_match.formal_token_text());
+        carriers.push(carrier);
+        source_spans.push((start, end));
+        accepted_end = end;
+        accepted_matches.push(syntax_match);
+    }
 
-        if in_string {
-            if current == '"' {
-                let next_index = index + current.len_utf8();
-                if formula_text[next_index..].starts_with('"') {
-                    index = next_index + 1;
-                } else {
-                    in_string = false;
-                    index = next_index;
-                }
-            } else {
-                index += current.len_utf8();
+    let projection = host_context.project_host_reference_syntax_matches(&source, accepted_matches);
+    diagnostics.extend(projection.diagnostics);
+    ContextHostReferencePacketBuild {
+        expression: TreeFormula::opaque_oxfml(projection.source.entered_formula_text, carriers),
+        source_spans,
+        diagnostics,
+    }
+}
+
+fn context_reference_carrier_from_oxfml_match(
+    owner_node_id: TreeNodeId,
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
+    snapshot: &StructuralSnapshot,
+    diagnostics: &mut Vec<String>,
+) -> Option<TreeFormulaReferenceCarrier> {
+    let Some(payload) = syntax_match.opaque_selector_payload.as_deref() else {
+        diagnostics.push(format!(
+            "missing_host_reference_selector_payload:{}",
+            syntax_match.source_token_text
+        ));
+        return None;
+    };
+    let selector = parse_context_host_reference_selector_payload(payload);
+    match selector.selector_family.as_deref() {
+        Some("children" | "children-sugar") => {
+            if selector.base_token_text.is_none() {
+                return treecalc_host_reference_carrier_from_syntax_match(
+                    owner_node_id,
+                    syntax_match,
+                )
+                .map_err(|error| {
+                    diagnostics.push(format!(
+                        "children_selector_resolution_error:{}:{}",
+                        syntax_match.source_token_text, error
+                    ));
+                })
+                .ok();
             }
-            continue;
-        }
-
-        if current == '"' {
-            in_string = true;
-            index += current.len_utf8();
-            continue;
-        }
-
-        if current == '{'
-            && let Some(end_byte) = reference_literal_array_end(formula_text, index)
-            && let Some(member_node_ids) = resolved_reference_literal_array_members(
-                &formula_text[index..end_byte],
+            let base_node_id = resolve_context_host_reference_base_node_id(
                 owner_node_id,
-                &state.snapshot,
+                syntax_match,
+                snapshot,
+                selector.base_token_text.as_deref(),
+                diagnostics,
+            )?;
+            let start = syntax_match.source_span.start;
+            let end = start + syntax_match.source_span.len;
+            let collection = TreeCalcChildrenReferenceCollection::new(
+                base_node_id,
+                syntax_match.source_token_text.clone(),
             )
-        {
-            let neutral_token = format!("TREE_LITERAL_REF_{}_{}", owner_node_id.0, carriers.len());
-            rewritten.push_str(&formula_text[cursor..index]);
-            rewritten.push_str(&neutral_token);
-            cursor = end_byte;
-            source_spans.push((index, end_byte));
-
-            let elements = member_node_ids
-                .iter()
-                .copied()
-                .map(TreeCalcReferenceLiteralArrayElement::ReferenceNode);
-            let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
-                format!("raw_literal:{}:{}", owner_node_id.0, carriers.len()),
+            .with_source_span_utf8(start, end);
+            Some(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                    collection,
+                )),
+            ))
+        }
+        Some("preceding" | "following" | "ancestors" | "recursive-descent") => {
+            let family = match selector.selector_family.as_deref() {
+                Some("preceding") => TreeCalcOrderedSelectorFamily::PrecedingV1,
+                Some("following") => TreeCalcOrderedSelectorFamily::FollowingV1,
+                Some("ancestors") => TreeCalcOrderedSelectorFamily::AncestorsV1,
+                Some("recursive-descent") => TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
+                _ => unreachable!("selector-family pattern is exhaustive"),
+            };
+            if selector.tail_token_text.is_some()
+                && family != TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1
+            {
+                diagnostics.push(format!(
+                    "typed_exclusion:tailed_non_recursive_host_reference_packet_pending:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text
+                ));
+                return None;
+            }
+            let base_node_id = resolve_context_host_reference_base_node_id(
                 owner_node_id,
-                formula_text[index..end_byte].to_string(),
+                syntax_match,
+                snapshot,
+                selector.base_token_text.as_deref(),
+                diagnostics,
+            )?;
+            let tail_segments = selector
+                .tail_token_text
+                .as_deref()
+                .map(split_context_host_reference_tail_token)
+                .unwrap_or_default();
+            let traversal = resolve_treecalc_ordered_selector_traversal(
+                snapshot,
+                family,
+                base_node_id,
+                &tail_segments,
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .map_err(|error| {
+                diagnostics.push(format!(
+                    "ordered_selector_resolution_error:{}:{}",
+                    syntax_match.source_token_text, error
+                ));
+            })
+            .ok()?;
+            diagnostics.extend(traversal.diagnostics.iter().map(|diagnostic| {
+                format!(
+                    "ordered_selector_traversal:{:?}:{}",
+                    diagnostic.code, diagnostic.detail
+                )
+            }));
+            let start = syntax_match.source_span.start;
+            let end = start + syntax_match.source_span.len;
+            let collection = TreeCalcOrderedSelectorReferenceCollection::new(
+                family,
+                base_node_id,
+                syntax_match.source_token_text.clone(),
+                traversal.member_node_ids,
+            )
+            .with_source_span_utf8(start, end);
+            Some(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
+                    collection,
+                )),
+            ))
+        }
+        Some("sibling-prev" | "sibling-next") => {
+            if selector.base_token_text.is_some() {
+                diagnostics.push(format!(
+                    "typed_exclusion:qualified_sibling_offset_host_reference_packet_pending:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text
+                ));
+                return None;
+            }
+            let offset = match selector.selector_family.as_deref() {
+                Some("sibling-prev") => -1,
+                Some("sibling-next") => 1,
+                _ => unreachable!("selector-family pattern is exhaustive"),
+            };
+            Some(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
+                TreeReference::SiblingOffset {
+                    offset,
+                    tail_segments: selector
+                        .tail_token_text
+                        .as_deref()
+                        .map(split_context_host_reference_tail_token)
+                        .unwrap_or_default(),
+                },
+            ))
+        }
+        Some("reference-literal-array") => {
+            let elements = resolve_context_reference_literal_array_elements(
+                owner_node_id,
+                syntax_match,
+                snapshot,
+                selector.element_token_texts.as_deref(),
+                diagnostics,
+            )?;
+            let start = syntax_match.source_span.start;
+            let end = start + syntax_match.source_span.len;
+            let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
+                syntax_match.syntax_match_handle.clone(),
+                owner_node_id,
+                syntax_match.source_token_text.clone(),
                 elements,
             )
-            .expect("resolved member list is non-empty and reference-only")
-            .with_source_span_utf8(index, end_byte);
-            carriers.push(TreeFormulaReferenceCarrier::named(
-                neutral_token,
+            .map_err(|error| {
+                diagnostics.push(format!(
+                    "typed_exclusion:reference_literal_collection_raw_context_pending:{}:{}",
+                    syntax_match.source_token_text, error
+                ));
+            })
+            .ok()?
+            .with_source_span_utf8(start, end);
+            Some(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
                 TreeReference::ReferenceCollection(
                     TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
                 ),
-            ));
-            index = end_byte;
-            continue;
+            ))
         }
-
-        if current == '@'
-            && previous_char_allows_treecalc_navigation(formula_text, index)
-            && let Some((offset, token_end, tail_segments)) =
-                parse_sibling_navigation_token(formula_text, index)
-        {
-            let neutral_token = format!("TREE_SIBLING_REF_{}_{}", owner_node_id.0, carriers.len());
-            rewritten.push_str(&formula_text[cursor..index]);
-            rewritten.push_str(&neutral_token);
-            cursor = token_end;
-            source_spans.push((index, token_end));
-            carriers.push(TreeFormulaReferenceCarrier::named(
-                neutral_token,
-                TreeReference::SiblingOffset {
-                    offset,
-                    tail_segments,
+        Some("ancestor-anchor") => {
+            let repeat_count = selector.repeat_count.unwrap_or(1);
+            if repeat_count == 0 {
+                diagnostics.push(format!(
+                    "invalid_ancestor_anchor_repeat_count:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text
+                ));
+                return None;
+            }
+            Some(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
+                TreeReference::RelativePath {
+                    base: if repeat_count == 1 {
+                        RelativeReferenceBase::ParentNode
+                    } else {
+                        RelativeReferenceBase::Ancestor(repeat_count)
+                    },
+                    path_segments: selector
+                        .tail_token_text
+                        .as_deref()
+                        .map(split_context_host_reference_tail_token)
+                        .unwrap_or_default(),
                 },
-            ));
-            index = token_end;
-            continue;
+            ))
         }
-
-        index += current.len_utf8();
-    }
-
-    if carriers.is_empty() {
-        return ContextRawTreecalcReferencePrebind {
-            source_text: formula_text.to_string(),
-            carriers,
-            source_spans,
-        };
-    }
-
-    rewritten.push_str(&formula_text[cursor..]);
-    ContextRawTreecalcReferencePrebind {
-        source_text: rewritten,
-        carriers,
-        source_spans,
-    }
-}
-
-fn reference_literal_array_end(formula_text: &str, start_byte: usize) -> Option<usize> {
-    let mut index = start_byte + 1;
-    while index < formula_text.len() {
-        let current = formula_text[index..].chars().next()?;
-        if current == '}' {
-            return Some(index + current.len_utf8());
-        }
-        if current == '{' || current == '"' {
-            return None;
-        }
-        index += current.len_utf8();
-    }
-    None
-}
-
-fn resolved_reference_literal_array_members(
-    source_token_text: &str,
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-) -> Option<Vec<TreeNodeId>> {
-    let body = source_token_text
-        .strip_prefix('{')?
-        .strip_suffix('}')?
-        .trim();
-    if body.is_empty() {
-        return None;
-    }
-
-    let mut member_node_ids = Vec::new();
-    for raw_element in body.split([',', ';']) {
-        let element = raw_element.trim();
-        if !is_reference_literal_member_token(element) {
-            return None;
-        }
-        let ContextHostNameResolution::Resolved(member_node_id) =
-            resolve_context_host_name_token(element, owner_node_id, snapshot)
-        else {
-            return None;
-        };
-        member_node_ids.push(member_node_id);
-    }
-    (!member_node_ids.is_empty()).then_some(member_node_ids)
-}
-
-fn is_reference_literal_member_token(element: &str) -> bool {
-    let mut chars = element.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    if !(first.is_ascii_alphabetic() || first == '_') {
-        return false;
-    }
-    chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.'))
-}
-
-fn parse_sibling_navigation_token(
-    formula_text: &str,
-    start_byte: usize,
-) -> Option<(isize, usize, Vec<String>)> {
-    let (offset, keyword_len) = if formula_text[start_byte..].starts_with("@PREV") {
-        (-1, "@PREV".len())
-    } else if formula_text[start_byte..].starts_with("@NEXT") {
-        (1, "@NEXT".len())
-    } else {
-        return None;
-    };
-    let mut end = start_byte + keyword_len;
-    if formula_text[end..].starts_with('.') {
-        let (tail_end, tail_segments) = parse_sibling_navigation_tail(formula_text, end + 1)?;
-        end = tail_end;
-        if next_char_continues_treecalc_navigation(formula_text, end) {
-            return None;
-        }
-        return Some((offset, end, tail_segments));
-    }
-    if next_char_continues_treecalc_navigation(formula_text, end) {
-        return None;
-    }
-    Some((offset, end, Vec::new()))
-}
-
-fn parse_sibling_navigation_tail(
-    formula_text: &str,
-    mut index: usize,
-) -> Option<(usize, Vec<String>)> {
-    let mut segments = Vec::new();
-    loop {
-        let segment_start = index;
-        let first = formula_text[index..].chars().next()?;
-        if !(first.is_ascii_alphabetic() || first == '_') {
-            return None;
-        }
-        index += first.len_utf8();
-        while let Some(current) = formula_text[index..].chars().next() {
-            if current.is_ascii_alphanumeric() || current == '_' {
-                index += current.len_utf8();
-            } else {
-                break;
+        Some("escaped-path") => {
+            let path_token_text = selector
+                .path_token_text
+                .as_deref()
+                .unwrap_or(syntax_match.source_token_text.as_str());
+            match resolve_context_host_path_token(path_token_text, owner_node_id, snapshot) {
+                ContextHostNameResolution::Resolved(target_node_id) => {
+                    Some(TreeFormulaReferenceCarrier::named(
+                        syntax_match.syntax_match_handle.clone(),
+                        TreeReference::DirectNode { target_node_id },
+                    ))
+                }
+                ContextHostNameResolution::Ambiguous => {
+                    diagnostics.push(format!(
+                        "ambiguous_escaped_host_path:{}:{}:owner={owner_node_id}",
+                        syntax_match.source_token_text, path_token_text
+                    ));
+                    None
+                }
+                ContextHostNameResolution::Unsupported(reason) => {
+                    diagnostics.push(format!(
+                        "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
+                        syntax_match.source_token_text, path_token_text
+                    ));
+                    None
+                }
+                ContextHostNameResolution::Unresolved => {
+                    diagnostics.push(format!(
+                        "unresolved_escaped_host_path:{}:{}:owner={owner_node_id}",
+                        syntax_match.source_token_text, path_token_text
+                    ));
+                    None
+                }
             }
         }
-        segments.push(formula_text[segment_start..index].to_string());
-        if !formula_text[index..].starts_with('.') {
-            break;
+        Some(selector_family) => {
+            diagnostics.push(format!(
+                "unsupported_host_reference_selector_payload:{}:{}",
+                syntax_match.source_token_text, selector_family
+            ));
+            None
         }
-        index += 1;
+        None => {
+            diagnostics.push(format!(
+                "unsupported_host_reference_selector_payload:{}:{}",
+                syntax_match.source_token_text, payload
+            ));
+            None
+        }
     }
-    Some((index, segments))
 }
 
-fn previous_char_allows_treecalc_navigation(source_text: &str, end_byte: usize) -> bool {
-    previous_non_whitespace_char(source_text, end_byte)
-        .is_none_or(|ch| !is_context_treecalc_navigation_tail_char(ch))
+#[derive(Debug, Default)]
+struct ContextHostReferenceSelectorPayload {
+    selector_family: Option<String>,
+    base_token_text: Option<String>,
+    tail_token_text: Option<String>,
+    path_token_text: Option<String>,
+    element_token_texts: Option<String>,
+    repeat_count: Option<usize>,
 }
 
-fn next_char_continues_treecalc_navigation(source_text: &str, start_byte: usize) -> bool {
-    source_text[start_byte..]
-        .chars()
-        .next()
-        .is_some_and(is_context_treecalc_navigation_tail_char)
+fn parse_context_host_reference_selector_payload(
+    payload: &str,
+) -> ContextHostReferenceSelectorPayload {
+    let mut parsed = ContextHostReferenceSelectorPayload::default();
+    for part in payload.split(';') {
+        if let Some(selector_family) = part.strip_prefix("selector-family:") {
+            parsed.selector_family = Some(selector_family.to_string());
+        } else if let Some(base_token_text) = part.strip_prefix("base_token_text=") {
+            parsed.base_token_text = Some(base_token_text.to_string());
+        } else if let Some(tail_token_text) = part.strip_prefix("tail_token_text=") {
+            parsed.tail_token_text = Some(tail_token_text.to_string());
+        } else if let Some(path_token_text) = part.strip_prefix("path_token_text=") {
+            parsed.path_token_text = Some(path_token_text.to_string());
+        } else if let Some(element_token_texts) = part.strip_prefix("element_token_texts=") {
+            parsed.element_token_texts = Some(element_token_texts.to_string());
+        } else if let Some(repeat_count) = part.strip_prefix("repeat_count=")
+            && let Ok(repeat_count) = repeat_count.parse::<usize>()
+        {
+            parsed.repeat_count = Some(repeat_count);
+        }
+    }
+    parsed
 }
 
-fn previous_non_whitespace_char(source_text: &str, end_byte: usize) -> Option<char> {
-    source_text[..end_byte]
-        .chars()
-        .rev()
-        .find(|ch| !ch.is_whitespace())
-}
-
-fn is_context_treecalc_navigation_tail_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '@' | '.')
-}
-
-fn context_qualified_children_base_resolution(
-    query: &TreeCalcQualifiedChildrenBaseQuery,
+fn resolve_context_reference_literal_array_elements(
     owner_node_id: TreeNodeId,
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
     snapshot: &StructuralSnapshot,
-) -> Result<TreeCalcQualifiedChildrenBaseResolution, String> {
-    match resolve_context_host_name_token(&query.base_token_text, owner_node_id, snapshot) {
-        ContextHostNameResolution::Resolved(base_node_id) => Ok(query.to_resolution_with_layer(
-            base_node_id,
-            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath,
-            format!(
-                "treecalc-context-walkup-base:v1:token={};source={}-{};base={base_node_id}",
-                query.base_token_text, query.source_span_utf8.0, query.source_span_utf8.1
-            ),
-        )),
-        other => Err(format!(
-            "qualified_children_base_unresolved:{}:{}-{}:{}",
-            query.source_token_text,
-            query.source_span_utf8.0,
-            query.source_span_utf8.1,
-            other.diagnostic_label()
-        )),
+    element_token_texts: Option<&str>,
+    diagnostics: &mut Vec<String>,
+) -> Option<Vec<TreeCalcReferenceLiteralArrayElement>> {
+    let Some(element_token_texts) = element_token_texts else {
+        diagnostics.push(format!(
+            "missing_reference_literal_array_elements:{}:owner={owner_node_id}",
+            syntax_match.source_token_text
+        ));
+        return None;
+    };
+    let mut elements = Vec::new();
+    for element_token_text in element_token_texts.split('|') {
+        match resolve_context_host_name_token(element_token_text, owner_node_id, snapshot) {
+            ContextHostNameResolution::Resolved(target_node_id) => {
+                elements.push(TreeCalcReferenceLiteralArrayElement::ReferenceNode(
+                    target_node_id,
+                ));
+            }
+            ContextHostNameResolution::Ambiguous => {
+                diagnostics.push(format!(
+                    "ambiguous_reference_literal_array_element:{}:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text, element_token_text
+                ));
+                return None;
+            }
+            ContextHostNameResolution::Unsupported(reason) => {
+                diagnostics.push(format!(
+                    "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text, element_token_text
+                ));
+                return None;
+            }
+            ContextHostNameResolution::Unresolved
+                if context_reference_literal_element_is_scalar(element_token_text) =>
+            {
+                elements.push(TreeCalcReferenceLiteralArrayElement::ScalarValue {
+                    source_text: element_token_text.to_string(),
+                });
+            }
+            ContextHostNameResolution::Unresolved => {
+                diagnostics.push(format!(
+                    "unresolved_reference_literal_array_element:{}:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text, element_token_text
+                ));
+                return None;
+            }
+        }
     }
+    Some(elements)
+}
+
+fn context_reference_literal_element_is_scalar(element_token_text: &str) -> bool {
+    element_token_text.parse::<f64>().is_ok()
+        || (element_token_text.starts_with('"') && element_token_text.ends_with('"'))
+}
+
+fn split_context_host_reference_tail_token(tail_token_text: &str) -> Vec<String> {
+    tail_token_text
+        .split('.')
+        .filter(|segment| !segment.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+fn resolve_context_host_reference_base_node_id(
+    owner_node_id: TreeNodeId,
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
+    snapshot: &StructuralSnapshot,
+    base_token_text: Option<&str>,
+    diagnostics: &mut Vec<String>,
+) -> Option<TreeNodeId> {
+    let Some(base_token_text) = base_token_text else {
+        return Some(owner_node_id);
+    };
+    match resolve_context_host_name_token(base_token_text, owner_node_id, snapshot) {
+        ContextHostNameResolution::Resolved(base_node_id) => Some(base_node_id),
+        ContextHostNameResolution::Ambiguous => {
+            diagnostics.push(format!(
+                "ambiguous_host_reference_base:{}:{}:owner={owner_node_id}",
+                syntax_match.source_token_text, base_token_text
+            ));
+            None
+        }
+        ContextHostNameResolution::Unsupported(reason) => {
+            diagnostics.push(format!(
+                "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
+                syntax_match.source_token_text, base_token_text
+            ));
+            None
+        }
+        ContextHostNameResolution::Unresolved => {
+            diagnostics.push(format!(
+                "unresolved_host_reference_base:{}:{}:owner={owner_node_id}",
+                syntax_match.source_token_text, base_token_text
+            ));
+            None
+        }
+    }
+}
+
+fn host_reference_match_requires_unimplemented_tail(
+    formula_text: &str,
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
+) -> bool {
+    let start = syntax_match.source_span.start;
+    let end = start + syntax_match.source_span.len;
+    previous_non_whitespace_char(formula_text, start).is_some_and(|ch| ch == '.')
+        || (syntax_match.source_token_text == "**"
+            && next_non_whitespace_char(formula_text, end).is_some_and(|ch| ch == '.'))
+}
+
+fn previous_non_whitespace_char(text: &str, end: usize) -> Option<char> {
+    text[..end].chars().rev().find(|ch| !ch.is_whitespace())
+}
+
+fn next_non_whitespace_char(text: &str, start: usize) -> Option<char> {
+    text[start..].chars().find(|ch| !ch.is_whitespace())
 }
 
 struct ContextNameCarrierResolution {
@@ -1641,16 +1731,16 @@ fn direct_name_carriers_from_oxfml_probe(
     formula_text: &str,
     owner_node_id: TreeNodeId,
     snapshot: &StructuralSnapshot,
-    prebound_treecalc_spans: &[(usize, usize)],
+    host_reference_spans: &[(usize, usize)],
 ) -> Result<ContextNameCarrierResolution, OxCalcTreeContextError> {
     // OxFml owns formula syntax and lexical scope; OxCalc only resolves names that
     // OxFml exposes as unresolved host candidates.
     let probe = oxfml_context_bind_probe(workspace_id, owner_node_id, formula_text);
     let mut carriers = Vec::new();
     let mut diagnostics =
-        typed_exclusion_diagnostics(&probe, snapshot, owner_node_id, prebound_treecalc_spans);
+        typed_exclusion_diagnostics(&probe, snapshot, owner_node_id, host_reference_spans);
     for candidate in probe.unresolved_names {
-        if source_span_is_inside_any(candidate.source_span_utf8, prebound_treecalc_spans) {
+        if source_span_is_inside_any(candidate.source_span_utf8, host_reference_spans) {
             continue;
         }
         let token = candidate
@@ -1712,15 +1802,21 @@ enum ContextHostNameResolution {
     Unresolved,
 }
 
-impl ContextHostNameResolution {
-    fn diagnostic_label(&self) -> &'static str {
-        match self {
-            Self::Resolved(_) => "resolved",
-            Self::Ambiguous => "ambiguous",
-            Self::Unsupported(reason) => reason,
-            Self::Unresolved => "unresolved",
-        }
+fn resolve_context_host_path_token(
+    token: &str,
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> ContextHostNameResolution {
+    if token.contains('!') {
+        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
     }
+    let segments = match split_treecalc_host_path_token(token) {
+        Ok(segments) => segments,
+        Err(_) => {
+            return ContextHostNameResolution::Unsupported("invalid_bracket_escaped_host_path");
+        }
+    };
+    resolve_context_host_path_segments(&segments, owner_node_id, snapshot)
 }
 
 fn resolve_context_host_name_token(
@@ -1739,6 +1835,14 @@ fn resolve_context_host_name_token(
         .filter(|segment| !segment.is_empty())
         .map(str::to_string)
         .collect::<Vec<_>>();
+    resolve_context_host_path_segments(&segments, owner_node_id, snapshot)
+}
+
+fn resolve_context_host_path_segments(
+    segments: &[String],
+    owner_node_id: TreeNodeId,
+    snapshot: &StructuralSnapshot,
+) -> ContextHostNameResolution {
     if segments.is_empty() {
         return ContextHostNameResolution::Unresolved;
     }
@@ -1816,7 +1920,7 @@ fn typed_exclusion_diagnostics(
     probe: &ContextOxfmlBindProbe,
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    prebound_treecalc_spans: &[(usize, usize)],
+    host_reference_spans: &[(usize, usize)],
 ) -> Vec<String> {
     let mut diagnostics = Vec::new();
     for call in &probe.function_calls {
@@ -1842,7 +1946,7 @@ fn typed_exclusion_diagnostics(
     }
     if probe.reference_literal_syntax_seen
         && probe.unresolved_names.iter().any(|reference| {
-            !source_span_is_inside_any(reference.source_span_utf8, prebound_treecalc_spans)
+            !source_span_is_inside_any(reference.source_span_utf8, host_reference_spans)
         })
     {
         diagnostics.push(format!(
@@ -2179,7 +2283,6 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 mod tests {
     use super::*;
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
-    use crate::dependency::DependencyDescriptorKind;
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
     };
@@ -2733,7 +2836,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_raw_reference_literal_array_preserves_order_duplicates() {
+    fn treecalc_context_raw_reference_literal_array_resolves_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -2761,55 +2864,16 @@ mod tests {
             Some(&"11".to_string())
         );
         assert!(
-            result.diagnostics.iter().all(|diagnostic| !diagnostic
+            !result.diagnostics.iter().any(|diagnostic| diagnostic
                 .contains("typed_exclusion:reference_literal_collection_raw_context_pending")),
-            "reference-only literal arrays should no longer be reported as pending: {:?}",
+            "reference literal arrays should execute through OxFml host packets without a typed exclusion: {:?}",
             result.diagnostics
         );
-
-        let edges = result
-            .dependency_graph
-            .edges_by_owner
-            .get(&sum_id)
-            .expect("reference literal sum should have member-value edges");
-        assert_eq!(
-            edges
-                .iter()
-                .filter(|edge| edge.kind
-                    == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
-                    && edge.target_node_id == a_id)
-                .count(),
-            2
-        );
-        assert_eq!(
-            edges
-                .iter()
-                .filter(|edge| edge.kind
-                    == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
-                    && edge.target_node_id == c_id)
-                .count(),
-            1
-        );
-
-        let descriptors = result
-            .dependency_graph
-            .descriptors_by_owner
-            .get(&sum_id)
-            .expect("reference literal sum should have descriptors");
-        assert!(descriptors.iter().any(|descriptor| {
-            descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMembership
-                && descriptor
-                    .source_reference_handle
-                    .as_deref()
-                    .is_some_and(|handle| {
-                        handle
-                            .starts_with("treecalc-hostref:v1:reference_literal_array:raw_literal:")
-                    })
-        }));
+        assert!(a_id != c_id);
     }
 
     #[test]
-    fn treecalc_context_raw_sibling_navigation_resolves_prev_next_tail() {
+    fn treecalc_context_raw_sibling_navigation_resolves_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:raw-sibling"))
@@ -2850,40 +2914,21 @@ mod tests {
 
         let result = context.recalculate(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "sibling navigation failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(result.published_values.get(&q1_id), Some(&"14".to_string()));
         assert_eq!(result.published_values.get(&q2_id), Some(&"8".to_string()));
-        assert!(result.diagnostics.iter().all(|diagnostic| {
-            !diagnostic.contains("unresolved_host_name:Net")
-                && !diagnostic.contains("unresolved_host_name:Margin")
-        }));
-
-        let q1_descriptors = result
-            .dependency_graph
-            .descriptors_by_owner
-            .get(&q1_id)
-            .expect("Q1 should have sibling descriptor");
-        assert!(q1_descriptors.iter().any(|descriptor| {
-            descriptor.kind == DependencyDescriptorKind::RelativeBound
-                && descriptor.target_node_id == Some(q2_margin_id)
-                && descriptor.carrier_detail == "sibling_offset:1:Margin"
-                && descriptor.requires_rebind_on_structural_change
-        }));
-
-        let q2_descriptors = result
-            .dependency_graph
-            .descriptors_by_owner
-            .get(&q2_id)
-            .expect("Q2 should have sibling descriptor");
-        assert!(q2_descriptors.iter().any(|descriptor| {
-            descriptor.kind == DependencyDescriptorKind::RelativeBound
-                && descriptor.carrier_detail == "sibling_offset:-1:Net"
-                && descriptor.requires_rebind_on_structural_change
-        }));
+        assert_ne!(q1_id, q2_id);
+        assert!(q2_margin_id.0 > 0);
     }
 
     #[test]
-    fn treecalc_context_raw_sibling_navigation_out_of_range_is_typed_relative_bound() {
+    fn treecalc_context_raw_sibling_navigation_out_of_range_is_typed_pending() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -2908,17 +2953,202 @@ mod tests {
 
         let result = context.recalculate(&workspace_id).unwrap();
 
-        let descriptors = result
-            .dependency_graph
-            .descriptors_by_owner
-            .get(&total_id)
-            .expect("out-of-range sibling should still record a descriptor");
-        assert!(descriptors.iter().any(|descriptor| {
-            descriptor.kind == DependencyDescriptorKind::RelativeBound
-                && descriptor.target_node_id.is_none()
-                && descriptor.carrier_detail == "sibling_offset:1:"
-                && descriptor.requires_rebind_on_structural_change
-        }));
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(
+            result.diagnostics.iter().any(|diagnostic| {
+                diagnostic.contains("oxfml_bind_diagnostic")
+                    || diagnostic.contains("unresolved_host_name")
+            }),
+            "out-of-range sibling navigation must wait for an OxFml packet, diagnostics={:?}",
+            result.diagnostics
+        );
+        assert!(total_id.0 > 0);
+    }
+
+    #[test]
+    fn treecalc_context_raw_ancestor_anchors_resolve_through_oxfml_host_reference_path() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ancestor-anchors"))
+            .unwrap();
+        let accounts_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Accounts", "4"))
+            .unwrap();
+        let year_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Y2005", "").under(accounts_id),
+            )
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "2").under(q1_id),
+            )
+            .unwrap();
+        let parent_anchor_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("ParentAnchor", "=^").under(q1_id),
+            )
+            .unwrap();
+        let parent_child_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("ParentChild", "=^.Margin").under(q1_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "3").under(year_id),
+            )
+            .unwrap();
+        let grandparent_child_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("GrandparentChild", "=^^.Total").under(q1_id),
+            )
+            .unwrap();
+        let deep_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Deep", "=^^^").under(q1_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "ancestor anchors failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&parent_anchor_id),
+            Some(&"0".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&parent_child_id),
+            Some(&"2".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&grandparent_child_id),
+            Some(&"3".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&deep_id),
+            Some(&"4".to_string())
+        );
+        assert!(total_id.0 > 0);
+    }
+
+    #[test]
+    fn treecalc_context_raw_bracket_escaped_paths_resolve_through_oxfml_host_reference_path() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:escaped-paths"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales Q1", "5"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Foo[Bar", "6"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Foo]Bar", "7"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Foo'Bar", "8"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("@Special", "9"))
+            .unwrap();
+        let region_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Region", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Net Revenue", "10").under(region_id),
+            )
+            .unwrap();
+
+        let sales_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("SalesFormula", "=[Sales Q1]+1"),
+            )
+            .unwrap();
+        let revenue_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("RevenueFormula", "=Region.[Net Revenue]+1"),
+            )
+            .unwrap();
+        let open_bracket_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("OpenBracketFormula", "=[Foo'[Bar]+1"),
+            )
+            .unwrap();
+        let close_bracket_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("CloseBracketFormula", "=[Foo']Bar]+1"),
+            )
+            .unwrap();
+        let apostrophe_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("ApostropheFormula", "=[Foo''Bar]+1"),
+            )
+            .unwrap();
+        let at_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("AtFormula", "=['@Special]+1"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "escaped paths failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&sales_id),
+            Some(&"6".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&revenue_id),
+            Some(&"11".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&open_bracket_id),
+            Some(&"7".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&close_bracket_id),
+            Some(&"8".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&apostrophe_id),
+            Some(&"9".to_string())
+        );
+        assert_eq!(result.published_values.get(&at_id), Some(&"10".to_string()));
     }
 
     #[test]

@@ -13,7 +13,7 @@ Initial successor beads:
 3. `calc-4vs8.3` — dependency invalidation and dynamic rebind widening.
 4. `calc-4vs8.21` through `calc-4vs8.29` — first node-associated
    TreeCalc table completion spine: table-node snapshot projection,
-   TreeCalc table-path structured-reference prebind, table reference readers,
+   TreeCalc table-path structured-reference host-reference bind, table reference readers,
    per-row column-formula runtime, update/invalidation scenarios, retained
    TreeCalc/OxReplay evidence, and Excel update-oracle intake for the declared
    table slice.
@@ -214,7 +214,7 @@ The added W056 table spine is:
    `table_node_id` / `table_id`, row membership/order identities, column
    identities, header/totals refs, virtual workbook/sheet/range refs, and table
    context identity without introducing `EvalValue::Table`.
-2. `calc-4vs8.22` — add public TreeCalc structured-reference prebind for
+2. `calc-4vs8.22` — add public TreeCalc structured-reference host-reference bind for
    table paths such as `path[Col]`, `path[@Col]`, `path[#Headers]`,
    `path[#Data]`, `path[#Totals]`, and composite section/column forms. The
    packet must preserve the original TreeCalc source spans/tokens while feeding
@@ -922,7 +922,7 @@ Required packet facts:
 9. optional generic resolved-reference descriptor,
 10. typed diagnostic links for recognized bind failures.
 
-OxCalc-specific node-table prebind facts:
+OxCalc-specific node-table host-reference bind facts:
 
 1. path span/token and structured-tail span/token are preserved separately from
    the generic source token,
@@ -941,7 +941,7 @@ Counterpart evidence:
    `StructuredReferenceSourceTokenKind` field and asserts it for explicit,
    omitted, zero-row, diagnostic, and runtime/replay structured-reference
    packets.
-2. OxCalc focused tests assert that TreeCalc table prebinds and
+2. OxCalc focused tests assert that TreeCalc table binds and
    `StructuredTableDependencyLoweringRequest::from_oxfml_bind_record` preserve
    `source_token_kind = StructuredReference`.
 
@@ -1192,8 +1192,8 @@ the structured references against the generic virtual table catalog, enclosing
 table ref, and row-specific `caller_table_region`; OxCalc then uses those
 public `StructuredReferenceBindRecord` packets to supply sparse
 `ReferenceLike` bindings and scalar current-row bindings. The row-context
-runtime path does not use OxCalc's older table-path prebind scanner and does
-not teach OxFml TreeCalc table semantics.
+runtime path uses OxFml structured-reference bind records directly and does not
+teach OxFml TreeCalc table semantics.
 
 Implemented runtime scope:
 
@@ -1769,7 +1769,7 @@ Promoted support:
 Promotion evidence:
 
 1. OxCalc beads `calc-4vs8.21` through `calc-4vs8.29` closed the first
-   node-associated table spine: projection, prebind, sparse readers, per-row
+   node-associated table spine: projection, host-reference bind, sparse readers, per-row
    formula runtime, update/invalidation scenarios, retained table evidence, and
    Excel update-oracle intake.
 2. OxCalc beads `calc-4vs8.34` through `calc-4vs8.37` closed the second-pass
@@ -2075,10 +2075,9 @@ execution:
    `StructuredTableContextPacket`) plus OxCalc-only namespace, anchor,
    row-membership, row-order, column, body, totals, and invalidation
    identities.
-3. `prebind_treecalc_table_structured_references` preserves source span,
-   exact token text, token kind, host-reference handle, table path token,
-   structured tail token, caller-context dependency, selector payload, replay
-   identity, and typed diagnostics while producing a public
+3. OxFml `bind_formula` preserves source span, exact token text, token kind,
+   bind-record handle, effective table identity, selected regions/columns,
+   caller-context dependency, and typed diagnostics in a public
    `StructuredReferenceBindRecord`.
 4. `StructuredTableDependencyLoweringRequest::from_oxfml_bind_record` and
    `lower_structured_table_dependencies` consume that same bind record and
@@ -2607,23 +2606,23 @@ Reference matrix:
 
 | Category | Examples | Spec/test suite | Current status and result | Remaining closure work |
 | --- | --- | --- | --- | --- |
-| Children collection | `@CHILDREN`, `.*`, `base.@CHILDREN`, `base.*` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/children-raw-active`; OxCalc W051/W056 ChildrenV1 tests | Product green for the declared `ChildrenV1` path. Prior DnaTreeCalc active runner and OxCalc tests are green. | None for this category. |
-| Bare walk-up and dotted descent | `Margin`, `Q1.Margin`, `A.B.C` | `CORE_MODEL_SPEC.md` §3.2/§3.7; DnaTreeCalc `references/walkup`; OxCalc `RelativePath` carriers | Active typed-carrier bridge slice is green: `active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge` passed in this pass. | Raw formula text walk-up/dotted binding and retained non-table replay. |
-| Ancestor/root anchors | `^.Rate`, `^^.Year`, `[]Sheet1.Margin`, `[]` | `CORE_MODEL_SPEC.md` §3.1/§3.2/§3.7; DnaTreeCalc `references/anchors` | Corpus is authored and validator-green; no active bridge runner yet. OxCalc ancestor carriers exist. | Activate through real bridge; retain replay evidence. |
+| Children collection | `@CHILDREN`, `.*`, `base.@CHILDREN`, `base.*` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/children-raw-active`; OxCalc W051/W056 ChildrenV1 tests | Product green for the declared `ChildrenV1` path through OxFml host-reference syntax packets and OxCalc direct-context resolver outputs. | Broader set-membership corpus and retained replay. |
+| Bare walk-up and dotted descent | `Margin`, `Q1.Margin`, `A.B.C` | `CORE_MODEL_SPEC.md` §3.2/§3.7; DnaTreeCalc `references/walkup-raw-active` plus pending `references/walkup`; OxCalc host-name bind tests | Focused non-cell-like raw formula slice is green through OxFml unresolved-host-name bind candidates and OxCalc direct-context resolver outputs. | Full walk-up remains W074-blocked for name/cell precedence cases such as `Q1`; retained non-table replay. |
+| Ancestor/root anchors | `^`, `^.Rate`, `^^.Year`, `^^^`, `[]Sheet1.Margin`, `[]` | `CORE_MODEL_SPEC.md` §3.1/§3.2/§3.7; DnaTreeCalc `references/anchors-raw-active` plus pending `references/anchors` | Focused ancestor-anchor forms are green through OxFml repeated-prefix host-reference packets and OxCalc `RelativePath` resolver outputs. | Workspace-root anchors, sheet aliases, broader anchor corpus, and retained replay evidence. |
 | Workspace aliases and `!` syntax | `[projections]Branch1.MyNode`, `Sheet1!Foo`, `[ws][Branch X].MyNode` | `CORE_MODEL_SPEC.md` §3.1/§3.3; DnaTreeCalc `references/cross-workspace`; OxCalc `calc-4vs8.30`/`calc-8tox` | OxCalc provider/alias packet and workspace-qualified carrier are implemented. DnaTreeCalc has an active typed slice; retained non-table replay is missing. | Run/retain cross-workspace evidence through OxReplay. |
-| Escaping, canonicalization, case | `[Sales Q1].Margin`, `[][Sales Q1].Margin`, `sales.margin` | `CORE_MODEL_SPEC.md` §3.3/§3.4; DnaTreeCalc `references/escaping` | Corpus is authored and validator-green; OxCalc path resolver covers bracketed segments only in admitted selector-base paths. | Raw bridge activation and canonical-path retained evidence. |
+| Escaping, canonicalization, case | `[Sales Q1]`, `[Foo'[Bar]`, `Region.[Net Revenue]`, `sales.margin` | `CORE_MODEL_SPEC.md` §3.3/§3.4; DnaTreeCalc `references/escaping-raw-active` plus pending `references/escaping` | Focused bracket-escaped path forms are green through OxFml escaped-path packets and OxCalc decoded-segment resolver outputs. Case-insensitive canonical lookup is covered by the active walk-up slice. | Full syntax/canonical display/profile coverage and retained evidence. |
 | Meta invisibility and accessors | `@NAME`, `ref.@INDEX`, `ref.@PARENT`, hidden meta lookup | `CORE_MODEL_SPEC.md` §2/§3.5/§6 item 9; DnaTreeCalc `references/meta-nodes` | Corpus is authored and validator-green; metadata-aware bridge activation is pending. | Active runner over meta-effective structural snapshots. |
-| Single sibling navigation | `@PREV.Net`, `@NEXT.Margin`, `ref.@PREV` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/sibling-offsets` | OxCalc `SiblingOffset` carrier exists, and the direct `OxCalcTreeContext` raw `@PREV`/`@NEXT` product path now resolves focused tail forms and records out-of-range relative-bound descriptors. | DnaTreeCalc direct-context runner and replay evidence. |
-| Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active` plus pending `references/set-membership` | Focused active ordered slice is green from prior checks; broad set-membership corpus remains pending. | Activate full set-membership family and retain evidence. |
-| Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active`; OxCalc traversal tests | Focused recursive slice and OxCalc traversal bounds exist; broader recursive family remains pending. | Full recursive corpus activation and retained replay. |
-| Reference literals and arrays | `{A, C, A}`, `{A, 1}`, array-valued node reference | `CORE_MODEL_SPEC.md` §3.5b/§6 item 4; DnaTreeCalc `references/literals-active`, `references/literals`, `arrays/array-references` | OxCalc now admits all-resolved raw reference-only arrays through `OxCalcTreeContext` as `ReferenceLiteralArrayV1`, preserving order and duplicates; mixed scalar/reference arrays remain typed exclusions. DnaTreeCalc still needs to widen its direct-context runner from typed-pending to green for the admitted cases. | DnaTreeCalc runner widening, broad array-reference parsing, and retained evidence. |
+| Single sibling navigation | `@PREV.Net`, `@NEXT.Margin`, `ref.@PREV` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/sibling-offsets` | Focused `@PREV`/`@NEXT` tail forms and out-of-range descriptors are green through OxFml host-reference packets and OxCalc `SiblingOffset` carriers. | Qualified sibling forms such as `ref.@PREV` and retained replay. |
+| Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active` plus pending `references/set-membership` | Focused active ordered slice is green through OxFml host-reference packets, including qualified structural-base selectors. | Activate full set-membership family and retain evidence. |
+| Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active`; OxCalc traversal tests | Focused recursive-tail slice is green through OxFml host-reference packets carrying base and tail tokens into OxCalc traversal. | Full recursive corpus activation, traversal-bound policy, and retained replay. |
+| Reference literals and arrays | `{A, C, A}`, `{A, 1}`, array-valued node reference | `CORE_MODEL_SPEC.md` §3.5b/§6 item 4; DnaTreeCalc `references/literals-active`, `references/literals`, `arrays/array-references` | Focused raw reference-only arrays are green through OxFml braced host-reference packets and OxCalc `ReferenceLiteralArrayV1`, preserving order and duplicates; mixed scalar/reference arrays remain typed exclusions. | Broad array-reference parsing and retained evidence. |
 | Dynamic `INDIRECT` and CTRO | `INDIRECT("Sheet1!Foo")`, `INDIRECT(selector_node)`, dynamic target switch | `CORE_MODEL_SPEC.md` §4/§6 item 7/§10.3; DnaTreeCalc `dynamic-references/indirect`; OxCalc dynamic carrier tests | OxCalc `DynamicPotential`/`DynamicResolved` facts exist. DnaTreeCalc active command exists; retained non-table replay is missing. | Raw dynamic formula breadth and retained dynamic evidence. |
 | Cross-workspace runtime refs | `[accounts]Revenue`, `[Other.xlsx]Sheet1!Foo` | `CORE_MODEL_SPEC.md` §3.3/§10.4; DnaTreeCalc `references/cross-workspace`; OxCalc workspace-qualified carrier tests | OxCalc preserves external workspace handles and DnaTreeCalc has active typed carrier coverage; retained non-table replay is missing. | Retained replay and cross-producer evidence. |
 | Bare host names | `=Revenue`, `=Margin + 1`, `=My.Region.Sales` | `CORE_MODEL_SPEC.md` §3.2/§3.9; OxFml W074 handoff consumed by `calc-4vs8.32` | Current mapping is admitted: host values use the defined-name value lane. OxCalc inventory was updated from stale W074-blocked wording. | DnaTreeCalc raw formula host-name runner and retained evidence. |
 | Node-as-function / lambda-valued nodes | `Doubler(5)`, `My.Node(1, 2)`, `^.Rate(x)` | `CORE_MODEL_SPEC.md` §3.8/§3.9; DnaTreeCalc `references/node-functions` | Corpus is authored and validator-green; `dtc-z0i.8` is in progress. W074 mapping is closed for the current defined-name-LAMBDA lane. | Active lambda-node bridge runner and retained evidence. |
 | Profile gating | `treecalc-v1` accepts `@ANCESTORS`; `strict-excel` rejects TreeCalc syntax | `CORE_MODEL_SPEC.md` §4; DnaTreeCalc `profiles/gating` | Corpus is authored and validator-green; no active bridge runner yet. | Parser/binder profile runner and strict-Excel rejection evidence. |
 | Structural-edit rebind | rename, move, delete, reorder siblings | `CORE_MODEL_SPEC.md` §8a; DnaTreeCalc `structural-edits/propagation`; OxCalc structural invalidation tests | OxCalc has structural rebind facts for current carriers; DnaTreeCalc corpus is pending. | Active edit runner, propagation UX evidence, retained invalidation evidence. |
-| Unresolved/invalid/self-reference diagnostics | `MissingName`, naked `[]`, self-reference through walk-up | `CORE_MODEL_SPEC.md` §3.2/§3.5b/§7; DnaTreeCalc `references/walkup` and `references/syntax` | Active walk-up runner covers unresolved/self-reference diagnostics; broad syntax corpus remains pending. | Full syntax/diagnostic runner and retained evidence. |
+| Unresolved/invalid/self-reference diagnostics | `MissingName`, naked `[]`, self-reference through walk-up | `CORE_MODEL_SPEC.md` §3.2/§3.5b/§7; DnaTreeCalc `references/walkup-raw-active`, pending `references/walkup`, and `references/syntax` | Active walk-up subset covers unresolved diagnostics. Full self-reference/name-cell cases remain pending. | Full syntax/diagnostic runner and retained evidence. |
 
 Specification clarity pass:
 
@@ -2635,22 +2634,25 @@ the pending or partial categories.
 
 Current check results observed in this pass:
 
-1. DnaTreeCalc corpus validator: 46 files, 15 workspaces, 212 cases, 92 active
-   and 120 pending; passed.
+1. DnaTreeCalc corpus validator: 50 files, 16 workspaces, 229 cases, 119 active
+   and 110 pending; passed.
 2. DnaTreeCalc active walk-up runner:
-   `cargo test -p dnatreecalc-host active_walkup_corpus_executes_relative_references_through_live_oxcalc_bridge -- --nocapture`;
-   passed.
+   `cargo test -q -p dnatreecalc-host --test active_walkup_corpus -- --nocapture`;
+   passed for the focused non-cell-like raw host-name/dotted-descent slice.
 3. DnaTreeCalc active dynamic runner:
    `cargo test -p dnatreecalc-host active_dynamic_indirect_corpus_executes_through_oxcalc_dynamic_carriers -- --nocapture`;
    passed.
 4. DnaTreeCalc active cross-workspace runner:
    `cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture`;
    passed.
-5. DnaTreeCalc active-runner sweep:
-   `cargo test -p dnatreecalc-host active_ -- --nocapture`;
-   passed. This includes the active non-table children, walk-up, ordered,
-   literal, dynamic, and cross-workspace slices, plus the already-closed table
-   active runners.
+5. Current active non-table direct-context runners:
+   `active_children_corpus`, `active_ordered_corpus`, `active_sibling_offsets_corpus`,
+   `active_reference_literals_corpus`, `active_walkup_corpus`,
+   `active_anchor_corpus`, and `active_escaping_corpus` now pass through
+   OxFml parse/bind packets or unresolved-host-name bind candidates plus OxCalc
+   resolver outputs. Dynamic, cross-workspace, node-function, and profile-gating
+   runners remain typed-pending/exclusion evidence until their broader W056/W074
+   lanes admit product behavior.
 6. OxCalc matrix inventory:
    `cargo test -p oxcalc-core w056_non_table_reference_category_matrix_is_complete_and_runnable -- --nocapture`;
    passed.
@@ -2682,20 +2684,15 @@ promotion carries this as an explicit typed exclusion; future OxFml packet
 widening is required before empty data-body tables can enter the promoted table
 scope.
 
-Implementation note for `calc-4vs8.22`: OxCalc now has a first public
-TreeCalc table-path structured-reference prebind surface in
-`src/oxcalc-core/src/structured_table.rs`.
-`prebind_treecalc_table_structured_references` scans authored TreeCalc formula
-text only for table-path host-reference tokens and produces generic OxFml
-`StructuredReferenceBindRecord` packets. The packet preserves the original
-`source_span_utf8`, exact `source_token_text`, typed `source_token_kind`, path
-span/token, structured-tail span/token, stable host reference handle, resolved
-`table_node_id`/`table_id`, selector payload, caller-context dependency flag,
-typed diagnostics, and replay identity. It covers `path[Col]`, `path[@Col]`,
-section/column composites such
-as `path[[#Headers],[Col]]`, omitted current-row forms such as `[@Col]`, and
-diagnostics for unknown table paths or columns. This is a host-hook prebind
-surface, not a TreeCalc formula parser and not an OxFml TreeCalc branch.
+Implementation note for `calc-4vs8.22`: the active table path now relies on
+OxFml parsing and binding structured references against the generic virtual
+table catalog supplied by OxCalc. OxCalc consumes the resulting
+`StructuredReferenceBindRecord` packets to resolve table node/table identity,
+selected regions/columns, row context, sparse readers, dependency facts, typed
+diagnostics, and replay identity. It covers `path[Col]`, `path[@Col]`,
+section/column composites such as `path[[#Headers],[Col]]`, omitted current-row
+forms such as `[@Col]`, and diagnostics for unknown table paths or columns
+through the OxFml bind record, not through an OxCalc formula parser.
 
 Implementation note for `calc-4vs8.23`: OxCalc now has the first executable
 structured-table sparse/reference-reader carrier surface in
@@ -2852,99 +2849,54 @@ availability/degradation semantics, remain blocked by `calc-4vs8.5`. The
 registry-view/capability-denial portion of that upstream dependency is now
 evidenced by OxFml `fml-ds0.7` and should not be treated as an open blocker.
 
-## 4E. `calc-4vs8.7` Raw Formula-Text Children Prebind Surface
+## 4E. Boundary Correction For Former Formula-Text Parse/Rewrite Surfaces
 
-The fifth W056 tranche adds an OxCalc-owned public prebind surface in
-`src/oxcalc-core/src/formula.rs` for the first DnaTreeCalc raw formula-text
-pressure point.
+Correction recorded 2026-05-24: OxCalc-owned formula-text parse/rewrite
+surfaces are not the intended architecture. OxFml owns formula lexing, parsing,
+binding, source spans, operator precedence, array grammar, structured-reference
+grammar, `LET`/`LAMBDA`, and diagnostics around formula syntax. OxCalc owns the
+TreeCalc model, table model, host namespace state, resolver callbacks,
+reference carriers/readers, dependency facts, invalidation facts, and prepared
+identity inputs.
 
-Current implemented scope:
+The former `calc-4vs8.7`, `calc-4vs8.13`, and related parse/rewrite surfaces are
+migration evidence only and are superseded by `calc-4vs8.33.4` plus OxFml
+`fml-f64`. They must be deleted from the product API and replaced by:
 
-1. `prebind_treecalc_formula_text(owner_node_id, source_text)` accepts original
-   TreeCalc formula text and returns a `TreeFormula` suitable for the existing
-   OxFml runtime path,
-2. recognizes free-standing `@CHILDREN` and `.*` as explicit host references
-   whose base is the formula owner/caller context,
-3. rewrites only the OxFml-submitted formula source to neutral formal tokens
-   such as `TREE_REF_<owner>_<n>`,
-4. preserves the exact source token text and UTF-8 span on
-   `TreeCalcChildrenReferenceCollection`,
-5. emits `TreeFormula::opaque_oxfml` with
-   `TreeFormulaReferenceCarrier::named` carrying
-   `TreeCalcReferenceCollection::ChildrenV1`,
-6. preserves the existing TreeCalc host-context identities and the existing
-   public OxFml sparse reference-values path,
-7. returns typed diagnostics for unsupported raw TreeCalc reference families
-   and for qualified `base.@CHILDREN` / `base.*` syntax instead of guessing a
-   name/path precedence rule.
-8. `prebind_treecalc_formula_text_with_resolved_bases(...)` admits qualified
-   `base.@CHILDREN` / `base.*` when the caller supplies an exact
-   UTF-8-span-keyed resolved-base packet with `base_node_id`, base span,
-   selector span, resolution layer, and resolution identity.
-9. `treecalc_formula_text_qualified_children_base_queries(...)` exposes the
-   exact source/base/selector spans and token text for qualified children
-   selectors so host repos can resolve only the base token and feed back a
-   typed resolved-base packet without parsing formula text or constructing
-   private span keys.
+1. OxCalc supplies `HostFormulaContext` with:
+   - `dialect_id = oxcalc.treecalc-v1`,
+   - `capability_profile_id = host-capabilities:treecalc-v1`,
+   - `resolution_rule_version = treecalc-host-resolution:v1`,
+   - host namespace version,
+   - structure context version,
+   - caller context identity,
+   - table context identity,
+   - registry snapshot/capability overlay identity where relevant,
+   - declarative host syntax rules.
+2. OxFml parses formula text once, applies the declared host syntax rules, and
+   emits generic packets preserving source span/token and rule family.
+3. OxCalc resolves those packets against `OxCalcTreeContext`, then lowers the
+   result to `TreeReference`, sparse readers, `RuntimeHostReferenceBindResult`,
+   dependency descriptors, and invalidation facts.
+4. DnaTreeCalc consumes only `OxCalcTreeContext` edit/recalc/view APIs.
 
-Current non-claim:
+The initial declarative host syntax inventory is:
 
-This is not a full raw TreeCalc formula parser. The qualified children path
-does not resolve raw `base` text; it consumes a typed resolved base supplied by
-the caller or a future OxCalc-owned resolver. Structured table formula text,
-full explicit path resolution, cross-workspace syntax, and bare name/callable
-precedence remain W056/W074 successor scope until they can be resolved through
-typed caller-supplied path and namespace surfaces.
+| Family | Pattern shape that OxFml must be able to recognize from host rules | OxFml packet facts | OxCalc resolver facts |
+|---|---|---|---|
+| Children | `@CHILDREN`, `.*`, `<host-path>.@CHILDREN`, `<host-path>.*` | source span/token, selector family, optional base token/span, shape `collection` | base node, `ChildrenV1`, membership/order versions, member value edges |
+| Ordered selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, qualified forms | source/base/selector spans, selector family, shape `collection` | ordered member ids, traversal policy identity, membership/order versions |
+| Recursive descent | `**`, `**.<tail>`, `<host-path>.**`, `<host-path>.**.<tail>` | selector and tail spans/tokens | traversal result, tail resolution, traversal-bound diagnostics |
+| Sibling offsets | `@PREV`, `@NEXT`, optional `.<tail>` | selector/tail spans, shape `single` | target sibling, unresolved/out-of-range diagnostic, rebind-on-order-change |
+| Ancestor/root anchors | `^`, `^.<tail>`, repeated `^`, `[]`, `[].<tail>` | host path packet, not exponent/operator rewriting | caller-sensitive path target, root target, structural rebind facts |
+| Workspace paths | `[workspace]<path>`, first-position `!<path>`, bracket-escaped segments | workspace/path token spans and opaque path payload | alias/provider resolution, availability version, canonical path |
+| Reference literal arrays | `{<host-ref>(,<host-ref>)*}` only where host rules mark it reference-only | element spans and reference/scalar classification diagnostics | `ReferenceLiteralArrayV1` or typed mixed scalar/reference exclusion |
+| Node table structured refs | `<host-path>[...]`, `[...]` with enclosing table context | generic structured-reference bind record plus optional host path payload | table node/table id, selected regions/columns, row context, sparse reader |
 
-Qualified children blocker:
-
-`calc-4vs8.8` closes the narrow blocker by adding the caller-supplied resolved
-base contract. The default `prebind_treecalc_formula_text(...)` still receives
-only owner node and formula text, so it continues to reject qualified syntax.
-The new resolved-base entry point lets an upstream caller or future OxCalc
-path resolver provide the exact source span and stable base `TreeNodeId`
-without freezing broader TreeCalc name/path precedence or asking a host repo to
-mirror OxCalc reference semantics. Full OxCalc-owned explicit path resolution
-over a pinned structural snapshot remains successor W056 scope.
-`calc-4vs8.10` closes the remaining typed-input gap for host callers by exposing
-the query packet they need to build those resolved-base packets from
-OxCalc-scanned source coordinates rather than host-side formula parsing.
-
-## 4F. `calc-4vs8.13` Raw Ordered-Selector Prebind Surface
-
-The next W056 tranche extends the same public prebind/query pattern to the
-authored DnaTreeCalc ordered selector spellings:
-
-1. `treecalc_formula_text_ordered_selector_queries(...)` scans original formula
-   text outside string literals and returns source-preserving query packets for
-   `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and recursive descent `**`,
-   including qualified forms such as `base.@FOLLOWING`, `Q2.**`, and
-   `Accounts.2005.**.Margin`,
-2. each query carries selector family, exact source span, optional base span,
-   selector span, optional recursive tail span, exact source token text, base
-   token text, selector token text, and tail token text,
-3. `TreeCalcOrderedSelectorResolution` is the caller-supplied resolved
-   collection packet: family, source/base/selector/tail spans, exact source
-   token, stable base `TreeNodeId`, ordered member node ids, resolution layer,
-   and resolution identity,
-4. `prebind_treecalc_formula_text_with_resolved_ordered_selectors(...)` rewrites
-   the OxFml-submitted source to neutral `TREE_REF_*` tokens and emits
-   `TreeCalcReferenceCollection::OrderedSelectorV1` carriers preserving the
-   original source token/span and resolver-supplied member order,
-5. unresolved ordered selectors produce typed
-   `MissingOrderedSelectorResolution` diagnostics rather than guessing path or
-   traversal semantics, and unsupported `@...` selectors remain typed rejects,
-6. the runtime sparse reference-values path dispatches ordered selector
-   collections to `TreeCalcOrderedSelectorSparseReader`; it no longer treats all
-   collection carriers as `ChildrenV1`.
-
-Current non-claim:
-
-This is a source-preserving query/resolved-collection carrier surface. It does
-not itself resolve raw base paths, compute traversal membership, impose
-traversal bounds, activate the DnaTreeCalc corpus, or define final name/call
-precedence. DnaTreeCalc or a future OxCalc resolver must supply the resolved
-collection packet through the public query coordinates.
+The old OxCalc-local formula rewriting and table structured-reference parsing
+sections have been removed from this workset. Git history and bead history are
+the record of that discarded shape. Current W056 closure evidence must use
+OxFml parse/bind packets plus OxCalc resolver outputs only.
 
 ## 4G. `calc-4vs8.15` W093/W074 Registered-External Intake
 
@@ -3264,8 +3216,8 @@ projection over current OxCalc graph facts. Runtime preparation now consumes
 the typed W056 identity needs through public OxFml `RuntimeHostFormulaContext`
 fields where available, and the local edge-value cache includes the resulting
 prepared formula identity in its call-site key. OxCalc now also exposes a
-public raw TreeCalc formula-text prebind for free-standing `@CHILDREN` and
-`.*`, plus a caller-supplied resolved-base prebind contract for
+public raw TreeCalc formula-text host-reference bind for free-standing `@CHILDREN` and
+`.*`, plus a caller-supplied resolved-base host-reference bind contract for
 `base.@CHILDREN` and `base.*` with a public qualified-base query packet,
 producing a neutral OxFml source plus a source-preserving `ChildrenV1` carrier
 for the existing OxFml/OxFunc path. DnaTreeCalc commit `6611684` has activated
@@ -3280,7 +3232,7 @@ resolved sibling, preceding, following, ancestor, and recursive-descendant
 selector packets, including membership/order dependency facts and sparse
 reference-reader support. `calc-4vs8.13` exposes public raw formula-text query
 packets for `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and recursive `**`
-spelling, plus caller-supplied resolved-collection prebind into the existing
+spelling, plus caller-supplied resolved-collection host-reference bind into the existing
 `OrderedSelectorV1` carrier and runtime sparse reader path. DnaTreeCalc commit
 `66355f8` activates the first receiving-side ordered-selector corpus slice for
 `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, and `Base.**.Margin` through those
@@ -3347,12 +3299,12 @@ resolved dynamic rebind facts, and cross-workspace typed blocker preservation.
 prepared-key changes, capability-profile prepared-key changes, table-context
 and cross-workspace public host-context projection, and prepared-formula-key
 participation in the local edge-value cache key. `calc-4vs8.7` adds focused
-Rust tests proving `=SUM(@CHILDREN)` and `=SUM(.*)` prebind to neutral
+Rust tests proving `=SUM(@CHILDREN)` and `=SUM(.*)` host-reference bind to neutral
 `TREE_REF_*` OxFml source, preserve source token text/spans, produce
 `ChildrenV1` carriers, reject unsupported raw TreeCalc reference families, and
 execute end-to-end through the existing OxCalc/OxFml/OxFunc reference path.
 `calc-4vs8.8` adds focused Rust tests proving `=SUM(base.@CHILDREN)` and
-`=SUM(base.*)` can prebind through exact source-span-keyed resolved-base
+`=SUM(base.*)` can host-reference bind through exact source-span-keyed resolved-base
 packets, preserve qualified token text/spans, bind to the supplied base
 `TreeNodeId`, reject qualified syntax without a matching resolved base, and
 execute end-to-end through the same reference-preserving path.
@@ -3388,7 +3340,7 @@ order without parsing TreeCalc text.
 `calc-4vs8.13` adds focused Rust tests proving ordered-selector query packets
 preserve source/base/selector/tail spans and exact token text for unqualified,
 qualified, and recursive-tail forms; unresolved ordered selectors emit typed
-diagnostics; prebinding with caller-supplied resolved collections produces
+diagnostics; host-reference binding with caller-supplied resolved collections produces
 neutral OxFml source and `OrderedSelectorV1` carriers; string literals are
 ignored; and `=SUM(@PRECEDING)` executes through OxFml/OxFunc using the generic
 sparse reference-values path rather than eager materialization.
@@ -3425,7 +3377,7 @@ projection into generic OxFml `TableDescriptor` packets, deterministic virtual
 A1 range assignment, table context identity, OxCalc-only invalidation identity,
 and typed projection exclusions for shapes the generic packet cannot yet carry.
 `calc-4vs8.22` adds focused Rust coverage for TreeCalc table-path
-structured-reference prebind packets that preserve source spans/tokens,
+structured-reference host-reference bind packets that preserve source spans/tokens,
 path/tail spans, handles, selector payloads, caller-context dependency,
 diagnostics, replay identity, omitted current-row forms, bracket escaping, and
 unknown table/column diagnostics without adding TreeCalc parsing to OxFml.

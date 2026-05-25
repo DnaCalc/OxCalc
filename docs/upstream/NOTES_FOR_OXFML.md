@@ -1692,41 +1692,39 @@ Current non-assumptions:
 4. OxCalc is not claiming W056 full-reference/table-lowering closure from this
    typed projection alone.
 
-## 84. W056 Raw TreeCalc Formula-Text Prebind Boundary
+## 84. W056 Host Syntax Boundary Correction
 
-OxCalc has added a public raw formula-text prebind surface for the first
-DnaTreeCalc explicit host-reference syntax.
+Supersedes the earlier raw formula-text intake note. Any OxCalc surface that
+recognizes authored formula syntax, rewrites source text to neutral tokens, or
+describes that process as "host-reference bind" is a boundary defect and is being deleted
+under `calc-4vs8.33.4`.
 
-Current OxCalc code shape:
-1. `prebind_treecalc_formula_text(owner_node_id, source_text)` accepts original
-   TreeCalc formula text and returns `TreeFormula::opaque_oxfml`.
-2. Free-standing `@CHILDREN` and `.*` are the only admitted raw host-reference
-   syntax in this surface; their base is the formula owner/caller context.
-3. OxCalc rewrites only the submitted OxFml source to neutral formal tokens
-   such as `TREE_REF_<owner>_<n>`.
-4. The exact source token text and UTF-8 span remain preserved on
-   `TreeCalcChildrenReferenceCollection`.
-5. The returned carrier is `TreeFormulaReferenceCarrier::named` with
-   `TreeCalcReferenceCollection::ChildrenV1`, so existing public OxFml host
-   context, host-reference bind-result, formal input, and sparse
-   reference-values paths remain the runtime surface.
-6. Unsupported raw TreeCalc reference families return typed prebind
-   diagnostics. Qualified `base.@CHILDREN` / `base.*` is deliberately rejected
-   until a typed caller-supplied path-resolution surface can supply the base
-   without duplicating name precedence.
+Correct shape:
 
-Current OxCalc gap routed to W056/W074:
-1. OxFml still owns formula grammar, expression parsing, call/name precedence,
-   and runtime prepared identity.
-2. OxCalc is not asking OxFml to privately parse TreeCalc syntax or to inspect
-   `TREE_REF_*` token naming beyond the existing public formal-reference path.
-3. Broader selectors, qualified paths, bare names/callables, structured table
-   references, and cross-workspace references remain blocked on W056 typed
-   carriers plus W074/OxFml packet evidence.
+1. OxCalc supplies `HostFormulaContext` data: dialect/profile ids, namespace
+   versions, caller context identity, table context identity, resolution-rule
+   version, and declarative host-reference syntax rules.
+2. OxFml parses and binds authored formula text. It owns operator/call/name
+   grammar, string-literal exclusion, structured-reference grammar, lexical
+   scope, source spans, typed bind diagnostics, and prepared identity.
+3. OxFml emits generic host-reference packets that preserve source span, exact
+   token text, token/rule kind, opaque selector/path payload, resolution layer,
+   shape hint, caller-context dependency, and diagnostics.
+4. OxCalc resolves those packets against `OxCalcTreeContext`, returning stable
+   handles, sparse/reference readers, dependency facts, invalidation facts, and
+   typed resolver diagnostics.
 
-Current non-assumptions:
-1. This prebind is not a full TreeCalc parser.
-2. DnaTreeCalc still needs to adopt the OxCalc-owned surface; it should not add
-   local TreeCalc formula parsing for this blocker.
-3. OxCalc is not duplicating OxFml name/call precedence or OxFunc function
-   semantics.
+First declarative TreeCalc rule inventory for OxFml:
+
+| Family | Example pattern shape | OxFml parse responsibility | OxCalc resolver responsibility |
+|---|---|---|---|
+| children selector | `@CHILDREN`, `.*`, `<host-path>.@CHILDREN`, `<host-path>.*` | detect declared selector syntax and preserve base/selector spans | resolve caller or qualified base and collection membership/order/value facts |
+| ordered selector | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, `<host-path>.<selector>` | preserve selector/base/tail payloads | resolve traversal order, bounds, and member dependencies |
+| recursive selector | `**`, `**.<tail>`, `<host-path>.**`, `<host-path>.**.<tail>` | detect only when declared by the host dialect | resolve recursive traversal and tail path |
+| reference literal array | `{<host-ref>(,<host-ref>)*}` in reference-only dialect position | preserve element spans and reject scalar/reference ambiguity | resolve members or return typed mixed-array exclusion |
+| node table structured ref | `<host-path>[...]`, `[...]` with caller table context | produce generic structured-reference bind records | map node tables to descriptors, readers, and table dependency facts |
+
+The old OxCalc-local parse/rewrite code path has been deleted from the product surface.
+Any remaining coverage for these families must use OxFml packets plus OxCalc
+resolver outputs, or record a typed pending/exclusion outcome where OxFml does
+not yet produce the required packet.

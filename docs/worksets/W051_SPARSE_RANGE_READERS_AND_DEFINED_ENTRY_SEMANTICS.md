@@ -520,7 +520,7 @@ explicitly. The HANDOFF-CALC-005 receipt accepts the generic host-context
 direction and routes final name/call precedence evidence to W074.
 
 Still open outside the scoped OxCalc W051 close: DnaTreeCalc receiving-side
-adoption of the W056 `calc-4vs8.7` raw formula-text prebind surface, the
+adoption of the W056 `calc-4vs8.7` raw formula-text host-reference bind surface, the
 W074-CALC005 Excel oracle matrix for built-in/UDF/defined-name/
 defined-name-`LAMBDA` shadowing, and full TreeCalc reference families plus
 structured table lowering in successor W056. The first OxCalc-owned raw

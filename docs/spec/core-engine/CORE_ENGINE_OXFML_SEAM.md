@@ -297,15 +297,42 @@ OxFml must bind structured-reference grammar against the generic descriptor
 catalog only; it must not learn TreeCalc node paths, row ids, column formula
 metadata, or table invalidation semantics.
 
-For TreeCalc-authored table-path syntax, OxCalc supplies a host-hook prebind
-surface before OxFml sees the generic structured-reference packet. The host
-hook recognizes only table path tokens against OxCalc/DnaTreeCalc table-node
-projections and emits a generic `StructuredReferenceBindRecord` preserving the
-original TreeCalc source span, exact source token, typed source token kind,
-path token/span, structured-tail token/span, stable host reference handle,
-selector payload, caller-context dependency, typed diagnostics, and replay
-identity. OxFml still receives only the generic descriptor/catalog result; it
-does not parse TreeCalc paths or table-node metadata.
+Boundary correction, 2026-05-24: any OxCalc formula-text parse/rewrite surface that rewrites
+authored text before OxFml parses it is the wrong seam. OxFml owns formula
+lexing, parsing, and binding. OxCalc supplies host context, dialect/profile
+identity, version identity, namespace/reference resolver callbacks, table
+descriptors, and reference carriers/readers. Existing OxCalc-local parse/rewrite
+surfaces are migration defects and must be deleted or replaced by the generic
+OxFml host syntax hook.
+
+The replacement shape is:
+
+1. OxCalc supplies declarative host syntax rules in `HostFormulaContext`, keyed
+   by `dialect_id`, `capability_profile_id`, and `resolution_rule_version`.
+2. OxFml applies those rules while parsing/binding the formula and emits
+   source-preserving host-reference or structured-reference bind packets.
+3. OxCalc receives those packets and resolves them against `OxCalcTreeContext`
+   into `TreeReference` carriers, sparse readers, dependency facts, and
+   invalidation facts.
+4. DnaTreeCalc submits formula text and model edits only; it does not call
+   formula query helpers or construct reference carriers.
+
+The first generic host syntax inventory that OxFml must be able to represent
+is intentionally declarative rather than TreeCalc-semantic:
+
+| Family | Candidate pattern shape | OxFml output | OxCalc responsibility |
+|---|---|---|---|
+| Children selector | `@CHILDREN`, `.*`, `<host-path>.@CHILDREN`, `<host-path>.*` | explicit host-reference packet with source span/token, selector kind, optional base token/span | resolve base, lower to `ChildrenV1`, own membership/order/value invalidation |
+| Ordered selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS`, `<host-path>.@PRECEDING`, `<host-path>.@FOLLOWING`, `<host-path>.@ANCESTORS` | explicit host-reference packet with selector family and optional base token/span | resolve base and ordered members, own traversal policy and dependency facts |
+| Recursive descent | `**`, `**.<tail>`, `<host-path>.**`, `<host-path>.**.<tail>` | explicit host-reference packet with recursive selector and optional tail token/span | resolve base/tail traversal, enforce traversal bounds |
+| Ancestor/root/workspace anchors | `^`, `^.<tail>`, `^^.<tail>`, `[]`, `[].<tail>`, `[workspace]<path>`, `!<path>` | host-path packet, not an operator rewrite | resolve caller-sensitive path, workspace availability, aliases, and diagnostics |
+| Reference literal arrays | `{<host-ref>(,<host-ref>)*}` where the host context marks the array as reference-only | array containing host-reference packets or a single collection packet preserving element spans | reject mixed scalar/reference arrays or lower to `ReferenceLiteralArrayV1` |
+| Node table structured refs | `<host-path>[...]`, `[...]` with enclosing table context | generic `StructuredReferenceBindRecord` plus optional host-path packet for the table name/path | project node tables to generic descriptors, resolve table path, lower to sparse table readers |
+
+OxFml must not inspect child lists, sibling order, node paths, table row ids,
+column ids, meta-child filtering, traversal membership, or invalidation
+semantics. Those facts remain OxCalc-owned and are correlated back to the
+OxFml bind handles.
 
 At runtime, OxCalc lowers the resolved structured-reference packet to a sparse
 table reader and public OxFml sparse-reference value binding keyed by the

@@ -8,8 +8,9 @@ use std::time::{Duration, Instant};
 use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormalInputBinding, RuntimeFormalReference, RuntimeFormulaRequest,
     RuntimeFormulaResult, RuntimeHostFormulaContext, RuntimeHostNameBindResult,
-    RuntimeHostNameBinding, RuntimeHostReferenceBindResult, RuntimePreparedFormulaIdentity,
-    RuntimeSparseReferenceCell, RuntimeSparseReferenceValuesBinding, RuntimeTemplateHole,
+    RuntimeHostNameBinding, RuntimeHostReferenceBindResult, RuntimeHostReferenceSyntaxRule,
+    RuntimePreparedFormulaIdentity, RuntimeSparseReferenceCell,
+    RuntimeSparseReferenceValuesBinding, RuntimeTemplateHole,
 };
 use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::interface::TypedContextQueryBundle;
@@ -3708,6 +3709,120 @@ fn treecalc_host_formula_context(
                 .clone()
                 .unwrap_or_else(|| "treecalc-table-context:unavailable-current-packet".to_string())
         }),
+        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
+    }
+}
+
+pub(crate) fn treecalc_host_reference_syntax_rules() -> Vec<RuntimeHostReferenceSyntaxRule> {
+    vec![
+        treecalc_host_reference_syntax_rule(
+            "treecalc.children",
+            "treecalc.collection.children",
+            "@CHILDREN",
+            "collection",
+            true,
+            "selector-family:children",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.children_sugar",
+            "treecalc.collection.children",
+            ".*",
+            "collection",
+            true,
+            "selector-family:children-sugar",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.preceding",
+            "treecalc.collection.ordered",
+            "@PRECEDING",
+            "collection",
+            true,
+            "selector-family:preceding",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.following",
+            "treecalc.collection.ordered",
+            "@FOLLOWING",
+            "collection",
+            true,
+            "selector-family:following",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.ancestors",
+            "treecalc.collection.ordered",
+            "@ANCESTORS",
+            "collection",
+            true,
+            "selector-family:ancestors",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.previous_sibling",
+            "treecalc.relative.sibling",
+            "@PREV",
+            "scalar-reference",
+            true,
+            "selector-family:sibling-prev",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.next_sibling",
+            "treecalc.relative.sibling",
+            "@NEXT",
+            "scalar-reference",
+            true,
+            "selector-family:sibling-next",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.reference_literal_array",
+            "treecalc.collection.reference_literal_array",
+            "{",
+            "collection",
+            true,
+            "selector-family:reference-literal-array",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.ancestor_anchor",
+            "treecalc.relative.ancestor",
+            "^",
+            "scalar-reference",
+            true,
+            "selector-family:ancestor-anchor",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.escaped_path",
+            "treecalc.path.escaped",
+            "[",
+            "scalar-reference",
+            true,
+            "selector-family:escaped-path",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.recursive_descent",
+            "treecalc.collection.recursive",
+            "**",
+            "collection",
+            true,
+            "selector-family:recursive-descent",
+        ),
+    ]
+}
+
+fn treecalc_host_reference_syntax_rule(
+    rule_id: &str,
+    rule_family: &str,
+    pattern_text: &str,
+    shape_hint: &str,
+    caller_context_dependent: bool,
+    opaque_selector_payload: &str,
+) -> RuntimeHostReferenceSyntaxRule {
+    RuntimeHostReferenceSyntaxRule {
+        rule_id: rule_id.to_string(),
+        rule_family: rule_family.to_string(),
+        pattern_text: pattern_text.to_string(),
+        token_kind: "treecalc-host-reference".to_string(),
+        resolution_layer: "explicit_host_ref".to_string(),
+        shape_hint: Some(shape_hint.to_string()),
+        caller_context_dependent,
+        opaque_selector_payload: Some(opaque_selector_payload.to_string()),
     }
 }
 
@@ -6511,6 +6626,32 @@ mod tests {
                     "cross_workspace_target_availability=workspace=projections;target=node:102;availability=workspace-availability:v3"
                 ))
         );
+        let syntax_rules = host_context
+            .host_reference_syntax_rules
+            .iter()
+            .map(|rule| {
+                (
+                    rule.rule_id.as_str(),
+                    rule.pattern_text.as_str(),
+                    rule.opaque_selector_payload.as_deref(),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert!(syntax_rules.contains(&(
+            "treecalc.children",
+            "@CHILDREN",
+            Some("selector-family:children")
+        )));
+        assert!(syntax_rules.contains(&(
+            "treecalc.children_sugar",
+            ".*",
+            Some("selector-family:children-sugar")
+        )));
+        assert!(syntax_rules.contains(&(
+            "treecalc.recursive_descent",
+            "**",
+            Some("selector-family:recursive-descent")
+        )));
     }
 
     #[test]
@@ -7869,7 +8010,7 @@ mod tests {
     }
 
     #[test]
-    fn raw_children_formula_text_prebinds_and_executes_through_oxfml_path() {
+    fn raw_children_formula_text_resolves_through_oxfml_host_reference_path() {
         for (index, source_text) in ["=SUM(@CHILDREN)", "=SUM(.*)"].into_iter().enumerate() {
             let mut context = OxCalcTreeContext::default();
             let workspace_id = context
@@ -7908,7 +8049,7 @@ mod tests {
     }
 
     #[test]
-    fn raw_qualified_children_formula_text_resolves_base_through_tree_context() {
+    fn raw_qualified_children_formula_text_resolves_through_oxfml_host_reference_path() {
         for (index, source_text) in ["=SUM(Base.@CHILDREN)", "=SUM(Base.*)"]
             .into_iter()
             .enumerate()
@@ -7943,17 +8084,23 @@ mod tests {
 
             let result = context.recalculate(&workspace_id).unwrap();
 
-            assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+            assert_eq!(
+                result.run_state,
+                OxCalcTreeRunState::Published,
+                "{source_text} should execute through OxCalcTreeContext: reject={:?}; diagnostics={:?}",
+                result.reject_detail,
+                result.diagnostics
+            );
             assert_eq!(
                 result.published_values.get(&total_id),
                 Some(&"5".to_string()),
-                "{source_text} should resolve its base inside OxCalcTreeContext"
+                "{source_text} should resolve the qualified base collection"
             );
         }
     }
 
     #[test]
-    fn raw_ordered_selector_formula_text_resolves_collection_through_tree_context() {
+    fn raw_ordered_selector_formula_text_resolves_direct_collections_through_tree_context() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -8013,40 +8160,6 @@ mod tests {
             )
             .unwrap();
 
-        let base_id = context
-            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
-            .unwrap();
-        let lane_a_id = context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("LaneA", "").under(base_id),
-            )
-            .unwrap();
-        context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("Margin", "=3").under(lane_a_id),
-            )
-            .unwrap();
-        let lane_b_id = context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("LaneB", "").under(base_id),
-            )
-            .unwrap();
-        context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("Margin", "=4").under(lane_b_id),
-            )
-            .unwrap();
-        let recursive_id = context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("Recursive", "=SUM(Base.**.Margin)"),
-            )
-            .unwrap();
-
         let result = context.recalculate(&workspace_id).unwrap();
 
         assert_eq!(
@@ -8068,9 +8181,50 @@ mod tests {
             result.published_values.get(&ancestors_id),
             Some(&"10".to_string())
         );
+    }
+
+    #[test]
+    fn qualified_recursive_selector_formula_text_resolves_tail_through_oxfml_host_reference_path() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:qualified-recursive-selector",
+            ))
+            .unwrap();
+        let base_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
+            .unwrap();
+        let lane_a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LaneA", "").under(base_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "=3").under(lane_a_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Recursive", "=SUM(Base.**.Margin)"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
         assert_eq!(
-            result.published_values.get(&recursive_id),
-            Some(&"7".to_string())
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "qualified recursive selector failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"3".to_string())
         );
     }
 

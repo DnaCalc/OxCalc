@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use oxfml_core::consumer::runtime::RuntimeHostReferenceSyntaxMatch;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
@@ -445,181 +446,44 @@ fn format_tree_node_id_set(node_ids: &[TreeNodeId]) -> String {
         .join(",")
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TreeCalcFormulaTextPrebindDiagnosticCode {
-    UnsupportedSelector,
-    UnsupportedQualifiedHostReference,
-    UnsupportedRawTreeCalcReference,
-    MissingOrderedSelectorResolution,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcFormulaTextPrebindDiagnostic {
-    pub code: TreeCalcFormulaTextPrebindDiagnosticCode,
-    pub source_span_utf8: (usize, usize),
-    pub source_token_text: String,
-    pub detail: String,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("TreeCalc formula text prebind failed with {diagnostics_len} diagnostic(s)", diagnostics_len = .diagnostics.len())]
-pub struct TreeCalcFormulaTextPrebindError {
-    pub diagnostics: Vec<TreeCalcFormulaTextPrebindDiagnostic>,
+pub enum TreeCalcHostReferenceResolutionError {
+    #[error("unsupported TreeCalc host-reference selector payload: {payload}")]
+    UnsupportedSelectorPayload { payload: String },
+    #[error("missing TreeCalc host-reference selector payload")]
+    MissingSelectorPayload,
 }
 
-#[must_use]
-pub fn treecalc_formula_text_needs_prebind(source_text: &str) -> bool {
-    scan_treecalc_formula_text(source_text, TreeNodeId(0)).requires_prebind
-}
-
-pub fn prebind_treecalc_formula_text(
+pub fn treecalc_host_reference_carrier_from_syntax_match(
     owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-) -> Result<TreeFormula, TreeCalcFormulaTextPrebindError> {
-    prebind_treecalc_formula_text_with_context(
-        owner_node_id,
-        source_text,
-        &TreeCalcFormulaTextPrebindContext::default(),
-    )
-}
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
+) -> Result<TreeFormulaReferenceCarrier, TreeCalcHostReferenceResolutionError> {
+    let Some(payload) = syntax_match.opaque_selector_payload.as_deref() else {
+        return Err(TreeCalcHostReferenceResolutionError::MissingSelectorPayload);
+    };
 
-pub fn prebind_treecalc_formula_text_with_resolved_bases(
-    owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-    qualified_children_bases: impl IntoIterator<Item = TreeCalcQualifiedChildrenBaseResolution>,
-) -> Result<TreeFormula, TreeCalcFormulaTextPrebindError> {
-    let context =
-        TreeCalcFormulaTextPrebindContext::with_qualified_children_bases(qualified_children_bases);
-    prebind_treecalc_formula_text_with_context(owner_node_id, source_text, &context)
-}
-
-pub fn prebind_treecalc_formula_text_with_resolved_ordered_selectors(
-    owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-    ordered_selector_resolutions: impl IntoIterator<Item = TreeCalcOrderedSelectorResolution>,
-) -> Result<TreeFormula, TreeCalcFormulaTextPrebindError> {
-    let context = TreeCalcFormulaTextPrebindContext::with_ordered_selector_resolutions(
-        ordered_selector_resolutions,
-    );
-    prebind_treecalc_formula_text_with_context(owner_node_id, source_text, &context)
-}
-
-#[must_use]
-pub fn treecalc_formula_text_qualified_children_base_queries(
-    owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-) -> Vec<TreeCalcQualifiedChildrenBaseQuery> {
-    let source_text = source_text.as_ref();
-    scan_treecalc_formula_text(source_text, owner_node_id)
-        .children_references
-        .iter()
-        .filter_map(|reference| {
-            TreeCalcQualifiedChildrenBaseQuery::from_raw_reference(source_text, reference)
-        })
-        .collect()
-}
-
-#[must_use]
-pub fn treecalc_formula_text_ordered_selector_queries(
-    owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-) -> Vec<TreeCalcOrderedSelectorQuery> {
-    let source_text = source_text.as_ref();
-    scan_treecalc_formula_text(source_text, owner_node_id)
-        .ordered_selector_references
-        .iter()
-        .map(|reference| TreeCalcOrderedSelectorQuery::from_raw_reference(source_text, reference))
-        .collect()
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcFormulaTextPrebindContext {
-    #[serde(default)]
-    pub qualified_children_bases: Vec<TreeCalcQualifiedChildrenBaseResolution>,
-    #[serde(default)]
-    pub ordered_selector_resolutions: Vec<TreeCalcOrderedSelectorResolution>,
-}
-
-impl TreeCalcFormulaTextPrebindContext {
-    #[must_use]
-    pub fn with_qualified_children_bases(
-        qualified_children_bases: impl IntoIterator<Item = TreeCalcQualifiedChildrenBaseResolution>,
-    ) -> Self {
-        Self {
-            qualified_children_bases: qualified_children_bases.into_iter().collect(),
-            ordered_selector_resolutions: Vec::new(),
+    match payload {
+        "selector-family:children" | "selector-family:children-sugar" => {
+            let start = syntax_match.source_span.start;
+            let end = start + syntax_match.source_span.len;
+            let collection = TreeCalcChildrenReferenceCollection::new(
+                owner_node_id,
+                syntax_match.source_token_text.clone(),
+            )
+            .with_source_span_utf8(start, end);
+            Ok(TreeFormulaReferenceCarrier::named(
+                syntax_match.syntax_match_handle.clone(),
+                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                    collection,
+                )),
+            ))
         }
+        _ => Err(
+            TreeCalcHostReferenceResolutionError::UnsupportedSelectorPayload {
+                payload: payload.to_string(),
+            },
+        ),
     }
-
-    #[must_use]
-    pub fn with_ordered_selector_resolutions(
-        ordered_selector_resolutions: impl IntoIterator<Item = TreeCalcOrderedSelectorResolution>,
-    ) -> Self {
-        Self {
-            qualified_children_bases: Vec::new(),
-            ordered_selector_resolutions: ordered_selector_resolutions.into_iter().collect(),
-        }
-    }
-
-    fn resolved_base_for(&self, reference: &RawChildrenReference) -> Option<TreeNodeId> {
-        let RawChildrenReferenceBase::Qualified = reference.base else {
-            return Some(reference.default_base_node_id);
-        };
-        let base_span_utf8 = reference.base_span_utf8?;
-        let selector_span_utf8 = (reference.selector_start_byte, reference.selector_end_byte);
-        self.qualified_children_bases
-            .iter()
-            .find(|resolution| {
-                resolution.source_span_utf8 == (reference.start_byte, reference.end_byte)
-                    && resolution.base_span_utf8 == base_span_utf8
-                    && resolution.selector_span_utf8 == selector_span_utf8
-                    && resolution.source_token_text == reference.source_token_text
-            })
-            .map(|resolution| resolution.base_node_id)
-    }
-
-    fn ordered_selector_resolution_for(
-        &self,
-        reference: &RawOrderedSelectorReference,
-    ) -> Option<&TreeCalcOrderedSelectorResolution> {
-        self.ordered_selector_resolutions.iter().find(|resolution| {
-            resolution.family == reference.family
-                && resolution.source_span_utf8 == (reference.start_byte, reference.end_byte)
-                && resolution.base_span_utf8 == reference.base_span_utf8
-                && resolution.selector_span_utf8
-                    == (reference.selector_start_byte, reference.selector_end_byte)
-                && resolution.tail_span_utf8 == reference.tail_span_utf8
-                && resolution.source_token_text == reference.source_token_text
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TreeCalcQualifiedBaseResolutionLayer {
-    CallerSuppliedResolvedBase,
-    ExplicitHostPath,
-    OxCalcStructuralPath,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcQualifiedChildrenBaseResolution {
-    pub source_span_utf8: (usize, usize),
-    pub base_span_utf8: (usize, usize),
-    pub selector_span_utf8: (usize, usize),
-    pub source_token_text: String,
-    pub base_node_id: TreeNodeId,
-    pub resolution_layer: TreeCalcQualifiedBaseResolutionLayer,
-    pub resolution_identity: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcQualifiedChildrenBaseQuery {
-    pub source_span_utf8: (usize, usize),
-    pub base_span_utf8: (usize, usize),
-    pub selector_span_utf8: (usize, usize),
-    pub source_token_text: String,
-    pub base_token_text: String,
-    pub selector_token_text: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1269,27 +1133,35 @@ fn looks_like_direct_workspace_selector(selector_token_text: &str) -> bool {
         || selector_token_text.contains('/')
 }
 
-fn split_treecalc_host_path_token(
+pub fn split_treecalc_host_path_token(
     base_token_text: &str,
 ) -> Result<Vec<String>, TreeCalcHostPathBaseResolutionError> {
     let mut segments = Vec::new();
     let mut segment = String::new();
-    let mut bracket_depth = 0usize;
+    let mut in_bracket = false;
+    let mut bracket_escape = false;
     for ch in base_token_text.chars() {
+        if in_bracket {
+            if bracket_escape {
+                segment.push(ch);
+                bracket_escape = false;
+                continue;
+            }
+            match ch {
+                '\'' => {
+                    bracket_escape = true;
+                }
+                ']' => {
+                    in_bracket = false;
+                }
+                _ => segment.push(ch),
+            }
+            continue;
+        }
+
         match ch {
-            '[' if bracket_depth > 0 => {
-                return Err(
-                    TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
-                        base_token_text: base_token_text.to_string(),
-                        detail: "nested bracketed path segments are not admitted".to_string(),
-                    },
-                );
-            }
             '[' => {
-                bracket_depth += 1;
-            }
-            ']' if bracket_depth > 0 => {
-                bracket_depth -= 1;
+                in_bracket = true;
             }
             ']' => {
                 return Err(
@@ -1299,10 +1171,10 @@ fn split_treecalc_host_path_token(
                     },
                 );
             }
-            '.' | '/' if bracket_depth == 0 => {
+            '.' | '/' => {
                 push_treecalc_host_path_segment(&mut segments, &mut segment);
             }
-            '!' if bracket_depth == 0 => {
+            '!' => {
                 if !segments.is_empty() || segment.trim().is_empty() {
                     return Err(
                         TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
@@ -1316,7 +1188,15 @@ fn split_treecalc_host_path_token(
             _ => segment.push(ch),
         }
     }
-    if bracket_depth != 0 {
+    if bracket_escape {
+        return Err(
+            TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
+                base_token_text: base_token_text.to_string(),
+                detail: "dangling bracket escape".to_string(),
+            },
+        );
+    }
+    if in_bracket {
         return Err(
             TreeCalcHostPathBaseResolutionError::InvalidBaseTokenSyntax {
                 base_token_text: base_token_text.to_string(),
@@ -1347,131 +1227,6 @@ fn unquote_treecalc_host_path_segment(segment: &str) -> String {
         })
         .unwrap_or(segment)
         .to_string()
-}
-
-impl TreeCalcQualifiedChildrenBaseQuery {
-    fn from_raw_reference(source_text: &str, reference: &RawChildrenReference) -> Option<Self> {
-        let RawChildrenReferenceBase::Qualified = reference.base else {
-            return None;
-        };
-        let base_span_utf8 = reference.base_span_utf8?;
-        let selector_span_utf8 = (reference.selector_start_byte, reference.selector_end_byte);
-        Some(Self {
-            source_span_utf8: (reference.start_byte, reference.end_byte),
-            base_span_utf8,
-            selector_span_utf8,
-            source_token_text: reference.source_token_text.clone(),
-            base_token_text: source_text[base_span_utf8.0..base_span_utf8.1].to_string(),
-            selector_token_text: source_text[selector_span_utf8.0..selector_span_utf8.1]
-                .to_string(),
-        })
-    }
-
-    #[must_use]
-    pub fn to_resolution(
-        &self,
-        base_node_id: TreeNodeId,
-    ) -> TreeCalcQualifiedChildrenBaseResolution {
-        TreeCalcQualifiedChildrenBaseResolution::new(
-            self.source_span_utf8,
-            self.base_span_utf8,
-            self.selector_span_utf8,
-            self.source_token_text.clone(),
-            base_node_id,
-        )
-    }
-
-    #[must_use]
-    pub fn to_resolution_with_layer(
-        &self,
-        base_node_id: TreeNodeId,
-        resolution_layer: TreeCalcQualifiedBaseResolutionLayer,
-        resolution_identity: impl Into<String>,
-    ) -> TreeCalcQualifiedChildrenBaseResolution {
-        self.to_resolution(base_node_id)
-            .with_resolution_layer(resolution_layer, resolution_identity)
-    }
-
-    pub fn to_resolution_with_structural_path_base(
-        &self,
-        snapshot: &StructuralSnapshot,
-    ) -> Result<TreeCalcQualifiedChildrenBaseResolution, TreeCalcHostPathBaseResolutionError> {
-        let base = resolve_treecalc_explicit_host_path_base(snapshot, &self.base_token_text)?;
-        Ok(self.to_resolution_with_layer(
-            base.base_node_id,
-            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath,
-            base.resolution_identity,
-        ))
-    }
-}
-
-impl TreeCalcQualifiedChildrenBaseResolution {
-    #[must_use]
-    pub fn new(
-        source_span_utf8: (usize, usize),
-        base_span_utf8: (usize, usize),
-        selector_span_utf8: (usize, usize),
-        source_token_text: impl Into<String>,
-        base_node_id: TreeNodeId,
-    ) -> Self {
-        Self {
-            source_span_utf8,
-            base_span_utf8,
-            selector_span_utf8,
-            source_token_text: source_token_text.into(),
-            base_node_id,
-            resolution_layer: TreeCalcQualifiedBaseResolutionLayer::CallerSuppliedResolvedBase,
-            resolution_identity: format!(
-                "treecalc-qualified-base:v1:source={}-{};base={base_node_id}",
-                source_span_utf8.0, source_span_utf8.1
-            ),
-        }
-    }
-
-    #[must_use]
-    pub fn with_resolution_layer(
-        mut self,
-        resolution_layer: TreeCalcQualifiedBaseResolutionLayer,
-        resolution_identity: impl Into<String>,
-    ) -> Self {
-        self.resolution_layer = resolution_layer;
-        self.resolution_identity = resolution_identity.into();
-        self
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TreeCalcOrderedSelectorResolutionLayer {
-    CallerSuppliedResolvedCollection,
-    ExplicitHostPath,
-    OxCalcStructuralTraversal,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcOrderedSelectorResolution {
-    pub family: TreeCalcOrderedSelectorFamily,
-    pub source_span_utf8: (usize, usize),
-    pub base_span_utf8: Option<(usize, usize)>,
-    pub selector_span_utf8: (usize, usize),
-    pub tail_span_utf8: Option<(usize, usize)>,
-    pub source_token_text: String,
-    pub base_node_id: TreeNodeId,
-    pub member_node_ids: Vec<TreeNodeId>,
-    pub resolution_layer: TreeCalcOrderedSelectorResolutionLayer,
-    pub resolution_identity: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcOrderedSelectorQuery {
-    pub family: TreeCalcOrderedSelectorFamily,
-    pub source_span_utf8: (usize, usize),
-    pub base_span_utf8: Option<(usize, usize)>,
-    pub selector_span_utf8: (usize, usize),
-    pub tail_span_utf8: Option<(usize, usize)>,
-    pub source_token_text: String,
-    pub base_token_text: Option<String>,
-    pub selector_token_text: String,
-    pub tail_token_text: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1515,12 +1270,6 @@ pub struct TreeCalcOrderedSelectorTraversalResult {
     pub traversal_policy_id: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeCalcOrderedSelectorTraversalResolution {
-    pub resolution: TreeCalcOrderedSelectorResolution,
-    pub traversal: TreeCalcOrderedSelectorTraversalResult,
-}
-
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum TreeCalcOrderedSelectorTraversalError {
     #[error("ordered selector base node {base_node_id} is not present in the structural snapshot")]
@@ -1533,125 +1282,6 @@ pub enum TreeCalcOrderedSelectorTraversalError {
         policy_id: String,
         visited_count: usize,
     },
-}
-
-impl TreeCalcOrderedSelectorQuery {
-    fn from_raw_reference(source_text: &str, reference: &RawOrderedSelectorReference) -> Self {
-        Self {
-            family: reference.family,
-            source_span_utf8: (reference.start_byte, reference.end_byte),
-            base_span_utf8: reference.base_span_utf8,
-            selector_span_utf8: (reference.selector_start_byte, reference.selector_end_byte),
-            tail_span_utf8: reference.tail_span_utf8,
-            source_token_text: reference.source_token_text.clone(),
-            base_token_text: reference
-                .base_span_utf8
-                .map(|(start, end)| source_text[start..end].to_string()),
-            selector_token_text: source_text
-                [reference.selector_start_byte..reference.selector_end_byte]
-                .to_string(),
-            tail_token_text: reference
-                .tail_span_utf8
-                .map(|(start, end)| source_text[start..end].to_string()),
-        }
-    }
-
-    #[must_use]
-    pub fn to_resolution(
-        &self,
-        base_node_id: TreeNodeId,
-        member_node_ids: impl IntoIterator<Item = TreeNodeId>,
-    ) -> TreeCalcOrderedSelectorResolution {
-        TreeCalcOrderedSelectorResolution::new(
-            self.family,
-            self.source_span_utf8,
-            self.base_span_utf8,
-            self.selector_span_utf8,
-            self.tail_span_utf8,
-            self.source_token_text.clone(),
-            base_node_id,
-            member_node_ids,
-        )
-    }
-
-    #[must_use]
-    pub fn to_resolution_with_layer(
-        &self,
-        base_node_id: TreeNodeId,
-        member_node_ids: impl IntoIterator<Item = TreeNodeId>,
-        resolution_layer: TreeCalcOrderedSelectorResolutionLayer,
-        resolution_identity: impl Into<String>,
-    ) -> TreeCalcOrderedSelectorResolution {
-        self.to_resolution(base_node_id, member_node_ids)
-            .with_resolution_layer(resolution_layer, resolution_identity)
-    }
-
-    pub fn to_resolution_with_structural_traversal(
-        &self,
-        snapshot: &StructuralSnapshot,
-        base_node_id: TreeNodeId,
-        policy: TreeCalcOrderedSelectorTraversalPolicy,
-    ) -> Result<TreeCalcOrderedSelectorTraversalResolution, TreeCalcOrderedSelectorTraversalError>
-    {
-        let tail_segments = ordered_selector_tail_segments(self.tail_token_text.as_deref());
-        let traversal = resolve_treecalc_ordered_selector_traversal(
-            snapshot,
-            self.family,
-            base_node_id,
-            &tail_segments,
-            policy,
-        )?;
-        let resolution_identity = format!(
-            "treecalc-ordered-selector:v1:family={};source={}-{};base={base_node_id};resolver=oxcalc_structural_traversal;{}",
-            self.family.stable_id(),
-            self.source_span_utf8.0,
-            self.source_span_utf8.1,
-            traversal.traversal_policy_id
-        );
-        let resolution = self.to_resolution_with_layer(
-            base_node_id,
-            traversal.member_node_ids.clone(),
-            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal,
-            resolution_identity,
-        );
-        Ok(TreeCalcOrderedSelectorTraversalResolution {
-            resolution,
-            traversal,
-        })
-    }
-
-    pub fn to_resolution_with_structural_path_base_and_traversal(
-        &self,
-        snapshot: &StructuralSnapshot,
-        policy: TreeCalcOrderedSelectorTraversalPolicy,
-    ) -> Result<
-        TreeCalcOrderedSelectorTraversalResolution,
-        TreeCalcOrderedSelectorStructuralResolutionError,
-    > {
-        let base_token_text = self
-            .base_token_text
-            .as_deref()
-            .ok_or(TreeCalcOrderedSelectorStructuralResolutionError::MissingQualifiedBaseToken)?;
-        let base = resolve_treecalc_explicit_host_path_base(snapshot, base_token_text)?;
-        let mut resolved = self
-            .to_resolution_with_structural_traversal(snapshot, base.base_node_id, policy)
-            .map_err(TreeCalcOrderedSelectorStructuralResolutionError::from)?;
-        resolved.resolution.resolution_identity = format!(
-            "{};base_resolution={}",
-            resolved.resolution.resolution_identity, base.resolution_identity
-        );
-        Ok(resolved)
-    }
-}
-
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum TreeCalcOrderedSelectorStructuralResolutionError {
-    #[error("ordered selector query does not have a qualified base token")]
-    MissingQualifiedBaseToken,
-    #[error(transparent)]
-    BasePath(#[from] TreeCalcHostPathBaseResolutionError),
-    #[error(transparent)]
-    Traversal(#[from] TreeCalcOrderedSelectorTraversalError),
 }
 
 pub fn resolve_treecalc_ordered_selector_traversal(
@@ -1784,648 +1414,6 @@ fn recursive_descendants_preorder(
         }
     }
     Ok(descendants)
-}
-
-fn ordered_selector_tail_segments(tail_token_text: Option<&str>) -> Vec<String> {
-    tail_token_text
-        .map(|tail| {
-            tail.trim_start_matches('.')
-                .split('.')
-                .filter(|segment| !segment.is_empty())
-                .map(ToString::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-impl TreeCalcOrderedSelectorResolution {
-    #[must_use]
-    pub fn new(
-        family: TreeCalcOrderedSelectorFamily,
-        source_span_utf8: (usize, usize),
-        base_span_utf8: Option<(usize, usize)>,
-        selector_span_utf8: (usize, usize),
-        tail_span_utf8: Option<(usize, usize)>,
-        source_token_text: impl Into<String>,
-        base_node_id: TreeNodeId,
-        member_node_ids: impl IntoIterator<Item = TreeNodeId>,
-    ) -> Self {
-        Self {
-            family,
-            source_span_utf8,
-            base_span_utf8,
-            selector_span_utf8,
-            tail_span_utf8,
-            source_token_text: source_token_text.into(),
-            base_node_id,
-            member_node_ids: member_node_ids.into_iter().collect(),
-            resolution_layer:
-                TreeCalcOrderedSelectorResolutionLayer::CallerSuppliedResolvedCollection,
-            resolution_identity: format!(
-                "treecalc-ordered-selector:v1:family={};source={}-{};base={base_node_id}",
-                family.stable_id(),
-                source_span_utf8.0,
-                source_span_utf8.1
-            ),
-        }
-    }
-
-    #[must_use]
-    pub fn with_resolution_layer(
-        mut self,
-        resolution_layer: TreeCalcOrderedSelectorResolutionLayer,
-        resolution_identity: impl Into<String>,
-    ) -> Self {
-        self.resolution_layer = resolution_layer;
-        self.resolution_identity = resolution_identity.into();
-        self
-    }
-}
-
-pub fn prebind_treecalc_formula_text_with_context(
-    owner_node_id: TreeNodeId,
-    source_text: impl AsRef<str>,
-    context: &TreeCalcFormulaTextPrebindContext,
-) -> Result<TreeFormula, TreeCalcFormulaTextPrebindError> {
-    let source_text = source_text.as_ref();
-    let mut scan = scan_treecalc_formula_text(source_text, owner_node_id);
-    for reference in &scan.children_references {
-        if matches!(reference.base, RawChildrenReferenceBase::Qualified)
-            && context.resolved_base_for(reference).is_none()
-        {
-            scan.diagnostics.push(prebind_diagnostic(
-                TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
-                source_text,
-                reference.start_byte,
-                reference.end_byte,
-                "qualified TreeCalc children selectors require a caller-supplied resolved base",
-            ));
-        }
-    }
-    for reference in &scan.ordered_selector_references {
-        if context.ordered_selector_resolution_for(reference).is_none() {
-            scan.diagnostics.push(prebind_diagnostic(
-                TreeCalcFormulaTextPrebindDiagnosticCode::MissingOrderedSelectorResolution,
-                source_text,
-                reference.start_byte,
-                reference.end_byte,
-                "ordered TreeCalc selectors require a caller-supplied resolved collection",
-            ));
-        }
-    }
-    if !scan.diagnostics.is_empty() {
-        return Err(TreeCalcFormulaTextPrebindError {
-            diagnostics: scan.diagnostics,
-        });
-    }
-
-    if scan.children_references.is_empty() && scan.ordered_selector_references.is_empty() {
-        return Ok(TreeFormula::opaque_oxfml(source_text, Vec::new()));
-    }
-
-    let mut prebound_references =
-        Vec::with_capacity(scan.children_references.len() + scan.ordered_selector_references.len());
-    for reference in &scan.children_references {
-        let collection = TreeCalcChildrenReferenceCollection::new(
-            context
-                .resolved_base_for(reference)
-                .expect("qualified references were checked before rewrite"),
-            reference.source_token_text.clone(),
-        )
-        .with_source_span_utf8(reference.start_byte, reference.end_byte);
-        prebound_references.push(PreboundTreeCalcReference {
-            start_byte: reference.start_byte,
-            end_byte: reference.end_byte,
-            reference: TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                collection,
-            )),
-        });
-    }
-    for reference in &scan.ordered_selector_references {
-        let resolution = context
-            .ordered_selector_resolution_for(reference)
-            .expect("ordered selector resolutions were checked before rewrite");
-        let collection = TreeCalcOrderedSelectorReferenceCollection::new(
-            resolution.family,
-            resolution.base_node_id,
-            resolution.source_token_text.clone(),
-            resolution.member_node_ids.clone(),
-        )
-        .with_source_span_utf8(reference.start_byte, reference.end_byte);
-        prebound_references.push(PreboundTreeCalcReference {
-            start_byte: reference.start_byte,
-            end_byte: reference.end_byte,
-            reference: TreeReference::ReferenceCollection(
-                TreeCalcReferenceCollection::OrderedSelectorV1(collection),
-            ),
-        });
-    }
-    prebound_references.sort_by_key(|reference| reference.start_byte);
-
-    let mut rewritten = String::with_capacity(source_text.len());
-    let mut carriers = Vec::with_capacity(prebound_references.len());
-    let mut cursor = 0;
-    for (reference_index, reference) in prebound_references.into_iter().enumerate() {
-        let neutral_token = format!("TREE_REF_{}_{}", owner_node_id.0, reference_index);
-        rewritten.push_str(&source_text[cursor..reference.start_byte]);
-        rewritten.push_str(&neutral_token);
-        cursor = reference.end_byte;
-
-        carriers.push(TreeFormulaReferenceCarrier::named(
-            neutral_token,
-            reference.reference,
-        ));
-    }
-    rewritten.push_str(&source_text[cursor..]);
-
-    Ok(TreeFormula::opaque_oxfml(rewritten, carriers))
-}
-
-struct PreboundTreeCalcReference {
-    start_byte: usize,
-    end_byte: usize,
-    reference: TreeReference,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct TreeCalcFormulaTextScan {
-    children_references: Vec<RawChildrenReference>,
-    ordered_selector_references: Vec<RawOrderedSelectorReference>,
-    diagnostics: Vec<TreeCalcFormulaTextPrebindDiagnostic>,
-    requires_prebind: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct RawChildrenReference {
-    start_byte: usize,
-    end_byte: usize,
-    selector_start_byte: usize,
-    selector_end_byte: usize,
-    source_token_text: String,
-    default_base_node_id: TreeNodeId,
-    base: RawChildrenReferenceBase,
-    base_span_utf8: Option<(usize, usize)>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RawChildrenReferenceBase {
-    Caller,
-    Qualified,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct RawOrderedSelectorReference {
-    family: TreeCalcOrderedSelectorFamily,
-    start_byte: usize,
-    end_byte: usize,
-    selector_start_byte: usize,
-    selector_end_byte: usize,
-    tail_span_utf8: Option<(usize, usize)>,
-    source_token_text: String,
-    default_base_node_id: TreeNodeId,
-    base: RawOrderedSelectorReferenceBase,
-    base_span_utf8: Option<(usize, usize)>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RawOrderedSelectorReferenceBase {
-    Caller,
-    Qualified,
-}
-
-fn scan_treecalc_formula_text(
-    source_text: &str,
-    owner_node_id: TreeNodeId,
-) -> TreeCalcFormulaTextScan {
-    let mut children_references = Vec::new();
-    let mut ordered_selector_references = Vec::new();
-    let mut diagnostics = Vec::new();
-    let mut requires_prebind = false;
-    let mut index = 0;
-    let mut in_string = false;
-
-    while index < source_text.len() {
-        let Some(current) = source_text[index..].chars().next() else {
-            break;
-        };
-
-        if in_string {
-            if current == '"' {
-                let next_index = index + current.len_utf8();
-                if source_text[next_index..].starts_with('"') {
-                    index = next_index + 1;
-                } else {
-                    in_string = false;
-                    index = next_index;
-                }
-            } else {
-                index += current.len_utf8();
-            }
-            continue;
-        }
-
-        if current == '"' {
-            in_string = true;
-            index += current.len_utf8();
-            continue;
-        }
-
-        if source_text[index..].starts_with("@CHILDREN") {
-            requires_prebind = true;
-            let end_byte = index + "@CHILDREN".len();
-            if explicit_qualified_children_selector_start(source_text, index).is_some() {
-                let start_byte = explicit_qualified_children_selector_start(source_text, index)
-                    .expect("qualified selector start checked above");
-                if !is_token_boundary_after(source_text, end_byte) {
-                    let end = token_end(source_text, index);
-                    diagnostics.push(prebind_diagnostic(
-                        TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                        source_text,
-                        start_byte,
-                        end,
-                        "only the exact qualified @CHILDREN selector is admitted in this prebind surface",
-                    ));
-                } else {
-                    children_references.push(RawChildrenReference {
-                        start_byte,
-                        end_byte,
-                        selector_start_byte: index,
-                        selector_end_byte: end_byte,
-                        source_token_text: source_text[start_byte..end_byte].to_string(),
-                        default_base_node_id: owner_node_id,
-                        base: RawChildrenReferenceBase::Qualified,
-                        base_span_utf8: Some((start_byte, index - 1)),
-                    });
-                }
-            } else if !previous_char_allows_free_standing_selector(source_text, index) {
-                let start_byte = host_path_start(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
-                    source_text,
-                    start_byte,
-                    end_byte,
-                    "qualified TreeCalc children selectors require caller-supplied path resolution",
-                ));
-            } else if !is_token_boundary_after(source_text, end_byte) {
-                let end = token_end(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                    source_text,
-                    index,
-                    end,
-                    "only the exact @CHILDREN selector is admitted in this prebind surface",
-                ));
-            } else {
-                children_references.push(RawChildrenReference {
-                    start_byte: index,
-                    end_byte,
-                    selector_start_byte: index,
-                    selector_end_byte: end_byte,
-                    source_token_text: source_text[index..end_byte].to_string(),
-                    default_base_node_id: owner_node_id,
-                    base: RawChildrenReferenceBase::Caller,
-                    base_span_utf8: None,
-                });
-            }
-            index = end_byte;
-            continue;
-        }
-
-        if let Some((family, selector_text)) = ordered_at_selector_at(source_text, index) {
-            requires_prebind = true;
-            let end_byte = index + selector_text.len();
-            if explicit_qualified_at_selector_start(source_text, index).is_some() {
-                let start_byte = explicit_qualified_at_selector_start(source_text, index)
-                    .expect("qualified selector start checked above");
-                if !is_token_boundary_after(source_text, end_byte) {
-                    let end = token_end(source_text, index);
-                    diagnostics.push(prebind_diagnostic(
-                        TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                        source_text,
-                        start_byte,
-                        end,
-                        "only exact qualified ordered TreeCalc selector tokens are admitted in this prebind surface",
-                    ));
-                } else {
-                    ordered_selector_references.push(RawOrderedSelectorReference {
-                        family,
-                        start_byte,
-                        end_byte,
-                        selector_start_byte: index,
-                        selector_end_byte: end_byte,
-                        tail_span_utf8: None,
-                        source_token_text: source_text[start_byte..end_byte].to_string(),
-                        default_base_node_id: owner_node_id,
-                        base: RawOrderedSelectorReferenceBase::Qualified,
-                        base_span_utf8: Some((start_byte, index - 1)),
-                    });
-                }
-            } else if !previous_char_allows_free_standing_selector(source_text, index) {
-                let start_byte = host_path_start(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
-                    source_text,
-                    start_byte,
-                    end_byte,
-                    "qualified ordered TreeCalc selectors require caller-supplied collection resolution",
-                ));
-            } else if !is_token_boundary_after(source_text, end_byte) {
-                let end = token_end(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                    source_text,
-                    index,
-                    end,
-                    "only exact ordered TreeCalc selector tokens are admitted in this prebind surface",
-                ));
-            } else {
-                ordered_selector_references.push(RawOrderedSelectorReference {
-                    family,
-                    start_byte: index,
-                    end_byte,
-                    selector_start_byte: index,
-                    selector_end_byte: end_byte,
-                    tail_span_utf8: None,
-                    source_token_text: source_text[index..end_byte].to_string(),
-                    default_base_node_id: owner_node_id,
-                    base: RawOrderedSelectorReferenceBase::Caller,
-                    base_span_utf8: None,
-                });
-            }
-            index = end_byte;
-            continue;
-        }
-
-        if current == '@' {
-            requires_prebind = true;
-            let end_byte = token_end(source_text, index);
-            diagnostics.push(prebind_diagnostic(
-                TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedSelector,
-                source_text,
-                index,
-                end_byte,
-                "unsupported TreeCalc selector; admitted selectors are @CHILDREN, @PRECEDING, @FOLLOWING, and @ANCESTORS",
-            ));
-            index = end_byte;
-            continue;
-        }
-
-        if source_text[index..].starts_with(".*") && !source_text[index..].starts_with(".**") {
-            requires_prebind = true;
-            let end_byte = index + ".*".len();
-            if previous_char_can_qualify_host_path(source_text, index) {
-                let start_byte = host_path_start(source_text, index);
-                if !is_token_boundary_after(source_text, end_byte) {
-                    let end = token_end(source_text, index);
-                    diagnostics.push(prebind_diagnostic(
-                        TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                        source_text,
-                        start_byte,
-                        end,
-                        "only the exact qualified .* children sugar is admitted in this prebind surface",
-                    ));
-                } else {
-                    children_references.push(RawChildrenReference {
-                        start_byte,
-                        end_byte,
-                        selector_start_byte: index,
-                        selector_end_byte: end_byte,
-                        source_token_text: source_text[start_byte..end_byte].to_string(),
-                        default_base_node_id: owner_node_id,
-                        base: RawChildrenReferenceBase::Qualified,
-                        base_span_utf8: Some((start_byte, index)),
-                    });
-                }
-            } else if !is_token_boundary_after(source_text, end_byte) {
-                let end = token_end(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                    source_text,
-                    index,
-                    end,
-                    "only the exact .* children sugar is admitted in this prebind surface",
-                ));
-            } else {
-                children_references.push(RawChildrenReference {
-                    start_byte: index,
-                    end_byte,
-                    selector_start_byte: index,
-                    selector_end_byte: end_byte,
-                    source_token_text: source_text[index..end_byte].to_string(),
-                    default_base_node_id: owner_node_id,
-                    base: RawChildrenReferenceBase::Caller,
-                    base_span_utf8: None,
-                });
-            }
-            index = end_byte;
-            continue;
-        }
-
-        if source_text[index..].starts_with("**") {
-            requires_prebind = true;
-            let end_byte = index + "**".len();
-            let (source_end_byte, tail_span_utf8, unsupported_end_byte) =
-                recursive_selector_end(source_text, index, end_byte);
-            if let Some(unsupported_end_byte) = unsupported_end_byte {
-                let start_byte = explicit_qualified_recursive_selector_start(source_text, index)
-                    .unwrap_or(index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference,
-                    source_text,
-                    start_byte,
-                    unsupported_end_byte,
-                    "only exact recursive selector tokens or .tail paths are admitted in this prebind surface",
-                ));
-                index = unsupported_end_byte;
-                continue;
-            }
-
-            if explicit_qualified_recursive_selector_start(source_text, index).is_some() {
-                let start_byte = explicit_qualified_recursive_selector_start(source_text, index)
-                    .expect("qualified recursive selector start checked above");
-                ordered_selector_references.push(RawOrderedSelectorReference {
-                    family: TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
-                    start_byte,
-                    end_byte: source_end_byte,
-                    selector_start_byte: index,
-                    selector_end_byte: end_byte,
-                    tail_span_utf8,
-                    source_token_text: source_text[start_byte..source_end_byte].to_string(),
-                    default_base_node_id: owner_node_id,
-                    base: RawOrderedSelectorReferenceBase::Qualified,
-                    base_span_utf8: Some((start_byte, index - 1)),
-                });
-            } else if !previous_char_allows_free_standing_selector(source_text, index) {
-                let start_byte = host_path_start(source_text, index);
-                diagnostics.push(prebind_diagnostic(
-                    TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference,
-                    source_text,
-                    start_byte,
-                    source_end_byte,
-                    "qualified recursive TreeCalc selectors require caller-supplied collection resolution",
-                ));
-            } else {
-                ordered_selector_references.push(RawOrderedSelectorReference {
-                    family: TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
-                    start_byte: index,
-                    end_byte: source_end_byte,
-                    selector_start_byte: index,
-                    selector_end_byte: end_byte,
-                    tail_span_utf8,
-                    source_token_text: source_text[index..source_end_byte].to_string(),
-                    default_base_node_id: owner_node_id,
-                    base: RawOrderedSelectorReferenceBase::Caller,
-                    base_span_utf8: None,
-                });
-            }
-            index = source_end_byte;
-            continue;
-        }
-
-        index += current.len_utf8();
-    }
-
-    TreeCalcFormulaTextScan {
-        children_references,
-        ordered_selector_references,
-        diagnostics,
-        requires_prebind,
-    }
-}
-
-fn prebind_diagnostic(
-    code: TreeCalcFormulaTextPrebindDiagnosticCode,
-    source_text: &str,
-    start_byte: usize,
-    end_byte: usize,
-    detail: impl Into<String>,
-) -> TreeCalcFormulaTextPrebindDiagnostic {
-    TreeCalcFormulaTextPrebindDiagnostic {
-        code,
-        source_span_utf8: (start_byte, end_byte),
-        source_token_text: source_text[start_byte..end_byte].to_string(),
-        detail: detail.into(),
-    }
-}
-
-fn previous_non_whitespace_char(source_text: &str, end_byte: usize) -> Option<char> {
-    source_text[..end_byte]
-        .chars()
-        .rev()
-        .find(|ch| !ch.is_whitespace())
-}
-
-fn previous_char_can_qualify_host_path(source_text: &str, end_byte: usize) -> bool {
-    previous_non_whitespace_char(source_text, end_byte).is_some_and(is_host_path_tail_char)
-}
-
-fn explicit_qualified_children_selector_start(
-    source_text: &str,
-    selector_start: usize,
-) -> Option<usize> {
-    explicit_qualified_at_selector_start(source_text, selector_start)
-}
-
-fn explicit_qualified_at_selector_start(source_text: &str, selector_start: usize) -> Option<usize> {
-    let dot_start = selector_start.checked_sub(1)?;
-    if !source_text[..selector_start].ends_with('.') {
-        return None;
-    }
-    let start_byte = host_path_start(source_text, selector_start);
-    (start_byte < dot_start).then_some(start_byte)
-}
-
-fn explicit_qualified_recursive_selector_start(
-    source_text: &str,
-    selector_start: usize,
-) -> Option<usize> {
-    explicit_qualified_at_selector_start(source_text, selector_start)
-}
-
-fn ordered_at_selector_at(
-    source_text: &str,
-    start_byte: usize,
-) -> Option<(TreeCalcOrderedSelectorFamily, &'static str)> {
-    [
-        (TreeCalcOrderedSelectorFamily::PrecedingV1, "@PRECEDING"),
-        (TreeCalcOrderedSelectorFamily::FollowingV1, "@FOLLOWING"),
-        (TreeCalcOrderedSelectorFamily::AncestorsV1, "@ANCESTORS"),
-    ]
-    .into_iter()
-    .find(|(_, token)| source_text[start_byte..].starts_with(token))
-}
-
-fn recursive_selector_end(
-    source_text: &str,
-    selector_start: usize,
-    selector_end: usize,
-) -> (usize, Option<(usize, usize)>, Option<usize>) {
-    let Some(next) = source_text[selector_end..].chars().next() else {
-        return (selector_end, None, None);
-    };
-    if next == '.' {
-        let tail_end = token_end(source_text, selector_start);
-        let tail_start = selector_end;
-        let tail_text = &source_text[tail_start..tail_end];
-        if tail_text.len() <= 1 {
-            return (tail_end, None, Some(tail_end));
-        }
-        return (tail_end, Some((tail_start, tail_end)), None);
-    }
-    if is_token_body_char(next) {
-        let unsupported_end = token_end(source_text, selector_start);
-        return (unsupported_end, None, Some(unsupported_end));
-    }
-    (selector_end, None, None)
-}
-
-fn previous_char_allows_free_standing_selector(source_text: &str, end_byte: usize) -> bool {
-    previous_non_whitespace_char(source_text, end_byte).is_none_or(|ch| {
-        matches!(
-            ch,
-            '=' | '(' | ',' | ';' | '+' | '-' | '*' | '/' | '^' | '&' | '<' | '>' | '{'
-        )
-    })
-}
-
-fn is_host_path_tail_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || matches!(ch, '_' | ']' | '\'' | '"')
-}
-
-fn host_path_start(source_text: &str, selector_start: usize) -> usize {
-    source_text[..selector_start]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_host_path_prefix_char(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0)
-}
-
-fn is_host_path_prefix_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric()
-        || matches!(
-            ch,
-            '_' | '.' | '[' | ']' | '\'' | '"' | '!' | '^' | '\\' | '/'
-        )
-}
-
-fn token_end(source_text: &str, start_byte: usize) -> usize {
-    source_text[start_byte..]
-        .char_indices()
-        .find_map(|(offset, ch)| {
-            (offset > 0 && !is_token_body_char(ch)).then_some(start_byte + offset)
-        })
-        .unwrap_or(source_text.len())
-}
-
-fn is_token_body_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '@' | '.' | '*' | '^' | '[' | ']' | '!' | '\'')
-}
-
-fn is_token_boundary_after(source_text: &str, end_byte: usize) -> bool {
-    source_text[end_byte..]
-        .chars()
-        .next()
-        .is_none_or(|ch| !is_token_body_char(ch))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3167,7 +2155,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "../DnaTreeCalc/docs/test-corpus/arrays/array-references.json",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host active_reference_literal_array_corpus_executes_through_live_oxcalc_bridge -- --nocapture",
-        oxcalc_status: "ReferenceLiteralArrayV1 implemented; direct OxCalcTreeContext prebinds all-resolved raw reference-only arrays; mixed scalar/reference arrays remain typed exclusions",
+        oxcalc_status: "ReferenceLiteralArrayV1 implemented; direct OxCalcTreeContext resolves all-reference arrays through host-reference packets; mixed scalar/reference arrays remain typed exclusions",
         dnatreecalc_status: "active direct-context typed-pending slice; follow-up runner widening needed for the newly admitted raw reference-only arrays",
         replay_status: "retained non-table replay missing",
         current_test_result: "active literal slice green in prior checks; broad raw suite pending",
@@ -4310,145 +3298,38 @@ mod tests {
     }
 
     #[test]
-    fn raw_treecalc_formula_text_prebinds_children_selector_to_neutral_source() {
-        let formula =
-            prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(@CHILDREN)").expect("prebind");
+    fn host_reference_syntax_match_resolves_children_from_oxfml_packet() {
+        let syntax_match = RuntimeHostReferenceSyntaxMatch {
+            syntax_match_handle: "host-reference-syntax:oxcalc.treecalc-v1:children:5:9"
+                .to_string(),
+            rule_id: "treecalc.children".to_string(),
+            rule_family: "treecalc.collection.children".to_string(),
+            source_span: oxfml_core::syntax::token::TextSpan::new(5, 9),
+            source_token_text: "@CHILDREN".to_string(),
+            token_kind: "treecalc-host-reference".to_string(),
+            opaque_selector_payload: Some("selector-family:children".to_string()),
+            resolution_layer: "explicit_host_ref".to_string(),
+            shape_hint: Some("collection".to_string()),
+            caller_context_dependent: true,
+            diagnostics: Vec::new(),
+        };
 
-        assert_eq!(formula.source_text(), "=SUM(TREE_REF_2_0)");
-        assert_eq!(formula.reference_carriers().len(), 1);
-        let carrier = &formula.reference_carriers()[0];
-        assert_eq!(carrier.source_token.as_deref(), Some("TREE_REF_2_0"));
-        match &carrier.reference {
-            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                collection,
-            )) => {
-                assert_eq!(collection.base_node_id, TreeNodeId(2));
-                assert_eq!(collection.source_token_text, "@CHILDREN");
-                assert_eq!(collection.source_span_utf8, Some((5, 14)));
-                assert_eq!(
-                    collection.host_ref_handle,
-                    "treecalc-hostref:v1:children:node:2"
-                );
-            }
-            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-        }
-    }
+        let carrier =
+            treecalc_host_reference_carrier_from_syntax_match(TreeNodeId(7), &syntax_match)
+                .expect("children packet resolves to a TreeCalc carrier");
 
-    #[test]
-    fn raw_treecalc_formula_text_prebinds_children_sugar_to_neutral_source() {
-        let formula = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(.*)").expect("prebind");
-
-        assert_eq!(formula.source_text(), "=SUM(TREE_REF_2_0)");
-        match &formula.reference_carriers()[0].reference {
-            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                collection,
-            )) => {
-                assert_eq!(collection.source_token_text, ".*");
-                assert_eq!(collection.source_span_utf8, Some((5, 7)));
-            }
-            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_prebinds_qualified_children_with_resolved_base() {
-        let formula = prebind_treecalc_formula_text_with_resolved_bases(
-            TreeNodeId(10),
-            "=SUM(base.@CHILDREN)",
-            [qualified_children_base_resolution(
-                "=SUM(base.@CHILDREN)",
-                "base.@CHILDREN",
-                "@CHILDREN",
-                TreeNodeId(2),
-            )],
-        )
-        .expect("resolved qualified prebind");
-
-        assert_eq!(formula.source_text(), "=SUM(TREE_REF_10_0)");
-        match &formula.reference_carriers()[0].reference {
-            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                collection,
-            )) => {
-                assert_eq!(collection.base_node_id, TreeNodeId(2));
-                assert_eq!(collection.source_token_text, "base.@CHILDREN");
-                assert_eq!(collection.source_span_utf8, Some((5, 19)));
-                assert_eq!(
-                    collection.host_ref_handle,
-                    "treecalc-hostref:v1:children:node:2"
-                );
-            }
-            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_prebinds_qualified_children_sugar_with_resolved_base() {
-        let formula = prebind_treecalc_formula_text_with_resolved_bases(
-            TreeNodeId(10),
-            "=SUM(base.*)",
-            [qualified_children_base_resolution(
-                "=SUM(base.*)",
-                "base.*",
-                ".*",
-                TreeNodeId(2),
-            )],
-        )
-        .expect("resolved qualified sugar prebind");
-
-        assert_eq!(formula.source_text(), "=SUM(TREE_REF_10_0)");
-        match &formula.reference_carriers()[0].reference {
-            TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                collection,
-            )) => {
-                assert_eq!(collection.base_node_id, TreeNodeId(2));
-                assert_eq!(collection.source_token_text, "base.*");
-                assert_eq!(collection.source_span_utf8, Some((5, 11)));
-            }
-            other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_exposes_public_qualified_children_base_queries() {
-        let source_text = "=SUM(left.@CHILDREN,right.*)";
-        let queries =
-            treecalc_formula_text_qualified_children_base_queries(TreeNodeId(10), source_text);
-
-        assert_eq!(queries.len(), 2);
-        assert_eq!(queries[0].source_span_utf8, (5, 19));
-        assert_eq!(queries[0].base_span_utf8, (5, 9));
-        assert_eq!(queries[0].selector_span_utf8, (10, 19));
-        assert_eq!(queries[0].source_token_text, "left.@CHILDREN");
-        assert_eq!(queries[0].base_token_text, "left");
-        assert_eq!(queries[0].selector_token_text, "@CHILDREN");
-        assert_eq!(queries[1].source_span_utf8, (20, 27));
-        assert_eq!(queries[1].base_span_utf8, (20, 25));
-        assert_eq!(queries[1].selector_span_utf8, (25, 27));
-        assert_eq!(queries[1].source_token_text, "right.*");
-        assert_eq!(queries[1].base_token_text, "right");
-        assert_eq!(queries[1].selector_token_text, ".*");
-
-        let formula = prebind_treecalc_formula_text_with_resolved_bases(
-            TreeNodeId(10),
-            source_text,
-            [
-                queries[0].to_resolution(TreeNodeId(2)),
-                queries[1].to_resolution(TreeNodeId(3)),
-            ],
-        )
-        .expect("query-derived base resolutions prebind");
-
-        let base_ids = formula
-            .reference_carriers()
-            .iter()
-            .map(|carrier| match &carrier.reference {
-                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                    collection,
-                )) => collection.base_node_id,
-                other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(base_ids, vec![TreeNodeId(2), TreeNodeId(3)]);
+        assert_eq!(
+            carrier.source_token.as_deref(),
+            Some("host-reference-syntax:oxcalc.treecalc-v1:children:5:9")
+        );
+        let TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(collection)) =
+            carrier.reference
+        else {
+            panic!("expected ChildrenV1 collection");
+        };
+        assert_eq!(collection.base_node_id, TreeNodeId(7));
+        assert_eq!(collection.source_token_text, "@CHILDREN");
+        assert_eq!(collection.source_span_utf8, Some((5, 14)));
     }
 
     #[test]
@@ -4781,150 +3662,6 @@ mod tests {
     }
 
     #[test]
-    fn qualified_children_query_can_resolve_base_from_structural_path() {
-        let source_text = "=SUM(Branch.@CHILDREN)";
-        let query =
-            treecalc_formula_text_qualified_children_base_queries(TreeNodeId(10), source_text)
-                .into_iter()
-                .next()
-                .expect("qualified children query");
-        let resolution = query
-            .to_resolution_with_structural_path_base(&snapshot())
-            .expect("structural path base resolution");
-
-        assert_eq!(resolution.base_node_id, TreeNodeId(2));
-        assert_eq!(
-            resolution.resolution_layer,
-            TreeCalcQualifiedBaseResolutionLayer::OxCalcStructuralPath
-        );
-        assert!(
-            resolution
-                .resolution_identity
-                .contains("treecalc-explicit-host-path:v1")
-        );
-        assert!(
-            resolution
-                .resolution_identity
-                .contains("canonical=Root/Branch")
-        );
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_qualified_children_queries_ignore_string_literals() {
-        let queries = treecalc_formula_text_qualified_children_base_queries(
-            TreeNodeId(10),
-            "=CONCAT(\"left.@CHILDREN\",\"right.*\")",
-        );
-
-        assert!(queries.is_empty());
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_exposes_public_ordered_selector_queries() {
-        let source_text =
-            "=SUM(@PRECEDING,base.@FOLLOWING,@ANCESTORS,Q2.**,Accounts.2005.**.Margin)";
-        let queries = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text);
-
-        assert_eq!(queries.len(), 5);
-        assert_eq!(
-            queries[0].family,
-            TreeCalcOrderedSelectorFamily::PrecedingV1
-        );
-        assert_eq!(queries[0].source_token_text, "@PRECEDING");
-        assert_eq!(queries[0].base_token_text, None);
-        assert_eq!(queries[0].selector_token_text, "@PRECEDING");
-        assert_eq!(queries[0].tail_token_text, None);
-
-        assert_eq!(
-            queries[1].family,
-            TreeCalcOrderedSelectorFamily::FollowingV1
-        );
-        assert_eq!(queries[1].source_token_text, "base.@FOLLOWING");
-        assert_eq!(queries[1].base_token_text.as_deref(), Some("base"));
-        assert_eq!(queries[1].selector_token_text, "@FOLLOWING");
-
-        assert_eq!(
-            queries[2].family,
-            TreeCalcOrderedSelectorFamily::AncestorsV1
-        );
-        assert_eq!(queries[2].source_token_text, "@ANCESTORS");
-
-        assert_eq!(
-            queries[3].family,
-            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1
-        );
-        assert_eq!(queries[3].source_token_text, "Q2.**");
-        assert_eq!(queries[3].base_token_text.as_deref(), Some("Q2"));
-        assert_eq!(queries[3].selector_token_text, "**");
-        assert_eq!(queries[3].tail_token_text, None);
-
-        assert_eq!(
-            queries[4].family,
-            TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1
-        );
-        assert_eq!(queries[4].source_token_text, "Accounts.2005.**.Margin");
-        assert_eq!(queries[4].base_token_text.as_deref(), Some("Accounts.2005"));
-        assert_eq!(queries[4].selector_token_text, "**");
-        assert_eq!(queries[4].tail_token_text.as_deref(), Some(".Margin"));
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_prebinds_ordered_selectors_with_resolved_collections() {
-        let source_text = "=SUM(@PRECEDING,base.@FOLLOWING,Q2.**.Margin)";
-        let queries = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text);
-        let formula = prebind_treecalc_formula_text_with_resolved_ordered_selectors(
-            TreeNodeId(10),
-            source_text,
-            [
-                queries[0].to_resolution(TreeNodeId(10), [TreeNodeId(7), TreeNodeId(8)]),
-                queries[1].to_resolution(TreeNodeId(2), [TreeNodeId(11)]),
-                queries[2].to_resolution(TreeNodeId(3), [TreeNodeId(21), TreeNodeId(22)]),
-            ],
-        )
-        .expect("resolved ordered selector prebind");
-
-        assert_eq!(
-            formula.source_text(),
-            "=SUM(TREE_REF_10_0,TREE_REF_10_1,TREE_REF_10_2)"
-        );
-        let collections = formula
-            .reference_carriers()
-            .iter()
-            .map(|carrier| match &carrier.reference {
-                TreeReference::ReferenceCollection(
-                    TreeCalcReferenceCollection::OrderedSelectorV1(collection),
-                ) => collection,
-                other => panic!("expected OrderedSelectorV1 reference carrier, got {other:?}"),
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            collections
-                .iter()
-                .map(|collection| collection.family)
-                .collect::<Vec<_>>(),
-            vec![
-                TreeCalcOrderedSelectorFamily::PrecedingV1,
-                TreeCalcOrderedSelectorFamily::FollowingV1,
-                TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
-            ]
-        );
-        assert_eq!(collections[0].base_node_id, TreeNodeId(10));
-        assert_eq!(
-            collections[0].member_node_ids,
-            vec![TreeNodeId(7), TreeNodeId(8)]
-        );
-        assert_eq!(collections[0].source_token_text, "@PRECEDING");
-        assert_eq!(
-            collections[0].source_span_utf8,
-            Some(queries[0].source_span_utf8)
-        );
-        assert_eq!(collections[1].base_node_id, TreeNodeId(2));
-        assert_eq!(collections[1].source_token_text, "base.@FOLLOWING");
-        assert_eq!(collections[2].base_node_id, TreeNodeId(3));
-        assert_eq!(collections[2].source_token_text, "Q2.**.Margin");
-    }
-
-    #[test]
     fn ordered_selector_traversal_resolver_projects_structural_membership() {
         let snapshot = snapshot();
 
@@ -4991,96 +3728,6 @@ mod tests {
     }
 
     #[test]
-    fn ordered_selector_query_can_build_structural_traversal_resolution_with_tail() {
-        let snapshot = snapshot();
-        let source_text = "=SUM(Root.**.Leaf)";
-        let query = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text)
-            .into_iter()
-            .next()
-            .expect("recursive query");
-
-        let resolved = query
-            .to_resolution_with_structural_traversal(
-                &snapshot,
-                TreeNodeId(1),
-                TreeCalcOrderedSelectorTraversalPolicy::default(),
-            )
-            .expect("structural traversal resolution");
-
-        assert_eq!(
-            resolved.resolution.resolution_layer,
-            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal
-        );
-        assert_eq!(resolved.resolution.member_node_ids, vec![TreeNodeId(4)]);
-        assert_eq!(resolved.traversal.member_node_ids, vec![TreeNodeId(4)]);
-        assert!(resolved.traversal.diagnostics.is_empty());
-        assert!(
-            resolved
-                .resolution
-                .resolution_identity
-                .contains("resolver=oxcalc_structural_traversal")
-        );
-        assert!(
-            resolved
-                .resolution
-                .resolution_identity
-                .contains("max_recursive_descendants=10000")
-        );
-
-        let direct_tail_match = query
-            .to_resolution_with_structural_traversal(
-                &snapshot,
-                TreeNodeId(2),
-                TreeCalcOrderedSelectorTraversalPolicy::default(),
-            )
-            .expect("recursive tail can match a direct child of the base");
-        assert_eq!(
-            direct_tail_match.resolution.member_node_ids,
-            vec![TreeNodeId(4)]
-        );
-    }
-
-    #[test]
-    fn ordered_selector_query_can_resolve_base_path_and_traversal_membership() {
-        let source_text = "=SUM(Branch.@FOLLOWING,Root.**.Leaf)";
-        let queries = treecalc_formula_text_ordered_selector_queries(TreeNodeId(10), source_text);
-
-        let following = queries[0]
-            .to_resolution_with_structural_path_base_and_traversal(
-                &snapshot(),
-                TreeCalcOrderedSelectorTraversalPolicy::default(),
-            )
-            .expect("structural path and following traversal");
-        assert_eq!(following.resolution.base_node_id, TreeNodeId(2));
-        assert_eq!(following.resolution.member_node_ids, vec![TreeNodeId(3)]);
-        assert_eq!(
-            following.resolution.resolution_layer,
-            TreeCalcOrderedSelectorResolutionLayer::OxCalcStructuralTraversal
-        );
-        assert!(
-            following
-                .resolution
-                .resolution_identity
-                .contains("base_resolution=treecalc-explicit-host-path:v1")
-        );
-        assert!(
-            following
-                .resolution
-                .resolution_identity
-                .contains("canonical=Root/Branch")
-        );
-
-        let recursive = queries[1]
-            .to_resolution_with_structural_path_base_and_traversal(
-                &snapshot(),
-                TreeCalcOrderedSelectorTraversalPolicy::default(),
-            )
-            .expect("structural path and recursive traversal");
-        assert_eq!(recursive.resolution.base_node_id, TreeNodeId(1));
-        assert_eq!(recursive.resolution.member_node_ids, vec![TreeNodeId(4)]);
-    }
-
-    #[test]
     fn ordered_selector_traversal_resolver_reports_bounds_and_missing_tail() {
         let snapshot = snapshot();
         let bounded = resolve_treecalc_ordered_selector_traversal(
@@ -5115,159 +3762,6 @@ mod tests {
             tail_miss.diagnostics[0].code,
             TreeCalcOrderedSelectorTraversalDiagnosticCode::RecursiveTailMatchedNoMembers
         );
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_ordered_selector_queries_ignore_string_literals() {
-        let queries = treecalc_formula_text_ordered_selector_queries(
-            TreeNodeId(10),
-            "=CONCAT(\"@PRECEDING\",\"Q2.**\")",
-        );
-
-        assert!(queries.is_empty());
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_prebinds_distinct_qualified_children_by_span() {
-        let source_text = "=SUM(left.@CHILDREN,right.*)";
-        let formula = prebind_treecalc_formula_text_with_resolved_bases(
-            TreeNodeId(10),
-            source_text,
-            [
-                qualified_children_base_resolution(
-                    source_text,
-                    "left.@CHILDREN",
-                    "@CHILDREN",
-                    TreeNodeId(2),
-                ),
-                qualified_children_base_resolution(source_text, "right.*", ".*", TreeNodeId(3)),
-            ],
-        )
-        .expect("resolved qualified prebind");
-
-        assert_eq!(formula.source_text(), "=SUM(TREE_REF_10_0,TREE_REF_10_1)");
-        let base_ids = formula
-            .reference_carriers()
-            .iter()
-            .map(|carrier| match &carrier.reference {
-                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                    collection,
-                )) => collection.base_node_id,
-                other => panic!("expected ChildrenV1 reference carrier, got {other:?}"),
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(base_ids, vec![TreeNodeId(2), TreeNodeId(3)]);
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_rejects_suffixed_qualified_children_selectors() {
-        for (source_text, source_token_text, selector_text) in [
-            ("=SUM(base.@CHILDRENfoo)", "base.@CHILDREN", "@CHILDREN"),
-            ("=SUM(base.@CHILDREN_X)", "base.@CHILDREN", "@CHILDREN"),
-            ("=SUM(base.*foo)", "base.*", ".*"),
-        ] {
-            let error = prebind_treecalc_formula_text_with_resolved_bases(
-                TreeNodeId(10),
-                source_text,
-                [qualified_children_base_resolution(
-                    source_text,
-                    source_token_text,
-                    selector_text,
-                    TreeNodeId(2),
-                )],
-            )
-            .expect_err("suffixed qualified selector should be rejected");
-            assert_eq!(
-                error.diagnostics[0].code,
-                TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedRawTreeCalcReference
-            );
-        }
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_rejects_unsupported_reference_families() {
-        let error = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(@UNKNOWN)")
-            .expect_err("unsupported selector should be diagnosed");
-
-        assert_eq!(error.diagnostics.len(), 1);
-        assert_eq!(
-            error.diagnostics[0].code,
-            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedSelector
-        );
-        assert_eq!(error.diagnostics[0].source_span_utf8, (5, 13));
-        assert_eq!(error.diagnostics[0].source_token_text, "@UNKNOWN");
-
-        let qualified = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(base.@CHILDREN)")
-            .expect_err("qualified children syntax should wait for typed path resolution");
-        assert_eq!(
-            qualified.diagnostics[0].code,
-            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference
-        );
-        assert_eq!(qualified.diagnostics[0].source_token_text, "base.@CHILDREN");
-
-        let adjacent = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(Node@CHILDREN)")
-            .expect_err("adjacent path-like selector should be diagnosed");
-        assert_eq!(
-            adjacent.diagnostics[0].code,
-            TreeCalcFormulaTextPrebindDiagnosticCode::UnsupportedQualifiedHostReference
-        );
-        assert_eq!(adjacent.diagnostics[0].source_token_text, "Node@CHILDREN");
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_rejects_unresolved_ordered_selectors() {
-        let error = prebind_treecalc_formula_text(TreeNodeId(2), "=SUM(@ANCESTORS,Q2.**)")
-            .expect_err("ordered selectors require resolved collection packets");
-
-        assert_eq!(error.diagnostics.len(), 2);
-        assert_eq!(
-            error.diagnostics[0].code,
-            TreeCalcFormulaTextPrebindDiagnosticCode::MissingOrderedSelectorResolution
-        );
-        assert_eq!(error.diagnostics[0].source_token_text, "@ANCESTORS");
-        assert_eq!(
-            error.diagnostics[1].code,
-            TreeCalcFormulaTextPrebindDiagnosticCode::MissingOrderedSelectorResolution
-        );
-        assert_eq!(error.diagnostics[1].source_token_text, "Q2.**");
-    }
-
-    #[test]
-    fn raw_treecalc_formula_text_ignores_host_tokens_inside_strings() {
-        let formula =
-            prebind_treecalc_formula_text(TreeNodeId(2), "=CONCAT(\"@CHILDREN\", \".*\")")
-                .expect("string literals should not be prebound");
-
-        assert_eq!(formula.source_text(), "=CONCAT(\"@CHILDREN\", \".*\")");
-        assert!(formula.reference_carriers().is_empty());
-        assert!(!treecalc_formula_text_needs_prebind("=\"@CHILDREN\""));
-    }
-
-    fn qualified_children_base_resolution(
-        source_text: &str,
-        source_token_text: &str,
-        selector_text: &str,
-        base_node_id: TreeNodeId,
-    ) -> TreeCalcQualifiedChildrenBaseResolution {
-        let source_start = source_text.find(source_token_text).expect("source token");
-        let source_end = source_start + source_token_text.len();
-        let selector_start = source_text[source_start..source_end]
-            .find(selector_text)
-            .map(|offset| source_start + offset)
-            .expect("selector token");
-        let selector_end = selector_start + selector_text.len();
-        let base_end = if selector_text.starts_with('.') {
-            selector_start
-        } else {
-            selector_start - 1
-        };
-        TreeCalcQualifiedChildrenBaseResolution::new(
-            (source_start, source_end),
-            (source_start, base_end),
-            (selector_start, selector_end),
-            source_token_text,
-            base_node_id,
-        )
     }
 
     #[test]

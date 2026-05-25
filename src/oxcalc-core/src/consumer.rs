@@ -18,9 +18,9 @@ use crate::formula::{
     TreeCalcOrderedSelectorReferenceCollection, TreeCalcOrderedSelectorTraversalPolicy,
     TreeCalcReferenceCollection, TreeCalcReferenceLiteralArrayCollection,
     TreeCalcReferenceLiteralArrayElement, TreeFormula, TreeFormulaBinding, TreeFormulaCatalog,
-    TreeFormulaHostNameBindPacket, TreeFormulaReferenceCarrier, TreeReference,
-    resolve_treecalc_ordered_selector_traversal, split_treecalc_host_path_token,
-    treecalc_host_reference_carrier_from_syntax_match,
+    TreeFormulaHostNameBindPacket, TreeFormulaHostValue, TreeFormulaHostValueBinding,
+    TreeFormulaReferenceCarrier, TreeReference, resolve_treecalc_ordered_selector_traversal,
+    split_treecalc_host_path_token, treecalc_host_reference_carrier_from_syntax_match,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -1274,6 +1274,7 @@ fn context_formula_from_oxfml_host_reference_packets(
     matches.sort_by_key(|syntax_match| syntax_match.source_span.start);
     let mut accepted_matches = Vec::new();
     let mut carriers = Vec::new();
+    let mut host_value_bindings = Vec::new();
     let mut source_spans = Vec::new();
     let mut diagnostics = Vec::new();
     let mut accepted_end = 0;
@@ -1295,17 +1296,24 @@ fn context_formula_from_oxfml_host_reference_packets(
             ));
             continue;
         }
-        let Some(mut carrier) = context_reference_carrier_from_oxfml_match(
+        let Some(resolution) = context_reference_resolution_from_oxfml_match(
+            state,
             owner_node_id,
             &syntax_match,
-            &state.snapshot,
-            &state.meta_node_ids,
             &mut diagnostics,
         ) else {
             continue;
         };
-        carrier.source_token = Some(syntax_match.formal_token_text());
-        carriers.push(carrier);
+        match resolution {
+            ContextHostReferenceResolution::Reference(mut carrier) => {
+                carrier.source_token = Some(syntax_match.formal_token_text());
+                carriers.push(carrier);
+            }
+            ContextHostReferenceResolution::Value(mut binding) => {
+                binding.source_token = syntax_match.formal_token_text();
+                host_value_bindings.push(binding);
+            }
+        }
         source_spans.push((start, end));
         accepted_end = end;
         accepted_matches.push(syntax_match);
@@ -1314,19 +1322,24 @@ fn context_formula_from_oxfml_host_reference_packets(
     let projection = host_context.project_host_reference_syntax_matches(&source, accepted_matches);
     diagnostics.extend(projection.diagnostics);
     ContextHostReferencePacketBuild {
-        expression: TreeFormula::opaque_oxfml(projection.source.entered_formula_text, carriers),
+        expression: TreeFormula::opaque_oxfml(projection.source.entered_formula_text, carriers)
+            .with_host_value_bindings(host_value_bindings),
         source_spans,
         diagnostics,
     }
 }
 
-fn context_reference_carrier_from_oxfml_match(
+enum ContextHostReferenceResolution {
+    Reference(TreeFormulaReferenceCarrier),
+    Value(TreeFormulaHostValueBinding),
+}
+
+fn context_reference_resolution_from_oxfml_match(
+    state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
     syntax_match: &RuntimeHostReferenceSyntaxMatch,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
     diagnostics: &mut Vec<String>,
-) -> Option<TreeFormulaReferenceCarrier> {
+) -> Option<ContextHostReferenceResolution> {
     let Some(payload) = syntax_match.opaque_selector_payload.as_deref() else {
         diagnostics.push(format!(
             "missing_host_reference_selector_payload:{}",
@@ -1334,6 +1347,8 @@ fn context_reference_carrier_from_oxfml_match(
         ));
         return None;
     };
+    let snapshot = &state.snapshot;
+    let meta_node_ids = &state.meta_node_ids;
     let selector = parse_context_host_reference_selector_payload(payload);
     match selector.selector_family.as_deref() {
         Some("children" | "children-sugar") => {
@@ -1348,7 +1363,8 @@ fn context_reference_carrier_from_oxfml_match(
                         syntax_match.source_token_text, error
                     ));
                 })
-                .ok();
+                .ok()
+                .map(ContextHostReferenceResolution::Reference);
             }
             let base_node_id = resolve_context_host_reference_base_node_id(
                 owner_node_id,
@@ -1365,11 +1381,13 @@ fn context_reference_carrier_from_oxfml_match(
                 syntax_match.source_token_text.clone(),
             )
             .with_source_span_utf8(start, end);
-            Some(TreeFormulaReferenceCarrier::named(
-                syntax_match.syntax_match_handle.clone(),
-                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                    collection,
-                )),
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
+                        collection,
+                    )),
+                ),
             ))
         }
         Some("preceding" | "following" | "ancestors" | "recursive-descent") => {
@@ -1431,11 +1449,13 @@ fn context_reference_carrier_from_oxfml_match(
                 traversal.member_node_ids,
             )
             .with_source_span_utf8(start, end);
-            Some(TreeFormulaReferenceCarrier::named(
-                syntax_match.syntax_match_handle.clone(),
-                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::OrderedSelectorV1(
-                    collection,
-                )),
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::OrderedSelectorV1(collection),
+                    ),
+                ),
             ))
         }
         Some("sibling-prev" | "sibling-next") => {
@@ -1463,17 +1483,21 @@ fn context_reference_carrier_from_oxfml_match(
                 offset,
                 &tail_segments,
             ) {
-                Some(TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::DirectNode { target_node_id },
+                Some(ContextHostReferenceResolution::Reference(
+                    TreeFormulaReferenceCarrier::named(
+                        syntax_match.syntax_match_handle.clone(),
+                        TreeReference::DirectNode { target_node_id },
+                    ),
                 ))
             } else {
-                Some(TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::SiblingOffset {
-                        offset,
-                        tail_segments,
-                    },
+                Some(ContextHostReferenceResolution::Reference(
+                    TreeFormulaReferenceCarrier::named(
+                        syntax_match.syntax_match_handle.clone(),
+                        TreeReference::SiblingOffset {
+                            offset,
+                            tail_segments,
+                        },
+                    ),
                 ))
             }
         }
@@ -1502,10 +1526,12 @@ fn context_reference_carrier_from_oxfml_match(
             })
             .ok()?
             .with_source_span_utf8(start, end);
-            Some(TreeFormulaReferenceCarrier::named(
-                syntax_match.syntax_match_handle.clone(),
-                TreeReference::ReferenceCollection(
-                    TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    TreeReference::ReferenceCollection(
+                        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
+                    ),
                 ),
             ))
         }
@@ -1518,20 +1544,85 @@ fn context_reference_carrier_from_oxfml_match(
                 ));
                 return None;
             }
-            Some(TreeFormulaReferenceCarrier::named(
-                syntax_match.syntax_match_handle.clone(),
-                TreeReference::RelativePath {
-                    base: if repeat_count == 1 {
-                        RelativeReferenceBase::ParentNode
-                    } else {
-                        RelativeReferenceBase::Ancestor(repeat_count)
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    TreeReference::RelativePath {
+                        base: if repeat_count == 1 {
+                            RelativeReferenceBase::ParentNode
+                        } else {
+                            RelativeReferenceBase::Ancestor(repeat_count)
+                        },
+                        path_segments: selector
+                            .tail_token_text
+                            .as_deref()
+                            .map(split_context_host_reference_tail_token)
+                            .unwrap_or_default(),
                     },
-                    path_segments: selector
-                        .tail_token_text
-                        .as_deref()
-                        .map(split_context_host_reference_tail_token)
+                ),
+            ))
+        }
+        Some("parent-accessor") => {
+            if selector.base_token_text.is_some() {
+                diagnostics.push(format!(
+                    "typed_exclusion:qualified_parent_accessor_host_reference_packet_pending:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text
+                ));
+                return None;
+            }
+            Some(ContextHostReferenceResolution::Reference(
+                TreeFormulaReferenceCarrier::named(
+                    syntax_match.syntax_match_handle.clone(),
+                    TreeReference::RelativePath {
+                        base: RelativeReferenceBase::ParentNode,
+                        path_segments: selector
+                            .tail_token_text
+                            .as_deref()
+                            .map(split_context_host_reference_tail_token)
+                            .unwrap_or_default(),
+                    },
+                ),
+            ))
+        }
+        Some("metadata-name" | "metadata-index" | "metadata-formula") => {
+            if selector.tail_token_text.is_some() {
+                diagnostics.push(format!(
+                    "typed_exclusion:tailed_metadata_value_host_reference_packet_pending:{}:owner={owner_node_id}",
+                    syntax_match.source_token_text
+                ));
+                return None;
+            }
+            let target_node_id = if selector.base_token_text.is_some() {
+                resolve_context_host_reference_base_node_id(
+                    owner_node_id,
+                    syntax_match,
+                    snapshot,
+                    meta_node_ids,
+                    selector.base_token_text.as_deref(),
+                    diagnostics,
+                )?
+            } else {
+                owner_node_id
+            };
+            let value = match selector.selector_family.as_deref() {
+                Some("metadata-name") => snapshot
+                    .try_get_node(target_node_id)
+                    .map(|node| TreeFormulaHostValue::Text(node.symbol.clone()))
+                    .unwrap_or(TreeFormulaHostValue::ValueError),
+                Some("metadata-index") => {
+                    context_metadata_index_value(snapshot, meta_node_ids, target_node_id)
+                }
+                Some("metadata-formula") => TreeFormulaHostValue::Text(
+                    state
+                        .formula_texts
+                        .get(&target_node_id)
+                        .cloned()
                         .unwrap_or_default(),
-                },
+                ),
+                _ => unreachable!("selector-family pattern is exhaustive"),
+            };
+            Some(ContextHostReferenceResolution::Value(
+                context_host_value_binding(syntax_match, target_node_id, value),
             ))
         }
         Some("escaped-path") => {
@@ -1545,12 +1636,12 @@ fn context_reference_carrier_from_oxfml_match(
                 snapshot,
                 meta_node_ids,
             ) {
-                ContextHostNameResolution::Resolved(target_node_id) => {
-                    Some(TreeFormulaReferenceCarrier::named(
+                ContextHostNameResolution::Resolved(target_node_id) => Some(
+                    ContextHostReferenceResolution::Reference(TreeFormulaReferenceCarrier::named(
                         syntax_match.syntax_match_handle.clone(),
                         TreeReference::DirectNode { target_node_id },
-                    ))
-                }
+                    )),
+                ),
                 ContextHostNameResolution::Ambiguous => {
                     diagnostics.push(format!(
                         "ambiguous_escaped_host_path:{}:{}:owner={owner_node_id}",
@@ -1623,6 +1714,51 @@ fn parse_context_host_reference_selector_payload(
         }
     }
     parsed
+}
+
+fn context_host_value_binding(
+    syntax_match: &RuntimeHostReferenceSyntaxMatch,
+    target_node_id: TreeNodeId,
+    value: TreeFormulaHostValue,
+) -> TreeFormulaHostValueBinding {
+    let start = syntax_match.source_span.start;
+    let end = start + syntax_match.source_span.len;
+    TreeFormulaHostValueBinding {
+        source_token: syntax_match.formal_token_text(),
+        value,
+        host_ref_handle: syntax_match.syntax_match_handle.clone(),
+        source_span_utf8: (start, end),
+        source_token_text: syntax_match.source_token_text.clone(),
+        opaque_selector: syntax_match.opaque_selector_payload.clone(),
+        carrier_detail: format!(
+            "treecalc_metadata_value:{}:target={}",
+            syntax_match.source_token_text, target_node_id
+        ),
+        target_node_id: None,
+        requires_rebind_on_structural_change: true,
+    }
+}
+
+fn context_metadata_index_value(
+    snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    target_node_id: TreeNodeId,
+) -> TreeFormulaHostValue {
+    let Some(parent_id) = snapshot.parent_id_of(target_node_id) else {
+        return TreeFormulaHostValue::ValueError;
+    };
+    let Some(parent) = snapshot.try_get_node(parent_id) else {
+        return TreeFormulaHostValue::ValueError;
+    };
+    parent
+        .child_ids
+        .iter()
+        .copied()
+        .filter(|child_id| !is_meta_effective(*child_id, snapshot, meta_node_ids))
+        .position(|child_id| child_id == target_node_id)
+        .and_then(|zero_based| i64::try_from(zero_based + 1).ok())
+        .map(TreeFormulaHostValue::Integer)
+        .unwrap_or(TreeFormulaHostValue::ValueError)
 }
 
 fn resolve_context_reference_literal_array_elements(
@@ -1805,6 +1941,9 @@ fn direct_name_carriers_from_oxfml_probe(
             .strip_prefix("name:")
             .unwrap_or(candidate.source_text.as_str())
             .to_string();
+        if token.starts_with("HOST_REF_") {
+            continue;
+        }
         let resolution =
             resolve_context_host_name_token(&token, owner_node_id, snapshot, meta_node_ids);
         let target_node_id = match resolution {
@@ -3427,6 +3566,102 @@ mod tests {
                 .iter()
                 .any(|node| node.node_id == secret_id && node.is_meta)
         );
+    }
+
+    #[test]
+    fn treecalc_context_raw_metadata_accessors_resolve_through_oxfml_host_reference_path() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:meta-accessors"))
+            .unwrap();
+        let section_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Section", "7"))
+            .unwrap();
+        let rate_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Rate", "0.1").under(section_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Config", "")
+                    .with_meta(true)
+                    .under(section_id),
+            )
+            .unwrap();
+        let parent_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("ParentProbe", "=@PARENT+1").under(section_id),
+            )
+            .unwrap();
+        let name_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("NameProbe", "=@NAME").under(section_id),
+            )
+            .unwrap();
+        let index_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("IndexProbe", "=@INDEX").under(section_id),
+            )
+            .unwrap();
+        let formula_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("FormulaProbe", "=@FORMULA").under(section_id),
+            )
+            .unwrap();
+        let qualified_name_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("QualifiedName", "=Rate.@NAME").under(section_id),
+            )
+            .unwrap();
+        let qualified_index_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("QualifiedIndex", "=IndexProbe.@INDEX").under(section_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "metadata accessors failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&parent_id),
+            Some(&"8".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&name_id),
+            Some(&"NameProbe".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&index_id),
+            Some(&"4".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&formula_id),
+            Some(&"=@FORMULA".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&qualified_name_id),
+            Some(&"Rate".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&qualified_index_id),
+            Some(&"4".to_string())
+        );
+        assert!(rate_id.0 > 0);
     }
 
     #[test]

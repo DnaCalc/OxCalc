@@ -2399,10 +2399,32 @@ impl TreeFormulaHostNameBindPacket {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeFormulaHostValue {
+    Text(String),
+    Integer(i64),
+    ValueError,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeFormulaHostValueBinding {
+    pub source_token: String,
+    pub value: TreeFormulaHostValue,
+    pub host_ref_handle: String,
+    pub source_span_utf8: (usize, usize),
+    pub source_token_text: String,
+    pub opaque_selector: Option<String>,
+    pub carrier_detail: String,
+    pub target_node_id: Option<TreeNodeId>,
+    pub requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeFormula {
     pub source_text: String,
     #[serde(default)]
     pub reference_carriers: Vec<TreeFormulaReferenceCarrier>,
+    #[serde(default)]
+    pub host_value_bindings: Vec<TreeFormulaHostValueBinding>,
     #[serde(default)]
     pub lazy_residual_publication: bool,
 }
@@ -2416,6 +2438,7 @@ impl TreeFormula {
         Self {
             source_text: normalize_formula_source(source_text.into()),
             reference_carriers: reference_carriers.into_iter().collect(),
+            host_value_bindings: Vec::new(),
             lazy_residual_publication: false,
         }
     }
@@ -2427,6 +2450,15 @@ impl TreeFormula {
     }
 
     #[must_use]
+    pub fn with_host_value_bindings(
+        mut self,
+        host_value_bindings: impl IntoIterator<Item = TreeFormulaHostValueBinding>,
+    ) -> Self {
+        self.host_value_bindings = host_value_bindings.into_iter().collect();
+        self
+    }
+
+    #[must_use]
     pub fn source_text(&self) -> &str {
         &self.source_text
     }
@@ -2434,6 +2466,11 @@ impl TreeFormula {
     #[must_use]
     pub fn reference_carriers(&self) -> &[TreeFormulaReferenceCarrier] {
         &self.reference_carriers
+    }
+
+    #[must_use]
+    pub fn host_value_bindings(&self) -> &[TreeFormulaHostValueBinding] {
+        &self.host_value_bindings
     }
 }
 

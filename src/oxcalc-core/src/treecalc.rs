@@ -41,7 +41,8 @@ use crate::dependency::{
 };
 use crate::formula::{
     CallerContextIdentityNeed, NamespaceIdentityNeed, TreeFormula, TreeFormulaCatalog,
-    TreeFormulaHostNameBindPacket, TreeFormulaReferenceCarrier,
+    TreeFormulaHostNameBindPacket, TreeFormulaHostValue, TreeFormulaHostValueBinding,
+    TreeFormulaReferenceCarrier,
 };
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
@@ -2250,6 +2251,19 @@ struct SyntheticReferenceCollectionBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticHostValueBinding {
+    token: String,
+    value: TreeFormulaHostValue,
+    host_ref_handle: String,
+    source_span_utf8: (usize, usize),
+    source_token_text: String,
+    opaque_selector: Option<String>,
+    carrier_detail: String,
+    target_node_id: Option<TreeNodeId>,
+    requires_rebind_on_structural_change: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct SyntheticUnresolvedBinding {
     token: String,
     kind: DependencyDescriptorKind,
@@ -2262,6 +2276,7 @@ struct TranslatedFormula {
     source_text: String,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
+    host_value_bindings: Vec<SyntheticHostValueBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
 }
@@ -2864,6 +2879,11 @@ fn w056_prepared_identity_requirements_for_translated(
             DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
         ));
     }
+    for _ in &translated.host_value_bindings {
+        requirements.insert(descriptor_identity_needs(
+            DependencyDescriptorKind::ShapeTopology,
+        ));
+    }
     for residual in &translated.residuals {
         requirements.insert(descriptor_identity_needs(
             residual.kind.dependency_descriptor_kind(),
@@ -2896,16 +2916,40 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         .translated
         .reference_bindings
         .iter()
-        .map(|reference| (reference.token.as_str(), reference))
+        .flat_map(|reference| {
+            let mut entries = vec![(reference.token.clone(), reference)];
+            if reference.token.starts_with("HOST_REF_") {
+                entries.push((format!("name:{}", reference.token), reference));
+            }
+            entries
+        })
         .collect::<BTreeMap<_, _>>();
     let unresolved_bindings_by_token = prepared
         .translated
         .unresolved_bindings
         .iter()
-        .map(|unresolved| (unresolved.token.as_str(), unresolved))
+        .flat_map(|unresolved| {
+            let mut entries = vec![(unresolved.token.clone(), unresolved)];
+            if unresolved.token.starts_with("HOST_REF_") {
+                entries.push((format!("name:{}", unresolved.token), unresolved));
+            }
+            entries
+        })
+        .collect::<BTreeMap<_, _>>();
+    let host_value_bindings_by_token = prepared
+        .translated
+        .host_value_bindings
+        .iter()
+        .flat_map(|binding| {
+            [
+                (binding.token.clone(), binding),
+                (format!("name:{}", binding.token), binding),
+            ]
+        })
         .collect::<BTreeMap<_, _>>();
     let mut consumed_reference_tokens = BTreeSet::new();
     let mut consumed_unresolved_tokens = BTreeSet::new();
+    let mut consumed_host_value_tokens = BTreeSet::new();
     let mut descriptors = Vec::new();
 
     for (index, formal_reference) in prepared
@@ -2939,6 +2983,19 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                     prepared.binding.formula_artifact_id.0
                 ),
                 unresolved,
+                source_reference_handle,
+            ));
+        } else if let Some(binding) =
+            host_value_bindings_by_token.get(&formal_reference.reference_descriptor)
+        {
+            consumed_host_value_tokens.insert(binding.token.clone());
+            descriptors.push(dependency_descriptor_from_host_value_binding(
+                prepared,
+                format!(
+                    "bind:{}:treecalc_host_value_formal_ref:{index}",
+                    prepared.binding.formula_artifact_id.0
+                ),
+                binding,
                 source_reference_handle,
             ));
         } else {
@@ -3000,6 +3057,26 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                     ),
                     unresolved,
                     Some(format!("treecalc_unresolved_carrier:{}", unresolved.token)),
+                )
+            }),
+    );
+
+    descriptors.extend(
+        prepared
+            .translated
+            .host_value_bindings
+            .iter()
+            .enumerate()
+            .filter(|(_, binding)| !consumed_host_value_tokens.contains(&binding.token))
+            .map(|(index, binding)| {
+                dependency_descriptor_from_host_value_binding(
+                    prepared,
+                    format!(
+                        "bind:{}:treecalc_host_value_fallback:{index}",
+                        prepared.binding.formula_artifact_id.0
+                    ),
+                    binding,
+                    Some(binding.host_ref_handle.clone()),
                 )
             }),
     );
@@ -3156,6 +3233,25 @@ fn dependency_descriptor_from_unresolved_binding(
         carrier_detail: unresolved.carrier_detail.clone(),
         tree_reference_collection: None,
         requires_rebind_on_structural_change: unresolved.requires_rebind_on_structural_change,
+    }
+}
+
+fn dependency_descriptor_from_host_value_binding(
+    prepared: &PreparedOxfmlFormula,
+    descriptor_id: String,
+    binding: &SyntheticHostValueBinding,
+    source_reference_handle: Option<String>,
+) -> DependencyDescriptor {
+    DependencyDescriptor {
+        descriptor_id,
+        source_reference_handle,
+        owner_node_id: prepared.binding.owner_node_id,
+        target_node_id: binding.target_node_id,
+        workspace_target: None,
+        kind: DependencyDescriptorKind::ShapeTopology,
+        carrier_detail: binding.carrier_detail.clone(),
+        tree_reference_collection: None,
+        requires_rebind_on_structural_change: binding.requires_rebind_on_structural_change,
     }
 }
 
@@ -3394,6 +3490,16 @@ fn formal_input_bindings_for_runtime(
                 }),
             }
         }))
+        .chain(translated.host_value_bindings.iter().map(|binding| {
+            let descriptor_with_prefix = format!("name:{}", binding.token);
+            RuntimeFormalInputBinding {
+                reference_handle: None,
+                reference_descriptor: descriptor_with_prefix,
+                binding: DefinedNameBinding::Value(eval_value_from_tree_formula_host_value(
+                    &binding.value,
+                )),
+            }
+        }))
         .collect::<Vec<_>>()
 }
 
@@ -3450,6 +3556,16 @@ fn runtime_binding_for_reference(
                 .map_or(EvalValue::Number(0.0), |value| string_to_eval_value(value)),
         ),
         None => DefinedNameBinding::Value(EvalValue::Error(WorksheetErrorCode::Ref)),
+    }
+}
+
+fn eval_value_from_tree_formula_host_value(value: &TreeFormulaHostValue) -> EvalValue {
+    match value {
+        TreeFormulaHostValue::Text(value) => {
+            EvalValue::Text(ExcelText::from_interop_assignment(value))
+        }
+        TreeFormulaHostValue::Integer(value) => EvalValue::Number(*value as f64),
+        TreeFormulaHostValue::ValueError => EvalValue::Error(WorksheetErrorCode::Value),
     }
 }
 
@@ -3772,6 +3888,38 @@ pub(crate) fn treecalc_host_reference_syntax_rules() -> Vec<RuntimeHostReference
             "selector-family:sibling-next",
         ),
         treecalc_host_reference_syntax_rule(
+            "treecalc.parent_accessor",
+            "treecalc.relative.parent",
+            "@PARENT",
+            "scalar-reference",
+            true,
+            "selector-family:parent-accessor",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.metadata_name",
+            "treecalc.metadata.value",
+            "@NAME",
+            "metadata-value:text",
+            true,
+            "selector-family:metadata-name",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.metadata_index",
+            "treecalc.metadata.value",
+            "@INDEX",
+            "metadata-value:number",
+            true,
+            "selector-family:metadata-index",
+        ),
+        treecalc_host_reference_syntax_rule(
+            "treecalc.metadata_formula",
+            "treecalc.metadata.value",
+            "@FORMULA",
+            "metadata-value:text",
+            true,
+            "selector-family:metadata-formula",
+        ),
+        treecalc_host_reference_syntax_rule(
             "treecalc.reference_literal_array",
             "treecalc.collection.reference_literal_array",
             "{",
@@ -3939,6 +4087,29 @@ fn host_reference_bind_results_for_runtime(
                 ),
             }
         })
+        .chain(translated.host_value_bindings.iter().map(|binding| {
+            RuntimeHostReferenceBindResult {
+                reference_handle: binding.host_ref_handle.clone(),
+                formal_reference_id: Some(binding.token.clone()),
+                source_span: TextSpan::new(
+                    binding.source_span_utf8.0,
+                    binding
+                        .source_span_utf8
+                        .1
+                        .saturating_sub(binding.source_span_utf8.0),
+                ),
+                source_token_text: binding.source_token_text.clone(),
+                opaque_selector_payload: binding.opaque_selector.clone(),
+                resolution_layer: "explicit_host_ref".to_string(),
+                shape_hint: Some("metadata_value".to_string()),
+                caller_context_dependent: true,
+                diagnostics: Vec::new(),
+                replay_identity_contribution: format!(
+                    "treecalc-host-value:v1:handle={};detail={}",
+                    binding.host_ref_handle, binding.carrier_detail
+                ),
+            }
+        }))
         .collect()
 }
 
@@ -3984,16 +4155,21 @@ fn build_treecalc_runtime_environment_from_parts(
     if let Some(host_formula_context) = parts.host_formula_context {
         environment = environment.with_host_formula_context(host_formula_context);
     }
-    if !parts.translated.collection_bindings.is_empty() {
-        environment = environment
-            .with_host_reference_bind_results(host_reference_bind_results_for_runtime(
-                parts.translated,
-            ))
-            .with_sparse_reference_value_bindings(sparse_reference_value_bindings_for_runtime(
-                parts.translated,
-                parts.structural_snapshot,
-                parts.working_values,
-            ));
+    if !parts.translated.collection_bindings.is_empty()
+        || !parts.translated.host_value_bindings.is_empty()
+    {
+        environment = environment.with_host_reference_bind_results(
+            host_reference_bind_results_for_runtime(parts.translated),
+        );
+        if !parts.translated.collection_bindings.is_empty() {
+            environment = environment.with_sparse_reference_value_bindings(
+                sparse_reference_value_bindings_for_runtime(
+                    parts.translated,
+                    parts.structural_snapshot,
+                    parts.working_values,
+                ),
+            );
+        }
     }
     if let Some(version) = &parts
         .oxfunc_bridge_metadata
@@ -4408,16 +4584,21 @@ fn project_opaque_formula(
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
         collection_bindings: Vec::new(),
+        host_value_bindings: Vec::new(),
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
     for carrier in formula.reference_carriers() {
         state.project_carrier(carrier);
     }
+    for binding in formula.host_value_bindings() {
+        state.project_host_value_binding(binding);
+    }
     TranslatedFormula {
         source_text: formula.source_text().to_string(),
         reference_bindings: state.reference_bindings,
         collection_bindings: state.collection_bindings,
+        host_value_bindings: state.host_value_bindings,
         unresolved_bindings: state.unresolved_bindings,
         residuals: state.residuals,
     }
@@ -4429,6 +4610,7 @@ struct FormulaCarrierProjectionState<'a> {
     fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
+    host_value_bindings: Vec<SyntheticHostValueBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
 }
@@ -4672,6 +4854,20 @@ impl FormulaCarrierProjectionState<'_> {
                 member_node_ids,
                 collection_dependency,
             });
+    }
+
+    fn project_host_value_binding(&mut self, binding: &TreeFormulaHostValueBinding) {
+        self.host_value_bindings.push(SyntheticHostValueBinding {
+            token: binding.source_token.clone(),
+            value: binding.value.clone(),
+            host_ref_handle: binding.host_ref_handle.clone(),
+            source_span_utf8: binding.source_span_utf8,
+            source_token_text: binding.source_token_text.clone(),
+            opaque_selector: binding.opaque_selector.clone(),
+            carrier_detail: binding.carrier_detail.clone(),
+            target_node_id: binding.target_node_id,
+            requires_rebind_on_structural_change: binding.requires_rebind_on_structural_change,
+        });
     }
 
     fn next_fallback_token(&mut self, prefix: &str) -> String {

@@ -909,7 +909,10 @@ mutations route through `NamespaceSnapshot` identity and workspace-revision
 compatibility bases consume the namespace root; W057.8 formula catalog
 generation reads formula text from `NodeInputSnapshot` records and successful
 direct-context recalculation publishes a current `FormulaBindingSnapshot`
-identity. No full snapshot-layer product cutover claim yet.
+identity; W057.9 direct-context recalculation retains current
+`DependencyShapeSnapshot` identities for published/verified-clean runs and
+keeps dependency-shape unpublished for rejected candidates. No full
+snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -940,9 +943,15 @@ names the namespace snapshot; W057.8 adds a current formula-binding snapshot
 constructor, keys recalc's formula-binding identity from deterministic typed
 catalog facts and the workspace namespace root, and adds a regression proving
 legacy formula-text side maps no longer make literal node-input records enter
-the formula catalog.
+the formula catalog; W057.9 switches formula-edit classification from
+stringified dependency signatures to typed dependency-descriptor fact
+signatures, keeps source-span/source-handle churn in formula artifact identity
+rather than dependency-shape deltas, promotes dependency-shape snapshots from
+accepted recalc graphs, and preserves the existing literal/formula activation,
+formula/literal release, reject-no-publication, and runner publish-critical
+checks.
 
-Still open: W057.9-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.10-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

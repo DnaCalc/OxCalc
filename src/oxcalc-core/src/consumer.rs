@@ -16,7 +16,9 @@ use crate::coordinator::{
     AcceptedCandidateResult, DependencyShapeUpdate, PublicationBundle, RejectDetail, RuntimeEffect,
 };
 use crate::dependency::{
-    DependencyGraph, InvalidationClosure, InvalidationReasonKind, InvalidationSeed,
+    DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
+    InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
+    TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{
     RelativeReferenceBase, TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
@@ -1071,11 +1073,20 @@ impl OxCalcTreeContext {
         state.seeded_published_values = result.published_values.clone();
         state.seeded_published_runtime_effects = result.runtime_effects.clone();
         state.formula_binding_snapshot = formula_binding_snapshot;
-        state.dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
-            state.workspace_revision.revision_id(),
-            state.formula_binding_snapshot.snapshot_id(),
-            "w057.9-dependency-shape-not-yet-promoted",
-        );
+        state.dependency_shape_snapshot = match result.run_state {
+            OxCalcTreeRunState::Rejected => DependencyShapeSnapshot::current_absent(
+                state.workspace_revision.revision_id(),
+                state.formula_binding_snapshot.snapshot_id(),
+                "rejected-candidate-dependency-shape-not-published",
+            ),
+            OxCalcTreeRunState::Published | OxCalcTreeRunState::VerifiedClean => {
+                DependencyShapeSnapshot::from_dependency_graph(
+                    state.workspace_revision.revision_id(),
+                    state.formula_binding_snapshot.snapshot_id(),
+                    &result.dependency_graph,
+                )
+            }
+        };
         state.pending_invalidation_seeds.clear();
         state.pending_formula_edit_diagnostics.clear();
         state.pending_node_input_kind_transitions.clear();
@@ -2064,19 +2075,18 @@ fn classify_context_formula_edit(
     successor_catalog: &TreeFormulaCatalog,
     transition: ContextFormulaEditTransition,
 ) -> ContextFormulaEditClassification {
-    let predecessor_descriptors = predecessor_catalog.to_dependency_descriptors(snapshot);
-    let successor_descriptors = successor_catalog.to_dependency_descriptors(snapshot);
-    let predecessor_signatures =
-        formula_dependency_signatures(owner_node_id, &predecessor_descriptors);
-    let successor_signatures = formula_dependency_signatures(owner_node_id, &successor_descriptors);
+    let predecessor_facts =
+        context_dependency_shape_facts(snapshot, owner_node_id, predecessor_catalog);
+    let successor_facts =
+        context_dependency_shape_facts(snapshot, owner_node_id, successor_catalog);
     let affected_node_ids = formula_dependency_shape_affected_node_ids(
         owner_node_id,
-        &predecessor_descriptors,
-        &successor_descriptors,
+        &predecessor_facts.descriptors,
+        &successor_facts.descriptors,
     );
 
-    let successor_graph = DependencyGraph::build(snapshot, &successor_descriptors);
-    if successor_graph
+    if successor_facts
+        .graph
         .cycle_groups
         .iter()
         .any(|group| group.contains(&owner_node_id))
@@ -2109,14 +2119,9 @@ fn classify_context_formula_edit(
         };
     }
 
-    let predecessor_unresolved = transition.predecessor_unresolved
-        || predecessor_signatures
-            .iter()
-            .any(|signature| signature.contains("kind=Unresolved"));
-    let successor_unresolved = transition.successor_unresolved
-        || successor_signatures
-            .iter()
-            .any(|signature| signature.contains("kind=Unresolved"));
+    let predecessor_unresolved =
+        transition.predecessor_unresolved || predecessor_facts.has_unresolved;
+    let successor_unresolved = transition.successor_unresolved || successor_facts.has_unresolved;
     if predecessor_unresolved && !successor_unresolved {
         return ContextFormulaEditClassification {
             label: "unresolved_to_resolved",
@@ -2130,14 +2135,9 @@ fn classify_context_formula_edit(
         };
     }
 
-    let predecessor_dynamic = predecessor_signatures
-        .iter()
-        .any(|signature| signature.contains("kind=DynamicPotential"));
-    let successor_dynamic = successor_signatures
-        .iter()
-        .any(|signature| signature.contains("kind=DynamicPotential"));
-    let dynamic_changed = (predecessor_dynamic || successor_dynamic)
-        && predecessor_signatures != successor_signatures;
+    let dynamic_changed = (predecessor_facts.has_dynamic_potential
+        || successor_facts.has_dynamic_potential)
+        && predecessor_facts.signatures != successor_facts.signatures;
     if dynamic_changed {
         return ContextFormulaEditClassification {
             label: "dynamic_dependency_changed",
@@ -2145,7 +2145,7 @@ fn classify_context_formula_edit(
         };
     }
 
-    if predecessor_signatures == successor_signatures {
+    if predecessor_facts.signatures == successor_facts.signatures {
         return ContextFormulaEditClassification {
             label: "same_dependencies",
             affected_node_ids,
@@ -2191,30 +2191,112 @@ fn context_formula_catalog_has_unresolved(
     })
 }
 
-fn formula_dependency_signatures(
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ContextDependencyShapeFacts {
+    descriptors: Vec<DependencyDescriptor>,
+    graph: DependencyGraph,
+    signatures: BTreeSet<ContextDependencyShapeSignature>,
+    has_unresolved: bool,
+    has_dynamic_potential: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ContextDependencyShapeSignature {
+    kind: DependencyDescriptorKind,
+    target_node_id: Option<TreeNodeId>,
+    workspace_target: Option<WorkspaceQualifiedTarget>,
+    carrier_shape_detail: String,
+    tree_reference_collection: Option<ContextTreeReferenceCollectionSignature>,
+    requires_rebind_on_structural_change: bool,
+}
+
+impl From<&DependencyDescriptor> for ContextDependencyShapeSignature {
+    fn from(descriptor: &DependencyDescriptor) -> Self {
+        Self {
+            kind: descriptor.kind,
+            target_node_id: descriptor.target_node_id,
+            workspace_target: descriptor.workspace_target.clone(),
+            carrier_shape_detail: context_dependency_shape_carrier_detail(descriptor),
+            tree_reference_collection: descriptor
+                .tree_reference_collection
+                .as_ref()
+                .map(Into::into),
+            requires_rebind_on_structural_change: descriptor.requires_rebind_on_structural_change,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ContextTreeReferenceCollectionSignature {
+    family: TreeReferenceCollectionFamily,
+    base_node_id: TreeNodeId,
+    membership_version: String,
+    order_version: String,
+    member_node_ids: Vec<TreeNodeId>,
+}
+
+impl From<&TreeReferenceCollectionDependency> for ContextTreeReferenceCollectionSignature {
+    fn from(collection: &TreeReferenceCollectionDependency) -> Self {
+        Self {
+            family: collection.family,
+            base_node_id: collection.base_node_id,
+            membership_version: collection.membership_version.clone(),
+            order_version: collection.order_version.clone(),
+            member_node_ids: collection.member_node_ids.clone(),
+        }
+    }
+}
+
+fn context_dependency_shape_carrier_detail(descriptor: &DependencyDescriptor) -> String {
+    // Source handles and source-position-derived host handles belong to formula
+    // artifact identity. Dependency-shape classification compares the typed
+    // dependency consequence, not the textual carrier's current span.
+    match descriptor.kind {
+        DependencyDescriptorKind::TreeReferenceCollectionMembership => {
+            "tree_reference_collection_membership".to_string()
+        }
+        DependencyDescriptorKind::TreeReferenceCollectionMemberValue => {
+            "tree_reference_collection_member_value".to_string()
+        }
+        _ => descriptor.carrier_detail.clone(),
+    }
+}
+
+fn context_dependency_shape_facts(
+    snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    descriptors: &[crate::dependency::DependencyDescriptor],
-) -> BTreeSet<String> {
-    descriptors
+    catalog: &TreeFormulaCatalog,
+) -> ContextDependencyShapeFacts {
+    let descriptors = catalog.to_dependency_descriptors(snapshot);
+    let owner_descriptors = descriptors
         .iter()
         .filter(|descriptor| descriptor.owner_node_id == owner_node_id)
-        .map(|descriptor| {
-            format!(
-                "kind={:?};target={:?};workspace={:?};rebind={};detail={}",
-                descriptor.kind,
-                descriptor.target_node_id,
-                descriptor.workspace_target,
-                descriptor.requires_rebind_on_structural_change,
-                descriptor.carrier_detail
-            )
-        })
-        .collect()
+        .collect::<Vec<_>>();
+    let signatures = owner_descriptors
+        .iter()
+        .copied()
+        .map(Into::into)
+        .collect::<BTreeSet<_>>();
+    let has_unresolved = owner_descriptors
+        .iter()
+        .any(|descriptor| descriptor.kind == DependencyDescriptorKind::Unresolved);
+    let has_dynamic_potential = owner_descriptors
+        .iter()
+        .any(|descriptor| descriptor.kind == DependencyDescriptorKind::DynamicPotential);
+    let graph = DependencyGraph::build(snapshot, &descriptors);
+    ContextDependencyShapeFacts {
+        descriptors,
+        graph,
+        signatures,
+        has_unresolved,
+        has_dynamic_potential,
+    }
 }
 
 fn formula_dependency_shape_affected_node_ids(
     owner_node_id: TreeNodeId,
-    predecessor_descriptors: &[crate::dependency::DependencyDescriptor],
-    successor_descriptors: &[crate::dependency::DependencyDescriptor],
+    predecessor_descriptors: &[DependencyDescriptor],
+    successor_descriptors: &[DependencyDescriptor],
 ) -> Vec<TreeNodeId> {
     let mut target_node_ids = predecessor_descriptors
         .iter()
@@ -3645,7 +3727,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_recalculate_publishes_formula_binding_snapshot() {
+    fn treecalc_context_recalculate_publishes_formula_binding_and_dependency_shape_snapshots() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -3666,6 +3748,11 @@ mod tests {
         assert!(after.formula_binding_snapshot_id.0.contains("current"));
         assert!(matches!(
             &state.formula_binding_snapshot.state,
+            SnapshotLayerState::Current { .. }
+        ));
+        assert!(after.dependency_shape_snapshot_id.0.contains("current"));
+        assert!(matches!(
+            &state.dependency_shape_snapshot.state,
             SnapshotLayerState::Current { .. }
         ));
         assert_eq!(
@@ -4170,6 +4257,92 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_formula_edit_same_host_reference_target_ignores_source_span_handle() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:host-reference-source-shift",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=[A]+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        context
+            .set_node_formula_text(&workspace_id, b_id, "=0+[A]+2")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_edit_classification:{b_id}:same_dependencies")
+        }));
+        assert!(
+            result
+                .candidate_result
+                .as_ref()
+                .is_some_and(|candidate| candidate.dependency_shape_updates.is_empty())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_formula_edit_same_collection_shape_ignores_source_span_handle() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:collection-source-shift",
+            ))
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=SUM(@CHILDREN)"),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C1", "2").under(total_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C2", "3").under(total_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        context
+            .set_node_formula_text(&workspace_id, total_id, "=0+SUM(@CHILDREN)")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert!(matches!(
+            result.run_state,
+            OxCalcTreeRunState::Published | OxCalcTreeRunState::VerifiedClean
+        ));
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"5".to_string())
+        );
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_edit_classification:{total_id}:same_dependencies")
+        }));
+        assert!(
+            result
+                .candidate_result
+                .as_ref()
+                .is_none_or(|candidate| candidate.dependency_shape_updates.is_empty())
+        );
+    }
+
+    #[test]
     fn treecalc_context_formula_edit_changed_dependency_preserves_structure_and_recalculates() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -4307,6 +4480,12 @@ mod tests {
             diagnostic == &format!("formula_edit_classification:{b_id}:cycle_candidate")
         }));
         assert!(result.publication_bundle.is_none());
+        assert!(
+            after_recalc
+                .dependency_shape_snapshot_id
+                .0
+                .contains("absent")
+        );
         assert!(a_id.0 > 0);
     }
 
@@ -4399,6 +4578,12 @@ mod tests {
             diagnostic == &format!("formula_edit_classification:{b_id}:resolved_to_unresolved")
         }));
         assert!(result.publication_bundle.is_none());
+        assert!(
+            after_recalc
+                .dependency_shape_snapshot_id
+                .0
+                .contains("absent")
+        );
         assert!(a_id.0 > 0);
     }
 

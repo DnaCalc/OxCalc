@@ -30,7 +30,7 @@ use crate::formula::{
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
-    StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
+    StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, StructuralTableShape, TreeNodeId,
 };
 use crate::structured_table::{
     StructuredTableBindRecordIntakeError, StructuredTableContextPacket,
@@ -697,8 +697,6 @@ impl OxCalcTreeContext {
                 state.input_value_epochs.remove(removed_node_id);
                 remove_node_input_record(state, *removed_node_id);
                 state.meta_node_ids.remove(removed_node_id);
-                state.seeded_published_values.remove(removed_node_id);
-                state.seeded_published_runtime_effects.clear();
                 state.pending_invalidation_seeds.clear();
                 if let Some(snapshot) = state.table_snapshots.remove(removed_node_id) {
                     let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
@@ -706,11 +704,10 @@ impl OxCalcTreeContext {
                     state.table_state_version += 1;
                 }
             }
+            remove_deleted_publication_and_runtime_facts(state, &outcome.affected_node_ids);
             state.snapshot = outcome.snapshot;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
-            state.seeded_published_values.clear();
-            state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -723,6 +720,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         snapshot: TreeCalcTableNodeSnapshot,
     ) -> Result<OxCalcTreeTableView, OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
             state
@@ -730,21 +728,33 @@ impl OxCalcTreeContext {
                 .try_get_node(node_id)
                 .ok_or(StructuralError::UnknownNode { node_id })?;
             let next_table_state_version = state.table_state_version + 1;
-            let normalized = normalize_context_table_snapshot_with_version(
+            let normalized = normalize_context_table_snapshot_with_snapshot_id(
                 state,
+                snapshot_id,
                 node_id,
                 &snapshot,
                 next_table_state_version,
             )?;
             project_treecalc_table_node_snapshot(&normalized)
                 .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
-            state.table_snapshots.insert(node_id, snapshot);
+            let table_shape = structural_table_shape_from_table_snapshot(&normalized);
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::SetTableShape {
+                    node_id,
+                    table_shape,
+                },
+            )?;
+            state.snapshot = outcome.snapshot;
+            state.table_snapshots.insert(node_id, normalized);
             state.table_state_version = next_table_state_version;
+            refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
         }
+        self.advance_snapshot_id();
         self.table_view(workspace_id, node_id)?
             .ok_or(StructuralError::UnknownNode { node_id }.into())
     }
@@ -754,18 +764,37 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
     ) -> Result<Option<TreeCalcTableNodeSnapshot>, OxCalcTreeContextError> {
-        let state = self.workspace_mut(workspace_id)?;
-        let Some(snapshot) = state.table_snapshots.remove(&node_id) else {
+        if !self
+            .workspace(workspace_id)?
+            .table_snapshots
+            .contains_key(&node_id)
+        {
             return Ok(None);
+        }
+
+        let snapshot_id = self.next_snapshot_id();
+        let removed = {
+            let state = self.workspace_mut(workspace_id)?;
+            let snapshot = state
+                .table_snapshots
+                .remove(&node_id)
+                .expect("table presence was checked before structural clear");
+            let outcome = state
+                .snapshot
+                .apply_edit(snapshot_id, StructuralEdit::ClearTableShape { node_id })?;
+            state.snapshot = outcome.snapshot;
+            let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
+            state.deleted_table_facts.push(deleted);
+            state.table_state_version += 1;
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            state.seeded_published_values.clear();
+            state.seeded_published_runtime_effects.clear();
+            state.last_result = None;
+            snapshot
         };
-        let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
-        state.deleted_table_facts.push(deleted);
-        state.table_state_version += 1;
-        state.pending_invalidation_seeds.clear();
-        state.seeded_published_values.clear();
-        state.seeded_published_runtime_effects.clear();
-        state.last_result = None;
-        Ok(Some(snapshot))
+        self.advance_snapshot_id();
+        Ok(Some(removed))
     }
 
     pub fn table_view(
@@ -1498,13 +1527,33 @@ fn normalize_context_table_snapshot_with_version(
     snapshot: &TreeCalcTableNodeSnapshot,
     table_state_version: u64,
 ) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+    normalize_context_table_snapshot_with_snapshot_id(
+        state,
+        state.snapshot.snapshot_id(),
+        node_id,
+        snapshot,
+        table_state_version,
+    )
+}
+
+fn normalize_context_table_snapshot_with_snapshot_id(
+    state: &OxCalcTreeWorkspaceState,
+    structural_snapshot_id: StructuralSnapshotId,
+    node_id: TreeNodeId,
+    snapshot: &TreeCalcTableNodeSnapshot,
+    table_state_version: u64,
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
     let canonical_path = state.snapshot.get_projection_path(node_id)?;
     let mut normalized = snapshot.clone();
     normalized.table_node_id = node_id;
     normalized.display_path = canonical_path.clone();
     normalized.canonical_path = canonical_path;
-    normalized.table_namespace_version =
-        context_table_namespace_version(state, node_id, table_state_version);
+    normalized.table_namespace_version = context_table_namespace_version_for_snapshot_id(
+        state,
+        node_id,
+        structural_snapshot_id,
+        table_state_version,
+    );
     if normalized.row_membership_version.is_empty() {
         normalized.row_membership_version = format!(
             "treecalc-table-row-membership:v1:{}:{}",
@@ -1529,6 +1578,61 @@ fn normalize_context_table_snapshot_with_version(
     Ok(normalized)
 }
 
+fn structural_table_shape_from_table_snapshot(
+    snapshot: &TreeCalcTableNodeSnapshot,
+) -> StructuralTableShape {
+    let body_shape_identity = snapshot
+        .columns
+        .iter()
+        .map(|column| {
+            format!(
+                "{}:{}:{}:{}",
+                column.column_id,
+                column.column_name,
+                column.ordinal,
+                column.body_metadata.identity_fragment()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("|");
+    let totals_shape_identity = snapshot
+        .columns
+        .iter()
+        .map(|column| {
+            format!(
+                "{}:{}:{}",
+                column.column_id,
+                column.ordinal,
+                column.totals_metadata.as_ref().map_or_else(
+                    || "none".to_string(),
+                    |metadata| metadata.identity_fragment()
+                )
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("|");
+    StructuralTableShape {
+        table_id: snapshot.table_id.clone(),
+        table_name: snapshot.table_name.clone(),
+        virtual_anchor_identity: format!(
+            "{}:{}:{}:{}",
+            snapshot.virtual_anchor.workbook_scope_ref,
+            snapshot.virtual_anchor.sheet_scope_ref,
+            snapshot.virtual_anchor.start_row,
+            snapshot.virtual_anchor.start_col
+        ),
+        row_membership_version: snapshot.row_membership_version.clone(),
+        row_order_version: snapshot.row_order_version.clone(),
+        column_identity_version: snapshot.column_identity_version.clone(),
+        body_shape_identity,
+        totals_shape_identity,
+        header_row_present: snapshot.header_row_present,
+        totals_row_present: snapshot.totals_row_present,
+        row_count: snapshot.rows.len(),
+        column_count: snapshot.columns.len(),
+    }
+}
+
 fn deleted_table_fact_from_snapshot(
     state: &OxCalcTreeWorkspaceState,
     snapshot: &TreeCalcTableNodeSnapshot,
@@ -1550,18 +1654,57 @@ fn context_structure_version(state: &OxCalcTreeWorkspaceState) -> String {
     )
 }
 
-fn context_table_namespace_version(
+fn context_table_namespace_version_for_snapshot_id(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
+    structural_snapshot_id: StructuralSnapshotId,
     table_state_version: u64,
 ) -> String {
     format!(
         "treecalc-table-namespace:v1:{}:{}:snapshot={}:tables={}",
         state.workspace_id.as_str(),
         node_id.0,
-        state.snapshot.snapshot_id().0,
+        structural_snapshot_id.0,
         table_state_version
     )
+}
+
+fn remove_deleted_publication_and_runtime_facts(
+    state: &mut OxCalcTreeWorkspaceState,
+    removed_node_ids: &[TreeNodeId],
+) {
+    let removed_node_ids = removed_node_ids.iter().copied().collect::<BTreeSet<_>>();
+    for removed_node_id in &removed_node_ids {
+        state.seeded_published_values.remove(removed_node_id);
+    }
+    state
+        .seeded_published_runtime_effects
+        .retain(|effect| !runtime_effect_mentions_any_node(effect, &removed_node_ids));
+
+    // Direct-context structural delete does not yet classify compatible retained publication.
+    // Drop the remaining baseline after the node-scoped facts have been explicitly removed.
+    state.seeded_published_values.clear();
+    state.seeded_published_runtime_effects.clear();
+}
+
+fn runtime_effect_mentions_any_node(
+    effect: &RuntimeEffect,
+    node_ids: &BTreeSet<TreeNodeId>,
+) -> bool {
+    node_ids
+        .iter()
+        .any(|node_id| runtime_effect_mentions_node(effect, *node_id))
+}
+
+fn runtime_effect_mentions_node(effect: &RuntimeEffect, node_id: TreeNodeId) -> bool {
+    let node_token = format!("node:{}", node_id.0);
+    let raw_token = node_id.0.to_string();
+    effect.detail.split([';', '|']).any(|segment| {
+        segment
+            .strip_prefix("owner_node:")
+            .or_else(|| segment.strip_prefix("target_node:"))
+            .is_some_and(|value| value == node_token || value == raw_token)
+    })
 }
 
 fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
@@ -3145,6 +3288,227 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_structural_edits_advance_revision_roots_and_preserve_inputs() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w057-structural-revisions",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let branch_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Branch", ""))
+            .unwrap();
+        let b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=A+1").under(branch_id),
+            )
+            .unwrap();
+        let before = context.workspace_view(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+        let before_records = before_revision.node_input_snapshot.records().clone();
+
+        context
+            .rename_node(&workspace_id, a_id, "A_renamed")
+            .unwrap();
+        let after_rename = context.workspace_view(&workspace_id).unwrap();
+        let after_rename_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        assert_ne!(before.snapshot_id, after_rename.snapshot_id);
+        assert_ne!(
+            before.workspace_revision_id,
+            after_rename.workspace_revision_id
+        );
+        assert_eq!(
+            before.node_input_snapshot_id,
+            after_rename.node_input_snapshot_id
+        );
+        assert_eq!(
+            after_rename_revision.structure_snapshot.snapshot_id(),
+            after_rename.snapshot_id
+        );
+        assert_eq!(
+            after_rename_revision.node_input_snapshot.records(),
+            &before_records
+        );
+
+        context
+            .move_node(&workspace_id, b_id, before.root_node_id, Some(0))
+            .unwrap();
+        let after_move = context.workspace_view(&workspace_id).unwrap();
+        let after_move_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_ne!(after_rename.snapshot_id, after_move.snapshot_id);
+        assert_ne!(
+            after_rename.workspace_revision_id,
+            after_move.workspace_revision_id
+        );
+        assert_eq!(
+            after_rename.node_input_snapshot_id,
+            after_move.node_input_snapshot_id
+        );
+        assert_eq!(
+            after_move_revision.node_input_snapshot.records(),
+            &before_records
+        );
+
+        context.reorder_node(&workspace_id, a_id, 0).unwrap();
+        let after_reorder = context.workspace_view(&workspace_id).unwrap();
+        assert_ne!(after_move.snapshot_id, after_reorder.snapshot_id);
+        assert_ne!(
+            after_move.workspace_revision_id,
+            after_reorder.workspace_revision_id
+        );
+        assert_eq!(
+            after_move.node_input_snapshot_id,
+            after_reorder.node_input_snapshot_id
+        );
+
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "5"))
+            .unwrap();
+        let after_add = context.workspace_view(&workspace_id).unwrap();
+        let after_add_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        assert_ne!(after_reorder.snapshot_id, after_add.snapshot_id);
+        assert_ne!(
+            after_reorder.workspace_revision_id,
+            after_add.workspace_revision_id
+        );
+        assert_ne!(
+            after_reorder.node_input_snapshot_id,
+            after_add.node_input_snapshot_id
+        );
+        for node_id in [a_id, branch_id, b_id] {
+            assert_eq!(
+                before_records.get(&node_id),
+                after_add_revision
+                    .node_input_snapshot
+                    .records()
+                    .get(&node_id)
+            );
+        }
+        assert_eq!(
+            after_add_revision
+                .node_input_snapshot
+                .try_get_record(c_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::Literal)
+        );
+    }
+
+    #[test]
+    fn treecalc_context_delete_prunes_inputs_publication_runtime_and_table_shape() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w057-delete-prune",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "2"))
+            .unwrap();
+        let b1_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B1", "4"))
+            .unwrap();
+        let b2_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B2", "5"))
+            .unwrap();
+        let c_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C", "=INDIRECT(\"B\"&A)"),
+            )
+            .unwrap();
+        context
+            .set_node_table(&workspace_id, b2_id, sales_table_snapshot(b2_id))
+            .unwrap();
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.published_values.get(&c_id), Some(&"5".to_string()));
+        assert!(initial.runtime_effects.iter().any(|effect| {
+            effect.family == RuntimeEffectFamily::DynamicDependency
+                && effect.detail.contains(&format!("target_node:{b2_id}"))
+        }));
+        let before_delete = context.workspace_view(&workspace_id).unwrap();
+        let before_delete_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert!(
+            before_delete_revision
+                .structure_snapshot
+                .table_shapes()
+                .contains_key(&b2_id)
+        );
+
+        context.delete_node(&workspace_id, b2_id).unwrap();
+        let after_delete = context.workspace_view(&workspace_id).unwrap();
+        let after_delete_revision = context.workspace_revision(&workspace_id).unwrap();
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+
+        assert_ne!(before_delete.snapshot_id, after_delete.snapshot_id);
+        assert_ne!(
+            before_delete.workspace_revision_id,
+            after_delete.workspace_revision_id
+        );
+        assert_ne!(
+            before_delete.node_input_snapshot_id,
+            after_delete.node_input_snapshot_id
+        );
+        assert!(
+            after_delete_revision
+                .structure_snapshot
+                .try_get_node(b2_id)
+                .is_none()
+        );
+        assert!(
+            after_delete_revision
+                .node_input_snapshot
+                .try_get_record(b2_id)
+                .is_none()
+        );
+        assert!(
+            !after_delete_revision
+                .structure_snapshot
+                .table_shapes()
+                .contains_key(&b2_id)
+        );
+        assert!(!exported.formula_texts.contains_key(&b2_id));
+        assert!(!exported.formula_text_versions.contains_key(&b2_id));
+        assert!(!exported.input_values.contains_key(&b2_id));
+        assert!(!exported.input_value_epochs.contains_key(&b2_id));
+        assert!(exported.seeded_published_values.is_empty());
+        assert!(!exported.table_snapshots.contains_key(&b2_id));
+        assert!(
+            exported
+                .deleted_table_facts
+                .iter()
+                .any(|fact| fact.table_id == "table:sales")
+        );
+        assert!(exported.seeded_published_runtime_effects.is_empty());
+        assert_eq!(
+            after_delete_revision
+                .node_input_snapshot
+                .try_get_record(a_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::Literal)
+        );
+        assert_eq!(
+            after_delete_revision
+                .node_input_snapshot
+                .try_get_record(b1_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::Literal)
+        );
+        assert_eq!(
+            after_delete_revision
+                .node_input_snapshot
+                .try_get_record(c_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::FormulaText)
+        );
+    }
+
+    #[test]
     fn treecalc_context_formula_edit_recalculates_dependents() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -3908,11 +4272,29 @@ mod tests {
         let sales_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
             .unwrap();
+        let before_table_set = context.workspace_view(&workspace_id).unwrap();
 
         let view = context
             .set_node_table(&workspace_id, sales_id, sales_table_snapshot(sales_id))
             .unwrap();
+        let after_table_set = context.workspace_view(&workspace_id).unwrap();
+        let after_table_set_revision = context.workspace_revision(&workspace_id).unwrap();
 
+        assert_ne!(before_table_set.snapshot_id, after_table_set.snapshot_id);
+        assert_ne!(
+            before_table_set.workspace_revision_id,
+            after_table_set.workspace_revision_id
+        );
+        assert_eq!(
+            before_table_set.node_input_snapshot_id,
+            after_table_set.node_input_snapshot_id
+        );
+        assert!(
+            after_table_set_revision
+                .structure_snapshot
+                .table_shapes()
+                .contains_key(&sales_id)
+        );
         assert_eq!(view.table_node_id, sales_id);
         assert_eq!(view.table_id, "table:sales");
         assert_eq!(view.canonical_path, "Root/Sales");
@@ -3945,9 +4327,26 @@ mod tests {
         assert_eq!(workspace_view.tables.len(), 1);
 
         let removed = context.clear_node_table(&workspace_id, sales_id).unwrap();
+        let after_table_clear = context.workspace_view(&workspace_id).unwrap();
+        let after_table_clear_revision = context.workspace_revision(&workspace_id).unwrap();
         assert_eq!(
             removed.map(|snapshot| snapshot.table_id),
             Some("table:sales".to_string())
+        );
+        assert_ne!(after_table_set.snapshot_id, after_table_clear.snapshot_id);
+        assert_ne!(
+            after_table_set.workspace_revision_id,
+            after_table_clear.workspace_revision_id
+        );
+        assert_eq!(
+            after_table_set.node_input_snapshot_id,
+            after_table_clear.node_input_snapshot_id
+        );
+        assert!(
+            !after_table_clear_revision
+                .structure_snapshot
+                .table_shapes()
+                .contains_key(&sales_id)
         );
         assert!(
             context

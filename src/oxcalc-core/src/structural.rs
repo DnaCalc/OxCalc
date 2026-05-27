@@ -61,6 +61,22 @@ pub struct StructuralNode {
     pub child_ids: Vec<TreeNodeId>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StructuralTableShape {
+    pub table_id: String,
+    pub table_name: String,
+    pub virtual_anchor_identity: String,
+    pub row_membership_version: String,
+    pub row_order_version: String,
+    pub column_identity_version: String,
+    pub body_shape_identity: String,
+    pub totals_shape_identity: String,
+    pub header_row_present: bool,
+    pub totals_row_present: bool,
+    pub row_count: usize,
+    pub column_count: usize,
+}
+
 impl StructuralNode {
     #[must_use]
     pub fn with_parent(mut self, parent_id: Option<TreeNodeId>) -> Self {
@@ -125,6 +141,13 @@ pub enum StructuralEdit {
     RemoveNode {
         node_id: TreeNodeId,
     },
+    SetTableShape {
+        node_id: TreeNodeId,
+        table_shape: StructuralTableShape,
+    },
+    ClearTableShape {
+        node_id: TreeNodeId,
+    },
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -143,6 +166,8 @@ pub enum StructuralError {
         node_id: TreeNodeId,
         child_id: TreeNodeId,
     },
+    #[error("table shape references missing node {node_id}")]
+    TableShapeMissingNode { node_id: TreeNodeId },
     #[error("child {child_id} does not point back to parent {parent_id}")]
     ParentMismatch {
         child_id: TreeNodeId,
@@ -173,6 +198,8 @@ pub struct StructuralSnapshot {
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
     path_index: BTreeMap<String, TreeNodeId>,
 }
 
@@ -182,17 +209,27 @@ impl StructuralSnapshot {
         root_node_id: TreeNodeId,
         nodes: impl IntoIterator<Item = StructuralNode>,
     ) -> Result<Self, StructuralError> {
+        Self::create_with_table_shapes(snapshot_id, root_node_id, nodes, BTreeMap::new())
+    }
+
+    pub fn create_with_table_shapes(
+        snapshot_id: StructuralSnapshotId,
+        root_node_id: TreeNodeId,
+        nodes: impl IntoIterator<Item = StructuralNode>,
+        table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
+    ) -> Result<Self, StructuralError> {
         let node_map = nodes
             .into_iter()
             .map(|node| (node.node_id, node))
             .collect::<BTreeMap<_, _>>();
-        validate(snapshot_id, root_node_id, &node_map)?;
+        validate(snapshot_id, root_node_id, &node_map, &table_shapes)?;
         let path_index = build_path_index(snapshot_id, root_node_id, &node_map)?;
 
         Ok(Self {
             snapshot_id,
             root_node_id,
             nodes: node_map,
+            table_shapes,
             path_index,
         })
     }
@@ -210,6 +247,11 @@ impl StructuralSnapshot {
     #[must_use]
     pub fn nodes(&self) -> &BTreeMap<TreeNodeId, StructuralNode> {
         &self.nodes
+    }
+
+    #[must_use]
+    pub fn table_shapes(&self) -> &BTreeMap<TreeNodeId, StructuralTableShape> {
+        &self.table_shapes
     }
 
     pub fn try_get_node(&self, node_id: TreeNodeId) -> Option<&StructuralNode> {
@@ -397,6 +439,28 @@ impl StructuralSnapshot {
                     )],
                 )
             }
+            StructuralEdit::SetTableShape {
+                node_id,
+                table_shape,
+            } => {
+                builder.set_table_shape(node_id, table_shape.clone())?;
+                (
+                    StructuralEditImpact::RebindRequired,
+                    vec![node_id],
+                    vec![format!(
+                        "table_shape_set:{node_id}:{}",
+                        table_shape.table_id
+                    )],
+                )
+            }
+            StructuralEdit::ClearTableShape { node_id } => {
+                builder.clear_table_shape(node_id)?;
+                (
+                    StructuralEditImpact::RebindRequired,
+                    vec![node_id],
+                    vec![format!("table_shape_cleared:{node_id}")],
+                )
+            }
         };
 
         let snapshot = builder.build(successor_snapshot_id)?;
@@ -420,6 +484,7 @@ fn validate(
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,
     nodes: &BTreeMap<TreeNodeId, StructuralNode>,
+    table_shapes: &BTreeMap<TreeNodeId, StructuralTableShape>,
 ) -> Result<(), StructuralError> {
     let root = nodes
         .get(&root_node_id)
@@ -446,6 +511,12 @@ fn validate(
             snapshot_id,
             detached,
         });
+    }
+
+    for node_id in table_shapes.keys() {
+        if !nodes.contains_key(node_id) {
+            return Err(StructuralError::TableShapeMissingNode { node_id: *node_id });
+        }
     }
 
     Ok(())
@@ -546,6 +617,7 @@ impl PinnedStructuralView {
 #[derive(Debug, Clone)]
 pub struct StructuralSnapshotBuilder {
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
+    table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
     root_node_id: Option<TreeNodeId>,
 }
 
@@ -555,10 +627,12 @@ impl StructuralSnapshotBuilder {
         match predecessor {
             Some(snapshot) => Self {
                 nodes: snapshot.nodes.clone(),
+                table_shapes: snapshot.table_shapes.clone(),
                 root_node_id: Some(snapshot.root_node_id),
             },
             None => Self {
                 nodes: BTreeMap::new(),
+                table_shapes: BTreeMap::new(),
                 root_node_id: None,
             },
         }
@@ -758,9 +832,30 @@ impl StructuralSnapshotBuilder {
         let removed_ids = collect_subtree_ids(node_id, &self.nodes)?;
         for removed_id in &removed_ids {
             self.nodes.remove(removed_id);
+            self.table_shapes.remove(removed_id);
         }
 
         Ok(removed_ids)
+    }
+
+    pub fn set_table_shape(
+        &mut self,
+        node_id: TreeNodeId,
+        table_shape: StructuralTableShape,
+    ) -> Result<(), StructuralError> {
+        if !self.nodes.contains_key(&node_id) {
+            return Err(StructuralError::UnknownNode { node_id });
+        }
+        self.table_shapes.insert(node_id, table_shape);
+        Ok(())
+    }
+
+    pub fn clear_table_shape(&mut self, node_id: TreeNodeId) -> Result<(), StructuralError> {
+        if !self.nodes.contains_key(&node_id) {
+            return Err(StructuralError::UnknownNode { node_id });
+        }
+        self.table_shapes.remove(&node_id);
+        Ok(())
     }
 
     pub fn build(
@@ -771,7 +866,12 @@ impl StructuralSnapshotBuilder {
             snapshot_id,
             root_node_id: TreeNodeId(0),
         })?;
-        StructuralSnapshot::create(snapshot_id, root_node_id, self.nodes.values().cloned())
+        StructuralSnapshot::create_with_table_shapes(
+            snapshot_id,
+            root_node_id,
+            self.nodes.values().cloned(),
+            self.table_shapes.clone(),
+        )
     }
 }
 
@@ -810,6 +910,23 @@ mod tests {
             symbol: symbol.to_string(),
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.iter().copied().map(TreeNodeId).collect(),
+        }
+    }
+
+    fn table_shape(table_id: &str) -> StructuralTableShape {
+        StructuralTableShape {
+            table_id: table_id.to_string(),
+            table_name: "Table1".to_string(),
+            virtual_anchor_identity: "Book1:Sheet1:1:1".to_string(),
+            row_membership_version: "rows:v1".to_string(),
+            row_order_version: "row-order:v1".to_string(),
+            column_identity_version: "columns:v1".to_string(),
+            body_shape_identity: "body:v1".to_string(),
+            totals_shape_identity: "totals:v1".to_string(),
+            header_row_present: true,
+            totals_row_present: false,
+            row_count: 2,
+            column_count: 1,
         }
     }
 
@@ -918,5 +1035,47 @@ mod tests {
         );
         assert!(outcome.snapshot.try_get_node(TreeNodeId(2)).is_none());
         assert!(outcome.snapshot.try_get_node(TreeNodeId(3)).is_none());
+    }
+
+    #[test]
+    fn structural_table_shape_edits_are_snapshot_facts() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let table_node = node(2, StructuralNodeKind::Container, "Sales", Some(1), &[]);
+
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, table_node])
+                .unwrap();
+
+        let with_table = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetTableShape {
+                    node_id: TreeNodeId(2),
+                    table_shape: table_shape("table:sales"),
+                },
+            )
+            .unwrap();
+        assert_eq!(with_table.impact, StructuralEditImpact::RebindRequired);
+        assert_eq!(with_table.snapshot.snapshot_id(), StructuralSnapshotId(2));
+        assert_eq!(
+            with_table
+                .snapshot
+                .table_shapes()
+                .get(&TreeNodeId(2))
+                .map(|shape| shape.table_id.as_str()),
+            Some("table:sales")
+        );
+
+        let cleared = with_table
+            .snapshot
+            .apply_edit(
+                StructuralSnapshotId(3),
+                StructuralEdit::ClearTableShape {
+                    node_id: TreeNodeId(2),
+                },
+            )
+            .unwrap();
+        assert_eq!(cleared.snapshot.snapshot_id(), StructuralSnapshotId(3));
+        assert!(!cleared.snapshot.table_shapes().contains_key(&TreeNodeId(2)));
     }
 }

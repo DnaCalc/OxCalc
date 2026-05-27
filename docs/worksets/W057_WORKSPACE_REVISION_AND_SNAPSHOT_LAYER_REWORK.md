@@ -900,8 +900,9 @@ W057 can close its first scope when:
 
 Product status: design workset created; W057.1 guardrails/audit executed; W057.2
 core snapshot-layer types and direct-context workspace-revision bridge executed;
-W057.3 production structural input/formula authority removal executed. No full
-snapshot-layer product cutover claim yet.
+W057.3 production structural input/formula authority removal executed; W057.4
+workspace lifecycle, structural edit, delete cleanup, and table-shape revision
+routing executed. No full snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -911,9 +912,14 @@ W057.2 adds deterministic constructor tests and direct-context workspace-creatio
 tests proving the root input is represented through `NodeInputSnapshot`; W057.3
 removes structural value/formula edit variants, removes structural value and
 formula/bind fields, moves fixture literal values to explicit `input_values`,
-and passes the full `cargo test -p oxcalc-core` ring.
+and passes the full `cargo test -p oxcalc-core` ring; W057.4 adds structural
+table-shape facts, routes table attach/clear through structural snapshots,
+preserves compatible node-input records across rename/move/reorder/add, and
+explicitly prunes delete-scoped input/publication/runtime/table facts with the
+focused structural/direct-context tests and full `cargo test -p oxcalc-core`
+ring passing.
 
-Still open: W057.4-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.5-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

@@ -353,6 +353,13 @@ impl SnapshotLayerState {
     }
 
     #[must_use]
+    pub fn current(basis: impl Into<String>) -> Self {
+        Self::Current {
+            basis: basis.into(),
+        }
+    }
+
+    #[must_use]
     pub fn identity_token(&self) -> String {
         match self {
             Self::CurrentAbsent { reason } => field("absent", reason),
@@ -372,6 +379,20 @@ impl FormulaBindingSnapshot {
     #[must_use]
     pub fn current_absent(revision_id: &WorkspaceRevisionId, reason: impl Into<String>) -> Self {
         let state = SnapshotLayerState::current_absent(reason);
+        let snapshot_id = FormulaBindingSnapshotId(identity(
+            "formula-binding-snapshot",
+            [field("revision_id", &revision_id.0), state.identity_token()],
+        ));
+        Self {
+            snapshot_id,
+            revision_id: revision_id.clone(),
+            state,
+        }
+    }
+
+    #[must_use]
+    pub fn current(revision_id: &WorkspaceRevisionId, basis: impl Into<String>) -> Self {
+        let state = SnapshotLayerState::current(basis);
         let snapshot_id = FormulaBindingSnapshotId(identity(
             "formula-binding-snapshot",
             [field("revision_id", &revision_id.0), state.identity_token()],
@@ -850,6 +871,25 @@ mod tests {
                 .snapshot_id(),
             formula_binding.snapshot_id()
         );
+    }
+
+    #[test]
+    fn formula_binding_current_identity_tracks_basis() {
+        let root_id = TreeNodeId(1);
+        let revision = WorkspaceRevision::new(
+            "workspace:test",
+            single_root_structure(1),
+            NodeInputSnapshot::create([NodeInputRecord::formula_text(root_id, "=1", 1)]).unwrap(),
+            NamespaceSnapshot::current_absent(),
+        );
+
+        let left = FormulaBindingSnapshot::current(revision.revision_id(), "binding-basis:a");
+        let repeat = FormulaBindingSnapshot::current(revision.revision_id(), "binding-basis:a");
+        let right = FormulaBindingSnapshot::current(revision.revision_id(), "binding-basis:b");
+
+        assert!(left.snapshot_id().0.contains("current"));
+        assert_eq!(left.snapshot_id(), repeat.snapshot_id());
+        assert_ne!(left.snapshot_id(), right.snapshot_id());
     }
 
     #[test]

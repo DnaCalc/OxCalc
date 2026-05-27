@@ -906,8 +906,10 @@ routing executed; W057.5 literal and clear input edits route through
 `NodeInputSnapshot` identity; W057.6 formula text and formula/literal/empty
 transitions route through `NodeInputSnapshot` identity; W057.7 namespace option
 mutations route through `NamespaceSnapshot` identity and workspace-revision
-compatibility bases consume the namespace root. No full snapshot-layer product
-cutover claim yet.
+compatibility bases consume the namespace root; W057.8 formula catalog
+generation reads formula text from `NodeInputSnapshot` records and successful
+direct-context recalculation publishes a current `FormulaBindingSnapshot`
+identity. No full snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -934,9 +936,13 @@ transition facts on structural resets, with the focused direct-context and full
 options for host namespace, function registry, resolution rule, caller context,
 and cross-workspace availability, refreshes workspace namespace roots on option
 mutation, and feeds direct-context recalc with a workspace-revision basis that
-names the namespace snapshot.
+names the namespace snapshot; W057.8 adds a current formula-binding snapshot
+constructor, keys recalc's formula-binding identity from deterministic typed
+catalog facts and the workspace namespace root, and adds a regression proving
+legacy formula-text side maps no longer make literal node-input records enter
+the formula catalog.
 
-Still open: W057.8-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.9-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

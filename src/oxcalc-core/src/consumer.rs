@@ -1034,6 +1034,10 @@ impl OxCalcTreeContext {
         let candidate_index = self.next_candidate_index();
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state)?;
+        let formula_binding_snapshot = FormulaBindingSnapshot::current(
+            state.workspace_revision.revision_id(),
+            formula_binding_snapshot_basis(&catalog_build.catalog),
+        );
         let pending_formula_edit_diagnostics = state.pending_formula_edit_diagnostics.clone();
         let pending_node_input_kind_transitions = state.pending_node_input_kind_transitions.clone();
         let pending_dependency_shape_updates = state.pending_dependency_shape_updates.clone();
@@ -1066,6 +1070,12 @@ impl OxCalcTreeContext {
         let state = self.workspace_mut(workspace_id)?;
         state.seeded_published_values = result.published_values.clone();
         state.seeded_published_runtime_effects = result.runtime_effects.clone();
+        state.formula_binding_snapshot = formula_binding_snapshot;
+        state.dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+            state.workspace_revision.revision_id(),
+            state.formula_binding_snapshot.snapshot_id(),
+            "w057.9-dependency-shape-not-yet-promoted",
+        );
         state.pending_invalidation_seeds.clear();
         state.pending_formula_edit_diagnostics.clear();
         state.pending_node_input_kind_transitions.clear();
@@ -1932,17 +1942,20 @@ fn build_context_formula_catalog(
     let mut bindings = Vec::new();
     let mut diagnostics = Vec::new();
 
-    for (owner_node_id, formula_text) in &state.formula_texts {
-        if !is_formula_text(formula_text) {
+    for record in state
+        .workspace_revision
+        .node_input_snapshot
+        .records()
+        .values()
+    {
+        if record.kind != NodeInputKind::FormulaText {
             continue;
         }
-        let version = state
-            .formula_text_versions
-            .get(owner_node_id)
-            .copied()
-            .unwrap_or(1);
+        let owner_node_id = record.node_id;
+        let formula_text = record.text.as_deref().unwrap_or_default();
+        let version = record.input_epoch;
         let mut host_packet_build =
-            context_formula_from_oxfml_host_reference_packets(state, *owner_node_id, formula_text);
+            context_formula_from_oxfml_host_reference_packets(state, owner_node_id, formula_text);
         diagnostics.extend(
             host_packet_build.diagnostics.drain(..).map(|diagnostic| {
                 format!("treecalc_context_host_reference_resolution:{diagnostic}")
@@ -1951,7 +1964,7 @@ fn build_context_formula_catalog(
         let resolution = direct_name_carriers_from_oxfml_probe(
             state.workspace_id.as_str(),
             host_packet_build.expression.source_text(),
-            *owner_node_id,
+            owner_node_id,
             &state.snapshot,
             &state.meta_node_ids,
             &host_packet_build.source_spans,
@@ -1967,7 +1980,7 @@ fn build_context_formula_catalog(
                 .map(|diagnostic| format!("treecalc_context_host_name_resolution:{diagnostic}")),
         );
         bindings.push(TreeFormulaBinding {
-            owner_node_id: *owner_node_id,
+            owner_node_id,
             formula_artifact_id: FormulaArtifactId(format!(
                 "formula:{}:{}:v{}",
                 state.workspace_id.as_str(),
@@ -1988,6 +2001,28 @@ fn build_context_formula_catalog(
         catalog: TreeFormulaCatalog::new(bindings),
         diagnostics,
     })
+}
+
+fn formula_binding_snapshot_basis(catalog: &TreeFormulaCatalog) -> String {
+    #[derive(Serialize)]
+    struct FormulaBindingSnapshotBasisEntry<'a> {
+        owner_node_id: u64,
+        binding: &'a TreeFormulaBinding,
+    }
+
+    let entries = catalog
+        .bindings_by_owner()
+        .iter()
+        .map(
+            |(owner_node_id, binding)| FormulaBindingSnapshotBasisEntry {
+                owner_node_id: owner_node_id.0,
+                binding,
+            },
+        )
+        .collect::<Vec<_>>();
+    let entries_json =
+        serde_json::to_string(&entries).expect("formula binding basis has JSON serialization");
+    format!("formula-binding-catalog:v1:{entries_json}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2215,17 +2250,7 @@ fn context_formula_from_oxfml_host_reference_packets(
         owner_node_id.0,
         formula_text,
     );
-    let host_context = RuntimeHostFormulaContext {
-        dialect_id: "oxcalc.treecalc-v1".to_string(),
-        capability_profile_id: "host-capabilities:treecalc-v1".to_string(),
-        resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
-        host_namespace_version: None,
-        registry_snapshot_identity: None,
-        structure_context_version: None,
-        caller_context_identity: Some(format!("treecalc-caller:{owner_node_id}")),
-        table_context_identity: None,
-        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
-    };
+    let host_context = context_formula_host_context(state, owner_node_id);
     let mut matches = host_context.declared_host_reference_syntax_matches(&source);
     matches.sort_by_key(|syntax_match| syntax_match.source_span.start);
     let mut accepted_matches = Vec::new();
@@ -2282,6 +2307,27 @@ fn context_formula_from_oxfml_host_reference_packets(
             .with_host_value_bindings(host_value_bindings),
         source_spans,
         diagnostics,
+    }
+}
+
+fn context_formula_host_context(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+) -> RuntimeHostFormulaContext {
+    let namespace_snapshot = &state.workspace_revision.namespace_snapshot;
+    RuntimeHostFormulaContext {
+        dialect_id: "oxcalc.treecalc-v1".to_string(),
+        capability_profile_id: namespace_snapshot.capability_profile_id.clone(),
+        resolution_rule_version: namespace_snapshot.resolution_rule_version.clone(),
+        host_namespace_version: Some(namespace_snapshot.host_namespace_version.clone()),
+        registry_snapshot_identity: Some(namespace_snapshot.function_registry_version.clone()),
+        structure_context_version: Some(context_structure_version(state)),
+        caller_context_identity: Some(format!(
+            "treecalc-caller:{};{}",
+            owner_node_id, namespace_snapshot.caller_context_identity_version
+        )),
+        table_context_identity: None,
+        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
     }
 }
 
@@ -3415,7 +3461,7 @@ mod tests {
         TreeCalcDynamicTableReferenceTargetKind, TreeCalcTableColumnBodyMetadata,
         TreeCalcTableColumnSnapshot, TreeCalcTableRowId, TreeCalcTableVirtualAnchor,
     };
-    use crate::workspace_revision::NodeInputKind;
+    use crate::workspace_revision::{NodeInputKind, SnapshotLayerState};
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -3564,6 +3610,71 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_catalog_uses_node_input_snapshot_as_formula_authority() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w057-formula-authority",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "4"))
+            .unwrap();
+
+        {
+            let state = context.workspace_mut(&workspace_id).unwrap();
+            state.formula_texts.insert(a_id, "=B+1".to_string());
+            state.formula_text_versions.insert(a_id, 99);
+        }
+
+        let state = context.workspace(&workspace_id).unwrap();
+        let a_record = state
+            .workspace_revision
+            .node_input_snapshot
+            .try_get_record(a_id)
+            .unwrap();
+        let catalog_build = build_context_formula_catalog(state).unwrap();
+
+        assert_eq!(a_record.kind, NodeInputKind::Literal);
+        assert_eq!(a_record.text.as_deref(), Some("3"));
+        assert!(catalog_build.catalog.try_get_binding(a_id).is_none());
+        assert!(catalog_build.catalog.try_get_binding(b_id).is_none());
+    }
+
+    #[test]
+    fn treecalc_context_recalculate_publishes_formula_binding_snapshot() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w057-formula-binding",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let before = context.workspace_view(&workspace_id).unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        let after = context.workspace_view(&workspace_id).unwrap();
+        let state = context.workspace(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert!(before.formula_binding_snapshot_id.0.contains("absent"));
+        assert!(after.formula_binding_snapshot_id.0.contains("current"));
+        assert!(matches!(
+            &state.formula_binding_snapshot.state,
+            SnapshotLayerState::Current { .. }
+        ));
+        assert_eq!(
+            state.dependency_shape_snapshot.formula_binding_snapshot_id,
+            after.formula_binding_snapshot_id
+        );
+    }
+
+    #[test]
     fn treecalc_context_namespace_mutation_advances_revision_and_prepared_basis() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -3615,6 +3726,27 @@ mod tests {
         assert_eq!(
             after_revision.namespace_snapshot.capability_profile_id,
             "capability-profile:w057-v2"
+        );
+        let formula_host_context =
+            context_formula_host_context(context.workspace(&workspace_id).unwrap(), metadata_id);
+        assert_eq!(
+            formula_host_context.host_namespace_version.as_deref(),
+            Some("treecalc-host-namespace:w057-v2")
+        );
+        assert_eq!(
+            formula_host_context.registry_snapshot_identity.as_deref(),
+            Some("oxfunc.arg-prep:w057-v2")
+        );
+        assert_eq!(
+            formula_host_context.resolution_rule_version,
+            "treecalc-host-resolution:w057-v2"
+        );
+        assert_eq!(
+            formula_host_context.caller_context_identity,
+            Some(format!(
+                "treecalc-caller:{};treecalc-caller-context:w057-v2",
+                metadata_id
+            ))
         );
 
         let result = context.recalculate(&workspace_id).unwrap();
@@ -4878,7 +5010,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_formula_artifacts_are_built_from_formula_text_layer() {
+    fn treecalc_context_formula_artifacts_are_built_from_node_input_snapshot() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -4901,6 +5033,15 @@ mod tests {
         let imported_workspace_id = imported_context
             .import_workspace_snapshot(exported)
             .unwrap();
+        let imported_revision = imported_context
+            .workspace_revision(&imported_workspace_id)
+            .unwrap();
+        let imported_b_record = imported_revision
+            .node_input_snapshot
+            .try_get_record(b_id)
+            .expect("B input record should be imported into the node input snapshot");
+        assert_eq!(imported_b_record.kind, NodeInputKind::FormulaText);
+        assert_eq!(imported_b_record.text.as_deref(), Some("=A+2"));
         imported_context
             .set_node_input_value(&imported_workspace_id, a_id, "4")
             .unwrap();
